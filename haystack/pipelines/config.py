@@ -82,7 +82,11 @@ def get_component_definitions(
                     param_name = key.replace(env_prefix, "").lower()
                     component_definition["params"][param_name] = value
                     logger.info(
-                        f"Param '{param_name}' of component '{name}' overwritten with environment variable '{key}' value '{value}'."
+                        "Param '%s' of component '%s' overwritten with environment variable '%s' value '%s'.",
+                        param_name,
+                        name,
+                        key,
+                        value,
                     )
     return component_definitions
 
@@ -98,7 +102,8 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
+JSON_FIELDS = ["custom_query"]
+SKIP_VALIDATION_KEYS = ["prompt_text"]  # PromptTemplate, PromptNode
 
 
 def validate_config_strings(pipeline_config: Any, is_value: bool = False):
@@ -123,6 +128,8 @@ def validate_config_strings(pipeline_config: Any, is_value: bool = False):
                         json.loads(value)
                     except json.decoder.JSONDecodeError as e:
                         raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
+                elif key in SKIP_VALIDATION_KEYS:
+                    continue
                 else:
                     validate_config_strings(key)
                     validate_config_strings(value, is_value=True)
@@ -288,11 +295,13 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
         ok_to_ignore_version = pipeline_version == "ignore" and "rc" in __version__
         if not ok_to_ignore_version:
             logging.warning(
-                f"This pipeline is version '{pipeline_version}', but you're using Haystack {__version__}\n"
+                "This pipeline is version '%s', but you're using Haystack %s\n"
                 "This might cause bugs and unexpected behaviors."
                 "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
                 "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
-                "and fix your configuration accordingly."
+                "and fix your configuration accordingly.",
+                pipeline_version,
+                __version__,
             )
 
     # Load the json schema, and create one if it doesn't exist yet
@@ -314,7 +323,8 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 if validation.instance["type"] not in loaded_custom_nodes:
 
                     logger.info(
-                        f"Missing definition for node of type {validation.instance['type']}. Looking into local classes..."
+                        "Missing definition for node of type %s. Looking into local classes...",
+                        validation.instance["type"],
                     )
                     missing_component_class = BaseComponent.get_subclass(validation.instance["type"])
                     schema = inject_definition_in_schema(node_class=missing_component_class, schema=schema)

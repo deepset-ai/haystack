@@ -476,8 +476,9 @@ class BaseDocumentStore(BaseComponent):
             else:
                 jsonl_filename = (file_path.parent / (file_path.stem + ".jsonl")).as_posix()
                 logger.info(
-                    f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
-                    f"Converting json to jsonl to: {jsonl_filename}"
+                    "Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
+                    "Converting json to jsonl to: %s",
+                    jsonl_filename,
                 )
                 squad_json_to_jsonl(filename, jsonl_filename)
                 self.add_eval_data(
@@ -625,8 +626,9 @@ class BaseDocumentStore(BaseComponent):
         for document in documents:
             if document.id in _hash_ids:
                 logger.info(
-                    f"Duplicate Documents: Document with id '{document.id}' already exists in index "
-                    f"'{index or self.index}'"
+                    "Duplicate Documents: Document with id '%s' already exists in index '%s'",
+                    document.id,
+                    index or self.index,
                 )
                 continue
             _documents.append(document)

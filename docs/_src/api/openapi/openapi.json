@@ -2,8 +2,13 @@
     "openapi": "3.0.2",
     "info": {
         "title": "Haystack REST API",
-        "version": "1.12.0rc0"
+        "version": "1.13.0rc0"
     },
+    "servers": [
+        {
+            "url": "http://localhost:8000"
+        }
+    ],
     "paths": {
         "/initialized": {
             "get": {
@@ -93,7 +98,7 @@
                     "feedback"
                 ],
                 "summary": "Get Feedback",
-                "description": "This endpoint allows the API user to retrieve all the feedback that has been submitted\nthrough the `POST /feedback` endpoint.",
+                "description": "This endpoint allows the API user to retrieve all the feedback that has been submitted through the `POST /feedback` endpoint.",
                 "operationId": "get_feedback",
                 "responses": {
                     "200": {
@@ -117,7 +122,7 @@
                     "feedback"
                 ],
                 "summary": "Post Feedback",
-                "description": "This endpoint allows the API user to submit feedback on an answer for a particular query.\n\nFor example, the user can send feedback on whether the answer was correct and\nwhether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
+                "description": "With this endpoint, the API user can submit their feedback on an answer for a particular query. This feedback is then written to the label_index of the DocumentStore.\n\nFor example, the user can send feedback on whether the answer was correct and whether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
                 "operationId": "post_feedback",
                 "requestBody": {
                     "content": {
@@ -155,7 +160,7 @@
                     "feedback"
                 ],
                 "summary": "Delete Feedback",
-                "description": "This endpoint allows the API user to delete all the\nfeedback that has been sumbitted through the\n`POST /feedback` endpoint",
+                "description": "This endpoint allows the API user to delete all the feedback that has been sumbitted through the\n`POST /feedback` endpoint.",
                 "operationId": "delete_feedback",
                 "responses": {
                     "200": {
@@ -175,7 +180,7 @@
                     "feedback"
                 ],
                 "summary": "Get Feedback Metrics",
-                "description": "This endpoint returns basic accuracy metrics based on user feedback,\ne.g., the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
+                "description": "This endpoint returns basic accuracy metrics based on user feedback, for example, the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
                 "operationId": "get_feedback_metrics",
                 "requestBody": {
                     "content": {
@@ -214,7 +219,7 @@
                     "feedback"
                 ],
                 "summary": "Export Feedback",
-                "description": "This endpoint returns JSON output in the SQuAD format for question/answer pairs\nthat were marked as \"relevant\" by user feedback through the `POST /feedback` endpoint.\n\nThe context_size param can be used to limit response size for large documents.",
+                "description": "This endpoint returns JSON output in the SQuAD format for question/answer pairs that were marked as \"relevant\" by user feedback through the `POST /feedback` endpoint.\n\nThe context_size param can be used to limit response size for large documents.",
                 "operationId": "export_feedback",
                 "parameters": [
                     {
@@ -1030,5 +1035,12 @@
                 }
             }
         }
+    },
+    "x-readme": {
+        "proxy-enabled": false,
+        "samples-languages": [
+            "curl",
+            "python"
+        ]
     }
 }

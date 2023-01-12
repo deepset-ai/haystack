@@ -47,14 +47,14 @@ class TransformersQueryClassifier(BaseQueryClassifier):
        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
        output_1 => question/statement
        output_2 => keyword query
-       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/readme.txt)
 
 
     2) Questions vs. Statements
     `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
      output_1 => question
      output_2 => statement
-     [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+     [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/readme.txt)
 
 
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
@@ -100,8 +100,9 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(resolved_devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {resolved_devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                resolved_devices[0],
             )
 
         self.model = pipeline(

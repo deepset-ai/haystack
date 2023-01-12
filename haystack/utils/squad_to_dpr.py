@@ -178,7 +178,7 @@ def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever, num_
 
                 if not hard_negative_ctxs or not positive_ctxs:
                     logging.error(
-                        f"No retrieved candidates for article {article_title}, with question {question['question']}"
+                        "No retrieved candidates for article %s, with question %s", article_title, question["question"]
                     )
                     n_non_added_questions += 1
                     continue
