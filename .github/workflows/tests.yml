@@ -87,7 +87,7 @@ jobs:
     - name: Install Mypy types if needed
       run: |
         mkdir .mypy_cache/
-        python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ .
+        python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ haystack/
 
     - name: Mypy
       run: |
