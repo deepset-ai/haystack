@@ -565,8 +565,9 @@ class SquadProcessor(Processor):
                 )
             except Exception as e:
                 logger.warning(
-                    f"Could not devide document into passages. Document: {basket.raw['document_text'][:200]}\n"
-                    f"With error: {e}"
+                    "Could not devide document into passages. Document: %s\nWith error: %s",
+                    basket.raw["document_text"][:200],
+                    e,
                 )
                 passage_spans = []
 
@@ -663,8 +664,9 @@ class SquadProcessor(Processor):
                             # check if answer string can be found in context
                             if answer_text not in doc_text:
                                 logger.warning(
-                                    f"Answer '{answer['text']}' not contained in context.\n"
-                                    f"Example will not be converted for training/evaluation."
+                                    "Answer '%s' not contained in context.\n"
+                                    "Example will not be converted for training/evaluation.",
+                                    answer["text"],
                                 )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
@@ -672,8 +674,10 @@ class SquadProcessor(Processor):
                                 break  # Break loop around answers, so the error message is not shown multiple times
                             if answer_indices.strip() != answer_text.strip():
                                 logger.warning(
-                                    f"Answer using start/end indices is '{answer_indices}' while gold label text is '{answer_text}'.\n"
-                                    f"Example will not be converted for training/evaluation."
+                                    "Answer using start/end indices is '%s' while gold label text is '%s'.\n"
+                                    "Example will not be converted for training/evaluation.",
+                                    answer_indices,
+                                    answer_text,
                                 )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
@@ -1025,7 +1029,7 @@ class TextSimilarityProcessor(Processor):
 
         if problematic_ids:
             logger.error(
-                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+                "There were %s errors during preprocessing at positions: %s", len(problematic_ids), problematic_ids
             )
 
         if return_baskets:
@@ -1104,7 +1108,7 @@ class TextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                            "The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
                         )
                         return None
 
@@ -1222,7 +1226,8 @@ class TextSimilarityProcessor(Processor):
             if title is None:
                 title = ""
                 logger.warning(
-                    f"Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '{ctx}' "
+                    "Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '%s' ",
+                    ctx,
                 )
             res.append(tuple((title, ctx)))
         return res
@@ -1545,7 +1550,7 @@ class TableTextSimilarityProcessor(Processor):
 
         if problematic_ids:
             logger.error(
-                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+                "There were %s errors during preprocessing at positions: %s", len(problematic_ids), problematic_ids
             )
 
         if return_baskets:
@@ -1588,7 +1593,7 @@ class TableTextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                            "The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
                         )
                         return None
 

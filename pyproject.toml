@@ -260,7 +260,6 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "logging-fstring-interpolation",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",

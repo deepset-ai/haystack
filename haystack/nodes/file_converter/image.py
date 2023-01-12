@@ -146,8 +146,9 @@ class ImageToTextConverter(BaseConverter):
             document_text = "".join(cleaned_pages)
             if not self.validate_language(document_text, valid_languages):
                 logger.warning(
-                    f"The language for image is not one of {valid_languages}. The file may not have "
-                    f"been decoded in the correct text format."
+                    "The language for image is not one of %s. The file may not have "
+                    "been decoded in the correct text format.",
+                    valid_languages,
                 )
 
         text = "\f".join(cleaned_pages)

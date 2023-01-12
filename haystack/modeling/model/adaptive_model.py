@@ -390,8 +390,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         for prediction_head in self.prediction_heads:
             if len(prediction_head.layer_dims) != 2:
                 logger.error(
-                    f"Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
-                    f"            Your PredictionHead has {str(prediction_head.layer_dims)} dimensions."
+                    "Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
+                    "            Your PredictionHead has %s dimensions.",
+                    str(prediction_head.layer_dims),
                 )
                 continue
             if prediction_head.model_type == "span_classification":
@@ -399,8 +400,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 converted_models.append(transformers_model)
             else:
                 logger.error(
-                    f"Haystack -> Transformers conversion is not supported yet for"
-                    f" prediction heads of type {prediction_head.model_type}"
+                    "Haystack -> Transformers conversion is not supported yet for prediction heads of type %s",
+                    prediction_head.model_type,
                 )
 
         return converted_models

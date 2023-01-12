@@ -358,7 +358,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
             if not self.uuid_format_warning_raised:
                 logger.warning(
-                    f"Document id {id} is not in uuid format. Such ids will be replaced by uuids, in this case {generated_uuid}."
+                    "Document id %s is not in uuid format. Such ids will be replaced by uuids, in this case %s.",
+                    id,
+                    generated_uuid,
                 )
                 self.uuid_format_warning_raised = True
             id = generated_uuid
@@ -1507,8 +1509,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         self._delete_index(index)
 
