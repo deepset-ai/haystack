@@ -85,7 +85,9 @@ jobs:
       uses: ./.github/actions/python_cache/
 
     - name: Install Mypy types if needed
-      run: python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ .
+      run: |
+        mkdir .mypy_cache/
+        python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ .
 
     - name: Mypy
       run: |
