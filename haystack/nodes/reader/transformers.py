@@ -169,7 +169,7 @@ class TransformersReader(BaseReader):
                 pred["doc_id"] = cur_doc_id
         predictions = list(itertools.chain.from_iterable(predictions))
 
-        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, all_docs, top_k)
+        answers, _ = self._extract_answers_of_predictions(predictions, all_docs, top_k)
 
         results = {"query": query, "answers": answers}
         return results

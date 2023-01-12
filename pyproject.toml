@@ -266,7 +266,6 @@ disable = [
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
-  "unused-variable",
   "attribute-defined-outside-init",
   "too-many-instance-attributes",
   "super-with-arguments",
