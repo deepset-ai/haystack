@@ -35,6 +35,6 @@ pipelines:
       - name: CsvTextConverter
         inputs: [File]
       - name: Retriever
-        inputs: [ CsvToDocs ]
+        inputs: [ CsvTextConverter ]
       - name: DocumentStore
         inputs: [ Retriever ]
