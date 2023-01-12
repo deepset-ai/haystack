@@ -65,6 +65,15 @@ class Shaper(BaseComponent):
 
         :param inputs: A dictionary of input parameters for the Shaper component. These directives
         are a dictionary version of YAML directives that specify the functions to invoke on the invocation context.
+
+        For example, in the Python snippet below:
+        ```python
+            shaper = Shaper(inputs={"query": {"output": "questions"}})
+            pipeline = Pipeline()
+            pipeline.add_node(component=shaper, name="shaper", inputs=["Query"])
+            ...
+        ```
+        Shaper component is initialized with a directive to rename the invocation context variable query to questions.
         """
         super().__init__()
         self.inputs = inputs
