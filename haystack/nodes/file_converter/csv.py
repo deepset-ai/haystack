@@ -1,4 +1,4 @@
-from typing import Union, List, Iterable, Optional, Any, Dict
+from typing import Union, List, Optional, Any, Dict
 
 import logging
 from pathlib import Path
@@ -20,7 +20,7 @@ class CsvTextConverter(BaseConverter):
     outgoing_edges = 1
 
     def convert(
-        self, 
+        self,
         file_path: Union[Path, List[Path], str, List[str], List[Union[Path, str]]],
         meta: Optional[Dict[str, Any]],
         remove_numeric_tables: Optional[bool] = None,
@@ -50,5 +50,5 @@ class CsvTextConverter(BaseConverter):
             if id_hash_keys:
                 dictionary["id_hash_keys"] = id_hash_keys
             docs.append(Document.from_dict(dictionary))
-    
+
         return docs
