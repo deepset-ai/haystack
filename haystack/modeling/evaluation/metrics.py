@@ -314,7 +314,7 @@ def top_n_accuracy(preds, labels):
     for i in range(n_questions):
         f1_score = 0
         current_preds = preds[i][0]
-        for idx, pred in enumerate(current_preds):
+        for idx in range(len(current_preds)):
             f1_score = max(squad_f1_single(current_preds, label, pred_idx=idx) for label in labels[i])
             if f1_score:
                 break

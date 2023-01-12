@@ -112,7 +112,7 @@ def get_model(
         else:
             try:
                 model_type = HUGGINGFACE_CAPITALIZE[config.model_type.lower()]
-            except KeyError as e:
+            except KeyError:
                 logger.error(
                     "Haystack doesn't support model '%s' (type '%s') "
                     "We'll use the AutoModel class for it. "

@@ -114,7 +114,7 @@ class LanguageModel(nn.Module, ABC):
                 if value:
                     self._output_dims = value
                     return value
-            except AttributeError as e:
+            except AttributeError:
                 raise ModelingError("Can't get the output dimension before loading the model.")
 
         raise ModelingError("Could not infer the output dimensions of the language model.")
@@ -515,7 +515,7 @@ class DPREncoder(LanguageModel):
         model_classname = f"DPR{self.role.capitalize()}Encoder"
         try:
             model_class: Type[PreTrainedModel] = getattr(transformers, model_classname)
-        except AttributeError as e:
+        except AttributeError:
             raise ModelingError(f"Model class of type '{model_classname}' not found.")
 
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
