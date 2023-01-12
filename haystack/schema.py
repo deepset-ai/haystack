@@ -17,7 +17,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict, InitVar
+from dataclasses import asdict
 
 import mmh3
 import numpy as np
