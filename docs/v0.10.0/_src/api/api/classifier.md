@@ -196,4 +196,3 @@ Returns list of Document enriched with class label and probability, which are st
 **Returns**:
 
 List of Document with class probabilities in meta field
-

@@ -38,4 +38,3 @@ generation is not currently supported.
 See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
-
