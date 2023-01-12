@@ -634,7 +634,7 @@ class _EntityPostProcessor:
 
         entities = []
         for idx, entity in enumerate(word_entities):
-            word, (start, end) = word_offset_mapping[idx]
+            _, (start, end) = word_offset_mapping[idx]
             entity["start"] = start
             entity["end"] = end
             entities.append(entity)
@@ -830,7 +830,7 @@ class _EntityPostProcessor:
             # The split is meant to account for the "B" and "I" prefixes
             # Shouldn't merge if both entities are B-type
             bi, tag = self.get_tag(entity["entity"])
-            last_bi, last_tag = self.get_tag(entity_group_disagg[-1]["entity"])
+            _, last_tag = self.get_tag(entity_group_disagg[-1]["entity"])
 
             if tag == last_tag and bi != "B":
                 # Modify subword type to be previous_type

@@ -127,7 +127,7 @@ def validate_config_strings(pipeline_config: Any, is_value: bool = False):
                     try:
                         json.loads(value)
                     except json.decoder.JSONDecodeError as e:
-                        raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
+                        raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.") from e
                 elif key in SKIP_VALIDATION_KEYS:
                     continue
                 else:

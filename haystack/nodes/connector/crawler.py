@@ -309,7 +309,7 @@ class Crawler(BaseComponent):
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(document.to_dict(), f)
-            except Exception as e:
+            except Exception:
                 logging.exception(
                     "Crawler can't save the content of '%s' under '%s'. "
                     "This webpage will be skipped, but links from this page will still be crawled. "
@@ -446,7 +446,7 @@ class Crawler(BaseComponent):
         for i in a_elements:
             try:
                 sub_link = i.get_attribute("href")
-            except StaleElementReferenceException as error:
+            except StaleElementReferenceException:
                 logger.error(
                     "The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript."
                 )

@@ -804,7 +804,7 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     base_mode_fields = base_model.__fields__
 
     values = {}
-    for base_model_field_name, base_model_field in base_mode_fields.items():
+    for base_model_field_name in base_mode_fields.keys():
         value = getattr(base_model, base_model_field_name)
         values[base_model_field_name] = value
 
