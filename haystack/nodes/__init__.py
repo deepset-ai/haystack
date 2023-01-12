@@ -22,8 +22,9 @@ from haystack.nodes.file_converter import (
     CsvTextConverter
 )
 from haystack.nodes.label_generator import PseudoLabelGenerator
-from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers
+from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers, DocumentMerger
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
+from haystack.nodes.prompt import PromptNode, PromptTemplate, PromptModel
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker

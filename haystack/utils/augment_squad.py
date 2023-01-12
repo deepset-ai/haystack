@@ -40,7 +40,7 @@ from torch.nn import functional as F
 from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 import requests
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ def load_glove(
             id_word_mapping[i] = split[0]
             vector_list.append(torch.tensor([float(x) for x in split[1:]]))
     vectors = torch.stack(vector_list)
-    with torch.no_grad():
+    with torch.inference_mode():
         vectors = vectors.to(device)
         vectors = F.normalize(vectors, dim=1)
     return word_id_mapping, id_word_mapping, vectors
@@ -132,7 +132,7 @@ def get_replacements(
         inputs.append((input_ids_, subword_index))
 
     # doing batched forward pass
-    with torch.no_grad():
+    with torch.inference_mode():
         prediction_list = []
         while len(inputs) != 0:
             batch_list, token_indices = tuple(zip(*inputs[:batch_size]))
@@ -165,7 +165,7 @@ def get_replacements(
         elif word in glove_word_id_mapping:  # word was split into subwords so we use glove instead
             word_id = glove_word_id_mapping[word]
             glove_vector = glove_vectors[word_id]
-            with torch.no_grad():
+            with torch.inference_mode():
                 word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)
                 ranking = torch.argsort(word_similarities, descending=True)[: word_possibilities + 1]
                 possible_words.append([glove_id_word_mapping[int(id_)] for id_ in ranking.cpu()])

@@ -5,12 +5,12 @@ from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
-from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
+from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, FilterType
 
 
 logger = logging.getLogger(__name__)
@@ -63,11 +63,11 @@ class BaseRetriever(BaseComponent):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -90,12 +90,12 @@ class BaseRetriever(BaseComponent):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         pass
@@ -131,7 +131,7 @@ class BaseRetriever(BaseComponent):
         Retriever is evaluated based on whether it finds the correct document given the query string and at which
         position in the ranking of documents the correct document is.
 
-        |  Returns a dict containing the following metrics:
+        Returns a dict containing the following metrics:
 
             - "recall": Proportion of questions for which correct document is among retrieved documents
             - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
@@ -245,9 +245,8 @@ class BaseRetriever(BaseComponent):
         mean_avg_precision = summed_avg_precision / number_of_questions
 
         logger.info(
-            (
-                f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                f" the top-{top_k} candidate passages selected by the retriever."
+            "For {} out of {} questions ({:.2%}), the answer was in the top-{} candidate passages selected by the retriever.".format(
+                correct_retrievals, number_of_questions, recall, top_k
             )
         )
 
@@ -269,12 +268,12 @@ class BaseRetriever(BaseComponent):
         self,
         root_node: str,
         query: Optional[str] = None,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
     ):
         if root_node == "Query":
             if query is None:
@@ -303,7 +302,7 @@ class BaseRetriever(BaseComponent):
         self,
         root_node: str,
         queries: Optional[List[str]] = None,
-        filters: Optional[Union[dict, List[dict]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         index: Optional[str] = None,
@@ -336,11 +335,11 @@ class BaseRetriever(BaseComponent):
     def run_query(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
     ):
         documents = self.retrieve(
             query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
@@ -354,7 +353,7 @@ class BaseRetriever(BaseComponent):
     def run_query_batch(
         self,
         queries: List[str],
-        filters: Optional[dict] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

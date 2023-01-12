@@ -23,7 +23,7 @@ from transformers import (
 )
 
 from haystack.errors import HaystackError
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
@@ -110,16 +110,16 @@ class DensePassageRetriever(DenseRetriever):
 
         **Example:**
 
-                ```python
-                |    # remote model from FAIR
-                |    DensePassageRetriever(document_store=your_doc_store,
-                |                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                |                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
-                |    # or from local path
-                |    DensePassageRetriever(document_store=your_doc_store,
-                |                          query_embedding_model="model_directory/question-encoder",
-                |                          passage_embedding_model="model_directory/context-encoder")
-                ```
+        ```python
+        # remote model from FAIR
+        DensePassageRetriever(document_store=your_doc_store,
+                              query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                              passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+        # or from local path
+        DensePassageRetriever(document_store=your_doc_store,
+                              query_embedding_model="model_directory/question-encoder",
+                              passage_embedding_model="model_directory/context-encoder")
+        ```
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
@@ -178,9 +178,10 @@ class DensePassageRetriever(DenseRetriever):
 
         if document_store and document_store.similarity != "dot_product":
             logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                "You are using a Dense Passage Retriever model with the %s function. "
                 "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
         # Init & Load Encoders
@@ -241,11 +242,11 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -266,6 +267,7 @@ class DensePassageRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -294,6 +296,7 @@ class DensePassageRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -343,17 +346,12 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -378,6 +376,7 @@ class DensePassageRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -406,6 +405,7 @@ class DensePassageRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -449,36 +449,17 @@ class DensePassageRetriever(DenseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        if isinstance(filters, list):
-            if len(filters) != len(queries):
-                raise HaystackError(
-                    "Number of filters does not match number of queries. Please provide as many filters"
-                    " as queries or a single filter that will be applied to each query."
-                )
-        else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
-
         if index is None:
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = []
         query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(queries=batch))
-        for query_emb, cur_filters in tqdm(
-            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
-        ):
-            cur_docs = document_store.query_by_embedding(
-                query_emb=query_emb,
-                top_k=top_k,
-                filters=cur_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
-            documents.append(cur_docs)
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+        )
 
         return documents
 
@@ -528,7 +509,7 @@ class DensePassageRetriever(DenseRetriever):
                 batch = {key: raw_batch[key].to(self.devices[0]) for key in raw_batch}
 
                 # get logits
-                with torch.no_grad():
+                with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
@@ -570,8 +551,9 @@ class DensePassageRetriever(DenseRetriever):
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -595,9 +577,9 @@ class DensePassageRetriever(DenseRetriever):
         self,
         data_dir: str,
         train_filename: str,
-        dev_filename: str = None,
-        test_filename: str = None,
-        max_samples: int = None,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        max_samples: Optional[int] = None,
         max_processes: int = 128,
         multiprocessing_strategy: Optional[str] = None,
         dev_split: float = 0,
@@ -613,7 +595,7 @@ class DensePassageRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: str = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/dpr",
@@ -648,12 +630,10 @@ class DensePassageRetriever(DenseRetriever):
         :param epsilon: epsilon parameter of optimizer
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
@@ -707,7 +687,6 @@ class DensePassageRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -958,11 +937,11 @@ class TableTextRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         if top_k is None:
@@ -985,17 +964,12 @@ class TableTextRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -1020,6 +994,7 @@ class TableTextRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1048,6 +1023,7 @@ class TableTextRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1091,36 +1067,17 @@ class TableTextRetriever(DenseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        if isinstance(filters, list):
-            if len(filters) != len(queries):
-                raise HaystackError(
-                    "Number of filters does not match number of queries. Please provide as many filters"
-                    " as queries or a single filter that will be applied to each query."
-                )
-        else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
-
         if index is None:
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = []
         query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(queries=batch))
-        for query_emb, cur_filters in tqdm(
-            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
-        ):
-            cur_docs = document_store.query_by_embedding(
-                query_emb=query_emb,
-                top_k=top_k,
-                filters=cur_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
-            documents.append(cur_docs)
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+        )
 
         return documents
 
@@ -1171,7 +1128,7 @@ class TableTextRetriever(DenseRetriever):
                 batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
                 # get logits
-                with torch.no_grad():
+                with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
                     if query_embeddings is not None:
                         query_embeddings_batched.append(query_embeddings.cpu().numpy())
@@ -1208,8 +1165,9 @@ class TableTextRetriever(DenseRetriever):
 
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -1261,9 +1219,9 @@ class TableTextRetriever(DenseRetriever):
         self,
         data_dir: str,
         train_filename: str,
-        dev_filename: str = None,
-        test_filename: str = None,
-        max_samples: int = None,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        max_samples: Optional[int] = None,
         max_processes: int = 128,
         dev_split: float = 0,
         batch_size: int = 2,
@@ -1278,7 +1236,7 @@ class TableTextRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: str = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/mm_retrieval",
@@ -1315,12 +1273,10 @@ class TableTextRetriever(DenseRetriever):
         :param epsilon: Epsilon parameter of optimizer.
         :param weight_decay: Weight decay parameter of optimizer.
         :param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: What optimizer to use (default: TransformersAdamW).
         :param num_warmup_steps: Number of warmup steps.
         :param optimizer_correct_bias: Whether to correct bias in optimizer.
@@ -1369,7 +1325,6 @@ class TableTextRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -1580,10 +1535,11 @@ class EmbeddingRetriever(DenseRetriever):
             and model_format != "sentence_transformers"
         ):
             logger.warning(
-                f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
-                f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
-                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
-                f"'model_format' parameter at all."
+                "You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '%s'."
+                " You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                "As an alternative, you can let Haystack derive the format automatically by not setting the "
+                "'model_format' parameter at all.",
+                self.model_format,
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
@@ -1592,11 +1548,11 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -1617,6 +1573,7 @@ class EmbeddingRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1645,6 +1602,7 @@ class EmbeddingRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1694,17 +1652,12 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -1729,6 +1682,7 @@ class EmbeddingRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1757,6 +1711,7 @@ class EmbeddingRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1799,36 +1754,17 @@ class EmbeddingRetriever(DenseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        if isinstance(filters, list):
-            if len(filters) != len(queries):
-                raise HaystackError(
-                    "Number of filters does not match number of queries. Please provide as many filters"
-                    " as queries or a single filter that will be applied to each query."
-                )
-        else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
-
         if index is None:
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = []
         query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(queries=batch))
-        for query_emb, cur_filters in tqdm(
-            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
-        ):
-            cur_docs = document_store.query_by_embedding(
-                query_emb=query_emb,
-                top_k=top_k,
-                filters=cur_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
-            documents.append(cur_docs)
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+        )
 
         return documents
 
@@ -1881,7 +1817,7 @@ class EmbeddingRetriever(DenseRetriever):
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
         if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
             return "openai"
-        if model_name_or_path in ["small", "medium", "large"]:
+        if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
@@ -1912,7 +1848,7 @@ class EmbeddingRetriever(DenseRetriever):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
         train_loss: str = "mnrl",
     ) -> None:
@@ -2061,11 +1997,11 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -2086,6 +2022,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -2114,6 +2051,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -2156,17 +2094,12 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -2192,6 +2125,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -2220,6 +2154,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -2270,7 +2205,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+            filters = [filters] * len(queries)
 
         if index is None:
             index = document_store.index
@@ -2287,22 +2222,22 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
             for it in range(self.num_iterations):
                 texts = [self._merge_query_and_context(q, c) for q, c in zip(batch, context_docs)]
                 query_embs = self.embed_queries(texts)
-                for idx, emb in enumerate(query_embs):
-                    cur_docs = document_store.query_by_embedding(
-                        query_emb=emb,
-                        top_k=top_k,
-                        filters=cur_filters,
-                        index=index,
-                        headers=headers,
-                        scale_score=scale_score,
-                    )
-                    if it < self.num_iterations - 1:
-                        # add doc with highest score to context
+                cur_docs_batch = document_store.query_by_embedding_batch(
+                    query_embs=query_embs,
+                    top_k=top_k,
+                    filters=cur_filters,
+                    index=index,
+                    headers=headers,
+                    scale_score=scale_score,
+                )
+                if it < self.num_iterations - 1:
+                    # add doc with highest score to context
+                    for idx, cur_docs in enumerate(cur_docs_batch):
                         if len(cur_docs) > 0:
                             context_docs[idx].append(cur_docs[0])
-                    else:
-                        # documents in the last iteration are final results
-                        documents.append(cur_docs)
+                else:
+                    # documents in the last iteration are final results
+                    documents.extend(cur_docs_batch)
             pb.update(len(batch))
         pb.close()
 

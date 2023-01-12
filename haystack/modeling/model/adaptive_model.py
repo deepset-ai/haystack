@@ -280,7 +280,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         * vocab.txt vocab file for language model, turning text to Wordpiece Tokens
 
         :param load_dir: Location where the AdaptiveModel is stored.
-        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
+        :param device: Specifies the device to which you want to send the model, either torch.device("cpu") or torch.device("cuda").
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
@@ -308,7 +308,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         cls,
         model_name_or_path,
         device: Union[str, torch.device],
-        revision: str = None,
+        revision: Optional[str] = None,
         task_type: str = "question_answering",
         processor: Optional[Processor] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
@@ -390,8 +390,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         for prediction_head in self.prediction_heads:
             if len(prediction_head.layer_dims) != 2:
                 logger.error(
-                    f"Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
-                    f"            Your PredictionHead has {str(prediction_head.layer_dims)} dimensions."
+                    "Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
+                    "            Your PredictionHead has %s dimensions.",
+                    str(prediction_head.layer_dims),
                 )
                 continue
             if prediction_head.model_type == "span_classification":
@@ -399,8 +400,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 converted_models.append(transformers_model)
             else:
                 logger.error(
-                    f"Haystack -> Transformers conversion is not supported yet for"
-                    f" prediction heads of type {prediction_head.model_type}"
+                    "Haystack -> Transformers conversion is not supported yet for prediction heads of type %s",
+                    prediction_head.model_type,
                 )
 
         return converted_models
@@ -778,7 +779,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param kwargs: All arguments that need to be passed on to the model.
         :return: All logits as torch.tensor or multiple tensors.
         """
-        with torch.no_grad():
+        with torch.inference_mode():
             if self.language_model_class == "Bert":
                 input_to_onnx = {
                     "input_ids": numpy.ascontiguousarray(kwargs["input_ids"].cpu().numpy()),

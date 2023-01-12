@@ -114,7 +114,7 @@ class EntityExtractor(BaseComponent):
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
         flatten_entities_in_meta_data: bool = False,
-        max_seq_len: int = None,
+        max_seq_len: Optional[int] = None,
         pre_split_text: bool = False,
         ignore_labels: Optional[List[str]] = None,
     ):
@@ -123,8 +123,9 @@ class EntityExtractor(BaseComponent):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
         self.batch_size = batch_size
         self.progress_bar = progress_bar
@@ -313,7 +314,7 @@ class EntityExtractor(BaseComponent):
         model_outputs: Dict[str, Any],
         sentence: Union[List[str], List[List[str]]],
         word_ids: List[List],
-        word_offset_mapping: List[List[Tuple]] = None,
+        word_offset_mapping: Optional[List[List[Tuple]]] = None,
     ) -> List[Dict[str, Any]]:
         """Aggregate each of the items in `model_outputs` based on which Document they originally came from.
 
@@ -484,12 +485,16 @@ def simplify_ner_for_qa(output):
     """
     Returns a simplified version of the output dictionary
     with the following structure:
+
+    ```python
     [
         {
             answer: { ... }
             entities: [ { ... }, {} ]
         }
     ]
+    ```
+
     The entities included are only the ones that overlap with
     the answer itself.
 
@@ -525,7 +530,7 @@ class _EntityPostProcessor:
         self,
         model_outputs: Dict[str, Any],
         aggregation_strategy: Literal[None, "simple", "first", "average", "max"],
-        ignore_labels: List[str] = None,
+        ignore_labels: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Postprocess the model outputs for a single Document.
 
@@ -581,7 +586,7 @@ class _EntityPostProcessor:
         self,
         pre_entities: List[Dict[str, Any]],
         aggregation_strategy: Literal[None, "simple", "first", "average", "max"],
-        word_offset_mapping: List[Tuple] = None,
+        word_offset_mapping: Optional[List[Tuple]] = None,
     ) -> List[Dict[str, Any]]:
         """Aggregate the `pre_entities` depending on the `aggregation_strategy`.
 

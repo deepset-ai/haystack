@@ -25,17 +25,17 @@ class SentenceTransformersRanker(BaseRanker):
         - use two output logits (no_answer, has_answer) e.g. deepset/gbert-base-germandpr-reranking
     https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
 
-    |  With a SentenceTransformersRanker, you can:
+    With a SentenceTransformersRanker, you can:
      - directly get predictions via predict()
 
     Usage example:
 
     ```python
-    |     retriever = BM25Retriever(document_store=document_store)
-    |     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-    |     p = Pipeline()
-    |     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    |     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+    retriever = BM25Retriever(document_store=document_store)
+    ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+    p = Pipeline()
+    p.add_node(component=retriever, name="Retriever", inputs=["Query"])
+    p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     ```
     """
 
@@ -129,7 +129,7 @@ class SentenceTransformersRanker(BaseRanker):
         # 1. the logit as similarity score/answerable classification
         # 2. the logits as answerable classification  (no_answer / has_answer)
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
-        with torch.no_grad():
+        with torch.inference_mode():
             similarity_scores = self.transformer_model(**features).logits
 
         logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
@@ -216,7 +216,7 @@ class SentenceTransformersRanker(BaseRanker):
                 cur_queries, [doc.content for doc in cur_docs], padding=True, truncation=True, return_tensors="pt"
             ).to(self.devices[0])
 
-            with torch.no_grad():
+            with torch.inference_mode():
                 similarity_scores = self.transformer_model(**features).logits
                 preds.extend(similarity_scores)
             pb.update(len(cur_docs))

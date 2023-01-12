@@ -403,6 +403,51 @@ def test_multilabel_with_doc_containing_dataframes():
     assert type(MultiLabel(labels=[label]).contexts[0]) is str
 
 
+def test_multilabel_serialization():
+    label_dict = {
+        "id": "011079cf-c93f-49e6-83bb-42cd850dce12",
+        "query": "When was the final season first shown on TV?",
+        "document": {
+            "content": "\n\n\n\n\nThe eighth and final season of the fantasy drama television series ''Game of Thrones'', produced by HBO, premiered on April 14, 2019, and concluded on May 19, 2019. Unlike the first six seasons, which consisted of ten episodes each, and the seventh season, which consisted of seven episodes, the eighth season consists of only six episodes.\n\nThe final season depicts the culmination of the series' two primary conflicts: the G",
+            "content_type": "text",
+            "id": "9c82c97c9dc8ba6895893a53aafa610f",
+            "meta": {},
+            "score": None,
+            "embedding": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "answer": {
+            "answer": "April 14",
+            "type": "extractive",
+            "score": None,
+            "context": "\n\n\n\n\nThe eighth and final season of the fantasy drama television series ''Game of Thrones'', produced by HBO, premiered on April 14, 2019, and concluded on May 19, 2019. Unlike the first six seasons, which consisted of ten episodes each, and the seventh season, which consisted of seven episodes, the eighth season consists of only six episodes.\n\nThe final season depicts the culmination of the series' two primary conflicts: the G",
+            "offsets_in_document": [{"start": 124, "end": 132}],
+            "offsets_in_context": None,
+            "document_id": None,
+            "meta": {},
+        },
+        "no_answer": False,
+        "pipeline_id": None,
+        "created_at": "2022-07-22T13:29:33.699781+00:00",
+        "updated_at": "2022-07-22T13:29:33.784895+00:00",
+        "meta": {"answer_id": "374394", "document_id": "604995", "question_id": "345530"},
+        "filters": None,
+    }
+
+    label = Label.from_dict(label_dict)
+    original_multilabel = MultiLabel([label])
+
+    deserialized_multilabel = MultiLabel.from_dict(original_multilabel.to_dict())
+    assert deserialized_multilabel == original_multilabel
+    assert deserialized_multilabel.labels[0] == label
+
+    json_deserialized_multilabel = MultiLabel.from_json(original_multilabel.to_json())
+    assert json_deserialized_multilabel == original_multilabel
+    assert json_deserialized_multilabel.labels[0] == label
+
+
 def test_serialize_speech_document():
     speech_doc = SpeechDocument(
         id=12345,
@@ -484,3 +529,14 @@ def test_assert_span_vs_span():
     assert not Span(0, 1) in Span(5, 15)
     assert not Span(0, 10) in Span(5, 15)
     assert not Span(10, 20) in Span(5, 15)
+
+
+def test_id_hash_keys_not_ignored():
+    # Test that two documents with the same content but different metadata get assigned different ids if and only if
+    # id_hash_keys is set to 'meta'
+    doc1 = Document(content="hello world", meta={"doc_id": "1"}, id_hash_keys=["meta"])
+    doc2 = Document(content="hello world", meta={"doc_id": "2"}, id_hash_keys=["meta"])
+    assert doc1.id != doc2.id
+    doc3 = Document(content="hello world", meta={"doc_id": "3"})
+    doc4 = Document(content="hello world", meta={"doc_id": "4"})
+    assert doc3.id == doc4.id

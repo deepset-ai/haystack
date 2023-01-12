@@ -2,12 +2,14 @@ from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
 from itertools import islice
+from functools import reduce
+import operator
 
 import pinecone
 import numpy as np
 from tqdm.auto import tqdm
 
-from haystack.schema import Document, Label, Answer, Span
+from haystack.schema import Document, FilterType, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
@@ -22,6 +24,16 @@ def _sanitize_index_name(index: Optional[str]) -> Optional[str]:
     if index:
         return index.replace("_", "-").lower()
     return None
+
+
+def _get_by_path(root, items):
+    """Access a nested object in root by item sequence."""
+    return reduce(operator.getitem, items, root)
+
+
+def _set_by_path(root, items, value):
+    """Set a value in a nested object in root by item sequence."""
+    _get_by_path(root, items[:-1])[items[-1]] = value
 
 
 class PineconeDocumentStore(BaseDocumentStore):
@@ -220,7 +232,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -238,6 +250,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -393,7 +406,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 # Otherwise, we raise an error
                                 raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
                     metadata = [
-                        {"content": doc.content, "content_type": doc.content_type, **doc.meta}
+                        self._meta_for_pinecone({"content": doc.content, "content_type": doc.content_type, **doc.meta})
                         for doc in document_objects[i : i + batch_size]
                     ]
                     if add_vectors:
@@ -420,7 +433,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 32,
     ):
         """
@@ -445,6 +458,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -491,6 +505,12 @@ class PineconeDocumentStore(BaseDocumentStore):
             for _ in range(0, document_count, batch_size):
                 document_batch = list(islice(documents, batch_size))
                 embeddings = retriever.embed_documents(document_batch)
+                if embeddings.size == 0:
+                    # Skip batch if there are no embeddings. Otherwise, incorrect embedding shape will be inferred and
+                    # Pinecone APi will return a "No vectors provided" Bad Request Error
+                    progress_bar.set_description_str("Documents Processed")
+                    progress_bar.update(batch_size)
+                    continue
                 self._validate_embeddings_shape(
                     embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
                 )
@@ -501,7 +521,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    metadata.append({"content": doc.content, "content_type": doc.content_type, **doc.meta})
+                    metadata.append(
+                        self._meta_for_pinecone({"content": doc.content, "content_type": doc.content_type, **doc.meta})
+                    )
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
@@ -517,7 +539,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
@@ -538,6 +560,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -575,7 +598,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
@@ -599,6 +622,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -660,7 +684,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         namespace: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 32,
     ) -> List[str]:
         index = self._index_name(index)
@@ -762,7 +786,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
-        namespace: str = None,
+        namespace: Optional[str] = None,
     ) -> List[Document]:
         """
         Retrieves all documents in the index using their IDs.
@@ -806,7 +830,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             embedding_matrix = []
             for _id in result["vectors"].keys():
                 vector_id_matrix.append(_id)
-                meta_matrix.append(result["vectors"][_id]["metadata"])
+                meta_matrix.append(self._pinecone_meta_format(result["vectors"][_id]["metadata"]))
                 if return_embedding:
                     embedding_matrix.append(result["vectors"][_id]["values"])
             if return_embedding:
@@ -826,7 +850,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
-        namespace: str = None,
+        namespace: Optional[str] = None,
     ) -> Document:
         """
         Returns a single Document retrieved using an ID.
@@ -842,9 +866,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         )
         return documents[0]
 
-    def get_embedding_count(
-        self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
-    ) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[FilterType] = None) -> int:
         """
         Return the count of embeddings in the document store.
 
@@ -869,7 +891,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             count = 0
         return count
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):  # type: ignore
+    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: Optional[str] = None, index: Optional[str] = None):  # type: ignore
         """
         Update the metadata dictionary of a document by specifying its string ID.
 
@@ -902,7 +924,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
         drop_ids: Optional[bool] = True,
         namespace: Optional[str] = None,
@@ -926,6 +948,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -1005,7 +1028,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1029,6 +1052,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -1055,6 +1079,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 To use the same logical operator multiple times on the same level, logical operators take
                 optionally a list of dictionaries as value.
                 __Example__:
+
                 ```python
                 filters = {
                     "$or": [
@@ -1271,11 +1296,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 progress_bar.update(1)
 
     def _get_ids(
-        self,
-        index: str,
-        namespace: str,
-        batch_size: int = 32,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        self, index: str, namespace: str, batch_size: int = 32, filters: Optional[FilterType] = None
     ) -> List[str]:
         """
         Retrieves a list of IDs that satisfy a particular filter condition (or any) using
@@ -1310,25 +1331,79 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("load method not supported for PineconeDocumentStore")
 
-    def _meta_for_pinecone(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+    def _meta_for_pinecone(self, meta: Dict[str, Any], parent_key: str = "", labels: bool = False) -> Dict[str, Any]:
         """
         Converts the meta dictionary to a format that can be stored in Pinecone.
+        :param meta: Metadata dictionary to be converted.
+        :param parent_key: Optional, used for recursive calls to keep track of parent keys, for example:
+            ```
+            {"parent1": {"parent2": {"child": "value"}}}
+            ```
+            On the second recursive call, parent_key would be "parent1", and the final key would be "parent1.parent2.child".
+        :param labels: Optional, used to indicate whether the metadata is being stored as a label or not. If True the
+            the flattening of dictionaries is not required.
         """
-        # Replace any None values with empty strings
-        for key, value in meta.items():
-            if value is None:
-                meta[key] = ""
+        items: list = []
+        if labels:
+            # Replace any None values with empty strings
+            for key, value in meta.items():
+                if value is None:
+                    meta[key] = ""
+        else:
+            # Explode dict of dicts into single flattened dict
+            for key, value in meta.items():
+                # Replace any None values with empty strings
+                if value == None:
+                    value = ""
+                # format key
+                new_key = f"{parent_key}.{key}" if parent_key else key
+                # if value is dict, expand
+                if isinstance(value, dict):
+                    items.extend(self._meta_for_pinecone(value, parent_key=new_key).items())
+                else:
+                    items.append((new_key, value))
+            # Create new flattened dictionary
+            meta = dict(items)
         return meta
 
-    def _pinecone_meta_format(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+    def _pinecone_meta_format(self, meta: Dict[str, Any], labels: bool = False) -> Dict[str, Any]:
         """
         Converts the meta extracted from Pinecone into a better format for Python.
+        :param meta: Metadata dictionary to be converted.
+        :param labels: Optional, used to indicate whether the metadata is being stored as a label or not. If True the
+            the flattening of dictionaries is not required.
         """
-        # Replace any empty strings with None values
-        for key, value in meta.items():
-            if value == "":
-                meta[key] = None
-        return meta
+        new_meta: Dict[str, Any] = {}
+
+        if labels:
+            # Replace any empty strings with None values
+            for key, value in meta.items():
+                if value == "":
+                    meta[key] = None
+            return meta
+        else:
+            for key, value in meta.items():
+                # Replace any empty strings with None values
+                if value == "":
+                    value = None
+                if "." in key:
+                    # We must split into nested dictionary
+                    keys = key.split(".")
+                    # Iterate through each dictionary level
+                    for i in range(len(keys)):
+                        path = keys[: i + 1]
+                        # Check if path exists
+                        try:
+                            _get_by_path(new_meta, path)
+                        except KeyError:
+                            # Create path
+                            if i == len(keys) - 1:
+                                _set_by_path(new_meta, path, value)
+                            else:
+                                _set_by_path(new_meta, path, {})
+                else:
+                    new_meta[key] = value
+            return new_meta
 
     def _label_to_meta(self, labels: list) -> dict:
         """
@@ -1340,11 +1415,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             meta = {
                 "label-id": label.id,
                 "query": label.query,
-                "label-answer-answer": label.answer.answer,
-                "label-answer-type": label.answer.type,
-                "label-answer-score": label.answer.score,
-                "label-answer-context": label.answer.context,
-                "label-answer-document-id": label.answer.document_id,
                 "label-is-correct-answer": label.is_correct_answer,
                 "label-is-correct-document": label.is_correct_document,
                 "label-document-content": label.document.content,
@@ -1355,21 +1425,40 @@ class PineconeDocumentStore(BaseDocumentStore):
                 "label-updated-at": label.updated_at,
                 "label-pipeline-id": label.pipeline_id,
             }
-            # Get offset data
-            if label.answer.offsets_in_document:
-                meta["label-answer-offsets-in-document-start"] = label.answer.offsets_in_document[0].start
-                meta["label-answer-offsets-in-document-end"] = label.answer.offsets_in_document[0].end
-            else:
-                meta["label-answer-offsets-in-document-start"] = None
-                meta["label-answer-offsets-in-document-end"] = None
-            if label.answer.offsets_in_context:
-                meta["label-answer-offsets-in-context-start"] = label.answer.offsets_in_context[0].start
-                meta["label-answer-offsets-in-context-end"] = label.answer.offsets_in_context[0].end
-            else:
-                meta["label-answer-offsets-in-context-start"] = None
-                meta["label-answer-offsets-in-context-end"] = None
+            # Get document metadata
+            if label.document.meta is not None:
+                for k, v in label.document.meta.items():
+                    meta[f"label-document-meta-{k}"] = v
+            # Get label metadata
+            if label.meta is not None:
+                for k, v in label.meta.items():
+                    meta[f"label-meta-{k}"] = v
+            # Get Answer data
+            if label.answer is not None:
+                meta.update(
+                    {
+                        "label-answer-answer": label.answer.answer,
+                        "label-answer-type": label.answer.type,
+                        "label-answer-score": label.answer.score,
+                        "label-answer-context": label.answer.context,
+                        "label-answer-document-id": label.answer.document_id,
+                    }
+                )
+                # Get offset data
+                if label.answer.offsets_in_document:
+                    meta["label-answer-offsets-in-document-start"] = label.answer.offsets_in_document[0].start
+                    meta["label-answer-offsets-in-document-end"] = label.answer.offsets_in_document[0].end
+                else:
+                    meta["label-answer-offsets-in-document-start"] = None
+                    meta["label-answer-offsets-in-document-end"] = None
+                if label.answer.offsets_in_context:
+                    meta["label-answer-offsets-in-context-start"] = label.answer.offsets_in_context[0].start
+                    meta["label-answer-offsets-in-context-end"] = label.answer.offsets_in_context[0].end
+                else:
+                    meta["label-answer-offsets-in-context-start"] = None
+                    meta["label-answer-offsets-in-context-end"] = None
             metadata[label.id] = meta
-        metadata = self._meta_for_pinecone(metadata)
+        metadata = self._meta_for_pinecone(metadata, labels=True)
         return metadata
 
     def _meta_to_labels(self, documents: List[Document]) -> List[Label]:
@@ -1377,40 +1466,47 @@ class PineconeDocumentStore(BaseDocumentStore):
         Converts a list of metadata dictionaries to a list of Labels.
         """
         labels = []
-        for doc in documents:
-            label_meta = {k: v for k, v in doc.meta.items() if k[:6] == "label-" or k == "query"}
-            other_meta = {k: v for k, v in doc.meta.items() if k[:6] != "label-" and k != "query"}
+        for d in documents:
+            label_meta = {k: v for k, v in d.meta.items() if k[:6] == "label-" or k == "query"}
+            other_meta = {k: v for k, v in d.meta.items() if k[:6] != "label-" and k != "query"}
             # Create document
             doc = Document(
-                id=label_meta["label-document-id"],
-                content=doc.content,
-                meta=other_meta,
-                score=doc.score,
-                embedding=doc.embedding,
+                id=label_meta["label-document-id"], content=d.content, meta={}, score=d.score, embedding=d.embedding
             )
+            # Extract document metadata
+            for k, v in d.meta.items():
+                if k.startswith("label-document-meta-"):
+                    doc.meta[k[20:]] = v
             # Extract offsets
             offsets: Dict[str, Optional[List[Span]]] = {"document": None, "context": None}
             for mode in offsets.keys():
-                if label_meta[f"label-answer-offsets-in-{mode}-start"] is not None:
+                if label_meta.get(f"label-answer-offsets-in-{mode}-start") is not None:
                     offsets[mode] = [
                         Span(
                             label_meta[f"label-answer-offsets-in-{mode}-start"],
                             label_meta[f"label-answer-offsets-in-{mode}-end"],
                         )
                     ]
-            # if label_meta["label-answer-answer"] is None:
-            #     label_meta["label-answer-answer"] = ""
-            answer = Answer(
-                answer=label_meta["label-answer-answer"]
-                or "",  # If we leave as None a schema validation error will be thrown
-                type=label_meta["label-answer-type"],
-                score=label_meta["label-answer-score"],
-                context=label_meta["label-answer-context"],
-                offsets_in_document=offsets["document"],
-                offsets_in_context=offsets["context"],
-                document_id=label_meta["label-answer-document-id"],
-                meta=other_meta,
-            )
+            # Extract Answer
+            answer = None
+            if label_meta.get("label-answer-answer") is not None:
+                answer = Answer(
+                    answer=label_meta["label-answer-answer"]
+                    or "",  # If we leave as None a schema validation error will be thrown
+                    type=label_meta["label-answer-type"],
+                    score=label_meta["label-answer-score"],
+                    context=label_meta["label-answer-context"],
+                    offsets_in_document=offsets["document"],
+                    offsets_in_context=offsets["context"],
+                    document_id=label_meta["label-answer-document-id"],
+                    meta=other_meta,
+                )
+            # Extract Label metadata
+            label_meta_metadata = {}
+            for k, v in d.meta.items():
+                if k.startswith("label-meta-"):
+                    label_meta_metadata[k[11:]] = v
+            # Rebuild Label object
             label = Label(
                 id=label_meta["label-id"],
                 query=label_meta["query"],
@@ -1422,7 +1518,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 is_correct_answer=label_meta["label-is-correct-answer"],
                 is_correct_document=label_meta["label-is-correct-document"],
                 origin=label_meta["label-origin"],
-                meta={},
+                meta=label_meta_metadata,
                 filters=None,
             )
             labels.append(label)
@@ -1432,7 +1528,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 32,
     ):
@@ -1489,7 +1585,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Delete the documents
             self.delete_documents(ids=update_ids, index=index, namespace=namespace)
 
-    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
+    def get_all_labels(
+        self, index=None, filters: Optional[FilterType] = None, headers: Optional[Dict[str, str]] = None
+    ):
         """
         Default class method used for getting all labels.
         """
@@ -1502,7 +1600,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace="labels")
         for doc in documents:
-            doc.meta = self._pinecone_meta_format(doc.meta)
+            doc.meta = self._pinecone_meta_format(doc.meta, labels=True)
         labels = self._meta_to_labels(documents)
         return labels
 

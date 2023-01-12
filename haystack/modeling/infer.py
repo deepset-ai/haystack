@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Union, Set, Any
 
 import os
 import logging
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
@@ -77,8 +77,9 @@ class Inferencer:
         self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.processor = processor
@@ -126,10 +127,11 @@ class Inferencer:
         disable_tqdm: bool = False,
         tokenizer_class: Optional[str] = None,
         use_fast: bool = True,
-        tokenizer_args: Dict = None,
+        tokenizer_args: Optional[Dict] = None,
         multithreading_rust: bool = True,
         use_auth_token: Optional[Union[bool, str]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        max_query_length: int = 64,
         **kwargs,
     ):
         """
@@ -178,6 +180,7 @@ class Inferencer:
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param max_query_length: Only QA: Maximum length of the question in number of tokens.
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
@@ -185,21 +188,21 @@ class Inferencer:
 
         devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(devices) > 1:
-            logger.warning(
-                f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."
-            )
+            logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])
 
         name = os.path.basename(model_name_or_path)
 
-        # a) either from local dir
-        if os.path.exists(model_name_or_path):
+        # a) non-hf models (i.e. FARM, ONNX) from local dir
+        farm_model_bin = os.path.join(model_name_or_path, "language_model.bin")
+        onnx_model = os.path.join(model_name_or_path, "model.onnx")
+        if os.path.isfile(farm_model_bin) or os.path.isfile(onnx_model):
             model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
                 processor = Processor.load_from_dir(model_name_or_path)
 
-        # b) or from remote transformers model hub
+        # b) transformers models from hub or from local
         else:
             if not task_type:
                 raise ValueError(
@@ -226,6 +229,7 @@ class Inferencer:
                 tokenizer_args=tokenizer_args,
                 use_fast=use_fast,
                 use_auth_token=use_auth_token,
+                max_query_length=max_query_length,
                 **kwargs,
             )
 
@@ -239,6 +243,8 @@ class Inferencer:
                 "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384) "
             )
             processor.doc_stride = doc_stride
+        if hasattr(processor, "max_query_length"):
+            processor.max_query_length = max_query_length
 
         return cls(
             model,
@@ -259,7 +265,7 @@ class Inferencer:
         self.model.save(path)
         self.processor.save(path)
 
-    def inference_from_file(self, file: str, multiprocessing_chunksize: int = None, return_json: bool = True):
+    def inference_from_file(self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json: bool = True):
         """
         Run down-stream inference on samples created from an input file.
         The file should be in the same format as the ones used during training
@@ -365,7 +371,7 @@ class Inferencer:
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 logits = self.model.forward(**batch)
                 preds = self.model.formatted_preds(
                     logits=logits, samples=batch_samples, padding_mask=batch.get("padding_mask", None)
@@ -402,7 +408,7 @@ class Inferencer:
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 # Aggregation works on preds, not logits. We want as much processing happening in one batch + on GPU
                 # So we transform logits to preds here as well
                 logits = self.model.forward(
@@ -506,6 +512,10 @@ class QAInferencer(Inferencer):
                                     This parameter has no effect; it will be removed as Inferencer multiprocessing
                                     has been deprecated.
         """
+        # Return no predictions if there are no inputs
+        if not objects:
+            return []
+
         dicts = [o.to_dict() for o in objects]
         # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects,
         # then we can and should use inference from (input) objects!

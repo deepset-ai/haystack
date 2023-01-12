@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 def eval_data_from_json(
-    filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False
+    filename: str,
+    max_docs: Optional[Union[int, bool]] = None,
+    preprocessor: Optional[PreProcessor] = None,
+    open_domain: bool = False,
 ) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
@@ -49,8 +52,9 @@ def eval_data_from_json(
             problematic_ids.extend(cur_problematic_ids)
     if len(problematic_ids) > 0:
         logger.warning(
-            f"Could not convert an answer for {len(problematic_ids)} questions.\n"
-            f"There were conversion errors for question ids: {problematic_ids}"
+            "Could not convert an answer for %s questions.\nThere were conversion errors for question ids: %s",
+            len(problematic_ids),
+            problematic_ids,
         )
     return docs, labels
 
@@ -58,8 +62,8 @@ def eval_data_from_json(
 def eval_data_from_jsonl(
     filename: str,
     batch_size: Optional[int] = None,
-    max_docs: Union[int, bool] = None,
-    preprocessor: PreProcessor = None,
+    max_docs: Optional[Union[int, bool]] = None,
+    preprocessor: Optional[PreProcessor] = None,
     open_domain: bool = False,
 ) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
@@ -96,8 +100,10 @@ def eval_data_from_jsonl(
                 if len(docs) >= batch_size:
                     if len(problematic_ids) > 0:
                         logger.warning(
-                            f"Could not convert an answer for {len(problematic_ids)} questions.\n"
-                            f"There were conversion errors for question ids: {problematic_ids}"
+                            "Could not convert an answer for %s questions.\n"
+                            "There were conversion errors for question ids: %s",
+                            len(problematic_ids),
+                            problematic_ids,
                         )
                     yield docs, labels
                     docs = []
@@ -123,7 +129,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
 
 
 def _extract_docs_and_labels_from_dict(
-    document_dict: Dict, preprocessor: PreProcessor = None, open_domain: bool = False
+    document_dict: Dict, preprocessor: Optional[PreProcessor] = None, open_domain: bool = False
 ):
     """
     Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)

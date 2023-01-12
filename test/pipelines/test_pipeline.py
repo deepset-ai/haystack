@@ -1,19 +1,17 @@
-from copy import deepcopy
-from pathlib import Path
-import os
 import ssl
 import json
 import platform
 import sys
+import datetime
 from typing import Tuple
+from copy import deepcopy
+from unittest import mock
 
 import pytest
 from requests import PreparedRequest
 import responses
 import logging
-from transformers import pipeline
 import yaml
-import pandas as pd
 
 from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
@@ -40,11 +38,9 @@ from haystack.pipelines import (
 from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import PreProcessor, TextConverter, QuestionGenerator
+from haystack.nodes import PreProcessor, TextConverter
 from haystack.utils.deepsetcloud import DeepsetCloudError
-from haystack import Document, Answer
-from haystack.nodes.other.route_documents import RouteDocuments
-from haystack.nodes.other.join_answers import JoinAnswers
+from haystack import Answer
 
 from ..conftest import (
     MOCK_DC,
@@ -784,7 +780,7 @@ def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limi
         validate_config_strings(pipeline_config)
 
 
-def test_pipeline_classify_type():
+def test_pipeline_classify_type(tmp_path):
 
     pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
     assert pipe.get_type().startswith("GenerativeQAPipeline")
@@ -817,6 +813,99 @@ def test_pipeline_classify_type():
 
     pipe = MostSimilarDocumentsPipeline(document_store=MockDocumentStore())
     assert pipe.get_type().startswith("MostSimilarDocumentsPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: MockRetriever
+               - name: retriever_2
+                 type: MockRetriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: retriever_2
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # two retrievers but still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: MockRetriever
+               - name: retriever_2
+                 type: MockRetriever
+               - name: retriever_3
+                 type: MockRetriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: retriever_2
+                   inputs:
+                   - Query
+                 - name: retriever_3
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # three retrievers but still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: BM25Retriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # BM25Retriever used - still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -2064,3 +2153,44 @@ def test_fix_to_pipeline_execution_when_join_follows_join():
     res = pipeline.run(query="Alpha Beta Gamma Delta")
     documents = res["documents"]
     assert len(documents) == 4  # all four documents should be found
+
+
+def test_send_pipeline_event():
+    """
+    Test the event can be sent and the internal fields are correctly set
+    """
+    pipeline = Pipeline()
+    pipeline.add_node(MockNode(), name="mock_node", inputs=["Query"])
+
+    with mock.patch("haystack.pipelines.base.send_custom_event") as mocked_send:
+        today_at_midnight = datetime.datetime.combine(datetime.datetime.now(), datetime.time.min, datetime.timezone.utc)
+        pipeline.send_pipeline_event()
+        mocked_send.assert_called_once()
+        assert pipeline.time_of_last_sent_event == today_at_midnight
+        assert pipeline.last_window_run_total == 0
+
+
+def test_send_pipeline_event_unserializable_param():
+    """
+    Test the event can be sent even when a certain component was initialized with a
+    non-serializable parameter, see https://github.com/deepset-ai/haystack/issues/3833
+    """
+
+    class CustomNode(MockNode):
+        """A mock node that can be inited passing a param"""
+
+        def __init__(self, param):
+            self.param = param
+
+    # create a custom node passing a parameter that can't be serialized (an empty set)
+    custom_node = CustomNode(param=set())
+
+    pipeline = Pipeline()
+    pipeline.add_node(custom_node, name="custom_node", inputs=["Query"])
+
+    with mock.patch("haystack.pipelines.base.send_custom_event") as mocked_send:
+        today_at_midnight = datetime.datetime.combine(datetime.datetime.now(), datetime.time.min, datetime.timezone.utc)
+        pipeline.send_pipeline_event()
+        mocked_send.assert_called_once()
+        assert pipeline.time_of_last_sent_event == today_at_midnight
+        assert pipeline.last_window_run_total == 0

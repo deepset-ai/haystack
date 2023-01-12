@@ -7,7 +7,7 @@ import random
 from itertools import groupby
 from pathlib import Path
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
@@ -336,7 +336,9 @@ class DataSilo:
             logger.warning("No dev set created. Please adjust the dev_split parameter.")
 
         logger.info(
-            f"Took {len(dev_dataset)} samples out of train set to create dev set (dev split is roughly {self.processor.dev_split})"
+            "Took %s samples out of train set to create dev set (dev split is roughly %s)",
+            len(dev_dataset),
+            self.processor.dev_split,
         )
 
     def random_split_ConcatDataset(self, ds: ConcatDataset, lengths: List[int]):
@@ -387,7 +389,7 @@ class DataSilo:
                 clipped, ave_len, seq_lens, max_seq_len = self._calc_length_stats_biencoder()
             else:
                 logger.warning(
-                    f"Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing."
+                    "Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing."
                 )
                 clipped = -1
                 ave_len = -1
@@ -416,11 +418,14 @@ class DataSilo:
                 logger.info("Proportion clipped:      {}".format(clipped))
                 if clipped > 0.5:
                     logger.info(
-                        f"[Haystack Tip] {round(clipped * 100, 1)}% of your samples got cut down to {max_seq_len} tokens. "
+                        "[Haystack Tip] %s%% of your samples got cut down to %s tokens. "
                         "Consider increasing max_seq_len "
-                        f"(the maximum value allowed with the current model is max_seq_len={self.processor.tokenizer.model_max_length}, "
+                        "(the maximum value allowed with the current model is max_seq_len=%s, "
                         "if this is not enough consider splitting the document in smaller units or changing the model). "
-                        "This will lead to higher memory consumption but is likely to improve your model performance"
+                        "This will lead to higher memory consumption but is likely to improve your model performance",
+                        round(clipped * 100, 1),
+                        max_seq_len,
+                        self.processor.tokenizer.model_max_length,
                     )
             elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
                 logger.info(
@@ -771,7 +776,7 @@ class DistillationDataSilo(DataSilo):
         teacher_outputs: List[List[Tuple[torch.Tensor, ...]]],
         tensor_names: List[str],
     ):
-        with torch.no_grad():
+        with torch.inference_mode():
             batch_transposed = zip(*batch)  # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch_transposed_list = [torch.stack(b) for b in batch_transposed]  # create tensors for each feature
             batch_dict = {

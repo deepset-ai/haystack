@@ -38,10 +38,11 @@ def sample_to_features_text(sample, tasks, max_seq_len, tokenizer):
 
         if (len(inputs["input_ids"]) - inputs["special_tokens_mask"].count(1)) != len(sample.tokenized["tokens"]):
             logger.error(
-                f"FastTokenizer encoded sample {sample.clear_text['text']} to "
-                f"{len(inputs['input_ids']) - inputs['special_tokens_mask'].count(1)} tokens, which differs "
-                f"from number of tokens produced in tokenize_with_metadata(). \n"
-                f"Further processing is likely to be wrong."
+                "FastTokenizer encoded sample %s to %s tokens, which differs "
+                "from number of tokens produced in tokenize_with_metadata(). \n"
+                "Further processing is likely to be wrong.",
+                sample.clear_text["text"],
+                len(inputs["input_ids"]) - inputs["special_tokens_mask"].count(1),
             )
     else:
         # TODO It might be cleaner to adjust the data structure in sample.tokenized

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import csv
 import hashlib
+import inspect
 
 from typing import Any, Optional, Dict, List, Union
 
@@ -36,6 +37,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
+FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 
 
 @dataclass
@@ -140,9 +142,13 @@ class Document:
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | doc = Document(content="some text", content_type="text")
-        | doc.to_dict(field_map={"custom_content_field": "content"})
-        | >>> {"custom_content_field": "some text", content_type": "text"}
+
+        ```python
+        doc = Document(content="some text", content_type="text")
+        doc.to_dict(field_map={"custom_content_field": "content"})
+
+        # Returns {"custom_content_field": "some text", "content_type": "text"}
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -170,8 +176,11 @@ class Document:
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | my_dict = {"custom_content_field": "some text", content_type": "text"}
-        | Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+
+        ```python
+        my_dict = {"custom_content_field": "some text", content_type": "text"}
+        Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -283,7 +292,10 @@ class SpeechDocument(Document):
 
     @classmethod
     def from_text_document(
-        cls, document_object: Document, audio_content: Any = None, additional_meta: Optional[Dict[str, Any]] = None
+        cls,
+        document_object: Document,
+        audio_content: Optional[Any] = None,
+        additional_meta: Optional[Dict[str, Any]] = None,
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
@@ -404,7 +416,7 @@ class Answer:
 
     def __str__(self):
         # self.context might be None (therefore not subscriptable)
-        if not self.context:
+        if self.context is None:
             return f"<Answer: answer='{self.answer}', score={self.score}, context=None>"
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
@@ -498,7 +510,9 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
-    filters: Optional[dict] = None
+    # Note that filters cannot be of type Optional[FilterType] as assignments like `filters = {"name": "file_name"}`
+    # won't work due to Dict's covariance. See https://github.com/python/mypy/issues/9418.
+    filters: Optional[Dict[str, Any]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -515,7 +529,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
-        filters: Optional[dict] = None,
+        filters: Optional[Dict[str, Any]] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -554,9 +568,6 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        # TODO: fix MultiLabel serialization without hacking Label
-        # As this is called during pydantic validation when MultiLabel is being serialized,
-        # answer might still be a dict breaking the following no_answer validation code.
         if isinstance(answer, dict):
             answer = Answer.from_dict(answer)
         self.answer = answer
@@ -639,69 +650,55 @@ def is_positive_label(label):
     )
 
 
-@dataclass
 class MultiLabel:
-    labels: List[Label]
-    query: str
-    answers: List[str]
-    document_ids: List[str]
-    contexts: List[str]
-    offsets_in_contexts: List[Dict]
-    offsets_in_documents: List[Dict]
-    drop_negative_labels: InitVar[bool] = False
-    drop_no_answer: InitVar[bool] = False
-
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs):
+    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
         This class is "syntactic sugar" that simplifies the work with such a list of related Labels.
-        It stored the original labels in MultiLabel.labels and provides additional aggregated attributes that are
+        It stores the original labels in MultiLabel.labels and provides additional aggregated attributes that are
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
         :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
-        :param kwargs: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
         """
         # drop duplicate labels and remove negative labels if needed.
         labels = list(dict.fromkeys(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
-
         if drop_no_answers:
             labels = [l for l in labels if l.no_answer == False]
 
-        self.labels = labels
-
-        self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
+        self._labels = labels
+        self._query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
+        self._filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
         self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
-        self.no_answer = False not in [l.no_answer for l in self.labels]
+        self._no_answer = all(l.no_answer for l in self._labels)
 
         # Answer strings and offsets cleaned for no_answers:
         # If there are only no_answers, offsets are empty and answers will be a single empty string
         # which equals the no_answers representation of reader nodes.
-        if self.no_answer:
-            self.answers = [""]
-            self.offsets_in_documents: List[dict] = []
-            self.offsets_in_contexts: List[dict] = []
+        if self._no_answer:
+            self._answers = [""]
+            self._offsets_in_documents: List[dict] = []
+            self._offsets_in_contexts: List[dict] = []
         else:
-            answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
-            self.answers = [answer.answer for answer in answered]
-            self.offsets_in_documents = []
-            self.offsets_in_contexts = []
+            answered = [l.answer for l in self._labels if not l.no_answer and l.answer is not None]
+            self._answers = [answer.answer for answer in answered]
+            self._offsets_in_documents = []
+            self._offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self.offsets_in_documents.append({"start": span.start, "end": span.end})
+                        self._offsets_in_documents.append({"start": span.start, "end": span.end})
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self.offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        self._offsets_in_contexts.append({"start": span.start, "end": span.end})
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -711,9 +708,44 @@ class MultiLabel:
         # as separate no_answer labels, and thus with document.id but without answer.document_id.
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
+        self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
+        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
 
-        self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [str(l.document.content) for l in self.labels if not l.no_answer]
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def query(self):
+        return self._query
+
+    @property
+    def filters(self):
+        return self._filters
+
+    @property
+    def document_ids(self):
+        return self._document_ids
+
+    @property
+    def contexts(self):
+        return self._contexts
+
+    @property
+    def no_answer(self):
+        return self._no_answer
+
+    @property
+    def answers(self):
+        return self._answers
+
+    @property
+    def offsets_in_documents(self):
+        return self._offsets_in_documents
+
+    @property
+    def offsets_in_contexts(self):
+        return self._offsets_in_contexts
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
@@ -731,20 +763,28 @@ class MultiLabel:
         return unique_values
 
     def to_dict(self):
-        return asdict(self)
+        # convert internal attribute names to property names
+        return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
     def from_dict(cls, dict: dict):
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        # exclude extra arguments
+        return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), default=pydantic_encoder)
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
         if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        dict_data["labels"] = [Label.from_dict(l) for l in dict_data["labels"]]
+        return cls.from_dict(dict_data)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.labels == other.labels
 
     def __repr__(self):
         return f"<MultiLabel: {self.to_dict()}>"
@@ -780,7 +820,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 class EvaluationResult:
-    def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
+    def __init__(self, node_results: Optional[Dict[str, pd.DataFrame]] = None) -> None:
         """
         A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
@@ -788,13 +828,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
@@ -1052,8 +1092,10 @@ class EvaluationResult:
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 if answer_metric not in metrics:
                     logger.warning(
-                        f"You specified an answer_metric={answer_metric} not available in calculated metrics={metrics.keys()}."
-                        f"Skipping collection of worst performing samples."
+                        "You specified an answer_metric=%s not available in calculated metrics=%s."
+                        "Skipping collection of worst performing samples.",
+                        answer_metric,
+                        metrics.keys(),
                     )
                     break
                 if metrics[answer_metric] <= answer_metric_threshold:
@@ -1087,8 +1129,10 @@ class EvaluationResult:
             for multilabel_id, metrics in worst_df.iterrows():
                 if document_metric not in metrics:
                     logger.warning(
-                        f"You specified a document_metric={document_metric} not available in calculated metrics={metrics.keys()}."
-                        f"Skipping collection of worst performing samples."
+                        "You specified a document_metric=%s not available in calculated metrics=%s."
+                        "Skipping collection of worst performing samples.",
+                        document_metric,
+                        metrics.keys(),
                     )
                     break
                 if metrics[document_metric] <= document_metric_threshold:
@@ -1145,9 +1189,9 @@ class EvaluationResult:
             document_relevance_criterion = answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
         elif answer_scope in answer_scope_to_doc_relevance_crit.keys():
             logger.warning(
-                f"You specified a non-answer document_scope together with a non-default answer_scope. "
-                f"This may result in inconsistencies between answer and document metrics. "
-                f"To enforce the same definition of correctness for both, document_scope must be one of {['answer', 'document_id_or_answer']}."
+                "You specified a non-answer document_scope together with a non-default answer_scope. "
+                "This may result in inconsistencies between answer and document metrics. "
+                "To enforce the same definition of correctness for both, document_scope must be one of 'answer', 'document_id_or_answer'."
             )
 
         return document_relevance_criterion  # type: ignore[return-value]
@@ -1213,7 +1257,7 @@ class EvaluationResult:
             answer_scope=answer_scope,
         )
         num_examples_for_eval = len(answers["multilabel_id"].unique())
-        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result = {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
         result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
         return result
 
@@ -1229,7 +1273,7 @@ class EvaluationResult:
         Answer metrics are:
         - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
-        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        - sas if a SAS model has been provided during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
         multilabel_ids = answers["multilabel_id"].unique()
         # simulate top k retriever
@@ -1311,7 +1355,7 @@ class EvaluationResult:
             document_relevance_criterion=document_relevance_criterion,
         )
 
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        return {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
 
     def _build_document_metrics_df(
         self,

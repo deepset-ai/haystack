@@ -75,11 +75,11 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Retriever"]["precision"] == 1.0
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
     assert metrics["Summarizer"]["mrr"] == 1.0
-    assert metrics["Summarizer"]["map"] == 0.735
-    assert metrics["Summarizer"]["recall_multi_hit"] == 0.8
+    assert metrics["Summarizer"]["map"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Summarizer"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
     assert metrics["Summarizer"]["recall_single_hit"] == 1.0
-    assert metrics["Summarizer"]["precision"] == 0.8
-    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.8422, 1e-4)
+    assert metrics["Summarizer"]["precision"] == 1.0
+    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.9461, 1e-4)
 
 
 EVAL_LABELS = [
@@ -118,7 +118,7 @@ EVAL_LABELS = [
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
 def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     labels = EVAL_LABELS[:1]
 

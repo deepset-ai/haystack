@@ -5,7 +5,7 @@ import numbers
 import torch
 from torch.nn import DataParallel
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
@@ -77,7 +77,7 @@ class Evaluator:
             else:
                 module = model
 
-            with torch.no_grad():
+            with torch.inference_mode():
                 if isinstance(module, AdaptiveModel):
                     logits = model.forward(
                         input_ids=batch.get("input_ids", None),
@@ -125,7 +125,8 @@ class Evaluator:
                 temperature_change = (abs(temperature_current - temperature_previous) / temperature_previous) * 100.0
                 if temperature_change > 50:
                     logger.warning(
-                        f"temperature used for calibration of confidence scores changed by more than {temperature_change} percent"
+                        "temperature used for calibration of confidence scores changed by more than %s percent",
+                        temperature_change,
                     )
             if hasattr(head, "aggregate_preds"):
                 # Needed to convert NQ ids from np arrays to strings
@@ -146,8 +147,11 @@ class Evaluator:
                     result["report"] = compute_report_metrics(head, preds_all[head_num], label_all[head_num])
                 except:
                     logger.error(
-                        f"Couldn't create eval report for head {head_num} with following preds and labels:"
-                        f"\n Preds: {preds_all[head_num]} \n Labels: {label_all[head_num]}"
+                        "Couldn't create eval report for head %s with following preds and labels:"
+                        "\n Preds: %s \n Labels: %s",
+                        head_num,
+                        preds_all[head_num],
+                        label_all[head_num],
                     )
                     result["report"] = "Error"
 

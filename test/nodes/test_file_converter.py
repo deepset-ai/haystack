@@ -225,6 +225,38 @@ def test_parsr_converter():
     assert docs[1].content.endswith("Page 4 of Sample PDF\n… the page 3 is empty.")
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
+def test_parsr_converter_headline_extraction():
+    expected_headlines = [
+        [("Lorem ipsum", 1), ("Cras fringilla ipsum magna, in fringilla dui commodo\na.", 2)],
+        [
+            ("Lorem ipsum", 1),
+            ("Lorem ipsum dolor sit amet, consectetur adipiscing\nelit. Nunc ac faucibus odio.", 2),
+            ("Cras fringilla ipsum magna, in fringilla dui commodo\na.", 2),
+            ("Lorem ipsum dolor sit amet, consectetur adipiscing\nelit.", 2),
+            ("Maecenas mauris lectus, lobortis et purus mattis, blandit\ndictum tellus.", 2),
+            ("In eleifend velit vitae libero sollicitudin euismod.", 2),
+        ],
+    ]
+
+    converter = ParsrConverter()
+
+    docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_4.pdf").absolute()))
+    assert len(docs) == 2
+
+    for doc, expectation in zip(docs, expected_headlines):
+        for extracted_headline, (expected_headline, expected_level) in zip(doc.meta["headlines"], expectation):
+            # Check if correct headline and level is extracted
+            assert extracted_headline["headline"] == expected_headline
+            assert extracted_headline["level"] == expected_level
+
+            # Check if correct start_idx is extracted
+            if doc.content_type == "text":
+                start_idx = extracted_headline["start_idx"]
+                hl_len = len(extracted_headline["headline"])
+                assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
+
+
 def test_id_hash_keys_from_pipeline_params():
     doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
     meta_1 = {"key": "a"}

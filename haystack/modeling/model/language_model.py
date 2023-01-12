@@ -131,7 +131,7 @@ class LanguageModel(nn.Module, ABC):
         with open(save_filename, "w") as file:
             file.write(string)
 
-    def save(self, save_dir: Union[str, Path], state_dict: Dict[Any, Any] = None):
+    def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model `state_dict` and its configuration file so that it can be loaded again.
 
@@ -148,7 +148,7 @@ class LanguageModel(nn.Module, ABC):
         self.save_config(save_dir)
 
     def formatted_preds(
-        self, logits, samples, ignore_first_token: bool = True, padding_mask: torch.Tensor = None
+        self, logits, samples, ignore_first_token: bool = True, padding_mask: Optional[torch.Tensor] = None
     ) -> List[Dict[str, Any]]:
         """
         Extracting vectors from a language model (for example, for extracting sentence embeddings).
@@ -243,7 +243,7 @@ class HFLanguageModel(LanguageModel):
         self,
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None,
+        language: Optional[str] = None,
         n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -293,7 +293,7 @@ class HFLanguageModel(LanguageModel):
             model_emb_size = self.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
             vocab_size = model_emb_size + n_added_tokens
             logger.info(
-                f"Resizing embedding layer of LM from {model_emb_size} to {vocab_size} to cope with custom vocab."
+                "Resizing embedding layer of LM from %s to %s to cope with custom vocab.", model_emb_size, vocab_size
             )
             self.model.resize_token_embeddings(vocab_size)
             # verify
@@ -358,7 +358,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         self,
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None,
+        language: Optional[str] = None,
         n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -464,7 +464,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
             specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         if segment_ids is not None:
-            logger.warning(f"'segment_ids' is not None, but %s does not use them. They will be ignored.", self.name)
+            logger.warning("'segment_ids' is not None, but %s does not use them. They will be ignored.", self.name)
 
         return super().forward(
             input_ids=input_ids,
@@ -486,7 +486,7 @@ class DPREncoder(LanguageModel):
         self,
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None,
+        language: Optional[str] = None,
         n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -636,8 +636,9 @@ class DPREncoder(LanguageModel):
         """
         if model_config.model_type.lower() != "bert":
             logger.warning(
-                f"Using a model of type '{model_config.model_type}' which might be incompatible with DPR encoders. "
-                f"Only Bert-based encoders are supported. They need input_ids, token_type_ids, attention_mask as input tensors."
+                "Using a model of type '%s' which might be incompatible with DPR encoders. "
+                "Only Bert-based encoders are supported. They need input_ids, token_type_ids, attention_mask as input tensors.",
+                model_config.model_type,
             )
         config_dict = vars(model_config)
         if model_kwargs:
@@ -822,7 +823,7 @@ def get_language_model_class(model_type: str) -> Optional[Type[Union[HFLanguageM
 
 def get_language_model(
     pretrained_model_name_or_path: Union[Path, str],
-    language: str = None,
+    language: Optional[str] = None,
     n_added_tokens: int = 0,
     use_auth_token: Optional[Union[str, bool]] = None,
     revision: Optional[str] = None,
@@ -862,7 +863,8 @@ def get_language_model(
     config_file_exists = os.path.exists(config_file)
     if config_file_exists:
         # it's a local directory in Haystack format
-        config = json.load(open(config_file))
+        with open(config_file) as f:
+            config = json.load(f)
         model_type = config["name"]
 
     if not model_type:
@@ -875,12 +877,13 @@ def get_language_model(
 
     if not model_type:
         logger.error(
-            f"Model type not understood for '{pretrained_model_name_or_path}' "
-            f"({model_type if model_type else 'model_type not set'}). "
+            "Model type not understood for '%s' (%s). "
             "Either supply the local path for a saved model, "
             "or the name of a model that can be downloaded from the Model Hub. "
             "Ensure that the model class name can be inferred from the directory name "
-            "when loading a Transformers model."
+            "when loading a Transformers model.",
+            pretrained_model_name_or_path,
+            model_type if model_type else "model_type not set",
         )
         logger.error("Using the AutoModel class for '%s'. This can cause crashes!", pretrained_model_name_or_path)
         model_type = "Auto"
@@ -956,7 +959,7 @@ def _get_model_type(
 
     if model_type and model_type.lower() == "roberta" and "mlm" in model_name_or_path.lower():
         logger.error(
-            f"MLM part of codebert is currently not supported in Haystack: '{model_name_or_path}' may crash later."
+            "MLM part of codebert is currently not supported in Haystack: '%s' may crash later.", model_name_or_path
         )
 
     return model_type

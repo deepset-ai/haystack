@@ -103,16 +103,16 @@ class OpenAIAnswerGenerator(BaseGenerator):
         Note that OpenAI doesn't return scores for those Answers.
 
         Example:
-         ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[Answer(
-            |                 'answer': 'Eddard,',
-            |                 'score': None,
-            |                 ),...
-            |              ]
-            |}
-         ```
+        ```python
+        {
+            'query': 'Who is the father of Arya Stark?',
+            'answers':[Answer(
+                         'answer': 'Eddard,',
+                         'score': None,
+                         ),...
+                      ]
+        }
+        ```
 
         :param query: The query you want to provide. It's a string.
         :param documents: List of Documents in which to search for the Answer.
@@ -191,13 +191,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         if len(input_docs) == 0:
             logger.warning(
-                f"Skipping all of the provided Documents, as none of them fits the maximum token limit of "
-                f"{self.MAX_TOKENS_LIMIT}. The generated answers will therefore not be conditioned on any context."
+                "Skipping all of the provided Documents, as none of them fits the maximum token limit of %s"
+                "The generated answers will therefore not be conditioned on any context.",
+                self.MAX_TOKENS_LIMIT,
             )
         elif skipped_docs >= 1:
             logger.warning(
-                f"Skipping {skipped_docs} of the provided Documents, as using them would exceed the maximum token "
-                f"limit of {self.MAX_TOKENS_LIMIT}."
+                "Skipping %s of the provided Documents, as using them would exceed the maximum token limit of %s.",
+                skipped_docs,
+                self.MAX_TOKENS_LIMIT,
             )
 
         # Top ranked documents should go at the end

@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/nodes/other]
-    modules: ['docs2answers', 'join_docs', 'join_answers', 'route_documents']
+    modules: ['docs2answers', 'join_docs', 'join_answers', 'route_documents', 'document_merger']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter

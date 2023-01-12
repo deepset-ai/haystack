@@ -48,12 +48,13 @@ classifiers = [
 ]
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
-  "torch>1.9,<1.13",
   "requests",
   "pydantic",
-  "transformers==4.21.2",
+  "transformers[torch]==4.25.1",
+  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
+  "rank_bm25",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
@@ -100,7 +101,7 @@ sql = [
   "psycopg2-binary; platform_system != 'Windows'",
 ]
 only-faiss = [
-  "faiss-cpu>=1.6.3,<2",
+  "faiss-cpu>=1.6.3,<=1.7.2",
 ]
 faiss = [
   "farm-haystack[sql,only-faiss]",
@@ -111,12 +112,6 @@ only-faiss-gpu = [
 faiss-gpu = [
   "farm-haystack[sql,only-faiss-gpu]",
 ]
-only-milvus1 = [
-  "pymilvus<2.0.0",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-]
-milvus1 = [
-  "farm-haystack[sql,only-milvus1]",
-]
 only-milvus = [
   "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
 ]
@@ -124,7 +119,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.6.0",
+  "weaviate-client==3.10.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -150,7 +145,7 @@ docstores-gpu = [
 audio = [
   "pyworld>=0.3.1; python_version >= '3.8'",
   "pyworld<0.3.1; python_version < '3.8'",
-  "espnet",
+  "espnet==202209", # https://github.com/deepset-ai/haystack/pull/3693
   "espnet-model-zoo",
   "pydub",
 ]
@@ -169,7 +164,6 @@ preprocessing = [
 ]
 ocr = [
   "pytesseract>0.3.7",
-  "pillow",
   "pdf2image>1.14",
 ]
 onnx = [
@@ -186,8 +180,7 @@ ray = [
   "aiorwlock>=1.3.0,<2",
 ]
 colab = [
-  "grpcio==1.47.0",
-  "requests>=2.25",  # Needed to avoid dependency conflict with crawler https://github.com/deepset-ai/haystack/pull/2921
+  "pillow<=9.0.0",
 ]
 dev = [
   "pre-commit",
@@ -210,17 +203,15 @@ dev = [
   "pydoc-markdown",
   "mkdocs",
   "jupytercontrib",
-  "watchdog",  # ==1.0.2
+  "watchdog",
   "requests-cache",
-]
-test = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev]",
 ]
 all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
 ]
 all-gpu = [
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu,beir]",
+  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
 ]
 
 [project.urls]
@@ -244,10 +235,6 @@ include = [
 packages = [
   "haystack",
 ]
-
-[tool.hatch.build.targets.wheel.hooks.autorun]
-dependencies = ["hatch-autorun"]
-file = "haystack/json-schemas/generate_schema.py"
 
 [tool.black]
 line-length = 120
@@ -273,7 +260,6 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "logging-fstring-interpolation",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",
@@ -290,7 +276,6 @@ disable = [
   "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
-  "trailing-whitespace",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
@@ -314,9 +299,6 @@ disable = [
   "simplifiable-if-expression",
   "use-list-literal",
 
-
-
-
   # To review later
   "cyclic-import",
   "import-outside-toplevel",
@@ -327,14 +309,13 @@ max-args=7
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
 
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
   "unit: unit tests",
   "integration: integration tests",
-  
+
   "generator: generator tests",
   "summarizer: summarizer tests",
   "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
@@ -349,8 +330,8 @@ markers = [
   "pinecone: requires Pinecone credentials",
   "faiss: uses FAISS",
   "milvus: requires a Milvus 2 setup",
-  "milvus1: requires a Milvus 1 container",
   "opensearch",
+  "document_store",
 ]
 log_cli = true
 

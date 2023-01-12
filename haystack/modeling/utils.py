@@ -62,7 +62,7 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
     but might slow down your training (see https://pytorch.org/docs/stable/notes/randomness.html#cudnn) !
 
     :param seed:number to use as seed
-    :param deterministic_torch: Enable for full reproducibility when using CUDA. Caution: might slow down training.
+    :param deterministic_cudnn: Enable for full reproducibility when using CUDA. Caution: might slow down training.
     """
     random.seed(seed)
     np.random.seed(seed)
@@ -78,7 +78,7 @@ def initialize_device_settings(
     use_cuda: Optional[bool] = None,
     local_rank: int = -1,
     multi_gpu: bool = True,
-    devices: List[Union[str, torch.device]] = None,
+    devices: Optional[List[Union[str, torch.device]]] = None,
 ) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
