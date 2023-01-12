@@ -88,6 +88,7 @@ jobs:
       run: |
         mkdir .mypy_cache/
         python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ haystack/
+        python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ rest_api/
 
     - name: Mypy
       run: |
