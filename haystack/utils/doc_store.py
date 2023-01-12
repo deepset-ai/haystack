@@ -87,8 +87,9 @@ def stop_container(container_name, delete_container=False):
     status = subprocess.run([f"docker stop {container_name}"], shell=True)
     if status.returncode:
         logger.warning(
-            f"Tried to stop {container_name} but this failed. "
-            f"It is likely that there was no Docker container with the name {container_name}"
+            "Tried to stop %s but this failed. It is likely that there was no Docker container with the name %s",
+            container_name,
+            container_name,
         )
     if delete_container:
         status = subprocess.run([f"docker rm {container_name}"], shell=True)

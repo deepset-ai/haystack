@@ -1023,9 +1023,10 @@ class FARMReader(BaseReader):
 
         if self.top_k_per_candidate != 4:
             logger.info(
-                f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
-                f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
-                f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5"
+                "Performing Evaluation using top_k_per_candidate = %s \n"
+                "and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                "This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5",
+                self.top_k_per_candidate,
             )
 
         # extract all questions for evaluation
@@ -1062,7 +1063,7 @@ class FARMReader(BaseReader):
                         continue
                     if label.answer.offsets_in_document is None:
                         logger.error(
-                            f"Label.answer.offsets_in_document was None, but Span object was expected: {label} "
+                            "Label.answer.offsets_in_document was None, but Span object was expected: %s ", label
                         )
                         continue
                     # add to existing answers
@@ -1074,7 +1075,11 @@ class FARMReader(BaseReader):
                         # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                         if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
                             logger.warning(
-                                f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
+                                "Answers in this sample are being dropped because it has more than 6 answers. "
+                                "(doc_id: %s, question: %s, label_id: %s)",
+                                doc_id,
+                                label.query,
+                                label.id,
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(

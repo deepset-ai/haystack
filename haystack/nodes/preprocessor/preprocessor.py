@@ -106,7 +106,7 @@ class PreProcessor(BasePreProcessor):
             try:
                 nltk.download("punkt")
             except FileExistsError as error:
-                logger.debug(f"NLTK punkt tokenizer seems to be already downloaded. Error message: {error}")
+                logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
@@ -747,14 +747,16 @@ class PreProcessor(BasePreProcessor):
                 # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English
                 if language_name is not None:
                     logger.error(
-                        f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. "
-                        f"Using default {self.language} model."
+                        "PreProcessor couldn't find custom sentence tokenizer model for %s. Using default %s model.",
+                        self.language,
+                        self.language,
                     )
                     sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
                 else:
                     logger.error(
-                        f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. "
-                        f"Using English instead."
+                        "PreProcessor couldn't find default or custom sentence tokenizer model for %s. "
+                        "Using English instead.",
+                        self.language,
                     )
                     sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
 
@@ -763,8 +765,9 @@ class PreProcessor(BasePreProcessor):
             sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
         else:
             logger.error(
-                f"PreProcessor couldn't find the default sentence tokenizer model for {self.language}. "
-                f" Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter."
+                "PreProcessor couldn't find the default sentence tokenizer model for %s. "
+                " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
+                self.language,
             )
             sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
 

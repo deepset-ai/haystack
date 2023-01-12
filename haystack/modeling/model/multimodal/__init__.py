@@ -88,13 +88,14 @@ def get_model(
             config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **autoconfig_kwargs)
             model_type = config.model_type
         except Exception as e:
-            logger.debug(f"Can't find model type for {pretrained_model_name_or_path}: {e}")
+            logger.debug("Can't find model type for %s: %s", pretrained_model_name_or_path, e)
 
         if feature_extractor_kwargs is not None:
             logger.debug(
                 "Can't forward feature_extractor_kwargs to a SentenceTransformers model. "
                 "These kwargs are being dropped. "
-                f"Content of feature_extractor_kwargs: {feature_extractor_kwargs}"
+                "Content of feature_extractor_kwargs: %s",
+                feature_extractor_kwargs,
             )
 
     else:
@@ -102,9 +103,10 @@ def get_model(
         config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **autoconfig_kwargs)
         if not config.model_type:
             logger.error(
-                f"Model type not understood for '{pretrained_model_name_or_path}'. Please provide the name of "
+                "Model type not understood for '%s'. Please provide the name of "
                 "a model that can be downloaded from the Model Hub.\nUsing the AutoModel class. "
-                "THIS CAN CAUSE CRASHES and won't work for models that are not working with text."
+                "THIS CAN CAUSE CRASHES and won't work for models that are not working with text.",
+                pretrained_model_name_or_path,
             )
             model_type = None
         else:
@@ -112,10 +114,13 @@ def get_model(
                 model_type = HUGGINGFACE_CAPITALIZE[config.model_type.lower()]
             except KeyError:
                 logger.error(
-                    f"Haystack doesn't support model '{pretrained_model_name_or_path}' (type '{config.model_type.lower()}') "
+                    "Haystack doesn't support model '%s' (type '%s') "
                     "We'll use the AutoModel class for it. "
                     "THIS CAN CAUSE CRASHES and won't work for models that are not working with text. "
-                    f"Supported model types: {', '.join(HUGGINGFACE_CAPITALIZE.keys())}"
+                    "Supported model types: %s",
+                    pretrained_model_name_or_path,
+                    config.model_type.lower(),
+                    ", ".join(HUGGINGFACE_CAPITALIZE.keys()),
                 )
                 model_type = None
 

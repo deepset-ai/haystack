@@ -75,16 +75,18 @@ class EvalDocuments(BaseComponent):
             self.top_k_used = top_k
         elif self.top_k_used != top_k:
             logger.warning(
-                f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
-                f"being run again with top_k={self.top_k}. "
-                f"The evaluation counter is being reset from this point so that the evaluation "
-                f"metrics are interpretable."
+                "EvalDocuments was last run with top_k_eval_documents=%s} but is "
+                "being run again with top_k=%s. "
+                "The evaluation counter is being reset from this point so that the evaluation "
+                "metrics are interpretable.",
+                self.top_k_used,
+                self.top_k,
             )
             self.init_counts()
 
         if len(documents) < top_k and not self.too_few_docs_warning:
             logger.warning(
-                f"EvalDocuments is being provided less candidate documents than top_k " f"(currently set to {top_k})."
+                "EvalDocuments is being provided less candidate documents than top_k (currently set to %s).", top_k
             )
             self.too_few_docs_warning = True
 

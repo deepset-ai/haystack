@@ -448,10 +448,11 @@ class SQLDocumentStore(BaseDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f"   Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                "   Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
         # TODO: Use batch_size
 
