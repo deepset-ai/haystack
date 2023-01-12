@@ -529,20 +529,20 @@ class DataSiloForCrossVal:
         self.batch_size = origsilo.batch_size
         # should not be necessary, xval makes no sense with huge data
         # sampler_train = DistributedSampler(self.data["train"])
-        sampler_train = RandomSampler(trainset)
+        sampler_train = RandomSampler(trainset)  # type: ignore [arg-type]
 
         self.data_loader_train = NamedDataLoader(
-            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names
+            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names  # type: ignore [arg-type]
         )
         self.data_loader_dev = NamedDataLoader(
-            dataset=devset,
-            sampler=SequentialSampler(devset),
+            dataset=devset,  # type: ignore [arg-type]
+            sampler=SequentialSampler(devset),  # type: ignore [arg-type]
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
         self.data_loader_test = NamedDataLoader(
-            dataset=testset,
-            sampler=SequentialSampler(testset),
+            dataset=testset,  # type: ignore [arg-type]
+            sampler=SequentialSampler(testset),  # type: ignore [arg-type]
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
@@ -669,7 +669,7 @@ class DataSiloForCrossVal:
 
             ds_train = train_samples
             ds_test = [sample for document in test_set for sample in document]
-            silos.append(DataSiloForCrossVal(datasilo, ds_train, ds_dev, ds_test))
+            silos.append(DataSiloForCrossVal(datasilo, ds_train, ds_dev, ds_test))  # type: ignore [arg-type]
         return silos
 
     @staticmethod
@@ -690,7 +690,7 @@ class DataSiloForCrossVal:
             questions_per_doc.append(len(questions))
 
         # split documents into n_splits splits with approximately same number of questions per split
-        questions_per_doc = np.array(questions_per_doc)
+        questions_per_doc = np.array(questions_per_doc)  # type: ignore [assignment]
         accumulated_questions_per_doc = questions_per_doc.cumsum()  # type: ignore
         questions_per_fold = accumulated_questions_per_doc[-1] // n_splits
         accumulated_questions_per_fold = np.array(range(1, n_splits)) * questions_per_fold
@@ -706,7 +706,7 @@ class DataSiloForCrossVal:
 
         for idx, split in enumerate(splits):
             current_test_set = split
-            current_train_set = np.hstack(np.delete(splits, idx, axis=0))
+            current_train_set = np.hstack(np.delete(splits, idx, axis=0))  # type: ignore [call-overload]
 
             yield current_train_set, current_test_set
 

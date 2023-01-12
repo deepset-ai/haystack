@@ -237,7 +237,7 @@ class DensePassageRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -660,7 +660,7 @@ class DensePassageRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -674,7 +674,7 @@ class DensePassageRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -714,7 +714,7 @@ class DensePassageRetriever(DenseRetriever):
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
         if len(self.devices) > 1 and not isinstance(self.model, DataParallel):
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -932,7 +932,7 @@ class TableTextRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -1302,7 +1302,7 @@ class TableTextRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -1312,7 +1312,7 @@ class TableTextRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -1358,7 +1358,7 @@ class TableTextRetriever(DenseRetriever):
         self.table_tokenizer.save_pretrained(f"{save_dir}/{table_encoder_save_dir}")
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -1826,7 +1826,7 @@ class EmbeddingRetriever(DenseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(
+                hf_hub_download(  # type: ignore [call-arg]
                     repo_id=model_name_or_path,
                     filename="config_sentence_transformers.json",
                     use_auth_token=use_auth_token,

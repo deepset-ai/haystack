@@ -236,7 +236,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         hosts = prepare_hosts(host, port)
         connection_class = Urllib3HttpConnection
         if use_system_proxy:
-            connection_class = RequestsHttpConnection
+            connection_class = RequestsHttpConnection  # type: ignore [assignment]
 
         if username:
             # standard http_auth

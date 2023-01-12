@@ -384,7 +384,7 @@ class BiAdaptiveModel(nn.Module):
         They could diverge in case of custom vocabulary added via tokenizer.add_tokens()
         """
 
-        model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. "
@@ -393,7 +393,7 @@ class BiAdaptiveModel(nn.Module):
         )
         assert vocab_size1 == model1_vocab_len, msg
 
-        model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. "

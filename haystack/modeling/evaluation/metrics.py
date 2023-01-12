@@ -108,7 +108,7 @@ def compute_metrics(metric: str, preds, labels):
 
 def compute_report_metrics(head: PredictionHead, preds, labels):
     if head.ph_output_type in registered_reports:
-        report_fn = registered_reports[head.ph_output_type]
+        report_fn = registered_reports[head.ph_output_type]  # type: ignore [index]
     elif head.ph_output_type == "per_token":
         report_fn = token_classification_report
     elif head.ph_output_type == "per_sequence":
@@ -130,9 +130,9 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
         if head.model_type == "text_similarity":
             labels = reduce(lambda x, y: x + list(y.astype("long")), labels, [])
             preds = reduce(lambda x, y: x + [0] * y[0] + [1] + [0] * (len(y) - y[0] - 1), preds, [])  # type: ignore
-            all_possible_labels = list(range(len(head.label_list)))
+            all_possible_labels = list(range(len(head.label_list)))  # type: ignore [arg-type]
         else:
-            all_possible_labels = head.label_list
+            all_possible_labels = head.label_list  # type: ignore [assignment]
         return report_fn(labels, preds, digits=4, labels=all_possible_labels, target_names=head.label_list)
     else:
         return report_fn(labels, preds)
