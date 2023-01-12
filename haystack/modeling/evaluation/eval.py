@@ -87,7 +87,7 @@ class Evaluator:
                         output_attentions=batch.get("output_attentions", False),
                     )
                 elif isinstance(module, BiAdaptiveModel):
-                    logits = model.forward(  # type: ignore [call-arg]   # type: ignore [call-arg]   # type: ignore [call-arg]   # type: ignore [call-arg]   # type: ignore [call-arg]   # type: ignore [call-arg]
+                    logits = model.forward(  # type: ignore [call-arg]   # type: ignore [call-arg]
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
                         query_attention_mask=batch.get("query_attention_mask", None),
