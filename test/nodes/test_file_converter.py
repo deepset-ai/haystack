@@ -272,7 +272,6 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 2
 
 
-
 def write_as_csv(data: List[List[str]], file_path: Path):
     with open(file_path, "w") as f:
         writer = csv.writer(f)

@@ -26,7 +26,7 @@ class CsvTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
-        id_hash_keys: Optional[List[str]] = None
+        id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
         Load CVS file and convert it to documents.
