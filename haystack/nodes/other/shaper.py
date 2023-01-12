@@ -43,6 +43,18 @@ class Shaper(BaseComponent):
     context to match the templates of PromptNodes.
 
     Multiple Shaper components can be used in a pipeline to modify the invocation context as needed.
+
+    The following functions are supported by Shaper:
+
+    - len: parameters are target:Any; returns int; built-in len function returning the length of the input variable
+    - expand: parameters are [expand_target:Any, size:int]; returns List[Any]; it returns a list of specified size
+        for the input variable
+    - concat: parameters are [texts:List[str], delimiter:str]; returns str, concatenates texts with the specified
+        delimiter
+    - concat_docs: parameters are [docs: List[Document]], delimiter:str]; returns str; concatenates the docs with the
+        specified delimiter and returns a string
+    - convert_to_docs: parameters are texts: List[str]; returns List[Document]; converts the input list of strings
+        to a list of Documents
     """
 
     outgoing_edges = 1
@@ -57,16 +69,18 @@ class Shaper(BaseComponent):
         super().__init__()
         self.inputs = inputs
 
-        concat: Callable[[List[str]], str] = lambda docs, delimiter=" ": delimiter.join(docs)  # type: ignore
-        concat_docs: Callable[[List[Document]], str] = lambda docs, delimiter=" ": delimiter.join(  # type: ignore
+        concat: Callable[[List[str], str], str] = lambda docs, delimiter=" ": delimiter.join(docs)  # type: ignore
+        concat_docs: Callable[[List[Document], str], str] = lambda docs, delimiter=" ": delimiter.join(  # type: ignore
             [d.content for d in docs]
         )
+        convert_to_docs: Callable[[List[str]], List[Document]] = lambda texts: [Document(text) for text in texts]
         tmp_registry: Dict[str, Callable] = {
             "len": len,
             "expand": (lambda expand_target, size: [expand_target] * size),
             "expand:size": lambda documents: len(documents),  # pylint: disable=unnecessary-lambda
             "concat": concat,
             "concat_docs": concat_docs,
+            "convert_to_docs": convert_to_docs,
         }
         # convert tmp_registry to a read-only immutable dictionary for added security
         # see https://adamj.eu/tech/2022/01/05/how-to-make-immutable-dict-in-python/
