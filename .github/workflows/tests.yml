@@ -78,26 +78,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        # Mypy can't run properly on 3.7 as it misses support for Literal types.
-        # FIXME once we drop support for 3.7, use the cache.
-        python-version: 3.8
+      uses: ./.github/actions/python_cache/
 
-    - name: Install dependencies
-      run: |
-        # FIXME installing the packages before running mypy raises
-        # a lot of errors which were never detected before!
-        # pip install .
-        # pip install rest_api/
-        # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-        # Hotfixing by installing type packages explicitly.
-        # Run mypy --install-types haystack locally to ensure the list is still up to date
-        # mypy --install-types --non-interactive .
-        pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+    - name: Install Mypy types if needed
+      run: mypy --install-types --non-interactive .
 
     - name: Mypy
       run: |
@@ -115,7 +103,6 @@ jobs:
   pylint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
 
     - name: Checkout
       uses: actions/checkout@v3
