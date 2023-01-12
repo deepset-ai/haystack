@@ -12,7 +12,6 @@ import logging
 from pathlib import Path
 import os
 import re
-from functools import wraps
 
 import requests_cache
 import responses
@@ -24,7 +23,7 @@ import psutil
 import pytest
 import requests
 
-from haystack import Answer, BaseComponent, __version__ as haystack_version
+from haystack import Answer, BaseComponent
 from haystack.document_stores import (
     BaseDocumentStore,
     InMemoryDocumentStore,
