@@ -184,7 +184,7 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
                 if page_data["meta"]["url"] == test_url + "/page_dynamic.html":
                     content = page_data["content"].split("\n")
                     for line in range(len(dynamic_result_text)):
-                        assert dynamic_result_text[line].stip() == content[line].stip()
+                        assert dynamic_result_text[line].strip() == content[line].strip()
 
     assert content_in_results(crawler, test_url + "/index.html", paths)
     assert content_in_results(crawler, test_url + "/page1.html", paths)
