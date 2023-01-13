@@ -183,6 +183,10 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
                 page_data = json.load(crawled_file)
                 if page_data["meta"]["url"] == test_url + "/page_dynamic.html":
                     content = page_data["content"].split("\n")
+
+                    print(page_data["content"])
+                    print("------")
+
                     for line in range(len(dynamic_result_text)):
                         assert dynamic_result_text[line].strip() == content[line].strip()
 
