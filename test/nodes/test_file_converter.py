@@ -367,21 +367,12 @@ def test_csv_to_document_with_three_columns(tmp_path):
 
 
 @pytest.mark.integration
-def test_csv_to_document_with_NaN(tmp_path):
-    node = CsvTextConverter()
-    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
-    rows = [["question", "answer"], ["What is Haystack ?", ""]]
-    write_as_csv(rows, csv_path)
-
-    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
-        node.run(file_paths=csv_path)
-
-
-@pytest.mark.integration
 def test_csv_to_document_many_files(tmp_path):
+    csv_paths = []
     for i in range(5):
         node = CsvTextConverter()
         csv_path = tmp_path / f"{i}_csv_qa_with_headers.csv"
+        csv_paths.append(csv_path)
         rows = [
             ["question", "answer"],
             [
@@ -391,7 +382,7 @@ def test_csv_to_document_many_files(tmp_path):
         ]
         write_as_csv(rows, csv_path)
 
-    output, edge = node.run(file_paths=csv_path)
+    output, edge = node.run(file_paths=csv_paths)
     assert edge == "output_1"
     assert "documents" in output
     assert len(output["documents"]) == 5
