@@ -35,7 +35,7 @@ from haystack.pipelines import (
     QuestionGenerationPipeline,
     MostSimilarDocumentsPipeline,
 )
-from haystack.pipelines.config import validate_config_strings, get_component_definitions
+from haystack.pipelines.config import get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
 from haystack.nodes import PreProcessor, TextConverter
