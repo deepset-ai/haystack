@@ -24,6 +24,4 @@
         clearTimeout(updateTimeout);
       }
 
-
-
 link to page 2
