@@ -90,9 +90,9 @@ jobs:
       run: |
         mkdir .mypy_cache/
         echo "=== haystack/ ==="
-        mypy --install-types --non-interactive --cache-dir=.mypy_cache/ haystack/
+        mypy haystack/
         echo "=== rest_api/ ==="
-        mypy --install-types --non-interactive --cache-dir=.mypy_cache/ rest_api/ --exclude=rest_api/build/ --exclude=rest_api/test/
+        mypy rest_api/ --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
