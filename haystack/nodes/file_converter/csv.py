@@ -37,6 +37,9 @@ class CsvTextConverter(BaseConverter):
         """
         df = pd.read_csv(file_path, encoding=encoding)
 
+        if any(df.columns != ["question", "answer"]):
+            raise ValueError("The CSV must contain two columns names 'question' and 'answer'")
+
         df.fillna(value="", inplace=True)
         df["question"] = df["question"].apply(lambda x: x.strip())
 
