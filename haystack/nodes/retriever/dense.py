@@ -178,9 +178,10 @@ class DensePassageRetriever(DenseRetriever):
 
         if document_store and document_store.similarity != "dot_product":
             logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                "You are using a Dense Passage Retriever model with the %s function. "
                 "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
         # Init & Load Encoders
@@ -479,7 +480,7 @@ class DensePassageRetriever(DenseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -550,8 +551,9 @@ class DensePassageRetriever(DenseRetriever):
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -1097,7 +1099,7 @@ class TableTextRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
 
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -1163,8 +1165,9 @@ class TableTextRetriever(DenseRetriever):
 
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -1532,10 +1535,11 @@ class EmbeddingRetriever(DenseRetriever):
             and model_format != "sentence_transformers"
         ):
             logger.warning(
-                f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
-                f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
-                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
-                f"'model_format' parameter at all."
+                "You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '%s'."
+                " You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                "As an alternative, you can let Haystack derive the format automatically by not setting the "
+                "'model_format' parameter at all.",
+                self.model_format,
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)

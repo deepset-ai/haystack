@@ -76,6 +76,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
+        replication_factor: int = 1,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
@@ -88,7 +89,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param embedding_dim: The embedding vector size. Default: 768.
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-        :param name_field: Name of field that contains the title of the the doc
+        :param name_field: Name of field that contains the title of the doc
         :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
@@ -110,6 +111,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param recreate_index: If set to True, an existing Weaviate index will be deleted and a new one will be
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index.
+        :param replication_factor: It sets the Weaviate Class's replication factor in Weaviate at the time of Class creation.
+                                   See: https://weaviate.io/developers/weaviate/current/configuration/replication.html
         """
         super().__init__()
 
@@ -156,6 +159,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
+        self.replication_factor = replication_factor
 
         self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
@@ -194,6 +198,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             },
                         ],
                         "vectorIndexConfig": {"distance": self.similarity},
+                        "replicationConfig": {"factor": self.replication_factor},
                     }
                 ]
             }
@@ -358,7 +363,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
             if not self.uuid_format_warning_raised:
                 logger.warning(
-                    f"Document id {id} is not in uuid format. Such ids will be replaced by uuids, in this case {generated_uuid}."
+                    "Document id %s is not in uuid format. Such ids will be replaced by uuids, in this case %s.",
+                    id,
+                    generated_uuid,
                 )
                 self.uuid_format_warning_raised = True
             id = generated_uuid
@@ -510,7 +517,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                for idx, doc in enumerate(document_batch):
+                for doc in document_batch:
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
 
@@ -1507,8 +1514,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         self._delete_index(index)
 

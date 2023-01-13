@@ -216,7 +216,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
-                    f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Splitting the number of documents into two chunks with the same size and retrying in {_timeout} seconds."
+                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requeset' response. "
+                    "Splitting the number of documents into two chunks with the same size and retrying in %s seconds.",
+                    len(documents),
+                    _timeout,
                 )
                 if len(documents) == 1:
                     logger.warning(
@@ -478,10 +481,11 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_list, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f" Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                " Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
         labels_to_index = []
         for label in label_list:
@@ -707,7 +711,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except ValidationError as e:
             raise DocumentStoreError(
                 f"Failed to create labels from the content of index '{index}'. Are you sure this index contains labels?"
-            )
+            ) from e
         return labels
 
     def _get_all_documents_in_index(
@@ -1087,7 +1091,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not isinstance(query, str):
                 logger.warning(
                     "The query provided seems to be not a string, but an object "
-                    f"of type {type(query)}. This can cause the query to fail."
+                    "of type %s. This can cause the query to fail.",
+                    type(query),
                 )
             operator = "AND" if all_terms_must_match else "OR"
             body = {
@@ -1599,8 +1604,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         self._delete_index(index)
 
