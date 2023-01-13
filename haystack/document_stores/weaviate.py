@@ -517,7 +517,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                for idx, doc in enumerate(document_batch):
+                for doc in document_batch:
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
 
