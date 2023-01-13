@@ -575,9 +575,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         """
-        if self.index_type != "ivf":
+        if self.index_type not in ["ivf", "ivf_pq"]:
             raise DocumentStoreError(
-                "You can only train an index if you set `index_type=ivf` in your DocumentStore. "
+                "You can only train an index if you set `index_type` to 'ivf' or 'ivf_pq' in your DocumentStore. "
                 "Other index types don't require training."
             )
 
@@ -605,7 +605,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def delete_index(self, index: str):
         """
         Delete an existing search index. The index including all data will be removed.
-        If the index is of type `"ivf"`, this method will also delete the corresponding IVF model.
+        If the index is of type `"ivf"` or `"ivf_pq"`, this method will also delete the corresponding IVF and PQ model.
 
         :param index: The name of the index to delete.
         :return: None
@@ -840,17 +840,17 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 else:
                     existing_ivf_models = set()
                 if f"{index}-ivf" in existing_ivf_models:
-                    logger.debug(f"Using existing IVF model '{index}-ivf' for index '{index}'")
+                    logger.info(f"Using existing IVF model '{index}-ivf' for index '{index}'")
                     embeddings_field_mapping = {"type": "knn_vector", "model_id": f"{index}-ivf"}
                     method = {}
                 else:
                     # IVF indices require training before they can be initialized. Setting index_type to HNSW until
                     # index is trained
-                    logger.debug(f"Using index of type HNSW for index '{index}' until IVF model is trained.")
+                    logger.info(f"Using index of type HNSW for index '{index}' until IVF model is trained.")
                     method["name"] = "hnsw"
                     method["parameters"] = {"ef_construction": ef_construction, "m": m}
             else:
-                logger.error("Set index_type to either 'flat', 'hnsw', or 'ivf'")
+                logger.error("Set index_type to either 'flat', 'hnsw', 'ivf', or 'ivf_pq'.")
 
             if method:
                 embeddings_field_mapping["method"] = method
@@ -947,16 +947,21 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         # Check if IVF index is already trained by checking if embedding mapping contains a model_id field
         if "model_id" in self.client.indices.get(index)[index]["mappings"]["properties"]["embedding"]:
-            logger.debug(f"IVF index '{index}' is already trained. Skipping training.")
+            logger.info(f"IVF index '{index}' is already trained. Skipping training.")
         # IVF model is not trained yet -> train it and convert HNSW index to IVF index
         else:
+            nlist = 4 if "nlist" not in self.knn_parameters else self.knn_parameters["nlist"]
+            nprobes = 1 if "nprobes" not in self.knn_parameters else self.knn_parameters["nprobes"]
+            if len(documents) < nlist:
+                raise DocumentStoreError(
+                    f"IVF training requires the number of training samples to be greater than or "
+                    f"equal to `nlist`. Number of provided training samples is `{len(documents)}` "
+                    f"and nlist is `{nlist}`."
+                )
             # Create temporary index containing training embeddings
             self._create_document_index(index_name=f".{index}_ivf_training", headers=headers)
             self.write_documents(documents=documents, index=f".{index}_ivf_training", headers=headers)
-            logger.debug(f"Training IVF index '{index}' using {len(documents)} embeddings.")
 
-            nlist = 4 if "nlist" not in self.knn_parameters else self.knn_parameters["nlist"]
-            nprobes = 1 if "nprobes" not in self.knn_parameters else self.knn_parameters["nprobes"]
             training_req_body: Dict = {
                 "training_index": f".{index}_ivf_training",
                 "training_field": self.embedding_field,
@@ -972,9 +977,16 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             if self.index_type == "ivf_pq":
                 m = 1 if "m" not in self.knn_parameters else self.knn_parameters["m"]
                 code_size = 8 if "code_size" not in self.knn_parameters else self.knn_parameters["code_size"]
+                if code_size > 8:
+                    raise DocumentStoreError(
+                        f"code_size parameter for product quantization must be less than or equal to 8. "
+                        f"Provided code_size is `{code_size}`."
+                    )
+
                 encoder = {"name": "pq", "parameters": {"m": m, "code_size": code_size}}
                 training_req_body["method"]["encoder"] = encoder
 
+            logger.info(f"Training IVF index '{index}' using {len(documents)} embeddings.")
             train_endpoint = f"/_plugins/_knn/models/{index}-ivf/_train"
             response = self.client.transport.perform_request(
                 "POST", url=train_endpoint, headers=headers, body=training_req_body
