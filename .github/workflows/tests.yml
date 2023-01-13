@@ -86,18 +86,13 @@ jobs:
       with:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
-    - name: Install Mypy types if needed
-      run: |
-        mkdir .mypy_cache/
-        python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ haystack/
-        python -m mypy --install-types --non-interactive --cache-dir=.mypy_cache/ rest_api/
-
     - name: Mypy
       run: |
+        mkdir .mypy_cache/
         echo "=== haystack/ ==="
-        mypy haystack
+        mypy --install-types --non-interactive --cache-dir=.mypy_cache/ haystack/
         echo "=== rest_api/ ==="
-        mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+        mypy --install-types --non-interactive --cache-dir=.mypy_cache/ rest_api/ --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
