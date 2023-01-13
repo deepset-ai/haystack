@@ -297,3 +297,107 @@ def test_csv_to_document_with_qa_headers(tmp_path):
     assert isinstance(doc, Document)
     assert doc.content == "What is Haystack ?"
     assert doc.meta["answer"] == "Haystack is an NLP Framework to use transformers in your Applications."
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "headers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "answers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["question", "wrong"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_one_column(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [["question"], ["What is Haystack ?"]]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_three_columns(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["question", "answer", "notes"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications.", "verified"],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_NaN(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [["question", "answer"], ["What is Haystack ?", ""]]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_many_files(tmp_path):
+    for i in range(5):
+        node = CsvTextConverter()
+        csv_path = tmp_path / f"{i}_csv_qa_with_headers.csv"
+        rows = [
+            ["question", "answer"],
+            [
+                f"{i}. What is Haystack ?",
+                f"{i}. Haystack is an NLP Framework to use transformers in your Applications.",
+            ],
+        ]
+        write_as_csv(rows, csv_path)
+
+    output, edge = node.run(file_paths=csv_path)
+    assert edge == "output_1"
+    assert "documents" in output
+    assert len(output["documents"]) == 5
+
+    for i in range(5):
+        doc = output["documents"][i]
+        assert isinstance(doc, Document)
+        assert doc.content == f"{i}. What is Haystack ?"
+        assert doc.meta["answer"] == f"{i}. Haystack is an NLP Framework to use transformers in your Applications."
