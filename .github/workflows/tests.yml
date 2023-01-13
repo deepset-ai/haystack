@@ -83,6 +83,8 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
+      with:
+        pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Install Mypy types if needed
       run: |

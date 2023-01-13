@@ -187,7 +187,7 @@ class Inferencer:
             tokenizer_args = {}
 
         devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)  # type: ignore [assignment]
-        if len(devices) > 1:
+        if devices and len(devices) > 1:
             logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])  # type: ignore [index]
 
         name = os.path.basename(model_name_or_path)
