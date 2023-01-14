@@ -202,7 +202,7 @@ def augment(
         device=device,
     )
     new_texts = []
-    for i in range(multiplication_factor):
+    for _ in range(multiplication_factor):
         new_text = []
         for possible_words in replacements:
             if len(possible_words) == 1:

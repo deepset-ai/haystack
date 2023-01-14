@@ -1,7 +1,6 @@
 from typing import List, Optional, Union, Dict, Any
 
 import logging
-from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -445,19 +444,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
             for hit in result
         ]
         return documents
 
     def _construct_dense_query_body(
-        self,
-        query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
-        top_k: int = 10,
-        return_embedding: Optional[bool] = None,
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
@@ -468,19 +461,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             else:
                 body["query"]["bool"]["filter"] = filter_
 
-        excluded_meta_data: Optional[list] = None
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
+        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
 
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
         return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
@@ -543,9 +527,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if not any(indices):
             # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
             logger.warning(
-                f"Before you can use an index, you must create it first. The index '{index_name}' doesn't exist. "
-                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance doesn't validate the index after you created it."
+                "Before you can use an index, you must create it first. The index '%s' doesn't exist. "
+                "You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                "Note that this instance doesn't validate the index after you created it.",
+                index_name,
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -599,11 +584,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 if self.index_type == "hnsw" and ef_search != 20:
                     body = {"knn.algo_param.ef_search": 20}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                    logger.info(f"Set ef_search to 20 for hnsw index '{index_id}'.")
+                    logger.info("Set ef_search to 20 for hnsw index '%s'.", index_id)
                 elif self.index_type == "flat" and ef_search != 512:
                     body = {"knn.algo_param.ef_search": 512}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                    logger.info(f"Set ef_search to 512 for hnsw index '{index_id}'.")
+                    logger.info("Set ef_search to 512 for hnsw index '%s'.", index_id)
 
     def _validate_approximate_knn_settings(
         self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str
@@ -842,9 +827,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             opensearch_logger.setLevel(logging.CRITICAL)
             with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
                 for result_batch in get_batches_from_generator(result, batch_size):
-                    document_batch = [
-                        self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch
-                    ]
+                    document_batch = [self._convert_es_hit_to_document(hit) for hit in result_batch]
                     doc_updates = []
                     for doc in document_batch:
                         if doc.embedding is not None:

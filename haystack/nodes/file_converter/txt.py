@@ -75,8 +75,10 @@ class TextConverter(BaseConverter):
             document_text = "".join(cleaned_pages)
             if not self.validate_language(document_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
-                    f"been decoded in the correct text format."
+                    "The language for %s is not one of %s. The file may not have "
+                    "been decoded in the correct text format.",
+                    file_path,
+                    valid_languages,
                 )
 
         text = "".join(cleaned_pages)

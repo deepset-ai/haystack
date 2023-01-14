@@ -245,9 +245,8 @@ class BaseRetriever(BaseComponent):
         mean_avg_precision = summed_avg_precision / number_of_questions
 
         logger.info(
-            (
-                f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                f" the top-{top_k} candidate passages selected by the retriever."
+            "For {} out of {} questions ({:.2%}), the answer was in the top-{} candidate passages selected by the retriever.".format(
+                correct_retrievals, number_of_questions, recall, top_k
             )
         )
 
