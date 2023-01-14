@@ -48,8 +48,8 @@ class BaseImageToText(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(
-        self, file_paths: Optional[List[str]] = None, documents: Union[List[Document], None] = None
-    ):  # type: ignore
+    def run_batch(  # type: ignore
+        self, file_paths: Optional[List[str]] = None, documents: Optional[List[Document]] = None
+    ):
 
         return self.run(file_paths=file_paths, documents=documents)
