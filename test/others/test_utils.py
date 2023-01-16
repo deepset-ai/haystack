@@ -59,6 +59,13 @@ def test_deprecation_fixture():
     with pytest.raises(_pytest.outcomes.Failed):
         test_previous_major_and_minor()
 
+    @fail_at_version(0, current_minor)
+    def test_previous_major_and_same_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_previous_major_and_same_minor()
+
     @fail_at_version(0, 1000)
     def test_previous_major_and_later_minor():
         assert True
@@ -88,6 +95,12 @@ def test_deprecation_fixture():
 
     @fail_at_version(1000, 1)
     def test_later_major_and_previous_minor():
+        assert True
+
+    test_later_major_and_previous_minor()
+
+    @fail_at_version(1000, current_minor)
+    def test_later_major_and_same_minor():
         assert True
 
     test_later_major_and_previous_minor()
