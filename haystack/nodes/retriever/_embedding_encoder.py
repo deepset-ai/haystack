@@ -501,19 +501,10 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             ),
             "multilingual-22-12",
         )
-        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
-
-    def _ensure_text_limit(self, text: str) -> str:
-        """
-        Ensure that length of the text is within the maximum length of the model.
-        Cohere embedding models have a limit of 4096 tokens
-        """
-        tokenized_payload = self.tokenizer(text)
-        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
     @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5, errors=(CohereError,))
     def embed(self, model: str, text: List[str]) -> np.ndarray:
-        payload = {"model": model, "texts": text}
+        payload = {"model": model, "texts": text, "truncate": "END"}
         headers = {"Authorization": f"BEARER {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
         res = json.loads(response.text)
@@ -528,8 +519,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             range(0, len(text), self.batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = text[i : i + self.batch_size]
-            batch_limited = [self._ensure_text_limit(content) for content in batch]
-            generated_embeddings = self.embed(self.model, batch_limited)
+            generated_embeddings = self.embed(self.model, batch)
             all_embeddings.append(generated_embeddings)
         return np.concatenate(all_embeddings)
 
