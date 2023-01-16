@@ -1,3 +1,5 @@
+import pytest
+
 from haystack import Pipeline, Document
 from haystack.nodes import Shaper
 
@@ -291,13 +293,11 @@ def test_invalid_function_used(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    try:
+    with pytest.raises(Exception, match="Check the function name") as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "Check the function name" in str(e)
 
 
 def test_invalid_input_var_used(tmp_path):
@@ -329,13 +329,13 @@ def test_invalid_input_var_used(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
-    try:
+    with pytest.raises(
+        Exception, match="The following variables, specified in Shaper directives, were not resolved"
+    ) as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "The following variables, specified in Shaper directives, were not resolved" in str(e)
 
 
 def test_function_invocation_invalid_kwarg_used(tmp_path):
@@ -366,13 +366,11 @@ def test_function_invocation_invalid_kwarg_used(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    try:
+    with pytest.raises(Exception, match="Error invoking function") as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "Error invoking function" in str(e) and "but the provided arguments are" in str(e)
 
 
 def test_function_invocation_multiple_invalid_kwarg_used(tmp_path):
@@ -404,13 +402,11 @@ def test_function_invocation_multiple_invalid_kwarg_used(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    try:
+    with pytest.raises(Exception, match="Error invoking function") as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "Error invoking function" in str(e) and "but the provided arguments are" in str(e)
 
 
 def test_function_invocation_missing_params(tmp_path):
@@ -440,13 +436,11 @@ def test_function_invocation_missing_params(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    try:
+    with pytest.raises(Exception, match="Invalid YAML definition") as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "Invalid YAML definition" in str(e)
 
 
 def test_function_invocation_invalid_arg_param_count(tmp_path):
@@ -478,13 +472,11 @@ def test_function_invocation_invalid_arg_param_count(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    try:
+    with pytest.raises(Exception, match="Invalid function arguments") as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "Invalid function arguments" in str(e)
 
 
 def test_function_invocation_invalid_arg(tmp_path):
@@ -515,13 +507,11 @@ def test_function_invocation_invalid_arg(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    try:
+    with pytest.raises(Exception, match="Invalid function arguments") as e:
         pipeline.run(
             query="What can you tell me about Berlin?",
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
-    except Exception as e:
-        assert "Invalid function arguments" in str(e)
 
 
 def test_basic_function_batch_invocation(tmp_path):
