@@ -64,7 +64,7 @@ class PreProcessor(BasePreProcessor):
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
-        max_chars: int = 10_000,
+        max_chars_check: int = 10_000,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -98,7 +98,7 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
-        :param max_chars: the maximum lenght a document is expected to have. Each document that is longer than max_chars after pre-processing will raise a warning.
+        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than max_chars_check in characters after pre-processing will raise a warning.
         """
         super().__init__()
 
@@ -124,7 +124,7 @@ class PreProcessor(BasePreProcessor):
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
-        self.max_chars = max_chars
+        self.max_chars_check = max_chars_check
 
     def process(
         self,
@@ -172,11 +172,11 @@ class PreProcessor(BasePreProcessor):
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
-        self._long_documents(ret, max_chars=self.max_chars)
+        self._long_documents(ret, max_chars_check=self.max_chars_check)
 
         return ret
 
-    def _long_documents(self, documents: List[Document], max_chars=10_000):
+    def _long_documents(self, documents: List[Document], max_chars_check=10_000):
         """
         Function that tries to detect unusually long documents.
 
@@ -184,12 +184,13 @@ class PreProcessor(BasePreProcessor):
         would imply a complete revamp of this class, including better definitions of what the various units (word, sentence, passage) mean exactly.
         """
         for document in documents:
-            if len(document.content) > max_chars:
+            if len(document.content) > max_chars_check:
                 logger.warning(
-                    "Document %s is %s characters long after preprocessing, where the maximum lenght should be %s.",
+                    "Document %s is %s characters long after preprocessing, where the maximum length should be %s. "
+                    "Something might be wrong with the splitting, check the document affected to prevent issues at query time.",
                     document.id,
                     len(document.content),
-                    max_chars,
+                    max_chars_check,
                 )
 
     def _process_single(

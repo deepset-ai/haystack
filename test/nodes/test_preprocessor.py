@@ -520,4 +520,4 @@ def test_preprocessor_very_long_document(caplog):
     results = preproc.process(documents)
     assert results == documents
     for i in range(5):
-        assert f"is 6{i} characters long after preprocessing, where the maximum lenght should be 10." in caplog.text
+        assert f"is 6{i} characters long after preprocessing, where the maximum length should be 10." in caplog.text
