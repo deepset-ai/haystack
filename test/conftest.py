@@ -115,7 +115,7 @@ def fail_at_version(version_major, version_minor):
     ```python
     from ..conftest import fail_at_version
 
-    @fail_at_version(1, 10)  # Will fail in version >= 1.10
+    @fail_at_version(1, 10)  # Will fail once Haystack version goes above 1.10
     def test_test():
         assert True
     ```
@@ -127,7 +127,7 @@ def fail_at_version(version_major, version_minor):
         @wraps(function)
         def wrapper(*args, **kwargs):
             if current_version[0] > version_major or (
-                current_version[0] == version_major and current_version[1] > version_minor
+                current_version[0] == version_major and current_version[1] >= version_minor
             ):
                 pytest.fail(reason=f"This feature is marked for removal in v{version_major}.{version_minor}")
             return_value = function(*args, **kwargs)

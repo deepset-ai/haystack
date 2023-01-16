@@ -9,7 +9,7 @@ import responses
 from responses import matchers
 
 import _pytest
-from ..conftest import f
+from ..conftest import fail_at_version, haystack_version
 
 from haystack.errors import OpenAIRateLimitError
 from haystack.schema import Answer, Document, Span, Label
@@ -49,7 +49,7 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
 """
 
 
-def test_fixture():
+def test_deprecation_fixture():
     current_major, current_minor = tuple(int(num) for num in haystack_version.split(".")[:2])
 
     @fail_at_version(0, 1)
