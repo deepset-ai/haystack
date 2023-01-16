@@ -115,7 +115,7 @@ def fail_at_version(version_major, version_minor):
     ```python
     from ..conftest import fail_at_version
 
-    @fail_at_version(1, 10)  # Will fail once Haystack version goes above 1.10
+    @fail_at_version(1, 10)  # Will fail once Haystack version is greater than or equal to 1.10
     def test_test():
         assert True
     ```
