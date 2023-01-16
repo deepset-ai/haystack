@@ -171,8 +171,9 @@ def export_feedback(
             context = squad_label["paragraphs"][0]["context"]
             if not context[start : start + len(answer)] == answer:
                 logger.error(
-                    f"Skipping invalid squad label as string via offsets "
-                    f"('{context[start:start + len(answer)]}') does not match answer string ('{answer}') "
+                    "Skipping invalid squad label as string via offsets ('%s') does not match answer string ('%s') ",
+                    context[start : start + len(answer)],
+                    answer,
                 )
         export_data.append(squad_label)
 

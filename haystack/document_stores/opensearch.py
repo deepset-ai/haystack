@@ -527,9 +527,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if not any(indices):
             # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
             logger.warning(
-                f"Before you can use an index, you must create it first. The index '{index_name}' doesn't exist. "
-                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance doesn't validate the index after you created it."
+                "Before you can use an index, you must create it first. The index '%s' doesn't exist. "
+                "You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                "Note that this instance doesn't validate the index after you created it.",
+                index_name,
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -583,11 +584,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 if self.index_type == "hnsw" and ef_search != 20:
                     body = {"knn.algo_param.ef_search": 20}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                    logger.info(f"Set ef_search to 20 for hnsw index '{index_id}'.")
+                    logger.info("Set ef_search to 20 for hnsw index '%s'.", index_id)
                 elif self.index_type == "flat" and ef_search != 512:
                     body = {"knn.algo_param.ef_search": 512}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                    logger.info(f"Set ef_search to 512 for hnsw index '{index_id}'.")
+                    logger.info("Set ef_search to 512 for hnsw index '%s'.", index_id)
 
     def _validate_approximate_knn_settings(
         self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str

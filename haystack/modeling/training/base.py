@@ -104,8 +104,10 @@ class Trainer:
             if use_amp in amp_mapping:
                 logger.warning(
                     "The Trainer only supports native PyTorch automatic mixed precision and no longer supports the Apex library.\n"
-                    f"Because you provided Apex optimization level {use_amp}, automatic mixed precision was set to {amp_mapping[use_amp]}.\n"
-                    "In the future, set `use_amp=True` to turn on automatic mixed precision."
+                    "Because you provided Apex optimization level %s, automatic mixed precision was set to %s.\n"
+                    "In the future, set `use_amp=True` to turn on automatic mixed precision.",
+                    use_amp,
+                    amp_mapping[use_amp],
                 )
                 use_amp = amp_mapping[use_amp]
             else:
@@ -570,8 +572,11 @@ class Trainer:
         if ranks_with_data < torch.distributed.get_world_size():
             if step is not None:
                 logger.info(
-                    f"Stopping epoch {self.from_epoch} at step {step} for rank {self.local_rank} since at least one other rank "
-                    f"(~ one GPU) in distributed training doesn't have any more batches... "
+                    "Stopping epoch %s at step %s for rank %s since at least one other rank "
+                    "(~ one GPU) in distributed training doesn't have any more batches... ",
+                    self.from_epoch,
+                    step,
+                    self.local_rank,
                 )
             return False
         else:

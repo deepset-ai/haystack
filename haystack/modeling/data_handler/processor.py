@@ -348,7 +348,7 @@ class Processor(ABC):
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
-        for i in range(n_samples):
+        for _ in range(n_samples):
             random_basket = random.choice(baskets)
             random_sample = random.choice(random_basket.samples)  # type: ignore
             logger.debug(random_sample)
@@ -565,8 +565,9 @@ class SquadProcessor(Processor):
                 )
             except Exception as e:
                 logger.warning(
-                    f"Could not devide document into passages. Document: {basket.raw['document_text'][:200]}\n"
-                    f"With error: {e}"
+                    "Could not devide document into passages. Document: %s\nWith error: %s",
+                    basket.raw["document_text"][:200],
+                    e,
                 )
                 passage_spans = []
 
@@ -611,7 +612,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             error_in_answer = False
-            for num, sample in enumerate(basket.samples):  # type: ignore
+            for sample in basket.samples:  # type: ignore
                 # Dealing with potentially multiple answers (e.g. Squad dev set)
                 # Initializing a numpy array of shape (max_answers, 2), filled with -1 for missing values
                 label_idxs = np.full((self.max_answers, 2), fill_value=-1)
@@ -663,8 +664,9 @@ class SquadProcessor(Processor):
                             # check if answer string can be found in context
                             if answer_text not in doc_text:
                                 logger.warning(
-                                    f"Answer '{answer['text']}' not contained in context.\n"
-                                    f"Example will not be converted for training/evaluation."
+                                    "Answer '%s' not contained in context.\n"
+                                    "Example will not be converted for training/evaluation.",
+                                    answer["text"],
                                 )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
@@ -672,8 +674,10 @@ class SquadProcessor(Processor):
                                 break  # Break loop around answers, so the error message is not shown multiple times
                             if answer_indices.strip() != answer_text.strip():
                                 logger.warning(
-                                    f"Answer using start/end indices is '{answer_indices}' while gold label text is '{answer_text}'.\n"
-                                    f"Example will not be converted for training/evaluation."
+                                    "Answer using start/end indices is '%s' while gold label text is '%s'.\n"
+                                    "Example will not be converted for training/evaluation.",
+                                    answer_indices,
+                                    answer_text,
                                 )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
@@ -697,7 +701,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             # Add features to samples
-            for num, sample in enumerate(basket.samples):  # type: ignore
+            for sample in basket.samples:  # type: ignore
                 # Initialize some basic variables
                 if sample.tokenized is not None:
                     question_tokens = sample.tokenized["question_tokens"]
@@ -1025,7 +1029,7 @@ class TextSimilarityProcessor(Processor):
 
         if problematic_ids:
             logger.error(
-                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+                "There were %s errors during preprocessing at positions: %s", len(problematic_ids), problematic_ids
             )
 
         if return_baskets:
@@ -1104,7 +1108,7 @@ class TextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                            "The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
                         )
                         return None
 
@@ -1113,7 +1117,7 @@ class TextSimilarityProcessor(Processor):
                     features[0]["query_input_ids"] = query_inputs["input_ids"]
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
-                except Exception as e:
+                except Exception:
                     features = None  # type: ignore
 
             sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
@@ -1178,7 +1182,7 @@ class TextSimilarityProcessor(Processor):
                     sample.features[0]["passage_segment_ids"] = ctx_segment_ids  # type: ignore
                     sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
-                except Exception as e:
+                except Exception:
                     basket.samples[0].features = None  # type: ignore
 
         return baskets
@@ -1222,7 +1226,8 @@ class TextSimilarityProcessor(Processor):
             if title is None:
                 title = ""
                 logger.warning(
-                    f"Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '{ctx}' "
+                    "Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '%s' ",
+                    ctx,
                 )
             res.append(tuple((title, ctx)))
         return res
@@ -1545,7 +1550,7 @@ class TableTextSimilarityProcessor(Processor):
 
         if problematic_ids:
             logger.error(
-                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+                "There were %s errors during preprocessing at positions: %s", len(problematic_ids), problematic_ids
             )
 
         if return_baskets:
@@ -1588,7 +1593,7 @@ class TableTextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                            "The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
                         )
                         return None
 
@@ -1597,7 +1602,7 @@ class TableTextSimilarityProcessor(Processor):
                     features[0]["query_input_ids"] = query_inputs["input_ids"]
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
-                except Exception as e:
+                except Exception:
                     features = None  # type: ignore
 
             sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
@@ -1691,7 +1696,7 @@ class TableTextSimilarityProcessor(Processor):
                     sample.features[0]["passage_attention_mask"] = attention_mask  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
                     sample.features[0]["is_table"] = is_table  # type: ignore
-                except Exception as e:
+                except Exception:
                     basket.samples[0].features = None  # type: ignore
 
         return baskets
@@ -1916,7 +1921,7 @@ class TextClassificationProcessor(Processor):
     def convert_labels(self, dictionary: Dict):
         ret: Dict = {}
         # Add labels for different tasks
-        for task_name, task in self.tasks.items():
+        for task in self.tasks.values():
             label_name = task["label_name"]
             label_raw = dictionary[label_name]
             label_list = task["label_list"]
