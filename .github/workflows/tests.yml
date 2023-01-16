@@ -89,10 +89,7 @@ jobs:
     - name: Mypy
       run: |
         mkdir .mypy_cache/
-        echo "=== haystack/ ==="
-        mypy haystack/
-        echo "=== rest_api/ ==="
-        mypy rest_api/ --exclude=rest_api/build/ --exclude=rest_api/test/
+        mypy $(git --no-pager diff --name-only main...)
 
     - uses: act10ns/slack@v1
       with:
