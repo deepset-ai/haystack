@@ -13,9 +13,25 @@ from rest_api.controller.utils import RequestLimiter
 
 logger = logging.getLogger(__name__)
 
-# Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines would
-# end up with different indices. The same applies for InMemoryDocumentStore.
-UNSUPPORTED_DOC_STORES = (FAISSDocumentStore, InMemoryDocumentStore)
+# Each instance of FAISSDocumentStore creates an in-memory FAISS index,
+# the Indexing & Query Pipelines will end up with different indices for each worker.
+# The same applies for InMemoryDocumentStore.
+SINGLE_PROCESS_DOC_STORES = (FAISSDocumentStore, InMemoryDocumentStore)
+
+
+def _setup_indexing_pipeline(pipeline_yaml_path, indexing_pipeline_name):
+    # Load indexing pipeline (if available)
+    try:
+        indexing_pipeline = Pipeline.load_from_yaml(Path(pipeline_yaml_path), pipeline_name=indexing_pipeline_name)
+        docstore = indexing_pipeline.get_document_store()
+        if isinstance(docstore, SINGLE_PROCESS_DOC_STORES):
+            logger.warning("FAISSDocumentStore or InMemoryDocumentStore should only be used with 1 worker.")
+
+    except PipelineConfigError as e:
+        indexing_pipeline = None
+        logger.error("%s\nFile Upload API will not be available.", e.message)
+
+    return indexing_pipeline
 
 
 def setup_pipelines() -> Dict[str, Any]:
@@ -39,24 +55,7 @@ def setup_pipelines() -> Dict[str, Any]:
     logging.info("Concurrent requests per worker: %s", config.CONCURRENT_REQUEST_PER_WORKER)
     pipelines["concurrency_limiter"] = concurrency_limiter
 
-    # Load indexing pipeline (if available)
-    try:
-        indexing_pipeline = Pipeline.load_from_yaml(
-            Path(config.PIPELINE_YAML_PATH), pipeline_name=config.INDEXING_PIPELINE_NAME
-        )
-        docstore = indexing_pipeline.get_document_store()
-        if isinstance(docstore, UNSUPPORTED_DOC_STORES):
-            indexing_pipeline = None
-            raise PipelineConfigError(
-                "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore are not supported by the REST APIs."
-            )
-
-    except PipelineConfigError as e:
-        indexing_pipeline = None
-        logger.error("%s\nFile Upload API will not be available.", e.message)
-
-    finally:
-        pipelines["indexing_pipeline"] = indexing_pipeline
+    pipelines["indexing_pipeline"] = _setup_indexing_pipeline(config.PIPELINE_YAML_PATH, config.INDEXING_PIPELINE_NAME)
 
     # Create directory for uploaded files
     os.makedirs(config.FILE_UPLOAD_PATH, exist_ok=True)
