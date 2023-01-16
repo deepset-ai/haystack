@@ -89,7 +89,7 @@ jobs:
     - name: Mypy
       run: |
         mkdir .mypy_cache/
-        mypy $(git --no-pager diff --name-only main...)
+        mypy $(git --no-pager diff --name-only ${{github.event.pull_request.base.sha}} ${{ github.event.pull_request.head.sha }})
 
     - uses: act10ns/slack@v1
       with:
