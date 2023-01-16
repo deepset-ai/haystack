@@ -8,6 +8,9 @@ import pandas as pd
 import responses
 from responses import matchers
 
+import _pytest
+from ..conftest import f
+
 from haystack.errors import OpenAIRateLimitError
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
@@ -17,7 +20,15 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
-from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture
+from ..conftest import (
+    DC_API_ENDPOINT,
+    DC_API_KEY,
+    MOCK_DC,
+    SAMPLES_PATH,
+    deepset_cloud_fixture,
+    fail_at_version,
+    haystack_version,
+)
 
 TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
@@ -36,6 +47,56 @@ Beer is distributed in bottles and cans and is also commonly available on draugh
 Beer forms part of the culture of many nations and is associated with social traditions such as beer festivals, as well as a rich pub culture involving activities like pub crawling, pub quizzes and pub games.
 When beer is distilled, the resulting liquor is a form of whisky.[12]
 """
+
+
+def test_fixture():
+    current_major, current_minor = tuple(int(num) for num in haystack_version.split(".")[:2])
+
+    @fail_at_version(0, 1)
+    def test_previous_major_and_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_previous_major_and_minor()
+
+    @fail_at_version(0, 1000)
+    def test_previous_major_and_later_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_previous_major_and_later_minor()
+
+    @fail_at_version(current_major, 1)
+    def test_same_major_and_previous_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_same_major_and_previous_minor()
+
+    @fail_at_version(current_major, current_minor)
+    def test_same_version():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_same_version()
+
+    @fail_at_version(current_major, 1000)
+    def test_same_major_and_later_minor():
+        assert True
+
+    test_same_major_and_later_minor()
+
+    @fail_at_version(1000, 1)
+    def test_later_major_and_previous_minor():
+        assert True
+
+    test_later_major_and_previous_minor()
+
+    @fail_at_version(1000, 1000)
+    def test_later_major_and_later_minor():
+        assert True
+
+    test_later_major_and_later_minor()
 
 
 def test_convert_files_to_docs():

@@ -108,14 +108,14 @@ posthog.disabled = True
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
-def deprecated_in_version(version_major, version_minor):
+def fail_at_version(version_major, version_minor):
     """
-    Version deprecation fixture. Use as follows:
+    Reminder to remove deprecated features.
 
     ```python
-    from ..conftest import deprecated_in_version
+    from ..conftest import fail_at_version
 
-    @deprecated_in_version(1, 10)  # Will fail in version 1.12
+    @fail_at_version(1, 10)  # Will fail in version >= 1.10
     def test_test():
         assert True
     ```
@@ -126,10 +126,10 @@ def deprecated_in_version(version_major, version_minor):
 
         @wraps(function)
         def wrapper(*args, **kwargs):
-            if current_version[0] > version_major or current_version[1] >= version_minor+2:
-                pytest.fail(
-                    reason=f"This feature should be removed in v{version_major}.{version_minor+2}, as it was deprecated in v{version_major}.{version_minor}"
-                )
+            if current_version[0] > version_major or (
+                current_version[0] == version_major and current_version[1] > version_minor
+            ):
+                pytest.fail(reason=f"This feature is marked for removal in v{version_major}.{version_minor}")
             return_value = function(*args, **kwargs)
             return return_value
 
