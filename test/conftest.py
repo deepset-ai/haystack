@@ -126,7 +126,7 @@ def deprecated_in_version(version_major, version_minor):
 
         @wraps(function)
         def wrapper(*args, **kwargs):
-            if current_version >= (version_major, version_minor):
+            if current_version[0] > version_major or current_version[1] >= version_minor+2:
                 pytest.fail(
                     reason=f"This feature should be removed in v{version_major}.{version_minor+2}, as it was deprecated in v{version_major}.{version_minor}"
                 )
