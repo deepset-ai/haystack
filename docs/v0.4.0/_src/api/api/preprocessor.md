@@ -83,4 +83,3 @@ Fetch an archive (zip or tar.gz) from a url via http and extract content to an o
 **Returns**:
 
 bool if anything got fetched
-

@@ -151,4 +151,3 @@ E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 
 **Returns**:
 
 Tuple({"paths": List of filepaths, ...}, Name of output edge)
-

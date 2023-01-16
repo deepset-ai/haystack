@@ -42,7 +42,7 @@ HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake
 ### Multi-Platform Builds
 
 Haystack images support multiple architectures. But depending on your operating system and Docker
-environment, you might not be able to build all of them locally. 
+environment, you might not be able to build all of them locally.
 
 You may encounter the following error when trying to build the image:
 

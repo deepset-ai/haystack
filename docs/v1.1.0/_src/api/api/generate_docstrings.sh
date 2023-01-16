@@ -21,4 +21,3 @@ pydoc-markdown pydoc-markdown-ranker.yml
 pydoc-markdown pydoc-markdown-question-generator.yml
 pydoc-markdown pydoc-markdown-query-classifier.yml
 pydoc-markdown pydoc-markdown-document-classifier.yml
-

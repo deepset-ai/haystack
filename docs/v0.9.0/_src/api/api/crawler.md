@@ -92,4 +92,3 @@ Method to be executed when the Crawler is used as a Node within a Haystack pipel
 **Returns**:
 
 Tuple({"paths": List of filepaths, ...}, Name of output edge)
-
