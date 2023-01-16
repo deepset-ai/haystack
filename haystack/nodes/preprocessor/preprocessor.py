@@ -172,8 +172,6 @@ class PreProcessor(BasePreProcessor):
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
-        self._long_documents(ret, max_chars_check=self.max_chars_check)
-
         return ret
 
     def _long_documents(self, documents: List[Document], max_chars_check=10_000):
@@ -240,6 +238,9 @@ class PreProcessor(BasePreProcessor):
             split_respect_sentence_boundary=split_respect_sentence_boundary,
             id_hash_keys=id_hash_keys,
         )
+
+        self._long_documents(split_documents, max_chars_check=self.max_chars_check)
+
         return split_documents
 
     def _process_batch(
