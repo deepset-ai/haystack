@@ -155,8 +155,8 @@ GenerationMixin can be used by Seq2SeqGenerator.
 Moreover, as language models prepare model input in their specific encoding, each model
 specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
 accompanying model input converter that takes care of prefixes, separator tokens etc.
-By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
-It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
+By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5).
+It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter
 is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
 
 For mode details on custom model input converters refer to _BartEli5Converter
@@ -229,4 +229,3 @@ These document can be retrieved via the Retriever or supplied directly via predi
 **Returns**:
 
 Generated answers
-

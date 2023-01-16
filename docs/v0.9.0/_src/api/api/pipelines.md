@@ -303,7 +303,7 @@ Initialize a Pipeline that retrieves documents for a query and then summarizes t
 **Arguments**:
 
 - `query`: Your search query
-- `filters`: 
+- `filters`:
 - `top_k_retriever`: Number of top docs the retriever should pass to the summarizer.
                         The higher this value, the slower your pipeline.
 - `generate_single_summary`: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
@@ -374,17 +374,17 @@ and the further processing can be customized. You can define this by connecting 
   |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
   |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
   |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-  
+
   |# Keyword queries will use the ElasticRetriever
   |pipe.run("kubernetes aws")
-  
+
   |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
   |pipe.run("How to manage kubernetes on aws")
-  
+
   ```
-  
+
   Models:
-  
+
   Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
   1) Keywords vs. Questions/Statements (Default)
   query_classifier="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"
@@ -392,15 +392,15 @@ and the further processing can be customized. You can define this by connecting 
   output_1 => question/statement
   output_2 => keyword query
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
-  
-  
+
+
   2) Questions vs. Statements
   `query_classifier`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"`
   `query_vectorizer`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle"`
   output_1 => question
   output_2 => statement
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
-  
+
   See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
 
 <a name="pipeline.SklearnQueryClassifier.__init__"></a>
@@ -438,31 +438,31 @@ and the further processing can be customized. You can define this by connecting 
   |pipe.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
   |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
   |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-  
+
   |# Keyword queries will use the ElasticRetriever
   |pipe.run("kubernetes aws")
-  
+
   |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
   |pipe.run("How to manage kubernetes on aws")
-  
+
   ```
-  
+
   Models:
-  
+
   Pass your own `Transformer` binary classification model from file/huggingface or use one of the following pretrained ones hosted on Huggingface:
   1) Keywords vs. Questions/Statements (Default)
   model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
   output_1 => question/statement
   output_2 => keyword query
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
-  
-  
+
+
   2) Questions vs. Statements
   `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
   output_1 => question
   output_2 => statement
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
-  
+
   See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
 
 <a name="pipeline.TransformersQueryClassifier.__init__"></a>
@@ -507,4 +507,3 @@ The node allows multiple join modes:
                 adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                 to each retriever score. This param is not compatible with the `concatenate` join_mode.
 - `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
-

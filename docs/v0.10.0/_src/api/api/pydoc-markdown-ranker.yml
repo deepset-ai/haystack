@@ -16,4 +16,3 @@ renderer:
   add_method_class_prefix: false
   add_member_class_prefix: false
   filename: ranker.md
-

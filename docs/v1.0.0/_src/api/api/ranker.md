@@ -138,4 +138,3 @@ Returns list of Document sorted by (desc.) similarity with the query.
 **Returns**:
 
 List of Document
-

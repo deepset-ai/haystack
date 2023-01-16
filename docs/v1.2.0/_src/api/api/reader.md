@@ -805,4 +805,3 @@ of content_type ``'table'``.
 **Returns**:
 
 Dict containing query and answers
-

@@ -51,7 +51,7 @@ With this document_classifier, you can directly get predictions via predict()
 |        query="Who is the father of Arya Stark?",
 |        params={"Retriever": {"top_k": 10}}
 |    )
-|    
+|
 |    # print the classification results
 |    print_documents(res, max_text_len=100, print_meta=True)
 |    # or access the predicted class label directly
@@ -127,4 +127,3 @@ Documents are updated in place.
 **Returns**:
 
 List of Document enriched with meta information
-

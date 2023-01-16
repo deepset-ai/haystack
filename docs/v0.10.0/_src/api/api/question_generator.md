@@ -27,4 +27,3 @@ Uses the valhalla/t5-base-e2e-qg model by default. This class supports any quest
 implemented as a Seq2SeqLM in HuggingFace Transformers. Note that this style of question generation (where the only input
 is a document) is sometimes referred to as end-to-end question generation. Answer-supervised question
 generation is not currently supported.
-
