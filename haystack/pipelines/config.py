@@ -227,6 +227,14 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
+    logger.debug("Validating the following config:\n%s", pipeline_config)
+
+    if not isinstance(pipeline_config, dict):
+        raise PipelineConfigError(
+            "Your pipeline configuration seems to be not a dictionary. "
+            "Make sure you're loading the correct one, or enable DEBUG "
+            "logs to see what Haystack is trying to load."
+        )
 
     # Check that the extras are respected
     extras_in_config = pipeline_config.get("extras", None)
