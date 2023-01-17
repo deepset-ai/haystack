@@ -142,7 +142,7 @@ class Document:
 
         if final_hash_key == "":
             raise ValueError(
-                "Cant't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
+                "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
         return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
@@ -192,8 +192,8 @@ class Document:
 
         Example:
 
-        ```
-            my_dict = {"custom_content_field": "some text", content_type": "text"}
+        ```python
+            my_dict = {"custom_content_field": "some text", "content_type": "text"}
             Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
         ```
 
@@ -205,8 +205,8 @@ class Document:
         if id_hash_keys:
             warnings.warn(
                 "Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
-                "Old API: Document.from_dict({'content': 'test', meta={'some': 'value'}}, id_hash_keys=['meta'])\n"
-                "New API: Document.from_dict({'content': 'test', meta={'some': 'value'}, id_hash_keys=['meta']})\n"
+                "Old API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}}, id_hash_keys=['meta'])\n"
+                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n"
             )
             dict["id_hash_keys"] = id_hash_keys
 
@@ -853,13 +853,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+       
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+       
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
