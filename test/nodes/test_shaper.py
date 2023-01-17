@@ -241,6 +241,10 @@ def test_function_invocation_order(tmp_path):
                       params:
                         docs: documents
                         delimiter: " "
+                        num_tokens:
+                            func: len
+                            params:
+                                - questions
               type: Shaper
             pipelines:
               - name: query
@@ -262,7 +266,7 @@ def test_function_invocation_order(tmp_path):
     # 1) query is expanded to a list of strings of size 2 (stored as questions)
     # 2) documents is concated to a string of size of 2, because we used questions variable from 1) to calculate
     # the number of tokens
-    assert result["documents"] == "Berlin is an amazing city. I love Berlin."
+    assert result["documents"] == "Be"
 
 
 def test_invalid_function_used(tmp_path):

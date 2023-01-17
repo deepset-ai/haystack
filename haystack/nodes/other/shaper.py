@@ -1,5 +1,6 @@
 import copy
 import inspect
+import sys
 from collections import deque
 from typing import Optional, Union, List, Dict, Any, Tuple, Callable
 from types import MappingProxyType
@@ -79,9 +80,12 @@ class Shaper(BaseComponent):
         self.inputs = inputs
 
         concat: Callable[[List[str], str], str] = lambda docs, delimiter=" ": delimiter.join(docs)  # type: ignore
-        concat_docs: Callable[[List[Document], str], str] = lambda docs, delimiter=" ": delimiter.join(  # type: ignore
+        concat_docs: Callable[[List[Document], str], str] = lambda docs, delimiter=" ", num_tokens=sys.maxsize: delimiter.join(  # type: ignore
             [d.content for d in docs]
-        )
+        )[
+            :num_tokens
+        ]
+
         convert_to_docs: Callable[[List[str]], List[Document]] = lambda texts: [Document(text) for text in texts]
         tmp_registry: Dict[str, Callable] = {
             "len": len,
