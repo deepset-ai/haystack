@@ -14,7 +14,7 @@ from haystack import Document, Answer, Pipeline
 import haystack
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.errors import PipelineSchemaError, PipelineConfigError
+from haystack.errors import PipelineSchemaError
 from haystack.schema import Label, FilterType
 from haystack.nodes.file_converter import BaseConverter
 

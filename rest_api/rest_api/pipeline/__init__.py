@@ -27,8 +27,9 @@ def _load_pipeline(pipeline_yaml_path, indexing_pipeline_name):
         document_store = _get_pipeline_doc_store(pipeline)
     except PipelineConfigError as e:
         pipeline, document_store = None, None
-        logger.error(f"Error loading {indexing_pipeline_name} pipeline from {pipeline_yaml_path}. \n {e.message}\n")
-
+        logger.error(
+            "Error loading %s pipeline from %s. \n %s\n", indexing_pipeline_name, pipeline_yaml_path, e.message
+        )
     return pipeline, document_store
 
 
@@ -59,7 +60,7 @@ def setup_pipelines() -> Dict[str, Any]:
     # Load indexing pipeline
     index_pipeline, _ = _load_pipeline(config.PIPELINE_YAML_PATH, config.INDEXING_PIPELINE_NAME)
     if not index_pipeline:
-        logger.warning("%s\nIndexing Pipeline is not setup. File Upload API will not be available.")
+        logger.warning("Indexing Pipeline is not setup. File Upload API will not be available.")
     pipelines["indexing_pipeline"] = index_pipeline
 
     # Create directory for uploaded files
