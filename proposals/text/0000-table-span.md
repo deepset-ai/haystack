@@ -12,7 +12,7 @@ This would allow users to easily look up the answer in the returned table to fet
 identify the row or column labels for that answer, or generally perform operations on the table near or around the
 answer cell.
 
-# Basic example <a name="#basic-example"></a>
+# Basic Example
 
 When applicable, write a snippet of code showing how the new feature would be used.
 ```python
