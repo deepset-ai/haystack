@@ -32,7 +32,7 @@ prediction = reader.predict(query="Who was in the most number of movies?", docum
 answer = prediction["answers"][0]
 
 # New feature
-print(answer.context.iloc[answer.offsets_in_context[0].col, answer.offsets_in_context[0].row])
+print(answer.context.iloc[answer.offsets_in_context[0].row, answer.offsets_in_context[0].col])
 ```
 
 # Motivation
@@ -74,8 +74,8 @@ class TableSpan:
     """
     Defining a table cell via the column and row index.
 
-    :param col: Column index of the span
-    :param row: Row index of the span
+    :param col: Column index of the cell
+    :param row: Row index of the cell
     """
 ```
 **Note:** I am open to a name change since this isn't really a span, but the location of a single table cell.
@@ -97,8 +97,8 @@ class TableSpan:
     """
     Defining a table cell via the column and row index.
 
-    :param col: Column index of the span
-    :param row: Row index of the span
+    :param col: Column index of the cell
+    :param row: Row index of the cell
     """
 ```
 
