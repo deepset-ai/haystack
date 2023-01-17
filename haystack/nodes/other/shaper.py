@@ -395,16 +395,16 @@ class Shaper(BaseComponent):
         results = {"queries": queries, "documents": documents, "meta": meta}
         if single_query:
             if single_docs_list:
-                response, node_id = self.run(query=queries, documents=documents, meta=meta)  # type: ignore
+                response, _ = self.run(query=queries, documents=documents, meta=meta)  # type: ignore
                 self.result_update_helper(results, response)
                 results.update(response)
             elif multi_docs_list:
                 for doc in documents:  # type: ignore
-                    response, node_id = self.run(query=queries, documents=doc, meta=meta)  # type: ignore
+                    response, _ = self.run(query=queries, documents=doc, meta=meta)  # type: ignore
                     self.result_update_helper(results, response)
         elif multi_query:
             for query, docs in zip(queries, documents):  # type:ignore
-                response, node_id = self.run(query=query, documents=docs, meta=meta)  # type: ignore
+                response, _ = self.run(query=query, documents=docs, meta=meta)  # type: ignore
                 self.result_update_helper(results, response)
         return results, "output_1"
 
