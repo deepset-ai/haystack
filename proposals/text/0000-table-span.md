@@ -194,18 +194,22 @@ require a user of the rest_api to access a python function to convert the linear
 
 # Adoption strategy
 
-If we implement this proposal, how will the existing Haystack users adopt it? Is
-this a breaking change? Can we write a migration script?
+## How will the existing Haystack users adopt it?
+Haystack users would immediately experience this change once they update their installation of Haystack if they were using
+the TableQA reader. This would be a breaking change since it would change the `offsets_in_document` and
+`offsets_in_context` in the returned `Answer`. I'm not sure if there would be a straightforward way to write a migration
+script for this change.
 
 # How we teach this
 
 Would implementing this feature mean the documentation must be re-organized
 or updated? Does it change how Haystack is taught to new developers at any level?
 
-How should this feature be taught to the existing Haystack users (for example with a page in the docs,
-a tutorial, ...).
+- The API docs for `TableSpan` would need to be added.
+- The documentation page for [Table Question Answering](https://docs.haystack.deepset.ai/docs/table_qa) would need to be updated.
+- Update the (TableQa tutorial)[https://github.com/deepset-ai/haystack-tutorials/blob/main/tutorials/15_TableQA.ipynb]
+to reflect the `Span` is no longer linearzied.
 
 # Unresolved questions
 
-Optional, but suggested for first drafts. What parts of the design are still
-TBD?
+The issue brought up above under the header **Edge Case/Bug**
