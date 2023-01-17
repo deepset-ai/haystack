@@ -212,4 +212,4 @@ to reflect the `Span` is no longer linearzied.
 
 # Unresolved questions
 
-The issue brought up above under the header **Edge Case/Bug**
+The issue brought up above under the header [Edge Case/Bug](#edge-case/bug)
