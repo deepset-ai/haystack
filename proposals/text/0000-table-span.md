@@ -37,10 +37,6 @@ print(answer.context.iloc[answer.offsets_in_context[0].col, answer.offsets_in_co
 
 # Motivation
 
-Give us more background and explanation: Why do we need this feature? What use cases does it support? What's the expected
-outcome? Focus on explaining the motivation for this feature. We'd like to understand it, so that even if we don't accept this
-proposal, others can use the motivation to develop alternative solutions.
-
 ## Why do we need this feature?
 To allow users to easily look up the answer cell in the returned table to fetch the answer text
 directly from the table, identify the row or column labels for that answer, or generally perform operations on the table
@@ -86,17 +82,12 @@ class TableSpan:
 
 # Detailed design
 
-This is the bulk of the proposal. Explain the design in enough detail for somebody
-familiar with Haystack to understand, and for somebody familiar with the
-implementation to implement. Get into specifics and corner-cases,
-and include examples of how the feature is used. Also, if there's any new terminology involved,
-define it here.
-
 **New terminology:** `TableSpan` or something similar (e.g. `Cell`,`CellLoc`, etc.). The new name for the dataclass to
 store the column and row index of the answer cell.
 
 **Basic Example:** [Above Basic Example](#basic-example)
 
+## Code changes
 - Addition of `TableSpan` dataclass to https://github.com/deepset-ai/haystack/blob/main/haystack/schema.py
 ```python
 @dataclass
@@ -110,9 +101,10 @@ class TableSpan:
     :param row: Row index of the span
     """
 ```
-- Update of code (e.g. schema objects, classes, functions) that use `Span` to also support `TableSpan` where appropriate.
+
+- Updating code (e.g. schema objects, classes, functions) that use `Span` to also support `TableSpan` where appropriate.
 This includes:
-  - Updating the `Answer` dataclass to support `TableSpan` as a valid type for `offsets_in_document` and `offsets_in_context`
+- Updating the `Answer` dataclass to support `TableSpan` as a valid type for `offsets_in_document` and `offsets_in_context`
 ```python
 @dataclass
  class Answer:
@@ -125,9 +117,42 @@ This includes:
      document_id: Optional[str] = None
      meta: Optional[Dict[str, Any]] = None
 ```
-  - Updating any functions that accept table answers as input to use the new `col` and `row` variables instead of `start` and `end` variables.
-  This type of check for table answers is most likely already done by checking if the `context` is of type `pd.DataFrame`.
-  - `TableReader` and `RCIReader` to return `TableSpan` objects instead of `Span`
+- Updating any functions that accept table answers as input to use the new `col` and `row` variables instead of `start` and `end` variables.
+This type of check for table answers is most likely already done by checking if the `context` is of type `pd.DataFrame`.
+- `TableReader` and `RCIReader` to return `TableSpan` objects instead of `Span`
+
+## Edge Case/Bug
+Internally, Haystack stores a table as a pandas DataFrame in the `Answer` dataclass, which does not treat the column
+labels as the first row in the table.
+However, in Haystack's rest-api the table is converted into a list of lists format where the column labels are
+stored as the first row, which can be seen [here](https://github.com/deepset-ai/haystack/pull/3872), which is consistent
+with the `Document.to_dict()` method seen [here](https://github.com/deepset-ai/haystack/blob/6af4f14fe0d375a1ae0ced18930a9239401231c7/haystack/schema.py#L164-L165).
+
+This means that the current `Span` and (new) `TableSpan` dataclass point to the wrong location when the table is
+converted to a list of lists.
+
+For example, the following code
+```python
+import pandas as pd
+from haystack import Document
+
+data = {
+    "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+    "age": ["58", "47", "60"],
+    "number of movies": ["87", "53", "69"],
+    "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+}
+table_doc = Document(content=pd.DataFrame(data), content_type="table")
+span = (0, 0)
+print(table_doc.content.iloc[span])  # prints "brad pitt"
+
+dict_table_doc = table_doc.to_dict()
+print(dict_table_doc["content"][span[0]][span[1]])  # prints "actors"
+```
+
+I see a few ways to address this:
+- One way to address this would be to update the `Span` (or `TableSpan`) to be updated when the table is converted into a list of lists.
+- Another way would be to only store the table internally as a list of lists.
 
 # Drawbacks
 
@@ -143,7 +168,29 @@ There are tradeoffs to choosing any path. Attempt to identify them here.
 
 # Alternatives
 
-What other designs have you considered? What's the impact of not adding this feature?
+## What's the impact of not adding this feature?
+Requiring users to figure out how to interpret the linearized answer cell coordinates to reconstruct the row and column indices
+to be able to access the answer cell in the returned tabel.
+
+## Other designs
+1. Expand `Span` dataclass to have optional `col` and `row` fields. This would require a similar check as `TableSpan`, but instead
+require checking for which of the elements are populated, which seems unnecessarily complex.
+```python
+@dataclass
+class Span:
+    start: int = None
+    end: int = None
+    col: int = None
+    row: int = None
+```
+2. Use the existing `Span` dataclass and put the row index and column index as the `start` and `end` respectively.
+This may be confusing to users since it is not obvious that `start` should refer to `row` and `end` should refer to `column`.
+```python
+answer_cell_offset = Span(start=row_idx, end=col_idx)
+```
+3. Provide a convenience function shown [here](https://github.com/deepset-ai/haystack/issues/3616#issuecomment-1361300067)
+to help users convert the linearized `Span` back to row and column indices. I believe this solution is non-ideal since it would
+require a user of the rest_api to access a python function to convert the linearized indices back into row and column indices.
 
 # Adoption strategy
 
