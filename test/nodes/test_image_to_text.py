@@ -1,6 +1,6 @@
+import os
 import pytest
 
-import os
 from PIL import UnidentifiedImageError
 
 from haystack import Document
