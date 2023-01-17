@@ -854,10 +854,10 @@ class EvaluationResult:
 
         ```python
         eval_results = pipeline.eval(...)
-       
+
         # derive detailed metrics
         eval_results.calculate_metrics()
-       
+
         # show summary of incorrect queries
         eval_results.wrong_examples()
         ```
