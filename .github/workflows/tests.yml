@@ -96,7 +96,7 @@ jobs:
     - name: Filter changed files
       id: python-diff
       run: |
-        for file in ${{ steps.changed-files.outputs.changed_files }}; do
+        for file in ${{ steps.complete-diff.outputs.changed_files }}; do
           if [[ $file == *.py ]]; then
             changed_files=$changed_files $file
           fi
