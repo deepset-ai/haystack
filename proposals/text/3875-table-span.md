@@ -159,12 +159,25 @@ I see a few ways to address this:
 Look at the feature from the other side: what are the reasons why we should _not_ work on it? Consider the following:
 
 - What's the implementation cost, both in terms of code size and complexity?
+
+I don't believe this will require too much code change since we already check for Table like answers by checking if the
+returned context is of type string or pandas Dataframe.
+
 - Can the solution you're proposing be implemented as a separate package, outside of Haystack?
+
+No
+
 - Does it teach people more about Haystack?
+
+It would update already existing documentation and tutorials of Haystack.
+
 - How does this feature integrate with other existing and planned features?
+
+This feature directly integrates and impacts the TableQA feature of Haystack.
+
 - What's the cost of migrating existing Haystack pipelines (is it a breaking change?)?
 
-There are tradeoffs to choosing any path. Attempt to identify them here.
+Yes this is a breaking change that would affect end users. The way to access the offsets in returned Answers would be different.
 
 # Alternatives
 
