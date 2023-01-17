@@ -52,7 +52,7 @@ class TransformersImageToText(BaseImageToText):
         self,
         model_name_or_path: str = "nlpconnect/vit-gpt2-image-captioning",
         model_version: Optional[str] = None,
-        generate_kwargs: Optional[dict] = None,
+        generation_kwargs: Optional[dict] = None,
         use_gpu: bool = True,
         batch_size: int = 16,
         progress_bar: bool = True,
@@ -67,7 +67,7 @@ class TransformersImageToText(BaseImageToText):
         :param model_name_or_path: Directory of a saved model or the name of a public model.
                                    See https://huggingface.co/models?pipeline_tag=image-to-text for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param generate_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
+        :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
                                 See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
         :param use_gpu: Whether to use GPU (if available).
         :param batch_size: Number of documents to process at a time.
@@ -99,23 +99,23 @@ class TransformersImageToText(BaseImageToText):
             device=self.devices[0],
             use_auth_token=use_auth_token,
         )
-        self.generate_kwargs = generate_kwargs
+        self.generation_kwargs = generation_kwargs
         self.batch_size = batch_size
         self.progress_bar = progress_bar
 
     def generate_captions(
-        self, image_file_paths: List[str], generate_kwargs: Optional[dict] = None, batch_size: Optional[int] = None
+        self, image_file_paths: List[str], generation_kwargs: Optional[dict] = None, batch_size: Optional[int] = None
     ) -> List[Document]:
         """
         Generate captions for provided image files
 
         :param image_file_paths: Paths of the images
-        :param generate_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
+        :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
                                 See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
         :param batch_size: Number of images to process at a time.
         :return: List of Documents. Document.content is the caption. Document.meta["image_file_path"] contains the image file path.
         """
-        generate_kwargs = generate_kwargs or self.generate_kwargs
+        generation_kwargs = generation_kwargs or self.generation_kwargs
         batch_size = batch_size or self.batch_size
 
         if len(image_file_paths) == 0:
@@ -126,7 +126,7 @@ class TransformersImageToText(BaseImageToText):
         captions: List[str] = []
 
         for captions_batch in tqdm(
-            self.model(images_dataset, generate_kwargs=generate_kwargs, batch_size=batch_size),
+            self.model(images_dataset, generate_kwargs=generation_kwargs, batch_size=batch_size),
             disable=not self.progress_bar,
             total=len(images_dataset),
             desc="Generating captions",
@@ -135,7 +135,7 @@ class TransformersImageToText(BaseImageToText):
 
         result: List[Document] = []
         for caption, image_file_path in zip(captions, image_file_paths):
-            document = Document(content=caption, content_type="text", meta={"image_file_path": image_file_path})
+            document = Document(content=caption, content_type="text", meta={"image_path": image_file_path})
             result.append(document)
 
         return result

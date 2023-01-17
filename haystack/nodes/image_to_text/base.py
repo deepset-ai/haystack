@@ -15,13 +15,13 @@ class BaseImageToText(BaseComponent):
 
     @abstractmethod
     def generate_captions(
-        self, image_file_paths: List[str], generate_kwargs: Optional[dict] = None, batch_size: Optional[int] = None
+        self, image_file_paths: List[str], generation_kwargs: Optional[dict] = None, batch_size: Optional[int] = None
     ) -> List[Document]:
         """
         Abstract method for generating captions.
 
         :param image_file_paths: Paths of the images
-        :param generate_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
+        :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
                                 See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
         :param batch_size: Number of images to process at a time.
         :return: List of Documents. Document.content is the caption. Document.meta["image_file_path"] contains the image file path.
@@ -32,16 +32,14 @@ class BaseImageToText(BaseComponent):
 
         if file_paths is None and documents is None:
             raise ValueError("You must either specify documents or image file_paths to process.")
-        if file_paths is not None and documents is not None:
-            raise ValueError(
-                "You specified both documents and image_file_paths. You need to specify only one of the two parameters."
-            )
+
+        image_file_paths = []
         if file_paths is not None:
-            image_file_paths = file_paths
+            image_file_paths.extend(file_paths)
         if documents is not None:
             if any((doc.content_type != "image" for doc in documents)):
                 raise ValueError("The ImageToText node only supports image documents.")
-            image_file_paths = [doc.content for doc in documents]
+            image_file_paths.extend([doc.content for doc in documents])
 
         results: dict = {}
         results["documents"] = self.generate_captions(image_file_paths=image_file_paths)
