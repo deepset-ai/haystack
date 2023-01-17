@@ -190,7 +190,7 @@ class Document:
 
         Example:
 
-        ```
+        ```python
             my_dict = {"custom_content_field": "some text", content_type": "text"}
             Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
         ```
