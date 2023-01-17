@@ -17,7 +17,7 @@ def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]
     return ([value] * len(target_list),)
 
 
-def join_documents(documents: List[Document], delimiter: str) -> Tuple[List[Any]]:
+def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Any]]:
     """
     Transforms a list of documents into a list containing a single Document, whose content
     is the content of all original documents separated by the given delimiter.
@@ -112,9 +112,24 @@ class InvocationContextMapper(BaseComponent):
         # modified list of Documents under the `documents` key, such list is used.
         invocation_context = {**locals(), **(invocation_context or {})}
 
-        input_values = {key: invocation_context[value] for key, value in self.inputs.items()}
+        try:
+            input_values = {key: invocation_context[value] for key, value in self.inputs.items()}
+        except KeyError as e:
+            missing_values = [value for value in self.inputs.values() if value not in invocation_context.keys()]
+            raise ValueError(
+                f"InvocationContextMapper could not find these values from your inputs list in the invocation context: {missing_values}. "
+                "Make sure the value exists in the invocation context."
+            ) from e
 
-        output_values = self.function(**input_values, **self.params)
+        try:
+            output_values = self.function(**input_values, **self.params)
+        except TypeError as e:
+            raise ValueError(
+                "InvocationContextMapper could not apply the function to your inputs and parameters. "
+                "Check the above stacktrace and make sure you provided all the correct inputs, parameters, "
+                "and parameter types."
+            ) from e
+
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
 
