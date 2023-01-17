@@ -101,9 +101,7 @@ class Document:
 
         if id_hash_keys is not None:
             if not set(id_hash_keys) <= set(allowed_hash_key_attributes):
-
-                logging.error(
-                    # raise ValueError(
+                raise ValueError(
                     f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
                     f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}). "
                     "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
