@@ -521,4 +521,3 @@ If None, the DocumentStore's default index (self.index) will be used.
 **Returns**:
 
 None
-

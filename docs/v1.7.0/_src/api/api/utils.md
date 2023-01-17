@@ -298,4 +298,3 @@ def get_all_document_titles()
 ```
 
 Return all document title strings.
-

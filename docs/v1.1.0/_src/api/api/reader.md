@@ -99,7 +99,7 @@ and that FARM includes no_answer in the sorted list of predictions.
 - `local_files_only`: Whether to force checking for local files only (and forbid downloads)
 - `force_download`: Whether fo force a (re-)download even if the model exists locally in the cache.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="farm.FARMReader.train"></a>
@@ -758,4 +758,3 @@ composed of a single cell.
 **Returns**:
 
 Dict containing query and answers
-

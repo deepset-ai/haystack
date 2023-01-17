@@ -421,4 +421,3 @@ Reads text from a txt file and executes optional preprocessing steps.
 **Returns**:
 
 Dict of format {"text": "The text from file", "meta": meta}}
-

@@ -18,4 +18,3 @@ Route files in an Indexing Pipeline to corresponding file converters.
 ```
 
 Return the output based on file extension
-

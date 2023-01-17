@@ -480,7 +480,7 @@ class DensePassageRetriever(DenseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -1099,7 +1099,7 @@ class TableTextRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
 
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 

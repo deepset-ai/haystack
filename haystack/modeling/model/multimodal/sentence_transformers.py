@@ -49,7 +49,7 @@ class HaystackSentenceTransformerModel(HaystackModel):
         )
         try:
             self.model = SentenceTransformer(pretrained_model_name_or_path, **(model_kwargs or {}))
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "Models of type '%s' like %s "
                 "are only supported through sentence-transformers. Make sure this "
