@@ -1,7 +1,7 @@
 - Title: TableSpan Dataclass
 - Decision driver: Sebastian Lee
 - Start Date: 2023-01-17
-- Proposal PR: (fill in after opening the PR)
+- Proposal PR: https://github.com/deepset-ai/haystack/pull/3875
 - Github Issue: https://github.com/deepset-ai/haystack/issues/3616
 
 # Summary
