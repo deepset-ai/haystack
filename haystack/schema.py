@@ -140,7 +140,7 @@ class Document:
 
         if final_hash_key == "":
             raise ValueError(
-                "Cant't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
+                "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
         return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
