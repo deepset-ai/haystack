@@ -111,7 +111,7 @@ class TransformersImageToText(BaseImageToText):
 
         :param image_file_paths: Paths of the images
         :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
-                                See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
+                                  See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
         :param batch_size: Number of images to process at a time.
         :return: List of Documents. Document.content is the caption. Document.meta["image_file_path"] contains the image file path.
         """
