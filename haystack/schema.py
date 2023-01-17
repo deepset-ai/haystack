@@ -851,13 +851,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+       
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+       
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
