@@ -14,10 +14,11 @@ from haystack import Document, Answer, Pipeline
 import haystack
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
+from haystack.errors import PipelineSchemaError, PipelineConfigError
 from haystack.schema import Label, FilterType
 from haystack.nodes.file_converter import BaseConverter
 
-from rest_api.pipeline import _setup_indexing_pipeline
+from rest_api.pipeline import _load_pipeline
 from rest_api.utils import get_app
 
 
@@ -26,10 +27,21 @@ TEST_QUERY = "Who made the PDF specification?"
 
 def test_check_single_worker_warning_for_indexing_pipelines(caplog):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
-    p = _setup_indexing_pipeline(yaml_pipeline_path, None)
+    p, _ = _load_pipeline(yaml_pipeline_path, None)
 
     assert isinstance(p, Pipeline)
     assert "used with 1 worker" in caplog.text
+
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, "BogusPipeline")
+    assert p is None
+
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
+    try:
+        _, _ = _load_pipeline(yaml_pipeline_path, None)
+        assert False
+    except PipelineSchemaError:
+        assert True
 
 
 class MockReader(BaseReader):
