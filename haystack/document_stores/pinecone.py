@@ -161,9 +161,11 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if pinecone_index:
             if not isinstance(pinecone_index, pinecone.Index):
-                raise PineconeDocumentStoreError(f"The parameter `pinecone_index` needs to be a "
-                                                 f"`pinecone.Index` object. You provided an object of "
-                                                 f"type `{type(pinecone_index)}`.")
+                raise PineconeDocumentStoreError(
+                    f"The parameter `pinecone_index` needs to be a "
+                    f"`pinecone.Index` object. You provided an object of "
+                    f"type `{type(pinecone_index)}`."
+                )
             self.pinecone_indexes[self.index] = pinecone_index
         else:
             self.pinecone_indexes[self.index] = self._create_index(
