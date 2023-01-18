@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document, MultiLabel
@@ -11,10 +11,24 @@ def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]
     Example:
 
     ```python
-    assert expand_value_to_list(value=1, target_list=list(range(5))) == [1, 1, 1, 1, 1]
+    assert expand_value_to_list(value=1, target_list=list(range(5))) == ([1, 1, 1, 1, 1], )
     ```
     """
     return ([value] * len(target_list),)
+
+
+def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
+    """
+    Transforms a list of strings into a list containing a single string, whose content
+    is the content of all original strings separated by the given delimiter.
+
+    Example:
+
+    ```python
+    assert join_strings([strings="first", "second", "third"], separator=" - ") == (["first - second - third"], )
+    ```
+    """
+    return ([delimiter.join([d.content for d in strings])],)
 
 
 def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Any]]:
@@ -34,13 +48,56 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
             Document(content="third")
         ],
         separator=" - "
-    ) == [Document(content="first - second - third")]
+    ) == ([Document(content="first - second - third")], )
     ```
     """
     return ([Document(content=delimiter.join([d.content for d in documents]))],)
 
 
-REGISTERED_FUNCTIONS = {"expand_value_to_list": expand_value_to_list, "join_documents": join_documents}
+def convert_to_docs(
+    strings: List[str], metadata: Optional[Union[List[str], str]] = None, id_hash_keys: Optional[List[str]] = None
+) -> Tuple[List[Any]]:
+    """
+    Transforms a list of strings into a list of Documents. If the metadata is given as a single
+    dict, all documents will receive the same meta; if the metadata is given as a list, such list
+    must be as long as the list of strings and each Document will receive its own metadata.
+    On the contrary, id_hash_keys can only be given once and it will be assigned to all documents.
+
+    Example:
+
+    ```python
+    assert join_strings(
+            strings=["first", "second", "third"],
+            metadata=[{"position": i} for i in range(3)],
+            id_hash_keys=['content', 'meta]
+        ) == [
+            Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
+            Document(content="second", metadata={"position": 2}, id_hash_keys=['content', 'meta]),
+            Document(content="third", metadata={"position": 3}, id_hash_keys=['content', 'meta])
+        ]
+    ```
+    """
+
+    if isinstance(metadata, dict):
+        all_metadata = [metadata]
+    elif isinstance(metadata, list):
+        if len(metadata) != len(strings):
+            raise ValueError(
+                f"Not enough metadata dictionaries. convert_to_docs received {len(strings)} and {len(metadata)} metadata dictionaries."
+            )
+        all_metadata = metadata
+
+    return (
+        [Document(content=string, meta=meta, id_hash_keys=id_hash_keys) for string, meta in zip(strings, all_metadata)],
+    )
+
+
+REGISTERED_FUNCTIONS = {
+    "expand_value_to_list": expand_value_to_list,
+    "join_strings": join_strings,
+    "join_documents": join_documents,
+    "convert_to_docs": convert_to_docs,
+}
 
 
 class InvocationContextMapper(BaseComponent):
@@ -72,6 +129,16 @@ class InvocationContextMapper(BaseComponent):
     context to match the templates of PromptNodes.
 
     Multiple InvocationContextMapper components can be used in a pipeline to modify the invocation context as needed.
+
+    - len: parameters are target:Any; returns int; built-in len function returning the length of the input variable
+    - expand: parameters are [expand_target:Any, size:int]; returns List[Any]; it returns a list of specified size
+        for the input variable
+    - concat: parameters are [texts:List[str], delimiter:str]; returns str, concatenates texts with the specified
+        delimiter
+    - concat_docs: parameters are [docs: List[Document]], delimiter:str]; returns str; concatenates the docs with the
+        specified delimiter and returns a string
+    - convert_to_docs: parameters are texts: List[str]; returns List[Document]; converts the input list of strings
+        to a list of Documents
     """
 
     outgoing_edges = 1
@@ -111,6 +178,7 @@ class InvocationContextMapper(BaseComponent):
         # The invocation context overwrites locals(), so if for example invocation_context contains a
         # modified list of Documents under the `documents` key, such list is used.
         invocation_context = {**locals(), **(invocation_context or {})}
+        invocation_context.pop("self")
 
         try:
             input_values = {key: invocation_context[value] for key, value in self.inputs.items()}

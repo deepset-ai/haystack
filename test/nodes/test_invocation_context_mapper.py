@@ -6,25 +6,22 @@ from haystack import Pipeline, Document
 from haystack.nodes.prompt.invocation_context_mapper import InvocationContextMapper
 
 
-def test_basic_invocation(monkeypatch):
+@pytest.fixture
+def mock_function(monkeypatch):
     monkeypatch.setattr(
         haystack.nodes.prompt.invocation_context_mapper,
         "REGISTERED_FUNCTIONS",
         {"test_function": lambda a, b: ([a] * len(b),)},
     )
 
+
+def test_basic_invocation(mock_function):
     mapper = InvocationContextMapper(func="test_function", inputs={"a": "query", "b": "documents"}, outputs=["c"])
     results, _ = mapper.run(query="test query", documents=["doesn't", "really", "matter"])
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
 
 
-def test_missing_argument(monkeypatch):
-    monkeypatch.setattr(
-        haystack.nodes.prompt.invocation_context_mapper,
-        "REGISTERED_FUNCTIONS",
-        {"test_function": lambda a, b: ([a] * len(b),)},
-    )
-
+def test_missing_argument(mock_function):
     mapper = InvocationContextMapper(func="test_function", inputs={"b": "documents"}, outputs=["c"])
     with pytest.raises(
         ValueError, match="InvocationContextMapper could not apply the function to your inputs and parameters."
@@ -32,13 +29,7 @@ def test_missing_argument(monkeypatch):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
 
-def test_excess_argument(monkeypatch):
-    monkeypatch.setattr(
-        haystack.nodes.prompt.invocation_context_mapper,
-        "REGISTERED_FUNCTIONS",
-        {"test_function": lambda a, b: ([a] * len(b),)},
-    )
-
+def test_excess_argument(mock_function):
     mapper = InvocationContextMapper(
         func="test_function", inputs={"a": "query", "b": "documents", "something_extra": "query"}, outputs=["c"]
     )
@@ -48,13 +39,7 @@ def test_excess_argument(monkeypatch):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
 
-def test_value_not_in_invocation_context(monkeypatch):
-    monkeypatch.setattr(
-        haystack.nodes.prompt.invocation_context_mapper,
-        "REGISTERED_FUNCTIONS",
-        {"test_function": lambda a, b: ([a] * len(b),)},
-    )
-
+def test_value_not_in_invocation_context(mock_function):
     mapper = InvocationContextMapper(
         func="test_function", inputs={"a": "query", "b": "something_that_does_not_exist"}, outputs=["c"]
     )
@@ -67,13 +52,7 @@ def test_value_not_in_invocation_context(monkeypatch):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
 
-def test_value_only_in_invocation_context(monkeypatch):
-    monkeypatch.setattr(
-        haystack.nodes.prompt.invocation_context_mapper,
-        "REGISTERED_FUNCTIONS",
-        {"test_function": lambda a, b: ([a] * len(b),)},
-    )
-
+def test_value_only_in_invocation_context(mock_function):
     mapper = InvocationContextMapper(
         func="test_function", inputs={"a": "query", "b": "invocation_context_specific"}, outputs=["c"]
     )
@@ -81,6 +60,11 @@ def test_value_only_in_invocation_context(monkeypatch):
         query="test query", invocation_context={"invocation_context_specific": ["doesn't", "really", "matter"]}
     )
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
+
+
+#
+# expand_values_to_list
+#
 
 
 def test_expand_values_to_list():
@@ -119,6 +103,11 @@ def test_expand_values_to_list_yaml(tmp_path):
         query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert result["invocation_context"]["questions"] == ["test query", "test query", "test query"]
+
+
+#
+# join_documents
+#
 
 
 def test_join_documents():
@@ -202,6 +191,11 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
     assert result["invocation_context"]["documents"] == [Document(content="first second third")]
 
 
+#
+# Chaining and real-world usage
+#
+
+
 def test_chain_mappers():
     mapper_1 = InvocationContextMapper(
         func="join_documents", inputs={"documents": "documents"}, params={"delimiter": " - "}, outputs=["documents"]
@@ -271,100 +265,50 @@ def test_chain_mappers_yaml(tmp_path):
     assert results["invocation_context"]["questions"] == ["test query"]
 
 
-# def test_prompt_node_with_shaper(tmp_path):
+def test_with_prompt_node(tmp_path):
 
-#     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-#         tmp_file.write(
-#             f"""
-#             version: ignore
-#             components:
-#               - name: pmodel
-#                 type: PromptModel
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+              - name: prompt_model
+                type: PromptModel
 
-#               - name: mapper
-#                 type: InvocationContextMapper
-#                 params:
-#                   inputs:
-#                     query:
-#                       func: expand
-#                       output: questions
-#                       params:
-#                         expand_target: query
-#                         size:
-#                           func: len
-#                           params:
-#                             - documents
-#               - name: p1
-#                 params:
-#                   model_name_or_path: pmodel
-#                   default_prompt_template: question-answering
-#                 type: PromptNode
-#             pipelines:
-#               - name: query
-#                 nodes:
-#                   - name: shaper
-#                     inputs:
-#                       - Query
-#                   - name: p1
-#                     inputs:
-#                       - shaper
-#             """
-#         )
-#     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-#     result = pipeline.run(
-#         query="What's Berlin like?",
-#         documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
-#     )
-#     assert len(result["results"]) == 2
-#     for answer in result["results"]:
-#         assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in answer.casefold())
-#     assert len(result["meta"]["invocation_context"]) > 0
-#     assert len(result["meta"]["invocation_context"]["questions"]) == 2
+              - name: mapper
+                type: InvocationContextMapper
+                params:
+                  func: expand_value_to_list
+                  inputs:
+                    value: query
+                    target_list: documents
+                  outputs: [questions]
 
+              - name: prompt_node
+                type: PromptNode
+                params:
+                  model_name_or_path: prompt_model
+                  default_prompt_template: question-answering
 
-# def test_prompt_node_with_shaper_using_defaults(tmp_path):
-#     # tests that the prompt node works with the shaper node but using the default values of input directives
-#     # in the shaper YAML definition
-#     # therefore notice the difference in the config file between this test and `test_prompt_node_with_shaper`
-#     # here we use shaper to expand the query to the size of documents and rename the output to questions
-#     # this use case was the original motivation for the introduction of the shaper
-#     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-#         tmp_file.write(
-#             f"""
-#             version: ignore
-#             components:
-#               - name: pmodel
-#                 type: PromptModel
-#               - name: shaper
-#                 params:
-#                   inputs:
-#                     query:
-#                       func: expand
-#                       output: questions
-#                 type: Shaper
-#               - name: p1
-#                 params:
-#                   model_name_or_path: pmodel
-#                   default_prompt_template: question-answering
-#                 type: PromptNode
-#             pipelines:
-#               - name: query
-#                 nodes:
-#                   - name: shaper
-#                     inputs:
-#                       - Query
-#                   - name: p1
-#                     inputs:
-#                       - shaper
-#             """
-#         )
-#     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-#     result = pipeline.run(
-#         query="What's Berlin like?",
-#         documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
-#     )
-#     assert len(result["results"]) == 2
-#     for answer in result["results"]:
-#         assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in answer.casefold())
-#     assert len(result["meta"]["invocation_context"]) > 0
-#     assert len(result["meta"]["invocation_context"]["questions"]) == 2
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+                  - name: prompt_node
+                    inputs:
+                      - mapper
+            """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="What's Berlin like?",
+        documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
+    )
+    assert len(result["results"]) == 2
+    for answer in result["results"]:
+        assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in answer.casefold())
+
+    assert len(result["invocation_context"]) > 0
+    assert len(result["invocation_context"]["questions"]) == 2

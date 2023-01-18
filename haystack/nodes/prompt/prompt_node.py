@@ -857,6 +857,7 @@ class PromptNode(BaseComponent):
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
+        invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
@@ -871,24 +872,24 @@ class PromptNode(BaseComponent):
         :param documents: The documents to be used for the prompt.
         :param meta: The meta to be used for the prompt. Usually not used.
         """
+        # The invocation context overwrites locals(), so if for example invocation_context contains a
+        # modified list of Documents under the `documents` key, such list is used.
+        invocation_context = {**locals(), **(invocation_context or {})}
+        invocation_context.pop("self")
 
-        if not meta:
-            meta = {}
-        # invocation_context is a dictionary that is passed from a pipeline node to a pipeline node and can be used
-        # to pass results from a pipeline node to any other downstream pipeline node.
-        if "invocation_context" not in meta:
-            meta["invocation_context"] = {}
+        for doc in invocation_context.get("documents", []):
+            if not isinstance(doc, str) and not isinstance(doc.content, str):
+                raise ValueError("PromptNode only accepts text documents.")
 
-        results = self(
-            query=query,
-            labels=labels,
-            documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
-            **meta["invocation_context"],
-        )
+        invocation_context["documents"] = [
+            doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
+        ]
+
+        results = self(**invocation_context)
 
         if self.output_variable:
-            meta["invocation_context"][self.output_variable] = results
-        return {"results": results, "meta": {**meta}}, "output_1"
+            invocation_context[self.output_variable] = results
+        return {"results": results, "meta": meta, "invocation_context": invocation_context}, "output_1"
 
     def run_batch(
         self,
