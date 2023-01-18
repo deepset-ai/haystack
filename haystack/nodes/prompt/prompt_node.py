@@ -744,6 +744,7 @@ class PromptNode(BaseComponent):
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
                 # and pass the prepared prompt to the model
+                logger.debug("Prompt being sent to LLM. prompt=%s, kwargs=%s", prompt, kwargs)
                 output = self.prompt_model.invoke(prompt, **kwargs)
                 results.extend(output)
         else:
