@@ -344,6 +344,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
         if stop_words:
+            # Although HF generates text until stop words are encountered unfortunately it includes the stop word
+            # We want to exclude it to be consistent with other invocation layers
             generated_texts = [gt.replace(stop, "").strip() for gt in generated_texts for stop in stop_words]
         return generated_texts
 
