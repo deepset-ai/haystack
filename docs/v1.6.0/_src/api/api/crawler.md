@@ -123,4 +123,3 @@ E.g. 2: Crawler will wait 2 seconds before scraping page
 **Returns**:
 
 Tuple({"paths": List of filepaths, ...}, Name of output edge)
-

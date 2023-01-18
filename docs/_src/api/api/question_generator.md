@@ -83,4 +83,3 @@ Generates questions for a list of strings or a list of lists of strings.
 
 - `texts`: List of str or list of list of str.
 - `batch_size`: Number of texts to process at a time.
-

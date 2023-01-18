@@ -44,4 +44,3 @@ The node allows multiple join modes:
                 adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                 to each retriever score. This param is not compatible with the `concatenate` join_mode.
 - `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
-

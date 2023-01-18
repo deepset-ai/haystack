@@ -289,7 +289,7 @@ Initialize a Pipeline that retrieves documents for a query and then summarizes t
 **Arguments**:
 
 - `query`: Your search query
-- `filters`: 
+- `filters`:
 - `top_k_retriever`: Number of top docs the retriever should pass to the summarizer.
                         The higher this value, the slower your pipeline.
 - `generate_single_summary`: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
@@ -371,4 +371,3 @@ The node allows multiple join modes:
                 adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                 to each retriever score. This param is not compatible with the `concatenate` join_mode.
 - `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
-

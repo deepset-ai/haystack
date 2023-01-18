@@ -129,4 +129,3 @@ Returns per QA pair a) the similarity of the most likely prediction (top 1) to a
 
 
 :return: top_1_sas, top_k_sas
-

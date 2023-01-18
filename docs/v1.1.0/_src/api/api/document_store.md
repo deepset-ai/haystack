@@ -1761,7 +1761,7 @@ Weaviate is a cloud-native, modular, real-time vector search engine built to sca
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
-2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
+2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
 5. Only support cosine similarity.
@@ -2197,4 +2197,3 @@ Execute a SPARQL query on the given index in the GraphDB instance
 **Returns**:
 
 query result
-

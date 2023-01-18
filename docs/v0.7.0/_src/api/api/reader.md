@@ -380,4 +380,3 @@ Example:
 **Returns**:
 
 Dict containing query and answers
-

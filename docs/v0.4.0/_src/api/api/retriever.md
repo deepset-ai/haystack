@@ -288,4 +288,3 @@ documents a higher rank.
 contained in the retrieved docs (common approach in open-domain QA).
 If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
 are within ids explicitly stated in the labels.
-
