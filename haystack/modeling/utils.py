@@ -328,7 +328,7 @@ def log_ascii_workers(n, logger):
     f_worker_lines = WORKER_F.split("\n")
     x_worker_lines = WORKER_X.split("\n")
     all_worker_lines = []
-    for i in range(n):
+    for _ in range(n):
         rand = np.random.randint(low=0, high=3)
         if rand % 3 == 0:
             all_worker_lines.append(f_worker_lines)

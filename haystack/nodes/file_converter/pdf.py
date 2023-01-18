@@ -58,14 +58,14 @@ class PDFToTextConverter(BaseConverter):
         except FileNotFoundError:
             raise FileNotFoundError(
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
-                
+
                    Installation on Linux:
                    wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz &&
                    tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-                   
+
                    Installation on MacOS:
                    brew install xpdf
-                   
+
                    You can find more details here: https://www.xpdfreader.com
                 """
             )
@@ -150,8 +150,10 @@ class PDFToTextConverter(BaseConverter):
             document_text = "".join(cleaned_pages)
             if not self.validate_language(document_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
-                    f"been decoded in the correct text format."
+                    "The language for %s is not one of %s. The file may not have "
+                    "been decoded in the correct text format.",
+                    file_path,
+                    valid_languages,
                 )
 
         text = "\f".join(cleaned_pages)

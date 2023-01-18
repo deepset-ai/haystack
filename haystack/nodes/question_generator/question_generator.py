@@ -81,8 +81,9 @@ class QuestionGenerator(BaseComponent):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
             model_name_or_path, revision=model_version, use_auth_token=use_auth_token

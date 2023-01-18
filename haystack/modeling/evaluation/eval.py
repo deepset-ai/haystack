@@ -69,7 +69,7 @@ class Evaluator:
         passage_start_t_all: List = [[] for _ in model.prediction_heads]
         logits_all: List = [[] for _ in model.prediction_heads]
 
-        for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
+        for batch in tqdm(self.data_loader, desc="Evaluating", mininterval=10):
             batch = {key: batch[key].to(self.device) for key in batch}
 
             if isinstance(model, (DataParallel, WrappedDataParallel)):
@@ -125,7 +125,8 @@ class Evaluator:
                 temperature_change = (abs(temperature_current - temperature_previous) / temperature_previous) * 100.0
                 if temperature_change > 50:
                     logger.warning(
-                        f"temperature used for calibration of confidence scores changed by more than {temperature_change} percent"
+                        "temperature used for calibration of confidence scores changed by more than %s percent",
+                        temperature_change,
                     )
             if hasattr(head, "aggregate_preds"):
                 # Needed to convert NQ ids from np arrays to strings
@@ -146,8 +147,11 @@ class Evaluator:
                     result["report"] = compute_report_metrics(head, preds_all[head_num], label_all[head_num])
                 except:
                     logger.error(
-                        f"Couldn't create eval report for head {head_num} with following preds and labels:"
-                        f"\n Preds: {preds_all[head_num]} \n Labels: {label_all[head_num]}"
+                        "Couldn't create eval report for head %s with following preds and labels:"
+                        "\n Preds: %s \n Labels: %s",
+                        head_num,
+                        preds_all[head_num],
+                        label_all[head_num],
                     )
                     result["report"] = "Error"
 
@@ -182,7 +186,7 @@ class Evaluator:
         header += BUSH_SEP + "\n"
         logger.info(header)
 
-        for head_num, head in enumerate(results):
+        for head in results:
             logger.info("\n _________ {} _________".format(head["task_name"]))
             for metric_name, metric_val in head.items():
                 # log with experiment tracking framework (e.g. Mlflow)

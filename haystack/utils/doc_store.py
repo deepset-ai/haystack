@@ -72,7 +72,7 @@ def launch_es(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
+            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.17.6'
         ],
         shell=True,
     )
@@ -126,8 +126,9 @@ def stop_container(container_name, delete_container=False):
     status = subprocess.run([f"docker stop {container_name}"], shell=True)
     if status.returncode:
         logger.warning(
-            f"Tried to stop {container_name} but this failed. "
-            f"It is likely that there was no Docker container with the name {container_name}"
+            "Tried to stop %s but this failed. It is likely that there was no Docker container with the name %s",
+            container_name,
+            container_name,
         )
     if delete_container:
         status = subprocess.run([f"docker rm {container_name}"], shell=True)

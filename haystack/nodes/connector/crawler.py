@@ -309,9 +309,14 @@ class Crawler(BaseComponent):
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(document.to_dict(), f)
-            except Exception as e:
+            except Exception:
                 logging.exception(
-                    f"Crawler can't save the content of '{link}' under '{file_path}'. This webpage will be skipped, but links from this page will still be crawled. Make sure the path above is accessible and the file name is valid. If the file name is invalid, consider setting 'crawler_naming_function' to another function."
+                    "Crawler can't save the content of '%s' under '%s'. "
+                    "This webpage will be skipped, but links from this page will still be crawled. "
+                    "Make sure the path above is accessible and the file name is valid. "
+                    "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+                    link,
+                    file_path,
                 )
 
             paths.append(file_path)
@@ -441,7 +446,7 @@ class Crawler(BaseComponent):
         for i in a_elements:
             try:
                 sub_link = i.get_attribute("href")
-            except StaleElementReferenceException as error:
+            except StaleElementReferenceException:
                 logger.error(
                     "The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript."
                 )

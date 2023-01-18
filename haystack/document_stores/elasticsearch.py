@@ -508,9 +508,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
         if not any(indices):
             logger.warning(
-                f"To use an index, you must create it first. The index called '{index_name}' doesn't exist. "
-                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance doesn't validate the index after you create it."
+                "To use an index, you must create it first. The index called '%s' doesn't exist. "
+                "You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                "Note that this instance doesn't validate the index after you create it.",
+                index_name,
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.

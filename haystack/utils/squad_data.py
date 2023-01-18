@@ -168,7 +168,7 @@ class SquadData:
                             c += 1
                     # Count span answers
                     else:
-                        for answer in question["answers"]:
+                        for _ in question["answers"]:
                             if unit in ["answers", "span_answers"]:
                                 c += 1
         return c
