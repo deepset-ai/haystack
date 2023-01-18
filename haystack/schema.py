@@ -1434,8 +1434,8 @@ class EvaluationResult:
                 # num_relevants can be 0 even though there are relevant documents in the corpus, just because no relevant document has been retrieved.
                 # We fix this here by adding 1 if we know that this is not a no_answer query.
                 is_no_answer_query = query_df["gold_document_ids"].iloc[0] == []
-                if not is_no_answer_query:
-                    num_relevants += 1
+                if num_relevants == 0 and not is_no_answer_query:
+                    num_relevants = 999
 
             num_retrieved = len(
                 query_df["document_id"]

@@ -69,17 +69,17 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert len(eval_result) == 2
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 1.0
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
     assert metrics["Summarizer"]["mrr"] == 1.0
-    assert metrics["Summarizer"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Summarizer"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Summarizer"]["map"] == 1.0
+    assert metrics["Summarizer"]["recall_multi_hit"] == 1.0
     assert metrics["Summarizer"]["recall_single_hit"] == 1.0
     assert metrics["Summarizer"]["precision"] == 1.0
-    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Summarizer"]["ndcg"] == 1.0
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
@@ -643,11 +643,11 @@ def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(document_scope="context")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 1.0
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
     metrics = eval_result.calculate_metrics(document_scope="document_id_and_context")
 
@@ -670,11 +670,11 @@ def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(document_scope="answer")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
     metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer")
 
@@ -713,11 +713,11 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(answer_scope="context")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
     assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Reader"]["f1"] == 1.0
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
