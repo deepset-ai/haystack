@@ -214,10 +214,10 @@ class StopWordsCriteria(StoppingCriteria):
     def __init__(self, model_name_or_path: str, stops_words: List[str]):
         super().__init__()
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.stop_tokens = tokenizer.encode(stops_words, add_special_tokens=False, return_tensors="pt")
+        self.stop_words = tokenizer.encode(stops_words, add_special_tokens=False, return_tensors="pt")
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        return any(torch.isin(input_ids[-1], self.stop_tokens[-1]))
+        return any(torch.isin(input_ids[-1], self.stop_words[-1]))
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
