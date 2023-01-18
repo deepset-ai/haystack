@@ -346,7 +346,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if stop_words:
             # Although HF generates text until stop words are encountered unfortunately it includes the stop word
             # We want to exclude it to be consistent with other invocation layers
-            generated_texts = [gt.replace(stop, "").strip() for gt in generated_texts for stop in stop_words]
+            for idx in range(len(generated_texts)):
+                for stop_word in stop_words:
+                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
         return generated_texts
 
     @classmethod
@@ -769,7 +771,9 @@ class PromptNode(BaseComponent):
 
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                # and pass the prepared prompt to the model
+                # merge any additional model kwargs
+                kwargs = {**kwargs, **self._prepare_model_kwargs()}
+                # and pass the prepared prompt and kwargs to the model
                 output = self.prompt_model.invoke(prompt, **kwargs)
                 results.extend(output)
         else:
