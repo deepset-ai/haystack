@@ -85,18 +85,13 @@ jobs:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
 
     - name: Get changed files
-      id: complete-diff
-      run: |
-        if ${{ github.event_name == 'pull_request' }}; then
-            echo "changed_files=$(git diff --name-only -r HEAD^1 HEAD | xargs)" >> $GITHUB_OUTPUT
-        else
-            echo "changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | xargs)" >> $GITHUB_OUTPUT
-        fi
+      id: files
+      uses: tj-actions/changed-files@v34
 
     - name: Filter changed files
-      id: python-diff
+      id: python-files
       run: |
-        for file in ${{ steps.complete-diff.outputs.changed_files }}; do
+        for file in ${{ steps.files.outputs.all_changed_files }}; do
           if [[ $file == *.py ]]; then
             changed_files="$changed_files $file"
           fi
@@ -111,7 +106,7 @@ jobs:
     - name: Mypy
       run: |
         mkdir .mypy_cache/
-        mypy ${{ steps.python-diff.outputs.changed_files }}
+        mypy ${{ steps.python-files.outputs.changed_files }}
 
     - uses: act10ns/slack@v1
       with:
