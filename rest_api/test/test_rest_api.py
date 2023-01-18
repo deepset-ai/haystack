@@ -25,23 +25,27 @@ from rest_api.utils import get_app
 TEST_QUERY = "Who made the PDF specification?"
 
 
-def test_check_single_worker_warning_for_indexing_pipelines(caplog):
+def test_single_worker_warning_for_indexing_pipelines(caplog):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
     p, _ = _load_pipeline(yaml_pipeline_path, None)
 
     assert isinstance(p, Pipeline)
     assert "used with 1 worker" in caplog.text
 
+
+def test_check_error_for_pipeline_not_found(caplog):
+
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
-    p, _ = _load_pipeline(yaml_pipeline_path, "BogusPipeline")
+    p, _ = _load_pipeline(yaml_pipeline_path, "ThisPipelineDoesntExist")
     assert p is None
 
+
+def test_bad_yaml_pipeline_configuration_error():
+
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
-    try:
-        _, _ = _load_pipeline(yaml_pipeline_path, None)
-        assert False
-    except PipelineSchemaError:
-        assert True
+    with pytest.raises(PipelineSchemaError) as excinfo:
+        _load_pipeline(yaml_pipeline_path, None)
+    assert "MyOwnDocumentStore" in str(excinfo.value)
 
 
 class MockReader(BaseReader):
