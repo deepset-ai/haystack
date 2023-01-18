@@ -804,7 +804,7 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     base_mode_fields = base_model.__fields__
 
     values = {}
-    for base_model_field_name, base_model_field in base_mode_fields.items():
+    for base_model_field_name in base_mode_fields.keys():
         value = getattr(base_model, base_model_field_name)
         values[base_model_field_name] = value
 
@@ -1092,8 +1092,10 @@ class EvaluationResult:
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 if answer_metric not in metrics:
                     logger.warning(
-                        f"You specified an answer_metric={answer_metric} not available in calculated metrics={metrics.keys()}."
-                        f"Skipping collection of worst performing samples."
+                        "You specified an answer_metric=%s not available in calculated metrics=%s."
+                        "Skipping collection of worst performing samples.",
+                        answer_metric,
+                        metrics.keys(),
                     )
                     break
                 if metrics[answer_metric] <= answer_metric_threshold:
@@ -1127,8 +1129,10 @@ class EvaluationResult:
             for multilabel_id, metrics in worst_df.iterrows():
                 if document_metric not in metrics:
                     logger.warning(
-                        f"You specified a document_metric={document_metric} not available in calculated metrics={metrics.keys()}."
-                        f"Skipping collection of worst performing samples."
+                        "You specified a document_metric=%s not available in calculated metrics=%s."
+                        "Skipping collection of worst performing samples.",
+                        document_metric,
+                        metrics.keys(),
                     )
                     break
                 if metrics[document_metric] <= document_metric_threshold:
@@ -1185,9 +1189,9 @@ class EvaluationResult:
             document_relevance_criterion = answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
         elif answer_scope in answer_scope_to_doc_relevance_crit.keys():
             logger.warning(
-                f"You specified a non-answer document_scope together with a non-default answer_scope. "
-                f"This may result in inconsistencies between answer and document metrics. "
-                f"To enforce the same definition of correctness for both, document_scope must be one of {['answer', 'document_id_or_answer']}."
+                "You specified a non-answer document_scope together with a non-default answer_scope. "
+                "This may result in inconsistencies between answer and document metrics. "
+                "To enforce the same definition of correctness for both, document_scope must be one of 'answer', 'document_id_or_answer'."
             )
 
         return document_relevance_criterion  # type: ignore[return-value]
@@ -1269,7 +1273,7 @@ class EvaluationResult:
         Answer metrics are:
         - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
-        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        - sas if a SAS model has been provided during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
         multilabel_ids = answers["multilabel_id"].unique()
         # simulate top k retriever

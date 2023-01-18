@@ -219,4 +219,3 @@ Extract text from a .pdf file.
 **Arguments**:
 
 - `file_path`: Path to the .pdf file you want to convert
-

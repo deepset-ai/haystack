@@ -46,7 +46,7 @@ from haystack.pipelines.config import (
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
-from haystack.errors import HaystackError, PipelineError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
 from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
@@ -293,10 +293,13 @@ class Pipeline:
         for document_store in document_stores:
             if document_store["type"] != "DeepsetCloudDocumentStore":
                 logger.info(
-                    f"In order to be used on Deepset Cloud, component '{document_store['name']}' of type '{document_store['type']}' "
-                    f"has been automatically converted to type DeepsetCloudDocumentStore. "
-                    f"Usually this replacement will result in equivalent pipeline quality. "
-                    f"However depending on chosen settings of '{document_store['name']}' differences might occur."
+                    "In order to be used on Deepset Cloud, component '%s' of type '%s' "
+                    "has been automatically converted to type DeepsetCloudDocumentStore. "
+                    "Usually this replacement will result in equivalent pipeline quality. "
+                    "However depending on chosen settings of '%s' differences might occur.",
+                    document_store["name"],
+                    document_store["type"],
+                    document_store["name"],
                 )
                 document_store["type"] = "DeepsetCloudDocumentStore"
                 document_store["params"] = {}
@@ -784,7 +787,7 @@ class Pipeline:
 
         # crop dataset if `dataset_size` is provided and is valid
         if num_documents is not None and 0 < num_documents < len(corpus):
-            logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
+            logger.info("Cropping dataset from %s to %s documents", len(corpus), num_documents)
             corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
             corpus_ids = set(list(corpus.keys()))
@@ -800,8 +803,9 @@ class Pipeline:
             qrels = qrels_new
         elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
             logging.warning(
-                f"'num_documents' variable should be lower than corpus length and have a positive value, but it's {num_documents}."
-                " Dataset size remains unchanged."
+                "'num_documents' variable should be lower than corpus length and have a positive value, but it's %s."
+                " Dataset size remains unchanged.",
+                num_documents,
             )
 
         # check index before eval
@@ -2022,9 +2026,13 @@ class Pipeline:
                 f"Failed loading pipeline component '{name}': "
                 "seems like the component does not exist. Did you spell its name correctly?"
             ) from ke
+        except ConnectionError as ce:
+            raise DocumentStoreError(f"Failed loading pipeline component '{name}': '{ce}'") from ce
+        except DocumentStoreError as de:
+            raise de
         except Exception as e:
             raise PipelineConfigError(
-                f"Failed loading pipeline component '{name}'. " "See the stacktrace above for more informations."
+                f"Failed loading pipeline component '{name}'. See the stacktrace above for more information."
             ) from e
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
@@ -2152,7 +2160,7 @@ class Pipeline:
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 # "debug" will be picked up by _dispatch_run, see its code
                 # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
-                valid_global_params = set(["debug", "add_isolated_node_eval"])
+                valid_global_params = {"debug", "add_isolated_node_eval"}
                 for node_id in self.graph.nodes:
                     run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
@@ -2284,7 +2292,8 @@ class Pipeline:
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
     def send_pipeline_event(self, is_indexing: bool = False):
-        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
+        fingerprint = sha1(json_repr.encode()).hexdigest()
         send_custom_event(
             "pipeline",
             payload={

@@ -215,4 +215,3 @@ Returns list of Document sorted by (desc.) TextPairClassification similarity wit
 **Returns**:
 
 List of Document
-

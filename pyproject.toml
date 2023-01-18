@@ -51,6 +51,7 @@ dependencies = [
   "requests",
   "pydantic",
   "transformers[torch]==4.25.1",
+  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
   "rank_bm25",
@@ -118,7 +119,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.9.0",
+  "weaviate-client==3.10.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -259,14 +260,12 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "logging-fstring-interpolation",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
-  "unused-variable",
   "attribute-defined-outside-init",
   "too-many-instance-attributes",
   "super-with-arguments",
@@ -276,7 +275,6 @@ disable = [
   "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
-  "trailing-whitespace",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",

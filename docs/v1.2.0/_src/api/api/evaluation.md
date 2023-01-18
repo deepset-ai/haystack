@@ -141,4 +141,3 @@ pointing to downloadable models.
 **Returns**:
 
 top_1_sas, top_k_sas
-

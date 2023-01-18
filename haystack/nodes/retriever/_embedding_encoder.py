@@ -104,14 +104,18 @@ class _BaseEmbeddingEncoder:
 
             if model_similarity is not None and document_store.similarity != model_similarity:
                 logger.warning(
-                    f"You seem to be using {model_name} model with the {document_store.similarity} function instead of the recommended {model_similarity}. "
-                    f"This can be set when initializing the DocumentStore"
+                    "You seem to be using %s model with the %s function instead of the recommended %s. "
+                    "This can be set when initializing the DocumentStore",
+                    model_name,
+                    document_store.similarity,
+                    model_similarity,
                 )
         elif "dpr" in model_name.lower() and document_store.similarity != "dot_product":
             logger.warning(
-                f"You seem to be using a DPR model with the {document_store.similarity} function. "
-                f"We recommend using dot_product instead. "
-                f"This can be set when initializing the DocumentStore"
+                "You seem to be using a DPR model with the %s function. "
+                "We recommend using dot_product instead. "
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
 
@@ -302,7 +306,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (
@@ -329,7 +333,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (
@@ -391,8 +395,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # See https://beta.openai.com/docs/guides/embeddings for more details
-        # OpenAI has a max seq length of 2048 tokens and unknown max batch size
-        self.max_seq_len = min(2048, retriever.max_seq_len)
         self.url = "https://api.openai.com/v1/embeddings"
         self.api_key = retriever.api_key
         self.batch_size = min(64, retriever.batch_size)
@@ -400,11 +402,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
         )
-        self._setup_encoding_models(model_class, retriever.embedding_model)
+        self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
 
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-    def _setup_encoding_models(self, model_class: str, model_name: str):
+    def _setup_encoding_models(self, model_class: str, model_name: str, max_seq_len: int):
         """
         Setup the encoding models for the retriever.
         """
@@ -412,9 +414,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         if "text-embedding" in model_name:
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
+            self.max_seq_len = min(8191, max_seq_len)
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"
+            self.max_seq_len = min(2046, max_seq_len)
 
     def _ensure_text_limit(self, text: str) -> str:
         """

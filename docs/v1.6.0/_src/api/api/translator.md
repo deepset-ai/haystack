@@ -126,4 +126,3 @@ Run the actual translation. You can supply a single query, a list of queries or 
 - `queries`: Single query or list of queries.
 - `documents`: List of documents or list of lists of documets.
 - `batch_size`: Not applicable.
-

@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 import os
 import re
+from functools import wraps
 
 import requests_cache
 import responses
@@ -23,7 +24,7 @@ import psutil
 import pytest
 import requests
 
-from haystack import Answer, BaseComponent
+from haystack import Answer, BaseComponent, __version__ as haystack_version
 from haystack.document_stores import (
     BaseDocumentStore,
     InMemoryDocumentStore,
@@ -105,6 +106,36 @@ posthog.disabled = True
 # Cache requests (e.g. huggingface model) to circumvent load protection
 # See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
+
+
+def fail_at_version(version_major, version_minor):
+    """
+    Reminder to remove deprecated features.
+
+    ```python
+    from ..conftest import fail_at_version
+
+    @fail_at_version(1, 10)  # Will fail once Haystack version is greater than or equal to 1.10
+    def test_test():
+        assert True
+    ```
+    """
+
+    def decorator(function):
+        current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
+
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            if current_version[0] > version_major or (
+                current_version[0] == version_major and current_version[1] >= version_minor
+            ):
+                pytest.fail(reason=f"This feature is marked for removal in v{version_major}.{version_minor}")
+            return_value = function(*args, **kwargs)
+            return return_value
+
+        return wrapper
+
+    return decorator
 
 
 def pytest_collection_modifyitems(config, items):
@@ -263,14 +294,11 @@ class MockSeq2SegGenerator(BaseGenerator):
 
 class MockSummarizer(BaseSummarizer):
     def predict_batch(
-        self,
-        documents: Union[List[Document], List[List[Document]]],
-        generate_single_summary: Optional[bool] = None,
-        batch_size: Optional[int] = None,
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 
-    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+    def predict(self, documents: List[Document]) -> List[Document]:
         pass
 
 

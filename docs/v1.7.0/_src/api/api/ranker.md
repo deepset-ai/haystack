@@ -169,4 +169,3 @@ Returns lists of Documents sorted by (desc.) similarity with the corresponding q
 - `documents`: Single list of Documents or list of lists of Documents to be reranked.
 - `top_k`: The maximum number of documents to return per Document list.
 - `batch_size`: Number of Documents to process at a time.
-

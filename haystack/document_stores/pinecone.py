@@ -511,6 +511,12 @@ class PineconeDocumentStore(BaseDocumentStore):
             for _ in range(0, document_count, batch_size):
                 document_batch = list(islice(documents, batch_size))
                 embeddings = retriever.embed_documents(document_batch)
+                if embeddings.size == 0:
+                    # Skip batch if there are no embeddings. Otherwise, incorrect embedding shape will be inferred and
+                    # Pinecone APi will return a "No vectors provided" Bad Request Error
+                    progress_bar.set_description_str("Documents Processed")
+                    progress_bar.update(batch_size)
+                    continue
                 self._validate_embeddings_shape(
                     embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
                 )

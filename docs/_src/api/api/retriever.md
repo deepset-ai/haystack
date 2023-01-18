@@ -946,7 +946,7 @@ def train(data_dir: str,
           weight_decay: float = 0.0,
           num_warmup_steps: int = 100,
           grad_acc_steps: int = 1,
-          use_amp: str = None,
+          use_amp: bool = False,
           optimizer_name: str = "AdamW",
           optimizer_correct_bias: bool = True,
           save_dir: str = "../saved_models/dpr",
@@ -984,12 +984,10 @@ you should use the file_system strategy.
 - `epsilon`: epsilon parameter of optimizer
 - `weight_decay`: weight decay parameter of optimizer
 - `grad_acc_steps`: number of steps to accumulate gradient over before back-propagation is done
-- `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
-"O0" (FP32)
-"O1" (Mixed Precision)
-"O2" (Almost FP16)
-"O3" (Pure FP16).
-For more information, refer to: https://nvidia.github.io/apex/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `optimizer_name`: what optimizer to use (default: AdamW)
 - `num_warmup_steps`: number of warmup steps
 - `optimizer_correct_bias`: Whether to correct bias in optimizer
@@ -1305,7 +1303,7 @@ def train(data_dir: str,
           weight_decay: float = 0.0,
           num_warmup_steps: int = 100,
           grad_acc_steps: int = 1,
-          use_amp: str = None,
+          use_amp: bool = False,
           optimizer_name: str = "AdamW",
           optimizer_correct_bias: bool = True,
           save_dir: str = "../saved_models/mm_retrieval",
@@ -1345,12 +1343,10 @@ very similar (high score by BM25) to query but do not contain the answer)-
 - `epsilon`: Epsilon parameter of optimizer.
 - `weight_decay`: Weight decay parameter of optimizer.
 - `grad_acc_steps`: Number of steps to accumulate gradient over before back-propagation is done.
-- `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
-"O0" (FP32)
-"O1" (Mixed Precision)
-"O2" (Almost FP16)
-"O3" (Pure FP16).
-For more information, refer to: https://nvidia.github.io/apex/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `optimizer_name`: What optimizer to use (default: TransformersAdamW).
 - `num_warmup_steps`: Number of warmup steps.
 - `optimizer_correct_bias`: Whether to correct bias in optimizer.
@@ -2128,4 +2124,3 @@ Generate formatted dictionary output with text answer and additional info
 **Arguments**:
 
 - `result`: The result of a SPARQL query as retrieved from the knowledge graph
-

@@ -194,4 +194,3 @@ This is a wrapper class to create a Pytorch dataset object from the data attribu
 
 - `model_inputs`: The data attribute of the output from a HuggingFace tokenizer which is needed to evaluate the
 forward pass of a token classification model.
-

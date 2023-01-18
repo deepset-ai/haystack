@@ -150,4 +150,3 @@ https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrai
 **Returns**:
 
 top_1_sas, top_k_sas, pred_label_matrix
-

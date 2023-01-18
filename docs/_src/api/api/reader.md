@@ -149,7 +149,7 @@ def train(data_dir: str,
           evaluate_every: int = 300,
           save_dir: Optional[str] = None,
           num_processes: Optional[int] = None,
-          use_amp: str = None,
+          use_amp: bool = False,
           checkpoint_root_dir: Path = Path("model_checkpoints"),
           checkpoint_every: Optional[int] = None,
           checkpoints_to_keep: int = 3,
@@ -193,14 +193,10 @@ Note that the evaluation report is logged at evaluation level INFO while Haystac
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
-- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-Available options:
-None (Don't use AMP)
-"O0" (Normal FP32 training)
-"O1" (Mixed Precision => Recommended)
-"O2" (Almost FP16)
-"O3" (Pure FP16).
-See details on: https://nvidia.github.io/apex/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `checkpoint_root_dir`: The Path of a directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: Save a train checkpoint after this many steps of training.
@@ -237,7 +233,7 @@ def distil_prediction_layer_from(
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
-        use_amp: str = None,
+        use_amp: bool = False,
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
@@ -284,7 +280,7 @@ A list containing torch device objects and/or strings is supported (For example
 [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
 parameter is not used and a single cpu device is used for inference.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
-- `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
+- `teacher_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
 - `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
@@ -296,14 +292,10 @@ Options for different schedules are available in FARM.
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
-- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-Available options:
-None (Don't use AMP)
-"O0" (Normal FP32 training)
-"O1" (Mixed Precision => Recommended)
-"O2" (Almost FP16)
-"O3" (Pure FP16).
-See details on: https://nvidia.github.io/apex/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
@@ -347,7 +339,7 @@ def distil_intermediate_layers_from(
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
-        use_amp: str = None,
+        use_amp: bool = False,
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
@@ -389,8 +381,7 @@ that gets split off from training data for eval.
 A list containing torch device objects and/or strings is supported (For example
 [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
 parameter is not used and a single cpu device is used for inference.
-- `student_batch_size`: Number of samples the student model receives in one batch for training
-- `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
+- `batch_size`: Number of samples the student model and teacher model receives in one batch for training
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
 - `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
@@ -402,21 +393,16 @@ Options for different schedules are available in FARM.
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
-- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-Available options:
-None (Don't use AMP)
-"O0" (Normal FP32 training)
-"O1" (Mixed Precision => Recommended)
-"O2" (Almost FP16)
-"O3" (Pure FP16).
-See details on: https://nvidia.github.io/apex/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
 - `checkpoints_to_keep`: maximum number of train checkpoints to save.
 - `caching`: whether or not to use caching for preprocessed dataset and teacher logits
 - `cache_path`: Path to cache the preprocessed dataset and teacher logits
-- `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
 - `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
@@ -663,7 +649,7 @@ Example:
 **Arguments**:
 
 - `question`: Question string
-- `documents`: List of documents as string type
+- `texts`: A list of Document texts as a string type
 - `top_k`: The maximum number of answers to return
 
 **Returns**:
@@ -1124,4 +1110,3 @@ of content_type ``'table'``.
 **Returns**:
 
 Dict containing query and answers
-
