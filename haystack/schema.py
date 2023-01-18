@@ -1415,32 +1415,69 @@ class EvaluationResult:
 
         for multilabel_id in documents["multilabel_id"].unique():
             query_df = documents[documents["multilabel_id"] == multilabel_id]
-            gold_ids = list(query_df["gold_document_ids"].iloc[0])
-            retrieved = len(query_df)
 
+            # Note: Metrics are always calculated on document_ids.
+            # For some document relevance criteria (e.g. context), the gold_document_ids are not enough or not useful at all.
+            # So, we have to adjust the relevant ids according to the document_relevance_criterion.
             relevance_criterion_col = f"{document_relevance_criterion.replace('document_id', 'gold_id')}_match"
-            relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
-            num_relevants = len(set(gold_ids + relevance_criterion_ids))
-            num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()
-            rank_retrieved_relevants = query_df[query_df[relevance_criterion_col] == 1]["rank"].values
-            avp_retrieved_relevants = [
-                query_df[relevance_criterion_col].values[: int(rank)].sum() / rank for rank in rank_retrieved_relevants
-            ]
+            relevant_rows = query_df[query_df[relevance_criterion_col] == 1]
 
-            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
-            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
-            precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
-            rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
-            dcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
-                if len(rank_retrieved_relevants) > 0
-                else 0.0
-            )
-            idcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)]) if num_relevants > 0 else 1.0
-            )
-            ndcg = dcg / idcg
+            relevance_criterion_ids = list(relevant_rows["document_id"].values)
+            if "document_id" in document_relevance_criterion:
+                # If it's a document_relevance_criterion that includes document_ids, use both, gold_document_ids and relevance_criterion_ids.
+                # If 'document_id' is used as document_relevance_criterion, relevance_criterion_ids is a subset of gold_document_ids.
+                gold_document_ids = list(query_df["gold_document_ids"].iloc[0])
+                num_relevants = len(set(gold_document_ids + relevance_criterion_ids))
+            else:
+                # Omit gold_document_ids if it is not used in the document_relevance_criterion
+                num_relevants = len(set(relevance_criterion_ids))
+                # num_relevants can be 0 even though there are relevant documents in the corpus, just because no relevant document has been retrieved.
+                # We fix this here by adding 1 if we know that this is not a no_answer query.
+                is_no_answer_query = query_df["gold_document_ids"].iloc[0] == []
+                if not is_no_answer_query:
+                    num_relevants += 1
+
+            num_retrieved = len(
+                query_df["document_id"]
+            )  # cannot be 0 as we have at least one (empty) document in the query_df
+            num_retrieved_relevants = relevant_rows[relevance_criterion_col].values.sum()
+            rank_retrieved_relevants = relevant_rows["rank"].values
+
+            if num_relevants == 0:
+                # For no_answer queries, we set all metrics to 1.0, to indicate that the retriever cannot improve the pipeline.
+                # This behavior is different from pytrec_eval, which sets the metrics to 0.0 if there is no relevant document in the evalset.
+                rr = 1.0
+                avg_precision = 1.0
+                recall_multi_hit = 1.0
+                recall_single_hit = 1.0
+                precision = 1.0
+                ndcg = 1.0
+            elif num_retrieved_relevants == 0:
+                # Set all metrics to 0.0 if no relevant document has been retrieved to avoid undefined metrics.
+                rr = 0.0
+                avg_precision = 0.0
+                recall_multi_hit = 0.0
+                recall_single_hit = 0.0
+                precision = 0.0
+                ndcg = 0.0
+            else:
+                # The previous checks ensure:
+                # - `num_retrieved_relevants` > 0
+                # - `num_relevants` > 0
+                # - `num_retrieved` > 0  (`num_retrieved` is always >= `num_retrieved_relevants`)
+                # - `len(rank_retrieved_relevants)` > 0 (`len(rank_retrieved_relevants)` is always == `num_retrieved_relevants`)
+                avp_retrieved_relevants = [
+                    query_df[relevance_criterion_col].values[: int(rank)].sum() / rank
+                    for rank in rank_retrieved_relevants
+                ]
+                avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
+                recall_multi_hit = num_retrieved_relevants / num_relevants
+                recall_single_hit = 1.0
+                precision = num_retrieved_relevants / num_retrieved
+                rr = 1.0 / rank_retrieved_relevants.min()
+                dcg = np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
+                idcg = np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)])
+                ndcg = dcg / idcg
 
             metrics.append(
                 {
