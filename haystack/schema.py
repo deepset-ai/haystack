@@ -6,7 +6,7 @@ import inspect
 from typing import Any, Optional, Dict, List, Union
 
 try:
-    from typing import Literal  # type: ignore
+    from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
