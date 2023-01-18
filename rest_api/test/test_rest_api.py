@@ -33,7 +33,7 @@ def test_single_worker_warning_for_indexing_pipelines(caplog):
     assert "used with 1 worker" in caplog.text
 
 
-def test_check_error_for_pipeline_not_found(caplog):
+def test_check_error_for_pipeline_not_found():
 
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
     p, _ = _load_pipeline(yaml_pipeline_path, "ThisPipelineDoesntExist")
