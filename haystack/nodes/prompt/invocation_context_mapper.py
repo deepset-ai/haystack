@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Any, Tuple, Union
 
 from haystack.nodes.base import BaseComponent
-from haystack.schema import Document, MultiLabel, Answer
+from haystack.schema import Document, MultiLabel
 
 
 def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
