@@ -10,8 +10,14 @@ from haystack.schema import Document
 from haystack.nodes.image_to_text.base import BaseImageToText
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.torch_utils import ListDataset
+from haystack.errors import ImageToTextError
 
 logger = logging.getLogger(__name__)
+
+
+# supported models classes should be extended when HF image-to-text pipeline willl support more classes
+# see https://github.com/huggingface/transformers/issues/21110
+SUPPORTED_MODELS_CLASSES = ["VisionEncoderDecoderModel"]
 
 
 class TransformersImageToText(BaseImageToText):
@@ -99,6 +105,15 @@ class TransformersImageToText(BaseImageToText):
             device=self.devices[0],
             use_auth_token=use_auth_token,
         )
+
+        model_class_name = self.model.model.__class__.__name__
+        if model_class_name not in SUPPORTED_MODELS_CLASSES:
+            raise ValueError(
+                f"The model of class '{model_class_name}' is not supported for ImageToText."
+                f"The supported classes are: {SUPPORTED_MODELS_CLASSES}."
+                f"You can find the availaible models here: https://huggingface.co/models?pipeline_tag=image-to-text."
+            )
+
         self.generation_kwargs = generation_kwargs
         self.batch_size = batch_size
         self.progress_bar = progress_bar
@@ -119,19 +134,23 @@ class TransformersImageToText(BaseImageToText):
         batch_size = batch_size or self.batch_size
 
         if len(image_file_paths) == 0:
-            raise AttributeError("ImageToText needs at least one filepath to produce a caption.")
+            raise ImageToTextError("ImageToText needs at least one filepath to produce a caption.")
 
         images_dataset = ListDataset(image_file_paths)
 
         captions: List[str] = []
 
-        for captions_batch in tqdm(
-            self.model(images_dataset, generate_kwargs=generation_kwargs, batch_size=batch_size),
-            disable=not self.progress_bar,
-            total=len(images_dataset),
-            desc="Generating captions",
-        ):
-            captions.append("".join([el["generated_text"] for el in captions_batch]).strip())
+        try:
+            for captions_batch in tqdm(
+                self.model(images_dataset, generate_kwargs=generation_kwargs, batch_size=batch_size),
+                disable=not self.progress_bar,
+                total=len(images_dataset),
+                desc="Generating captions",
+            ):
+                captions.append("".join([el["generated_text"] for el in captions_batch]).strip())
+
+        except Exception as exc:
+            raise ImageToTextError(str(exc)) from exc
 
         result: List[Document] = []
         for caption, image_file_path in zip(captions, image_file_paths):
