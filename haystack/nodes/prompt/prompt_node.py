@@ -14,6 +14,7 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -420,6 +421,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
+    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def invoke(self, *args, **kwargs):
         """
         Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
