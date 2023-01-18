@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Any, Tuple, Union
 
 from haystack.nodes.base import BaseComponent
-from haystack.schema import Document, MultiLabel
+from haystack.schema import Document, MultiLabel, Answer
 
 
 def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
@@ -25,10 +25,10 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
     Example:
 
     ```python
-    assert join_strings([strings="first", "second", "third"], separator=" - ") == (["first - second - third"], )
+    assert join_strings(strings=["first", "second", "third"], separator=" - ") == (["first - second - third"], )
     ```
     """
-    return ([delimiter.join([d.content for d in strings])],)
+    return ([delimiter.join(strings)],)
 
 
 def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Any]]:
@@ -54,8 +54,8 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
     return ([Document(content=delimiter.join([d.content for d in documents]))],)
 
 
-def convert_to_docs(
-    strings: List[str], metadata: Optional[Union[List[str], str]] = None, id_hash_keys: Optional[List[str]] = None
+def convert_to_documents(
+    strings: List[str], meta: Optional[Union[List[str], str]] = None, id_hash_keys: Optional[List[str]] = None
 ) -> Tuple[List[Any]]:
     """
     Transforms a list of strings into a list of Documents. If the metadata is given as a single
@@ -66,9 +66,9 @@ def convert_to_docs(
     Example:
 
     ```python
-    assert join_strings(
+    assert convert_to_documents(
             strings=["first", "second", "third"],
-            metadata=[{"position": i} for i in range(3)],
+            meta=[{"position": i} for i in range(3)],
             id_hash_keys=['content', 'meta]
         ) == [
             Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
@@ -77,26 +77,43 @@ def convert_to_docs(
         ]
     ```
     """
-
-    if isinstance(metadata, dict):
-        all_metadata = [metadata]
-    elif isinstance(metadata, list):
-        if len(metadata) != len(strings):
+    if isinstance(meta, dict):
+        all_metadata = [meta] * len(strings)
+    elif isinstance(meta, list):
+        if len(meta) != len(strings):
             raise ValueError(
-                f"Not enough metadata dictionaries. convert_to_docs received {len(strings)} and {len(metadata)} metadata dictionaries."
+                f"Not enough metadata dictionaries. convert_to_documents received {len(strings)} and {len(meta)} metadata dictionaries."
             )
-        all_metadata = metadata
+        all_metadata = meta
+    else:
+        all_metadata = [None] * len(strings)
 
-    return (
-        [Document(content=string, meta=meta, id_hash_keys=id_hash_keys) for string, meta in zip(strings, all_metadata)],
-    )
+    return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
+
+
+def convert_to_answers(strings: List[str]) -> Tuple[List[Any]]:
+    """
+    Transforms a list of strings into a list of Answers.
+
+    Example:
+
+    ```python
+    assert convert_to_answers(strings=["first", "second", "third"]) == [
+            Answer(answer="first"),
+            Answer(answer="second"),
+            Answer(answer="third"),
+        ]
+    ```
+    """
+    return ([Answer(answer=string) for string in strings],)
 
 
 REGISTERED_FUNCTIONS = {
     "expand_value_to_list": expand_value_to_list,
     "join_strings": join_strings,
     "join_documents": join_documents,
-    "convert_to_docs": convert_to_docs,
+    "convert_to_documents": convert_to_documents,
+    "convert_to_answers": convert_to_answers,
 }
 
 
@@ -130,40 +147,103 @@ class InvocationContextMapper(BaseComponent):
 
     Multiple InvocationContextMapper components can be used in a pipeline to modify the invocation context as needed.
 
-    - len: parameters are target:Any; returns int; built-in len function returning the length of the input variable
-    - expand: parameters are [expand_target:Any, size:int]; returns List[Any]; it returns a list of specified size
-        for the input variable
-    - concat: parameters are [texts:List[str], delimiter:str]; returns str, concatenates texts with the specified
-        delimiter
-    - concat_docs: parameters are [docs: List[Document]], delimiter:str]; returns str; concatenates the docs with the
-        specified delimiter and returns a string
-    - convert_to_docs: parameters are texts: List[str]; returns List[Document]; converts the input list of strings
-        to a list of Documents
+    `InvocationContextMapper` supports the current functions:
+
+    - `expand_value_to_list`
+    - `join_strings`
+    - `join_documents`
+    - `convert_to_documents`
+    - `convert_to_answers`
+
+    See their docstrings for details about their inputs, outputs and other parameters.
     """
 
     outgoing_edges = 1
 
-    def __init__(self, inputs: Dict[str, str], outputs: List[str], func: str, params: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        func: str,
+        outputs: List[str],
+        inputs: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initializes a InvocationContextMapper component.
 
-        :param inputs: A dictionary of input parameters for the InvocationContextMapper component. These directives
-        are a dictionary version of YAML directives that specify the functions to invoke on the invocation context.
+        Some examples:
 
-        For example, in the Python snippet below:
-        ```python
-            mapper = InvocationContextMapper(inputs={"query": {"output": "questions"}})
-            pipeline = Pipeline()
-            pipeline.add_node(component=InvocationContextMapper, name="mapper", inputs=["Query"])
-            ...
+        ```yaml
+        - name: mapper
+          type: InvocationContextMapper
+          params:
+          func: expand_value_to_list
+          inputs:
+            value: query
+            target_list: documents
+          outputs:
+            - questions
         ```
-        InvocationContextMapper component is initialized with a directive to rename the invocation context variable query to questions.
+        This node will take the content of `query` and create a list that contains the value of `query` `len(documents)` times.
+        This list will be stored in the invocation context unders the key `questions`
+
+        ```yaml
+        - name: mapper
+          type: InvocationContextMapper
+          params:
+          func: join_documents
+          inputs:
+            value: documents
+          params:
+            delimiter: ' - '
+          outputs:
+            - documents
+        ```
+        This node will overwrite the content of `documents` in the invocation context with a list containing a single Document
+        which content is the concatenation of all the original Documents. So if `documents` contained
+        `[Document("A"), Document("B"), Document("C")]`, this mapper will overwrite it with `[Document("A - B - C")]`
+
+        ```yaml
+        - name: mapper
+          type: InvocationContextMapper
+          params:
+          func: join_strings
+          params:
+            strings: ['a', 'b', 'c']
+            delimiter: ' . '
+          outputs:
+            - single_string
+
+        - name: mapper
+          type: InvocationContextMapper
+          params:
+          func: convert_to_document
+          inputs:
+            strings: single_string
+            metadata:
+              name: 'my_file.txt'
+          outputs:
+            - single_document
+        ```
+        These two nodes, executed one after the other, will first add a key in the invocation context called `single_string`
+        that contains `a . b . c`, and then create another key called `single_document` that contains instead
+        `[Document(content="a . b . c", metadata={'name': 'my_file.txt'})]`
+
+        :param func: the function to apply
+        :param inputs: maps the function's input kwargs to the key-value pairs in the invocation context.
+            For example `expand_value_to_list` expects `value` and `target_list` parameters, so `inputs` might contain:
+            `{'value': 'query', 'target_list': 'documents'}`. It does not need to contain all keyword args, see `params`.
+        :param params: maps the function's input kwargs to some fixed values. For example `expand_value_to_list` expects
+            `value` and `target_list` parameters, so `params` might contain
+            `{'value': 'A', 'target_list': [1, 1, 1, 1]}` and the node will output `["A", "A", "A", "A"]`.
+            It does not need to contain all keyword args, see `inputs`.
+        :param outputs: under which key to store the outputs in the invocation context. The lenght of the outputs must match
+            the number of outputs produced by the function invoked.
         """
         super().__init__()
-        self.inputs = inputs
-        self.params = params or {}
-        self.outputs = outputs
         self.function = REGISTERED_FUNCTIONS[func]
+        self.outputs = outputs
+        self.inputs = inputs or {}
+        self.params = params or {}
 
     def run(
         self,
