@@ -421,55 +421,6 @@ def test_convert_to_documents_meta_and_hashkeys_yaml(tmp_path):
 
 
 #
-# convert_to_answers
-#
-
-
-def test_convert_to_answers():
-    mapper = InvocationContextMapper(func="convert_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
-    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
-    assert results["invocation_context"]["answers"] == [
-        Answer(answer="first"),
-        Answer(answer="second"),
-        Answer(answer="third"),
-    ]
-
-
-def test_convert_to_answers_yaml(tmp_path):
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(
-            f"""
-            version: ignore
-            components:
-            - name: mapper
-              type: InvocationContextMapper
-              params:
-                func: convert_to_answers
-                params:
-                  strings:
-                    - first
-                    - second
-                    - third
-                outputs:
-                  - answers
-            pipelines:
-              - name: query
-                nodes:
-                  - name: mapper
-                    inputs:
-                      - Query
-        """
-        )
-    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    result = pipeline.run()
-    assert result["invocation_context"]["answers"] == [
-        Answer(answer="first"),
-        Answer(answer="second"),
-        Answer(answer="third"),
-    ]
-
-
-#
 # Chaining and real-world usage
 #
 
@@ -587,11 +538,11 @@ def test_chain_mappers_yaml_2(tmp_path):
             - name: mapper_4
               type: InvocationContextMapper
               params:
-                func: convert_to_answers
+                func: convert_to_documents
                 inputs:
                   strings: many_greetings
                 outputs:
-                  - answer_with_greetings
+                  - documents_with_greetings
 
             pipelines:
               - name: query
@@ -614,7 +565,7 @@ def test_chain_mappers_yaml_2(tmp_path):
 
     results = pipe.run()
 
-    assert results["invocation_context"]["answer_with_greetings"] == [Answer(answer="hello. hello. hello")]
+    assert results["invocation_context"]["documents_with_greetings"] == [Document(content="hello. hello. hello")]
 
 
 def test_with_prompt_node(tmp_path):

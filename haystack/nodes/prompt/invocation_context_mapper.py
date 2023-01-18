@@ -91,29 +91,11 @@ def convert_to_documents(
     return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
 
 
-def convert_to_answers(strings: List[str]) -> Tuple[List[Any]]:
-    """
-    Transforms a list of strings into a list of Answers.
-
-    Example:
-
-    ```python
-    assert convert_to_answers(strings=["first", "second", "third"]) == [
-            Answer(answer="first"),
-            Answer(answer="second"),
-            Answer(answer="third"),
-        ]
-    ```
-    """
-    return ([Answer(answer=string) for string in strings],)
-
-
 REGISTERED_FUNCTIONS = {
     "expand_value_to_list": expand_value_to_list,
     "join_strings": join_strings,
     "join_documents": join_documents,
     "convert_to_documents": convert_to_documents,
-    "convert_to_answers": convert_to_answers,
 }
 
 
@@ -153,7 +135,6 @@ class InvocationContextMapper(BaseComponent):
     - `join_strings`
     - `join_documents`
     - `convert_to_documents`
-    - `convert_to_answers`
 
     See their docstrings for details about their inputs, outputs and other parameters.
     """
