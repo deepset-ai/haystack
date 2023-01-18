@@ -101,7 +101,7 @@ class BaseAdaptiveModel:
                 kwargs["preds"] = None
             head = self.prediction_heads[0]
             logits_for_head = logits[0]
-            preds = head.formatted_preds(logits=logits_for_head, **kwargs)
+            preds = head.formatted_preds(logits=logits_for_head, **kwargs)  # type: ignore [operator]
             # TODO This is very messy - we need better definition of what the output should look like
             if type(preds) == list:
                 preds_final += preds
@@ -361,7 +361,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 prediction_heads=[ph],
                 embeds_dropout_prob=0.1,
                 lm_output_types="per_token",
-                device=device,
+                device=device,  # type: ignore [arg-type]
             )
         elif task_type == "embeddings":
             adaptive_model = cls(
@@ -369,7 +369,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 prediction_heads=[],
                 embeds_dropout_prob=0.1,
                 lm_output_types=["per_token", "per_sequence"],
-                device=device,
+                device=device,  # type: ignore [arg-type]
             )
 
         if processor:
@@ -586,7 +586,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         Verifies that the model fits to the tokenizer vocabulary.
         They could diverge in case of custom vocabulary added via tokenizer.add_tokens()
         """
-        model_vocab_len = self.language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model_vocab_len = self.language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size} doesn't match with model {model_vocab_len}. "
@@ -597,7 +597,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         for head in self.prediction_heads:
             if head.model_type == "language_modelling":
-                ph_decoder_len = head.decoder.weight.shape[0]
+                ph_decoder_len = head.decoder.weight.shape[0]  # type: ignore [union-attr,index]
                 assert vocab_size == ph_decoder_len, msg
 
     def get_language(self):

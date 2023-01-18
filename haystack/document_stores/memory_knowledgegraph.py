@@ -24,7 +24,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
         """
         super().__init__()
 
-        self.indexes: Dict[str, Graph] = defaultdict(dict)
+        self.indexes: Dict[str, Graph] = defaultdict(dict)  # type: ignore [arg-type]
         self.index: str = index
 
     def create_index(self, index: Optional[str] = None):
