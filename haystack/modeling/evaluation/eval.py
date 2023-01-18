@@ -87,7 +87,7 @@ class Evaluator:
                         output_attentions=batch.get("output_attentions", False),
                     )
                 elif isinstance(module, BiAdaptiveModel):
-                    logits = model.forward(
+                    logits = model.forward(  # type: ignore [call-arg]   # type: ignore [call-arg]
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
                         query_attention_mask=batch.get("query_attention_mask", None),
@@ -139,7 +139,7 @@ class Evaluator:
                     passage_start_t=passage_start_t_all[head_num],
                     ids=head_ids,
                 )
-            result = {"loss": loss_all[head_num] / len(self.data_loader.dataset), "task_name": head.task_name}
+            result = {"loss": loss_all[head_num] / len(self.data_loader.dataset), "task_name": head.task_name}  # type: ignore [arg-type]
             result.update(compute_metrics(metric=head.metric, preds=preds_all[head_num], labels=label_all[head_num]))
             # Select type of report depending on prediction head output type
             if self.report:

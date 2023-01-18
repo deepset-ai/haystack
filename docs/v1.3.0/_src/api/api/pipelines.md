@@ -422,9 +422,9 @@ Runs the pipeline, one node at a time.
 
 - `query`: The search query (for query pipelines only)
 - `file_paths`: The files to index (for indexing pipelines only)
-- `labels`: 
-- `documents`: 
-- `meta`: 
+- `labels`:
+- `documents`:
+- `meta`:
 - `params`: Dictionary of parameters to be dispatched to the nodes.
 If you want to pass a param to all nodes, you can just use: {"top_k":10}
 If you want to pass it to targeted nodes, you can do:
@@ -1404,4 +1404,3 @@ def run(document_ids: List[str], top_k: int = 5)
 
 - `document_ids`: document ids
 - `top_k`: How many documents id to return against single document
-

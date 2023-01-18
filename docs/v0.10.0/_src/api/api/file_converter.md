@@ -337,4 +337,3 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
                         not one of the valid languages, then it might likely be encoding error resulting
                         in garbled text.
 - `encoding`: Select the file encoding (default is `utf-8`)
-

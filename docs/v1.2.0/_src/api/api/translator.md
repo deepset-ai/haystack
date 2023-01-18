@@ -110,4 +110,3 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 - `query`: The query string to translate
 - `documents`: The documents to translate
 - `dict_key`: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
-

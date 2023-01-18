@@ -124,10 +124,10 @@ class LanguageModel(nn.Module, ABC):
         Save the configuration of the language model in Haystack format.
         """
         save_filename = Path(save_dir) / "language_model_config.json"
-        setattr(self.model.config, "name", self.name)
-        setattr(self.model.config, "language", self.language)
+        setattr(self.model.config, "name", self.name)  # type: ignore [union-attr]
+        setattr(self.model.config, "language", self.language)  # type: ignore [union-attr]
 
-        string = self.model.config.to_json_string()
+        string = self.model.config.to_json_string()  # type: ignore [union-attr,operator]
         with open(save_filename, "w") as file:
             file.write(string)
 
@@ -143,7 +143,7 @@ class LanguageModel(nn.Module, ABC):
         model_to_save = self.model.module if hasattr(self.model, "module") else self.model  # Only save the model itself
 
         if not state_dict:
-            state_dict = model_to_save.state_dict()
+            state_dict = model_to_save.state_dict()  # type: ignore [union-attr]
         torch.save(state_dict, save_name)
         self.save_config(save_dir)
 
@@ -191,11 +191,11 @@ class LanguageModel(nn.Module, ABC):
 
         elif self.extraction_strategy == "reduce_mean":
             vecs = self._pool_tokens(
-                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token
+                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token  # type: ignore [arg-type]   # type: ignore [arg-type]
             )
         elif self.extraction_strategy == "reduce_max":
             vecs = self._pool_tokens(
-                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token
+                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token  # type: ignore [arg-type]   # type: ignore [arg-type]
             )
         elif self.extraction_strategy == "cls_token":
             vecs = sequence_output[:, 0, :].cpu().numpy()
@@ -300,7 +300,7 @@ class HFLanguageModel(LanguageModel):
             model_emb_size = self.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
             assert vocab_size == model_emb_size
 
-    def forward(
+    def forward(  # type: ignore [override]
         self,
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
@@ -337,9 +337,9 @@ class HFLanguageModel(LanguageModel):
         if attention_mask is not None:
             params["attention_mask"] = attention_mask
         if output_hidden_states:
-            params["output_hidden_states"] = output_hidden_states
+            params["output_hidden_states"] = output_hidden_states  # type: ignore [assignment]
         if output_attentions:
-            params["output_attentions"] = output_attentions
+            params["output_attentions"] = output_attentions  # type: ignore [assignment]
 
         return self.model(**params, return_dict=return_dict)
 
@@ -424,7 +424,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         """
         output_tuple = super().forward(
             input_ids=input_ids,
-            segment_ids=segment_ids,
+            segment_ids=segment_ids,  # type: ignore [arg-type]
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,

@@ -366,4 +366,3 @@ prediction head. Each dictionary contains the metrics and reports generated duri
 
 A tuple (stopprocessing, savemodel, eval_value) indicating if processing should be stopped
 and if the current model should get saved and the evaluation value used.
-

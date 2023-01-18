@@ -299,10 +299,10 @@ def optimize_model(
     if distributed:
         # for some models DistributedDataParallel might complain about parameters
         # not contributing to loss. find_used_parameters remedies that.
-        model = WrappedDDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+        model = WrappedDDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)  # type: ignore [assignment]
 
     elif torch.cuda.device_count() > 1 and device.type == "cuda":
-        model = WrappedDataParallel(model) if not isinstance(model, DataParallel) else WrappedDataParallel(model.module)
+        model = WrappedDataParallel(model) if not isinstance(model, DataParallel) else WrappedDataParallel(model.module)  # type: ignore [assignment]
         logger.info("Multi-GPU Training via DataParallel")
 
     return model, optimizer
