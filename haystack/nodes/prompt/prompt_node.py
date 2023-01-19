@@ -211,10 +211,10 @@ class StopWordsCriteria(StoppingCriteria):
     Stops text generation if any one of the stop words is generated.
     """
 
-    def __init__(self, model_name_or_path: str, stops_words: List[str]):
+    def __init__(self, model_name_or_path: str, stop_words: List[str]):
         super().__init__()
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.stop_words = tokenizer.encode(stops_words, add_special_tokens=False, return_tensors="pt")
+        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
         return any(torch.isin(input_ids[-1], self.stop_words[-1]))
@@ -338,7 +338,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 if key in kwargs
             }
             if stop_words:
-                sw = StopWordsCriteria(model_name_or_path=self.model_name_or_path, stops_words=stop_words)
+                sw = StopWordsCriteria(model_name_or_path=self.model_name_or_path, stop_words=stop_words)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
