@@ -1974,4 +1974,3 @@ def run_batch(document_ids: List[str], top_k: int = 5)
 
 - `document_ids`: document ids
 - `top_k`: How many documents id to return against single document
-

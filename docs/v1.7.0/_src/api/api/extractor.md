@@ -78,4 +78,3 @@ with the following structure:
 ]
 The entities included are only the ones that overlap with
 the answer itself.
-

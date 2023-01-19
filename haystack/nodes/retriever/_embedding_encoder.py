@@ -265,7 +265,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 train_examples.append(InputExample(texts=texts))
 
         logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
-        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
+        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)  # type: ignore [var-annotated,arg-type]
         train_loss = st_loss.loss(self.embedding_model)
 
         # Tune the model
@@ -306,7 +306,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (
@@ -333,7 +333,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (

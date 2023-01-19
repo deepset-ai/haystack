@@ -1014,7 +1014,7 @@ the vector embeddings are indexed in a FAISS Index.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-           In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+           In both cases, the returned values in Document.score are normalized to be in range [0,1]:
            For `dot_product`: expit(np.asarray(raw_score / 100))
            FOr `cosine`: (raw_score + 1) / 2
 - `embedding_field`: Name of field containing an embedding vector.
@@ -1188,7 +1188,7 @@ Save FAISS Index to the specified file.
 - `config_path`: Path to save the initial configuration parameters to.
     Defaults to the same as the file path, save the extension (.json).
     This file contains all the parameters passed to FAISSDocumentStore()
-    at creation time (for example the SQL path, vector_dim, etc), and will be 
+    at creation time (for example the SQL path, vector_dim, etc), and will be
     used by the `load` method to restore the index with the appropriate configuration.
 
 **Returns**:
@@ -1215,7 +1215,7 @@ Note: In order to have a correct mapping from FAISS to SQL,
 - `sql_url`: Connection string to the SQL database that contains your docs and metadata.
     Overrides the value defined in the `faiss_init_params_path` file, if present
 - `index`: Index name to load the FAISS index as. It must match the index name used for
-              when creating the FAISS index. Overrides the value defined in the 
+              when creating the FAISS index. Overrides the value defined in the
               `faiss_init_params_path` file, if present
 
 **Returns**:
@@ -1526,8 +1526,8 @@ Weaviate is a cloud-native, modular, real-time vector search engine built to sca
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
-2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
-3. Has less variety of ANN algorithms, as of now only HNSW.  
+2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
+3. Has less variety of ANN algorithms, as of now only HNSW.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -1779,4 +1779,3 @@ Delete documents in an index. All documents are deleted if no filters are passed
 **Returns**:
 
 None
-

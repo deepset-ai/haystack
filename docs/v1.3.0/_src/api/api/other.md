@@ -117,4 +117,3 @@ well.
 of values to group the `Document`s to. `Document`s whose metadata field is equal to the first value of the
 provided list will be routed to `"output_1"`, `Document`s whose metadata field is equal to the second
 value of the provided list will be routed to `"output_2"`, etc.
-

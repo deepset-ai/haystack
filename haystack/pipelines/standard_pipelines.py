@@ -686,7 +686,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         documents = self.document_store.get_documents_by_id(ids=document_ids, index=index)
         query_embs = [doc.embedding for doc in documents]
         similar_documents = self.document_store.query_by_embedding_batch(
-            query_embs=query_embs, filters=filters, return_embedding=False, top_k=top_k, index=index
+            query_embs=query_embs, filters=filters, return_embedding=False, top_k=top_k, index=index  # type: ignore [arg-type]
         )
 
         self.document_store.return_embedding = False  # type: ignore

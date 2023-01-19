@@ -5115,4 +5115,3 @@ and UTC as default time zone.
 
 This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
 and filter_utils.py.
-

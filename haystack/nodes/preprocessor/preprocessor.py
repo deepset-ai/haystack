@@ -64,6 +64,7 @@ class PreProcessor(BasePreProcessor):
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
+        max_chars_check: int = 10_000,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -97,6 +98,7 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
+        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than max_chars_check in characters after pre-processing will raise a warning.
         """
         super().__init__()
 
@@ -122,6 +124,7 @@ class PreProcessor(BasePreProcessor):
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
+        self.max_chars_check = max_chars_check
 
     def process(
         self,
@@ -171,6 +174,23 @@ class PreProcessor(BasePreProcessor):
 
         return ret
 
+    def _long_documents(self, documents: List[Document], max_chars_check=10_000):
+        """
+        Function that tries to detect unusually long documents.
+
+        NOTE: this function is a heuristic that is in place only because a proper fix that prevents such documents from forming
+        would imply a complete revamp of this class, including better definitions of what the various units (word, sentence, passage) mean exactly.
+        """
+        for document in documents:
+            if len(document.content) > max_chars_check:
+                logger.warning(
+                    "Document %s is %s characters long after preprocessing, where the maximum length should be %s. "
+                    "Something might be wrong with the splitting, check the document affected to prevent issues at query time.",
+                    document.id,
+                    len(document.content),
+                    max_chars_check,
+                )
+
     def _process_single(
         self,
         document: Union[dict, Document],
@@ -218,6 +238,9 @@ class PreProcessor(BasePreProcessor):
             split_respect_sentence_boundary=split_respect_sentence_boundary,
             id_hash_keys=id_hash_keys,
         )
+
+        self._long_documents(split_documents, max_chars_check=self.max_chars_check)
+
         return split_documents
 
     def _process_batch(
@@ -271,7 +294,7 @@ class PreProcessor(BasePreProcessor):
             text, headlines = self._clean_empty_lines(text=text, headlines=headlines)
 
         for substring in remove_substrings:
-            text, headline = self._remove_substring(text=text, substring=substring, headlines=headlines)
+            text, _ = self._remove_substring(text=text, substring=substring, headlines=headlines)
 
         if text != document.content:
             document = deepcopy(document)
@@ -357,7 +380,7 @@ class PreProcessor(BasePreProcessor):
         for page in pages:
             lines = page.splitlines()
             cleaned_lines = []
-            for idx, line in enumerate(lines):
+            for line in lines:
                 old_line_len = len(line)
                 cleaned_line = line.strip()
                 cleaned_line_len = len(cleaned_line)

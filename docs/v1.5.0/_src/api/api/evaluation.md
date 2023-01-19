@@ -145,4 +145,3 @@ Falls back to CPU if no GPU is available.
 **Returns**:
 
 top_1_sas, top_k_sas, pred_label_matrix
-

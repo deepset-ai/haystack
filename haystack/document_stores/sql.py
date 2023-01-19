@@ -85,12 +85,12 @@ class MetaDocumentORM(ORMBase):
 
     document_id = Column(String(100), nullable=False, index=True)
     document_index = Column(String(100), nullable=False, index=True)
-    __table_args__ = (
+    __table_args__ = (  # type: ignore
         ForeignKeyConstraint(
             [document_id, document_index], [DocumentORM.id, DocumentORM.index], ondelete="CASCADE", onupdate="CASCADE"
         ),
         {},
-    )  # type: ignore
+    )
 
 
 class LabelORM(ORMBase):
@@ -118,12 +118,12 @@ class MetaLabelORM(ORMBase):
 
     label_id = Column(String(100), nullable=False, index=True)
     label_index = Column(String(100), nullable=False, index=True)
-    __table_args__ = (
+    __table_args__ = (  # type: ignore
         ForeignKeyConstraint(
             [label_id, label_index], [LabelORM.id, LabelORM.index], ondelete="CASCADE", onupdate="CASCADE"
         ),
         {},
-    )  # type: ignore
+    )
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -752,7 +752,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def chunked_dict(self, dictionary, size):
         it = iter(dictionary)
-        for i in range(0, len(dictionary), size):
+        for _ in range(0, len(dictionary), size):
             yield {k: dictionary[k] for k in itertools.islice(it, size)}
 
     def _column_windows(self, session, column, windowsize):

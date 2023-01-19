@@ -119,7 +119,7 @@ class TextToSpeech:
 
         return file_path
 
-    def text_to_audio_data(self, text: str, _models_output_key: str = "wav") -> np.array:
+    def text_to_audio_data(self, text: str, _models_output_key: str = "wav") -> np.array:  # type: ignore [valid-type]
         """
         Convert an input string into a numpy array representing the audio.
 
@@ -141,7 +141,7 @@ class TextToSpeech:
 
     def compress_audio(
         self,
-        data: np.array,
+        data: np.array,  # type: ignore [valid-type]
         path: Path,
         format: str,
         sample_rate: int,
