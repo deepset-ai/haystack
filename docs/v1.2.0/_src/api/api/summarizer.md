@@ -138,4 +138,3 @@ Important: The summary will depend on the order of the supplied documents!
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
 the original, not summarized text
-

@@ -136,4 +136,3 @@ Documents are updated in place.
 **Returns**:
 
 List of Document enriched with meta information
-

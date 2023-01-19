@@ -129,4 +129,3 @@ These document can for example be retrieved via the Retriever.
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
          the original, not summarized text
-

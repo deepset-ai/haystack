@@ -5,7 +5,7 @@ loaders:
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -24,5 +24,3 @@ renderer:
      add_method_class_prefix: true
      add_member_class_prefix: false
      filename: answer_generator_api.md
-
-

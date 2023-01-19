@@ -206,4 +206,3 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
 ```
 
 Validate if the language of the text is one of valid languages.
-

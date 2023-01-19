@@ -1481,8 +1481,8 @@ Weaviate is a cloud-native, modular, real-time vector search engine built to sca
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
-2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
-3. Has less variety of ANN algorithms, as of now only HNSW.  
+2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
+3. Has less variety of ANN algorithms, as of now only HNSW.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -1716,4 +1716,3 @@ Delete documents in an index. All documents are deleted if no filters are passed
 **Returns**:
 
 None
-

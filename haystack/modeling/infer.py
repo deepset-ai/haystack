@@ -98,12 +98,12 @@ class Inferencer:
                     "Since FARM 0.4.2, you set both when initializing the Inferencer and then call inferencer.inference_from_dicts() instead of inferencer.extract_vectors()"
                 )
             self.model.prediction_heads = torch.nn.ModuleList([])
-            self.model.language_model.extraction_layer = extraction_layer
-            self.model.language_model.extraction_strategy = extraction_strategy
+            self.model.language_model.extraction_layer = extraction_layer  # type: ignore [assignment]
+            self.model.language_model.extraction_strategy = extraction_strategy  # type: ignore [assignment]
 
         # TODO add support for multiple prediction heads
 
-        self.name = name if name != None else f"anonymous-{self.task_type}"
+        self.name = name if name is not None else f"anonymous-{self.task_type}"
         self.return_class_probs = return_class_probs
 
         model.connect_heads_with_processor(processor.tasks, require_labels=False)
@@ -186,9 +186,9 @@ class Inferencer:
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
-        if len(devices) > 1:
-            logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])
+        devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)  # type: ignore [assignment]
+        if devices and len(devices) > 1:
+            logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])  # type: ignore [index]
 
         name = os.path.basename(model_name_or_path)
 
@@ -196,7 +196,7 @@ class Inferencer:
         farm_model_bin = os.path.join(model_name_or_path, "language_model.bin")
         onnx_model = os.path.join(model_name_or_path, "model.onnx")
         if os.path.isfile(farm_model_bin) or os.path.isfile(onnx_model):
-            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
+            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)  # type: ignore [index]
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
@@ -361,7 +361,7 @@ class Inferencer:
         samples = [s for b in baskets for s in b.samples]
 
         data_loader = NamedDataLoader(
-            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore
         preds_all = []
         for i, batch in enumerate(
@@ -395,7 +395,7 @@ class Inferencer:
         :return: list of predictions
         """
         data_loader = NamedDataLoader(
-            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore
         # TODO Sometimes this is the preds of one head, sometimes of two. We need a more advanced stacking operation
         # TODO so that preds of the right shape are passed in to formatted_preds
@@ -454,8 +454,8 @@ class Inferencer:
         """
         logger.warning("Deprecated! Please use Inferencer.inference_from_dicts() instead.")
         self.model.prediction_heads = torch.nn.ModuleList([])
-        self.model.language_model.extraction_layer = extraction_layer
-        self.model.language_model.extraction_strategy = extraction_strategy
+        self.model.language_model.extraction_layer = extraction_layer  # type: ignore [assignment]
+        self.model.language_model.extraction_strategy = extraction_strategy  # type: ignore [assignment]
 
         return self.inference_from_dicts(dicts)
 

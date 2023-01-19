@@ -234,4 +234,3 @@ or similar.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
-

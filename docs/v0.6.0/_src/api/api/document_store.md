@@ -937,6 +937,3 @@ make sure to use the same SQL DB that you used when calling `save()`.
 smaller chunks to reduce memory footprint.
 
 **Returns**:
-
-
-

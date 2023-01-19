@@ -160,7 +160,7 @@ def _is_sentence_transformers_model(pretrained_model_name_or_path: Union[Path, s
 
     # Check if sentence transformers config file is in model hub
     try:
-        hf_hub_download(
+        hf_hub_download(  # type: ignore [call-arg]
             repo_id=str(pretrained_model_name_or_path),
             filename="config_sentence_transformers.json",
             use_auth_token=use_auth_token,

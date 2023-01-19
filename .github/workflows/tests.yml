@@ -78,33 +78,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+      # https://stackoverflow.com/questions/74265821/get-modified-files-in-github-actions
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+    - name: Get changed files
+      id: files
+      uses: tj-actions/changed-files@v34
+
+    - name: Filter changed files
+      id: python-files
+      run: |
+        for file in ${{ steps.files.outputs.all_changed_files }}; do
+          if [[ $file == *.py ]]; then
+            if [[ $file != test/* ]]; then
+              changed_files="$changed_files $file"
+            fi
+          fi
+        done
+        echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: ./.github/actions/python_cache/
       with:
-        # Mypy can't run properly on 3.7 as it misses support for Literal types.
-        # FIXME once we drop support for 3.7, use the cache.
-        python-version: 3.8
-
-    - name: Install dependencies
-      run: |
-        # FIXME installing the packages before running mypy raises
-        # a lot of errors which were never detected before!
-        # pip install .
-        # pip install rest_api/
-        # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-        # Hotfixing by installing type packages explicitly.
-        # Run mypy --install-types haystack locally to ensure the list is still up to date
-        # mypy --install-types --non-interactive .
-        pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+        pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
+      if: steps.python-files.outputs.changed_files
       run: |
-        echo "=== haystack/ ==="
-        mypy haystack
-        echo "=== rest_api/ ==="
-        mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+        mkdir .mypy_cache/
+        mypy ${{ steps.python-files.outputs.changed_files }}
 
     - uses: act10ns/slack@v1
       with:
@@ -115,7 +120,6 @@ jobs:
   pylint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
 
     - name: Checkout
       uses: actions/checkout@v3
