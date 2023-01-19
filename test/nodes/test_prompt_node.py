@@ -1,9 +1,10 @@
 import os
+from typing import Optional, Union, List, Dict, Any, Tuple
 
 import pytest
 import torch
 
-from haystack import Document, Pipeline
+from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 
@@ -442,6 +443,84 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               - name: p2
                 inputs:
                 - p1
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
+    result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
+    response = result["results"][0]
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
+    assert len(result["invocation_context"]) > 0
+
+
+def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_path):
+    # test that we can stick some random node in between prompt nodes and that everything still works
+    # most specifically, we want to ensure that invocation_context is still populated correctly and propagated
+    class InBetweenNode(BaseComponent):
+        outgoing_edges = 1
+
+        def run(
+            self,
+            query: Optional[str] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[MultiLabel] = None,
+            documents: Optional[List[Document]] = None,
+            meta: Optional[dict] = None,
+        ) -> Tuple[Dict, str]:
+            return {}, "output_1"
+
+        def run_batch(
+            self,
+            queries: Optional[Union[str, List[str]]] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+        ):
+            return {}, "output_1"
+
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: in_between
+              type: InBetweenNode
+            - name: pmodel
+              type: PromptModel
+              params:
+                model_name_or_path: google/flan-t5-small
+                model_kwargs:
+                  torch_dtype: torch.bfloat16
+            - name: question_generation_template
+              type: PromptTemplate
+              params:
+                name: question-generation-new
+                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+            - name: p1
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question_generation_template
+                output_variable: questions
+              type: PromptNode
+            - name: p2
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question-answering
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+              - name: in_between
+                inputs:
+                - p1
+              - name: p2
+                inputs:
+                - in_between
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
