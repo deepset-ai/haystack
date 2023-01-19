@@ -35,7 +35,6 @@ from haystack.document_stores import (
     OpenSearchDocumentStore,
     GraphDBKnowledgeGraph,
     FAISSDocumentStore,
-    SQLDocumentStore,
 )
 from haystack.nodes import (
     BaseReader,

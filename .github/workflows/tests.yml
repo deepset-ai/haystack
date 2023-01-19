@@ -93,7 +93,9 @@ jobs:
       run: |
         for file in ${{ steps.files.outputs.all_changed_files }}; do
           if [[ $file == *.py ]]; then
-            changed_files="$changed_files $file"
+            if [[ $file != test/* ]]; then
+              changed_files="$changed_files $file"
+            fi
           fi
         done
         echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
@@ -104,6 +106,7 @@ jobs:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
+      if: steps.python-files.outputs.changed_files
       run: |
         mkdir .mypy_cache/
         mypy ${{ steps.python-files.outputs.changed_files }}
