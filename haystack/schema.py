@@ -669,7 +669,7 @@ class MultiLabel:
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
         if drop_no_answers:
-            labels = [l for l in labels if l.no_answer == False]
+            labels = [l for l in labels if l.no_answer is False]
 
         self._labels = labels
         self._query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
