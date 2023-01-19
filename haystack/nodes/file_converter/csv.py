@@ -38,7 +38,7 @@ class CsvTextConverter(BaseConverter):
         if not isinstance(file_path, list):
             file_path = [file_path]
 
-        docs = []
+        docs: List[Document] = []
         for path in file_path:
             df = pd.read_csv(path, encoding=encoding)
 
@@ -51,7 +51,6 @@ class CsvTextConverter(BaseConverter):
             df = df.rename(columns={"question": "content"})
             docs_dicts = df.to_dict(orient="records")
 
-            docs = []
             for dictionary in docs_dicts:
                 if meta:
                     dictionary["meta"] = meta
