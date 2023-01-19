@@ -1,3 +1,5 @@
+# mypy: disable_error_code = "empty-body, override, union-attr"
+
 from typing import Dict, List, Optional, Union, Generator
 
 import os
