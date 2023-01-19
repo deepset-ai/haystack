@@ -93,7 +93,9 @@ jobs:
       run: |
         for file in ${{ steps.files.outputs.all_changed_files }}; do
           if [[ $file == *.py ]]; then
-            changed_files="$changed_files $file"
+            if [[ $file != test/* ]]; then
+              changed_files="$changed_files $file"
+            fi
           fi
         done
         echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
