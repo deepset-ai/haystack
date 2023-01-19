@@ -487,11 +487,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # See https://docs.cohere.ai/embed-reference/ for more details
-        # Cohere has a max seq length of 4096 tokens and a max batch size of 16
+        # Cohere has a max seq length of 4096 tokens and a max batch size of 96
         self.max_seq_len = min(4096, retriever.max_seq_len)
         self.url = "https://api.cohere.ai/embed"
         self.api_key = retriever.api_key
-        self.batch_size = min(16, retriever.batch_size)
+        self.batch_size = min(96, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         self.model: str = next(
             (
