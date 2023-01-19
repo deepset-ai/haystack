@@ -61,7 +61,7 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
 
 def convert_to_documents(
     strings: List[str],
-    meta: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None,
+    meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
     id_hash_keys: Optional[List[str]] = None,
 ) -> Tuple[List[Any]]:
     """
