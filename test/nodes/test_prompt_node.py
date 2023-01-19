@@ -241,6 +241,16 @@ def test_open_ai_prompt_with_params():
 
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_stop_words(prompt_model):
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
+    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    assert r[0] == "What is the"
+
+
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_simple_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
