@@ -1257,4 +1257,3 @@ Helper function to dump all vectors stored in Milvus server.
 **Returns**:
 
 List[np.array]: List of vectors.
-

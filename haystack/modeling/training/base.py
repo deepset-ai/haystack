@@ -704,7 +704,7 @@ class DistillationTrainer(Trainer):
         if distillation_loss == "mse":
             self.distillation_loss_fn = MSELoss()
         elif distillation_loss == "kl_div":
-            self.distillation_loss_fn = self._kl_div
+            self.distillation_loss_fn = self._kl_div  # type: ignore [assignment]
         self.temperature = temperature
 
     def _kl_div(self, student_logits, teacher_logits):
@@ -855,7 +855,7 @@ class TinyBERTDistillationTrainer(Trainer):
 
         self.loss = DistillationLoss(model, teacher_model, device)
         if torch.cuda.device_count() > 1 and device.type == "cuda":
-            self.loss = DataParallel(self.loss).to(device)
+            self.loss = DataParallel(self.loss).to(device)  # type: ignore [assignment]
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         with torch.cuda.amp.autocast(enabled=self.use_amp):
@@ -881,16 +881,16 @@ class DistillationLoss(Module):
         self.teacher_model = teacher_model.to(device)
 
         # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
-        dummy_inputs = teacher_model.language_model.model.dummy_inputs
-        dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
-        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
-        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
+        dummy_inputs = teacher_model.language_model.model.dummy_inputs  # type: ignore [union-attr]
+        dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)  # type: ignore [operator,index]
+        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)  # type: ignore [operator,index]
+        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)  # type: ignore [operator,index]
 
         with torch.no_grad():
-            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
+            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(  # type: ignore [arg-type]
                 **dummy_inputs, output_attentions=True, output_hidden_states=True
             )
-            _, hidden_states, attentions = self.model.forward(
+            _, hidden_states, attentions = self.model.forward(  # type: ignore [arg-type]
                 **dummy_inputs, output_attentions=True, output_hidden_states=True
             )
 
@@ -905,7 +905,7 @@ class DistillationLoss(Module):
         student_dims = [hidden_state.shape[-1] for hidden_state in hidden_states]
 
         # creating linear mappings in case the teacher and student model have different hidden state dimensions
-        self.dim_mappings: List[Optional[Linear]] = ModuleList([])
+        self.dim_mappings: List[Optional[Linear]] = ModuleList([])  # type: ignore [assignment]
 
         for teacher_dim, student_dim in zip(teacher_dims, student_dims):
             if teacher_dim != student_dim:

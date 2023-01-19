@@ -478,4 +478,3 @@ If ``False``, retrieval uses a stricter evaluation that checks if the retrieved 
 are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
 contains the keys "predictions" and "metrics".
-

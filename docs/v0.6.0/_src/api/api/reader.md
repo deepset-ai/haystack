@@ -380,4 +380,3 @@ Dict containing query and answers
 
 <a name="base"></a>
 # Module base
-

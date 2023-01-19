@@ -33,13 +33,21 @@ runs:
     with:
       python-version: ${{ inputs.pythonVersion }}
 
-  - name: Cache
+  - name: Cache Python path
     id: cache-python-env
     uses: actions/cache@v3
     with:
       path: ${{ env.pythonLocation }}
       # The cache will be rebuild every day and at every change of the dependency files
       key: ${{ inputs.prefix }}-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/pyproject.toml') }}
+
+  - name: Cache Mypy path
+    id: cache-mypy
+    uses: actions/cache@v3
+    with:
+      path: ${{ env.pythonLocation }}/.mypy_cache
+      # The cache will be rebuild every day and at every change of the dependency files
+      key: mypy-${{ inputs.prefix }}-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/pyproject.toml') }}
 
   - name: Install dependencies
     # NOTE: this action runs only on cache miss to refresh the dependencies and make sure the next Haystack install will be faster.
@@ -52,3 +60,8 @@ runs:
       python -m pip install --upgrade pip
       pip install .[all]
       pip install rest_api/
+
+  - name: Install mypy dependencies
+    shell: bash
+    if: inputs.pythonVersion != 3.7
+    run: python -m mypy --install-types --non-interactive --cache-dir=${{ env.pythonLocation }}/.mypy_cache/ haystack/ rest_api/ --exclude=rest_api/build/ --exclude=rest_api/test/

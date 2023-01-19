@@ -172,4 +172,3 @@ class BasePreProcessor()
 ```
 
 Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
-

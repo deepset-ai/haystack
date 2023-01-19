@@ -152,4 +152,3 @@ Execute a SPARQL query on the given index in the GraphDB instance
 **Returns**:
 
 query result
-

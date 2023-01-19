@@ -1794,4 +1794,3 @@ Generate formatted dictionary output with text answer and additional info
 **Arguments**:
 
 - `result`: The result of a SPARQL query as retrieved from the knowledge graph
-
