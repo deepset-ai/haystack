@@ -1089,7 +1089,7 @@ class FARMReader(BaseReader):
                     # create new one
                     else:
                         # We don't need to create an answer dict if is_impossible / no_answer
-                        if label.no_answer == True:
+                        if label.no_answer is True:
                             aggregated_per_question[aggregation_key] = {
                                 "id": str(hash(str(doc_id) + label.query)),
                                 "question": label.query,

@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
 import requests
 import torch
-from transformers import pipeline, AutoModelForSeq2SeqLM
+from transformers import pipeline, AutoModelForSeq2SeqLM, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
 
 from haystack import MultiLabel
 from haystack.errors import OpenAIError, OpenAIRateLimitError
@@ -206,6 +206,20 @@ class PromptModelInvocationLayer:
         return False
 
 
+class StopWordsCriteria(StoppingCriteria):
+    """
+    Stops text generation if any one of the stop words is generated.
+    """
+
+    def __init__(self, model_name_or_path: str, stop_words: List[str]):
+        super().__init__()
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        return any(torch.isin(input_ids[-1], self.stop_words[-1]))
+
+
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
     """
     A subclass of the PromptModelInvocationLayer class. It loads a pre-trained model from Hugging Face and
@@ -310,7 +324,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face as model_input_kwargs.
         Other kwargs are ignored.
         """
-        output = []
+        output: List[Dict[str, str]] = []
+        stop_words = kwargs.pop("stop", None)
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -322,8 +337,19 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 for key in ["return_tensors", "return_text", "clean_up_tokenization_spaces", "truncation"]
                 if key in kwargs
             }
+            if stop_words:
+                sw = StopWordsCriteria(model_name_or_path=self.model_name_or_path, stop_words=stop_words)
+                model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
-        return [o["generated_text"] for o in output]
+        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+
+        if stop_words:
+            # Although HF generates text until stop words are encountered unfortunately it includes the stop word
+            # We want to exclude it to be consistent with other invocation layers
+            for idx, _ in enumerate(generated_texts):
+                for stop_word in stop_words:
+                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+        return generated_texts
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
@@ -655,6 +681,7 @@ class PromptNode(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        stop_words: Optional[List[str]] = None,
     ):
         """
         Creates a PromptNode instance.
@@ -674,6 +701,7 @@ class PromptNode(BaseComponent):
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
+        self.stop_words: Optional[List[str]] = stop_words
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -743,7 +771,9 @@ class PromptNode(BaseComponent):
 
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                # and pass the prepared prompt to the model
+                # merge any additional model kwargs
+                kwargs = {**kwargs, **self._prepare_model_kwargs()}
+                # and pass the prepared prompt and kwargs to the model
                 output = self.prompt_model.invoke(prompt, **kwargs)
                 results.extend(output)
         else:
@@ -851,6 +881,7 @@ class PromptNode(BaseComponent):
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
+        invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
@@ -864,25 +895,23 @@ class PromptNode(BaseComponent):
         prompt template.
         :param documents: The documents to be used for the prompt.
         :param meta: The meta to be used for the prompt. Usually not used.
+        :param invocation_context: The invocation context to be used for the prompt.
         """
 
-        if not meta:
-            meta = {}
         # invocation_context is a dictionary that is passed from a pipeline node to a pipeline node and can be used
         # to pass results from a pipeline node to any other downstream pipeline node.
-        if "invocation_context" not in meta:
-            meta["invocation_context"] = {}
+        invocation_context = invocation_context or {}
 
         results = self(
             query=query,
             labels=labels,
             documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
-            **meta["invocation_context"],
+            **invocation_context,
         )
 
         if self.output_variable:
-            meta["invocation_context"][self.output_variable] = results
-        return {"results": results, "meta": {**meta}}, "output_1"
+            invocation_context[self.output_variable] = results
+        return {"results": results, "invocation_context": invocation_context}, "output_1"
 
     def run_batch(
         self,
@@ -895,3 +924,6 @@ class PromptNode(BaseComponent):
         debug: Optional[bool] = None,
     ):
         pass
+
+    def _prepare_model_kwargs(self):
+        return {"stop": self.stop_words}
