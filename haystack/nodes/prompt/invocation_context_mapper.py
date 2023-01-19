@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any, Tuple, Union
+from typing import Optional, List, Dict, Any, Tuple, Union, Callable
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document, MultiLabel
@@ -55,7 +55,9 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
 
 
 def convert_to_documents(
-    strings: List[str], meta: Optional[Union[List[str], str]] = None, id_hash_keys: Optional[List[str]] = None
+    strings: List[str],
+    meta: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None,
+    id_hash_keys: Optional[List[str]] = None,
 ) -> Tuple[List[Any]]:
     """
     Transforms a list of strings into a list of Documents. If the metadata is given as a single
@@ -91,7 +93,7 @@ def convert_to_documents(
     return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
 
 
-REGISTERED_FUNCTIONS = {
+REGISTERED_FUNCTIONS: Dict[str, Callable[[Dict[str, Any]], Tuple[Any]]] = {
     "expand_value_to_list": expand_value_to_list,
     "join_strings": join_strings,
     "join_documents": join_documents,
@@ -226,7 +228,7 @@ class InvocationContextMapper(BaseComponent):
         self.inputs = inputs or {}
         self.params = params or {}
 
-    def run(
+    def run(  # type: ignore
         self,
         query: Optional[str] = None,
         file_paths: Optional[List[str]] = None,
@@ -262,7 +264,7 @@ class InvocationContextMapper(BaseComponent):
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
 
-        output = {"invocation_context": invocation_context}
+        output = {}
         if query:
             output["query"] = query
         if file_paths:
@@ -274,9 +276,11 @@ class InvocationContextMapper(BaseComponent):
         if meta:
             output["meta"] = meta
 
+        output["invocation_context"] = invocation_context
+
         return output, "output_1"
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         query: Optional[str] = None,
         file_paths: Optional[List[str]] = None,
