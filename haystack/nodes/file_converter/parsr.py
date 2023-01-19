@@ -99,7 +99,6 @@ class ParsrConverter(BaseConverter):
         self.remove_table_of_contents = remove_table_of_contents
         self.add_page_number = add_page_number
         self.extract_headlines = extract_headlines
-        super().__init__(valid_languages=valid_languages)
 
     def convert(
         self,
