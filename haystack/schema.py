@@ -202,9 +202,11 @@ class Document:
             field_map = {}
         if id_hash_keys:
             warnings.warn(
-                "Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
+                message="Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
                 "Old API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}}, id_hash_keys=['meta'])\n"
-                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n"
+                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n",
+                category=DeprecationWarning,
+                stacklevel=2,
             )
             dict["id_hash_keys"] = id_hash_keys
 

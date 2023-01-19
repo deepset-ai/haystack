@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, fail_at_version
 
 LABELS = [
     Label(
@@ -43,6 +43,26 @@ LABELS = [
         origin="user-feedback",
     ),
 ]
+
+
+def test_document_from_dict():
+    doc = Document(
+        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+    )
+    assert doc == Document.from_dict(doc.to_dict())
+
+
+@fail_at_version(1, 15)
+def test_deprecated_id_hash_keys_in_document_from_dict():
+    doc = Document(
+        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+    )
+    # id_hash_keys in Document.from_dict() is deprecated and should be removed.
+    with pytest.warns(DeprecationWarning):
+        assert doc == Document.from_dict(
+            {"content": "this is the content of the document", "meta": {"some": "meta"}},
+            id_hash_keys=["content", "meta"],
+        )
 
 
 def test_no_answer_label():
