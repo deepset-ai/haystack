@@ -166,7 +166,7 @@ def get_replacements(
             word_id = glove_word_id_mapping[word]
             glove_vector = glove_vectors[word_id]
             with torch.inference_mode():
-                word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)
+                word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)  # type: ignore [arg-type]
                 ranking = torch.argsort(word_similarities, descending=True)[: word_possibilities + 1]
                 possible_words.append([glove_id_word_mapping[int(id_)] for id_ in ranking.cpu()])
         else:  # word was not in glove either so we can't find any replacements
@@ -253,7 +253,7 @@ def augment_squad(
             contexts = augment(
                 word_id_mapping=word_id_mapping,
                 id_word_mapping=id_word_mapping,
-                vectors=vectors,
+                vectors=vectors,  # type: ignore [arg-type]
                 model=transformers_model,
                 tokenizer=transformers_tokenizer,
                 text=context,

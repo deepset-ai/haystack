@@ -103,7 +103,7 @@ def initialize_device_settings(
             torch_devices: List[torch.device] = [torch.device(device) for device in devices]
             devices_to_use = torch_devices
         else:
-            devices_to_use = devices
+            devices_to_use = devices  # type: ignore [assignment]
         n_gpu = sum(1 for device in devices_to_use if "cpu" not in device.type)
     elif local_rank == -1:
         if torch.cuda.is_available():

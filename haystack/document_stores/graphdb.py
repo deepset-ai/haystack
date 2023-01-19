@@ -174,7 +174,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         # Pylint raises unsupported-membership-test and unsubscriptable-object.
         # Silenced for now, keep in mind for future debugging.
         return (
-            results["results"]["bindings"]  # pylint: disable=unsubscriptable-object
-            if "results" in results  # pylint: disable=unsupported-membership-test
-            else results["boolean"]  # pylint: disable=unsubscriptable-object
+            results["results"]["bindings"]  # type: ignore  # pylint: disable=unsubscriptable-object
+            if "results" in results  # type: ignore  # pylint: disable=unsupported-membership-test
+            else results["boolean"]  # type: ignore  # pylint: disable=unsubscriptable-object
         )

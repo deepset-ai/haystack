@@ -178,7 +178,7 @@ class TriAdaptiveModel(nn.Module):
             language_model3 = get_language_model(load_dir)
 
         # Prediction heads
-        ph_config_files = cls._get_prediction_head_files(load_dir)
+        ph_config_files = cls._get_prediction_head_files(load_dir)  # type: ignore [attr-defined]
         prediction_heads = []
         ph_output_type = []
         for config_file in ph_config_files:
@@ -305,7 +305,7 @@ class TriAdaptiveModel(nn.Module):
 
         # Forward pass for text passages and tables
         if "passage_input_ids" in kwargs.keys():
-            table_mask = torch.flatten(kwargs["is_table"]) == True
+            table_mask = torch.flatten(kwargs["is_table"]) == 1
 
             # Current batch consists of only tables
             if all(table_mask):
@@ -415,7 +415,7 @@ class TriAdaptiveModel(nn.Module):
         """Verifies that the model fits to the tokenizer vocabulary.
         They could diverge in case of custom vocabulary added via tokenizer.add_tokens()"""
 
-        model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. "
@@ -424,7 +424,7 @@ class TriAdaptiveModel(nn.Module):
         )
         assert vocab_size1 == model1_vocab_len, msg
 
-        model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. "
@@ -433,7 +433,7 @@ class TriAdaptiveModel(nn.Module):
         )
         assert vocab_size2 == model2_vocab_len, msg
 
-        model3_vocab_len = self.language_model3.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model3_vocab_len = self.language_model3.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size3} doesn't match with model {model3_vocab_len}. "
