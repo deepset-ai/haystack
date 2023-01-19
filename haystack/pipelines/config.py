@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional
 
 import re
 import os
-import json
 import logging
 from pathlib import Path
 from copy import copy
@@ -102,53 +101,6 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = ["custom_query"]
-SKIP_VALIDATION_KEYS = ["prompt_text"]  # PromptTemplate, PromptNode
-
-
-def validate_config_strings(pipeline_config: Any, is_value: bool = False):
-    """
-    Ensures that strings used in the pipelines configuration
-    contain only alphanumeric characters and basic punctuation.
-    """
-    try:
-        if isinstance(pipeline_config, dict):
-            for key, value in pipeline_config.items():
-                # FIXME find a better solution
-                # Some nodes take parameters that expect JSON input,
-                # like `ElasticsearchDocumentStore.custom_query`
-                # These parameters fail validation using the standard input regex,
-                # so they're validated separately.
-                #
-                # Note that these fields are checked by name: if two nodes have a field
-                # with the same name, one of which is JSON and the other not,
-                # this hack will break.
-                if key in JSON_FIELDS:
-                    try:
-                        json.loads(value)
-                    except json.decoder.JSONDecodeError as e:
-                        raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.") from e
-                elif key in SKIP_VALIDATION_KEYS:
-                    continue
-                else:
-                    validate_config_strings(key)
-                    validate_config_strings(value, is_value=True)
-
-        elif isinstance(pipeline_config, list):
-            for value in pipeline_config:
-                validate_config_strings(value, is_value=True)
-
-        else:
-            valid_regex = VALID_VALUE_REGEX if is_value else VALID_KEY_REGEX
-            if not valid_regex.match(str(pipeline_config)):
-                raise PipelineConfigError(
-                    f"'{pipeline_config}' is not a valid variable name or value. "
-                    "Use alphanumeric characters or dash, underscore and colon only."
-                )
-    except RecursionError as e:
-        raise PipelineConfigError("The given pipeline configuration is recursive, can't validate it.") from e
-
-
 def build_component_dependency_graph(
     pipeline_definition: Dict[str, Any], component_definitions: Dict[str, Any]
 ) -> nx.DiGraph:
@@ -215,7 +167,12 @@ def validate_yaml(
     :raise: `PipelineConfigError` in case of issues.
     """
     pipeline_config = read_pipeline_config_from_yaml(path)
-    validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check, extras=extras)
+    validate_config(
+        pipeline_config=pipeline_config,
+        strict_version_check=strict_version_check,
+        extras=extras,
+        overwrite_with_env_variables=overwrite_with_env_variables,
+    )
     logging.debug("'%s' contains valid Haystack pipelines.", path)
 
 
@@ -270,7 +227,14 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_config_strings(pipeline_config)
+    logger.debug("Validating the following config:\n%s", pipeline_config)
+
+    if not isinstance(pipeline_config, dict):
+        raise PipelineConfigError(
+            "Your pipeline configuration seems to be not a dictionary. "
+            "Make sure you're loading the correct one, or enable DEBUG "
+            "logs to see what Haystack is trying to load."
+        )
 
     # Check that the extras are respected
     extras_in_config = pipeline_config.get("extras", None)
