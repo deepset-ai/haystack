@@ -2,19 +2,21 @@ import json
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING, Any, Callable, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import requests
+import tiktoken
+from tiktoken import Encoding
 import torch
 from sentence_transformers import InputExample
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
-from haystack.document_stores.base import BaseDocumentStore
 
-from haystack.errors import OpenAIError, OpenAIRateLimitError, CohereError
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.errors import CohereError, OpenAIError, OpenAIRateLimitError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
@@ -402,9 +404,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
         )
+        self.tokenizer: Optional[Encoding] = None
         self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
-
-        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
     def _setup_encoding_models(self, model_class: str, model_name: str, max_seq_len: int):
         """
@@ -415,18 +416,25 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
             self.max_seq_len = min(8191, max_seq_len)
+            tokenizer = "cl100k_base"
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"
             self.max_seq_len = min(2046, max_seq_len)
+            tokenizer = "gpt2"
+
+        self.tokenizer = tiktoken.get_encoding(tokenizer)
 
     def _ensure_text_limit(self, text: str) -> str:
         """
         Ensure that length of the text is within the maximum length of the model.
         OpenAI embedding models have a limit of 2048 tokens
         """
-        tokenized_payload = self.tokenizer(text)
-        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer is not initialized. Please call _setup_encoding_models first.")
+
+        tokenized_payload = self.tokenizer.encode(text)
+        return self.tokenizer.decode(tokenized_payload[: self.max_seq_len])
 
     @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def embed(self, model: str, text: List[str]) -> np.ndarray:

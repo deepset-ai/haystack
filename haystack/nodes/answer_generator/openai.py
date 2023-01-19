@@ -5,7 +5,8 @@ import json
 import logging
 import requests
 
-from transformers import GPT2TokenizerFast
+import tiktoken
+from tiktoken import Encoding
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Document
@@ -87,12 +88,16 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples_context = examples_context
         self.examples = examples
         self.stop_words = stop_words
-        self._tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
+        tokenizer = "gpt2"
         if "davinci" in self.model:
             self.MAX_TOKENS_LIMIT = 4000
+            if self.model.endswith("-003"):
+                tokenizer = "cl100k_base"
         else:
             self.MAX_TOKENS_LIMIT = 2048
+
+        self._tokenizer: Encoding = tiktoken.get_encoding(tokenizer)
 
     @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
