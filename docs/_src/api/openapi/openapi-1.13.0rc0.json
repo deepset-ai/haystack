@@ -967,6 +967,13 @@
                         },
                         "default": []
                     },
+                    "results": {
+                        "title": "Results",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "_debug": {
                         "title": " Debug",
                         "type": "object"
