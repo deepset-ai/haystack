@@ -1,7 +1,12 @@
 from typing import Optional, List, Dict, Any, Tuple, Union, Callable
 
+import logging
+
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document, MultiLabel
+
+
+logger = logging.getLogger(__name__)
 
 
 def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
@@ -79,6 +84,7 @@ def convert_to_documents(
         ]
     ```
     """
+    all_metadata: List[Optional[Dict[str, Any]]]
     if isinstance(meta, dict):
         all_metadata = [meta] * len(strings)
     elif isinstance(meta, list):
@@ -93,7 +99,7 @@ def convert_to_documents(
     return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
 
 
-REGISTERED_FUNCTIONS: Dict[str, Callable[[Dict[str, Any]], Tuple[Any]]] = {
+REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
     "expand_value_to_list": expand_value_to_list,
     "join_strings": join_strings,
     "join_documents": join_documents,
@@ -219,6 +225,9 @@ class InvocationContextMapper(BaseComponent):
             `value` and `target_list` parameters, so `params` might contain
             `{'value': 'A', 'target_list': [1, 1, 1, 1]}` and the node will output `["A", "A", "A", "A"]`.
             It does not need to contain all keyword args, see `inputs`.
+            You can use params to provide fallback values for arguments of `run` that you're not sure they will exist.
+            So if you need `query` to exist, you can provide a fallback value in the params, which will be used only if `query`
+            is not passed to this node by the pipeline.
         :param outputs: under which key to store the outputs in the invocation context. The lenght of the outputs must match
             the number of outputs produced by the function invoked.
         """
@@ -242,18 +251,22 @@ class InvocationContextMapper(BaseComponent):
         # modified list of Documents under the `documents` key, such list is used.
         invocation_context = {**locals(), **(invocation_context or {})}
         invocation_context.pop("self")
+        invocation_context = {key: value for key, value in invocation_context.items() if value is not None}
 
-        try:
-            input_values = {key: invocation_context[value] for key, value in self.inputs.items()}
-        except KeyError as e:
-            missing_values = [value for value in self.inputs.values() if value not in invocation_context.keys()]
-            raise ValueError(
-                f"InvocationContextMapper could not find these values from your inputs list in the invocation context: {missing_values}. "
-                "Make sure the value exists in the invocation context."
-            ) from e
+        input_values = {
+            key: invocation_context[value]
+            for key, value in self.inputs.items()
+            if value in invocation_context.keys() and value is not None
+        }
 
+        input_values = {**self.params, **input_values}
         try:
-            output_values = self.function(**input_values, **self.params)
+            logger.debug(
+                "InvocationContextMapper is invoking this function: %s(%s)",
+                self.function.__name__,
+                ", ".join([f"{key}={value}" for key, value in input_values.items()]),
+            )
+            output_values = self.function(**input_values)
         except TypeError as e:
             raise ValueError(
                 "InvocationContextMapper could not apply the function to your inputs and parameters. "
@@ -264,7 +277,7 @@ class InvocationContextMapper(BaseComponent):
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
 
-        output = {}
+        output: Dict[str, Any] = {}
         if query:
             output["query"] = query
         if file_paths:

@@ -35,6 +35,22 @@ def test_basic_invocation_inputs_and_params(mock_function):
     assert results["invocation_context"]["c"] == ["test query", "test query"]
 
 
+def test_basic_invocation_inputs_and_params_colliding(mock_function):
+    mapper = InvocationContextMapper(
+        func="test_function", inputs={"a": "query"}, params={"a": "default value", "b": list(range(2))}, outputs=["c"]
+    )
+    results, _ = mapper.run(query="test query")
+    assert results["invocation_context"]["c"] == ["test query", "test query"]
+
+
+def test_basic_invocation_inputs_and_params_using_params_as_defaults(mock_function):
+    mapper = InvocationContextMapper(
+        func="test_function", inputs={"a": "query"}, params={"a": "default", "b": list(range(2))}, outputs=["c"]
+    )
+    results, _ = mapper.run()
+    assert results["invocation_context"]["c"] == ["default", "default"]
+
+
 def test_missing_argument(mock_function):
     mapper = InvocationContextMapper(func="test_function", inputs={"b": "documents"}, outputs=["c"])
     with pytest.raises(
@@ -59,9 +75,7 @@ def test_value_not_in_invocation_context(mock_function):
     )
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "InvocationContextMapper could not find these values from your inputs list in the invocation context: ['something_that_does_not_exist']"
-        ),
+        match=re.escape("InvocationContextMapper could not apply the function to your inputs and parameters."),
     ):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
