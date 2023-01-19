@@ -377,6 +377,7 @@ def test_complex_pipeline_yaml(tmp_path):
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
+    assert len(result["questions"]) > 0
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
@@ -415,6 +416,7 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
+    assert len(result["questions"]) > 0
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
@@ -462,6 +464,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
+    assert len(result["questions"]) > 0
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
@@ -541,6 +544,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
+    assert len(result["questions"]) > 0
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
@@ -601,4 +605,5 @@ def test_complex_pipeline_with_all_features(tmp_path):
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
+    assert len(result["questions"]) > 0
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
