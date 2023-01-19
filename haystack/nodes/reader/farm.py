@@ -151,7 +151,7 @@ class FARMReader(BaseReader):
             proxies=proxies,
             local_files_only=local_files_only,
             force_download=force_download,
-            devices=self.devices,
+            devices=self.devices,  # type: ignore [arg-type]
             use_auth_token=use_auth_token,
             max_query_length=max_query_length,
         )
@@ -224,7 +224,7 @@ class FARMReader(BaseReader):
         if max_query_length is None:
             max_query_length = self.max_query_length
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)  # type: ignore [arg-type]
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -1089,7 +1089,7 @@ class FARMReader(BaseReader):
                     # create new one
                     else:
                         # We don't need to create an answer dict if is_impossible / no_answer
-                        if label.no_answer == True:
+                        if label.no_answer is True:
                             aggregated_per_question[aggregation_key] = {
                                 "id": str(hash(str(doc_id) + label.query)),
                                 "question": label.query,
