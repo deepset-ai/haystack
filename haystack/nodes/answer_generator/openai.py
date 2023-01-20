@@ -4,15 +4,22 @@ from typing import Optional, List, Tuple
 import json
 import logging
 import requests
+import sys
 
+USE_TIKTOKEN = False
+if sys.version_info >= (3, 8):
+    USE_TIKTOKEN = True
 
-try:
-    import tiktoken
-    from tiktoken import Encoding
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
+if USE_TIKTOKEN:
+    try:
+        import tiktoken
+        from tiktoken import Encoding
+    except (ImportError, ModuleNotFoundError) as ie:
+        from haystack.utils.import_utils import _optional_component_not_installed
 
-    _optional_component_not_installed(__name__, "openai", ie)
+        _optional_component_not_installed(__name__, "openai", ie)
+else:
+    from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Document
@@ -98,12 +105,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
         tokenizer = "gpt2"
         if "davinci" in self.model:
             self.MAX_TOKENS_LIMIT = 4000
-            if self.model.endswith("-003"):
+            if self.model.endswith("-003") and USE_TIKTOKEN:
                 tokenizer = "cl100k_base"
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
-        self._tokenizer: Encoding = tiktoken.get_encoding(tokenizer)
+        if USE_TIKTOKEN:
+            logger.debug("Using tiktoken %s tokenizer", tokenizer)
+            self._tokenizer: Encoding = tiktoken.get_encoding(tokenizer)
+        else:
+            logger.debug("Using GPT2TokenizerFast")
+            self._tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer)
 
     @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
@@ -183,8 +195,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         qa_prompt = f"Q: {query}\nA:"
 
-        n_instruction_tokens = len(self._tokenizer.encode(instruction + qa_prompt + "===\nContext: \n===\n"))
-        n_docs_tokens = [len(self._tokenizer.encode(doc.content)) for doc in documents]
+        n_instruction_tokens = len(self._tokenize(instruction + qa_prompt + "===\nContext: \n===\n"))
+        logger.debug("Number of tokens in instruction: %s", n_instruction_tokens)
+
+        n_docs_tokens = [len(self._tokenize(doc.content)) for doc in documents]
+        logger.debug("Number of tokens in documents: %s", n_docs_tokens)
+
         # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
 
@@ -218,5 +234,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
         context = f"===\nContext: {context}\n===\n"
 
         full_prompt = instruction + context + qa_prompt
+        logger.debug("Full prompt: %s", full_prompt)
 
         return full_prompt, input_docs
+
+    def _tokenize(self, text: str) -> List[int]:
+        if USE_TIKTOKEN:
+            return self._tokenizer.encode(text)
+        else:
+            return self._tokenizer(text)["input_ids"]

@@ -175,7 +175,7 @@ onnx-gpu = [
   "onnxruntime_tools",
 ]
 openai = [
-  "tiktoken>=0.1.2"
+  "tiktoken>=0.1.2; python_version >= '3.8'"
 ]
 ray = [
   "ray>=1.9.1,<2; platform_system != 'Windows'",

@@ -1,18 +1,28 @@
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+import sys
+import logging
 
 import numpy as np
 import requests
 
 from tqdm.auto import tqdm
 
-try:
-    import tiktoken
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
+USE_TIKTOKEN = False
+if sys.version_info >= (3, 8):
+    USE_TIKTOKEN = True
 
-    _optional_component_not_installed(__name__, "openai", ie)
+if USE_TIKTOKEN:
+    try:
+        import tiktoken
+        from tiktoken import Encoding
+    except (ImportError, ModuleNotFoundError) as ie:
+        from haystack.utils.import_utils import _optional_component_not_installed
+
+        _optional_component_not_installed(__name__, "openai", ie)
+else:
+    from transformers import GPT2TokenizerFast
 
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
@@ -25,6 +35,9 @@ if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
 
+logger = logging.getLogger(__name__)
+
+
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # See https://beta.openai.com/docs/guides/embeddings for more details
@@ -35,37 +48,51 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
         )
-        self.tokenizer: Optional[tiktoken.Encoding] = None
+        self._tokenizer: Optional[tiktoken.Encoding] = None
         self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
 
     def _setup_encoding_models(self, model_class: str, model_name: str, max_seq_len: int):
         """
         Setup the encoding models for the retriever.
         """
+
+        tokenizer = "gpt2"
         # new generation of embedding models (December 2022), we need to specify the full name
         if "text-embedding" in model_name:
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
             self.max_seq_len = min(8191, max_seq_len)
-            tokenizer = "cl100k_base"
+            if USE_TIKTOKEN:
+                tokenizer = "cl100k_base"
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"
             self.max_seq_len = min(2046, max_seq_len)
-            tokenizer = "gpt2"
 
-        self.tokenizer = tiktoken.get_encoding(tokenizer)
+        if USE_TIKTOKEN:
+            logger.debug("Using tiktoken %s tokenizer", tokenizer)
+            self._tokenizer = tiktoken.get_encoding(tokenizer)
+        else:
+            logger.debug("Using GPT2TokenizerFast tokenizer")
+            self._tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer)
 
     def _ensure_text_limit(self, text: str) -> str:
         """
         Ensure that length of the text is within the maximum length of the model.
         OpenAI embedding models have a limit of 2048 tokens
         """
-        if self.tokenizer is None:
+        if self._tokenizer is None:
             raise ValueError("Tokenizer is not initialized. Please call _setup_encoding_models first.")
 
-        tokenized_payload = self.tokenizer.encode(text)
-        return self.tokenizer.decode(tokenized_payload[: self.max_seq_len])
+        if USE_TIKTOKEN:
+            tokenized_payload = self._tokenizer.encode(text)
+        else:
+            tokenized_payload = self._tokenizer(text)["input_ids"]
+
+        if len(tokenized_payload) > self.max_seq_len:
+            logger.warning("Text is too long for the model. Truncating it to %s tokens.", self.max_seq_len)
+
+        return self._tokenizer.decode(tokenized_payload[: self.max_seq_len])
 
     @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def embed(self, model: str, text: List[str]) -> np.ndarray:
