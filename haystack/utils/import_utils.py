@@ -38,17 +38,13 @@ def safe_import(import_path: str, classname: str, dep_group: str):
     return classs
 
 
-class MissingDependency:
-    pass
-
-
 def _missing_dependency_stub_factory(classname: str, dep_group: str, import_error: Exception):
     """
     Create custom versions of MissingDependency using the given parameters.
     See `safe_import()`
     """
 
-    class MissingOptionalDependency(MissingDependency):
+    class MissingDependency:
         def __init__(self, *args, **kwargs):
 
             _optional_component_not_installed(classname, dep_group, import_error)
@@ -56,7 +52,7 @@ def _missing_dependency_stub_factory(classname: str, dep_group: str, import_erro
         def __getattr__(self, *a, **k):
             return None
 
-    return MissingOptionalDependency
+    return MissingDependency
 
 
 def _optional_component_not_installed(component: str, dep_group: str, source_error: Exception):
