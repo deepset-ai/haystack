@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Callable
 
 import numpy as np
 import requests
@@ -19,7 +19,7 @@ from haystack.modeling.infer import Inferencer
 
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
-from haystack.utils.import_utils import safe_import, MissingDependency
+from haystack.utils.import_utils import safe_import
 from haystack.utils.reflection import retry_with_exponential_backoff
 from ._base_encoder import _BaseEmbeddingEncoder
 
@@ -373,7 +373,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
 
 
-_EMBEDDING_ENCODERS: Dict[str, Union[Type[_BaseEmbeddingEncoder], Type[MissingDependency]]] = {
+_EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,
