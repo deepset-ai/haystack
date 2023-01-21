@@ -19,10 +19,9 @@ env_meta_data: Dict[str, Any] = {}
 
 
 def set_pytorch_secure_model_loading(flag_val="1"):
-    if flag_val in ["1", "y", "yes", "true"]:
-        os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = flag_val
-    else:
-        os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = "0"
+    # To load secure only model pytorch requires value of
+    # TORCH_FORCE_WEIGHTS_ONLY_LOAD to be ["1", "y", "yes", "true"]
+    os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = flag_val
 
 
 def get_or_create_env_meta_data() -> Dict[str, Any]:
