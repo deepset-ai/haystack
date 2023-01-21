@@ -18,6 +18,13 @@ HAYSTACK_REMOTE_API_MAX_RETRIES = "HAYSTACK_REMOTE_API_MAX_RETRIES"
 env_meta_data: Dict[str, Any] = {}
 
 
+def set_pytorch_secure_model_loading(flag_val="1"):
+    if flag_val in ["1", "y", "yes", "true"]:
+        os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = flag_val
+    else:
+        os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = "0"
+
+
 def get_or_create_env_meta_data() -> Dict[str, Any]:
     """
     Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
