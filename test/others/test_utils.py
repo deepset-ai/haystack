@@ -1247,15 +1247,18 @@ def test_exponential_backoff():
 
 
 def test_secure_model_loading():
-    # just importing haystack should be enough to enable secure loading of pytorch models
-    import haystack
-
-    env_val = os.getenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD", "0")
-    assert env_val == "1"
-    haystack.environment.set_pytorch_secure_model_loading("0")
+    # setting the flag explicitly to zero
+    os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = "0"
     env_val = os.getenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD")
     assert env_val == "0"
-    haystack.environment.set_pytorch_secure_model_loading()
+
+    # now testing if just importing haystack is enough to enable secure loading of pytorch models
+    import importlib
+    import haystack
+
+    importlib.reload(haystack)
+    env_val = os.getenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD", "0")
+    assert env_val == "1"
 
 
 class TestAggregateLabels:
