@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Callable
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import requests
@@ -16,17 +16,16 @@ from haystack.errors import CohereError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
-
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
+from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.import_utils import safe_import
 from haystack.utils.reflection import retry_with_exponential_backoff
-from ._base_encoder import _BaseEmbeddingEncoder
+
+from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
-_OpenAIEmbeddingEncoder = safe_import("haystack.nodes.retriever._openai_encoder", "_OpenAIEmbeddingEncoder", "openai")
 
 logger = logging.getLogger(__name__)
 

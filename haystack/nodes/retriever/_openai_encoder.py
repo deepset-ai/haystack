@@ -9,7 +9,7 @@ import requests
 from tqdm.auto import tqdm
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
-from haystack.nodes.retriever._base_encoder import _BaseEmbeddingEncoder
+from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.import_utils import _optional_component_not_installed
@@ -60,7 +60,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         tokenizer_name = "gpt2"
         # new generation of embedding models (December 2022), we need to specify the full name
-        if "text-embedding" in model_name:
+        if model_name.endswith("-002"):
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
             self.max_seq_len = min(8191, max_seq_len)
