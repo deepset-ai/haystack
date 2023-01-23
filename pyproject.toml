@@ -190,6 +190,7 @@ dev = [
   # Test
   "pytest",
   "pytest-custom_exit_code",  # used in the CI
+  "pytest-asyncio",
   "responses",
   "tox",
   "coverage",
