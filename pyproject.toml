@@ -248,8 +248,6 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
-  "wrong-spelling-in-comment",
-  "wrong-spelling-in-docstring",
 
   # To review:
   "missing-docstring",
@@ -269,10 +267,9 @@ disable = [
   "attribute-defined-outside-init",
   "too-many-instance-attributes",
   "super-with-arguments",
-  "anomalous-backslash-in-string",
   "redefined-builtin",
   "logging-format-interpolation",
-  "f-string-without-interpolation",
+  #"f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
   "unspecified-encoding",
