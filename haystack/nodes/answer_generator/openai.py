@@ -1,6 +1,4 @@
-# pylint: disable=missing-timeout
-
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 import json
 import logging
 import requests
@@ -95,7 +93,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
             self.MAX_TOKENS_LIMIT = 2048
 
     @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(
+        self,
+        query: str,
+        documents: List[Document],
+        top_k: Optional[int] = None,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
+    ):
         """
         Use the loaded QA model to generate Answers for a query based on the Documents it receives.
 
@@ -117,6 +121,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param query: The query you want to provide. It's a string.
         :param documents: List of Documents in which to search for the Answer.
         :param top_k: The maximum number of Answers to return.
+        :param timeout: How many seconds to wait for the server to send data before giving up,
+            as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+            Defaults to 10 seconds.
         :return: Dictionary containing query and Answers.
         """
         if top_k is None:
@@ -140,7 +147,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         }
 
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
+        response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
