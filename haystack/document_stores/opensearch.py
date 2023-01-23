@@ -71,7 +71,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         knn_engine: str = "nmslib",
     ):
         """
-        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
+        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.
 
         In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
         the KNN plugin that can scale to a large number of documents.
