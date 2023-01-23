@@ -17,6 +17,9 @@ if sys.version_info >= (3, 8):
     import tiktoken
 
     USE_TIKTOKEN = True
+
+if USE_TIKTOKEN:
+    import tiktoken
 else:
     logger.warning("OpenAI tiktoken module is not available for Python < 3.8. Falling back to GPT2TokenizerFast.")
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
