@@ -271,7 +271,6 @@ disable = [
   "super-with-arguments",
   "anomalous-backslash-in-string",
   "redefined-builtin",
-  "logging-format-interpolation",
   "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
