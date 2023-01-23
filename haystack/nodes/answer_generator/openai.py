@@ -124,7 +124,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         :return: Dictionary containing query and Answers.
         """
         if top_k is None:

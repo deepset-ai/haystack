@@ -95,7 +95,6 @@ class TikaConverter(BaseConverter):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         """
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys

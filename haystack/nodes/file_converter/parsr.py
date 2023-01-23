@@ -74,7 +74,6 @@ class ParsrConverter(BaseConverter):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         """
         super().__init__(valid_languages=valid_languages, id_hash_keys=id_hash_keys)
 
@@ -138,7 +137,6 @@ class ParsrConverter(BaseConverter):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         """
         if valid_languages is None:
             valid_languages = self.valid_languages

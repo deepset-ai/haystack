@@ -70,17 +70,12 @@ def fetch_archive_from_http(
     Fetch an archive (zip, gz or tar.gz) from a url via http and extract content to an output directory.
 
     :param url: http address
-    :type url: str
     :param output_dir: local path
-    :type output_dir: str
     :param proxies: proxies details as required by requests library
-    :type proxies: Optional[Dict[str, str]]
     :param timeout: How many seconds to wait for the server to send data before giving up,
         as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
         Defaults to 10 seconds.
-    :type timeout: Union[float, Tuple[float, float]]
     :return: if anything got fetched
-    :rtype: bool
     """
     # verify & prepare local directory
     path = Path(output_dir)

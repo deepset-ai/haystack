@@ -55,7 +55,6 @@ def load_glove(
     :param timeout: How many seconds to wait for the server to send data before giving up,
         as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
         Defaults to 10 seconds.
-    :type timeout: Union[float, Tuple[float, float]]
     """
 
     if not glove_path.exists():  # download and extract glove if necessary

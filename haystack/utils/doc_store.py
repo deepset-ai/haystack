@@ -122,13 +122,10 @@ def launch_milvus(sleep=15, delete_existing=False, timeout: Union[float, Tuple[f
     """Start a Milvus server via Docker
 
     :param sleep: How many seconds to wait after Milvus container is launched. Defaults to 15.
-    :type sleep: int
     :param delete_existing: Unused. Defaults to False.
-    :type delete_existing: bool
     :param timeout: How many seconds to wait for the server to send data before giving up,
         as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
         Defaults to 10 seconds.
-    :type timeout: Union[float, Tuple[float, float]]
     """
     logger.debug("Starting Milvus ...")
 

@@ -2248,15 +2248,11 @@ def http_get(
     """
     Runs a HTTP GET requests and saves response content to file.
     :param url: URL address
-    :type url: str
     :param temp_file: file-like object open in binary mode
-    :type temp_file: BinaryIO
     :param proxies: (optional) Dictionary mapping protocol to the URL of the proxy.
-    :type proxies: Optional[Dict[str, str]], optional
     :param timeout: How many seconds to wait for the server to send data before giving up,
         as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
         Defaults to 10 seconds.
-    :type timeout: Union[float, Tuple[float, float]]
     """
     req = requests.get(url, stream=True, proxies=proxies, timeout=timeout)
     content_length = req.headers.get("Content-Length")

@@ -61,12 +61,11 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
         """
         url = f"{self.url}/rest/repositories"
         files = {"config": open(config_path, "r", encoding="utf-8")}
-        response = requests.post(url, files=files, headers=headers, timeout=timeout)  # type: ignore
+        response = requests.post(url, files=files, headers=headers, timeout=timeout)
         if response.status_code > 299:
             raise Exception(response.text)
 
@@ -77,7 +76,6 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         """
         url = f"{self.url}/rest/repositories/{self.index}"
         response = requests.delete(url, headers=headers, timeout=timeout)
@@ -100,7 +98,6 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
-        :type timeout: Union[float, Tuple[float, float]]
         """
         url = f"{self.url}/repositories/{index}/statements"
         headers = (
