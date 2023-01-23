@@ -3,15 +3,15 @@
 import json
 import logging
 import sys
-from typing import Optional, List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import requests
 
 from haystack import Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.import_utils import _optional_component_not_installed
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 USE_TIKTOKEN = False
 if sys.version_info >= (3, 8):
