@@ -1,6 +1,4 @@
-# pylint: disable=missing-timeout
-
-from typing import Optional
+from typing import Optional, Dict, Union, Tuple
 
 import io
 import gzip
@@ -65,13 +63,21 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
     ) from source_error
 
 
-def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:
+def fetch_archive_from_http(
+    url: str,
+    output_dir: str,
+    proxies: Optional[Dict[str, str]] = None,
+    timeout: Union[float, Tuple[float, float]] = 10.0,
+) -> bool:
     """
     Fetch an archive (zip, gz or tar.gz) from a url via http and extract content to an output directory.
 
     :param url: http address
     :param output_dir: local path
     :param proxies: proxies details as required by requests library
+    :param timeout: How many seconds to wait for the server to send data before giving up,
+        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+        Defaults to 10 seconds.
     :return: if anything got fetched
     """
     # verify & prepare local directory
@@ -90,7 +96,7 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
         logger.info("Fetching from %s to '%s'", url, output_dir)
 
         _, _, archive_extension = url.rpartition(".")
-        request_data = requests.get(url, proxies=proxies)
+        request_data = requests.get(url, proxies=proxies, timeout=timeout)
 
         if archive_extension == "zip":
             zip_archive = zipfile.ZipFile(io.BytesIO(request_data.content))
