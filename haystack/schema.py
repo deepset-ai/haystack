@@ -90,7 +90,7 @@ class Document:
         """
 
         if content is None:
-            raise ValueError(f"Can't create 'Document': Mandatory 'content' field is None")
+            raise ValueError("Can't create 'Document': Mandatory 'content' field is None")
 
         self.content = content
         self.content_type = content_type
