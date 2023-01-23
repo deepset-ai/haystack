@@ -904,25 +904,36 @@ class PromptNode(BaseComponent):
         :param meta: The meta to be used for the prompt. Usually not used.
         :param invocation_context: The invocation context to be used for the prompt.
         """
-        # The invocation context overwrites locals(), so if for example invocation_context contains a
-        # modified list of Documents under the `documents` key, such list is used.
-        invocation_context = {**locals(), **(invocation_context or {})}
-        invocation_context.pop("self")
+        invocation_context = invocation_context or {}
+        if query and not "query" in invocation_context.keys():
+            invocation_context["query"] = query
 
-        for doc in invocation_context.get("documents", []):
-            if not isinstance(doc, str) and not isinstance(doc.content, str):
-                raise ValueError("PromptNode only accepts text documents.")
+        if file_paths and not "file_paths" in invocation_context.keys():
+            invocation_context["file_paths"] = file_paths
 
-        invocation_context["documents"] = [
-            doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
-        ]
+        if labels and not "labels" in invocation_context.keys():
+            invocation_context["labels"] = labels
+
+        if documents and not "documents" in invocation_context.keys():
+            invocation_context["documents"] = documents
+
+        if meta and not "meta" in invocation_context.keys():
+            invocation_context["meta"] = meta
+
+        if "documents" in invocation_context.keys():
+            for doc in invocation_context.get("documents", []):
+                if not isinstance(doc, str) and not isinstance(doc.content, str):
+                    raise ValueError("PromptNode only accepts text documents.")
+            invocation_context["documents"] = [
+                doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
+            ]
 
         results = self(**invocation_context)
 
         if self.output_variable:
             invocation_context[self.output_variable] = results
 
-        return {"results": results, "meta": meta, "invocation_context": invocation_context}, "output_1"
+        return {"results": results, "invocation_context": invocation_context}, "output_1"
 
     def run_batch(
         self,
