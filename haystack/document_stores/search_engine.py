@@ -1144,7 +1144,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             meta_data = {
                 k: v
                 for k, v in hit["_source"].items()
-                if k not in (self.content_field, "content_type", self.embedding_field)
+                if k not in (self.content_field, "content_type", "id_hash_keys", self.embedding_field)
             }
             name = meta_data.pop(self.name_field, None)
             if name:
@@ -1173,6 +1173,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 "id": hit["_id"],
                 "content": hit["_source"].get(self.content_field),
                 "content_type": hit["_source"].get("content_type", None),
+                "id_hash_keys": hit["_source"].get("id_hash_keys", None),
                 "meta": meta_data,
                 "score": score,
                 "embedding": embedding,

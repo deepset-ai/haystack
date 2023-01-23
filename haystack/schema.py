@@ -1,5 +1,6 @@
 from __future__ import annotations
 import csv
+import warnings
 import hashlib
 import inspect
 
@@ -16,7 +17,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict, InitVar
+from dataclasses import asdict
 
 import mmh3
 import numpy as np
@@ -46,9 +47,9 @@ class Document:
     content: Union[str, pd.DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
+    id_hash_keys: List[str] = Field(default=["content"])
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: InitVar[Optional[List[str]]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -99,10 +100,14 @@ class Document:
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
         if id_hash_keys is not None:
-            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):  # type: ignore
+            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):
                 raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)"
+                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}). "
+                    "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
                 )
+        # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
+        self.id_hash_keys = id_hash_keys or ["content"]
 
         if embedding is not None:
             embedding = np.asarray(embedding)
@@ -110,6 +115,10 @@ class Document:
 
         # Create a unique ID (either new one, or one from user input)
         if id is not None:
+            logger.info(
+                "Setting the ID manually. This might cause a mismatch with the ID "
+                "that would be generated from the document content and id_hash_keys value."
+            )
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
@@ -131,12 +140,12 @@ class Document:
 
         if final_hash_key == "":
             raise ValueError(
-                f"Cant't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta']"
+                "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
         return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Convert Document to dict. An optional field_map can be supplied to change the names of the keys in the
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
@@ -144,15 +153,18 @@ class Document:
         Example:
 
         ```python
-        doc = Document(content="some text", content_type="text")
-        doc.to_dict(field_map={"custom_content_field": "content"})
+            doc = Document(content="some text", content_type="text")
+            doc.to_dict(field_map={"custom_content_field": "content"})
 
-        # Returns {"custom_content_field": "some text", "content_type": "text"}
+            # Returns {"custom_content_field": "some text", content_type": "text"}
         ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
         """
+        if not field_map:
+            field_map = {}
+
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
@@ -169,25 +181,37 @@ class Document:
 
     @classmethod
     def from_dict(
-        cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None
+        cls, dict: Dict[str, Any], field_map: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
     ) -> Document:
         """
-        Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
+        Create Document from dict. An optional `field_map` parameter can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
-        they are serialized / stored in other places (e.g. elasticsearch)
+        they are serialized / stored in other places (e.g. elasticsearch).
+
         Example:
 
         ```python
-        my_dict = {"custom_content_field": "some text", content_type": "text"}
-        Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+            my_dict = {"custom_content_field": "some text", "content_type": "text"}
+            Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
         ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
-        :return: dict with content of the Document
+        :return: A Document object
         """
+        if not field_map:
+            field_map = {}
+        if id_hash_keys:
+            warnings.warn(
+                message="Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
+                "Old API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}}, id_hash_keys=['meta'])\n"
+                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            dict["id_hash_keys"] = id_hash_keys
 
         _doc = dict.copy()
-        init_args = ["content", "content_type", "id", "score", "question", "meta", "embedding"]
+        init_args = ["content", "content_type", "id", "score", "id_hash_keys", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
@@ -206,24 +230,24 @@ class Document:
                 k = field_map[k]
                 _new_doc[k] = v
 
-        if _doc.get("id") is None:
-            _new_doc["id_hash_keys"] = id_hash_keys
-
         # Convert list of rows to pd.DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
             _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
 
         return cls(**_new_doc)
 
-    def to_json(self, field_map={}) -> str:
-        d = self.to_dict(field_map=field_map)
-        j = json.dumps(d, cls=NumpyEncoder)
-        return j
+    def to_json(self, field_map: Optional[Dict[str, Any]] = None) -> str:
+        if not field_map:
+            field_map = {}
+        dictionary = self.to_dict(field_map=field_map)
+        return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data: str, field_map={}):
-        d = json.loads(data)
-        return cls.from_dict(d, field_map=field_map)
+    def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
+        if not field_map:
+            field_map = {}
+        dictionary = json.loads(data)
+        return cls.from_dict(dictionary, field_map=field_map)
 
     def __eq__(self, other):
         return (
@@ -231,6 +255,7 @@ class Document:
             and getattr(other, "content", None) == self.content
             and getattr(other, "content_type", None) == self.content_type
             and getattr(other, "id", None) == self.id
+            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
