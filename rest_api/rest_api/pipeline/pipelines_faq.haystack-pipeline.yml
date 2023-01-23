@@ -1,0 +1,40 @@
+# To allow your IDE to autocomplete and validate your YAML pipelines, name them as <name of your choice>.haystack-pipeline.yml
+
+version: ignore
+
+components:    # define all the building-blocks for Pipeline
+  - name: DocumentStore
+    type: ElasticsearchDocumentStore
+    params:
+      host: localhost
+      embedding_field: question_emb
+      embedding_dim: 384
+      excluded_meta_data:
+        - question_emb
+      similarity: cosine
+  - name: Retriever
+    type: EmbeddingRetriever
+    params:
+      document_store: DocumentStore    # params can reference other components defined in the YAML
+      embedding_model: sentence-transformers/all-MiniLM-L6-v2
+      scale_score: False
+  - name: Doc2Answers       # custom-name for the component; helpful for visualization & debugging
+    type: Docs2Answers    # Haystack Class name for the component
+  - name: CsvTextConverter
+    type: CsvTextConverter
+
+pipelines:
+  - name: query    # a sample extractive-qa Pipeline
+    nodes:
+      - name: Retriever
+        inputs: [Query]
+      - name: Doc2Answers
+        inputs: [Retriever]
+  - name: indexing
+    nodes:
+      - name: CsvTextConverter
+        inputs: [File]
+      - name: Retriever
+        inputs: [ CsvTextConverter ]
+      - name: DocumentStore
+        inputs: [ Retriever ]
