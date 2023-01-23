@@ -441,28 +441,28 @@ class BaseDocumentStore(BaseComponent):
         # TODO improve support for PreProcessor when adding eval data
         if preprocessor is not None:
             assert preprocessor.split_by != "sentence", (
-                f"Split by sentence not supported.\n"
-                f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
+                "Split by sentence not supported.\n"
+                "Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
             )
             assert preprocessor.split_respect_sentence_boundary is False, (
-                f"split_respect_sentence_boundary not supported yet.\n"
-                f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
+                "split_respect_sentence_boundary not supported yet.\n"
+                "Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
             )
             assert preprocessor.split_overlap == 0, (
-                f"Overlapping documents are currently not supported when adding eval data.\n"
-                f"Please set 'split_overlap=0' in the supplied PreProcessor."
+                "Overlapping documents are currently not supported when adding eval data.\n"
+                "Please set 'split_overlap=0' in the supplied PreProcessor."
             )
             assert preprocessor.clean_empty_lines is False, (
-                f"clean_empty_lines currently not supported when adding eval data.\n"
-                f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
+                "clean_empty_lines currently not supported when adding eval data.\n"
+                "Please set 'clean_empty_lines=False' in the supplied PreProcessor."
             )
             assert preprocessor.clean_whitespace is False, (
-                f"clean_whitespace is currently not supported when adding eval data.\n"
-                f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
+                "clean_whitespace is currently not supported when adding eval data.\n"
+                "Please set 'clean_whitespace=False' in the supplied PreProcessor."
             )
             assert preprocessor.clean_header_footer is False, (
-                f"clean_header_footer is currently not supported when adding eval data.\n"
-                f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+                "clean_header_footer is currently not supported when adding eval data.\n"
+                "Please set 'clean_header_footer=False' in the supplied PreProcessor."
             )
 
         file_path = Path(filename)

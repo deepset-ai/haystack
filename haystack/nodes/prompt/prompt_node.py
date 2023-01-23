@@ -730,7 +730,7 @@ class PromptNode(BaseComponent):
         elif isinstance(model_name_or_path, PromptModel):
             self.prompt_model = model_name_or_path
         else:
-            raise ValueError(f"model_name_or_path must be either a string or a PromptModel object")
+            raise ValueError("model_name_or_path must be either a string or a PromptModel object")
 
     def __call__(self, *args, **kwargs) -> List[str]:
         """
