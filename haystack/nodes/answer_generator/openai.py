@@ -12,17 +12,16 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.utils.reflection import retry_with_exponential_backoff
 
+logger = logging.getLogger(__name__)
+
 USE_TIKTOKEN = False
 if sys.version_info >= (3, 8):
-    USE_TIKTOKEN = True
-
-if USE_TIKTOKEN:
     import tiktoken
+
+    USE_TIKTOKEN = True
 else:
+    logger.warning("OpenAI tiktoken module is not available for Python < 3.8. Falling back to GPT2TokenizerFast.")
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
-
-
-logger = logging.getLogger(__name__)
 
 
 class OpenAIAnswerGenerator(BaseGenerator):

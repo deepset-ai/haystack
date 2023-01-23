@@ -12,18 +12,20 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
-from haystack.utils.import_utils import _optional_component_not_installed
+
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
+logger = logging.getLogger(__name__)
+
 USE_TIKTOKEN = False
 if sys.version_info >= (3, 8):
-    USE_TIKTOKEN = True
-
-if USE_TIKTOKEN:
     import tiktoken
+
+    USE_TIKTOKEN = True
 else:
+    logger.warning("OpenAI tiktoken module is not available for Python < 3.8. Falling back to GPT2TokenizerFast.")
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
 
 
