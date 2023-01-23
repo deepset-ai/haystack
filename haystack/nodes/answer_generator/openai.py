@@ -10,7 +10,6 @@ import requests
 from haystack import Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
-from haystack.utils.import_utils import _optional_component_not_installed
 from haystack.utils.reflection import retry_with_exponential_backoff
 
 USE_TIKTOKEN = False
@@ -18,10 +17,7 @@ if sys.version_info >= (3, 8):
     USE_TIKTOKEN = True
 
 if USE_TIKTOKEN:
-    try:
-        import tiktoken
-    except (ImportError, ModuleNotFoundError) as ie:
-        _optional_component_not_installed(__name__, "openai", ie)
+    import tiktoken
 else:
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
 

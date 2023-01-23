@@ -22,10 +22,7 @@ if sys.version_info >= (3, 8):
     USE_TIKTOKEN = True
 
 if USE_TIKTOKEN:
-    try:
-        import tiktoken
-    except (ImportError, ModuleNotFoundError) as ie:
-        _optional_component_not_installed(__name__, "openai", ie)
+    import tiktoken
 else:
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
 
