@@ -87,7 +87,7 @@ class FileTypeClassifier(BaseComponent):
             if path_suffix == "":
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
-                raise ValueError(f"Multiple file types are not allowed at once.")
+                raise ValueError("Multiple file types are not allowed at once.")
 
         return extension.lstrip(".")
 

@@ -1,5 +1,3 @@
-# pylint: disable=missing-timeout
-
 """
 Script to perform data augmentation on a SQuAD like dataset to increase training data.
 It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/1909.10351.pdf.
@@ -50,14 +48,22 @@ def load_glove(
     glove_path: Path = Path("glove.txt"),
     vocab_size: int = 100_000,
     device: Union[str, torch.device] = torch.device("cpu:0"),
+    timeout: Union[float, Tuple[float, float]] = 10.0,
 ) -> Tuple[dict, dict, torch.Tensor]:
-    """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
+    """
+    Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around.
+    :param timeout: How many seconds to wait for the server to send data before giving up,
+        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+        Defaults to 10 seconds.
+    """
 
     if not glove_path.exists():  # download and extract glove if necessary
         logger.info("Provided glove file not found. Downloading it instead.")
         glove_path.parent.mkdir(parents=True, exist_ok=True)
         zip_path = glove_path.parent / (glove_path.name + ".zip")
-        request = requests.get("https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True)
+        request = requests.get(
+            "https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True, timeout=timeout
+        )
         with zip_path.open("wb") as downloaded_file:
             downloaded_file.write(request.content)
         with ZipFile(zip_path, "r") as zip_file:

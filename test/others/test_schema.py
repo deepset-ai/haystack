@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, fail_at_version
 
 LABELS = [
     Label(
@@ -43,6 +43,26 @@ LABELS = [
         origin="user-feedback",
     ),
 ]
+
+
+def test_document_from_dict():
+    doc = Document(
+        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+    )
+    assert doc == Document.from_dict(doc.to_dict())
+
+
+@fail_at_version(1, 15)
+def test_deprecated_id_hash_keys_in_document_from_dict():
+    doc = Document(
+        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+    )
+    # id_hash_keys in Document.from_dict() is deprecated and should be removed.
+    with pytest.warns(DeprecationWarning):
+        assert doc == Document.from_dict(
+            {"content": "this is the content of the document", "meta": {"some": "meta"}},
+            id_hash_keys=["content", "meta"],
+        )
 
 
 def test_no_answer_label():
@@ -152,6 +172,7 @@ def test_doc_to_json():
     d = Document(
         content="some text",
         content_type="text",
+        id_hash_keys=["meta"],
         score=0.99988,
         meta={"name": "doc1"},
         embedding=np.random.rand(768).astype(np.float32),
@@ -161,7 +182,14 @@ def test_doc_to_json():
     assert d == d_new
 
     # No embedding
-    d = Document(content="some text", content_type="text", score=0.99988, meta={"name": "doc1"}, embedding=None)
+    d = Document(
+        content="some text",
+        content_type="text",
+        score=0.99988,
+        meta={"name": "doc1"},
+        id_hash_keys=["meta"],
+        embedding=None,
+    )
     j0 = d.to_json()
     d_new = Document.from_json(j0)
     assert d == d_new
