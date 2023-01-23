@@ -269,7 +269,6 @@ disable = [
   "super-with-arguments",
   "redefined-builtin",
   "logging-format-interpolation",
-  #"f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
   "unspecified-encoding",
