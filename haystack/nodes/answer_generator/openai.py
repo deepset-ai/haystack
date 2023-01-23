@@ -1,5 +1,3 @@
-# pylint: disable=missing-timeout
-
 import json
 import logging
 import sys
