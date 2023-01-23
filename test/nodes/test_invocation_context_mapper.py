@@ -90,6 +90,39 @@ def test_value_only_in_invocation_context(mock_function):
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
 
 
+def test_yaml(mock_function, tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: mapper
+              type: InvocationContextMapper
+              params:
+                func: test_function
+                inputs:
+                  a: query
+                params:
+                  b: [1, 1]
+                outputs:
+                  - c
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert result["invocation_context"]["c"] == ["test query", "test query"]
+    assert result["query"] == "test query"
+    assert result["documents"] == [Document(content="first"), Document(content="second"), Document(content="third")]
+
+
 #
 # expand_values_to_list
 #
@@ -131,6 +164,9 @@ def test_expand_values_to_list_yaml(tmp_path):
         query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert result["invocation_context"]["questions"] == ["test query", "test query", "test query"]
+    # Assert pipeline output is unaffected
+    assert result["query"] == "test query"
+    assert result["documents"] == [Document(content="first"), Document(content="second"), Document(content="third")]
 
 
 #
@@ -224,9 +260,6 @@ def test_join_documents():
     )
     assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
 
-    # Only the invocation_context is affected. It's going to be PromptNode that puts the documents back in the Pipeline
-    assert results["documents"] == [Document(content="first"), Document(content="second"), Document(content="third")]
-
 
 def test_join_documents_default_delimiter():
     mapper = InvocationContextMapper(func="join_documents", inputs={"documents": "documents"}, outputs=["documents"])
@@ -265,6 +298,7 @@ def test_join_documents_yaml(tmp_path):
         query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert result["invocation_context"]["documents"] == [Document(content="first - second - third")]
+    assert result["documents"] == [Document(content="first"), Document(content="second"), Document(content="third")]
 
 
 def test_join_documents_default_delimiter_yaml(tmp_path):
