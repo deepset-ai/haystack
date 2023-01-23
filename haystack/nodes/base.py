@@ -191,7 +191,36 @@ class BaseComponent(ABC):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
-        pass
+        multi_query = isinstance(queries, list) and len(queries) > 0 and isinstance(queries[0], str)
+        single_query = isinstance(queries, str)
+        multi_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], list)
+        single_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], Document)
+
+        results = {"queries": queries, "documents": documents, "meta": meta}
+        collected_responses = []
+        if single_query:
+            if single_docs_list:
+                # Single query is applied to each doc individually
+                response, _ = self.run(query=queries, documents=documents, meta=meta)  # type: ignore
+                collected_responses.append(response)
+            elif multi_docs_list:
+                # Single query is applied to each list of Documents
+                for doc in documents:  # type: ignore
+                    response, _ = self.run(query=queries, documents=doc, meta=meta)  # type: ignore
+                    collected_responses.append(response)
+        elif multi_query:
+            if single_docs_list:
+                # Each query is applied to each doc (query to doc; 1-to-1)
+                for query, doc in zip(queries, documents):  # type:ignore
+                    response, _ = self.run(query=query, documents=[doc], meta=meta)  # type: ignore
+                    collected_responses.append(response)
+            elif multi_docs_list:
+                # Each query is applied to its corresponding doc list (query to doc list mapping)
+                for query, docs in zip(queries, documents):  # type:ignore
+                    response, _ = self.run(query=query, documents=docs, meta=meta)  # type: ignore
+                    collected_responses.append(response)
+        results.update({"batched_result": collected_responses})
+        return results, "output_1"
 
     def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
