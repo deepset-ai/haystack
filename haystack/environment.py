@@ -29,7 +29,6 @@ def set_pytorch_secure_model_loading(flag_val="1"):
         os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = flag_val
     else:
         logger.info("TORCH_FORCE_WEIGHTS_ONLY_LOAD is already set to %s, Haystack will use the same.", os_flag_val)
-        )
 
 
 def get_or_create_env_meta_data() -> Dict[str, Any]:
