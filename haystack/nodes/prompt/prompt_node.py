@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 from abc import ABC, abstractmethod
 from string import Template
@@ -7,13 +8,15 @@ from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
 import requests
 import torch
-from transformers import pipeline, AutoModelForSeq2SeqLM
+from transformers import pipeline, AutoModelForSeq2SeqLM, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
 
 from haystack import MultiLabel
+from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +209,20 @@ class PromptModelInvocationLayer:
         return False
 
 
+class StopWordsCriteria(StoppingCriteria):
+    """
+    Stops text generation if any one of the stop words is generated.
+    """
+
+    def __init__(self, model_name_or_path: str, stop_words: List[str]):
+        super().__init__()
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        return any(torch.isin(input_ids[-1], self.stop_words[-1]))
+
+
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
     """
     A subclass of the PromptModelInvocationLayer class. It loads a pre-trained model from Hugging Face and
@@ -310,7 +327,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face as model_input_kwargs.
         Other kwargs are ignored.
         """
-        output = []
+        output: List[Dict[str, str]] = []
+        stop_words = kwargs.pop("stop", None)
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -322,8 +340,19 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 for key in ["return_tensors", "return_text", "clean_up_tokenization_spaces", "truncation"]
                 if key in kwargs
             }
+            if stop_words:
+                sw = StopWordsCriteria(model_name_or_path=self.model_name_or_path, stop_words=stop_words)
+                model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
-        return [o["generated_text"] for o in output]
+        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+
+        if stop_words:
+            # Although HF generates text until stop words are encountered unfortunately it includes the stop word
+            # We want to exclude it to be consistent with other invocation layers
+            for idx, _ in enumerate(generated_texts):
+                for stop_word in stop_words:
+                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+        return generated_texts
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
@@ -394,6 +423,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
+        max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
+    )
     def invoke(self, *args, **kwargs):
         """
         Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
@@ -655,6 +688,7 @@ class PromptNode(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        stop_words: Optional[List[str]] = None,
     ):
         """
         Creates a PromptNode instance.
@@ -674,6 +708,7 @@ class PromptNode(BaseComponent):
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
+        self.stop_words: Optional[List[str]] = stop_words
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -695,7 +730,7 @@ class PromptNode(BaseComponent):
         elif isinstance(model_name_or_path, PromptModel):
             self.prompt_model = model_name_or_path
         else:
-            raise ValueError(f"model_name_or_path must be either a string or a PromptModel object")
+            raise ValueError("model_name_or_path must be either a string or a PromptModel object")
 
     def __call__(self, *args, **kwargs) -> List[str]:
         """
@@ -743,7 +778,9 @@ class PromptNode(BaseComponent):
 
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                # and pass the prepared prompt to the model
+                # merge any additional model kwargs
+                kwargs = {**kwargs, **self._prepare_model_kwargs()}
+                # and pass the prepared prompt and kwargs to the model
                 output = self.prompt_model.invoke(prompt, **kwargs)
                 results.extend(output)
         else:
@@ -867,25 +904,36 @@ class PromptNode(BaseComponent):
         :param meta: The meta to be used for the prompt. Usually not used.
         :param invocation_context: The invocation context to be used for the prompt.
         """
-        # The invocation context overwrites locals(), so if for example invocation_context contains a
-        # modified list of Documents under the `documents` key, such list is used.
-        invocation_context = {**locals(), **(invocation_context or {})}
-        invocation_context.pop("self")
+        invocation_context = invocation_context or {}
+        if query and not "query" in invocation_context.keys():
+            invocation_context["query"] = query
 
-        for doc in invocation_context.get("documents", []):
-            if not isinstance(doc, str) and not isinstance(doc.content, str):
-                raise ValueError("PromptNode only accepts text documents.")
+        if file_paths and not "file_paths" in invocation_context.keys():
+            invocation_context["file_paths"] = file_paths
 
-        invocation_context["documents"] = [
-            doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
-        ]
+        if labels and not "labels" in invocation_context.keys():
+            invocation_context["labels"] = labels
+
+        if documents and not "documents" in invocation_context.keys():
+            invocation_context["documents"] = documents
+
+        if meta and not "meta" in invocation_context.keys():
+            invocation_context["meta"] = meta
+
+        if "documents" in invocation_context.keys():
+            for doc in invocation_context.get("documents", []):
+                if not isinstance(doc, str) and not isinstance(doc.content, str):
+                    raise ValueError("PromptNode only accepts text documents.")
+            invocation_context["documents"] = [
+                doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
+            ]
 
         results = self(**invocation_context)
 
         if self.output_variable:
             invocation_context[self.output_variable] = results
 
-        return {"results": results, "meta": meta, "invocation_context": invocation_context}, "output_1"
+        return {"results": results, "invocation_context": invocation_context}, "output_1"
 
     def run_batch(
         self,
@@ -898,3 +946,6 @@ class PromptNode(BaseComponent):
         debug: Optional[bool] = None,
     ):
         pass
+
+    def _prepare_model_kwargs(self):
+        return {"stop": self.stop_words}

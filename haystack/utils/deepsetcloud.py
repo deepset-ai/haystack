@@ -1,9 +1,7 @@
-# pylint: disable=missing-timeout
-
 import json
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -315,6 +313,7 @@ class DeepsetCloudClient:
         stream: bool = False,
         files: Optional[Any] = None,
         raise_on_error: bool = True,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
     ):
         if json is not None:
             json = self._remove_null_values(json)
@@ -328,6 +327,7 @@ class DeepsetCloudClient:
             auth=BearerAuth(self.api_key),
             stream=stream,
             files=files,
+            timeout=timeout,
         )
         if raise_on_error and response.status_code > 299:
             raise DeepsetCloudError(

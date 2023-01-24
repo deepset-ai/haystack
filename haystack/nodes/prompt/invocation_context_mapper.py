@@ -277,21 +277,7 @@ class InvocationContextMapper(BaseComponent):
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
 
-        output: Dict[str, Any] = {}
-        if query:
-            output["query"] = query
-        if file_paths:
-            output["file_paths"] = file_paths
-        if labels:
-            output["labels"] = labels
-        if documents:
-            output["documents"] = documents
-        if meta:
-            output["meta"] = meta
-
-        output["invocation_context"] = invocation_context
-
-        return output, "output_1"
+        return {"invocation_context": invocation_context}, "output_1"
 
     def run_batch(  # type: ignore
         self,
