@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Takes a question and a set of Documents as input and returns an Answer by selecting a text span within the Documents.
-   category: 6310ca73c622850ddd3875a2
+   category: 63cffd5033018f0010bde74a
    title: Reader API
    slug: reader-api
    order: 160

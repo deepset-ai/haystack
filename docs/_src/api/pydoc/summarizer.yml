@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: The Summarizer gives a short overview of a long Document.
-   category: 6310ca73c622850ddd3875a2
+   category: 63cffd5033018f0010bde74a
    title: Summarizer API
    slug: summarizer-api
    order: 180
