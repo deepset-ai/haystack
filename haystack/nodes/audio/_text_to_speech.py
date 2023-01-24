@@ -130,7 +130,7 @@ class TextToSpeech:
         prediction = self.model(text)
         if not prediction:
             raise AudioNodeError(
-                f"The model returned no predictions. Make sure you selected a valid text-to-speech model."
+                "The model returned no predictions. Make sure you selected a valid text-to-speech model."
             )
         output = prediction.get(_models_output_key, None)
         if output is None:

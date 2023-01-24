@@ -68,3 +68,31 @@ def test_load_advanced_pipeline(document_store_with_docs):
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
     assert len(prediction["answers"]) > 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+async def test_load_advanced_pipeline_async(document_store_with_docs):
+    pipeline = RayPipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "ray.advanced.haystack-pipeline.yml",
+        pipeline_name="ray_query_pipeline",
+        ray_args={"num_cpus": 8},
+        serve_args={"detached": True},
+    )
+    prediction = await pipeline.run_async(
+        query="Who lives in Berlin?",
+        params={"ESRetriever1": {"top_k": 1}, "ESRetriever2": {"top_k": 2}, "Reader": {"top_k": 3}},
+    )
+
+    assert pipeline._serve_controller_client._detached is True
+    assert ray.serve.get_deployment(name="ESRetriever1").num_replicas == 2
+    assert ray.serve.get_deployment(name="ESRetriever2").num_replicas == 2
+    assert ray.serve.get_deployment(name="Reader").num_replicas == 1
+    assert ray.serve.get_deployment(name="ESRetriever1").max_concurrent_queries == 17
+    assert ray.serve.get_deployment(name="ESRetriever2").max_concurrent_queries == 15
+    assert ray.serve.get_deployment(name="ESRetriever1").ray_actor_options["num_cpus"] == 0.25
+    assert ray.serve.get_deployment(name="ESRetriever2").ray_actor_options["num_cpus"] == 0.25
+    assert prediction["query"] == "Who lives in Berlin?"
+    assert prediction["answers"][0].answer == "Carla"
+    assert len(prediction["answers"]) > 1

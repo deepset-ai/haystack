@@ -500,7 +500,7 @@ class DensePassageRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -1119,7 +1119,7 @@ class TableTextRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
