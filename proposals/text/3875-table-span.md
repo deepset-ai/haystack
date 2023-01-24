@@ -151,8 +151,9 @@ print(dict_table_doc["content"][span[0]][span[1]])  # prints "actors"
 ```
 
 I see a few ways to address this:
-- One way to address this would be to update the `Span` (or `TableCell`) to be updated when the table is converted into a list of lists.
-- Another way would be to only store the table internally as a list of lists.
+- Update the `Span` (or `TableCell`) to be updated when the table is converted into a list of lists in the Answer primitive.
+- Only store the table internally as a list of lists. We can't only use pandas dataframes since we need to be able json serialize the table to be used in the rest-api and to be compatible with our `to_dict` and `from_dict` methods.
+- Expand `TableCell` to have additional member variables like `pandas_row`, `pandas_col` in addition to the normal `row` and `col`.
 
 # Drawbacks
 
