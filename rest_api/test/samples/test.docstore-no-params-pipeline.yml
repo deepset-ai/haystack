@@ -1,0 +1,15 @@
+version: 'ignore'
+
+components:
+  - name: InMemoryDocumentStore
+    type: InMemoryDocumentStore
+  - name: tfidf_ret
+    params:
+      document_store: InMemoryDocumentStore
+    type: TfidfRetriever
+pipelines:
+  - name: query
+    nodes:
+      - inputs:
+          - Query
+        name: tfidf_ret
