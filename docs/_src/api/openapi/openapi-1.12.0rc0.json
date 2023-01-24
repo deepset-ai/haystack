@@ -659,6 +659,16 @@
                         "type": "object",
                         "default": {}
                     },
+                    "id_hash_keys": {
+                        "title": "Id Hash Keys",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "default": [
+                            "content"
+                        ]
+                    },
                     "score": {
                         "title": "Score",
                         "type": "number"

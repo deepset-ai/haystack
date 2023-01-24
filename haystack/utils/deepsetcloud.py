@@ -1,9 +1,7 @@
-# pylint: disable=missing-timeout
-
 import json
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -315,6 +313,7 @@ class DeepsetCloudClient:
         stream: bool = False,
         files: Optional[Any] = None,
         raise_on_error: bool = True,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
     ):
         if json is not None:
             json = self._remove_null_values(json)
@@ -328,6 +327,7 @@ class DeepsetCloudClient:
             auth=BearerAuth(self.api_key),
             stream=stream,
             files=files,
+            timeout=timeout,
         )
         if raise_on_error and response.status_code > 299:
             raise DeepsetCloudError(
@@ -420,7 +420,11 @@ class IndexClient:
             doc = response.json()
         else:
             logger.warning(
-                f"Document {id} could not be fetched from deepset Cloud: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
+                "Document %s could not be fetched from deepset Cloud: HTTP %s - %s\n%s",
+                id,
+                response.status_code,
+                response.reason,
+                response.content.decode(),
             )
         return doc
 
@@ -625,7 +629,9 @@ class PipelineClient:
             else:
                 logger.info("Pipeline config '%s' is already deployed.", pipeline_config_name)
             logger.info(
-                f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}"
+                "Search endpoint for pipeline config '%s' is up and running for you under %s",
+                pipeline_config_name,
+                pipeline_url,
             )
             if show_curl_message:
                 curl_cmd = (
@@ -925,7 +931,9 @@ class EvaluationSetClient:
             with open(file_path, "rb") as file:
                 self.client.post(url=target_url, files={"file": (file_path.name, file, mime_type)})
             logger.info(
-                f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
+                "Successfully uploaded evaluation set file %s. You can access it now under evaluation set '%s'.",
+                file_path,
+                file_path.name,
             )
         except DeepsetCloudError as e:
             logger.error("Error uploading evaluation set file %s: %s", file_path, e.args)
@@ -1013,7 +1021,7 @@ class FileClient:
                     )
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error uploading file %s", file_path)
 
         logger.info("Successfully uploaded %s files.", len(file_ids))

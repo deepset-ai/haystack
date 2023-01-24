@@ -73,7 +73,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         knn_parameters: Optional[Dict] = None,
     ):
         """
-        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
+        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.
 
         In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
         the KNN plugin that can scale to a large number of documents.
@@ -252,9 +252,24 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         hosts = prepare_hosts(host, port)
         connection_class = Urllib3HttpConnection
         if use_system_proxy:
-            connection_class = RequestsHttpConnection
+            connection_class = RequestsHttpConnection  # type: ignore [assignment]
 
-        if username:
+        if aws4auth:
+            # Sign requests to Opensearch with IAM credentials
+            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
+            if username:
+                logger.warning(
+                    "aws4auth and a username or the default username 'admin' are passed to the OpenSearchDocumentStore. The username will be ignored and aws4auth will be used for authentication."
+                )
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=aws4auth,
+                connection_class=RequestsHttpConnection,
+                use_ssl=True,
+                verify_certs=True,
+                timeout=timeout,
+            )
+        elif username:
             # standard http_auth
             client = OpenSearch(
                 hosts=hosts,
@@ -264,17 +279,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 verify_certs=verify_certs,
                 timeout=timeout,
                 connection_class=connection_class,
-            )
-        elif aws4auth:
-            # Sign requests to Opensearch with IAM credentials
-            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
-            client = OpenSearch(
-                hosts=hosts,
-                http_auth=aws4auth,
-                connection_class=RequestsHttpConnection,
-                use_ssl=True,
-                verify_certs=True,
-                timeout=timeout,
             )
         else:
             # no authentication needed
@@ -628,9 +632,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if not any(indices):
             # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
             logger.warning(
-                f"Before you can use an index, you must create it first. The index '{index_name}' doesn't exist. "
-                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance doesn't validate the index after you created it."
+                "Before you can use an index, you must create it first. The index '%s' doesn't exist. "
+                "You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                "Note that this instance doesn't validate the index after you created it.",
+                index_name,
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -685,11 +690,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 if self.index_type == "hnsw" and ef_search != desired_ef_search:
                     body = {"knn.algo_param.ef_search": desired_ef_search}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                    logger.info(f"Set ef_search to 20 for hnsw index '{index_id}'.")
+                    logger.info("Set ef_search to 20 for hnsw index '%s'.", index_id)
                 elif self.index_type == "flat" and ef_search != 512:
                     body = {"knn.algo_param.ef_search": 512}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                    logger.info(f"Set ef_search to 512 for hnsw index '{index_id}'.")
+                    logger.info("Set ef_search to 512 for hnsw index '%s'.", index_id)
 
     def _validate_approximate_knn_settings(
         self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str

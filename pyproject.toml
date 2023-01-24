@@ -87,6 +87,9 @@ dependencies = [
   # Elasticsearch
   "elasticsearch>=7.7,<8",
 
+  # OpenAI tokenizer
+  "tiktoken>=0.1.2; python_version >= '3.8'",
+
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
 
@@ -119,7 +122,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.9.0",
+  "weaviate-client==3.10.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -190,6 +193,7 @@ dev = [
   # Test
   "pytest",
   "pytest-custom_exit_code",  # used in the CI
+  "pytest-asyncio",
   "responses",
   "tox",
   "coverage",
@@ -248,8 +252,6 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
-  "wrong-spelling-in-comment",
-  "wrong-spelling-in-docstring",
 
   # To review:
   "missing-docstring",
@@ -260,21 +262,17 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "logging-fstring-interpolation",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
-  "unused-variable",
   "attribute-defined-outside-init",
   "too-many-instance-attributes",
   "super-with-arguments",
-  "anomalous-backslash-in-string",
   "redefined-builtin",
   "logging-format-interpolation",
-  "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
   "unspecified-encoding",

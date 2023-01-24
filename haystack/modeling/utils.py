@@ -103,7 +103,7 @@ def initialize_device_settings(
             torch_devices: List[torch.device] = [torch.device(device) for device in devices]
             devices_to_use = torch_devices
         else:
-            devices_to_use = devices
+            devices_to_use = devices  # type: ignore [assignment]
         n_gpu = sum(1 for device in devices_to_use if "cpu" not in device.type)
     elif local_rank == -1:
         if torch.cuda.is_available():
@@ -328,7 +328,7 @@ def log_ascii_workers(n, logger):
     f_worker_lines = WORKER_F.split("\n")
     x_worker_lines = WORKER_X.split("\n")
     all_worker_lines = []
-    for i in range(n):
+    for _ in range(n):
         rand = np.random.randint(low=0, high=3)
         if rand % 3 == 0:
             all_worker_lines.append(f_worker_lines)

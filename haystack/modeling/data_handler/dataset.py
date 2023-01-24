@@ -59,9 +59,11 @@ def convert_features_to_dataset(features):
                 base = check.ravel()[0]
             if not np.issubdtype(type(base), np.integer):
                 logger.warning(
-                    f"Problem during conversion to torch tensors:\n"
-                    f"A non-integer value for feature '{t_name}' with a value of: "
-                    f"'{base}' will be converted to a torch tensor of dtype long."
+                    "Problem during conversion to torch tensors:\n"
+                    "A non-integer value for feature '%s' with a value of: "
+                    "'%s' will be converted to a torch tensor of dtype long.",
+                    t_name,
+                    base,
                 )
         except:
             logger.debug(

@@ -147,3 +147,10 @@ class CohereError(NodeError):
     ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
+
+
+class ImageToTextError(NodeError):
+    """Exception for issues that occur in the ImageToText node"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)

@@ -19,6 +19,7 @@ from haystack.nodes.file_converter import (
     TextConverter,
     AzureConverter,
     ParsrConverter,
+    CsvTextConverter,
 )
 from haystack.nodes.label_generator import PseudoLabelGenerator
 from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers, DocumentMerger

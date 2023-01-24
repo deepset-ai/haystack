@@ -410,4 +410,3 @@ Save FAISS Index to the specified file.
 ```
 
 Load a saved FAISS index from a file and connect to the SQL database.
-

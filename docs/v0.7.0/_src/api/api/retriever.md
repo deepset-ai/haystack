@@ -478,4 +478,3 @@ Create embeddings for a list of passages. For this Retriever type: The same as c
 **Returns**:
 
 Embeddings, one per input passage
-

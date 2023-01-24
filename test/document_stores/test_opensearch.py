@@ -203,6 +203,32 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             assert r.levelname == "WARNING"
 
     @pytest.mark.unit
+    def test__init_client_aws4auth_and_username_raises_warning(self, mocked_open_search_init, caplog):
+        _init_client_remaining_kwargs = {
+            "host": "host",
+            "port": 443,
+            "password": "pass",
+            "scheme": "https",
+            "ca_certs": None,
+            "verify_certs": True,
+            "timeout": 10,
+            "use_system_proxy": False,
+        }
+
+        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
+            OpenSearchDocumentStore._init_client(username="admin", aws4auth="foo", **_init_client_remaining_kwargs)
+            OpenSearchDocumentStore._init_client(username="bar", aws4auth="foo", **_init_client_remaining_kwargs)
+        assert len(caplog.records) == 2
+        for r in caplog.records:
+            assert r.levelname == "WARNING"
+
+        caplog.clear()
+        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
+            OpenSearchDocumentStore._init_client(username=None, aws4auth="foo", **_init_client_remaining_kwargs)
+            OpenSearchDocumentStore._init_client(username="foo", aws4auth=None, **_init_client_remaining_kwargs)
+        assert len(caplog.records) == 0
+
+    @pytest.mark.unit
     def test___init___connection_test_fails(self, mocked_document_store):
         failing_client = MagicMock()
         failing_client.indices.get.side_effect = Exception("The client failed!")

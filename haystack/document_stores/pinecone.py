@@ -160,6 +160,12 @@ class PineconeDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
 
         if pinecone_index:
+            if not isinstance(pinecone_index, pinecone.Index):
+                raise PineconeDocumentStoreError(
+                    f"The parameter `pinecone_index` needs to be a "
+                    f"`pinecone.Index` object. You provided an object of "
+                    f"type `{type(pinecone_index)}`."
+                )
             self.pinecone_indexes[self.index] = pinecone_index
         else:
             self.pinecone_indexes[self.index] = self._create_index(
@@ -1353,7 +1359,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Explode dict of dicts into single flattened dict
             for key, value in meta.items():
                 # Replace any None values with empty strings
-                if value == None:
+                if value is None:
                     value = ""
                 # format key
                 new_key = f"{parent_key}.{key}" if parent_key else key

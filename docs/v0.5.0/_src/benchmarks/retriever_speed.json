@@ -5,7 +5,7 @@
     "description": "Here you can see how the query speed of different Retriever / DocumentStore combinations scale as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
     "columns": [
         "n_docs",
-        "BM25 / ElasticSearch", 
+        "BM25 / ElasticSearch",
         "DPR / ElasticSearch",
         "DPR / FAISS (flat)",
         "DPR / FAISS (HSNW)"

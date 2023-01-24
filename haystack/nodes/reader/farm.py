@@ -151,7 +151,7 @@ class FARMReader(BaseReader):
             proxies=proxies,
             local_files_only=local_files_only,
             force_download=force_download,
-            devices=self.devices,
+            devices=self.devices,  # type: ignore [arg-type]
             use_auth_token=use_auth_token,
             max_query_length=max_query_length,
         )
@@ -224,7 +224,7 @@ class FARMReader(BaseReader):
         if max_query_length is None:
             max_query_length = self.max_query_length
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)  # type: ignore [arg-type]
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -778,7 +778,7 @@ class FARMReader(BaseReader):
             transformer_models[0].save_pretrained(tmp_dir)
 
             large_files = []
-            for root, dirs, files in os.walk(tmp_dir):
+            for root, _, files in os.walk(tmp_dir):
                 for filename in files:
                     file_path = os.path.join(root, filename)
                     rel_path = os.path.relpath(file_path, tmp_dir)
@@ -1023,9 +1023,10 @@ class FARMReader(BaseReader):
 
         if self.top_k_per_candidate != 4:
             logger.info(
-                f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
-                f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
-                f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5"
+                "Performing Evaluation using top_k_per_candidate = %s \n"
+                "and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                "This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5",
+                self.top_k_per_candidate,
             )
 
         # extract all questions for evaluation
@@ -1062,7 +1063,7 @@ class FARMReader(BaseReader):
                         continue
                     if label.answer.offsets_in_document is None:
                         logger.error(
-                            f"Label.answer.offsets_in_document was None, but Span object was expected: {label} "
+                            "Label.answer.offsets_in_document was None, but Span object was expected: %s ", label
                         )
                         continue
                     # add to existing answers
@@ -1074,7 +1075,11 @@ class FARMReader(BaseReader):
                         # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                         if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
                             logger.warning(
-                                f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
+                                "Answers in this sample are being dropped because it has more than 6 answers. "
+                                "(doc_id: %s, question: %s, label_id: %s)",
+                                doc_id,
+                                label.query,
+                                label.id,
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(
@@ -1084,7 +1089,7 @@ class FARMReader(BaseReader):
                     # create new one
                     else:
                         # We don't need to create an answer dict if is_impossible / no_answer
-                        if label.no_answer == True:
+                        if label.no_answer is True:
                             aggregated_per_question[aggregation_key] = {
                                 "id": str(hash(str(doc_id) + label.query)),
                                 "question": label.query,
@@ -1114,9 +1119,7 @@ class FARMReader(BaseReader):
         # Create DataLoader that can be passed to the Evaluator
         tic = perf_counter()
         indices = range(len(farm_input))
-        dataset, tensor_names, problematic_ids = self.inferencer.processor.dataset_from_dicts(
-            farm_input, indices=indices
-        )
+        dataset, tensor_names, _ = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)

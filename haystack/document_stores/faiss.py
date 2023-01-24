@@ -206,7 +206,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             index.hnsw.efConstruction = ef_construction
 
             logger.info(
-                f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}"
+                "HNSW params: n_links: %s, efSearch: %s, efConstruction: %s",
+                n_links,
+                index.hnsw.efSearch,
+                index.hnsw.efConstruction,
             )
         else:
             index = faiss.index_factory(embedding_dim, index_factory, metric_type)
@@ -556,8 +559,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         if index in self.faiss_indexes:
             del self.faiss_indexes[index]

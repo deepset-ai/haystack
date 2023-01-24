@@ -42,4 +42,3 @@ Sends out files on a different output edge depending on their extension.
 **Arguments**:
 
 - `file_paths`: paths to route on different edges.
-

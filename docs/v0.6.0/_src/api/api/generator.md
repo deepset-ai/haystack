@@ -137,4 +137,3 @@ Abstract method to generate answers.
 **Returns**:
 
 Generated answers plus additional infos in a dict
-
