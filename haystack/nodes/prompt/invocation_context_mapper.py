@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def rename(value: Any) -> Tuple[Any]:
     """
-    Identity function. USeful to rename values in the invocation context.
+    Identity function. Can be used to rename values in the invocation context without changing them.
 
     Example:
 
@@ -24,7 +24,7 @@ def rename(value: Any) -> Tuple[Any]:
 
 def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
     """
-    Transforms a value into a list containing this value. You can specify the length of this list in `target_list`.
+    Transforms a value into a list containing this value as many times as the length of the target list.
 
     Example:
 
