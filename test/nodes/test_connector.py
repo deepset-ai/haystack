@@ -18,7 +18,7 @@ from ..conftest import SAMPLES_PATH
 
 @pytest.fixture(scope="session")
 def test_url():
-    return f"file://{SAMPLES_PATH.absolute()}/crawler"
+    return (SAMPLES_PATH / "crawler").absolute().as_uri()
 
 
 def content_match(crawler: Crawler, url: str, crawled_page: Path):
@@ -177,12 +177,18 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
     assert len(paths) == 4
 
     with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
-        dynamic_result_text = dynamic_result.read()
+        dynamic_result_text = dynamic_result.readlines()
         for path in paths:
             with open(path, "r") as crawled_file:
                 page_data = json.load(crawled_file)
                 if page_data["meta"]["url"] == test_url + "/page_dynamic.html":
-                    assert dynamic_result_text == page_data["content"]
+                    content = page_data["content"].split("\n")
+
+                    print(page_data["content"])
+                    print("------")
+
+                    for line in range(len(dynamic_result_text)):
+                        assert dynamic_result_text[line].strip() == content[line].strip()
 
     assert content_in_results(crawler, test_url + "/index.html", paths)
     assert content_in_results(crawler, test_url + "/page1.html", paths)

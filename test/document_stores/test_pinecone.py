@@ -2,18 +2,18 @@ from typing import List, Union, Dict, Any
 
 import os
 from inspect import getmembers, isclass, isfunction
+from unittest.mock import MagicMock
 
 import pytest
 
 from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.schema import Document
-from haystack.errors import FilterError
+from haystack.errors import FilterError, PineconeDocumentStoreError
 
 
 from .test_base import DocumentStoreBaseTestAbstract
 from ..mocks import pinecone as pinecone_mock
-from ..conftest import SAMPLES_PATH
-
+from ..nodes.test_retriever import MockBaseRetriever
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
@@ -139,6 +139,24 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+    @pytest.mark.integration
+    def test_doc_store_wrong_init(self):
+        """
+        This is just a failure check case.
+        """
+        try:
+            _ = PineconeDocumentStore(
+                api_key=os.environ.get("PINECONE_API_KEY") or "fake-pinecone-test-key",
+                embedding_dim=768,
+                pinecone_index="p_index",
+                embedding_field="embedding",
+                index="haystack_tests",
+                similarity="cosine",
+                metadata_config={"indexed": META_FIELDS},
+            )
+            assert False
+        except PineconeDocumentStoreError as pe:
+            assert "`pinecone_index` needs to be a `pinecone.Index` object" in pe.message
 
     @pytest.mark.integration
     def test_ne_filters(self, ds, documents):
@@ -417,3 +435,15 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
         assert len(retrieved_docs) == 1
         assert retrieved_docs[0].meta == multilayer_meta
+
+    @pytest.mark.unit
+    def test_skip_validating_empty_embeddings(self, ds: PineconeDocumentStore):
+        document = Document(id="0", content="test")
+        retriever = MockBaseRetriever(document_store=ds, mock_document=document)
+        ds.write_documents(documents=[document])
+        ds._validate_embeddings_shape = MagicMock()
+
+        ds.update_embeddings(retriever)
+        ds._validate_embeddings_shape.assert_called_once()
+        ds.update_embeddings(retriever, update_existing_embeddings=False)
+        ds._validate_embeddings_shape.assert_called_once()

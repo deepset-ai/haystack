@@ -33,14 +33,14 @@ For example:
 
 **Notes**:
 
-  
+
   While the NLP researchers trained the default question
   [generation](https://huggingface.co/doc2query/msmarco-t5-base-v1) and the cross
   [encoder](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) models on
   the English language corpus, we can also use the language-specific question generation and
   cross-encoder models in the target language of our choice to apply GPL to documents in languages
   other than English.
-  
+
   As of this writing, the German language question
   [generation](https://huggingface.co/ml6team/mt5-small-german-query-generation) and the cross
   [encoder](https://huggingface.co/ml6team/cross-encoder-mmarco-german-distilbert-base) models are
@@ -174,4 +174,3 @@ dictionary contains the following keys:
 - pos_doc: Positive document for the given question.
 - neg_doc: Negative document for the given question.
 - score: The margin between the score for question-positive document pair and the score for question-negative document pair.
-

@@ -298,7 +298,7 @@ The checkpoint format matches huggingface transformers' model format
                     {"text": "my text", "meta": {"name": "my title"}}.
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
-                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
                             Options: `dot_product` (Default) or `cosine`
 - `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
@@ -308,7 +308,7 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
@@ -492,7 +492,7 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.TableTextRetriever.embed_queries"></a>
@@ -648,9 +648,9 @@ class EmbeddingRetriever(BaseRetriever)
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
@@ -714,7 +714,7 @@ Embeddings, one per input document
 class Text2SparqlRetriever(BaseGraphRetriever)
 ```
 
-Graph retriever that uses a pre-trained Bart model to translate natural language questions 
+Graph retriever that uses a pre-trained Bart model to translate natural language questions
 given in text form to queries in SPARQL format.
 The generated SPARQL query is executed on a knowledge graph.
 
@@ -759,4 +759,3 @@ Generate formatted dictionary output with text answer and additional info
 **Arguments**:
 
 - `result`: The result of a SPARQL query as retrieved from the knowledge graph
-

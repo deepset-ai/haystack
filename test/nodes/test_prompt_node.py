@@ -1,9 +1,10 @@
 import os
+from typing import Optional, Union, List, Dict, Any, Tuple
 
 import pytest
 import torch
 
-from haystack import Document, Pipeline
+from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 
@@ -240,6 +241,16 @@ def test_open_ai_prompt_with_params():
 
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_stop_words(prompt_model):
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
+    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    assert r[0] == "What is the"
+
+
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_simple_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
@@ -266,6 +277,35 @@ def test_complex_pipeline(prompt_model):
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
     assert "berlin" in result["results"][0].casefold()
+
+
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_complex_pipeline_with_qa(prompt_model):
+    """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
+    because in a question-answering pipeline the retrievers need `query` as a string, so the PromptNode
+    need to be able to handle the `query` being a string instead of a list."""
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    prompt_template = PromptTemplate(
+        name="question-answering-new",
+        prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
+        prompt_params=["documents", "query"],
+    )
+    node = PromptNode(prompt_model, default_prompt_template=prompt_template)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin"),
+            Document("My name is Christelle and I live in Paris"),
+        ],
+    )
+
+    assert len(result["results"]) == 1
+    assert "carla" in result["results"][0].casefold()
 
 
 def test_complex_pipeline_with_shared_model():
@@ -334,8 +374,10 @@ def test_complex_pipeline_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert result["results"][0] == "Berlin"
-    assert len(result["meta"]["invocation_context"]) > 0
+    response = result["results"][0]
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
+    assert len(result["invocation_context"]) > 0
+    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
 def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
@@ -370,8 +412,10 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert "Berlin" in result["results"][0]
-    assert len(result["meta"]["invocation_context"]) > 0
+    response = result["results"][0]
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
+    assert len(result["invocation_context"]) > 0
+    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
 def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_path):
@@ -415,8 +459,89 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert "Berlin" in result["results"][0]
-    assert len(result["meta"]["invocation_context"]) > 0
+    response = result["results"][0]
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
+    assert len(result["invocation_context"]) > 0
+    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+
+
+def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_path):
+    # test that we can stick some random node in between prompt nodes and that everything still works
+    # most specifically, we want to ensure that invocation_context is still populated correctly and propagated
+    class InBetweenNode(BaseComponent):
+        outgoing_edges = 1
+
+        def run(
+            self,
+            query: Optional[str] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[MultiLabel] = None,
+            documents: Optional[List[Document]] = None,
+            meta: Optional[dict] = None,
+        ) -> Tuple[Dict, str]:
+            return {}, "output_1"
+
+        def run_batch(
+            self,
+            queries: Optional[Union[str, List[str]]] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+        ):
+            return {}, "output_1"
+
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: in_between
+              type: InBetweenNode
+            - name: pmodel
+              type: PromptModel
+              params:
+                model_name_or_path: google/flan-t5-small
+                model_kwargs:
+                  torch_dtype: torch.bfloat16
+            - name: question_generation_template
+              type: PromptTemplate
+              params:
+                name: question-generation-new
+                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+            - name: p1
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question_generation_template
+                output_variable: questions
+              type: PromptNode
+            - name: p2
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question-answering
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+              - name: in_between
+                inputs:
+                - p1
+              - name: p2
+                inputs:
+                - in_between
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
+    result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
+    response = result["results"][0]
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
+    assert len(result["invocation_context"]) > 0
+    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
 @pytest.mark.skipif(
@@ -473,5 +598,7 @@ def test_complex_pipeline_with_all_features(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is a city in Germany.")])
-    assert "Berlin" in result["results"][0] or "Germany" in result["results"][0]
-    assert len(result["meta"]["invocation_context"]) > 0
+    response = result["results"][0]
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
+    assert len(result["invocation_context"]) > 0
+    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0

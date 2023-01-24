@@ -45,6 +45,21 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         monkeypatch.setattr(Elasticsearch, "ping", mocked_ping)
         return mocked_ping
 
+    @pytest.fixture
+    def mocked_document_store(self):
+        """
+        The fixture provides an instance of a slightly customized
+        ElasticsearchDocumentStore equipped with a mocked client
+        """
+
+        class DSMock(ElasticsearchDocumentStore):
+            # We mock a subclass to avoid messing up the actual class object
+            pass
+
+        DSMock._init_elastic_client = MagicMock()
+        DSMock.client = MagicMock()
+        return DSMock()
+
     @pytest.mark.integration
     def test___init__(self):
         # defaults

@@ -445,4 +445,3 @@ Example:
 **Returns**:
 
 Dictionary containing query and Answers.
-

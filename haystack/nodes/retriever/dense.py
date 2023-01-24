@@ -178,9 +178,10 @@ class DensePassageRetriever(DenseRetriever):
 
         if document_store and document_store.similarity != "dot_product":
             logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                "You are using a Dense Passage Retriever model with the %s function. "
                 "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
         # Init & Load Encoders
@@ -236,7 +237,7 @@ class DensePassageRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -479,7 +480,7 @@ class DensePassageRetriever(DenseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -499,7 +500,7 @@ class DensePassageRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -550,8 +551,9 @@ class DensePassageRetriever(DenseRetriever):
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -593,7 +595,7 @@ class DensePassageRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/dpr",
@@ -628,12 +630,10 @@ class DensePassageRetriever(DenseRetriever):
         :param epsilon: epsilon parameter of optimizer
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
@@ -660,7 +660,7 @@ class DensePassageRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -674,7 +674,7 @@ class DensePassageRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -687,7 +687,6 @@ class DensePassageRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -715,7 +714,7 @@ class DensePassageRetriever(DenseRetriever):
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
         if len(self.devices) > 1 and not isinstance(self.model, DataParallel):
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -933,7 +932,7 @@ class TableTextRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -1100,7 +1099,7 @@ class TableTextRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
 
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -1120,7 +1119,7 @@ class TableTextRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -1166,8 +1165,9 @@ class TableTextRetriever(DenseRetriever):
 
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -1236,7 +1236,7 @@ class TableTextRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/mm_retrieval",
@@ -1273,12 +1273,10 @@ class TableTextRetriever(DenseRetriever):
         :param epsilon: Epsilon parameter of optimizer.
         :param weight_decay: Weight decay parameter of optimizer.
         :param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: What optimizer to use (default: TransformersAdamW).
         :param num_warmup_steps: Number of warmup steps.
         :param optimizer_correct_bias: Whether to correct bias in optimizer.
@@ -1304,7 +1302,7 @@ class TableTextRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -1314,7 +1312,7 @@ class TableTextRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -1327,7 +1325,6 @@ class TableTextRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -1361,7 +1358,7 @@ class TableTextRetriever(DenseRetriever):
         self.table_tokenizer.save_pretrained(f"{save_dir}/{table_encoder_save_dir}")
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -1538,10 +1535,11 @@ class EmbeddingRetriever(DenseRetriever):
             and model_format != "sentence_transformers"
         ):
             logger.warning(
-                f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
-                f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
-                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
-                f"'model_format' parameter at all."
+                "You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '%s'."
+                " You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                "As an alternative, you can let Haystack derive the format automatically by not setting the "
+                "'model_format' parameter at all.",
+                self.model_format,
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
@@ -1828,7 +1826,7 @@ class EmbeddingRetriever(DenseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(
+                hf_hub_download(  # type: ignore [call-arg]
                     repo_id=model_name_or_path,
                     filename="config_sentence_transformers.json",
                     use_auth_token=use_auth_token,

@@ -14,7 +14,7 @@ import haystack
 from haystack import Pipeline
 from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
-from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
+from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError, DocumentStoreError
 from haystack.nodes.base import BaseComponent
 
 from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
@@ -139,6 +139,46 @@ def test_load_yaml(tmp_path):
     assert len(pipeline.graph.nodes) == 3
     assert isinstance(pipeline.get_node("retriever"), MockRetriever)
     assert isinstance(pipeline.get_node("reader"), MockReader)
+
+
+def test_load_yaml_elasticsearch_not_responding(tmp_path):
+    # Test if DocumentStoreError is raised if elasticsearch instance is not responding (due to wrong port)
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: ESRetriever
+              type: BM25Retriever
+              params:
+                document_store: DocumentStore
+            - name: DocumentStore
+              type: ElasticsearchDocumentStore
+              params:
+                port: 1234
+            - name: PDFConverter
+              type: PDFToTextConverter
+            - name: Preprocessor
+              type: PreProcessor
+            pipelines:
+            - name: query_pipeline
+              nodes:
+              - name: ESRetriever
+                inputs: [Query]
+            - name: indexing_pipeline
+              nodes:
+              - name: PDFConverter
+                inputs: [File]
+              - name: Preprocessor
+                inputs: [PDFConverter]
+              - name: ESRetriever
+                inputs: [Preprocessor]
+              - name: DocumentStore
+                inputs: [ESRetriever]
+        """
+        )
+    with pytest.raises(DocumentStoreError):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="indexing_pipeline")
 
 
 def test_load_yaml_non_existing_file():
@@ -604,8 +644,8 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
                 - Query
         """
         )
-    with pytest.raises(PipelineConfigError, match="not a valid variable name or value"):
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipe.get_node("custom_node").some_exotic_parameter == 'HelperClass("hello")'
 
 
 def test_load_yaml_custom_component_with_enum_in_init(tmp_path):

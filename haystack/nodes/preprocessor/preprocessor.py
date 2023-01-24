@@ -64,6 +64,7 @@ class PreProcessor(BasePreProcessor):
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
+        max_chars_check: int = 10_000,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -97,14 +98,18 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
+        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than max_chars_check in characters after pre-processing will raise a warning.
         """
         super().__init__()
 
         try:
             nltk.data.find("tokenizers/punkt")
         except LookupError:
-            nltk.download("punkt")
-
+            try:
+                nltk.download("punkt")
+            except FileExistsError as error:
+                logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
+                pass
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
@@ -119,6 +124,7 @@ class PreProcessor(BasePreProcessor):
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
+        self.max_chars_check = max_chars_check
 
     def process(
         self,
@@ -168,6 +174,23 @@ class PreProcessor(BasePreProcessor):
 
         return ret
 
+    def _long_documents(self, documents: List[Document], max_chars_check=10_000):
+        """
+        Function that tries to detect unusually long documents.
+
+        NOTE: this function is a heuristic that is in place only because a proper fix that prevents such documents from forming
+        would imply a complete revamp of this class, including better definitions of what the various units (word, sentence, passage) mean exactly.
+        """
+        for document in documents:
+            if len(document.content) > max_chars_check:
+                logger.warning(
+                    "Document %s is %s characters long after preprocessing, where the maximum length should be %s. "
+                    "Something might be wrong with the splitting, check the document affected to prevent issues at query time.",
+                    document.id,
+                    len(document.content),
+                    max_chars_check,
+                )
+
     def _process_single(
         self,
         document: Union[dict, Document],
@@ -215,6 +238,9 @@ class PreProcessor(BasePreProcessor):
             split_respect_sentence_boundary=split_respect_sentence_boundary,
             id_hash_keys=id_hash_keys,
         )
+
+        self._long_documents(split_documents, max_chars_check=self.max_chars_check)
+
         return split_documents
 
     def _process_batch(
@@ -243,7 +269,8 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            document["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(document)
 
         # Mainly needed for type checking
         if not isinstance(document, Document):
@@ -268,7 +295,7 @@ class PreProcessor(BasePreProcessor):
             text, headlines = self._clean_empty_lines(text=text, headlines=headlines)
 
         for substring in remove_substrings:
-            text, headline = self._remove_substring(text=text, substring=substring, headlines=headlines)
+            text, _ = self._remove_substring(text=text, substring=substring, headlines=headlines)
 
         if text != document.content:
             document = deepcopy(document)
@@ -294,7 +321,9 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            document["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(document)
+
         # Mainly needed for type checking
         if not isinstance(document, Document):
             raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")
@@ -354,7 +383,7 @@ class PreProcessor(BasePreProcessor):
         for page in pages:
             lines = page.splitlines()
             cleaned_lines = []
-            for idx, line in enumerate(lines):
+            for line in lines:
                 old_line_len = len(line)
                 cleaned_line = line.strip()
                 cleaned_line_len = len(cleaned_line)
@@ -432,7 +461,7 @@ class PreProcessor(BasePreProcessor):
 
             if word_count_sen > split_length:
                 long_sentence_message = (
-                    f"We found one or more sentences whose word count is higher than the split length."
+                    "We found one or more sentences whose word count is higher than the split length."
                 )
                 if long_sentence_message not in self.print_log:
                     self.print_log.add(long_sentence_message)
@@ -734,36 +763,38 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
             except (LookupError, UnpicklingError, ValueError) as e:
                 if isinstance(e, LookupError):
-                    logger.exception(f"PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
+                    logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
                 else:
                     logger.exception(
-                        f"PreProcessor couldn't determine model format of sentence tokenizer at %s",
-                        tokenizer_model_path,
+                        "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                     )
 
                 # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English
                 if language_name is not None:
                     logger.error(
-                        f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. "
-                        f"Using default {self.language} model."
+                        "PreProcessor couldn't find custom sentence tokenizer model for %s. Using default %s model.",
+                        self.language,
+                        self.language,
                     )
                     sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
                 else:
                     logger.error(
-                        f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. "
-                        f"Using English instead."
+                        "PreProcessor couldn't find default or custom sentence tokenizer model for %s. "
+                        "Using English instead.",
+                        self.language,
                     )
-                    sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
+                    sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
         # Use a default NLTK model
         elif language_name is not None:
             sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
         else:
             logger.error(
-                f"PreProcessor couldn't find the default sentence tokenizer model for {self.language}. "
-                f" Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter."
+                "PreProcessor couldn't find the default sentence tokenizer model for %s. "
+                " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
+                self.language,
             )
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
+            sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
         return sentence_tokenizer
 

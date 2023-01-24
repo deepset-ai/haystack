@@ -1,19 +1,17 @@
-from copy import deepcopy
-from pathlib import Path
-import os
 import ssl
 import json
 import platform
 import sys
+import datetime
 from typing import Tuple
+from copy import deepcopy
+from unittest import mock
 
 import pytest
 from requests import PreparedRequest
 import responses
 import logging
-from transformers import pipeline
 import yaml
-import pandas as pd
 
 from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
@@ -36,16 +34,13 @@ from haystack.pipelines import (
     DocumentSearchPipeline,
     QuestionGenerationPipeline,
     MostSimilarDocumentsPipeline,
-    BaseStandardPipeline,
 )
-from haystack.pipelines.config import validate_config_strings, get_component_definitions
+from haystack.pipelines.config import get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import PreProcessor, TextConverter, QuestionGenerator
+from haystack.nodes import PreProcessor, TextConverter
 from haystack.utils.deepsetcloud import DeepsetCloudError
-from haystack import Document, Answer
-from haystack.nodes.other.route_documents import RouteDocuments
-from haystack.nodes.other.join_answers import JoinAnswers
+from haystack import Answer
 
 from ..conftest import (
     MOCK_DC,
@@ -679,110 +674,6 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
         'pipeline.add_node(component=parent, name="parent", inputs=["Query"])\n'
         'pipeline.add_node(component=child, name="child", inputs=["parent"])'
     )
-
-
-@pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
-def test_validate_user_input_invalid(input):
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(input)
-
-
-@pytest.mark.parametrize(
-    "input",
-    [
-        "test",
-        "testName",
-        "test_name",
-        "test-name",
-        "test-name1234",
-        "http://localhost:8000/my-path",
-        "C:\\Some\\Windows\\Path\\To\\file.txt",
-    ],
-)
-def test_validate_user_input_valid(input):
-    validate_config_strings(input)
-
-
-def test_validate_pipeline_config_component_with_json_input_valid():
-    validate_config_strings(
-        {"components": [{"name": "test", "type": "test", "params": {"custom_query": '{"json-key": "json-value"}'}}]}
-    )
-
-
-def test_validate_pipeline_config_component_with_json_input_invalid_key():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(
-            {
-                "components": [
-                    {"name": "test", "type": "test", "params": {"another_param": '{"json-key": "json-value"}'}}
-                ]
-            }
-        )
-
-
-def test_validate_pipeline_config_component_with_json_input_invalid_value():
-    with pytest.raises(PipelineConfigError, match="does not contain valid JSON"):
-        validate_config_strings(
-            {
-                "components": [
-                    {"name": "test", "type": "test", "params": {"custom_query": "this is surely not JSON! :)"}}
-                ]
-            }
-        )
-
-
-def test_validate_pipeline_config_invalid_component_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_component_type():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_component_param():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
-
-
-def test_validate_pipeline_config_invalid_component_param_key():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
-
-
-def test_validate_pipeline_config_invalid_pipeline_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_pipeline_node_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(
-            {
-                "components": [{"name": "test", "type": "test"}],
-                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "\btest"}]}],
-            }
-        )
-
-
-def test_validate_pipeline_config_invalid_pipeline_node_inputs():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(
-            {
-                "components": [{"name": "test", "type": "test"}],
-                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "test", "inputs": ["\btest"]}]}],
-            }
-        )
-
-
-def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limit):
-    pipeline_config = {}
-    node = {"config": pipeline_config}
-    pipeline_config["node"] = node
-
-    with pytest.raises(PipelineConfigError, match="recursive"):
-        validate_config_strings(pipeline_config)
 
 
 def test_pipeline_classify_type(tmp_path):
@@ -2158,3 +2049,44 @@ def test_fix_to_pipeline_execution_when_join_follows_join():
     res = pipeline.run(query="Alpha Beta Gamma Delta")
     documents = res["documents"]
     assert len(documents) == 4  # all four documents should be found
+
+
+def test_send_pipeline_event():
+    """
+    Test the event can be sent and the internal fields are correctly set
+    """
+    pipeline = Pipeline()
+    pipeline.add_node(MockNode(), name="mock_node", inputs=["Query"])
+
+    with mock.patch("haystack.pipelines.base.send_custom_event") as mocked_send:
+        today_at_midnight = datetime.datetime.combine(datetime.datetime.now(), datetime.time.min, datetime.timezone.utc)
+        pipeline.send_pipeline_event()
+        mocked_send.assert_called_once()
+        assert pipeline.time_of_last_sent_event == today_at_midnight
+        assert pipeline.last_window_run_total == 0
+
+
+def test_send_pipeline_event_unserializable_param():
+    """
+    Test the event can be sent even when a certain component was initialized with a
+    non-serializable parameter, see https://github.com/deepset-ai/haystack/issues/3833
+    """
+
+    class CustomNode(MockNode):
+        """A mock node that can be inited passing a param"""
+
+        def __init__(self, param):
+            self.param = param
+
+    # create a custom node passing a parameter that can't be serialized (an empty set)
+    custom_node = CustomNode(param=set())
+
+    pipeline = Pipeline()
+    pipeline.add_node(custom_node, name="custom_node", inputs=["Query"])
+
+    with mock.patch("haystack.pipelines.base.send_custom_event") as mocked_send:
+        today_at_midnight = datetime.datetime.combine(datetime.datetime.now(), datetime.time.min, datetime.timezone.utc)
+        pipeline.send_pipeline_event()
+        mocked_send.assert_called_once()
+        assert pipeline.time_of_last_sent_event == today_at_midnight
+        assert pipeline.last_window_run_total == 0

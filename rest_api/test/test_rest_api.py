@@ -5,23 +5,47 @@ from pathlib import Path
 from textwrap import dedent
 from unittest import mock
 from unittest.mock import MagicMock, Mock
-import functools
 import numpy as np
 import pandas as pd
 
 import pytest
 from fastapi.testclient import TestClient
-from haystack import Document, Answer
+from haystack import Document, Answer, Pipeline
 import haystack
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
+from haystack.errors import PipelineSchemaError
 from haystack.schema import Label, FilterType
 from haystack.nodes.file_converter import BaseConverter
 
+from rest_api.pipeline import _load_pipeline
 from rest_api.utils import get_app
 
 
 TEST_QUERY = "Who made the PDF specification?"
+
+
+def test_single_worker_warning_for_indexing_pipelines(caplog):
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, None)
+
+    assert isinstance(p, Pipeline)
+    assert "used with 1 worker" in caplog.text
+
+
+def test_check_error_for_pipeline_not_found():
+
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, "ThisPipelineDoesntExist")
+    assert p is None
+
+
+def test_bad_yaml_pipeline_configuration_error():
+
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
+    with pytest.raises(PipelineSchemaError) as excinfo:
+        _load_pipeline(yaml_pipeline_path, None)
+    assert "MyOwnDocumentStore" in str(excinfo.value)
 
 
 class MockReader(BaseReader):

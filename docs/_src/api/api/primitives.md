@@ -264,7 +264,7 @@ or, user-feedback from the Haystack REST API.
 **Arguments**:
 
 - `query`: the question (or query) for finding answers.
-- `document`: 
+- `document`:
 - `answer`: the answer object.
 - `is_correct_answer`: whether the sample is positive or negative.
 - `is_correct_document`: in case of negative sample(is_correct_answer is False), there could be two cases;
@@ -599,4 +599,3 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 This method uses different default values than pd.read_csv() for the following parameters:
 header=0, converters=CONVERTERS
 where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
-
