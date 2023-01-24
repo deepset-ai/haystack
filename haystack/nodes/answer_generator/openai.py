@@ -25,7 +25,7 @@ if USE_TIKTOKEN:
     import tiktoken  # pylint: disable=import-error
 else:
     logger.warning(
-        "OpenAI tiktoken module is not available for Python < 3.8 or Linux ARM64. Falling back to GPT2TokenizerFast."
+        "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
     )
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
 
