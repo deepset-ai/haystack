@@ -259,7 +259,9 @@ def test_stop_words(prompt_model):
 
     # simple prompting
     r = node("Given the context please generate a question. Context: Berlin is the capital of Germany.; Question:")
-    assert len(r[0]) > 0 and "capital" not in r[0] and "Germany" not in r[0]
+    assert len(r[0]) > 0
+    assert "capital" not in r[0]
+    assert "Germany" not in r[0]
 
     # simple prompting with stop words set in kwargs (overrides PN stop words)
     r = node(
