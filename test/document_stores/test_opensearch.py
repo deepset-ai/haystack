@@ -128,8 +128,11 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         OpenSearchDocumentStore(index="nmslib_index", create_index=True)
 
     @pytest.mark.integration
-    def test___init___faiss(self):
-        OpenSearchDocumentStore(index="faiss_index", create_index=True, knn_engine="faiss")
+    @pytest.mark.parametrize("index_type", ["flat", "hnsw", "ivf", "ivf_pq"])
+    def test___init___faiss(self, index_type):
+        OpenSearchDocumentStore(
+            index=f"faiss_index_{index_type}", recreate_index=True, knn_engine="faiss", index_type=index_type
+        )
 
     @pytest.mark.integration
     def test___init___score_script(self):
@@ -624,8 +627,10 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test__init_indices_creates_index_if_exists_and_recreate_index(self, mocked_document_store):
-        # delete_index askes twice + one check for each index creation
-        mocked_document_store.client.indices.exists.side_effect = [True, True, False, False]
+        # delete_index asks four times: one check for doc index, one check for label index
+        # + one check for both if ivf model exists
+        # create_index asks two times: one for doc index, one for label index
+        mocked_document_store.client.indices.exists.side_effect = [True, False, True, False, False, False]
         mocked_document_store._init_indices(self.index_name, "label_index", create_index=True, recreate_index=True)
 
         mocked_document_store.client.indices.delete.assert_called()
@@ -836,7 +841,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         with caplog.at_level(logging.ERROR, logger="haystack.document_stores.opensearch"):
             retval = mocked_document_store._get_embedding_field_mapping()
 
-        assert "Set index_type to either 'flat' or 'hnsw'" in caplog.text
+        assert "Set index_type to either 'flat', 'hnsw', 'ivf', or 'ivf_pq'" in caplog.text
         assert retval == {
             "type": "knn_vector",
             "dimension": 768,
