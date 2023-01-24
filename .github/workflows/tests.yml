@@ -93,7 +93,7 @@ jobs:
       run: |
         for file in ${{ steps.files.outputs.all_changed_files }}; do
           if [[ $file == *.py ]]; then
-            if [[ $file != test/* ]]; then
+            if [[ $file != test/* ]] && [[ $file != rest_api/test/* ]]; then
               changed_files="$changed_files $file"
             fi
           fi
