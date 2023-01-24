@@ -124,6 +124,45 @@ def test_yaml(mock_function, tmp_path):
 
 
 #
+# rename
+#
+
+
+def test_rename():
+    mapper = InvocationContextMapper(func="rename", inputs={"value": "query"}, outputs=["questions"])
+    results, _ = mapper.run(query="test query")
+    assert results["invocation_context"]["questions"] == "test query"
+
+
+def test_rename_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: mapper
+              type: InvocationContextMapper
+              params:
+                func: rename
+                inputs:
+                  value: query
+                outputs:
+                  - questions
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(query="test query")
+    assert result["invocation_context"]["query"] == "test query"
+    assert result["invocation_context"]["questions"] == "test query"
+
+
+#
 # expand_values_to_list
 #
 

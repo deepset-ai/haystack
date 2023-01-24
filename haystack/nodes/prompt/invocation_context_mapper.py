@@ -9,6 +9,19 @@ from haystack.schema import Document, MultiLabel
 logger = logging.getLogger(__name__)
 
 
+def rename(value: Any) -> Tuple[Any]:
+    """
+    Identity function. USeful to rename values in the invocation context.
+
+    Example:
+
+    ```python
+    assert rename(1) == (1, )
+    ```
+    """
+    return (value,)
+
+
 def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
     """
     Transforms a value into a list of the same values, as long as the target list.
@@ -100,6 +113,7 @@ def convert_to_documents(
 
 
 REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
+    "rename": rename,
     "expand_value_to_list": expand_value_to_list,
     "join_strings": join_strings,
     "join_documents": join_documents,
