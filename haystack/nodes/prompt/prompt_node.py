@@ -905,19 +905,19 @@ class PromptNode(BaseComponent):
         :param invocation_context: The invocation context to be used for the prompt.
         """
         invocation_context = invocation_context or {}
-        if query and not "query" in invocation_context.keys():
+        if query and "query" not in invocation_context.keys():
             invocation_context["query"] = query
 
-        if file_paths and not "file_paths" in invocation_context.keys():
+        if file_paths and "file_paths" not in invocation_context.keys():
             invocation_context["file_paths"] = file_paths
 
-        if labels and not "labels" in invocation_context.keys():
+        if labels and "labels" not in invocation_context.keys():
             invocation_context["labels"] = labels
 
-        if documents and not "documents" in invocation_context.keys():
+        if documents and "documents" not in invocation_context.keys():
             invocation_context["documents"] = documents
 
-        if meta and not "meta" in invocation_context.keys():
+        if meta and "meta" not in invocation_context.keys():
             invocation_context["meta"] = meta
 
         if "documents" in invocation_context.keys():
