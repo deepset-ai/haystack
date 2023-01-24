@@ -54,7 +54,7 @@ def test_basic_invocation_inputs_and_params_using_params_as_defaults(mock_functi
 def test_missing_argument(mock_function):
     mapper = InvocationContextMapper(func="test_function", inputs={"b": "documents"}, outputs=["c"])
     with pytest.raises(
-        ValueError, match="InvocationContextMapper could not apply the function to your inputs and parameters."
+        ValueError, match="InvocationContextMapper couldn't apply the function to your inputs and parameters."
     ):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
@@ -64,7 +64,7 @@ def test_excess_argument(mock_function):
         func="test_function", inputs={"a": "query", "b": "documents", "something_extra": "query"}, outputs=["c"]
     )
     with pytest.raises(
-        ValueError, match="InvocationContextMapper could not apply the function to your inputs and parameters."
+        ValueError, match="InvocationContextMapper couldn't apply the function to your inputs and parameters."
     ):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
@@ -74,8 +74,7 @@ def test_value_not_in_invocation_context(mock_function):
         func="test_function", inputs={"a": "query", "b": "something_that_does_not_exist"}, outputs=["c"]
     )
     with pytest.raises(
-        ValueError,
-        match=re.escape("InvocationContextMapper could not apply the function to your inputs and parameters."),
+        ValueError, match="InvocationContextMapper couldn't apply the function to your inputs and parameters."
     ):
         mapper.run(query="test query", documents=["doesn't", "really", "matter"])
 
