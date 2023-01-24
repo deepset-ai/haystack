@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
     """
-    Transforms a value into a list of the same values, as long as the target list.
+    Transforms a value into a list containing this value. You can specify the length of this list in `target_list`.
 
     Example:
 
@@ -24,8 +24,8 @@ def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]
 
 def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
     """
-    Transforms a list of strings into a list containing a single string, whose content
-    is the content of all original strings separated by the given delimiter.
+    Transforms a list of strings into a list containing a single string. The content of this list
+    is the content of all original strings separated by the delimiter you specify.
 
     Example:
 
@@ -38,8 +38,8 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
 
 def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Any]]:
     """
-    Transforms a list of documents into a list containing a single Document, whose content
-    is the content of all original documents separated by the given delimiter.
+    Transforms a list of documents into a list containing a single Document. The content of this list
+    is the content of all original documents separated by the delimiter you specify.
 
     All metadata is dropped. (TODO: fix)
 
@@ -65,10 +65,10 @@ def convert_to_documents(
     id_hash_keys: Optional[List[str]] = None,
 ) -> Tuple[List[Any]]:
     """
-    Transforms a list of strings into a list of Documents. If the metadata is given as a single
-    dict, all documents will receive the same meta; if the metadata is given as a list, such list
-    must be as long as the list of strings and each Document will receive its own metadata.
-    On the contrary, id_hash_keys can only be given once and it will be assigned to all documents.
+    Transforms a list of strings into a list of Documents. If you pass the metadata a single
+    dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
+    must the same as the length of the list of strings and each Document gets its own metadata.
+    You can specify `id_hash_keys` only once and it gets assigned to all Documents.
 
     Example:
 
@@ -110,10 +110,10 @@ REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
 class InvocationContextMapper(BaseComponent):
 
     """
-    InvocationContextMapper is a component that can invoke arbitrary, registered functions, on the invocation context
-    (query, documents etc.) of a pipeline and pass the new/modified variables further down the pipeline.
+    InvocationContextMapper is a component that can invoke arbitrary, registered functions on the invocation context
+    (query, documents, and so on) of a pipeline. It then passes the new or modified variables further down the pipeline.
 
-    Using YAML configuration InvocationContextMapper component is initialized with functions to invoke on pipeline invocation
+    Using YAML configuration, the InvocationContextMapper component is initialized with functions to invoke on pipeline invocation
     context.
 
     For example, in the YAML snippet below:
@@ -130,12 +130,12 @@ class InvocationContextMapper(BaseComponent):
     ```
     InvocationContextMapper component is initialized with a directive to invoke function expand on the variable query and to store
     the result in the invocation context variable questions. All other invocation context variables are passed down
-    the pipeline as is.
+    the pipeline as they are.
 
-    InvocationContextMapper is especially useful in the context of pipelines with PromptNode(s) where we need to modify the invocation
+    InvocationContextMapper is especially useful for pipelines with PromptNodes, where we need to modify the invocation
     context to match the templates of PromptNodes.
 
-    Multiple InvocationContextMapper components can be used in a pipeline to modify the invocation context as needed.
+    You can use multiple InvocationContextMapper components in a pipeline to modify the invocation context as needed.
 
     `InvocationContextMapper` supports the current functions:
 
@@ -144,7 +144,7 @@ class InvocationContextMapper(BaseComponent):
     - `join_documents`
     - `convert_to_documents`
 
-    See their docstrings for details about their inputs, outputs and other parameters.
+    See their descriptions in the code for details about their inputs, outputs, and other parameters.
     """
 
     outgoing_edges = 1
@@ -157,7 +157,7 @@ class InvocationContextMapper(BaseComponent):
         params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Initializes a InvocationContextMapper component.
+        Initializes the InvocationContextMapper component.
 
         Some examples:
 
@@ -172,8 +172,8 @@ class InvocationContextMapper(BaseComponent):
           outputs:
             - questions
         ```
-        This node will take the content of `query` and create a list that contains the value of `query` `len(documents)` times.
-        This list will be stored in the invocation context unders the key `questions`
+        This node takes the content of `query` and creates a list that contains the value of `query` `len(documents)` times.
+        This list is stored in the invocation context under the key `questions`.
 
         ```yaml
         - name: mapper
@@ -187,9 +187,9 @@ class InvocationContextMapper(BaseComponent):
           outputs:
             - documents
         ```
-        This node will overwrite the content of `documents` in the invocation context with a list containing a single Document
-        which content is the concatenation of all the original Documents. So if `documents` contained
-        `[Document("A"), Document("B"), Document("C")]`, this mapper will overwrite it with `[Document("A - B - C")]`
+        This node overwrites the content of `documents` in the invocation context with a list containing a single Document
+        whose content is the concatenation of all the original Documents. So if `documents` contained
+        `[Document("A"), Document("B"), Document("C")]`, this mapper overwrites it with `[Document("A - B - C")]`
 
         ```yaml
         - name: mapper
@@ -213,22 +213,22 @@ class InvocationContextMapper(BaseComponent):
           outputs:
             - single_document
         ```
-        These two nodes, executed one after the other, will first add a key in the invocation context called `single_string`
+        These two nodes, executed one after the other, first add a key in the invocation context called `single_string`
         that contains `a . b . c`, and then create another key called `single_document` that contains instead
-        `[Document(content="a . b . c", metadata={'name': 'my_file.txt'})]`
+        `[Document(content="a . b . c", metadata={'name': 'my_file.txt'})]`.
 
-        :param func: the function to apply
-        :param inputs: maps the function's input kwargs to the key-value pairs in the invocation context.
-            For example `expand_value_to_list` expects `value` and `target_list` parameters, so `inputs` might contain:
-            `{'value': 'query', 'target_list': 'documents'}`. It does not need to contain all keyword args, see `params`.
-        :param params: maps the function's input kwargs to some fixed values. For example `expand_value_to_list` expects
+        :param func: The function to apply.
+        :param inputs: Maps the function's input kwargs to the key-value pairs in the invocation context.
+            For example, `expand_value_to_list` expects the `value` and `target_list` parameters, so `inputs` might contain:
+            `{'value': 'query', 'target_list': 'documents'}`. It doesn't need to contain all keyword args, see `params`.
+        :param params: Maps the function's input kwargs to some fixed values. For example, `expand_value_to_list` expects
             `value` and `target_list` parameters, so `params` might contain
-            `{'value': 'A', 'target_list': [1, 1, 1, 1]}` and the node will output `["A", "A", "A", "A"]`.
-            It does not need to contain all keyword args, see `inputs`.
-            You can use params to provide fallback values for arguments of `run` that you're not sure they will exist.
+            `{'value': 'A', 'target_list': [1, 1, 1, 1]}` and the node's output is `["A", "A", "A", "A"]`.
+            It doesn't need to contain all keyword args, see `inputs`.
+            You can use params to provide fallback values for arguments of `run` that you're not sure exist.
             So if you need `query` to exist, you can provide a fallback value in the params, which will be used only if `query`
             is not passed to this node by the pipeline.
-        :param outputs: under which key to store the outputs in the invocation context. The lenght of the outputs must match
+        :param outputs: THe key to store the outputs in the invocation context. The length of the outputs must match
             the number of outputs produced by the function invoked.
         """
         super().__init__()
@@ -269,7 +269,7 @@ class InvocationContextMapper(BaseComponent):
             output_values = self.function(**input_values)
         except TypeError as e:
             raise ValueError(
-                "InvocationContextMapper could not apply the function to your inputs and parameters. "
+                "InvocationContextMapper couldn't apply the function to your inputs and parameters. "
                 "Check the above stacktrace and make sure you provided all the correct inputs, parameters, "
                 "and parameter types."
             ) from e
