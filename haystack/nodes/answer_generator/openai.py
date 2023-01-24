@@ -17,9 +17,7 @@ machine = platform.machine()
 system = platform.system()
 
 USE_TIKTOKEN = False
-if sys.version_info >= (3, 8) and (
-    machine == "amd64" or machine == "x86_64" or (machine == "arm64" and system == "Darwin")
-):
+if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
     USE_TIKTOKEN = True
 
 if USE_TIKTOKEN:
