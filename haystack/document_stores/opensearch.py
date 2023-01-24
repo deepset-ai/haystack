@@ -238,7 +238,22 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if use_system_proxy:
             connection_class = RequestsHttpConnection  # type: ignore [assignment]
 
-        if username:
+        if aws4auth:
+            # Sign requests to Opensearch with IAM credentials
+            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
+            if username:
+                logger.warning(
+                    "aws4auth and a username or the default username 'admin' are passed to the OpenSearchDocumentStore. The username will be ignored and aws4auth will be used for authentication."
+                )
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=aws4auth,
+                connection_class=RequestsHttpConnection,
+                use_ssl=True,
+                verify_certs=True,
+                timeout=timeout,
+            )
+        elif username:
             # standard http_auth
             client = OpenSearch(
                 hosts=hosts,
@@ -248,17 +263,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 verify_certs=verify_certs,
                 timeout=timeout,
                 connection_class=connection_class,
-            )
-        elif aws4auth:
-            # Sign requests to Opensearch with IAM credentials
-            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
-            client = OpenSearch(
-                hosts=hosts,
-                http_auth=aws4auth,
-                connection_class=RequestsHttpConnection,
-                use_ssl=True,
-                verify_certs=True,
-                timeout=timeout,
             )
         else:
             # no authentication needed
