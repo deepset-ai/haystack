@@ -3,6 +3,7 @@ import logging
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+import platform
 
 import numpy as np
 import requests
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 USE_TIKTOKEN = False
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 8) and (platform.machine() != "arm64" and platform.system() != "Linux"):
     USE_TIKTOKEN = True
 
 if USE_TIKTOKEN:

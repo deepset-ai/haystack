@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 from typing import List, Optional, Tuple, Union
+import platform
 
 import requests
 
@@ -13,13 +14,15 @@ from haystack.utils.reflection import retry_with_exponential_backoff
 logger = logging.getLogger(__name__)
 
 USE_TIKTOKEN = False
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 8) and (platform.machine() != "arm64" and platform.system() != "Linux"):
     USE_TIKTOKEN = True
 
 if USE_TIKTOKEN:
     import tiktoken  # pylint: disable=import-error
 else:
-    logger.warning("OpenAI tiktoken module is not available for Python < 3.8. Falling back to GPT2TokenizerFast.")
+    logger.warning(
+        "OpenAI tiktoken module is not available for Python < 3.8 or Linux ARM64. Falling back to GPT2TokenizerFast."
+    )
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
 
 
