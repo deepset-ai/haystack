@@ -14,7 +14,11 @@ from haystack.utils.reflection import retry_with_exponential_backoff
 logger = logging.getLogger(__name__)
 
 USE_TIKTOKEN = False
-if sys.version_info >= (3, 8) and (platform.machine() != "arm64" and platform.system() != "Linux"):
+if (
+    sys.version_info >= (3, 8)
+    and (platform.machine() != "arm64" and platform.system() != "Linux")
+    and platform.machine() != "aarch64"
+):
     USE_TIKTOKEN = True
 
 if USE_TIKTOKEN:
