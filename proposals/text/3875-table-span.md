@@ -1,4 +1,4 @@
-- Title: TableSpan Dataclass
+- Title: TableCell Dataclass
 - Decision driver: Sebastian Lee
 - Start Date: 2023-01-17
 - Proposal PR: https://github.com/deepset-ai/haystack/pull/3875
@@ -65,46 +65,46 @@ so they could reconstruct the column and row indices of the answer before they c
 Some examples are already stated above but to recap, to easily perform operations on the table near or around the answer cell.
 
 ## What's the expected outcome?
-The addition of a new dataclass called `TableSpan` that would look like
+The addition of a new dataclass called `TableCell` that would look like
 ```python
 @dataclass
-class TableSpan:
-    col: int
+class TableCell:
     row: int
+    col: int
     """
-    Defining a table cell via the column and row index.
+    Defining a table cell via the row and column index.
 
-    :param col: Column index of the cell
     :param row: Row index of the cell
+    :param col: Column index of the cell
     """
 ```
 **Note:** I am open to a name change since this isn't really a span, but the location of a single table cell.
 
 # Detailed design
 
-**New terminology:** `TableSpan` or something similar (e.g. `Cell`,`CellLoc`, etc.). The new name for the dataclass to
+**New terminology:** `TableCell`, the new name for the dataclass to
 store the column and row index of the answer cell.
 
 **Basic Example:** [Above Basic Example](#basic-example)
 
 ## Code changes
-- Addition of `TableSpan` dataclass to https://github.com/deepset-ai/haystack/blob/main/haystack/schema.py
+- Addition of `TableCell` dataclass to https://github.com/deepset-ai/haystack/blob/main/haystack/schema.py
 ```python
 @dataclass
-class TableSpan:
-    col: int
+class TableCell:
     row: int
+    col: int
     """
-    Defining a table cell via the column and row index.
+    Defining a table cell via the row and column index.
 
-    :param col: Column index of the cell
     :param row: Row index of the cell
+    :param col: Column index of the cell
     """
 ```
 
-- Updating code (e.g. schema objects, classes, functions) that use `Span` to also support `TableSpan` where appropriate.
+- Updating code (e.g. schema objects, classes, functions) that use `Span` to also support `TableCell` where appropriate.
 This includes:
-- Updating the `Answer` dataclass to support `TableSpan` as a valid type for `offsets_in_document` and `offsets_in_context`
+- Updating the `Answer` dataclass to support `TableCell` as a valid type for `offsets_in_document` and `offsets_in_context`
 ```python
 @dataclass
  class Answer:
@@ -112,14 +112,14 @@ This includes:
      type: Literal["generative", "extractive", "other"] = "extractive"
      score: Optional[float] = None
      context: Optional[Union[str, pd.DataFrame]] = None
-     offsets_in_document: Optional[List[Span], List[TableSpan]] = None
-     offsets_in_context: Optional[List[Span], List[TableSpan]] = None
+     offsets_in_document: Optional[List[Span], List[TableCell]] = None
+     offsets_in_context: Optional[List[Span], List[TableCell]] = None
      document_id: Optional[str] = None
      meta: Optional[Dict[str, Any]] = None
 ```
 - Updating any functions that accept table answers as input to use the new `col` and `row` variables instead of `start` and `end` variables.
 This type of check for table answers is most likely already done by checking if the `context` is of type `pd.DataFrame`.
-- `TableReader` and `RCIReader` to return `TableSpan` objects instead of `Span`
+- `TableReader` and `RCIReader` to return `TableCell` objects instead of `Span`
 
 ## Edge Case/Bug
 Internally, Haystack stores a table as a pandas DataFrame in the `Answer` dataclass, which does not treat the column
@@ -128,7 +128,7 @@ However, in Haystack's rest-api the table is converted into a list of lists form
 stored as the first row, which can be seen [here](https://github.com/deepset-ai/haystack/pull/3872), which is consistent
 with the `Document.to_dict()` method seen [here](https://github.com/deepset-ai/haystack/blob/6af4f14fe0d375a1ae0ced18930a9239401231c7/haystack/schema.py#L164-L165).
 
-This means that the current `Span` and (new) `TableSpan` dataclass point to the wrong location when the table is
+This means that the current `Span` and (new) `TableCell` dataclass point to the wrong location when the table is
 converted to a list of lists.
 
 For example, the following code
@@ -151,7 +151,7 @@ print(dict_table_doc["content"][span[0]][span[1]])  # prints "actors"
 ```
 
 I see a few ways to address this:
-- One way to address this would be to update the `Span` (or `TableSpan`) to be updated when the table is converted into a list of lists.
+- One way to address this would be to update the `Span` (or `TableCell`) to be updated when the table is converted into a list of lists.
 - Another way would be to only store the table internally as a list of lists.
 
 # Drawbacks
@@ -165,7 +165,8 @@ returned context is of type string or pandas Dataframe.
 
 - Can the solution you're proposing be implemented as a separate package, outside of Haystack?
 
-No
+Technically yes, but since it affects core classes like `TableReader`, and `RCIReader` it makes sense to implement in
+Haystack.
 
 - Does it teach people more about Haystack?
 
@@ -178,6 +179,8 @@ This feature directly integrates and impacts the TableQA feature of Haystack.
 - What's the cost of migrating existing Haystack pipelines (is it a breaking change?)?
 
 Yes this is a breaking change that would affect end users. The way to access the offsets in returned Answers would be different.
+Following the deprecation policy we will support both `Span` and `TableCell` (can be toggled between using a boolean flag)
+for 2 additional versions of Haystack.
 
 # Alternatives
 
@@ -186,7 +189,7 @@ Requiring users to figure out how to interpret the linearized answer cell coordi
 to be able to access the answer cell in the returned tabel.
 
 ## Other designs
-1. Expand `Span` dataclass to have optional `col` and `row` fields. This would require a similar check as `TableSpan`, but instead
+1. Expand `Span` dataclass to have optional `col` and `row` fields. This would require a similar check as `TableCell`, but instead
 require checking for which of the elements are populated, which seems unnecessarily complex.
 ```python
 @dataclass
@@ -218,7 +221,7 @@ script for this change.
 Would implementing this feature mean the documentation must be re-organized
 or updated? Does it change how Haystack is taught to new developers at any level?
 
-- The API docs for `TableSpan` would need to be added.
+- The API docs for `TableCell` would need to be added.
 - The documentation page for [Table Question Answering](https://docs.haystack.deepset.ai/docs/table_qa) would need to be updated.
 - Update the (TableQa tutorial)[https://github.com/deepset-ai/haystack-tutorials/blob/main/tutorials/15_TableQA.ipynb]
 to reflect the `Span` is no longer linearzied.
