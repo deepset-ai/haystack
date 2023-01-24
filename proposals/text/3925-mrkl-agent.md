@@ -13,6 +13,8 @@ It can either repeat the process of 1) thought, 2) action choice, 3) action inpu
 The MRKLAgent can be used for questions that contain multiple subquestions that can be answered step-by-step (Multihop QA).
 Combined with tools like Haystack's PythonRuntime or SerpAPIComponent, the MRKLAgent can query the web and do calculations.
 
+We have a notebook that demonstrates how to use MRKLAgent. It requires API keys for OpenAI and SerpAPI: https://colab.research.google.com/drive/1oJf4gxkokIazLN26NNt6XsewMvCmVrz8?usp=sharing
+The notebook is based on the branch https://github.com/deepset-ai/haystack/compare/main...mrkl-pipeline (no pull request)
 
 # Basic example
 
