@@ -702,3 +702,76 @@ def test_with_prompt_node(tmp_path):
 
     assert len(result["invocation_context"]) > 0
     assert len(result["invocation_context"]["questions"]) == 2
+
+
+def test_with_multiple_prompt_nodes(tmp_path):
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+              - name: prompt_model
+                type: PromptModel
+
+              - name: mapper
+                type: InvocationContextMapper
+                params:
+                  func: expand_value_to_list
+                  inputs:
+                    value: query
+                    target_list: documents
+                  outputs: [questions]
+              - name: renamer
+                type: InvocationContextMapper
+                params:
+                  func: rename
+                  inputs:
+                    value: new-questions
+                  outputs:
+                    - questions
+              - name: prompt_node
+                type: PromptNode
+                params:
+                  model_name_or_path: prompt_model
+                  default_prompt_template: question-answering
+              - name: prompt_node_second
+                type: PromptNode
+                params:
+                  model_name_or_path: prompt_model
+                  default_prompt_template: question-generation
+                  output_variable: new-questions
+              - name: prompt_node_third
+                type: PromptNode
+                params:
+                  model_name_or_path: google/flan-t5-small
+                  default_prompt_template: question-answering
+
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+                  - name: prompt_node
+                    inputs:
+                      - mapper
+                  - name: prompt_node_second
+                    inputs:
+                      - prompt_node
+                  - name: renamer
+                    inputs:
+                      - prompt_node_second
+                  - name: prompt_node_third
+                    inputs:
+                      - renamer
+            """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="What's Berlin like?",
+        documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
+    )
+    results = result["results"]
+    assert len(results) == 2
+    assert any([True for r in results if "Berlin" in r])
