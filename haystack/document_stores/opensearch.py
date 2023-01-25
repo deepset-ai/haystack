@@ -1,4 +1,3 @@
-import json
 from typing import List, Optional, Union, Dict, Any
 
 import logging
@@ -191,7 +190,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
 
         if index_type == "ivf" and knn_engine != "faiss":
-            raise DocumentStoreError(f"Use 'faiss' as knn_engine when using 'ivf' as index_type.")
+            raise DocumentStoreError("Use 'faiss' as knn_engine when using 'ivf' as index_type.")
 
         self.knn_engine = knn_engine
         self.knn_parameters = {} if knn_parameters is None else knn_parameters
@@ -482,8 +481,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
             if top_k > ef_search:
                 logger.warning(
-                    f"top_k ({top_k}) is greater than ef_search ({ef_search}). "
-                    f"We recommend setting ef_search >= top_k for optimal performance."
+                    "top_k (%i) is greater than ef_search (%i). "
+                    "We recommend setting ef_search >= top_k for optimal performance.",
+                    top_k,
+                    ef_search,
                 )
 
         return documents
@@ -907,13 +908,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 else:
                     existing_ivf_models = set()
                 if f"{index}-ivf" in existing_ivf_models:
-                    logger.info(f"Using existing IVF model '{index}-ivf' for index '{index}'")
+                    logger.info("Using existing IVF model '%s-ivf' for index '%s'.", index, index)
                     embeddings_field_mapping = {"type": "knn_vector", "model_id": f"{index}-ivf"}
                     method = {}
                 else:
                     # IVF indices require training before they can be initialized. Setting index_type to HNSW until
                     # index is trained
-                    logger.info(f"Using index of type HNSW for index '{index}' until IVF model is trained.")
+                    logger.info("Using index of type HNSW for index '%s' until IVF model is trained.", index)
                     method["name"] = "hnsw"
                     method["parameters"] = {"ef_construction": ef_construction, "m": m}
             else:
@@ -1015,7 +1016,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         # Check if IVF index is already trained by checking if embedding mapping contains a model_id field
         if "model_id" in self.client.indices.get(index)[index]["mappings"]["properties"][self.embedding_field]:
-            logger.info(f"IVF index '{index}' is already trained. Skipping training.")
+            logger.info("IVF index '%s' is already trained. Skipping training.", index)
         # IVF model is not trained yet -> train it and convert HNSW index to IVF index
         else:
             nlist = 4 if "nlist" not in self.knn_parameters else self.knn_parameters["nlist"]
@@ -1061,10 +1062,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         f"equal to the number of clusters. Number of provided training samples is `{len(documents)}` "
                         f"and the number of clusters is `{n_clusters}`."
                     )
-                elif len(documents) < n_clusters * min_points_per_cluster:
+                if len(documents) < n_clusters * min_points_per_cluster:
                     logger.warning(
-                        f"Consider increasing the number of training samples to at least "
-                        f"`{n_clusters * min_points_per_cluster}` to get a reliable PQ index."
+                        "Consider increasing the number of training samples to at least "
+                        "`%i` to get a reliable PQ index.",
+                        n_clusters * min_points_per_cluster,
                     )
 
                 encoder = {"name": "pq", "parameters": {"m": m, "code_size": code_size}}
@@ -1072,7 +1074,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 training_req_body["method"]["parameters"]["encoder"] = encoder
 
             training_req_body["description"] = settings
-            logger.info(f"Training IVF index '{index}' using {len(documents)} embeddings.")
+            logger.info("Training IVF index '%s' using {len(documents)} embeddings.", index)
             train_endpoint = f"/_plugins/_knn/models/{index}-ivf/_train"
             response = self.client.transport.perform_request(
                 "POST", url=train_endpoint, headers=headers, body=training_req_body
