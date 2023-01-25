@@ -85,20 +85,14 @@ jobs:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
 
     - name: Get changed files
-      id: files
+      id: changed-files
       uses: tj-actions/changed-files@v34
-
-    - name: Filter changed files
-      id: python-files
-      run: |
-        for file in ${{ steps.files.outputs.all_changed_files }}; do
-          if [[ $file == *.py ]]; then
-            if [[ $file != test/* ]] && [[ $file != rest_api/test/* ]]; then
-              changed_files="$changed_files $file"
-            fi
-          fi
-        done
-        echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
+      with:
+        files: |
+          - **/*.py
+        files_ignore: |
+          - test/**
+          - rest_api/test/**
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -106,10 +100,10 @@ jobs:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
-      if: steps.python-files.outputs.changed_files
+      if: steps.changed-files.outputs.any_changed
       run: |
         mkdir .mypy_cache/
-        mypy ${{ steps.python-files.outputs.changed_files }}
+        mypy ${{ steps.changed-files.outputs.any_changed }}
 
     - uses: act10ns/slack@v1
       with:
