@@ -26,7 +26,7 @@ def test_prediction_layer_distillation():
     # create a checkpoint of weights before distillation
     student_weights = create_checkpoint(student)
 
-    assert len(student_weights) == 22
+    assert len(student_weights) == 38
 
     student_weights.pop(-2)  # pooler is not updated due to different attention head
 
@@ -35,7 +35,7 @@ def test_prediction_layer_distillation():
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
 
-    assert len(new_student_weights) == 22
+    assert len(new_student_weights) == 38
 
     new_student_weights.pop(-2)  # pooler is not updated due to different attention head
 
