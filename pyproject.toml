@@ -88,7 +88,7 @@ dependencies = [
   "elasticsearch>=7.7,<8",
 
   # OpenAI tokenizer
-  "tiktoken>=0.1.2; python_version >= '3.8'",
+  "tiktoken>=0.1.2; python_version >= '3.8' and (platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
