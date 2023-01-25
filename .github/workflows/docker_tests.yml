@@ -1,0 +1,72 @@
+name: Docker images test
+
+on:
+  pull_request:
+    paths:
+      - pyproject.toml
+      - Dockerfile.*
+      - docker-bake.hcl
+      - docker-compose.test.yml
+  push:
+    branches:
+      - main
+    paths:
+      - pyproject.toml
+      - Dockerfile.*
+      - docker-bake.hcl
+      - docker-compose.test.yml
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build base images
+        uses: docker/bake-action@v2
+        env:
+          HAYSTACK_VERSION: ${{ github.ref_name }}
+        with:
+          workdir: docker
+          targets: base
+
+      - name: Test base images
+        run: |
+          EXPECTED_VERSION=$(cat VERSION.txt)
+          VERSION=$(docker run --rm deepset/haystack:base-${{ github.ref_name }}-test --platform linux/amd64 python -c"import haystack; print(haystack.__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+          VERSION=$(docker run --rm deepset/haystack:base-${{ github.ref_name }}-test --platform linux/arm64 python -c"import haystack; print(haystack.__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+          VERSION=$(docker run --rm deepset/haystack:base-gpu-${{ github.ref_name }}-test --platform linux/amd64 python -c"import haystack; print(haystack.__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+          VERSION=$(docker run --rm deepset/haystack:base-gpu-${{ github.ref_name }}-test --platform linux/arm64 python -c"import haystack; print(haystack.__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+
+      - name: Build api images
+        uses: docker/bake-action@v2
+        with:
+          workdir: docker
+          targets: api
+
+      - name: Test api images
+        run: |
+          docker compose -f docker-compose.test.yml --profile amd64 --profile arm64 --up -d
+          # Waits for containers to come up
+          sleep 15s
+          EXPECTED_VERSION=$(cat VERSION.txt)
+          VERSION=$(curl http://localhost:8000/hs_version | jq .hs_version)
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+          VERSION=$(curl http://localhost:8001/hs_version | jq .hs_version)
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+          VERSION=$(curl http://localhost:8002/hs_version | jq .hs_version)
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]
+          VERSION=$(curl http://localhost:8003/hs_version | jq .hs_version)
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]]

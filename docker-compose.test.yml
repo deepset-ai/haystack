@@ -1,0 +1,92 @@
+services:
+
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:7.17.6"
+    ports:
+      - 9200:9200
+    restart: on-failure
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+    healthcheck:
+        test: curl --fail http://localhost:9200/_cat/health || exit 1
+        interval: 10s
+        timeout: 1s
+        retries: 10
+
+  haystack-api-cpu-amd64:
+    image: "deepset/haystack:cpu-local"
+    platform: linux/amd64
+    profiles:
+      - cpu
+      - amd64
+    volumes:
+      - ./rest_api/rest_api/pipeline:/opt/pipelines
+    ports:
+      - 8000:8000
+    restart: on-failure
+    environment:
+      - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
+      - PIPELINE_YAML_PATH=/opt/pipelines/pipelines.haystack-pipeline.yml
+      - TOKENIZERS_PARALLELISM=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+
+  haystack-api-gpu-amd64:
+    image: "deepset/haystack:gpu-local"
+    platform: linux/amd64
+    profiles:
+      - amd64
+    volumes:
+      - ./rest_api/rest_api/pipeline:/opt/pipelines
+    ports:
+      - 8001:8000
+    restart: on-failure
+    environment:
+      - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
+      - PIPELINE_YAML_PATH=/opt/pipelines/pipelines.haystack-pipeline.yml
+      - TOKENIZERS_PARALLELISM=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+
+  haystack-api-cpu-arm64:
+    image: "deepset/haystack:cpu-local"
+    platform: linux/arm64
+    profiles:
+      - cpu
+      - arm64
+    volumes:
+      - ./rest_api/rest_api/pipeline:/opt/pipelines
+    ports:
+      - 8002:8000
+    restart: on-failure
+    environment:
+      - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
+      - PIPELINE_YAML_PATH=/opt/pipelines/pipelines.haystack-pipeline.yml
+      - TOKENIZERS_PARALLELISM=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+
+  haystack-api-gpu-arm64:
+    image: "deepset/haystack:gpu-local"
+    platform: linux/arm64
+    profiles:
+      - arm64
+    volumes:
+      - ./rest_api/rest_api/pipeline:/opt/pipelines
+    ports:
+      - 8003:8000
+    restart: on-failure
+    environment:
+      - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
+      - PIPELINE_YAML_PATH=/opt/pipelines/pipelines.haystack-pipeline.yml
+      - TOKENIZERS_PARALLELISM=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
