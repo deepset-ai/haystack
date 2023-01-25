@@ -16,7 +16,10 @@ from haystack.schema import Answer, Document
 
 
 BaseConfig.arbitrary_types_allowed = True
-BaseConfig.json_encoders = {np.ndarray: lambda x: x.tolist(), pd.DataFrame: lambda x: x.to_dict(orient="records")}
+BaseConfig.json_encoders = {
+    np.ndarray: lambda x: x.tolist(),
+    pd.DataFrame: lambda x: [x.columns.tolist()] + x.values.tolist(),
+}
 
 
 PrimitiveType = Union[str, int, float, bool]
