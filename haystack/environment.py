@@ -1,3 +1,4 @@
+import logging
 import os
 import platform
 import sys
@@ -16,6 +17,18 @@ HAYSTACK_REMOTE_API_BACKOFF_SEC = "HAYSTACK_REMOTE_API_BACKOFF_SEC"
 HAYSTACK_REMOTE_API_MAX_RETRIES = "HAYSTACK_REMOTE_API_MAX_RETRIES"
 
 env_meta_data: Dict[str, Any] = {}
+
+logger = logging.getLogger(__name__)
+
+
+def set_pytorch_secure_model_loading(flag_val="1"):
+    # To load secure only model pytorch requires value of
+    # TORCH_FORCE_WEIGHTS_ONLY_LOAD to be ["1", "y", "yes", "true"]
+    os_flag_val = os.getenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD")
+    if os_flag_val is None:
+        os.environ["TORCH_FORCE_WEIGHTS_ONLY_LOAD"] = flag_val
+    else:
+        logger.info("TORCH_FORCE_WEIGHTS_ONLY_LOAD is already set to %s, Haystack will use the same.", os_flag_val)
 
 
 def get_or_create_env_meta_data() -> Dict[str, Any]:
