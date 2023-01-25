@@ -1036,7 +1036,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 query: "{query.replace('"', ' ').lower()}",
                 properties: ["{self.content_field}"]
             }}"""
-            gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
+            # gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
+            gql_query = (
+                self.weaviate_client.query.get(index, properties)
+                .with_bm25({"query": query, "properties": None})
+                .with_limit(top_k)
+                .build()
+            )
 
             query_output = self.weaviate_client.query.raw(gql_query)
 
