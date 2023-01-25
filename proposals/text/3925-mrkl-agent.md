@@ -204,6 +204,8 @@ That way we better follow the existing concept of pipelines in Haystack. It woul
 - MRKLAgent
 - LLMOrchestrator
 - LLMChain
+- PipelineComposer / LLMComposer
+- PipelineComposition / LLMComposition
 - Interesting naming tidbits:
 - MRKL [paper](https://arxiv.org/pdf/2205.00445.pdf) never uses word agent, only system
 - ReAct [paper](https://arxiv.org/pdf/2210.03629.pdf) uses agent almost exclusively
