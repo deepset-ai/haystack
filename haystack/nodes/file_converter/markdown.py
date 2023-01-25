@@ -1,5 +1,6 @@
 import logging
 import re
+import frontmatter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -27,6 +28,7 @@ class MarkdownConverter(BaseConverter):
         progress_bar: bool = True,
         remove_code_snippets: bool = True,
         extract_headlines: bool = False,
+        add_frontmatter_to_meta: bool = False,
     ):
         """
         :param remove_numeric_tables: Not applicable.
@@ -48,6 +50,7 @@ class MarkdownConverter(BaseConverter):
 
         self.remove_code_snippets = remove_code_snippets
         self.extract_headlines = extract_headlines
+        self.add_frontmatter_to_meta = add_frontmatter_to_meta
 
     def convert(
         self,
@@ -59,6 +62,7 @@ class MarkdownConverter(BaseConverter):
         id_hash_keys: Optional[List[str]] = None,
         remove_code_snippets: Optional[bool] = None,
         extract_headlines: Optional[bool] = None,
+        add_frontmatter_to_meta: Optional[bool] = None,
     ) -> List[Document]:
         """
         Reads text from a markdown file and executes optional preprocessing steps.
@@ -79,10 +83,15 @@ class MarkdownConverter(BaseConverter):
         id_hash_keys = id_hash_keys if id_hash_keys is not None else self.id_hash_keys
         remove_code_snippets = remove_code_snippets if remove_code_snippets is not None else self.remove_code_snippets
         extract_headlines = extract_headlines if extract_headlines is not None else self.extract_headlines
+        add_frontmatter_to_meta = add_frontmatter_to_meta if add_frontmatter_to_meta is not None else self.add_frontmatter_to_meta
+
+        
+        # with open(file_path, encoding=encoding, errors="ignore") as f:
+        #     markdown_text = f.read()
 
         with open(file_path, encoding=encoding, errors="ignore") as f:
-            markdown_text = f.read()
-
+            metadata, markdown_text = frontmatter.parse(f.read())
+        
         # md -> html -> text since BeautifulSoup can extract text cleanly
         html = markdown(markdown_text)
 
@@ -90,7 +99,14 @@ class MarkdownConverter(BaseConverter):
         if remove_code_snippets:
             html = re.sub(r"<pre>(.*?)</pre>", " ", html, flags=re.DOTALL)
             html = re.sub(r"<code>(.*?)</code>", " ", html, flags=re.DOTALL)
+            html = re.sub(r"<p>```(.*?)```</p>", " ", html, flags=re.DOTALL)
         soup = BeautifulSoup(html, "html.parser")
+
+        if add_frontmatter_to_meta:
+            if meta is None:
+                meta = metadata
+            else:
+                meta.update(metadata)
 
         if extract_headlines:
             text, headlines = self._extract_text_and_headlines(soup)
