@@ -89,10 +89,10 @@ jobs:
       uses: tj-actions/changed-files@v34
       with:
         files: |
-          - **/*.py
+          **/*.py
         files_ignore: |
-          - test/**
-          - rest_api/test/**
+          test/**
+          rest_api/test/**
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -103,7 +103,7 @@ jobs:
       if: steps.changed-files.outputs.any_changed == 'true'
       run: |
         mkdir .mypy_cache/
-        mypy ${{ steps.changed-files.outputs.any_changed }}
+        mypy ${{ steps.changed-files.outputs.all_changed_files }}
 
     - uses: act10ns/slack@v1
       with:
