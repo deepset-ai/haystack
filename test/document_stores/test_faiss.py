@@ -135,6 +135,35 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         assert all(doc.embedding is not None for doc in documents_indexed)
 
     @pytest.mark.integration
+    def test_train_index_from_docs(self, documents_with_embeddings, tmp_path):
+        document_store = FAISSDocumentStore(
+            sql_url=f"sqlite:///{tmp_path}/test_faiss_retrieving.db",
+            faiss_index_factory_str="IVF1,Flat",
+            isolation_level="AUTOCOMMIT",
+            return_embedding=True,
+        )
+        document_store.delete_all_documents(index=document_store.index)
+
+        assert not document_store.faiss_indexes[document_store.index].is_trained
+        document_store.train_index(documents_with_embeddings)
+        assert document_store.faiss_indexes[document_store.index].is_trained
+
+    @pytest.mark.integration
+    def test_train_index_from_embeddings(self, documents_with_embeddings, tmp_path):
+        document_store = FAISSDocumentStore(
+            sql_url=f"sqlite:///{tmp_path}/test_faiss_retrieving.db",
+            faiss_index_factory_str="IVF1,Flat",
+            isolation_level="AUTOCOMMIT",
+            return_embedding=True,
+        )
+        document_store.delete_all_documents(index=document_store.index)
+
+        embeddings = np.array([doc.embedding for doc in documents_with_embeddings])
+        assert not document_store.faiss_indexes[document_store.index].is_trained
+        document_store.train_index(embeddings=embeddings)
+        assert document_store.faiss_indexes[document_store.index].is_trained
+
+    @pytest.mark.integration
     def test_write_docs_different_indexes(self, ds, documents_with_embeddings):
         docs_a = documents_with_embeddings[:2]
         docs_b = documents_with_embeddings[2:]

@@ -330,7 +330,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         :param ivf_train_size: Number of embeddings to use for training the IVF index. If `None`, the embeddings of
                                all provided Documents are used for training. If `0`, no training is performed.
-                               Only applicable for indices of type `"ivf"` that are not trained yet. Default: `0`.
+                               Only applicable for indices of type `"ivf"` and `"ivf_pq"` that are not trained yet.
+                               Default: `0`.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -916,7 +917,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     # index is trained
                     logger.info("Using index of type HNSW for index '%s' until IVF model is trained.", index)
                     method["name"] = "hnsw"
-                    method["parameters"] = {"ef_construction": ef_construction, "m": m}
+                    method["parameters"] = {"ef_construction": ef_construction, "m": m, "ef_search": ef_search}
             else:
                 logger.error("Set index_type to either 'flat', 'hnsw', 'ivf', or 'ivf_pq'.")
                 method["name"] = "hnsw"
