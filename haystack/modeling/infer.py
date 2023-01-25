@@ -365,7 +365,7 @@ class Inferencer:
         )  # type ignore
         preds_all = []
         for i, batch in enumerate(
-            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
+            tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
         ):
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
@@ -401,7 +401,7 @@ class Inferencer:
         # TODO so that preds of the right shape are passed in to formatted_preds
         unaggregated_preds_all = []
 
-        for batch in tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm):
+        for batch in tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm):
 
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 

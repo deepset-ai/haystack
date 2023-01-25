@@ -295,7 +295,9 @@ class Crawler(BaseComponent):
             if base_url:
                 data["meta"]["base_url"] = base_url
             data["content"] = text
-            document = Document.from_dict(data, id_hash_keys=id_hash_keys)
+            if id_hash_keys:
+                data["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(data)
 
             if crawler_naming_function is not None:
                 file_name_prefix = crawler_naming_function(link, text)
@@ -382,7 +384,9 @@ class Crawler(BaseComponent):
             crawled_data = []
             for _file in file_paths:
                 with open(_file.absolute(), "r") as read_file:
-                    crawled_data.append(Document.from_dict(json.load(read_file), id_hash_keys=id_hash_keys))
+                    document = json.load(read_file)
+                    document["id_hash_keys"] = id_hash_keys
+                    crawled_data.append(Document.from_dict(document))
             results = {"documents": crawled_data}
         else:
             results = {"paths": file_paths}

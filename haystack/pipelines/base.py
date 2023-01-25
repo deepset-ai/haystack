@@ -1004,7 +1004,7 @@ class Pipeline:
                     f"Please specify a valid experiment_tracking_tool. Possible values are: {TRACKING_TOOL_TO_HEAD.keys()}"
                 )
             if experiment_tracking_uri is None:
-                raise HaystackError(f"experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
+                raise HaystackError("experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
             tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
             tracker.set_tracking_head(tracking_head)
 
@@ -1037,7 +1037,7 @@ class Pipeline:
             # check index before eval
             document_store = index_pipeline.get_document_store()
             if document_store is None:
-                raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
+                raise HaystackError("Document store not found. Please provide pipelines with proper document store.")
             document_count = document_store.get_document_count()
 
             if document_count > 0:
@@ -1846,9 +1846,9 @@ class Pipeline:
             import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
-                f"Could not import `pygraphviz`. Please install via: \n"
-                f"pip install pygraphviz\n"
-                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
+                "Could not import `pygraphviz`. Please install via: \n"
+                "pip install pygraphviz\n"
+                "(You might need to run this first: apt install libgraphviz-dev graphviz )"
             )
 
         graphviz = to_agraph(self.graph)
@@ -2001,7 +2001,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
+            logger.debug("Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a

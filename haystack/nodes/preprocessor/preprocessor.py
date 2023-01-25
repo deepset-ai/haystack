@@ -269,7 +269,8 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            document["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(document)
 
         # Mainly needed for type checking
         if not isinstance(document, Document):
@@ -320,7 +321,9 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            document["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(document)
+
         # Mainly needed for type checking
         if not isinstance(document, Document):
             raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")
@@ -458,7 +461,7 @@ class PreProcessor(BasePreProcessor):
 
             if word_count_sen > split_length:
                 long_sentence_message = (
-                    f"We found one or more sentences whose word count is higher than the split length."
+                    "We found one or more sentences whose word count is higher than the split length."
                 )
                 if long_sentence_message not in self.print_log:
                     self.print_log.add(long_sentence_message)
@@ -760,11 +763,10 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
             except (LookupError, UnpicklingError, ValueError) as e:
                 if isinstance(e, LookupError):
-                    logger.exception(f"PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
+                    logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
                 else:
                     logger.exception(
-                        f"PreProcessor couldn't determine model format of sentence tokenizer at %s",
-                        tokenizer_model_path,
+                        "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                     )
 
                 # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English
@@ -781,7 +783,7 @@ class PreProcessor(BasePreProcessor):
                         "Using English instead.",
                         self.language,
                     )
-                    sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
+                    sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
         # Use a default NLTK model
         elif language_name is not None:
@@ -792,7 +794,7 @@ class PreProcessor(BasePreProcessor):
                 " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
                 self.language,
             )
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
+            sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 
         return sentence_tokenizer
 

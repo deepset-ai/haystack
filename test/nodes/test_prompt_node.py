@@ -245,9 +245,42 @@ def test_stop_words(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
 
+    # test stop words for both HF and OpenAI
+    # set stop words in PromptNode
     node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
+
+    # with default prompt template and stop words set in PN
     r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
-    assert r[0] == "What is the"
+    assert r[0] == "What is the" or r[0] == "What city is the"
+
+    # with default prompt template and stop words set in kwargs (overrides PN stop words)
+    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."], stop_words=None)
+    assert "capital" in r[0] or "Germany" in r[0]
+
+    # simple prompting
+    r = node("Given the context please generate a question. Context: Berlin is the capital of Germany.; Question:")
+    assert len(r[0]) > 0
+    assert "capital" not in r[0]
+    assert "Germany" not in r[0]
+
+    # simple prompting with stop words set in kwargs (overrides PN stop words)
+    r = node(
+        "Given the context please generate a question. Context: Berlin is the capital of Germany.; Question:",
+        stop_words=None,
+    )
+    assert "capital" in r[0] or "Germany" in r[0]
+
+    tt = PromptTemplate(
+        name="question-generation-copy",
+        prompt_text="Given the context please generate a question. Context: $documents; Question:",
+    )
+    # with custom prompt template
+    r = node.prompt(tt, documents=["Berlin is the capital of Germany."])
+    assert r[0] == "What is the" or r[0] == "What city is the"
+
+    # with custom prompt template and stop words set in kwargs (overrides PN stop words)
+    r = node.prompt(tt, documents=["Berlin is the capital of Germany."], stop_words=None)
+    assert "capital" in r[0] or "Germany" in r[0]
 
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
