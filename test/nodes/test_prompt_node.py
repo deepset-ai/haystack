@@ -228,6 +228,7 @@ def test_invalid_state_ops(prompt_node):
         prompt_node.remove_prompt_template("question-answering")
 
 
+@pytest.integration
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -240,6 +241,7 @@ def test_open_ai_prompt_with_params():
     assert len(r) == 1 and len(r[0]) > 0
 
 
+@pytest.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_stop_words(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
@@ -283,6 +285,7 @@ def test_stop_words(prompt_model):
     assert "capital" in r[0] or "Germany" in r[0]
 
 
+@pytest.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_simple_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
@@ -296,6 +299,7 @@ def test_simple_pipeline(prompt_model):
     assert result["results"][0].casefold() == "positive"
 
 
+@pytest.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_complex_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
@@ -312,6 +316,7 @@ def test_complex_pipeline(prompt_model):
     assert "berlin" in result["results"][0].casefold()
 
 
+@pytest.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_complex_pipeline_with_qa(prompt_model):
     """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
