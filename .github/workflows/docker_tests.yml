@@ -41,13 +41,13 @@ jobs:
       - name: Test base images
         run: |
           EXPECTED_VERSION=$(cat VERSION.txt)
-          VERSION=$(docker run --rm deepset/haystack:base-${{ github.ref_name }}-test --platform linux/amd64 python -c"import haystack; print(haystack.__version__)")
+          VERSION=$(docker run --rm deepset/haystack:base-local --platform linux/amd64 python -c"import haystack; print(haystack.__version__)")
           [[ "$VERSION" = "$EXPECTED_VERSION" ]]
-          VERSION=$(docker run --rm deepset/haystack:base-${{ github.ref_name }}-test --platform linux/arm64 python -c"import haystack; print(haystack.__version__)")
+          VERSION=$(docker run --rm deepset/haystack:base-local --platform linux/arm64 python -c"import haystack; print(haystack.__version__)")
           [[ "$VERSION" = "$EXPECTED_VERSION" ]]
-          VERSION=$(docker run --rm deepset/haystack:base-gpu-${{ github.ref_name }}-test --platform linux/amd64 python -c"import haystack; print(haystack.__version__)")
+          VERSION=$(docker run --rm deepset/haystack:base-gpu-local --platform linux/amd64 python -c"import haystack; print(haystack.__version__)")
           [[ "$VERSION" = "$EXPECTED_VERSION" ]]
-          VERSION=$(docker run --rm deepset/haystack:base-gpu-${{ github.ref_name }}-test --platform linux/arm64 python -c"import haystack; print(haystack.__version__)")
+          VERSION=$(docker run --rm deepset/haystack:base-gpu-local --platform linux/arm64 python -c"import haystack; print(haystack.__version__)")
           [[ "$VERSION" = "$EXPECTED_VERSION" ]]
 
       - name: Build api images
