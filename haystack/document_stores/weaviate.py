@@ -1020,29 +1020,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 # BM25 retrieval without filtering
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
-                    .with_near_vector({"vector": [0, 0]})
                     .with_limit(top_k)
+                    .with_bm25({"query": query, "properties": None})
                     .build()
                 )
-
-            # Build the BM25 part of the GQL manually.
-            # Currently the GetBuilder of the Weaviate-client (v3.6.0)
-            # does not support the BM25 part of GQL building, so
-            # the BM25 part needs to be added manually.
-            # The BM25 query needs to be provided all lowercase while
-            # the functionality is in experimental mode in Weaviate,
-            # see https://app.slack.com/client/T0181DYT9KN/C017EG2SL3H/thread/C017EG2SL3H-1658790227.208119
-            bm25_gql_query = f"""bm25: {{
-                query: "{query.replace('"', ' ').lower()}",
-                properties: ["{self.content_field}"]
-            }}"""
-            # gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
-            gql_query = (
-                self.weaviate_client.query.get(index, properties)
-                .with_bm25({"query": query, "properties": None})
-                .with_limit(top_k)
-                .build()
-            )
 
             query_output = self.weaviate_client.query.raw(gql_query)
 
