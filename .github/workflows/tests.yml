@@ -100,7 +100,7 @@ jobs:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
-      if: steps.changed-files.outputs.any_changed
+      if: steps.changed-files.outputs.any_changed == 'true'
       run: |
         mkdir .mypy_cache/
         mypy ${{ steps.changed-files.outputs.any_changed }}

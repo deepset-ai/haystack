@@ -43,7 +43,7 @@ def test_check_error_for_pipeline_not_found():
 def test_overwrite_params_with_env_variables_when_no_params_in_pipeline_yaml(monkeypatch):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.docstore-no-params-pipeline.yml"
     monkeypatch.setenv("INMEMORYDOCUMENTSTORE_PARAMS_INDEX", "custom_index")
-    _, document_store = _load_pipeline(yaml_pipeline_path, None)
+    _, document_store = _load_pipeline(yaml_pipeline_path, "name")
     assert document_store.index == "custom_index"
 
 
