@@ -103,7 +103,7 @@ jobs:
       if: steps.files.outputs.any_changed == 'true'
       run: |
         mkdir .mypy_cache/
-        mypy --install-types --non-interactive ${{ steps.files.outputs.changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
