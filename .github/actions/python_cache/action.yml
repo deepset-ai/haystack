@@ -60,8 +60,3 @@ runs:
       python -m pip install --upgrade pip
       pip install .[all]
       pip install rest_api/
-
-  - name: Install mypy dependencies
-    shell: bash
-    if: inputs.pythonVersion != 3.7
-    run: python -m mypy --install-types --non-interactive --cache-dir=${{ env.pythonLocation }}/.mypy_cache/ haystack/ rest_api/ --exclude=rest_api/build/ --exclude=rest_api/test/
