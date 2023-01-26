@@ -20,11 +20,11 @@ class BaseImageToText(BaseComponent):
         """
         Abstract method for generating captions.
 
-        :param image_file_paths: Paths of the images
-        :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
-                                  See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
+        :param image_file_paths: Paths to the images for which you want to generate captions.
+        :param generation_kwargs: Dictionary containing arguments for the `generate()` method of the Hugging Face model.
+                                  See [generate()](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate) on Hugging Face.
         :param batch_size: Number of images to process at a time.
-        :return: List of Documents. Document.content is the caption. Document.meta["image_file_path"] contains the image file path.
+        :return: List of Documents. `Document.content` is the caption. `Document.meta["image_file_path"]` contains the path to the image file.
         """
         pass
 
