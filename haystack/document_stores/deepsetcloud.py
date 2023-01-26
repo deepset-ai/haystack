@@ -46,6 +46,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         return_embedding: bool = False,
         label_index: str = "default",
         embedding_dim: int = 768,
+        use_prefiltering: bool = False,
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -86,6 +87,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param label_index: index for the evaluation set interface
         :param return_embedding: To return document embedding.
         :param embedding_dim: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
+        :param use_prefiltering: DeepsetCloudDocumentStore uses post-filtering by default when querying with filters.
+                                 If you want to use pre-filtering instead at the cost of higher latency, set this to True.
         """
         self.index = index
         self.label_index = label_index
@@ -93,6 +96,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self.similarity = similarity
         self.return_embedding = return_embedding
         self.embedding_dim = embedding_dim
+        self.use_prefiltering = use_prefiltering
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
