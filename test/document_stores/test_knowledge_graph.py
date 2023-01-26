@@ -10,6 +10,9 @@ from haystack.utils import fetch_archive_from_http
 @pytest.mark.graphdb
 @pytest.mark.integration
 def test_graph_retrieval():
+    # we use a timeout double the default in the CI to account for slow runners
+    timeout = 20
+
     # TODO rename doc_dir
     graph_dir = "../data/tutorial10_knowledge_graph/"
     s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/triples_and_config.zip"
@@ -21,9 +24,9 @@ def test_graph_retrieval():
     fetch_archive_from_http(url=s3_url, output_dir=model_dir)
 
     kg = GraphDBKnowledgeGraph(index="tutorial_10_index")
-    kg.delete_index()
-    kg.create_index(config_path=Path(graph_dir + "repo-config.ttl"))
-    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir + "triples.ttl"))
+    kg.delete_index(timeout=timeout)
+    kg.create_index(config_path=Path(graph_dir + "repo-config.ttl"), timeout=timeout)
+    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir + "triples.ttl"), timeout=timeout)
     triple = {
         "p": {"type": "uri", "value": "https://deepset.ai/harry_potter/_paternalgrandfather"},
         "s": {"type": "uri", "value": "https://deepset.ai/harry_potter/Melody_fawley"},
