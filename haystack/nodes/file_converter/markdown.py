@@ -1,10 +1,10 @@
 import logging
 import re
-import frontmatter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
 try:
+    import frontmatter
     from bs4 import BeautifulSoup, NavigableString
     from markdown import markdown
 except (ImportError, ModuleNotFoundError) as ie:
