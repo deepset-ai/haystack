@@ -2309,13 +2309,21 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        return
-        # should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
-        # if should_send_event and not self.sent_event_in_window:
-        #     self.send_pipeline_event(is_indexing)
-        #     self.sent_event_in_window = True
-        # elif self.has_event_time_interval_exceeded():
-        #     self.sent_event_in_window = False
+        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
+
+        # RayPipeline's components are not compatible with the serialization in `get_config()` called by
+        # `send_pipeline_event()`, so the event sending is suspended for RayPipelines (it would crash anyhow)
+        from haystack.pipelines.ray import RayPipeline
+
+        if isinstance(self, RayPipeline):
+            should_send_event = False
+            logger.debug("The event sending is currently disabled for RayPipelines.")
+
+        if should_send_event and not self.sent_event_in_window:
+            self.send_pipeline_event(is_indexing)
+            self.sent_event_in_window = True
+        elif self.has_event_time_interval_exceeded():
+            self.sent_event_in_window = False
 
     def has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
