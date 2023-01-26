@@ -301,24 +301,28 @@ The MRKLAgent can be either created programmatically or loaded from a YAML file:
 
 # Drawbacks
 
-Look at the feature from the other side: what are the reasons why we should _not_ work on it? Consider the following:
+Although the scope of the initial MRKLAgent is limited, it can grow into a full-fledged framework consisting of
+various types of agents (conversation, RPA etc.). The field of agents is rapidly growing, and we should be
+aware that it can even outgrow Haystack in the future. Perhaps we can start with the MRKL agent being part
+of Haystack and potentially create a new project in the future.
 
-- What's the implementation cost, both in terms of code size and complexity?
-- Can the solution you're proposing be implemented as a separate package, outside of Haystack?
-- Does it teach people more about Haystack?
-- How does this feature integrate with other existing and planned features?
-- What's the cost of migrating existing Haystack pipelines (is it a breaking change?)?
+One of the central building blocks of an MRKL agent are the PromptNode and set "neural attachments" extending the
+agent's capabilities. Many tools like Search, Calculator, Notion and API connectors are somewhat different conceptually
+from the existing Haystack components. On the other hand, some of the existing Haystack components fit naturally
+into the MRKL framework of tools, for example, DocumentStore, Retriever, and Reader.
 
-There are tradeoffs to choosing any path. Attempt to identify them here.
+There is a non-negligible potential for a growing implementation cost of such an agent framework that might
+stretch the resource away from the existing Haystack core. However, as LLM-based agents are an exciting and
+rapidly growing field, they may raise Haystack awareness significantly.
 
 # Alternatives
 
-What other designs have you considered? What's the impact of not adding this feature?
+We have not considered other alternatives approaches to the problem of building an LLM based agent framework.
 
 # Adoption strategy
 
-If we implement this proposal, how will the existing Haystack users adopt it? Is
-this a breaking change? Can we write a migration script?
+The existing Haystack users have already requested an agent framework to be added as part of the Haystack.
+We don't anticipate significant impediments to adoption.
 
 # How we teach this
 
