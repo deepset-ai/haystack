@@ -922,9 +922,14 @@ class PromptNode(BaseComponent):
             **invocation_context,
         )
 
+        final_result: Dict[str, Any] = {}
         if self.output_variable:
             invocation_context[self.output_variable] = results
-        return {"results": results, "invocation_context": invocation_context}, "output_1"
+            final_result[self.output_variable] = results
+
+        final_result["results"] = results
+        final_result["invocation_context"] = invocation_context
+        return final_result, "output_1"
 
     def run_batch(
         self,
