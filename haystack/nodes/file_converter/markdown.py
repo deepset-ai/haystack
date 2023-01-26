@@ -85,10 +85,6 @@ class MarkdownConverter(BaseConverter):
         extract_headlines = extract_headlines if extract_headlines is not None else self.extract_headlines
         add_frontmatter_to_meta = add_frontmatter_to_meta if add_frontmatter_to_meta is not None else self.add_frontmatter_to_meta
 
-        
-        # with open(file_path, encoding=encoding, errors="ignore") as f:
-        #     markdown_text = f.read()
-
         with open(file_path, encoding=encoding, errors="ignore") as f:
             metadata, markdown_text = frontmatter.parse(f.read())
         
@@ -99,7 +95,6 @@ class MarkdownConverter(BaseConverter):
         if remove_code_snippets:
             html = re.sub(r"<pre>(.*?)</pre>", " ", html, flags=re.DOTALL)
             html = re.sub(r"<code>(.*?)</code>", " ", html, flags=re.DOTALL)
-            html = re.sub(r"<p>```(.*?)```</p>", " ", html, flags=re.DOTALL)
         soup = BeautifulSoup(html, "html.parser")
 
         if add_frontmatter_to_meta:
