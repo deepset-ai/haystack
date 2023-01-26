@@ -317,20 +317,30 @@ rapidly growing field, they may raise Haystack awareness significantly.
 
 # Alternatives
 
-We have not considered other alternatives approaches to the problem of building an LLM based agent framework.
+We have considered an alternative design where the MRKL agent is just another pipeline not a component.
+However, we decided to go with the component approach as it is simpler to implement and easier to understand.
+MRKL agents seemingly do not fit nicely into a pipeline paradigm but are rather a collection of pipelines/tools
+and a simple agent loop to hand off part of the task to one of the pipelines/tools.
+
+Having said that, we could still implement the MRKL agent as a pipeline but that approach would require a bit more
+design work and would be more complex to implement.
 
 # Adoption strategy
 
-The existing Haystack users have already requested an agent framework to be added as part of the Haystack.
-We don't anticipate significant impediments to adoption.
+Introducing MRKL agent is a rather big change that would require a careful adoption strategy. We would need a lot more
+documentation explaining these new concepts, and each attaching tool would need additional documentation.
+
+However, the existing Haystack users, especially advanced users have already requested an agent framework to be added
+as part of the Haystack. We anticipate that advanced users will be the first to adopt the MRKL agent.
+
 
 # How we teach this
 
-Would implementing this feature mean the documentation must be re-organized
-or updated? Does it change how Haystack is taught to new developers at any level?
+Yes, adding agents to Haystack would require a lot of documentation changes. Perhaps even a separate documentation for
+MRKL and other future agents somewhat detached from Haystack.
 
-How should this feature be taught to the existing Haystack users (for example with a page in the docs,
-a tutorial, ...).
+We can teach existing Haystack users about agents and agent tools in a new section of the documentation. We can also
+organize Discord office hours, tutorials, and webinars to teach the new concepts.
 
 # Unresolved questions
 Optional, but suggested for first drafts. What parts of the design are still
