@@ -19,10 +19,12 @@ hidden: false
 
 """
 
+
 class HaystackMarkdownRenderer(MarkdownRenderer):
     """
     Custom Markdown renderer heavily based on the `MarkdownRenderer`
     """
+
     def _render_object(self, fp, level, obj):
         """
         This is where docstrings for a certain object are processed,
@@ -55,6 +57,7 @@ class HaystackMarkdownRenderer(MarkdownRenderer):
                 lines = ["> " + x for x in lines]
             fp.write("\n".join(lines))
             fp.write("\n\n")
+
 
 @dataclasses.dataclass
 class ReadmeRenderer(Renderer):
