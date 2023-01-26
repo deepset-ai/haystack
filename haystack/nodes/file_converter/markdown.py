@@ -83,11 +83,13 @@ class MarkdownConverter(BaseConverter):
         id_hash_keys = id_hash_keys if id_hash_keys is not None else self.id_hash_keys
         remove_code_snippets = remove_code_snippets if remove_code_snippets is not None else self.remove_code_snippets
         extract_headlines = extract_headlines if extract_headlines is not None else self.extract_headlines
-        add_frontmatter_to_meta = add_frontmatter_to_meta if add_frontmatter_to_meta is not None else self.add_frontmatter_to_meta
+        add_frontmatter_to_meta = (
+            add_frontmatter_to_meta if add_frontmatter_to_meta is not None else self.add_frontmatter_to_meta
+        )
 
         with open(file_path, encoding=encoding, errors="ignore") as f:
             metadata, markdown_text = frontmatter.parse(f.read())
-        
+
         # md -> html -> text since BeautifulSoup can extract text cleanly
         html = markdown(markdown_text)
 
