@@ -89,7 +89,7 @@ jobs:
       uses: tj-actions/changed-files@v34
       with:
         files: |
-          *.py
+          **/*.py
         files_ignore: |
           test/**
           rest_api/test/**
