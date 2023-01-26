@@ -85,11 +85,11 @@ jobs:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
 
     - name: Get changed files
-      id: changed-files
+      id: files
       uses: tj-actions/changed-files@v34
       with:
         files: |
-          **/*.py
+          *.py
         files_ignore: |
           test/**
           rest_api/test/**
@@ -100,10 +100,10 @@ jobs:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
-      if: steps.changed-files.outputs.any_changed == 'true'
+      if: steps.files.outputs.any_changed == 'true'
       run: |
         mkdir .mypy_cache/
-        mypy ${{ steps.changed-files.outputs.all_changed_files }}
+        mypy --install-types --non-interactive ${{ steps.files.outputs.changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
