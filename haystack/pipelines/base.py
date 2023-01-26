@@ -2309,12 +2309,13 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
-        if should_send_event and not self.sent_event_in_window:
-            self.send_pipeline_event(is_indexing)
-            self.sent_event_in_window = True
-        elif self.has_event_time_interval_exceeded():
-            self.sent_event_in_window = False
+        return
+        # should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
+        # if should_send_event and not self.sent_event_in_window:
+        #     self.send_pipeline_event(is_indexing)
+        #     self.sent_event_in_window = True
+        # elif self.has_event_time_interval_exceeded():
+        #     self.sent_event_in_window = False
 
     def has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
