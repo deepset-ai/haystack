@@ -877,16 +877,6 @@ class PromptNode(BaseComponent):
 
         return list(self.prompt_templates[prompt_template].prompt_params)
 
-    def __eq__(self, other):
-        if isinstance(other, PromptNode):
-            if self.default_prompt_template != other.default_prompt_template:
-                return False
-            return self.model_name_or_path == other.model_name_or_path
-        return False
-
-    def __hash__(self):
-        return hash((self.default_prompt_template, self.model_name_or_path))
-
     def run(
         self,
         query: Optional[str] = None,
