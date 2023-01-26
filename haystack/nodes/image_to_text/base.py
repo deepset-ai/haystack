@@ -8,7 +8,7 @@ from haystack.nodes.base import BaseComponent
 
 class BaseImageToText(BaseComponent):
     """
-    Abstract class for ImageToText
+    Abstract class for ImageToText.
     """
 
     outgoing_edges = 1
