@@ -82,6 +82,143 @@ Thought: I now know the final answer
 Final Answer: Jason Sudeikis, Olivia Wilde's boyfriend, is 47 years old and his age raised to the 0.23 power is 2.4242784855673896.
 ```
 
+## MRKLAgent steps breakdown
+The above steps represent the entire action trace for the MRKLAgent. However, let's break it down into steps so we can understand how the MRKLAgent works.
+
+Let's break down this example into individual agent steps to understand how it makes decisions, chooses actions and action inputs.
+
+### Step 1:
+
+We start with a prompt where we instruct LLM on what we want. The first prompt we send to LLM is the following:
+```
+Answer the following questions as best as you can. You have access to the following tools:
+
+Search: useful for when you need to answer questions about current events. You should ask targeted questions
+Calculator: useful for when you need to answer questions about math
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, should be one of [Search, Calculator]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final Answer
+Final Answer: the final Answer to the original input question
+
+Begin!
+Question: Who is Olivia Wilde's boyfriend? What is his current age raised to the 0.23 power?
+Thought:
+```
+
+Notice how we finish the prompt with the `Thought:` token, priming the model to start its generation of an actual plan of what needs to be done in the first step.
+LLM would also generate `Action:` and `Action Input:` rows of this step which help us select an Action to execute and the input for that action.
+As we also instruct the model to stop generating a response with stop words being `Observation:` the model response for
+this step is:
+
+```
+I need to do some research to answer this question.
+Action: Search
+Action Input: Olivia Wilde's boyfriend
+```
+
+At this point, we invoke Search (along with the input) and receive the response from the Search tool: "First linked in November 2011,
+Wilde and Sudeikis got engaged in January 2013. They later became parents, welcoming son Otis in 2014 and daughter Daisy in 2016."
+
+We append the tool response under the `Observation:`
+
+LLM generation above and the response from the Search action (added under Observation) are appended to the initial prompt.
+
+### Step 2:
+
+We start this step with the following prompt:
+
+```
+Answer the following questions as best as you can. You have access to the following tools:
+
+Search: useful for when you need to answer questions about current events. You should ask targeted questions
+Calculator: useful for when you need to answer questions about math
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, should be one of [Search, Calculator]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final Answer
+Final Answer: the final Answer to the original input question
+
+Begin!
+Question: Who is Olivia Wilde's boyfriend? What is his current age raised to the 0.23 power?
+Thought: I need to do some research to answer this question.
+Action: Search
+Action Input: Olivia Wilde's boyfriend
+Observation: First linked in November 2011, Wilde and Sudeikis got engaged in January 2013. They later became parents, welcoming son Otis in 2014 and daughter Daisy in 2016.
+Thought:
+```
+
+Again, notice how we've added the response from LLM and the `Observation` from the tool to the prompt, and we finish the prompt with `Thought:` token, priming the
+model to start the response with the plan for this step. As in the previous step, the model generates an action plan and selects an action and its input. The LLM response is:
+
+```
+I need to find out his age
+Action: Search
+Action Input: Jason Sudeikis age
+```
+
+This LLM response above gives us enough information to invoke a Search tool again along with the appropriate input,
+and we receive the response from the Search: 47 years. We add this response to the prompt history as the `Observation:` keyword.
+
+### Step 3:
+
+For the sake of brevity, let's not list the entire prompt again. The critical part to remember is that we append the output of step 2 to the prompt history we are
+creating as we step through each agent step. These so-called reasoning traces help agents "understand" what needs to be done in each successive step.
+The last part of the prompt is the following:
+```
+Thought: I need to find out his age
+Action: Search
+Action Input: Jason Sudeikis age
+Observation: 47 years
+Thought:
+```
+
+The LLM-generated response is:
+
+```
+I need to raise it to the 0.23 power
+Action: Calculator
+Action Input: 47^0.23
+```
+
+In this step, we invoke a new tool - The calculator with specified input. The calculator response is 2.4242784855673896
+We added the calculator response to the prompt history under the Observation keyword.
+
+
+### Step 4:
+
+Again, we append a calculator response and prompt to the prompt history once again. Let's not list the entire prompt, but the last few lines:
+```
+I need to raise it to the 0.23 power
+Action: Calculator
+Action Input: 47^0.23
+Observation: 2.4242784855673896
+Thought:
+```
+
+The LLM-generated response is:
+```
+I now know the final answer
+Final Answer: Jason Sudeikis, Olivia Wilde's boyfriend, is 47 years old and his age raised to the 0.23 power is 2.4242784855673896.
+```
+
+Using simple string parsing, we can detect that the mode in this step responded with the Final Answer: keyword just as
+we instructed, thus completing the agent's task with a response returned to the agent's client.
+
+## Agent Creation
+
 The MRKLAgent can be either created programmatically or loaded from a YAML file:
 
 **Example programmatic creation:**
