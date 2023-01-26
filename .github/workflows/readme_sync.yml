@@ -1,6 +1,7 @@
 name: Sync docs with Readme
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
