@@ -436,10 +436,7 @@ def test_query_with_dataframe(client):
         response = client.post(url="/query", json={"query": TEST_QUERY})
         assert 200 == response.status_code
         assert len(response.json()["documents"]) == 1
-        assert response.json()["documents"][0]["content"] == [
-            {"col1": "text_1", "col2": 1},
-            {"col1": "text_2", "col2": 2},
-        ]
+        assert response.json()["documents"][0]["content"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
         assert response.json()["documents"][0]["content_type"] == "table"
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
