@@ -744,7 +744,7 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face."
+        self, repo_id: str, private: bool = False, commit_message: str = "Add new model to Hugging Face."
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:

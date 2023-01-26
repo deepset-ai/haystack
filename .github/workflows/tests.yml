@@ -87,18 +87,12 @@ jobs:
     - name: Get changed files
       id: files
       uses: tj-actions/changed-files@v34
-
-    - name: Filter changed files
-      id: python-files
-      run: |
-        for file in ${{ steps.files.outputs.all_changed_files }}; do
-          if [[ $file == *.py ]]; then
-            if [[ $file != test/* ]]; then
-              changed_files="$changed_files $file"
-            fi
-          fi
-        done
-        echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
+      with:
+        files: |
+          *.py
+        files_ignore: |
+          test/**
+          rest_api/test/**
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -109,7 +103,7 @@ jobs:
       if: steps.python-files.outputs.changed_files
       run: |
         mkdir .mypy_cache/
-        mypy ${{ steps.python-files.outputs.changed_files }}
+        mypy --install-types --non-interactive ${{ steps.python-files.outputs.changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
