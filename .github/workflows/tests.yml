@@ -89,7 +89,7 @@ jobs:
       uses: tj-actions/changed-files@v34
       with:
         files: |
-          *.py
+          **/*.py
         files_ignore: |
           test/**
           rest_api/test/**
@@ -100,10 +100,10 @@ jobs:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
-      if: steps.python-files.outputs.changed_files
+      if: steps.files.outputs.any_changed == 'true'
       run: |
         mkdir .mypy_cache/
-        mypy --install-types --non-interactive ${{ steps.python-files.outputs.changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
