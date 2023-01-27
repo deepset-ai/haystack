@@ -117,6 +117,8 @@ This includes:
      document_id: Optional[str] = None
      meta: Optional[Dict[str, Any]] = None
 ```
+- Similar to how we can return a list of `Span`s, we would allow a list of `TableCell`s to be returned to handle the case
+ when multiple `TableCell`s are returned to form a final answer.
 - Updating any functions that accept table answers as input to use the new `col` and `row` variables instead of `start` and `end` variables.
 This type of check for table answers is most likely already done by checking if the `context` is of type `pd.DataFrame`.
 - `TableReader` and `RCIReader` to return `TableCell` objects instead of `Span`
