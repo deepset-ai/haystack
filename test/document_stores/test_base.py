@@ -97,8 +97,7 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_get_embedding_count(self, ds, documents):
         ds.write_documents(documents)
-        out = ds.get_embedding_count()
-        assert out == 6
+        assert ds.get_embedding_count() == 6
 
     @pytest.mark.skip
     @pytest.mark.integration

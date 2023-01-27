@@ -56,6 +56,11 @@ class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
         ds.delete_index(index="custom_index")
         assert ds.get_document_count(index="custom_index") == 0
 
+    @pytest.mark.integration
+    def test_get_embedding_count(self, ds, documents):
+        ds.write_documents(documents)
+        assert ds.get_embedding_count() == 9
+
     # NOTE: MilvusDocumentStore derives from the SQL one and behaves differently to the others when filters are applied.
     # While this should be considered a bug, the relative tests are skipped in the meantime
 
