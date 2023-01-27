@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/nodes/image_to_text]
-    modules: ['base', `transformers`]
+    modules: ['base', 'transformers']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -17,7 +17,7 @@ renderer:
    category: 6310ca73c622850ddd3875a2
    title: TransformersImageToText API
    slug: transformers-image-to-text-api
-   order: 115
+   order: 185
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true

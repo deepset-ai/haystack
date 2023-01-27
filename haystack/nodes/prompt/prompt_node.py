@@ -940,7 +940,7 @@ class PromptNode(BaseComponent):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
-        pass
+        raise NotImplementedError("run_batch is not implemented for PromptNode.")
 
     def _prepare_model_kwargs(self):
         # these are the parameters from PromptNode level
