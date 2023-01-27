@@ -44,11 +44,11 @@ class ReadmeRenderer(Renderer):
     def render(self, modules: t.List[docspec.Module]) -> None:
         if self.markdown.filename is None:
             sys.stdout.write(self._frontmatter())
-            self.markdown.render_to_stream(modules, sys.stdout)
+            self.markdown.render_single_page(sys.stdout, modules)
         else:
             with io.open(self.markdown.filename, "w", encoding=self.markdown.encoding) as fp:
                 fp.write(self._frontmatter())
-                self.markdown.render_to_stream(modules, t.cast(t.TextIO, fp))
+                self.markdown.render_single_page(t.cast(t.TextIO, fp), modules)
 
     def _frontmatter(self) -> str:
         return README_FRONTMATTER.format(
