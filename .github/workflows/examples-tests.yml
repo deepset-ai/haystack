@@ -1,4 +1,4 @@
-name: Tests
+name: Examples tests
 
 on:
   workflow_dispatch: # Activate this workflow manually
@@ -6,6 +6,8 @@ on:
     branches:
       - main
   pull_request:
+    paths:
+      - examples/**
     types:
       - opened
       - reopened
