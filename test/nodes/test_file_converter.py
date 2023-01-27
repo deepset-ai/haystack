@@ -113,7 +113,6 @@ def test_pdf_ligatures(Converter):
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Poppler not installed on Windows CI")
 def test_page_range(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
@@ -130,7 +129,7 @@ def test_page_range(Converter):
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_page_range_numbers(Converter):
     converter = Converter()
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
 
     preprocessor = PreProcessor(
         split_by="word", split_length=5, split_overlap=0, split_respect_sentence_boundary=False, add_page_number=True
