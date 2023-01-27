@@ -29,7 +29,7 @@ class CsvTextConverter(BaseConverter):
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
-                Load a CVS file containing question-answer pairs and convert it to Documents.
+                Load a CSV file containing question-answer pairs and convert it to Documents.
 
                 :param file_path: Path to the CSV file you want to convert. The file must have two columns called 'question' and 'answer'.
                     The first will be interpreted as a question, the second as content.
