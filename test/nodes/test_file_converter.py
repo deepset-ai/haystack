@@ -143,7 +143,8 @@ def test_docx_converter():
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
-    assert document.content.startswith("What to build with Haystack")
+    assert document.content.startswith("\nWhat to build with Haystack")
+    assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
 def test_markdown_converter_headline_extraction():
@@ -176,6 +177,12 @@ def test_markdown_converter_frontmatter_to_meta():
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
     assert document.meta["type"] == "intro"
     assert document.meta["date"] == "1.1.2023"
+
+
+def test_markdown_converter_remove_code_snippets():
+    converter = MarkdownConverter(remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.content.startswith("pip install farm-haystack")
 
 
 def test_azure_converter():
