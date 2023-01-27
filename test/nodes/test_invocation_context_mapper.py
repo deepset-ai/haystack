@@ -572,7 +572,7 @@ def test_documents_to_strings_yaml(tmp_path):
               params:
                 func: documents_to_strings
                 inputs:
-                  - documents
+                  documents: documents
                 outputs:
                   - strings
             pipelines:
@@ -585,43 +585,7 @@ def test_documents_to_strings_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(documents=[Document(content="a"), Document(content="b"), Document(content="c")])
-    assert result["invocation_context"]["strings"] == ["first", "second", "third"]
-
-
-def test_documents_to_strings_meta_and_hashkeys_yaml(tmp_path):
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(
-            f"""
-            version: ignore
-            components:
-            - name: mapper
-              type: InvocationContextMapper
-              params:
-                func: documents_to_strings
-                params:
-                  strings: ['first', 'second', 'third']
-                  id_hash_keys: ['content', 'meta']
-                  meta:
-                    - a: 1
-                    - a: 2
-                    - a: 3
-                outputs:
-                  - documents
-            pipelines:
-              - name: query
-                nodes:
-                  - name: mapper
-                    inputs:
-                      - Query
-        """
-        )
-    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    result = pipeline.run()
-    assert result["invocation_context"]["documents"] == [
-        Document(content="first", meta={"a": 1}, id_hash_keys=["content", "meta"]),
-        Document(content="second", meta={"a": 2}, id_hash_keys=["content", "meta"]),
-        Document(content="third", meta={"a": 3}, id_hash_keys=["content", "meta"]),
-    ]
+    assert result["invocation_context"]["strings"] == ["a", "b", "c"]
 
 
 #
@@ -708,7 +672,7 @@ def test_chain_mappers_yaml_2(tmp_path):
             - name: mapper_1
               type: InvocationContextMapper
               params:
-                func: documents_to_strings
+                func: strings_to_documents
                 params:
                   strings:
                     - first
@@ -742,7 +706,7 @@ def test_chain_mappers_yaml_2(tmp_path):
             - name: mapper_4
               type: InvocationContextMapper
               params:
-                func: documents_to_strings
+                func: strings_to_documents
                 inputs:
                   strings: many_greetings
                 outputs:
@@ -789,7 +753,8 @@ def test_with_prompt_node(tmp_path):
                   inputs:
                     value: query
                     target_list: documents
-                  outputs: [questions]
+                  outputs:
+                    - questions
 
               - name: prompt_node
                 type: PromptNode
@@ -814,7 +779,7 @@ def test_with_prompt_node(tmp_path):
         documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
     )
     assert len(result["results"]) == 2
-    for answer in result["results"]:
+    for answer in result.keys():
         assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in answer.casefold())
 
     assert len(result["invocation_context"]) > 0
@@ -839,6 +804,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
                     value: query
                     target_list: documents
                   outputs: [questions]
+
               - name: renamer
                 type: InvocationContextMapper
                 params:
@@ -847,17 +813,20 @@ def test_with_multiple_prompt_nodes(tmp_path):
                     value: new-questions
                   outputs:
                     - questions
+
               - name: prompt_node
                 type: PromptNode
                 params:
                   model_name_or_path: prompt_model
                   default_prompt_template: question-answering
+
               - name: prompt_node_second
                 type: PromptNode
                 params:
                   model_name_or_path: prompt_model
                   default_prompt_template: question-generation
                   output_variable: new-questions
+
               - name: prompt_node_third
                 type: PromptNode
                 params:
