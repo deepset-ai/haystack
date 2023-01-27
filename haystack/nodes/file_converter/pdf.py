@@ -188,7 +188,7 @@ class PDFToTextConverter(BaseConverter):
 
         start_page = start_page or 1
 
-        command = ["pdftotext", "-enc", str(encoding), "-layout" if layout else "-raw", str(start_page)]
+        command = ["pdftotext", "-enc", str(encoding), "-layout" if layout else "-raw", "-f", str(start_page)]
 
         if end_page is not None:
             command.extend(["-l", str(end_page)])
