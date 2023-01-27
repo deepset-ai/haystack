@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/nodes/file_converter]
-    modules: ['base', 'docx', 'image', 'markdown', 'pdf', 'parsr', 'azure', 'tika', 'txt']
+    modules: ['base', 'csv', 'docx', 'image', 'markdown', 'pdf', 'parsr', 'azure', 'tika', 'txt']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
