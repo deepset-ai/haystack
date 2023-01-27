@@ -87,8 +87,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param label_index: index for the evaluation set interface
         :param return_embedding: To return document embedding.
         :param embedding_dim: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
-        :param use_prefiltering: DeepsetCloudDocumentStore uses post-filtering by default when querying with filters.
-                                 If you want to use pre-filtering instead at the cost of higher latency, set this to True.
+        :param use_prefiltering: By default, DeepsetCloudDocumentStore uses post-filtering when querying with filters.
+                                 To use pre-filtering instead, set this parameter to True. Note that pre-filtering comes
+                                 at the cost of higher latency.
         """
         self.index = index
         self.label_index = label_index
