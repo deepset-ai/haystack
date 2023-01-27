@@ -227,6 +227,7 @@ def test_join_lists_yaml(tmp_path):
             - name: mapper
               type: InvocationContextMapper
               params:
+                func: join_lists
                 inputs:
                   lists:
                     - documents
