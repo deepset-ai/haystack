@@ -206,7 +206,7 @@ class InvocationContextMapper(BaseComponent):
         self,
         func: str,
         outputs: List[str],
-        inputs: Optional[Dict[str, str]] = None,
+        inputs: Optional[Dict[str, Union[List[str], str]]] = None,
         params: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -306,11 +306,16 @@ class InvocationContextMapper(BaseComponent):
         invocation_context.pop("self")
         invocation_context = {key: value for key, value in invocation_context.items() if value is not None}
 
-        input_values = {
-            key: invocation_context[value]
-            for key, value in self.inputs.items()
-            if value in invocation_context.keys() and value is not None
-        }
+        input_values = {}
+        for key, value in self.inputs.items():
+            if isinstance(value, list):
+                input_values[key] = []
+                for v in value:
+                    if v in invocation_context.keys() and v is not None:
+                        input_values[key].append(invocation_context[v])
+            else:
+                if value in invocation_context.keys() and value is not None:
+                    input_values[key] = invocation_context[value]
 
         input_values = {**self.params, **input_values}
         try:

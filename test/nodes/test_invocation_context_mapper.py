@@ -230,8 +230,8 @@ def test_join_lists_yaml(tmp_path):
                 func: join_lists
                 inputs:
                   lists:
-                    - documents
-                    - file_paths
+                   - documents
+                   - file_paths
                 outputs:
                   - single_list
             pipelines:
