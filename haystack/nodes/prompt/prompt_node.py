@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -328,7 +329,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         Other kwargs are ignored.
         """
         output: List[Dict[str, str]] = []
-        stop_words = kwargs.pop("stop", None)
+        stop_words = kwargs.pop("stop_words", None)
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -445,6 +446,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
+            # we use keyword stop_words but OpenAI uses stop
+            if "stop_words" in kwargs:
+                kwargs["stop"] = kwargs.pop("stop_words")
             kwargs_with_defaults.update(kwargs)
         payload = {
             "model": self.model_name_or_path,
@@ -767,6 +771,8 @@ class PromptNode(BaseComponent):
                 f"or pass a PromptTemplate instance for prompting."
             )
 
+        # kwargs override model kwargs
+        kwargs = {**self._prepare_model_kwargs(), **kwargs}
         prompt_template_used = prompt_template or self.default_prompt_template
         if prompt_template_used:
             if isinstance(prompt_template_used, PromptTemplate):
@@ -778,15 +784,15 @@ class PromptNode(BaseComponent):
 
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                # merge any additional model kwargs
-                kwargs = {**kwargs, **self._prepare_model_kwargs()}
-                # and pass the prepared prompt and kwargs to the model
-                output = self.prompt_model.invoke(prompt, **kwargs)
+                kwargs_copy = copy.copy(kwargs)
+                # and pass the prepared prompt and kwargs copy to the model
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
-                output = self.prompt_model.invoke(prompt)
+                kwargs_copy = copy.copy(kwargs)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         return results
 
@@ -871,16 +877,6 @@ class PromptNode(BaseComponent):
 
         return list(self.prompt_templates[prompt_template].prompt_params)
 
-    def __eq__(self, other):
-        if isinstance(other, PromptNode):
-            if self.default_prompt_template != other.default_prompt_template:
-                return False
-            return self.model_name_or_path == other.model_name_or_path
-        return False
-
-    def __hash__(self):
-        return hash((self.default_prompt_template, self.model_name_or_path))
-
     def run(
         self,
         query: Optional[str] = None,
@@ -932,8 +928,7 @@ class PromptNode(BaseComponent):
 
         if self.output_variable:
             invocation_context[self.output_variable] = results
-
-        return {"results": results, "invocation_context": invocation_context}, "output_1"
+        return {self.output_variable: results, "invocation_context": invocation_context}, "output_1"
 
     def run_batch(
         self,
@@ -948,4 +943,6 @@ class PromptNode(BaseComponent):
         pass
 
     def _prepare_model_kwargs(self):
-        return {"stop": self.stop_words}
+        # these are the parameters from PromptNode level
+        # that are passed to the prompt model invocation layer
+        return {"stop_words": self.stop_words}
