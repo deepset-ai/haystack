@@ -1,5 +1,3 @@
-# pylint: disable=missing-timeout
-
 import json
 from mimetypes import guess_type
 from pathlib import Path
@@ -10,17 +8,17 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+import logging
 import os
 import time
-import logging
 from enum import Enum
 
-import yaml
 import pandas as pd
 import requests
-from tqdm import tqdm
+import yaml
+from tqdm.auto import tqdm
 
-from haystack.schema import Label, Document, Answer, EvaluationResult
+from haystack.schema import Answer, Document, EvaluationResult, FilterType, Label
 
 DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
 
@@ -315,6 +313,7 @@ class DeepsetCloudClient:
         stream: bool = False,
         files: Optional[Any] = None,
         raise_on_error: bool = True,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
     ):
         if json is not None:
             json = self._remove_null_values(json)
@@ -328,6 +327,7 @@ class DeepsetCloudClient:
             auth=BearerAuth(self.api_key),
             stream=stream,
             files=files,
+            timeout=timeout,
         )
         if raise_on_error and response.status_code > 299:
             raise DeepsetCloudError(
@@ -369,7 +369,7 @@ class IndexClient:
     def query(
         self,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         query_emb: Optional[List[float]] = None,
@@ -398,7 +398,7 @@ class IndexClient:
     def stream_documents(
         self,
         return_embedding: Optional[bool] = False,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[dict] = None,
@@ -420,13 +420,17 @@ class IndexClient:
             doc = response.json()
         else:
             logger.warning(
-                f"Document {id} could not be fetched from deepset Cloud: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
+                "Document %s could not be fetched from deepset Cloud: HTTP %s - %s\n%s",
+                id,
+                response.status_code,
+                response.reason,
+                response.content.decode(),
             )
         return doc
 
     def count_documents(
         self,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         only_documents_without_embedding: Optional[bool] = False,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
@@ -519,15 +523,19 @@ class PipelineClient:
                         "..." -> additional pipeline meta information
                         }
             example:
-                    [{'name': 'my_super_nice_pipeline_config',
-                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
-                        'status': 'DEPLOYED',
-                        'created_at': '2022-02-01T09:57:03.803991+00:00',
-                        'deleted': False,
-                        'is_default': False,
-                        'indexing': {'status': 'IN_PROGRESS',
-                        'pending_file_count': 3,
-                        'total_file_count': 31}}]
+
+            ```python
+            [{'name': 'my_super_nice_pipeline_config',
+                'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                'status': 'DEPLOYED',
+                'created_at': '2022-02-01T09:57:03.803991+00:00',
+                'deleted': False,
+                'is_default': False,
+                'indexing': {'status': 'IN_PROGRESS',
+                'pending_file_count': 3,
+                'total_file_count': 31}}]
+            ```
+
         """
         workspace_url = self._build_workspace_url(workspace)
         pipelines_url = f"{workspace_url}/pipelines"
@@ -621,7 +629,9 @@ class PipelineClient:
             else:
                 logger.info("Pipeline config '%s' is already deployed.", pipeline_config_name)
             logger.info(
-                f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}"
+                "Search endpoint for pipeline config '%s' is up and running for you under %s",
+                pipeline_config_name,
+                pipeline_url,
             )
             if show_curl_message:
                 curl_cmd = (
@@ -921,7 +931,9 @@ class EvaluationSetClient:
             with open(file_path, "rb") as file:
                 self.client.post(url=target_url, files={"file": (file_path.name, file, mime_type)})
             logger.info(
-                f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
+                "Successfully uploaded evaluation set file %s. You can access it now under evaluation set '%s'.",
+                file_path,
+                file_path.name,
             )
         except DeepsetCloudError as e:
             logger.error("Error uploading evaluation set file %s: %s", file_path, e.args)
@@ -1009,7 +1021,7 @@ class FileClient:
                     )
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error uploading file %s", file_path)
 
         logger.info("Successfully uploaded %s files.", len(file_ids))
@@ -1418,15 +1430,19 @@ class DeepsetCloudExperiments:
                         "..." -> additional pipeline meta information
                         }
             example:
-                    [{'name': 'my_super_nice_pipeline_config',
-                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
-                        'status': 'DEPLOYED',
-                        'created_at': '2022-02-01T09:57:03.803991+00:00',
-                        'deleted': False,
-                        'is_default': False,
-                        'indexing': {'status': 'IN_PROGRESS',
-                        'pending_file_count': 3,
-                        'total_file_count': 31}}]
+
+            ```python
+            [{'name': 'my_super_nice_pipeline_config',
+                'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                'status': 'DEPLOYED',
+                'created_at': '2022-02-01T09:57:03.803991+00:00',
+                'deleted': False,
+                'is_default': False,
+                'indexing': {'status': 'IN_PROGRESS',
+                'pending_file_count': 3,
+                'total_file_count': 31}}]
+            ```
+
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         pipeline_config_infos = list(client.list_pipeline_configs())
@@ -1453,11 +1469,14 @@ class DeepsetCloudExperiments:
                         "..." -> additional pipeline meta information
                         }
             example:
-                    [{'evaluation_set_id': 'fb084729-57ad-4b57-9f78-ec0eb4d29c9f',
-                        'name': 'my-question-answering-evaluation-set',
-                        'created_at': '2022-05-06T09:54:14.830529+00:00',
-                        'matched_labels': 234,
-                        'total_labels': 234}]
+
+            ```python
+            [{'evaluation_set_id': 'fb084729-57ad-4b57-9f78-ec0eb4d29c9f',
+                'name': 'my-question-answering-evaluation-set',
+                'created_at': '2022-05-06T09:54:14.830529+00:00',
+                'matched_labels': 234,
+                'total_labels': 234}]
+            ```
         """
         client = DeepsetCloud.get_evaluation_set_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.get_evaluation_sets()
@@ -1479,35 +1498,38 @@ class DeepsetCloudExperiments:
         Returns:
             list of dictionaries: List[dict]
             example:
-                    [{'eval_run_name': 'my-eval-run-1',
-                        'parameters': {
-                            'pipeline_name': 'my-pipeline-1_696bc5d0-ee65-46c1-a308-059507bc353b',
-                            'evaluation_set_name': 'my-eval-set-name',
-                            'debug': False,
-                            'eval_mode': 0
-                        },
-                        'metrics': {
-                            'isolated_exact_match': 0.45,
-                            'isolated_f1': 0.89,
-                            'isolated_sas': 0.91,
-                            'integrated_exact_match': 0.39,
-                            'integrated_f1': 0.76,
-                            'integrated_sas': 0.78,
-                            'mean_reciprocal_rank': 0.77,
-                            'mean_average_precision': 0.78,
-                            'recall_single_hit': 0.91,
-                            'recall_multi_hit': 0.91,
-                            'normal_discounted_cummulative_gain': 0.83,
-                            'precision': 0.52
-                        },
-                        'logs': {},
-                        'status': 1,
-                        'eval_mode': 0,
-                        'eval_run_labels': [],
-                        'created_at': '2022-05-24T12:13:16.445857+00:00',
-                        'comment': 'This is a comment about thiseval run',
-                        'tags': ['experiment-1', 'experiment-2', 'experiment-3']
-                        }]
+
+            ```python
+            [{'eval_run_name': 'my-eval-run-1',
+                'parameters': {
+                    'pipeline_name': 'my-pipeline-1_696bc5d0-ee65-46c1-a308-059507bc353b',
+                    'evaluation_set_name': 'my-eval-set-name',
+                    'debug': False,
+                    'eval_mode': 0
+                },
+                'metrics': {
+                    'isolated_exact_match': 0.45,
+                    'isolated_f1': 0.89,
+                    'isolated_sas': 0.91,
+                    'integrated_exact_match': 0.39,
+                    'integrated_f1': 0.76,
+                    'integrated_sas': 0.78,
+                    'mean_reciprocal_rank': 0.77,
+                    'mean_average_precision': 0.78,
+                    'recall_single_hit': 0.91,
+                    'recall_multi_hit': 0.91,
+                    'normal_discounted_cummulative_gain': 0.83,
+                    'precision': 0.52
+                },
+                'logs': {},
+                'status': 1,
+                'eval_mode': 0,
+                'eval_run_labels': [],
+                'created_at': '2022-05-24T12:13:16.445857+00:00',
+                'comment': 'This is a comment about thiseval run',
+                'tags': ['experiment-1', 'experiment-2', 'experiment-3']
+                }]
+            ```
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.get_eval_runs()

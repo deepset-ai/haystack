@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 import os
 import re
+from functools import wraps
 
 import requests_cache
 import responses
@@ -23,7 +24,7 @@ import psutil
 import pytest
 import requests
 
-from haystack import Answer, BaseComponent
+from haystack import Answer, BaseComponent, __version__ as haystack_version
 from haystack.document_stores import (
     BaseDocumentStore,
     InMemoryDocumentStore,
@@ -34,7 +35,6 @@ from haystack.document_stores import (
     OpenSearchDocumentStore,
     GraphDBKnowledgeGraph,
     FAISSDocumentStore,
-    SQLDocumentStore,
 )
 from haystack.nodes import (
     BaseReader,
@@ -64,6 +64,7 @@ from haystack.nodes import (
     QuestionGenerator,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
+from haystack.nodes.prompt import PromptNode, PromptModel
 from haystack.schema import Document
 from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -106,22 +107,34 @@ posthog.disabled = True
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
-def _sql_session_rollback(self, attr):
+def fail_at_version(version_major, version_minor):
     """
-    Inject SQLDocumentStore at runtime to do a session rollback each time it is called. This allows to catch
-    errors where an intended operation is still in a transaction, but not committed to the database.
+    Reminder to remove deprecated features.
+
+    ```python
+    from ..conftest import fail_at_version
+
+    @fail_at_version(1, 10)  # Will fail once Haystack version is greater than or equal to 1.10
+    def test_test():
+        assert True
+    ```
     """
-    method = object.__getattribute__(self, attr)
-    if callable(method):
-        try:
-            self.session.rollback()
-        except AttributeError:
-            pass
 
-    return method
+    def decorator(function):
+        current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
 
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            if current_version[0] > version_major or (
+                current_version[0] == version_major and current_version[1] >= version_minor
+            ):
+                pytest.fail(reason=f"This feature is marked for removal in v{version_major}.{version_minor}")
+            return_value = function(*args, **kwargs)
+            return return_value
 
-SQLDocumentStore.__getattribute__ = _sql_session_rollback
+        return wrapper
+
+    return decorator
 
 
 def pytest_collection_modifyitems(config, items):
@@ -280,14 +293,11 @@ class MockSeq2SegGenerator(BaseGenerator):
 
 class MockSummarizer(BaseSummarizer):
     def predict_batch(
-        self,
-        documents: Union[List[Document], List[List[Document]]],
-        generate_single_summary: Optional[bool] = None,
-        batch_size: Optional[int] = None,
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 
-    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+    def predict(self, documents: List[Document]) -> List[Document]:
         pass
 
 
@@ -647,17 +657,20 @@ def reader(request):
 
 
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
-def table_reader(request):
+def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader")
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
     elif request.param == "rci":
-        return RCIReader(
-            row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
-            column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+        return (
+            RCIReader(
+                row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
+                column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+            ),
+            request.param,
         )
 
 
@@ -705,7 +718,7 @@ def indexing_document_classifier():
     )
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
+@pytest.fixture(params=["es_filter_only", "bm25", "dpr", "embedding", "tfidf", "table_text_retriever"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
@@ -771,7 +784,7 @@ def get_retriever(retriever_type, document_store):
             use_gpu=False,
             embed_title=True,
         )
-    elif retriever_type == "elasticsearch":
+    elif retriever_type == "bm25":
         retriever = BM25Retriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
         retriever = FilterRetriever(document_store=document_store)
@@ -959,6 +972,7 @@ def get_document_store(
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
+            use_bm25=True,
         )
 
     elif document_store_type == "elasticsearch":
@@ -1062,3 +1076,19 @@ def bert_base_squad2(request):
         use_fast=True,  # TODO parametrize this to test slow as well
     )
     return model
+
+
+@pytest.fixture
+def prompt_node():
+    return PromptNode("google/flan-t5-small", devices=["cpu"])
+
+
+@pytest.fixture
+def prompt_model(request):
+    if request.param == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
+        if api_key is None or api_key == "":
+            api_key = "KEY_NOT_FOUND"
+        return PromptModel("text-davinci-003", api_key=api_key)
+    else:
+        return PromptModel("google/flan-t5-base", devices=["cpu"])

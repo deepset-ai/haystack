@@ -452,4 +452,3 @@ in garbled text.
 **Returns**:
 
 Dict of format {"text": "The text from file", "meta": meta}}
-

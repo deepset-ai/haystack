@@ -7,7 +7,7 @@ import hashlib
 import logging
 
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 try:
     import weaviate
@@ -17,12 +17,12 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document, Label
-from haystack.document_stores import BaseDocumentStore
+from haystack.schema import Document, FilterType, Label
+from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
-from haystack.errors import DocumentStoreError
+from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
 
 
@@ -34,7 +34,7 @@ class WeaviateDocumentStoreError(DocumentStoreError):
     pass
 
 
-class WeaviateDocumentStore(BaseDocumentStore):
+class WeaviateDocumentStore(KeywordDocumentStore):
     """
 
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
@@ -76,6 +76,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
+        replication_factor: int = 1,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
@@ -88,7 +89,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param embedding_dim: The embedding vector size. Default: 768.
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-        :param name_field: Name of field that contains the title of the the doc
+        :param name_field: Name of field that contains the title of the doc
         :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
@@ -110,6 +111,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param recreate_index: If set to True, an existing Weaviate index will be deleted and a new one will be
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index.
+        :param replication_factor: It sets the Weaviate Class's replication factor in Weaviate at the time of Class creation.
+                                   See: https://weaviate.io/developers/weaviate/current/configuration/replication.html
         """
         super().__init__()
 
@@ -156,6 +159,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
+        self.replication_factor = replication_factor
 
         self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
@@ -194,6 +198,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             },
                         ],
                         "vectorIndexConfig": {"distance": self.similarity},
+                        "replicationConfig": {"factor": self.replication_factor},
                     }
                 ]
             }
@@ -256,6 +261,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if props.get("content_type") is not None:
             content_type = str(props.pop("content_type"))
 
+        id_hash_keys = None
+        if props.get("id_hash_keys") is not None:
+            id_hash_keys = props.pop("id_hash_keys")
+
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
             if "certainty" in props["_additional"]:
@@ -288,7 +297,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
             meta_data[k] = v
 
         document = Document.from_dict(
-            {"id": id, "content": content, "content_type": content_type, "meta": meta_data, "score": score}
+            {
+                "id": id,
+                "content": content,
+                "content_type": content_type,
+                "meta": meta_data,
+                "score": score,
+                "id_hash_keys": id_hash_keys,
+            }
         )
 
         if return_embedding and embedding:
@@ -358,7 +374,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
             if not self.uuid_format_warning_raised:
                 logger.warning(
-                    f"Document id {id} is not in uuid format. Such ids will be replaced by uuids, in this case {generated_uuid}."
+                    "Document id %s is not in uuid format. Such ids will be replaced by uuids, in this case %s.",
+                    id,
+                    generated_uuid,
                 )
                 self.uuid_format_warning_raised = True
             id = generated_uuid
@@ -510,7 +528,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                for idx, doc in enumerate(document_batch):
+                for doc in document_batch:
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
 
@@ -592,9 +610,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
-    def get_embedding_count(
-        self, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None
-    ) -> int:
+    def get_embedding_count(self, filters: Optional[FilterType] = None, index: Optional[str] = None) -> int:
         """
         Return the number of embeddings in the document store, which is the same as the number of documents since
         every document has a default embedding.
@@ -603,7 +619,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -635,7 +651,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -674,6 +690,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -703,7 +720,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
@@ -777,7 +794,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -818,6 +835,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -849,13 +867,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def query(
         self,
-        query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        query: Optional[str],
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
-        all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
         scale_score: bool = True,
     ) -> List[Document]:
         """
@@ -876,6 +894,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -904,6 +923,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -981,28 +1001,29 @@ class WeaviateDocumentStore(BaseDocumentStore):
             )
 
             # Retrieval with BM25 AND filtering
-            if filters:
+            if filters:  # pylint: disable=no-else-raise
                 raise NotImplementedError(
-                    "Weaviate currently (v1.14.1) does not support filters WITH inverted index text query (eg BM25)!"
+                    "Weaviate currently does not support filters WITH inverted index text query (eg BM25)!"
                 )
-
-                # Once Weaviate starts supporting filters with BM25:
+                # # Once Weaviate starts supporting filters with BM25:
                 # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-                # gql_query = weaviate.gql.get.GetBuilder(class_name=index,
-                #                                         properties=properties,
-                #                                         connection=self.weaviate_client) \
-                #     .with_near_vector({'vector': [0, 0]}) \
-                #     .with_where(filter_dict) \
-                #     .with_limit(top_k) \
+                # gql_query = (
+                #     weaviate.gql.get.GetBuilder(
+                #         class_name=index, properties=properties, connection=self.weaviate_client
+                #     )
+                #     .with_near_vector({"vector": [0, 0]})
+                #     .with_where(filter_dict)
+                #     .with_limit(top_k)
                 #     .build()
-
-            # BM25 retrieval without filtering
-            gql_query = (
-                gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
-                .with_near_vector({"vector": [0, 0]})
-                .with_limit(top_k)
-                .build()
-            )
+                # )
+            else:
+                # BM25 retrieval without filtering
+                gql_query = (
+                    gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
+                    .with_near_vector({"vector": [0, 0]})
+                    .with_limit(top_k)
+                    .build()
+                )
 
             # Build the BM25 part of the GQL manually.
             # Currently the GetBuilder of the Weaviate-client (v3.6.0)
@@ -1031,20 +1052,25 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def query_by_embedding(
+    def query_batch(
         self,
-        query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
+        custom_query: Optional[str] = None,
         index: Optional[str] = None,
-        return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
         scale_score: bool = True,
-    ) -> List[Document]:
+    ) -> List[List[Document]]:
         """
-        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        This method lets you find relevant documents for a single query string (output: List of Documents), or a
+        a list of query strings (output: List of Lists of Documents).
+
+        :param queries: Single query or list of queries.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
@@ -1058,6 +1084,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1086,6 +1113,130 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+
+        :param top_k: How many documents to return per query.
+        :param custom_query: Custom query to be executed.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+        # TODO - This method currently just calls query multiple times. Adapt this once there is a batch querying
+        # endpoint in Weaviate, which is currently not available,
+        # see https://stackoverflow.com/questions/71558676/does-weaviate-support-bulk-query#comment126569547_71561939
+
+        documents = []
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+
+        # run each query against Weaviate separately and combine the returned documents
+        for query, cur_filters in zip(queries, filters):
+            cur_docs = self.query(
+                query=query,
+                filters=cur_filters,
+                top_k=top_k,
+                custom_query=custom_query,
+                index=index,
+                headers=headers,
+                all_terms_must_match=all_terms_must_match,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        return documents
+
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[FilterType] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1171,7 +1322,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -1196,6 +1347,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1248,7 +1400,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1267,6 +1419,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1297,7 +1450,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1319,6 +1472,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1371,8 +1525,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         self._delete_index(index)
 
@@ -1386,7 +1542,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1399,7 +1555,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """

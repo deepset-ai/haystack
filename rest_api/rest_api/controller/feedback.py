@@ -20,10 +20,9 @@ document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 @router.post("/feedback")
 def post_feedback(feedback: CreateLabelSerialized):
     """
-    This endpoint allows the API user to submit feedback on an answer for a particular query.
+    With this endpoint, the API user can submit their feedback on an answer for a particular query. This feedback is then written to the label_index of the DocumentStore.
 
-    For example, the user can send feedback on whether the answer was correct and
-    whether the right snippet was identified as the answer.
+    For example, the user can send feedback on whether the answer was correct and whether the right snippet was identified as the answer.
 
     Information submitted through this endpoint is used to train the underlying QA model.
     """
@@ -38,8 +37,7 @@ def post_feedback(feedback: CreateLabelSerialized):
 @router.get("/feedback", response_model=List[Label])
 def get_feedback():
     """
-    This endpoint allows the API user to retrieve all the feedback that has been submitted
-    through the `POST /feedback` endpoint.
+    This endpoint allows the API user to retrieve all the feedback that has been submitted through the `POST /feedback` endpoint.
     """
     labels = document_store.get_all_labels()
     return labels
@@ -48,9 +46,8 @@ def get_feedback():
 @router.delete("/feedback")
 def delete_feedback():
     """
-    This endpoint allows the API user to delete all the
-    feedback that has been sumbitted through the
-    `POST /feedback` endpoint
+    This endpoint allows the API user to delete all the feedback that has been sumbitted through the
+    `POST /feedback` endpoint.
     """
     all_labels = document_store.get_all_labels()
     user_label_ids = [label.id for label in all_labels if label.origin == "user-feedback"]
@@ -60,8 +57,7 @@ def delete_feedback():
 @router.post("/eval-feedback")
 def get_feedback_metrics(filters: Optional[FilterRequest] = None):
     """
-    This endpoint returns basic accuracy metrics based on user feedback,
-    e.g., the ratio of correct answers or correctly identified documents.
+    This endpoint returns basic accuracy metrics based on user feedback, for example, the ratio of correct answers or correctly identified documents.
     You can filter the output by document or label.
 
     Example:
@@ -98,8 +94,7 @@ def export_feedback(
     context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False
 ):
     """
-    This endpoint returns JSON output in the SQuAD format for question/answer pairs
-    that were marked as "relevant" by user feedback through the `POST /feedback` endpoint.
+    This endpoint returns JSON output in the SQuAD format for question/answer pairs that were marked as "relevant" by user feedback through the `POST /feedback` endpoint.
 
     The context_size param can be used to limit response size for large documents.
     """
@@ -176,8 +171,9 @@ def export_feedback(
             context = squad_label["paragraphs"][0]["context"]
             if not context[start : start + len(answer)] == answer:
                 logger.error(
-                    f"Skipping invalid squad label as string via offsets "
-                    f"('{context[start:start + len(answer)]}') does not match answer string ('{answer}') "
+                    "Skipping invalid squad label as string via offsets ('%s') does not match answer string ('%s') ",
+                    context[start : start + len(answer)],
+                    answer,
                 )
         export_data.append(squad_label)
 

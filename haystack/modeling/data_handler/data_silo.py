@@ -7,7 +7,7 @@ import random
 from itertools import groupby
 from pathlib import Path
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
@@ -336,7 +336,9 @@ class DataSilo:
             logger.warning("No dev set created. Please adjust the dev_split parameter.")
 
         logger.info(
-            f"Took {len(dev_dataset)} samples out of train set to create dev set (dev split is roughly {self.processor.dev_split})"
+            "Took %s samples out of train set to create dev set (dev split is roughly %s)",
+            len(dev_dataset),
+            self.processor.dev_split,
         )
 
     def random_split_ConcatDataset(self, ds: ConcatDataset, lengths: List[int]):
@@ -387,7 +389,7 @@ class DataSilo:
                 clipped, ave_len, seq_lens, max_seq_len = self._calc_length_stats_biencoder()
             else:
                 logger.warning(
-                    f"Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing."
+                    "Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing."
                 )
                 clipped = -1
                 ave_len = -1
@@ -416,11 +418,14 @@ class DataSilo:
                 logger.info("Proportion clipped:      {}".format(clipped))
                 if clipped > 0.5:
                     logger.info(
-                        f"[Haystack Tip] {round(clipped * 100, 1)}% of your samples got cut down to {max_seq_len} tokens. "
+                        "[Haystack Tip] %s%% of your samples got cut down to %s tokens. "
                         "Consider increasing max_seq_len "
-                        f"(the maximum value allowed with the current model is max_seq_len={self.processor.tokenizer.model_max_length}, "
+                        "(the maximum value allowed with the current model is max_seq_len=%s, "
                         "if this is not enough consider splitting the document in smaller units or changing the model). "
-                        "This will lead to higher memory consumption but is likely to improve your model performance"
+                        "This will lead to higher memory consumption but is likely to improve your model performance",
+                        round(clipped * 100, 1),
+                        max_seq_len,
+                        self.processor.tokenizer.model_max_length,
                     )
             elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
                 logger.info(
@@ -524,20 +529,20 @@ class DataSiloForCrossVal:
         self.batch_size = origsilo.batch_size
         # should not be necessary, xval makes no sense with huge data
         # sampler_train = DistributedSampler(self.data["train"])
-        sampler_train = RandomSampler(trainset)
+        sampler_train = RandomSampler(trainset)  # type: ignore [arg-type]
 
         self.data_loader_train = NamedDataLoader(
-            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names
+            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names  # type: ignore [arg-type]
         )
         self.data_loader_dev = NamedDataLoader(
-            dataset=devset,
-            sampler=SequentialSampler(devset),
+            dataset=devset,  # type: ignore [arg-type]
+            sampler=SequentialSampler(devset),  # type: ignore [arg-type]
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
         self.data_loader_test = NamedDataLoader(
-            dataset=testset,
-            sampler=SequentialSampler(testset),
+            dataset=testset,  # type: ignore [arg-type]
+            sampler=SequentialSampler(testset),  # type: ignore [arg-type]
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
@@ -616,7 +621,7 @@ class DataSiloForCrossVal:
         documents = []
         keyfunc = lambda x: x[id_index][0]  # pylint: disable=unnecessary-lambda-assignment
         all_data = sorted(all_data.datasets, key=keyfunc)  # type: ignore
-        for key, document in groupby(all_data, key=keyfunc):  # type: ignore
+        for _, document in groupby(all_data, key=keyfunc):  # type: ignore
             documents.append(list(document))
 
         xval_split = cls._split_for_qa(
@@ -642,7 +647,7 @@ class DataSiloForCrossVal:
             for doc in actual_train_set:
                 keyfunc = lambda x: x[id_index][1]  # pylint: disable=unnecessary-lambda-assignment
                 doc = sorted(doc, key=keyfunc)
-                for key, question in groupby(doc, key=keyfunc):
+                for _, question in groupby(doc, key=keyfunc):
                     # add all available answrs to train set
                     sample_list = list(question)
                     neg_answer_idx: List[int] = []
@@ -664,7 +669,7 @@ class DataSiloForCrossVal:
 
             ds_train = train_samples
             ds_test = [sample for document in test_set for sample in document]
-            silos.append(DataSiloForCrossVal(datasilo, ds_train, ds_dev, ds_test))
+            silos.append(DataSiloForCrossVal(datasilo, ds_train, ds_dev, ds_test))  # type: ignore [arg-type]
         return silos
 
     @staticmethod
@@ -685,7 +690,7 @@ class DataSiloForCrossVal:
             questions_per_doc.append(len(questions))
 
         # split documents into n_splits splits with approximately same number of questions per split
-        questions_per_doc = np.array(questions_per_doc)
+        questions_per_doc = np.array(questions_per_doc)  # type: ignore [assignment]
         accumulated_questions_per_doc = questions_per_doc.cumsum()  # type: ignore
         questions_per_fold = accumulated_questions_per_doc[-1] // n_splits
         accumulated_questions_per_fold = np.array(range(1, n_splits)) * questions_per_fold
@@ -701,7 +706,7 @@ class DataSiloForCrossVal:
 
         for idx, split in enumerate(splits):
             current_test_set = split
-            current_train_set = np.hstack(np.delete(splits, idx, axis=0))
+            current_train_set = np.hstack(np.delete(splits, idx, axis=0))  # type: ignore [call-overload]
 
             yield current_train_set, current_test_set
 
@@ -771,7 +776,7 @@ class DistillationDataSilo(DataSilo):
         teacher_outputs: List[List[Tuple[torch.Tensor, ...]]],
         tensor_names: List[str],
     ):
-        with torch.no_grad():
+        with torch.inference_mode():
             batch_transposed = zip(*batch)  # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch_transposed_list = [torch.stack(b) for b in batch_transposed]  # create tensors for each feature
             batch_dict = {

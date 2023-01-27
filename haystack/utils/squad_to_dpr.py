@@ -64,7 +64,7 @@ from time import sleep
 from pathlib import Path
 from itertools import islice
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores.base import BaseDocumentStore
@@ -131,7 +131,7 @@ def add_is_impossible(squad_data: dict, json_file_path: Path):
     new_path = json_file_path.parent / Path(f"{json_file_path.stem}_impossible.json")
     squad_articles = list(squad_data["data"])  # create new list with this list although lists are inmutable :/
     for article in squad_articles:
-        for para_idx, paragraph in enumerate(article["paragraphs"]):
+        for paragraph in article["paragraphs"]:
 
             for question in paragraph["qas"]:
                 question["is_impossible"] = False
@@ -163,7 +163,7 @@ def has_is_impossible(squad_data: dict):
 def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever, num_hard_negative_ctxs: int = 30):
     n_non_added_questions = 0
     n_questions = 0
-    for idx_article, article in enumerate(tqdm(squad_data, unit="article")):
+    for article in tqdm(squad_data, unit="article"):
         article_title = article.get("title", "")
         for paragraph in article["paragraphs"]:
             context = paragraph["context"]
@@ -178,7 +178,7 @@ def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever, num_
 
                 if not hard_negative_ctxs or not positive_ctxs:
                     logging.error(
-                        f"No retrieved candidates for article {article_title}, with question {question['question']}"
+                        "No retrieved candidates for article %s, with question %s", article_title, question["question"]
                     )
                     n_non_added_questions += 1
                     continue

@@ -16,10 +16,8 @@ pipelines = get_pipelines()  # Unused here, called to init the pipelines early
 
 logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")
 logger.info(
-    """
-    Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' 
-    -H "Content-Type: application/json"  --data '{"query": "Who is the father of Arya Stark?"}'
-    """
+    "Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' "
+    '-H "Content-Type: application/json"  --data \'{"query": "Who is the father of Arya Stark?"}\''
 )
 
 

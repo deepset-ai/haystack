@@ -143,7 +143,7 @@ Computes Transformer-based similarity of predicted answer to gold labels to deri
 
 Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                     b) the highest similarity of all predictions to gold labels
-                    c) a matrix consisting of the similarities of all the predicitions compared to all gold labels
+                    c) a matrix consisting of the similarities of all the predictions compared to all gold labels
 
 **Arguments**:
 
@@ -163,4 +163,3 @@ https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrai
 **Returns**:
 
 top_1_sas, top_k_sas, pred_label_matrix
-

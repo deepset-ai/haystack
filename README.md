@@ -12,6 +12,9 @@
     <a href="https://docs.haystack.deepset.ai">
         <img alt="Documentation" src="https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai">
     </a>
+    <a href="https://app.fossa.com/projects/custom%2B24445%2Fgithub.com%2Fdeepset-ai%2Fhaystack?ref=badge_shield">
+        <img alt="FOSSA Status" src="https://app.fossa.com/api/projects/custom%2B24445%2Fgithub.com%2Fdeepset-ai%2Fhaystack.svg?type=shield"/>
+    </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
     </a>
@@ -25,7 +28,7 @@
         <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
     </a>
         <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
-        <img alt="Twitter" src="https://img.shields.io/twitter/follow/deepset_ai?style=social">
+        <img alt="Twitter" src="https://img.shields.io/badge/follow-%40deepset_ai-1DA1F2?logo=twitter&style=social">
     </a>
 </p>
 
@@ -130,7 +133,7 @@ GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai
 
 **5. Learn More**
 
-See our [installation guide](https://haystack.deepset.ai/overview/get-started) for more options.
+See our [installation guide](https://haystack.deepset.ai/overview/quick-start) for more options.
 You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/).
 
 ## :mortar_board: Tutorials
@@ -151,63 +154,7 @@ Ask any question on countries or capital cities and let Haystack return the answ
 
 **Local**
 
-Start up a Haystack service via [Docker Compose](https://docs.docker.com/compose/).
-With this you can begin calling it directly via the REST API or even interact with it using the included Streamlit UI.
-
-<details>
-  <summary>Click here for a step-by-step guide</summary>
-
-**1. Update/install Docker and Docker Compose, then launch Docker**
-
-```
-    apt-get update && apt-get install docker && apt-get install docker-compose
-    service docker start
-```
-
-**2. Clone Haystack repository**
-
-```
-    git clone https://github.com/deepset-ai/haystack.git
-```
-
-**3. Pull images & launch demo app**
-
-```
-    cd haystack
-    docker-compose pull
-    docker-compose up
-
-    # Or on a GPU machine: docker-compose -f docker-compose-gpu.yml up
-```
-
-You should be able to see the following in your terminal window as part of the log output:
-
-```
-..
-ui_1             |   You can now view your Streamlit app in your browser.
-..
-ui_1             |   External URL: http://192.168.108.218:8501
-..
-haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup complete.
-```
-
-**4. Open the Streamlit UI for Haystack by pointing your browser to the "External URL" from above.**
-
-You should see the following:
-
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/streamlit_ui_screenshot.png)
-
-You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
-
-**Note**: The following containers are started as a part of this demo:
-
-* Haystack API: listens on port 8000
-* DocumentStore (Elasticsearch): listens on port 9200
-* Streamlit UI: listens on port 8501
-
-Please note that the demo will [publish](https://docs.docker.com/config/containers/container-networking/) the container ports to the outside world. *We suggest that you review the firewall settings depending on your system setup and the security guidelines.*
-
-</details>
+To run the Explore The World demo on your own machine and customize it to your needs, check out the instructions on [Explore the World repository](https://github.com/deepset-ai/haystack-demos/tree/main/explore_the_world) on GitHub.
 
 ## :vulcan_salute: Community
 
@@ -215,7 +162,7 @@ There is a very vibrant and active community around Haystack which we are regula
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues).
 We regularly check these and you can expect a quick response.
 If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project,
-you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community/join).
+you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community).
 We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
 

@@ -167,4 +167,3 @@ If set to "True", all docs of a document list will be joined to a single string
 that will then be summarized.
 Important: The summary will depend on the order of the supplied documents!
 - `batch_size`: Number of Documents to process at a time.
-

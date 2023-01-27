@@ -1,5 +1,3 @@
-# pylint: disable=missing-timeout
-
 """
 Script to perform data augmentation on a SQuAD like dataset to increase training data.
 It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/1909.10351.pdf.
@@ -40,7 +38,7 @@ from torch.nn import functional as F
 from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 import requests
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -50,14 +48,22 @@ def load_glove(
     glove_path: Path = Path("glove.txt"),
     vocab_size: int = 100_000,
     device: Union[str, torch.device] = torch.device("cpu:0"),
+    timeout: Union[float, Tuple[float, float]] = 10.0,
 ) -> Tuple[dict, dict, torch.Tensor]:
-    """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
+    """
+    Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around.
+    :param timeout: How many seconds to wait for the server to send data before giving up,
+        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+        Defaults to 10 seconds.
+    """
 
     if not glove_path.exists():  # download and extract glove if necessary
         logger.info("Provided glove file not found. Downloading it instead.")
         glove_path.parent.mkdir(parents=True, exist_ok=True)
         zip_path = glove_path.parent / (glove_path.name + ".zip")
-        request = requests.get("https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True)
+        request = requests.get(
+            "https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True, timeout=timeout
+        )
         with zip_path.open("wb") as downloaded_file:
             downloaded_file.write(request.content)
         with ZipFile(zip_path, "r") as zip_file:
@@ -77,7 +83,7 @@ def load_glove(
             id_word_mapping[i] = split[0]
             vector_list.append(torch.tensor([float(x) for x in split[1:]]))
     vectors = torch.stack(vector_list)
-    with torch.no_grad():
+    with torch.inference_mode():
         vectors = vectors.to(device)
         vectors = F.normalize(vectors, dim=1)
     return word_id_mapping, id_word_mapping, vectors
@@ -132,7 +138,7 @@ def get_replacements(
         inputs.append((input_ids_, subword_index))
 
     # doing batched forward pass
-    with torch.no_grad():
+    with torch.inference_mode():
         prediction_list = []
         while len(inputs) != 0:
             batch_list, token_indices = tuple(zip(*inputs[:batch_size]))
@@ -165,8 +171,8 @@ def get_replacements(
         elif word in glove_word_id_mapping:  # word was split into subwords so we use glove instead
             word_id = glove_word_id_mapping[word]
             glove_vector = glove_vectors[word_id]
-            with torch.no_grad():
-                word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)
+            with torch.inference_mode():
+                word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)  # type: ignore [arg-type]
                 ranking = torch.argsort(word_similarities, descending=True)[: word_possibilities + 1]
                 possible_words.append([glove_id_word_mapping[int(id_)] for id_ in ranking.cpu()])
         else:  # word was not in glove either so we can't find any replacements
@@ -202,7 +208,7 @@ def augment(
         device=device,
     )
     new_texts = []
-    for i in range(multiplication_factor):
+    for _ in range(multiplication_factor):
         new_text = []
         for possible_words in replacements:
             if len(possible_words) == 1:
@@ -253,7 +259,7 @@ def augment_squad(
             contexts = augment(
                 word_id_mapping=word_id_mapping,
                 id_word_mapping=id_word_mapping,
-                vectors=vectors,
+                vectors=vectors,  # type: ignore [arg-type]
                 model=transformers_model,
                 tokenizer=transformers_tokenizer,
                 text=context,

@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import numpy as np
 from PIL import Image
 
@@ -136,7 +136,7 @@ class MultiModalEmbedder:
         for batch_index in tqdm(
             iterable=range(0, len(documents), batch_size),
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=not self.progress_bar,

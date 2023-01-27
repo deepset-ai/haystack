@@ -1,34 +1,46 @@
+import importlib
 import logging
+import os
 from random import random
+from typing import List
 
 import numpy as np
 import pytest
 import pandas as pd
-from pathlib import Path
-
 import responses
 from responses import matchers
 
-from haystack.errors import OpenAIRateLimitError
-from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
+import _pytest
+from ..conftest import fail_at_version, haystack_version
 
+from haystack.errors import OpenAIRateLimitError
+from haystack.environment import set_pytorch_secure_model_loading
+from haystack.schema import Answer, Document, Span, Label
+from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
+from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
-from haystack.utils.augment_squad import augment_squad
 from haystack.utils.reflection import retry_with_exponential_backoff
-from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
-from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture
+from ..conftest import (
+    DC_API_ENDPOINT,
+    DC_API_KEY,
+    MOCK_DC,
+    SAMPLES_PATH,
+    deepset_cloud_fixture,
+    fail_at_version,
+    haystack_version,
+)
 
-TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen. 
-An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte, 
+TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
+An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
 moderne Bildungssysteme etablierte und die Industrialisierung vorantrieb.\n
-Beim Begriff der Aufklärung geht es auch um die Prozesse zwischen diesen frühneuzeitlichen Eckpunkten. 
-Man versucht die fortschrittlichen Faktoren zu definieren, die in das 19. Jahrhundert führten. 
-Widerstände gegen diesen Fortschritt werden anti-aufklärerischen Kräften oder unreflektierten Traditionen zugeordnet. 
-Die Epochendefinition rückt vor allem publizistisch tätige Gruppen in den gesellschaftlichen Fokus, 
-die zunächst selten einen bürgerlichen Hintergrund aufwiesen, sondern weitaus häufiger der Geistlichkeit oder Aristokratie angehörten: 
+Beim Begriff der Aufklärung geht es auch um die Prozesse zwischen diesen frühneuzeitlichen Eckpunkten.
+Man versucht die fortschrittlichen Faktoren zu definieren, die in das 19. Jahrhundert führten.
+Widerstände gegen diesen Fortschritt werden anti-aufklärerischen Kräften oder unreflektierten Traditionen zugeordnet.
+Die Epochendefinition rückt vor allem publizistisch tätige Gruppen in den gesellschaftlichen Fokus,
+die zunächst selten einen bürgerlichen Hintergrund aufwiesen, sondern weitaus häufiger der Geistlichkeit oder Aristokratie angehörten:
 Wissenschaftler, Journalisten, Autoren, sogar Regenten, die Traditionen der Kritik unterzogen, indem sie sich auf die Vernunftperspektive beriefen."""
 
 
@@ -38,6 +50,69 @@ Beer is distributed in bottles and cans and is also commonly available on draugh
 Beer forms part of the culture of many nations and is associated with social traditions such as beer festivals, as well as a rich pub culture involving activities like pub crawling, pub quizzes and pub games.
 When beer is distilled, the resulting liquor is a form of whisky.[12]
 """
+
+
+def test_deprecation_fixture():
+    current_major, current_minor = tuple(int(num) for num in haystack_version.split(".")[:2])
+
+    @fail_at_version(0, 1)
+    def test_previous_major_and_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_previous_major_and_minor()
+
+    @fail_at_version(0, current_minor)
+    def test_previous_major_and_same_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_previous_major_and_same_minor()
+
+    @fail_at_version(0, 1000)
+    def test_previous_major_and_later_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_previous_major_and_later_minor()
+
+    @fail_at_version(current_major, 1)
+    def test_same_major_and_previous_minor():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_same_major_and_previous_minor()
+
+    @fail_at_version(current_major, current_minor)
+    def test_same_version():
+        assert True
+
+    with pytest.raises(_pytest.outcomes.Failed):
+        test_same_version()
+
+    @fail_at_version(current_major, 1000)
+    def test_same_major_and_later_minor():
+        assert True
+
+    test_same_major_and_later_minor()
+
+    @fail_at_version(1000, 1)
+    def test_later_major_and_previous_minor():
+        assert True
+
+    test_later_major_and_previous_minor()
+
+    @fail_at_version(1000, current_minor)
+    def test_later_major_and_same_minor():
+        assert True
+
+    test_later_major_and_previous_minor()
+
+    @fail_at_version(1000, 1000)
+    def test_later_major_and_later_minor():
+        assert True
+
+    test_later_major_and_later_minor()
 
 
 def test_convert_files_to_docs():
@@ -51,54 +126,6 @@ def test_convert_files_to_docs():
 def test_tika_convert_files_to_docs():
     documents = tika_convert_files_to_docs(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
-
-
-def test_squad_augmentation():
-    input_ = SAMPLES_PATH / "squad" / "tiny.json"
-    output = SAMPLES_PATH / "squad" / "tiny_augmented.json"
-    glove_path = SAMPLES_PATH / "glove" / "tiny.txt"  # dummy glove file, will not even be use when augmenting tiny.json
-    multiplication_factor = 5
-    augment_squad(
-        model="distilbert-base-uncased",
-        tokenizer="distilbert-base-uncased",
-        squad_path=input_,
-        output_path=output,
-        glove_path=glove_path,
-        multiplication_factor=multiplication_factor,
-    )
-    original_squad = SquadData.from_file(input_)
-    augmented_squad = SquadData.from_file(output)
-    assert original_squad.count(unit="paragraph") == augmented_squad.count(unit="paragraph") * multiplication_factor
-
-
-def test_squad_to_df():
-    df = pd.DataFrame(
-        [["title", "context", "question", "id", "answer", 1, False]],
-        columns=["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"],
-    )
-
-    expected_result = [
-        {
-            "title": "title",
-            "paragraphs": [
-                {
-                    "context": "context",
-                    "qas": [
-                        {
-                            "question": "question",
-                            "id": "id",
-                            "answers": [{"text": "answer", "answer_start": 1}],
-                            "is_impossible": False,
-                        }
-                    ],
-                }
-            ],
-        }
-    ]
-
-    result = SquadData.df_to_data(df)
-
-    assert result == expected_result
 
 
 def test_calculate_context_similarity_on_parts_of_whole_document():
@@ -1219,3 +1246,287 @@ def test_exponential_backoff():
         return f"Hello {name}"
 
     assert greet2("John") == "Hello John"
+
+
+def test_secure_model_loading(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    monkeypatch.setenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD", "0")
+
+    # now testing if just importing haystack is enough to enable secure loading of pytorch models
+    import haystack
+
+    importlib.reload(haystack)
+    assert "already set to" in caplog.text
+
+
+class TestAggregateLabels:
+    @pytest.fixture
+    def standard_labels(self) -> List[Label]:
+        return [
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # same label should be ignored
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # different answer in same doc
+            Label(
+                id="diff-answer-same-doc",
+                query="question",
+                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # answer in different doc
+            Label(
+                id="diff-answer-diff-doc",
+                query="question",
+                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some other", id="333"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # no_answer
+            Label(
+                id="no-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="777"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # no_answer in doc with other answer
+            Label(
+                id="no-answer-of-doc-with-other-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # negative label
+            Label(
+                id="negative",
+                query="question",
+                answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+        ]
+
+    @pytest.fixture
+    def filter_meta_labels(self) -> List[Label]:
+        return [
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"from_filter": 123},
+                meta={"from_meta": ["123"]},
+            ),
+            # different answer in same doc
+            Label(
+                id="diff-answer-same-doc",
+                query="question",
+                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"from_filter": 123},
+                meta={"from_meta": ["123"]},
+            ),
+            # answer in different doc
+            Label(
+                id="diff-answer-diff-doc",
+                query="question",
+                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some other", id="333"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"from_filter": 333},
+                meta={"from_meta": ["333"]},
+            ),
+            # 'no answer'
+            Label(
+                id="no-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="777"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"from_filter": 777},
+                meta={"from_meta": ["777"]},
+            ),
+            # different id, meta, same filters
+            Label(
+                id="5-888",
+                query="question",
+                answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"from_filter": 123},
+                meta={"from_meta": ["888"]},
+            ),
+        ]
+
+    def test_label_aggregation(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels)
+        assert len(multi_labels) == 1
+        assert len(multi_labels[0].labels) == 6
+        assert len(multi_labels[0].answers) == 4
+        assert len(multi_labels[0].document_ids) == 4
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_drop_negatives(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, drop_negative_labels=True)
+        assert len(multi_labels) == 1
+        assert len(multi_labels[0].labels) == 5
+        assert len(multi_labels[0].answers) == 3
+        assert "5-negative" not in [l.id for l in multi_labels[0].labels]
+        assert len(multi_labels[0].document_ids) == 3
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_drop_no_answers(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, drop_no_answers=True)
+        assert len(multi_labels) == 1
+        assert len(multi_labels[0].labels) == 4
+        assert len(multi_labels[0].answers) == 4
+        assert len(multi_labels[0].document_ids) == 4
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_drop_negatives_and_no_answers(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, drop_negative_labels=True, drop_no_answers=True)
+        assert len(multi_labels) == 1
+        assert len(multi_labels[0].labels) == 3
+        assert len(multi_labels[0].answers) == 3
+        assert len(multi_labels[0].document_ids) == 3
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_closed_domain(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, add_closed_domain_filter=True)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [4, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        assert multi_labels[0].no_answer is False
+        assert multi_labels[1].no_answer is False
+        assert multi_labels[2].no_answer is True
+        for ml in multi_labels:
+            assert "_id" in ml.filters
+
+    def test_label_aggregation_closed_domain_drop_negatives(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, add_closed_domain_filter=True, drop_negative_labels=True)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        assert multi_labels[0].no_answer is False
+        assert multi_labels[1].no_answer is False
+        assert multi_labels[2].no_answer is True
+        for ml in multi_labels:
+            assert "_id" in ml.filters
+
+    def test_aggregate_labels_filter_aggregations_with_no_sequence_values(self, filter_meta_labels: List[Label]):
+        multi_labels = aggregate_labels(filter_meta_labels)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_filter_aggregations_with_string_values(self, filter_meta_labels: List[Label]):
+        for label in filter_meta_labels:
+            label.filters["from_filter"] = str(label.filters["from_filter"])
+
+        multi_labels = aggregate_labels(filter_meta_labels)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_filter_aggregations_with_list_values(self, filter_meta_labels: List[Label]):
+        for label in filter_meta_labels:
+            label.filters["from_filter"] = [label.filters["from_filter"], "some_other_value"]
+
+        multi_labels = aggregate_labels(filter_meta_labels)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_filter_aggregations_with_no_sequence_values_closed_domain(
+        self, filter_meta_labels: List[Label]
+    ):
+        multi_labels = aggregate_labels(filter_meta_labels, add_closed_domain_filter=True)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert "_id" in l.filters
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_meta_aggregations(self, filter_meta_labels: List[Label]):
+        multi_labels = aggregate_labels(filter_meta_labels, add_meta_filters="from_meta")
+        assert len(multi_labels) == 4
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [2, 1, 1, 1]
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert l.filters["from_meta"] == l.meta["from_meta"]
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_meta_aggregations_closed_domain(self, filter_meta_labels: List[Label]):
+        multi_labels = aggregate_labels(filter_meta_labels, add_closed_domain_filter=True, add_meta_filters="from_meta")
+        assert len(multi_labels) == 4
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [2, 1, 1, 1]
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert l.filters["from_meta"] == l.meta["from_meta"]
+                assert "_id" in l.filters
+                assert multi_label.filters == l.filters

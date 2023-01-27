@@ -21,7 +21,6 @@ env:
     --ignore=test/pipelines/test_ray.py
     --ignore=test/document_stores/test_knowledge_graph.py
     --ignore=test/nodes/test_audio.py
-    --ignore=test/nodes/test_connector.py
     --ignore=test/nodes/test_summarizer_translation.py
     --ignore=test/nodes/test_summarizer.py
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -79,36 +78,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+      # https://stackoverflow.com/questions/74265821/get-modified-files-in-github-actions
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+    - name: Get changed files
+      id: files
+      uses: tj-actions/changed-files@v34
+      with:
+        files: |
+          **/*.py
+        files_ignore: |
+          test/**
+          rest_api/test/**
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: ./.github/actions/python_cache/
       with:
-        # Mypy can't run properly on 3.7 as it misses support for Literal types.
-        # FIXME once we drop support for 3.7, use the cache.
-        python-version: 3.8
-
-    - name: Install dependencies
-      run: |
-        # FIXME installing the packages before running mypy raises
-        # a lot of errors which were never detected before!
-        # pip install .
-        # pip install rest_api/
-        # pip install ui/
-        # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-        # Hotfixing by installing type packages explicitly.
-        # Run mypy --install-types haystack locally to ensure the list is still up to date
-        # mypy --install-types --non-interactive .
-        pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+        pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
+      if: steps.files.outputs.any_changed == 'true'
       run: |
-        echo "=== haystack/ ==="
-        mypy haystack
-        echo "=== rest_api/ ==="
-        mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
-        echo "=== ui/ ==="
-        mypy ui --exclude=ui/build/ --exclude=ui/test/
+        mkdir .mypy_cache/
+        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
@@ -119,7 +114,6 @@ jobs:
   pylint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
 
     - name: Checkout
       uses: actions/checkout@v3
@@ -129,7 +123,7 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/rest_api ui/ui
+        pylint -ry -j 0 haystack/ rest_api/rest_api
 
     - uses: act10ns/slack@v1
       with:
@@ -335,7 +329,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       weaviate:
-        image: semitechnologies/weaviate:1.16.0
+        image: semitechnologies/weaviate:latest
         env:
           AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
           PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
@@ -392,6 +386,70 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-milvus:
+    name: Integration / Milvus / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Setup Milvus
+      run: |
+        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
+        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
+        sudo docker-compose up -d
+        sudo docker-compose ps
+
+    - name: Install Haystack
+      run: pip install .[milvus]
+
+    - name: Run tests
+      run: |
+        pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_milvus.py
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  integration-tests-memory:
+    name: Integration / memory / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
 
 #
 # TODO: the following steps need to be revisited
@@ -416,9 +474,6 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
-
-    - name: Install torch-scatter
-      run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -491,88 +546,7 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-  milvus-tests-linux:
-    needs: [mypy, pylint, black]
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Setup Milvus
-      run: |
-        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-        sudo docker-compose up -d
-        sudo docker-compose ps
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Install Haystack
-      run: pip install .[milvus]
-
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" test/document_stores/ --document_store_type=milvus
-
-    - name: Dump docker logs on failure
-      if: failure()
-      uses: jwalton/gh-docker-logs@v1
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-# FIXME: seems like we can't run containers on Windows
-  # milvus-tests-windows:
-  #   needs:
-  #    - mypy
-  #    - pylint
-  #   runs-on: windows-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-
-  #   - name: Setup Python
-  #     uses: ./.github/actions/python_cache/
-  #    with:
-  #      prefix: windows
-
-  #   - name: Setup Milvus
-  #     run: |
-  #       cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-  #       wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-  #       sudo docker-compose up -d
-  #       sudo docker-compose ps
-
-  #   - name: Install pdftotext
-  #     run: |
-  #       choco install xpdf-utils
-  #       choco install openjdk11
-  #       refreshenv
-
-  #   - name: Install Haystack
-  #     run: pip install .[milvus]
-
-  #   - name: Run tests
-  #     env:
-  #       TOKENIZERS_PARALLELISM: 'false'
-  #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
-
-
-
-
-  rest-and-ui:
+  rest_api:
     needs: [mypy, pylint, black]
 
     strategy:
@@ -586,16 +560,14 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-    - name: Install REST API and UI
+    - name: Install REST API
       run: |
         pip install -U "./rest_api[dev]"
-        pip install -U ui/
-        pip install .   # -U prevents the schema generation
+        pip install .
 
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/
-        pytest ${{ env.PYTEST_PARAMS }} ui/
 
     - uses: act10ns/slack@v1
       with:

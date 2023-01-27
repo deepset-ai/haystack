@@ -113,7 +113,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
                 else:
                     result = []
                     for x in response:
-                        for k, v in x.items():
+                        for v in x.values():
                             result.append(v["value"])
             elif isinstance(response, bool):
                 result = str(response)

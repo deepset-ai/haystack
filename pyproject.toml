@@ -48,12 +48,13 @@ classifiers = [
 ]
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
-  "torch>1.9,<1.13",
   "requests",
   "pydantic",
-  "transformers==4.21.2",
+  "transformers[torch]==4.25.1",
+  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
+  "rank_bm25",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
@@ -86,6 +87,9 @@ dependencies = [
   # Elasticsearch
   "elasticsearch>=7.7,<8",
 
+  # OpenAI tokenizer
+  "tiktoken>=0.1.2; python_version >= '3.8' and (platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
 
@@ -100,7 +104,7 @@ sql = [
   "psycopg2-binary; platform_system != 'Windows'",
 ]
 only-faiss = [
-  "faiss-cpu>=1.6.3,<2",
+  "faiss-cpu>=1.6.3,<=1.7.2",
 ]
 faiss = [
   "farm-haystack[sql,only-faiss]",
@@ -118,7 +122,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.9.0",
+  "weaviate-client==3.10.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -144,7 +148,7 @@ docstores-gpu = [
 audio = [
   "pyworld>=0.3.1; python_version >= '3.8'",
   "pyworld<0.3.1; python_version < '3.8'",
-  "espnet",
+  "espnet==202209", # https://github.com/deepset-ai/haystack/pull/3693
   "espnet-model-zoo",
   "pydub",
 ]
@@ -158,12 +162,12 @@ crawler = [
 preprocessing = [
   "beautifulsoup4",
   "markdown",
+  "python-frontmatter",
   "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
 ]
 ocr = [
   "pytesseract>0.3.7",
-  "pillow",
   "pdf2image>1.14",
 ]
 onnx = [
@@ -180,8 +184,7 @@ ray = [
   "aiorwlock>=1.3.0,<2",
 ]
 colab = [
-  "grpcio==1.47.0",
-  "requests>=2.25",  # Needed to avoid dependency conflict with crawler https://github.com/deepset-ai/haystack/pull/2921
+  "pillow<=9.0.0",
 ]
 dev = [
   "pre-commit",
@@ -191,6 +194,7 @@ dev = [
   # Test
   "pytest",
   "pytest-custom_exit_code",  # used in the CI
+  "pytest-asyncio",
   "responses",
   "tox",
   "coverage",
@@ -204,17 +208,15 @@ dev = [
   "pydoc-markdown",
   "mkdocs",
   "jupytercontrib",
-  "watchdog",  # ==1.0.2
+  "watchdog",
   "requests-cache",
-]
-test = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev]",
 ]
 all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
 ]
 all-gpu = [
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu,beir]",
+  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
 ]
 
 [project.urls]
@@ -239,10 +241,6 @@ packages = [
   "haystack",
 ]
 
-[tool.hatch.build.targets.wheel.hooks.autorun]
-dependencies = ["hatch-autorun"]
-file = "haystack/json-schemas/generate_schema.py"
-
 [tool.black]
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
@@ -255,8 +253,6 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
-  "wrong-spelling-in-comment",
-  "wrong-spelling-in-docstring",
 
   # To review:
   "missing-docstring",
@@ -267,24 +263,19 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "logging-fstring-interpolation",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
-  "unused-variable",
   "attribute-defined-outside-init",
   "too-many-instance-attributes",
   "super-with-arguments",
-  "anomalous-backslash-in-string",
   "redefined-builtin",
   "logging-format-interpolation",
-  "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
-  "trailing-whitespace",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
@@ -317,7 +308,6 @@ disable = [
 max-args=7
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"

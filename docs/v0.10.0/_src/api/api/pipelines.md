@@ -551,17 +551,17 @@ and the further processing can be customized. You can define this by connecting 
   |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
   |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
   |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-  
+
   |# Keyword queries will use the ElasticRetriever
   |pipe.run("kubernetes aws")
-  
+
   |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
   |pipe.run("How to manage kubernetes on aws")
-  
+
   ```
-  
+
   Models:
-  
+
   Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
   1) Keywords vs. Questions/Statements (Default)
   query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle)
@@ -569,15 +569,15 @@ and the further processing can be customized. You can define this by connecting 
   output_1 => question/statement
   output_2 => keyword query
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
-  
-  
+
+
   2) Questions vs. Statements
   query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle)
   query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle)
   output_1 => question
   output_2 => statement
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
-  
+
   See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
 <a name="pipeline.SklearnQueryClassifier.__init__"></a>
@@ -615,31 +615,31 @@ and the further processing can be customized. You can define this by connecting 
   |pipe.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
   |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
   |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-  
+
   |# Keyword queries will use the ElasticRetriever
   |pipe.run("kubernetes aws")
-  
+
   |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
   |pipe.run("How to manage kubernetes on aws")
-  
+
   ```
-  
+
   Models:
-  
+
   Pass your own `Transformer` binary classification model from file/huggingface or use one of the following pretrained ones hosted on Huggingface:
   1) Keywords vs. Questions/Statements (Default)
   model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
   output_1 => question/statement
   output_2 => keyword query
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
-  
-  
+
+
   2) Questions vs. Statements
   `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
   output_1 => question
   output_2 => statement
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
-  
+
   See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
 <a name="pipeline.TransformersQueryClassifier.__init__"></a>
@@ -867,4 +867,3 @@ This pipeline can be helpful if you already show a relevant document to your end
 
 - `document_ids`: document ids
 - `top_k`: How many documents id to return against single document
-

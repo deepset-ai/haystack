@@ -10,15 +10,16 @@ from abc import abstractmethod
 
 import numpy as np
 
-from haystack.schema import Document, Label, MultiLabel
+from haystack.schema import Document, FilterType, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.errors import DuplicateDocumentError, DocumentStoreError
+from haystack.errors import DuplicateDocumentError, DocumentStoreError, HaystackError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.utils.labels import aggregate_labels
 
 
 logger = logging.getLogger(__name__)
+
 
 try:
     from numba import njit  # pylint: disable=import-error
@@ -103,7 +104,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -126,6 +127,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -150,7 +152,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -175,6 +177,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                         __Example__:
+
                         ```python
                         filters = {
                             "$and": {
@@ -212,7 +215,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         pass
@@ -220,7 +223,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels_aggregated(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         open_domain: bool = True,
         drop_negative_labels: bool = False,
         drop_no_answers: bool = False,
@@ -255,6 +258,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -299,7 +303,7 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -347,7 +351,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -355,6 +359,39 @@ class BaseDocumentStore(BaseComponent):
         scale_score: bool = True,
     ) -> List[Document]:
         pass
+
+    def query_by_embedding_batch(
+        self,
+        query_embs: Union[List[np.ndarray], np.ndarray],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        if isinstance(filters, list):
+            if len(filters) != len(query_embs):
+                raise HaystackError(
+                    "Number of filters does not match number of query_embs. Please provide as many filters"
+                    " as query_embs or a single filter that will be applied to each query_emb."
+                )
+        else:
+            filters = [filters] * len(query_embs)
+        results = []
+        for query_emb, filter in zip(query_embs, filters):
+            results.append(
+                self.query_by_embedding(
+                    query_emb=query_emb,
+                    filters=filter,
+                    top_k=top_k,
+                    index=index,
+                    return_embedding=return_embedding,
+                    headers=headers,
+                    scale_score=scale_score,
+                )
+            )
+        return results
 
     @abstractmethod
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
@@ -404,28 +441,28 @@ class BaseDocumentStore(BaseComponent):
         # TODO improve support for PreProcessor when adding eval data
         if preprocessor is not None:
             assert preprocessor.split_by != "sentence", (
-                f"Split by sentence not supported.\n"
-                f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
+                "Split by sentence not supported.\n"
+                "Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
             )
-            assert preprocessor.split_respect_sentence_boundary == False, (
-                f"split_respect_sentence_boundary not supported yet.\n"
-                f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
+            assert preprocessor.split_respect_sentence_boundary is False, (
+                "split_respect_sentence_boundary not supported yet.\n"
+                "Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
             )
             assert preprocessor.split_overlap == 0, (
-                f"Overlapping documents are currently not supported when adding eval data.\n"
-                f"Please set 'split_overlap=0' in the supplied PreProcessor."
+                "Overlapping documents are currently not supported when adding eval data.\n"
+                "Please set 'split_overlap=0' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_empty_lines == False, (
-                f"clean_empty_lines currently not supported when adding eval data.\n"
-                f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
+            assert preprocessor.clean_empty_lines is False, (
+                "clean_empty_lines currently not supported when adding eval data.\n"
+                "Please set 'clean_empty_lines=False' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_whitespace == False, (
-                f"clean_whitespace is currently not supported when adding eval data.\n"
-                f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
+            assert preprocessor.clean_whitespace is False, (
+                "clean_whitespace is currently not supported when adding eval data.\n"
+                "Please set 'clean_whitespace=False' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_header_footer == False, (
-                f"clean_header_footer is currently not supported when adding eval data.\n"
-                f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+            assert preprocessor.clean_header_footer is False, (
+                "clean_header_footer is currently not supported when adding eval data.\n"
+                "Please set 'clean_header_footer=False' in the supplied PreProcessor."
             )
 
         file_path = Path(filename)
@@ -439,8 +476,9 @@ class BaseDocumentStore(BaseComponent):
             else:
                 jsonl_filename = (file_path.parent / (file_path.stem + ".jsonl")).as_posix()
                 logger.info(
-                    f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
-                    f"Converting json to jsonl to: {jsonl_filename}"
+                    "Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
+                    "Converting json to jsonl to: %s",
+                    jsonl_filename,
                 )
                 squad_json_to_jsonl(filename, jsonl_filename)
                 self.add_eval_data(
@@ -462,7 +500,7 @@ class BaseDocumentStore(BaseComponent):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -472,7 +510,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -482,7 +520,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -523,10 +561,13 @@ class BaseDocumentStore(BaseComponent):
         """
 
         field_map = self._create_document_field_map()
-        doc_objects = [
-            Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) if isinstance(d, dict) else d
-            for d in documents
-        ]
+        doc_objects = []
+        for d in documents:
+            if isinstance(d, dict):
+                d["id_hash_keys"] = id_hash_keys
+                doc_objects.append(Document.from_dict(d, field_map=field_map))
+            else:
+                doc_objects.append(d)
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
@@ -585,8 +626,9 @@ class BaseDocumentStore(BaseComponent):
         for document in documents:
             if document.id in _hash_ids:
                 logger.info(
-                    f"Duplicate Documents: Document with id '{document.id}' already exists in index "
-                    f"'{index or self.index}'"
+                    "Duplicate Documents: Document with id '%s' already exists in index '%s'",
+                    document.id,
+                    index or self.index,
                 )
                 continue
             _documents.append(document)
@@ -687,7 +729,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -713,6 +755,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -741,6 +784,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -782,12 +826,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -816,6 +855,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -844,6 +884,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [

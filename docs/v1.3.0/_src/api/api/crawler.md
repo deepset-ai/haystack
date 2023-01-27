@@ -98,4 +98,3 @@ All URLs not matching at least one of the regular expressions will be dropped.
 **Returns**:
 
 Tuple({"paths": List of filepaths, ...}, Name of output edge)
-

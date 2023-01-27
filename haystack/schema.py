@@ -1,11 +1,13 @@
 from __future__ import annotations
 import csv
+import warnings
 import hashlib
+import inspect
 
 from typing import Any, Optional, Dict, List, Union
 
 try:
-    from typing import Literal  # type: ignore
+    from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
@@ -15,7 +17,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict, InitVar
+from dataclasses import asdict
 
 import mmh3
 import numpy as np
@@ -36,6 +38,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
+FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 
 
 @dataclass
@@ -44,9 +47,9 @@ class Document:
     content: Union[str, pd.DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
+    id_hash_keys: List[str] = Field(default=["content"])
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: InitVar[Optional[List[str]]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -87,7 +90,7 @@ class Document:
         """
 
         if content is None:
-            raise ValueError(f"Can't create 'Document': Mandatory 'content' field is None")
+            raise ValueError("Can't create 'Document': Mandatory 'content' field is None")
 
         self.content = content
         self.content_type = content_type
@@ -97,10 +100,14 @@ class Document:
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
         if id_hash_keys is not None:
-            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):  # type: ignore
+            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):
                 raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)"
+                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}). "
+                    "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
                 )
+        # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
+        self.id_hash_keys = id_hash_keys or ["content"]
 
         if embedding is not None:
             embedding = np.asarray(embedding)
@@ -108,6 +115,10 @@ class Document:
 
         # Create a unique ID (either new one, or one from user input)
         if id is not None:
+            logger.info(
+                "Setting the ID manually. This might cause a mismatch with the ID "
+                "that would be generated from the document content and id_hash_keys value."
+            )
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
@@ -129,24 +140,31 @@ class Document:
 
         if final_hash_key == "":
             raise ValueError(
-                f"Cant't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta']"
+                "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
         return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Convert Document to dict. An optional field_map can be supplied to change the names of the keys in the
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | doc = Document(content="some text", content_type="text")
-        | doc.to_dict(field_map={"custom_content_field": "content"})
-        | >>> {"custom_content_field": "some text", content_type": "text"}
+
+        ```python
+            doc = Document(content="some text", content_type="text")
+            doc.to_dict(field_map={"custom_content_field": "content"})
+
+            # Returns {"custom_content_field": "some text", content_type": "text"}
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
         """
+        if not field_map:
+            field_map = {}
+
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
@@ -163,22 +181,37 @@ class Document:
 
     @classmethod
     def from_dict(
-        cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None
+        cls, dict: Dict[str, Any], field_map: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
     ) -> Document:
         """
-        Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
+        Create Document from dict. An optional `field_map` parameter can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
-        they are serialized / stored in other places (e.g. elasticsearch)
+        they are serialized / stored in other places (e.g. elasticsearch).
+
         Example:
-        | my_dict = {"custom_content_field": "some text", content_type": "text"}
-        | Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+
+        ```python
+            my_dict = {"custom_content_field": "some text", "content_type": "text"}
+            Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
-        :return: dict with content of the Document
+        :return: A Document object
         """
+        if not field_map:
+            field_map = {}
+        if id_hash_keys:
+            warnings.warn(
+                message="Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
+                "Old API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}}, id_hash_keys=['meta'])\n"
+                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            dict["id_hash_keys"] = id_hash_keys
 
         _doc = dict.copy()
-        init_args = ["content", "content_type", "id", "score", "question", "meta", "embedding"]
+        init_args = ["content", "content_type", "id", "score", "id_hash_keys", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
@@ -197,24 +230,24 @@ class Document:
                 k = field_map[k]
                 _new_doc[k] = v
 
-        if _doc.get("id") is None:
-            _new_doc["id_hash_keys"] = id_hash_keys
-
         # Convert list of rows to pd.DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
             _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
 
         return cls(**_new_doc)
 
-    def to_json(self, field_map={}) -> str:
-        d = self.to_dict(field_map=field_map)
-        j = json.dumps(d, cls=NumpyEncoder)
-        return j
+    def to_json(self, field_map: Optional[Dict[str, Any]] = None) -> str:
+        if not field_map:
+            field_map = {}
+        dictionary = self.to_dict(field_map=field_map)
+        return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data: str, field_map={}):
-        d = json.loads(data)
-        return cls.from_dict(d, field_map=field_map)
+    def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
+        if not field_map:
+            field_map = {}
+        dictionary = json.loads(data)
+        return cls.from_dict(dictionary, field_map=field_map)
 
     def __eq__(self, other):
         return (
@@ -222,6 +255,7 @@ class Document:
             and getattr(other, "content", None) == self.content
             and getattr(other, "content_type", None) == self.content_type
             and getattr(other, "id", None) == self.id
+            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
@@ -501,7 +535,9 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
-    filters: Optional[dict] = None
+    # Note that filters cannot be of type Optional[FilterType] as assignments like `filters = {"name": "file_name"}`
+    # won't work due to Dict's covariance. See https://github.com/python/mypy/issues/9418.
+    filters: Optional[Dict[str, Any]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -518,7 +554,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
-        filters: Optional[dict] = None,
+        filters: Optional[Dict[str, Any]] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -557,9 +593,6 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        # TODO: fix MultiLabel serialization without hacking Label
-        # As this is called during pydantic validation when MultiLabel is being serialized,
-        # answer might still be a dict breaking the following no_answer validation code.
         if isinstance(answer, dict):
             answer = Answer.from_dict(answer)
         self.answer = answer
@@ -642,69 +675,55 @@ def is_positive_label(label):
     )
 
 
-@dataclass
 class MultiLabel:
-    labels: List[Label]
-    query: str
-    answers: List[str]
-    document_ids: List[str]
-    contexts: List[str]
-    offsets_in_contexts: List[Dict]
-    offsets_in_documents: List[Dict]
-    drop_negative_labels: InitVar[bool] = False
-    drop_no_answer: InitVar[bool] = False
-
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs):
+    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
         This class is "syntactic sugar" that simplifies the work with such a list of related Labels.
-        It stored the original labels in MultiLabel.labels and provides additional aggregated attributes that are
+        It stores the original labels in MultiLabel.labels and provides additional aggregated attributes that are
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
         :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
-        :param kwargs: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
         """
         # drop duplicate labels and remove negative labels if needed.
         labels = list(dict.fromkeys(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
-
         if drop_no_answers:
-            labels = [l for l in labels if l.no_answer == False]
+            labels = [l for l in labels if l.no_answer is False]
 
-        self.labels = labels
-
-        self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
+        self._labels = labels
+        self._query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
+        self._filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
         self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
-        self.no_answer = False not in [l.no_answer for l in self.labels]
+        self._no_answer = all(l.no_answer for l in self._labels)
 
         # Answer strings and offsets cleaned for no_answers:
         # If there are only no_answers, offsets are empty and answers will be a single empty string
         # which equals the no_answers representation of reader nodes.
-        if self.no_answer:
-            self.answers = [""]
-            self.offsets_in_documents: List[dict] = []
-            self.offsets_in_contexts: List[dict] = []
+        if self._no_answer:
+            self._answers = [""]
+            self._offsets_in_documents: List[dict] = []
+            self._offsets_in_contexts: List[dict] = []
         else:
-            answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
-            self.answers = [answer.answer for answer in answered]
-            self.offsets_in_documents = []
-            self.offsets_in_contexts = []
+            answered = [l.answer for l in self._labels if not l.no_answer and l.answer is not None]
+            self._answers = [answer.answer for answer in answered]
+            self._offsets_in_documents = []
+            self._offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self.offsets_in_documents.append({"start": span.start, "end": span.end})
+                        self._offsets_in_documents.append({"start": span.start, "end": span.end})
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self.offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        self._offsets_in_contexts.append({"start": span.start, "end": span.end})
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -714,9 +733,44 @@ class MultiLabel:
         # as separate no_answer labels, and thus with document.id but without answer.document_id.
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
+        self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
+        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
 
-        self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [str(l.document.content) for l in self.labels if not l.no_answer]
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def query(self):
+        return self._query
+
+    @property
+    def filters(self):
+        return self._filters
+
+    @property
+    def document_ids(self):
+        return self._document_ids
+
+    @property
+    def contexts(self):
+        return self._contexts
+
+    @property
+    def no_answer(self):
+        return self._no_answer
+
+    @property
+    def answers(self):
+        return self._answers
+
+    @property
+    def offsets_in_documents(self):
+        return self._offsets_in_documents
+
+    @property
+    def offsets_in_contexts(self):
+        return self._offsets_in_contexts
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
@@ -734,20 +788,28 @@ class MultiLabel:
         return unique_values
 
     def to_dict(self):
-        return asdict(self)
+        # convert internal attribute names to property names
+        return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
     def from_dict(cls, dict: dict):
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        # exclude extra arguments
+        return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), default=pydantic_encoder)
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
         if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        dict_data["labels"] = [Label.from_dict(l) for l in dict_data["labels"]]
+        return cls.from_dict(dict_data)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.labels == other.labels
 
     def __repr__(self):
         return f"<MultiLabel: {self.to_dict()}>"
@@ -767,7 +829,7 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     base_mode_fields = base_model.__fields__
 
     values = {}
-    for base_model_field_name, base_model_field in base_mode_fields.items():
+    for base_model_field_name in base_mode_fields.keys():
         value = getattr(base_model, base_model_field_name)
         values[base_model_field_name] = value
 
@@ -791,13 +853,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
@@ -1055,8 +1117,10 @@ class EvaluationResult:
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 if answer_metric not in metrics:
                     logger.warning(
-                        f"You specified an answer_metric={answer_metric} not available in calculated metrics={metrics.keys()}."
-                        f"Skipping collection of worst performing samples."
+                        "You specified an answer_metric=%s not available in calculated metrics=%s."
+                        "Skipping collection of worst performing samples.",
+                        answer_metric,
+                        metrics.keys(),
                     )
                     break
                 if metrics[answer_metric] <= answer_metric_threshold:
@@ -1090,8 +1154,10 @@ class EvaluationResult:
             for multilabel_id, metrics in worst_df.iterrows():
                 if document_metric not in metrics:
                     logger.warning(
-                        f"You specified a document_metric={document_metric} not available in calculated metrics={metrics.keys()}."
-                        f"Skipping collection of worst performing samples."
+                        "You specified a document_metric=%s not available in calculated metrics=%s."
+                        "Skipping collection of worst performing samples.",
+                        document_metric,
+                        metrics.keys(),
                     )
                     break
                 if metrics[document_metric] <= document_metric_threshold:
@@ -1148,9 +1214,9 @@ class EvaluationResult:
             document_relevance_criterion = answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
         elif answer_scope in answer_scope_to_doc_relevance_crit.keys():
             logger.warning(
-                f"You specified a non-answer document_scope together with a non-default answer_scope. "
-                f"This may result in inconsistencies between answer and document metrics. "
-                f"To enforce the same definition of correctness for both, document_scope must be one of {['answer', 'document_id_or_answer']}."
+                "You specified a non-answer document_scope together with a non-default answer_scope. "
+                "This may result in inconsistencies between answer and document metrics. "
+                "To enforce the same definition of correctness for both, document_scope must be one of 'answer', 'document_id_or_answer'."
             )
 
         return document_relevance_criterion  # type: ignore[return-value]
@@ -1216,7 +1282,7 @@ class EvaluationResult:
             answer_scope=answer_scope,
         )
         num_examples_for_eval = len(answers["multilabel_id"].unique())
-        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result = {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
         result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
         return result
 
@@ -1232,7 +1298,7 @@ class EvaluationResult:
         Answer metrics are:
         - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
-        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        - sas if a SAS model has been provided during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
         multilabel_ids = answers["multilabel_id"].unique()
         # simulate top k retriever
@@ -1314,7 +1380,7 @@ class EvaluationResult:
             document_relevance_criterion=document_relevance_criterion,
         )
 
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        return {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
 
     def _build_document_metrics_df(
         self,

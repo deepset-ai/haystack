@@ -248,4 +248,3 @@ These document can be retrieved via the Retriever or supplied directly via predi
 **Returns**:
 
 Generated answers
-
