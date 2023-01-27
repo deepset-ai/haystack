@@ -300,13 +300,23 @@ class InvocationContextMapper(BaseComponent):
         invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
 
-        # The invocation context overwrites locals(), so if for example invocation_context contains a
-        # modified list of Documents under the `documents` key, such list is used.
-        invocation_context = {**locals(), **(invocation_context or {})}
-        invocation_context.pop("self")
-        invocation_context = {key: value for key, value in invocation_context.items() if value is not None}
+        invocation_context = invocation_context or {}
+        if query and "query" not in invocation_context.keys():
+            invocation_context["query"] = query
 
-        input_values = {}
+        if file_paths and "file_paths" not in invocation_context.keys():
+            invocation_context["file_paths"] = file_paths
+
+        if labels and "labels" not in invocation_context.keys():
+            invocation_context["labels"] = labels
+
+        if documents and "documents" not in invocation_context.keys():
+            invocation_context["documents"] = documents
+
+        if meta and "meta" not in invocation_context.keys():
+            invocation_context["meta"] = meta
+
+        input_values: Dict[str, Any] = {}
         for key, value in self.inputs.items():
             if isinstance(value, list):
                 input_values[key] = []
