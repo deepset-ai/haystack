@@ -111,6 +111,20 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, PDFToTextOCRConverter])
+def test_page_range(Converter):
+    converter = Converter()
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+    pages = document.content.split("\f")
+
+    assert (
+        len(pages) == 4
+    )  # the sample PDF file has four pages, we skipped first (but we wanna correct number of pages)
+    assert pages[0] == ""  # the page 1 was skipped.
+    assert pages[1] != ""  # the page 2 is not empty.
+    assert pages[2] == ""  # the page 3 is empty.
+
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
