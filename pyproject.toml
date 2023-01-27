@@ -162,6 +162,7 @@ crawler = [
 preprocessing = [
   "beautifulsoup4",
   "markdown",
+  "python-frontmatter",
   "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
 ]
