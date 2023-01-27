@@ -22,10 +22,9 @@ SUPPORTED_MODELS_CLASSES = ["VisionEncoderDecoderModel"]
 
 class TransformersImageToText(BaseImageToText):
     """
-    Transformer based model to generate captions for images using the HuggingFace's transformers framework
+    A transformer-based model to generate captions for images using the Hugging Face's transformers framework.
 
-    See the up-to-date list of available models on
-    `huggingface.co/models <https://huggingface.co/models?pipeline_tag=image-to-text>`__
+    For an up-to-date list of available models, see [Hugging Face image to text models](https://huggingface.co/models?pipeline_tag=image-to-text)`__
 
     **Example**
 
@@ -66,27 +65,25 @@ class TransformersImageToText(BaseImageToText):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
-        Load an Image To Text model from Transformers.
-        See the up-to-date list of available models at
-        https://huggingface.co/models?pipeline_tag=image-to-text
+        Load an image-to-text model from transformers.
+        For an up-to-date list of available models, see [Hugging Face image-to-text models](https://huggingface.co/models?pipeline_tag=image-to-text).
 
         :param model_name_or_path: Directory of a saved model or the name of a public model.
-                                   See https://huggingface.co/models?pipeline_tag=image-to-text for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
-                                See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
+                                   For a full list of models, see [Hugging Face image-to-text models](https://huggingface.co/models?pipeline_tag=image-to-text).
+        :param model_version: The version of the model to use from the Hugging Face model hub. This can be the tag name, branch name, or commit hash.
+        :param generation_kwargs: Dictionary containing arguments for the `generate()` method of the Hugging Face model.
+                                See [generate()](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate) in Hugging Face documentation.
         :param use_gpu: Whether to use GPU (if available).
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
-        :param use_auth_token: The API token used to download private models from Huggingface.
-                               If this parameter is set to `True`, then the token generated when running
-                               `transformers-cli login` (stored in ~/.huggingface) will be used.
-                               Additional information can be found here
-                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
-                        A list containing torch device objects and/or strings is supported (For example
-                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
-                        parameter is not used and a single cpu device is used for inference.
+        :param use_auth_token: The API token used to download private models from Hugging Face.
+                               If set to `True`, the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) is used.
+                               For more information, see [from_pretrained()](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained) in Hugging Face documentation.
+        :param devices: List of torch devices (for example, cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects or strings is supported (for example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). If you set `use_gpu=False`, the devices
+                        parameter is not used and a single CPU device is used for inference.
         """
         super().__init__()
 
@@ -122,19 +119,19 @@ class TransformersImageToText(BaseImageToText):
         self, image_file_paths: List[str], generation_kwargs: Optional[dict] = None, batch_size: Optional[int] = None
     ) -> List[Document]:
         """
-        Generate captions for provided image files
+        Generate captions for the image files you specify.
 
-        :param image_file_paths: Paths of the images
+        :param image_file_paths: Paths to the images for which you want to generate captions.
         :param generation_kwargs: Dictionary containing arguments for the generate method of the Hugging Face model.
-                                  See https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate
+                                  See [generate()](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate) in Hugging Face documentation.
         :param batch_size: Number of images to process at a time.
-        :return: List of Documents. Document.content is the caption. Document.meta["image_file_path"] contains the image file path.
+        :return: List of Documents. `Document.content` is the caption. `Document.meta["image_file_path"]` contains the path to the image file.
         """
         generation_kwargs = generation_kwargs or self.generation_kwargs
         batch_size = batch_size or self.batch_size
 
         if len(image_file_paths) == 0:
-            raise ImageToTextError("ImageToText needs at least one filepath to produce a caption.")
+            raise ImageToTextError("ImageToText needs at least one file path to produce a caption.")
 
         images_dataset = ListDataset(image_file_paths)
 
