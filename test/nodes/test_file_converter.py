@@ -144,6 +144,7 @@ def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
     assert document.content.startswith("\nWhat to build with Haystack")
+    assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
 def test_markdown_converter_headline_extraction():
