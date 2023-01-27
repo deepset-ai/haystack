@@ -178,6 +178,12 @@ def test_markdown_converter_frontmatter_to_meta():
     assert document.meta["date"] == "1.1.2023"
 
 
+def test_markdown_converter_remove_code_snippets():
+    converter = MarkdownConverter(remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.content.startswith("pip install farm-haystack")
+
+
 def test_azure_converter():
     # Check if Form Recognizer endpoint and credential key in environment variables
     if "AZURE_FORMRECOGNIZER_ENDPOINT" in os.environ and "AZURE_FORMRECOGNIZER_KEY" in os.environ:
