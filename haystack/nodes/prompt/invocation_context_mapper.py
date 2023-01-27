@@ -81,7 +81,7 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
             Document(content="second"),
             Document(content="third")
         ],
-        separator=" - "
+        delimiter=" - "
     ) == ([Document(content="first - second - third")], )
     ```
     """
@@ -94,9 +94,9 @@ def strings_to_documents(
     id_hash_keys: Optional[List[str]] = None,
 ) -> Tuple[List[Document]]:
     """
-    Transforms a list of strings into a list of Documents. If you pass the metadata a single
+    Transforms a list of strings into a list of Documents. If you pass the metadata in a single
     dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
-    must the same as the length of the list of strings and each Document gets its own metadata.
+    must be the same as the length of the list of strings, and each Document gets its own metadata.
     You can specify `id_hash_keys` only once and it gets assigned to all Documents.
 
     Example:
