@@ -251,3 +251,9 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_cant_write_top_level_fields_in_meta(self, ds):
         with pytest.raises(ValueError, match='"meta" info contains duplicate key "content"'):
             ds.write_documents([Document(content="test", meta={"content": "test-id"})])
+
+    @pytest.mark.integration
+    def test_get_embedding_count(self, ds, documents):
+        ds.write_documents(documents)
+        out = ds.get_embedding_count()
+        assert out == 9

@@ -1,6 +1,7 @@
 from typing import List, Union, Dict, Any
 
 import os
+import numpy as np
 from inspect import getmembers, isclass, isfunction
 from unittest.mock import MagicMock
 
@@ -428,7 +429,9 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "parent1": {"parent2": {"parent3": {"child1": 1, "child2": 2}}},
             "meta_field": "multilayer-test",
         }
-        doc = Document(content=f"Multilayered dict", meta=multilayer_meta, embedding=[0.0] * 768)
+        doc = Document(
+            content=f"Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
+        )
 
         doc_store_with_docs.write_documents([doc])
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "multilayer-test"}})
@@ -447,3 +450,9 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         ds._validate_embeddings_shape.assert_called_once()
         ds.update_embeddings(retriever, update_existing_embeddings=False)
         ds._validate_embeddings_shape.assert_called_once()
+
+    @pytest.mark.integration
+    def test_get_embedding_count(self, doc_store_with_docs: PineconeDocumentStore):
+        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc])
+        assert doc_store_with_docs.get_embedding_count() == 1
