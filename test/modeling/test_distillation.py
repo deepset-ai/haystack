@@ -20,13 +20,13 @@ def assert_weight_change(weights, new_weights):
 
 
 def test_prediction_layer_distillation():
-    student = FARMReader(model_name_or_path="prajjwal1/bert-tiny", num_processes=0)
+    student = FARMReader(model_name_or_path="prajjwal1/bert-mini", num_processes=0)
     teacher = FARMReader(model_name_or_path="prajjwal1/bert-small", num_processes=0)
 
     # create a checkpoint of weights before distillation
     student_weights = create_checkpoint(student)
 
-    assert len(student_weights) == 22
+    assert len(student_weights) == 38
 
     student_weights.pop(-2)  # pooler is not updated due to different attention head
 
@@ -35,7 +35,7 @@ def test_prediction_layer_distillation():
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
 
-    assert len(new_student_weights) == 22
+    assert len(new_student_weights) == 38
 
     new_student_weights.pop(-2)  # pooler is not updated due to different attention head
 

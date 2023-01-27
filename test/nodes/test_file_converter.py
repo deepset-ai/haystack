@@ -171,6 +171,13 @@ def test_markdown_converter_headline_extraction():
         assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
 
 
+def test_markdown_converter_frontmatter_to_meta():
+    converter = MarkdownConverter(add_frontmatter_to_meta=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.meta["type"] == "intro"
+    assert document.meta["date"] == "1.1.2023"
+
+
 def test_azure_converter():
     # Check if Form Recognizer endpoint and credential key in environment variables
     if "AZURE_FORMRECOGNIZER_ENDPOINT" in os.environ and "AZURE_FORMRECOGNIZER_KEY" in os.environ:
