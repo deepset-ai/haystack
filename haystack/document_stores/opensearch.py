@@ -120,10 +120,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param index_type: The type of index to be created. Choose from 'flat', 'hnsw', 'ivf', or 'ivf_pq'.
+        :param index_type: The type of index you want to create. Choose from 'flat', 'hnsw', 'ivf', or 'ivf_pq'.
                            'ivf_pq' is an IVF index optimized for memory through product quantization.
                            ('ivf' and 'ivf_pq' are only available with 'faiss' as knn_engine.)
-                           As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
+                           As OpenSearch currently does not support all similarity functions (for example, dot_product) in exact vector similarity calculations,
                            we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but further optimized for accuracy.
                            Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
                            In these cases however, a warning will be displayed. See similarity param for more information.
@@ -148,8 +148,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                  - `hnsw`: `"ef_construction"`, `"ef_search"`, `"m"`
                                  - `ivf`: `"nlist"`, `"nprobes"`
                                  - `ivf_pq`: `"nlist"`, `"nprobes"`, `"m"`, `"code_size"`
-                               If no parameters are specified, the OpenSearch's default values are used.
-                               For more information on configuration of knn indices, refer to the
+                               If you don't specify any parameters, the OpenSearch's default values are used.
+                               For more information on configuration of knn indices, see
                                [OpenSearch Documentation](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#method-definitions).
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
@@ -330,7 +330,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         :param ivf_train_size: Number of embeddings to use for training the IVF index. If `None`, the embeddings of
                                all provided Documents are used for training. If `0`, no training is performed.
-                               Only applicable for indices of type `"ivf"` and `"ivf_pq"` that are not trained yet.
+                               Only applicable for indices of type `"ivf"` and `"ivf_pq"` that haven't been trained yet.
                                Default: `0`.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
@@ -570,16 +570,15 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ):
         """
-        Trains an IVF index on the provided Documents / embeddings in case the provided index is not trained yet.
+        Trains an IVF index on the provided Documents or embeddings if the index hasn't been trained yet.
 
-        The train vectors should come from the same distribution as your final ones.
-        You can pass either Documents (incl. embeddings) or just the plain embeddings that the index shall be
-        trained on.
+        The train vectors should come from the same distribution as your final vectors.
+        You can pass either Documents (including embeddings) or just plain embeddings you want to train the index on.
 
-        :param documents: Documents (incl. the embeddings)
-        :param embeddings: Plain embeddings.
-        :param index: Name of the index to train. If None, the DocumentStore's default index (self.index) will be used.
-        :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param documents: Documents (including the embeddings) you want to train the index on.
+        :param embeddings: Plain embeddings you want to train the index on. 
+        :param index: Name of the index to train. If `None`, the DocumentStore's default index (self.index) is used.
+        :param headers: Custom HTTP headers to pass to the OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='}).
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         """
         if self.index_type not in ["ivf", "ivf_pq"]:
@@ -592,7 +591,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             index = self.index
 
         if isinstance(embeddings, np.ndarray) and documents:
-            raise ValueError("Either pass `documents` or `embeddings`. You passed both.")
+            raise ValueError("Pass either `documents` or `embeddings`. You passed both.")
 
         if documents:
             document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
@@ -605,14 +604,14 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             self._train_ivf_index(index=index, documents=document_objects, headers=headers)
         else:
             logger.warning(
-                "You called `train_index` without providing neither Documents nor embeddings. "
-                "No training will be performed."
+                "When calling `train_index`, you must provide either Documents or embeddings. "
+                "Because none of these values was provided, the index won't be trained."
             )
 
     def delete_index(self, index: str):
         """
-        Delete an existing search index. The index including all data will be removed.
-        If the index is of type `"ivf"` or `"ivf_pq"`, this method will also delete the corresponding IVF and PQ model.
+        Delete an existing search index. The index together with all data will be removed.
+        If the index is of type `"ivf"` or `"ivf_pq"`, this method also deletes the corresponding IVF and PQ model.
 
         :param index: The name of the index to delete.
         :return: None
@@ -894,7 +893,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             elif index_type in ["ivf", "ivf_pq"]:
                 if knn_engine != "faiss":
                     raise DocumentStoreError(
-                        "Set knn_engine to 'faiss' if you want to use 'ivf' or 'ivf_pq as index_type."
+                        "To use 'ivf' or 'ivf_pq as index_type, set knn_engine to 'faiss'."
                     )
                 # Check if IVF model already exists
                 if self._index_exists(".opensearch-knn-models"):
@@ -1009,8 +1008,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         self, index: Optional[str], documents: List[Document], headers: Optional[Dict[str, str]] = None
     ):
         """
-        If the provided index is not an IVF index yet, this method will train it on the provided Documents
-        and convert the index to an IVF index.
+        If the provided index is not an IVF index yet, this method trains it on the provided Documents
+        and converts the index to an IVF index.
         """
         if index is None:
             index = self.index
@@ -1089,7 +1088,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             while model_state != "created":
                 if model_state == "failed":
                     error_message = response["error"]
-                    raise DocumentStoreError(f"Failed to create IVF model. Error message: {error_message}")
+                    raise DocumentStoreError(f"Failed to create the IVF model. Error message: {error_message}")
                 response = self.client.transport.perform_request("GET", url=model_state_endpoint, headers=headers)
                 model_state = response["state"]
 
@@ -1117,7 +1116,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _delete_ivf_model(self, index: str):
         """
-        If index is an index of type 'ivf' or 'ivf_pq', this method will delete the corresponding IVF model.
+        If index is an index of type 'ivf' or 'ivf_pq', this method deletes the corresponding IVF model.
         """
         if self._index_exists(".opensearch-knn-models"):
             response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")

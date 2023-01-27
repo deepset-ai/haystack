@@ -486,8 +486,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_indexes[index].train(embeddings)
         else:
             logger.warning(
-                "You called `train_index` without providing neither Documents nor embeddings. "
-                "No training will be performed."
+                "When calling `train_index`, you must provide either Documents or embeddings. Because none of these values was provided, no training will be performed. "
+            
             )
 
     def delete_all_documents(

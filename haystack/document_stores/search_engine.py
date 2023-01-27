@@ -109,7 +109,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             self.index_type = index_type
         else:
             raise Exception(
-                "Invalid value for index_type in constructor. Choose between 'flat', 'hnsw', 'ivf', and 'ivf_pq'."
+                "Invalid value for index_type in constructor. Choose one of these values: 'flat', 'hnsw', 'ivf', or 'ivf_pq'."
             )
 
         self._init_indices(
