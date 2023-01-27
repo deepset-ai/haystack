@@ -107,11 +107,11 @@ You can find a full list of dependency options at [haystack/pyproject.toml](http
 If you're running pip version earlier than 21.3, you can't install dependency groups that reference other groups. Instead, you can only specify groups that contain direct package references:
 
 ```
-# instead of [all]
-pip install farm-haystack[sql,only-faiss,only-milvus1,weaviate,pinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx,ray,dev]
+# instead of '[all]'
+pip install 'farm-haystack[sql,only-faiss,only-milvus1,weaviate,pinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx,ray,dev]'
 
-# instead of [all-gpu]
-pip install farm-haystack[sql,only-faiss-gpu,only-milvus1,weaviatepinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx-gpu,ray,dev]
+# instead of '[all-gpu]'
+pip install 'farm-haystack[sql,only-faiss-gpu,only-milvus1,weaviatepinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'
 ```
 
 **Installing the REST API**
