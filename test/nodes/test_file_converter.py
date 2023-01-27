@@ -143,7 +143,7 @@ def test_docx_converter():
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
-    assert document.content.startswith("What to build with Haystack")
+    assert document.content.startswith("\nWhat to build with Haystack")
 
 
 def test_markdown_converter_headline_extraction():
