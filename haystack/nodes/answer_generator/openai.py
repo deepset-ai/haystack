@@ -1,12 +1,18 @@
 import json
 import logging
+import os
+import platform
 import sys
 from typing import List, Optional, Tuple, Union
-import platform
 
 import requests
 
 from haystack import Document
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+)
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.utils.reflection import retry_with_exponential_backoff
@@ -27,6 +33,11 @@ else:
         "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
     )
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
+
+
+OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
+OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 class OpenAIAnswerGenerator(BaseGenerator):
@@ -117,13 +128,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
             logger.debug("Using GPT2TokenizerFast")
             self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
 
-    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
+    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
     def predict(
         self,
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        timeout: Union[float, Tuple[float, float]] = 10.0,
+        timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
     ):
         """
         Use the loaded QA model to generate Answers for a query based on the Documents it receives.
