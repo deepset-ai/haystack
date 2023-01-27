@@ -424,6 +424,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             index=index,
             scale_score=scale_score,
             headers=headers,
+            use_prefiltering=self.use_prefiltering,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
