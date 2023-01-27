@@ -1,5 +1,5 @@
 ARG build_image
-ARG base_immage
+ARG base_image
 
 FROM $build_image AS build-image
 
@@ -35,7 +35,7 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir ./rest_api
 
 
-FROM $base_immage AS final
+FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
 COPY --from=build-image /opt/pdftotext /usr/local/bin
