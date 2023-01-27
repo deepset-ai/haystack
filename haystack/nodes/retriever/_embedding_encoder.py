@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
@@ -12,6 +13,11 @@ from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
 
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+)
 from haystack.errors import CohereError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
@@ -25,6 +31,11 @@ from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
+
+
+COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
+COHERE_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 logger = logging.getLogger(__name__)
@@ -321,11 +332,13 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             "multilingual-22-12",
         )
 
-    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5, errors=(CohereError,))
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=COHERE_BACKOFF, max_retries=COHERE_MAX_RETRIES, errors=(CohereError,)
+    )
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "texts": text, "truncate": "END"}
         headers = {"Authorization": f"BEARER {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=COHERE_TIMEOUT)
         res = json.loads(response.text)
         if response.status_code != 200:
             raise CohereError(response.text, status_code=response.status_code)
