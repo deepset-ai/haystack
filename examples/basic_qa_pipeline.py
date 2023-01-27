@@ -71,5 +71,6 @@ def basic_qa_pipeline():
     print_answers(prediction, details="minimum")
     return prediction
 
+
 if __name__ == "__main__":
     basic_qa_pipeline()

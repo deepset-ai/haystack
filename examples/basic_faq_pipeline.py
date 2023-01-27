@@ -66,5 +66,6 @@ def basic_faq_pipeline():
     print_answers(prediction, details="medium")
     return prediction
 
+
 if __name__ == "__main__":
     basic_faq_pipeline()
