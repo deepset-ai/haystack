@@ -2,7 +2,7 @@
 type: intro
 date: 1.1.2023
 ---
-```
+```bash
 pip install farm-haystack
 ```
 ## What to build with Haystack
