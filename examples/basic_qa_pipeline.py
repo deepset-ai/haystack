@@ -14,9 +14,6 @@ from haystack.pipelines import Pipeline
 
 
 def basic_qa_pipeline():
-    # launch and create DocumentStore
-    launch_es()
-
     # Initialize a DocumentStore
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
 
@@ -73,4 +70,5 @@ def basic_qa_pipeline():
 
 
 if __name__ == "__main__":
+    launch_es()
     basic_qa_pipeline()
