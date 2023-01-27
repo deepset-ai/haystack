@@ -162,19 +162,19 @@ def test_rename_yaml(tmp_path):
 
 
 #
-# expand_values_to_list
+# value_to_list
 #
 
 
-def test_expand_values_to_list():
+def test_value_to_list():
     mapper = InvocationContextMapper(
-        func="expand_value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["questions"]
+        func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["questions"]
     )
     results, _ = mapper.run(query="test query", documents=["doesn't", "really", "matter"])
     assert results["invocation_context"]["questions"] == ["test query", "test query", "test query"]
 
 
-def test_expand_values_to_list_yaml(tmp_path):
+def test_value_to_list_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -183,7 +183,7 @@ def test_expand_values_to_list_yaml(tmp_path):
             - name: mapper
               type: InvocationContextMapper
               params:
-                func: expand_value_to_list
+                func: value_to_list
                 inputs:
                   value: query
                   target_list: documents
@@ -634,7 +634,7 @@ def test_chain_mappers():
         func="join_documents", inputs={"documents": "documents"}, params={"delimiter": " - "}, outputs=["documents"]
     )
     mapper_2 = InvocationContextMapper(
-        func="expand_value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["questions"]
+        func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["questions"]
     )
 
     pipe = Pipeline()
@@ -670,7 +670,7 @@ def test_chain_mappers_yaml(tmp_path):
             - name: mapper_2
               type: InvocationContextMapper
               params:
-                func: expand_value_to_list
+                func: value_to_list
                 inputs:
                   value: query
                   target_list: documents
@@ -720,7 +720,7 @@ def test_chain_mappers_yaml_2(tmp_path):
             - name: mapper_2
               type: InvocationContextMapper
               params:
-                func: expand_value_to_list
+                func: value_to_list
                 inputs:
                   target_list: string_documents
                 params:
@@ -785,7 +785,7 @@ def test_with_prompt_node(tmp_path):
               - name: mapper
                 type: InvocationContextMapper
                 params:
-                  func: expand_value_to_list
+                  func: value_to_list
                   inputs:
                     value: query
                     target_list: documents
@@ -834,7 +834,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
               - name: mapper
                 type: InvocationContextMapper
                 params:
-                  func: expand_value_to_list
+                  func: value_to_list
                   inputs:
                     value: query
                     target_list: documents

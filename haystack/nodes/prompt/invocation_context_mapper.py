@@ -22,14 +22,14 @@ def rename(value: Any) -> Tuple[Any]:
     return (value,)
 
 
-def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
+def value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
     """
     Transforms a value into a list containing this value as many times as the length of the target list.
 
     Example:
 
     ```python
-    assert expand_value_to_list(value=1, target_list=list(range(5))) == ([1, 1, 1, 1, 1], )
+    assert value_to_list(value=1, target_list=list(range(5))) == ([1, 1, 1, 1, 1], )
     ```
     """
     return ([value] * len(target_list),)
@@ -59,7 +59,7 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[str]]:
     Example:
 
     ```python
-    assert join_strings(strings=["first", "second", "third"], separator=" - ") == (["first - second - third"], )
+    assert join_strings(strings=["first", "second", "third"], delimiter=" - ") == (["first - second - third"], )
     ```
     """
     return ([delimiter.join(strings)],)
@@ -149,7 +149,7 @@ def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
 
 REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
     "rename": rename,
-    "expand_value_to_list": expand_value_to_list,
+    "value_to_list": value_to_list,
     "join_lists": join_lists,
     "join_strings": join_strings,
     "join_documents": join_documents,
@@ -173,7 +173,7 @@ class InvocationContextMapper(BaseComponent):
         - name: mapper
           type: InvocationContextMapper
           params:
-            func: expand_value_to_list
+            func: value_to_list
             inputs:
                 value: query
                 target_list: documents
@@ -190,7 +190,7 @@ class InvocationContextMapper(BaseComponent):
 
     `InvocationContextMapper` supports the current functions:
 
-    - `expand_value_to_list`
+    - `value_to_list`
     - `join_strings`
     - `join_documents`
     - `join_lists`
@@ -218,7 +218,7 @@ class InvocationContextMapper(BaseComponent):
         - name: mapper
           type: InvocationContextMapper
           params:
-          func: expand_value_to_list
+          func: value_to_list
           inputs:
             value: query
             target_list: documents
@@ -272,9 +272,9 @@ class InvocationContextMapper(BaseComponent):
 
         :param func: The function to apply.
         :param inputs: Maps the function's input kwargs to the key-value pairs in the invocation context.
-            For example, `expand_value_to_list` expects the `value` and `target_list` parameters, so `inputs` might contain:
+            For example, `value_to_list` expects the `value` and `target_list` parameters, so `inputs` might contain:
             `{'value': 'query', 'target_list': 'documents'}`. It doesn't need to contain all keyword args, see `params`.
-        :param params: Maps the function's input kwargs to some fixed values. For example, `expand_value_to_list` expects
+        :param params: Maps the function's input kwargs to some fixed values. For example, `value_to_list` expects
             `value` and `target_list` parameters, so `params` might contain
             `{'value': 'A', 'target_list': [1, 1, 1, 1]}` and the node's output is `["A", "A", "A", "A"]`.
             It doesn't need to contain all keyword args, see `inputs`.
