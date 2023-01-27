@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/nodes/image_to_text]
-    modules: ['base', `transformers`]
+    modules: ['base', 'transformers']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
