@@ -35,7 +35,7 @@ def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]
     return ([value] * len(target_list),)
 
 
-def join_lists(lists: List[str]) -> Tuple[List[Any]]:
+def join_lists(lists: List[List[Any]]) -> Tuple[List[Any]]:
     """
     Joins the passed lists into a single one.
 
@@ -51,7 +51,7 @@ def join_lists(lists: List[str]) -> Tuple[List[Any]]:
     return (merged_list,)
 
 
-def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
+def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[str]]:
     """
     Transforms a list of strings into a list containing a single string. The content of this list
     is the content of all original strings separated by the delimiter you specify.
@@ -65,7 +65,7 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
     return ([delimiter.join(strings)],)
 
 
-def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Any]]:
+def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Document]]:
     """
     Transforms a list of documents into a list containing a single Document. The content of this list
     is the content of all original documents separated by the delimiter you specify.
@@ -92,7 +92,7 @@ def strings_to_documents(
     strings: List[str],
     meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
     id_hash_keys: Optional[List[str]] = None,
-) -> Tuple[List[Any]]:
+) -> Tuple[List[Document]]:
     """
     Transforms a list of strings into a list of Documents. If you pass the metadata a single
     dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
@@ -128,44 +128,23 @@ def strings_to_documents(
     return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
 
 
-def documents_to_strings(
-    strings: List[str],
-    meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
-    id_hash_keys: Optional[List[str]] = None,
-) -> Tuple[List[Any]]:
+def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
     """
-    Transforms a list of strings into a list of Documents. If you pass the metadata a single
-    dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
-    must the same as the length of the list of strings and each Document gets its own metadata.
-    You can specify `id_hash_keys` only once and it gets assigned to all Documents.
+    Extracts the content field of Documents and returns a list of strings.
 
     Example:
 
     ```python
     assert documents_to_strings(
-            strings=["first", "second", "third"],
-            meta=[{"position": i} for i in range(3)],
-            id_hash_keys=['content', 'meta]
-        ) == [
-            Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
-            Document(content="second", metadata={"position": 2}, id_hash_keys=['content', 'meta]),
-            Document(content="third", metadata={"position": 3}, id_hash_keys=['content', 'meta])
-        ]
+            documents=[
+                Document(content="first"),
+                Document(content="second"),
+                Document(content="third")
+            ]
+        ) == ["first", "second", "third"],
     ```
     """
-    all_metadata: List[Optional[Dict[str, Any]]]
-    if isinstance(meta, dict):
-        all_metadata = [meta] * len(strings)
-    elif isinstance(meta, list):
-        if len(meta) != len(strings):
-            raise ValueError(
-                f"Not enough metadata dictionaries. documents_to_strings received {len(strings)} and {len(meta)} metadata dictionaries."
-            )
-        all_metadata = meta
-    else:
-        all_metadata = [None] * len(strings)
-
-    return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
+    return ([doc.content for doc in documents],)
 
 
 REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
@@ -175,6 +154,7 @@ REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
     "join_strings": join_strings,
     "join_documents": join_documents,
     "strings_to_documents": strings_to_documents,
+    "documents_to_strings": documents_to_strings,
 }
 
 

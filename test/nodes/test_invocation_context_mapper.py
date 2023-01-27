@@ -552,71 +552,15 @@ def test_strings_to_documents_meta_and_hashkeys_yaml(tmp_path):
 
 def test_documents_to_strings():
     mapper = InvocationContextMapper(
-        func="documents_to_strings", inputs={"strings": "responses"}, outputs=["documents"]
+        func="documents_to_strings", inputs={"documents": "documents"}, outputs=["strings"]
     )
-    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
-    assert results["invocation_context"]["documents"] == [
-        Document(content="first"),
-        Document(content="second"),
-        Document(content="third"),
-    ]
-
-
-def test_documents_to_strings_single_meta_no_hashkeys():
-    mapper = InvocationContextMapper(
-        func="documents_to_strings", inputs={"strings": "responses"}, params={"meta": {"a": "A"}}, outputs=["documents"]
+    results, _ = mapper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
-    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
-    assert results["invocation_context"]["documents"] == [
-        Document(content="first", meta={"a": "A"}),
-        Document(content="second", meta={"a": "A"}),
-        Document(content="third", meta={"a": "A"}),
-    ]
+    assert results["invocation_context"]["strings"] == ["first", "second", "third"]
 
 
-def test_documents_to_strings_wrong_number_of_meta():
-    mapper = InvocationContextMapper(
-        func="documents_to_strings",
-        inputs={"strings": "responses"},
-        params={"meta": [{"a": "A"}]},
-        outputs=["documents"],
-    )
-
-    with pytest.raises(ValueError, match="Not enough metadata dictionaries."):
-        mapper.run(invocation_context={"responses": ["first", "second", "third"]})
-
-
-def test_documents_to_strings_many_meta_no_hashkeys():
-    mapper = InvocationContextMapper(
-        func="documents_to_strings",
-        inputs={"strings": "responses"},
-        params={"meta": [{"a": i + 1} for i in range(3)]},
-        outputs=["documents"],
-    )
-    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
-    assert results["invocation_context"]["documents"] == [
-        Document(content="first", meta={"a": 1}),
-        Document(content="second", meta={"a": 2}),
-        Document(content="third", meta={"a": 3}),
-    ]
-
-
-def test_documents_to_strings_single_meta_with_hashkeys():
-    mapper = InvocationContextMapper(
-        func="documents_to_strings",
-        inputs={"strings": "responses"},
-        params={"meta": {"a": "A"}, "id_hash_keys": ["content", "meta"]},
-        outputs=["documents"],
-    )
-    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
-    assert results["invocation_context"]["documents"] == [
-        Document(content="first", meta={"a": "A"}, id_hash_keys=["content", "meta"]),
-        Document(content="second", meta={"a": "A"}, id_hash_keys=["content", "meta"]),
-        Document(content="third", meta={"a": "A"}, id_hash_keys=["content", "meta"]),
-    ]
-
-
-def test_documents_to_strings_no_meta_no_hashkeys_yaml(tmp_path):
+def test_documents_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -626,10 +570,10 @@ def test_documents_to_strings_no_meta_no_hashkeys_yaml(tmp_path):
               type: InvocationContextMapper
               params:
                 func: documents_to_strings
-                params:
-                  strings: ['a', 'b', 'c']
-                outputs:
+                inputs:
                   - documents
+                outputs:
+                  - strings
             pipelines:
               - name: query
                 nodes:
@@ -639,12 +583,8 @@ def test_documents_to_strings_no_meta_no_hashkeys_yaml(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    result = pipeline.run()
-    assert result["invocation_context"]["documents"] == [
-        Document(content="a"),
-        Document(content="b"),
-        Document(content="c"),
-    ]
+    result = pipeline.run(documents=[Document(content="a"), Document(content="b"), Document(content="c")])
+    assert result["invocation_context"]["strings"] == ["first", "second", "third"]
 
 
 def test_documents_to_strings_meta_and_hashkeys_yaml(tmp_path):
