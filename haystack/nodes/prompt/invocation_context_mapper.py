@@ -35,6 +35,22 @@ def expand_value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]
     return ([value] * len(target_list),)
 
 
+def join_lists(lists: List[str]) -> Tuple[List[Any]]:
+    """
+    Joins the passed lists into a single one.
+
+    Example:
+
+    ```python
+    assert join_lists(lists=[[1, 2, 3], [4, 5]]) == ([1, 2, 3, 4, 5], )
+    ```
+    """
+    merged_list = []
+    for inner_list in lists:
+        merged_list += inner_list
+    return (merged_list,)
+
+
 def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[Any]]:
     """
     Transforms a list of strings into a list containing a single string. The content of this list
@@ -72,7 +88,7 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
     return ([Document(content=delimiter.join([d.content for d in documents]))],)
 
 
-def convert_to_documents(
+def strings_to_documents(
     strings: List[str],
     meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
     id_hash_keys: Optional[List[str]] = None,
@@ -86,7 +102,7 @@ def convert_to_documents(
     Example:
 
     ```python
-    assert convert_to_documents(
+    assert strings_to_documents(
             strings=["first", "second", "third"],
             meta=[{"position": i} for i in range(3)],
             id_hash_keys=['content', 'meta]
@@ -103,7 +119,47 @@ def convert_to_documents(
     elif isinstance(meta, list):
         if len(meta) != len(strings):
             raise ValueError(
-                f"Not enough metadata dictionaries. convert_to_documents received {len(strings)} and {len(meta)} metadata dictionaries."
+                f"Not enough metadata dictionaries. strings_to_documents received {len(strings)} and {len(meta)} metadata dictionaries."
+            )
+        all_metadata = meta
+    else:
+        all_metadata = [None] * len(strings)
+
+    return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
+
+
+def documents_to_strings(
+    strings: List[str],
+    meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
+    id_hash_keys: Optional[List[str]] = None,
+) -> Tuple[List[Any]]:
+    """
+    Transforms a list of strings into a list of Documents. If you pass the metadata a single
+    dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
+    must the same as the length of the list of strings and each Document gets its own metadata.
+    You can specify `id_hash_keys` only once and it gets assigned to all Documents.
+
+    Example:
+
+    ```python
+    assert documents_to_strings(
+            strings=["first", "second", "third"],
+            meta=[{"position": i} for i in range(3)],
+            id_hash_keys=['content', 'meta]
+        ) == [
+            Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
+            Document(content="second", metadata={"position": 2}, id_hash_keys=['content', 'meta]),
+            Document(content="third", metadata={"position": 3}, id_hash_keys=['content', 'meta])
+        ]
+    ```
+    """
+    all_metadata: List[Optional[Dict[str, Any]]]
+    if isinstance(meta, dict):
+        all_metadata = [meta] * len(strings)
+    elif isinstance(meta, list):
+        if len(meta) != len(strings):
+            raise ValueError(
+                f"Not enough metadata dictionaries. documents_to_strings received {len(strings)} and {len(meta)} metadata dictionaries."
             )
         all_metadata = meta
     else:
@@ -115,9 +171,10 @@ def convert_to_documents(
 REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
     "rename": rename,
     "expand_value_to_list": expand_value_to_list,
+    "join_lists": join_lists,
     "join_strings": join_strings,
     "join_documents": join_documents,
-    "convert_to_documents": convert_to_documents,
+    "strings_to_documents": strings_to_documents,
 }
 
 
@@ -156,7 +213,9 @@ class InvocationContextMapper(BaseComponent):
     - `expand_value_to_list`
     - `join_strings`
     - `join_documents`
-    - `convert_to_documents`
+    - `join_lists`
+    - `strings_to_documents`
+    - `documents_to_strings`
 
     See their descriptions in the code for details about their inputs, outputs, and other parameters.
     """
@@ -219,7 +278,7 @@ class InvocationContextMapper(BaseComponent):
         - name: mapper
           type: InvocationContextMapper
           params:
-          func: convert_to_document
+          func: strings_to_documents
           inputs:
             strings: single_string
             metadata:

@@ -208,6 +208,45 @@ def test_expand_values_to_list_yaml(tmp_path):
 
 
 #
+# join_lists
+#
+
+
+def test_join_lists():
+    mapper = InvocationContextMapper(func="join_lists", params={"lists": [[1, 2, 3], [4, 5]]}, outputs=["list"])
+    results, _ = mapper.run()
+    assert results["invocation_context"]["list"] == [1, 2, 3, 4, 5]
+
+
+def test_join_lists_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: mapper
+              type: InvocationContextMapper
+              params:
+                inputs:
+                  lists:
+                    - documents
+                    - file_paths
+                outputs:
+                  - single_list
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(documents=["first", "second", "third"], file_paths=["file1.txt", "file2.txt"])
+    assert result["invocation_context"]["single_list"] == ["first", "second", "third", "file1.txt", "file2.txt"]
+
+
+#
 # join_strings
 #
 
@@ -369,13 +408,13 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
 
 
 #
-# convert_to_documents
+# strings_to_documents
 #
 
 
-def test_convert_to_documents_no_meta_no_hashkeys():
+def test_strings_to_documents_no_meta_no_hashkeys():
     mapper = InvocationContextMapper(
-        func="convert_to_documents", inputs={"strings": "responses"}, outputs=["documents"]
+        func="strings_to_documents", inputs={"strings": "responses"}, outputs=["documents"]
     )
     results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
     assert results["invocation_context"]["documents"] == [
@@ -385,9 +424,9 @@ def test_convert_to_documents_no_meta_no_hashkeys():
     ]
 
 
-def test_convert_to_documents_single_meta_no_hashkeys():
+def test_strings_to_documents_single_meta_no_hashkeys():
     mapper = InvocationContextMapper(
-        func="convert_to_documents", inputs={"strings": "responses"}, params={"meta": {"a": "A"}}, outputs=["documents"]
+        func="strings_to_documents", inputs={"strings": "responses"}, params={"meta": {"a": "A"}}, outputs=["documents"]
     )
     results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
     assert results["invocation_context"]["documents"] == [
@@ -397,9 +436,9 @@ def test_convert_to_documents_single_meta_no_hashkeys():
     ]
 
 
-def test_convert_to_documents_wrong_number_of_meta():
+def test_strings_to_documents_wrong_number_of_meta():
     mapper = InvocationContextMapper(
-        func="convert_to_documents",
+        func="strings_to_documents",
         inputs={"strings": "responses"},
         params={"meta": [{"a": "A"}]},
         outputs=["documents"],
@@ -409,9 +448,9 @@ def test_convert_to_documents_wrong_number_of_meta():
         mapper.run(invocation_context={"responses": ["first", "second", "third"]})
 
 
-def test_convert_to_documents_many_meta_no_hashkeys():
+def test_strings_to_documents_many_meta_no_hashkeys():
     mapper = InvocationContextMapper(
-        func="convert_to_documents",
+        func="strings_to_documents",
         inputs={"strings": "responses"},
         params={"meta": [{"a": i + 1} for i in range(3)]},
         outputs=["documents"],
@@ -424,9 +463,9 @@ def test_convert_to_documents_many_meta_no_hashkeys():
     ]
 
 
-def test_convert_to_documents_single_meta_with_hashkeys():
+def test_strings_to_documents_single_meta_with_hashkeys():
     mapper = InvocationContextMapper(
-        func="convert_to_documents",
+        func="strings_to_documents",
         inputs={"strings": "responses"},
         params={"meta": {"a": "A"}, "id_hash_keys": ["content", "meta"]},
         outputs=["documents"],
@@ -439,7 +478,7 @@ def test_convert_to_documents_single_meta_with_hashkeys():
     ]
 
 
-def test_convert_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
+def test_strings_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -448,7 +487,7 @@ def test_convert_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
             - name: mapper
               type: InvocationContextMapper
               params:
-                func: convert_to_documents
+                func: strings_to_documents
                 params:
                   strings: ['a', 'b', 'c']
                 outputs:
@@ -470,7 +509,7 @@ def test_convert_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
     ]
 
 
-def test_convert_to_documents_meta_and_hashkeys_yaml(tmp_path):
+def test_strings_to_documents_meta_and_hashkeys_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -479,7 +518,145 @@ def test_convert_to_documents_meta_and_hashkeys_yaml(tmp_path):
             - name: mapper
               type: InvocationContextMapper
               params:
-                func: convert_to_documents
+                func: strings_to_documents
+                params:
+                  strings: ['first', 'second', 'third']
+                  id_hash_keys: ['content', 'meta']
+                  meta:
+                    - a: 1
+                    - a: 2
+                    - a: 3
+                outputs:
+                  - documents
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run()
+    assert result["invocation_context"]["documents"] == [
+        Document(content="first", meta={"a": 1}, id_hash_keys=["content", "meta"]),
+        Document(content="second", meta={"a": 2}, id_hash_keys=["content", "meta"]),
+        Document(content="third", meta={"a": 3}, id_hash_keys=["content", "meta"]),
+    ]
+
+
+#
+# documents_to_strings
+#
+
+
+def test_documents_to_strings():
+    mapper = InvocationContextMapper(
+        func="documents_to_strings", inputs={"strings": "responses"}, outputs=["documents"]
+    )
+    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
+    assert results["invocation_context"]["documents"] == [
+        Document(content="first"),
+        Document(content="second"),
+        Document(content="third"),
+    ]
+
+
+def test_documents_to_strings_single_meta_no_hashkeys():
+    mapper = InvocationContextMapper(
+        func="documents_to_strings", inputs={"strings": "responses"}, params={"meta": {"a": "A"}}, outputs=["documents"]
+    )
+    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
+    assert results["invocation_context"]["documents"] == [
+        Document(content="first", meta={"a": "A"}),
+        Document(content="second", meta={"a": "A"}),
+        Document(content="third", meta={"a": "A"}),
+    ]
+
+
+def test_documents_to_strings_wrong_number_of_meta():
+    mapper = InvocationContextMapper(
+        func="documents_to_strings",
+        inputs={"strings": "responses"},
+        params={"meta": [{"a": "A"}]},
+        outputs=["documents"],
+    )
+
+    with pytest.raises(ValueError, match="Not enough metadata dictionaries."):
+        mapper.run(invocation_context={"responses": ["first", "second", "third"]})
+
+
+def test_documents_to_strings_many_meta_no_hashkeys():
+    mapper = InvocationContextMapper(
+        func="documents_to_strings",
+        inputs={"strings": "responses"},
+        params={"meta": [{"a": i + 1} for i in range(3)]},
+        outputs=["documents"],
+    )
+    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
+    assert results["invocation_context"]["documents"] == [
+        Document(content="first", meta={"a": 1}),
+        Document(content="second", meta={"a": 2}),
+        Document(content="third", meta={"a": 3}),
+    ]
+
+
+def test_documents_to_strings_single_meta_with_hashkeys():
+    mapper = InvocationContextMapper(
+        func="documents_to_strings",
+        inputs={"strings": "responses"},
+        params={"meta": {"a": "A"}, "id_hash_keys": ["content", "meta"]},
+        outputs=["documents"],
+    )
+    results, _ = mapper.run(invocation_context={"responses": ["first", "second", "third"]})
+    assert results["invocation_context"]["documents"] == [
+        Document(content="first", meta={"a": "A"}, id_hash_keys=["content", "meta"]),
+        Document(content="second", meta={"a": "A"}, id_hash_keys=["content", "meta"]),
+        Document(content="third", meta={"a": "A"}, id_hash_keys=["content", "meta"]),
+    ]
+
+
+def test_documents_to_strings_no_meta_no_hashkeys_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: mapper
+              type: InvocationContextMapper
+              params:
+                func: documents_to_strings
+                params:
+                  strings: ['a', 'b', 'c']
+                outputs:
+                  - documents
+            pipelines:
+              - name: query
+                nodes:
+                  - name: mapper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run()
+    assert result["invocation_context"]["documents"] == [
+        Document(content="a"),
+        Document(content="b"),
+        Document(content="c"),
+    ]
+
+
+def test_documents_to_strings_meta_and_hashkeys_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: mapper
+              type: InvocationContextMapper
+              params:
+                func: documents_to_strings
                 params:
                   strings: ['first', 'second', 'third']
                   id_hash_keys: ['content', 'meta']
@@ -590,7 +767,7 @@ def test_chain_mappers_yaml_2(tmp_path):
             - name: mapper_1
               type: InvocationContextMapper
               params:
-                func: convert_to_documents
+                func: documents_to_strings
                 params:
                   strings:
                     - first
@@ -624,7 +801,7 @@ def test_chain_mappers_yaml_2(tmp_path):
             - name: mapper_4
               type: InvocationContextMapper
               params:
-                func: convert_to_documents
+                func: documents_to_strings
                 inputs:
                   strings: many_greetings
                 outputs:
