@@ -104,7 +104,7 @@ sql = [
   "psycopg2-binary; platform_system != 'Windows'",
 ]
 only-faiss = [
-  "faiss-cpu>=1.6.3,<=1.7.2",
+  "faiss-cpu>=1.6.3,<=1.7.0",
 ]
 faiss = [
   "farm-haystack[sql,only-faiss]",
