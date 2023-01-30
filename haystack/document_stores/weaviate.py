@@ -466,7 +466,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         """
         Add new documents to the DocumentStore.
 
-        :param documents: List of `Dicts` or List of `Documents`. A dummy embedding vector for each document is automatically generated if it is not provided. The document id needs to be in uuid format. Otherwise a correctly formatted uuid will be automatically generated based on the provided id.
+        :param documents: List of `Dicts` or List of `Documents`. The document id needs to be in uuid format. Otherwise a correctly formatted uuid will be automatically generated based on the provided id.
         :param index: index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param duplicate_documents: Handle duplicates document based on parameter options.
