@@ -911,9 +911,8 @@ class PromptNode(BaseComponent):
         # to pass results from a pipeline node to any other downstream pipeline node.
         invocation_context = invocation_context or {}
 
-        # prompt_collector is a list that is passed to the prompt node to collect the constructed prompts,
-        # so that can be returned as part of the pipeline's debug output
-        # TODO we'll revisit this approach in the near future and see if we can find a better way collect the prompts
+        # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
+        # so that they can be returned by `run()` as part of the pipeline's debug output.
         prompt_collector: List[str] = []
 
         results = self(
