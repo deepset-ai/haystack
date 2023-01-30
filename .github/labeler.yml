@@ -33,11 +33,13 @@ topic:retriever:
 - test/nodes/test_retriever.py
 topic:pipeline:
 - haystack/pipelines/*
+- haystack/nodes/other/*
 - test/pipelines/*
+- test/nodes/test_other.py
 topic:rest_api:
 - rest_api/*
 - rest_api/**/*
-topic:prompt_node:
+topic:LLM:
 - haystack/nodes/prompt/*
 - test/nodes/test_prompt_node.py
 topic:file_converter:
@@ -45,6 +47,7 @@ topic:file_converter:
 - test/nodes/test_file_converter.py
 topic:crawler:
 - haystack/nodes/connector/*
+- test/nodes/test_connector.py
 topic:preprocessing:
 - haystack/nodes/preprocessor/*
 - test/nodes/test_preprocessor.py
@@ -60,8 +63,6 @@ topic:security:
 - SECURITY.md
 topic:dc-api:
 - haystack/utils/deepsetcloud.py
-topic:labelling:
-- haystack/nodes/label_generator/*
 topic:document_store:
 - haystack/document_stores/*
 - test/document_stores/*
@@ -98,3 +99,4 @@ topic:dc_document_store:
 - test/document_stores/test_deepsetcloud.py
 topic:graphdb:
 - haystack/document_stores/graphdb.py
+- test/document_stores/test_knowledge_graph.py
