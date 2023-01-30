@@ -7,12 +7,12 @@ on:
       - main
       # release branches have the form v1.9.x
       - 'v[0-9].*[0-9].x'
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
+#  pull_request:
+#    types:
+#      - opened
+#      - reopened
+#      - synchronize
+#      - ready_for_review
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
