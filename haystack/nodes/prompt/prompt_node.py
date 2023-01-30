@@ -789,7 +789,7 @@ class PromptNode(BaseComponent):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
                 prompt_collector.append(prompt)
-                logger.debug(f'Prompt being sent to LLM with prompt "{prompt}" and kwargs "{kwargs_copy}"')
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         else:
@@ -797,7 +797,7 @@ class PromptNode(BaseComponent):
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
                 prompt_collector.append(prompt)
-                logger.debug(f'Prompt being sent to LLM with prompt "{prompt}" and kwargs "{kwargs_copy}"')
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         return results
