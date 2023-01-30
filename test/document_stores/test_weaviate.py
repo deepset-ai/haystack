@@ -56,7 +56,7 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
                 Document(
                     id=get_uuid(),
                     content=f"A Baz Document {i} without embeddings",
-                    meta={"name": f"name_{i}", "month": "03", "no_embedding": "True"}
+                    meta={"name": f"name_{i}", "month": "03", "no_embedding": "True"},
                 )
             )
 
