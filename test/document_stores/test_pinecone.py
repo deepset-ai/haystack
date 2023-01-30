@@ -453,6 +453,10 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.mark.integration
     def test_get_embedding_count(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
+        embeddings.
+        """
         doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1

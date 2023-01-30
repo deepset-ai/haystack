@@ -254,5 +254,9 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.mark.integration
     def test_get_embedding_count(self, ds, documents):
+        """
+        We expect 9 docs with embeddings because all documents in the documents fixture for this class contain
+        embeddings.
+        """
         ds.write_documents(documents)
         assert ds.get_embedding_count() == 9

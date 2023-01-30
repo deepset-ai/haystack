@@ -270,4 +270,5 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip
     @pytest.mark.integration
     def test_get_embedding_count(self):
+        """Skipped b/c most easily tested in test_write_index_docs"""
         pass
