@@ -510,21 +510,6 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
 
-        # Weaviate requires that documents contain a vector in order to be indexed. These lines add a
-        # dummy vector so that indexing can still happen
-        dummy_embed_warning_raised = False
-        for do in document_objects:
-            if do.embedding is None:
-                dummy_embedding = np.random.rand(self.embedding_dim).astype(np.float32)
-                do.embedding = dummy_embedding
-                if not dummy_embed_warning_raised:
-                    logger.warning(
-                        "No embedding found in Document object being written into Weaviate. A dummy "
-                        "embedding is being supplied so that indexing can still take place. This "
-                        "embedding should be overwritten in order to perform vector similarity searches."
-                    )
-                    dummy_embed_warning_raised = True
-
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
