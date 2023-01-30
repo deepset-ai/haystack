@@ -96,6 +96,10 @@ class DocumentStoreBaseTestAbstract:
 
     @pytest.mark.integration
     def test_get_embedding_count(self, ds, documents):
+        """
+        We expect 6 docs with embeddings because only 6 documents in the documents fixture for this class contain
+        embeddings.
+        """
         ds.write_documents(documents)
         assert ds.get_embedding_count() == 6
 
