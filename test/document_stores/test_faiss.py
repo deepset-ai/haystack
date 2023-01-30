@@ -133,6 +133,8 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         documents_indexed = document_store.get_all_documents()
         assert len(documents_indexed) == len(documents_with_embeddings)
         assert all(doc.embedding is not None for doc in documents_indexed)
+        # Check that get_embedding_count works as expected
+        assert document_store.get_embedding_count() == len(documents_with_embeddings)
 
     @pytest.mark.integration
     def test_train_index_from_docs(self, documents_with_embeddings, tmp_path):
@@ -292,4 +294,10 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip(reason="labels metadata are not supported")
     @pytest.mark.integration
     def test_multilabel_meta_aggregations(self):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_get_embedding_count(self):
+        """Skipped b/c most easily tested in test_write_index_docs"""
         pass

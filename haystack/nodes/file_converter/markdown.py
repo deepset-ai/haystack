@@ -93,7 +93,7 @@ class MarkdownConverter(BaseConverter):
             metadata, markdown_text = frontmatter.parse(f.read())
 
         # md -> html -> text since BeautifulSoup can extract text cleanly
-        html = markdown(markdown_text)
+        html = markdown(markdown_text, extensions=["fenced_code"])
 
         # remove code snippets
         if remove_code_snippets:

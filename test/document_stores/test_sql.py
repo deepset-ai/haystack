@@ -127,3 +127,8 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_multilabel_meta_aggregations(self):
         pass
+
+    @pytest.mark.skip(reason="embeddings are not supported")
+    @pytest.mark.integration
+    def test_get_embedding_count(self):
+        pass

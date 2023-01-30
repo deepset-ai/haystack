@@ -101,7 +101,7 @@ class Crawler(BaseComponent):
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0
+        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
@@ -125,9 +125,38 @@ class Crawler(BaseComponent):
                 raise NodeError(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        !apt-get update
-                        !apt install chromium-driver
-                        !cp /usr/lib/chromium-browser/chromedriver /usr/bin
+                        %%shell
+                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
+                        EOF
+
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
+                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
+                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
+                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
+
+                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
+                        Package: *
+                        Pin: release a=eoan
+                        Pin-Priority: 500
+
+
+                        Package: *
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 300
+
+
+                        Package: chromium*
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 700
+                        EOF
+
+                        apt-get update
+                        apt-get install chromium chromium-driver
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
                 ) from exc
         else:

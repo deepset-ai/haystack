@@ -59,14 +59,13 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
     # so without filters applied it does nothing
     if not isinstance(retriever_with_docs, FilterRetriever):
         # the BM25 implementation in Weaviate would NOT pick up the expected records
-        # just with the "Who lives in Berlin?" query, but would return empty results,
-        # (maybe live & Berlin are stopwords in Weaviate? :-) ), so for Weaviate we need a query with better matching
-        # This was caused by lack of stemming and casing in Weaviate BM25 implementation
-        # TODO - In Weaviate 1.17.0 there is a fix for the lack of casing, which means that once 1.17.0 is released
+        # because of the lack of stemming: "Who lives in berlin" returns only 1 record while
+        # "Who live in berlin" returns all 5 records.
+        # TODO - In Weaviate 1.19.0 there is a fix for the lack of stemming, which means that once 1.19.0 is released
         # this `if` can be removed, as the standard search query "Who lives in Berlin?" should work with Weaviate.
-        # See https://github.com/semi-technologies/weaviate/issues/2455#issuecomment-1355702003
+        # See https://github.com/weaviate/weaviate/issues/2439
         if isinstance(document_store_with_docs, WeaviateDocumentStore):
-            res = retriever_with_docs.retrieve(query="name is Carla, I live in Berlin")
+            res = retriever_with_docs.retrieve(query="Who live in berlin")
         else:
             res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
         assert res[0].content == "My name is Carla and I live in Berlin"
