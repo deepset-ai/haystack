@@ -531,7 +531,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
 
-                    if self.similarity == "cosine":
+                    if self.similarity == "cosine" and vector is not None:
                         self.normalize_embedding(vector)
 
                     # Converting content to JSON-string as Weaviate doesn't allow other nested list for tables
