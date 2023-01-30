@@ -66,7 +66,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         similarity: str = "dot_product",
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
-        index_type: str = "flat",
         scroll: str = "1d",
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
@@ -104,12 +103,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         else:
             raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity, choose between 'cosine', 'l2' and 'dot_product'"
-            )
-        if index_type in ["flat", "hnsw", "ivf", "ivf_pq"]:
-            self.index_type = index_type
-        else:
-            raise Exception(
-                "Invalid value for index_type in constructor. Choose one of these values: 'flat', 'hnsw', 'ivf', or 'ivf_pq'."
             )
 
         self._init_indices(

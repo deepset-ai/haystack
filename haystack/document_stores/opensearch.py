@@ -4,6 +4,7 @@ import logging
 
 import numpy as np
 from tqdm.auto import tqdm
+from tenacity import retry, wait_exponential, retry_if_not_result
 
 try:
     from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
@@ -189,8 +190,14 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if knn_engine not in {"nmslib", "faiss", "score_script"}:
             raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
 
-        if index_type == "ivf" and knn_engine != "faiss":
-            raise DocumentStoreError("Use 'faiss' as knn_engine when using 'ivf' as index_type.")
+        if index_type in ["flat", "hnsw", "ivf", "ivf_pq"]:
+            if index_type in ["ivf", "ivf_pq"] and knn_engine != "faiss":
+                raise DocumentStoreError("Use 'faiss' as knn_engine when using 'ivf' as index_type.")
+            self.index_type = index_type
+        else:
+            raise DocumentStoreError(
+                "Invalid value for index_type in constructor. Choose one of these values: 'flat', 'hnsw', 'ivf', or 'ivf_pq'."
+            )
 
         self.knn_engine = knn_engine
         self.knn_parameters = {} if knn_parameters is None else knn_parameters
@@ -213,7 +220,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             similarity=similarity,
             return_embedding=return_embedding,
             duplicate_documents=duplicate_documents,
-            index_type=index_type,
             scroll=scroll,
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
@@ -576,7 +582,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         You can pass either Documents (including embeddings) or just plain embeddings you want to train the index on.
 
         :param documents: Documents (including the embeddings) you want to train the index on.
-        :param embeddings: Plain embeddings you want to train the index on. 
+        :param embeddings: Plain embeddings you want to train the index on.
         :param index: Name of the index to train. If `None`, the DocumentStore's default index (self.index) is used.
         :param headers: Custom HTTP headers to pass to the OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='}).
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
@@ -876,10 +882,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             m = 64 if "m" not in self.knn_parameters else self.knn_parameters["m"]
 
             if index_type == "flat":
-                # As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector
-                # similarity calculations, we don't make use of exact vector similarity when index_type='flat'.
-                # Instead we use the same approximate vector similarity calculations like in 'hnsw', but further
-                # optimized for accuracy.
+                # We're using HNSW with knn_engines nmslib and faiss as they do not support exact knn.
                 method["name"] = "hnsw"
                 # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
                 # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
@@ -892,9 +895,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     method["parameters"]["ef_search"] = ef_search
             elif index_type in ["ivf", "ivf_pq"]:
                 if knn_engine != "faiss":
-                    raise DocumentStoreError(
-                        "To use 'ivf' or 'ivf_pq as index_type, set knn_engine to 'faiss'."
-                    )
+                    raise DocumentStoreError("To use 'ivf' or 'ivf_pq as index_type, set knn_engine to 'faiss'.")
                 # Check if IVF model already exists
                 if self._index_exists(".opensearch-knn-models"):
                     response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
@@ -1081,16 +1082,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             )
             ivf_model = response["model_id"]
 
-            # Wait until model training is finished
-            model_state_endpoint = f"/_plugins/_knn/models/{ivf_model}"
-            response = self.client.transport.perform_request("GET", url=model_state_endpoint, headers=headers)
-            model_state = response["state"]
-            while model_state != "created":
-                if model_state == "failed":
-                    error_message = response["error"]
-                    raise DocumentStoreError(f"Failed to create the IVF model. Error message: {error_message}")
-                response = self.client.transport.perform_request("GET", url=model_state_endpoint, headers=headers)
-                model_state = response["state"]
+            # Wait until model training is finished, _knn_model_trained uses a retry decorator
+            if self._knn_model_trained(ivf_model, headers=headers):
+                logger.info("Training of IVF index '%s' finished.", index)
 
             # Delete temporary training index
             self.client.indices.delete(index=f".{index}_ivf_training", headers=headers)
@@ -1107,6 +1101,19 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             self._create_document_index(index_name=index, headers=headers)
             self.client.reindex(body={"source": {"index": f".{index}_temp"}, "dest": {"index": index}})
             self.client.indices.delete(index=f".{index}_temp")
+
+    @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
+    def _knn_model_trained(self, model_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        model_state_endpoint = f"/_plugins/_knn/models/{model_name}"
+        response = self.client.transport.perform_request("GET", url=model_state_endpoint, headers=headers)
+        model_state = response["state"]
+        if model_state == "created":
+            return True
+        elif model_state == "failed":
+            error_message = response["error"]
+            raise DocumentStoreError(f"Failed to train the KNN model. Error message: {error_message}")
+
+        return False
 
     def _delete_index(self, index: str):
         if self._index_exists(index):
