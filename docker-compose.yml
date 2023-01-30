@@ -11,6 +11,9 @@ services:
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
       - PIPELINE_YAML_PATH=/opt/pipelines/pipelines.haystack-pipeline.yml
       - TOKENIZERS_PARALLELISM=false
+# Uncomment the following line to customise how much time (in seconds) a worker can spend serving a request
+# before it times out. This should include the time required to cache the models and setup the pipelines.
+
 #      - GUNICORN_CMD_ARGS="--timeout=3000"
     depends_on:
       elasticsearch:
