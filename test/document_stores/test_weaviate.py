@@ -55,9 +55,8 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
             documents.append(
                 Document(
                     id=get_uuid(),
-                    content=f"A Baz Document {i}",
-                    meta={"name": f"name_{i}", "month": "03"},
-                    embedding=np.random.rand(768).astype(np.float32),
+                    content=f"A Baz Document {i} without embeddings",
+                    meta={"name": f"name_{i}", "month": "03", "no_embedding": "True"}
                 )
             )
 
