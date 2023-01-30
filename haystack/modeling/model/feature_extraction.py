@@ -331,7 +331,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
     words = text.split(" ")
     cumulated = 0
     for word in words:
-        word_offsets.append(cumulated)
+        word_offsets.append(cumulated)  # type: ignore [union-attr]
         cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
     # split "words" into "subword tokens"

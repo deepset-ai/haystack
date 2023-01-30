@@ -78,33 +78,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+      # https://stackoverflow.com/questions/74265821/get-modified-files-in-github-actions
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+    - name: Get changed files
+      id: files
+      uses: tj-actions/changed-files@v34
+      with:
+        files: |
+          **/*.py
+        files_ignore: |
+          test/**
+          rest_api/test/**
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: ./.github/actions/python_cache/
       with:
-        # Mypy can't run properly on 3.7 as it misses support for Literal types.
-        # FIXME once we drop support for 3.7, use the cache.
-        python-version: 3.8
-
-    - name: Install dependencies
-      run: |
-        # FIXME installing the packages before running mypy raises
-        # a lot of errors which were never detected before!
-        # pip install .
-        # pip install rest_api/
-        # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-        # Hotfixing by installing type packages explicitly.
-        # Run mypy --install-types haystack locally to ensure the list is still up to date
-        # mypy --install-types --non-interactive .
-        pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+        pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
+      if: steps.files.outputs.any_changed == 'true'
       run: |
-        echo "=== haystack/ ==="
-        mypy haystack
-        echo "=== rest_api/ ==="
-        mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+        mkdir .mypy_cache/
+        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
@@ -115,7 +114,6 @@ jobs:
   pylint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
 
     - name: Checkout
       uses: actions/checkout@v3
@@ -331,7 +329,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       weaviate:
-        image: semitechnologies/weaviate:latest
+        image: semitechnologies/weaviate:1.17.2
         env:
           AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
           PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
@@ -630,7 +628,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11

@@ -1,10 +1,14 @@
+from typing import List
+
 import os
 import sys
 from pathlib import Path
 import subprocess
+import csv
 
 import pytest
 
+from haystack import Document
 from haystack.nodes import (
     MarkdownConverter,
     DocxToTextConverter,
@@ -14,6 +18,7 @@ from haystack.nodes import (
     AzureConverter,
     ParsrConverter,
     TextConverter,
+    CsvTextConverter,
 )
 
 from ..conftest import SAMPLES_PATH
@@ -138,7 +143,8 @@ def test_docx_converter():
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
-    assert document.content.startswith("What to build with Haystack")
+    assert document.content.startswith("\nWhat to build with Haystack")
+    assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
 def test_markdown_converter_headline_extraction():
@@ -164,6 +170,19 @@ def test_markdown_converter_headline_extraction():
         start_idx = extracted_headline["start_idx"]
         hl_len = len(extracted_headline["headline"])
         assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
+
+
+def test_markdown_converter_frontmatter_to_meta():
+    converter = MarkdownConverter(add_frontmatter_to_meta=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.meta["type"] == "intro"
+    assert document.meta["date"] == "1.1.2023"
+
+
+def test_markdown_converter_remove_code_snippets():
+    converter = MarkdownConverter(remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.content.startswith("pip install farm-haystack")
 
 
 def test_azure_converter():
@@ -265,3 +284,125 @@ def test_id_hash_keys_from_pipeline_params():
 
     assert len(documents) == 2
     assert len(unique_ids) == 2
+
+
+def write_as_csv(data: List[List[str]], file_path: Path):
+    with open(file_path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(data)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_headers.csv"
+    rows = [
+        ["question", "answer"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    output, edge = node.run(file_paths=csv_path)
+    assert edge == "output_1"
+    assert "documents" in output
+    assert len(output["documents"]) == 1
+
+    doc = output["documents"][0]
+    assert isinstance(doc, Document)
+    assert doc.content == "What is Haystack ?"
+    assert doc.meta["answer"] == "Haystack is an NLP Framework to use transformers in your Applications."
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "headers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "answers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["question", "wrong"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_one_column(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [["question"], ["What is Haystack ?"]]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_with_three_columns(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["question", "answer", "notes"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications.", "verified"],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.integration
+def test_csv_to_document_many_files(tmp_path):
+    csv_paths = []
+    for i in range(5):
+        node = CsvTextConverter()
+        csv_path = tmp_path / f"{i}_csv_qa_with_headers.csv"
+        csv_paths.append(csv_path)
+        rows = [
+            ["question", "answer"],
+            [
+                f"{i}. What is Haystack ?",
+                f"{i}. Haystack is an NLP Framework to use transformers in your Applications.",
+            ],
+        ]
+        write_as_csv(rows, csv_path)
+
+    output, edge = node.run(file_paths=csv_paths)
+    assert edge == "output_1"
+    assert "documents" in output
+    assert len(output["documents"]) == 5
+
+    for i in range(5):
+        doc = output["documents"][i]
+        assert isinstance(doc, Document)
+        assert doc.content == f"{i}. What is Haystack ?"
+        assert doc.meta["answer"] == f"{i}. Haystack is an NLP Framework to use transformers in your Applications."

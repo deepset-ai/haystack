@@ -8,7 +8,7 @@ import pytest
 
 from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.schema import Document
-from haystack.errors import FilterError
+from haystack.errors import FilterError, PineconeDocumentStoreError
 
 
 from .test_base import DocumentStoreBaseTestAbstract
@@ -139,6 +139,24 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+    @pytest.mark.integration
+    def test_doc_store_wrong_init(self):
+        """
+        This is just a failure check case.
+        """
+        try:
+            _ = PineconeDocumentStore(
+                api_key=os.environ.get("PINECONE_API_KEY") or "fake-pinecone-test-key",
+                embedding_dim=768,
+                pinecone_index="p_index",
+                embedding_field="embedding",
+                index="haystack_tests",
+                similarity="cosine",
+                metadata_config={"indexed": META_FIELDS},
+            )
+            assert False
+        except PineconeDocumentStoreError as pe:
+            assert "`pinecone_index` needs to be a `pinecone.Index` object" in pe.message
 
     @pytest.mark.integration
     def test_ne_filters(self, ds, documents):

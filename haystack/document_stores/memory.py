@@ -284,32 +284,32 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param document_to_search: List of documents to compare `query_emb` against.
         """
-        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
+        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)  # type: ignore [assignment]
         if len(query_emb.shape) == 1:
-            query_emb = query_emb.unsqueeze(dim=0)
+            query_emb = query_emb.unsqueeze(dim=0)  # type: ignore [attr-defined]
 
         doc_embeds = np.array([doc.embedding for doc in document_to_search])
-        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)
+        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)  # type: ignore [assignment]
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
+            doc_embeds = doc_embeds.unsqueeze(dim=0)  # type: ignore [attr-defined]
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
             return []
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
             query_emb_norm = torch.norm(query_emb, dim=1)
-            query_emb = torch.div(query_emb, query_emb_norm)
+            query_emb = torch.div(query_emb, query_emb_norm)  # type: ignore [assignment,arg-type]
 
             doc_embeds_norms = torch.norm(doc_embeds, dim=1)
-            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T
+            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T  # type: ignore [assignment,arg-type]
 
         curr_pos = 0
-        scores = []
+        scores = []  # type: ignore [var-annotated]
         while curr_pos < len(doc_embeds):
             doc_embeds_slice = doc_embeds[curr_pos : curr_pos + self.scoring_batch_size]
-            doc_embeds_slice = doc_embeds_slice.to(self.main_device)
+            doc_embeds_slice = doc_embeds_slice.to(self.main_device)  # type: ignore [attr-defined]
             with torch.inference_mode():
-                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
+                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()  # type: ignore [arg-type,arg-type]
                 slice_scores = slice_scores.squeeze(dim=1)
                 slice_scores = slice_scores.numpy().tolist()
 
@@ -330,7 +330,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         doc_embeds = np.array([doc.embedding for doc in document_to_search])
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
+            doc_embeds = doc_embeds.unsqueeze(dim=0)  # type: ignore [attr-defined]
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
             return []
 
