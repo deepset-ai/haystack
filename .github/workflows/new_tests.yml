@@ -67,11 +67,11 @@ jobs:
           exit 1
         fi
 
-#    - uses: act10ns/slack@v1
-#      with:
-#        status: ${{ job.status }}
-#        channel: '#haystack'
-#      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   mypy:
     runs-on: ubuntu-latest
@@ -83,6 +83,10 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+    - name: Install Dependencies
+      run: |
+        apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
     - name: Get changed files
       id: files
@@ -100,11 +104,11 @@ jobs:
         mkdir .mypy_cache/
         mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
-#    - uses: act10ns/slack@v1
-#      with:
-#        status: ${{ job.status }}
-#        channel: '#haystack'
-#      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   pylint:
     runs-on: ubuntu-latest
@@ -114,15 +118,20 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pylint
+
     - name: Pylint
       run: |
         pylint -ry -j 0 haystack/ rest_api/rest_api
 
-#    - uses: act10ns/slack@v1
-#      with:
-#        status: ${{ job.status }}
-#        channel: '#haystack'
-#      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
 #  unit-tests:
 #    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
