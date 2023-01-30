@@ -401,7 +401,8 @@ class RayPipeline(Pipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
         self.run_total += 1
-        self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
+        # Disabled due to issue https://github.com/deepset-ai/haystack/issues/3970
+        # self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
 
