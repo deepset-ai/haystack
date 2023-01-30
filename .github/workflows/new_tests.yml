@@ -37,6 +37,7 @@ jobs:
 
     - name: Install Haystack
       run: |
+        apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
         pip install --upgrade pip
         pip install .[dev]
 
