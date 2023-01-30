@@ -77,16 +77,15 @@ jobs:
     runs-on: ubuntu-latest
     container: deepset/haystack:base-cpu-main
     steps:
+    - name: Install Dependencies
+      run: |
+        apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
       # https://stackoverflow.com/questions/74265821/get-modified-files-in-github-actions
     - name: Checkout
       uses: actions/checkout@v3
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
-
-    - name: Install Dependencies
-      run: |
-        apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
     - name: Get changed files
       id: files
@@ -122,6 +121,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install pylint
+        pip install .[all]
 
     - name: Pylint
       run: |
