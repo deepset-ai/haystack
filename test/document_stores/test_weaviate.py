@@ -161,14 +161,16 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_query_by_embedding(self, ds, documents):
         ds.write_documents(documents)
 
+        documents_with_embeddings = [doc for doc in documents if not doc.meta.get("no_embedding")]
+
         docs = ds.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32))
-        assert len(docs) == 9
+        assert len(docs) == len(documents_with_embeddings)
 
         docs = ds.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32), top_k=1)
         assert len(docs) == 1
 
         docs = ds.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32), filters={"name": ["name_1"]})
-        assert len(docs) == 3
+        assert len(docs) == len([doc for doc in documents_with_embeddings if doc.meta["name"] == "name_1"])
 
     @pytest.mark.integration
     def test_query(self, ds, documents):
