@@ -87,18 +87,12 @@ jobs:
     - name: Get changed files
       id: files
       uses: tj-actions/changed-files@v34
-
-    - name: Filter changed files
-      id: python-files
-      run: |
-        for file in ${{ steps.files.outputs.all_changed_files }}; do
-          if [[ $file == *.py ]]; then
-            if [[ $file != test/* ]]; then
-              changed_files="$changed_files $file"
-            fi
-          fi
-        done
-        echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
+      with:
+        files: |
+          **/*.py
+        files_ignore: |
+          test/**
+          rest_api/test/**
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -106,10 +100,10 @@ jobs:
         pythonVersion: 3.8   # Literals and mypy just don't work well together.
 
     - name: Mypy
-      if: steps.python-files.outputs.changed_files
+      if: steps.files.outputs.any_changed == 'true'
       run: |
         mkdir .mypy_cache/
-        mypy ${{ steps.python-files.outputs.changed_files }}
+        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
     - uses: act10ns/slack@v1
       with:
@@ -335,7 +329,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       weaviate:
-        image: semitechnologies/weaviate:latest
+        image: semitechnologies/weaviate:1.17.2
         env:
           AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
           PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
@@ -634,7 +628,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11

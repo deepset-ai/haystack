@@ -1,3 +1,10 @@
+---
+type: intro
+date: 1.1.2023
+---
+```bash
+pip install farm-haystack
+```
 ## What to build with Haystack
 
 - **Ask questions in natural language** and find granular answers in your own documents.
