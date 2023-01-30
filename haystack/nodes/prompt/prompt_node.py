@@ -765,6 +765,7 @@ class PromptNode(BaseComponent):
         :return: A list of strings as model responses.
         """
         results = []
+        # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
         if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
             raise ValueError(
@@ -912,6 +913,7 @@ class PromptNode(BaseComponent):
 
         # prompt_collector is a list that is passed to the prompt node to collect the constructed prompts,
         # so that can be returned as part of the pipeline's debug output
+        # TODO we'll revisit this approach in the near future and see if we can find a better way collect the prompts
         prompt_collector: List[str] = []
 
         results = self(
