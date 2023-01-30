@@ -2,7 +2,7 @@
     "openapi": "3.0.2",
     "info": {
         "title": "Haystack REST API",
-        "version": "1.13.0rc0"
+        "version": "1.14.0rc0"
     },
     "servers": [
         {
@@ -658,6 +658,16 @@
                         "title": "Meta",
                         "type": "object",
                         "default": {}
+                    },
+                    "id_hash_keys": {
+                        "title": "Id Hash Keys",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "default": [
+                            "content"
+                        ]
                     },
                     "score": {
                         "title": "Score",

@@ -1,5 +1,7 @@
+import copy
 import json
 import logging
+import os
 import re
 from abc import ABC, abstractmethod
 from string import Template
@@ -10,10 +12,12 @@ import torch
 from transformers import pipeline, AutoModelForSeq2SeqLM, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
 
 from haystack import MultiLabel
+from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -325,7 +329,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         Other kwargs are ignored.
         """
         output: List[Dict[str, str]] = []
-        stop_words = kwargs.pop("stop", None)
+        stop_words = kwargs.pop("stop_words", None)
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -420,6 +424,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
+        max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
+    )
     def invoke(self, *args, **kwargs):
         """
         Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
@@ -438,6 +446,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
+            # we use keyword stop_words but OpenAI uses stop
+            if "stop_words" in kwargs:
+                kwargs["stop"] = kwargs.pop("stop_words")
             kwargs_with_defaults.update(kwargs)
         payload = {
             "model": self.model_name_or_path,
@@ -723,7 +734,7 @@ class PromptNode(BaseComponent):
         elif isinstance(model_name_or_path, PromptModel):
             self.prompt_model = model_name_or_path
         else:
-            raise ValueError(f"model_name_or_path must be either a string or a PromptModel object")
+            raise ValueError("model_name_or_path must be either a string or a PromptModel object")
 
     def __call__(self, *args, **kwargs) -> List[str]:
         """
@@ -760,6 +771,8 @@ class PromptNode(BaseComponent):
                 f"or pass a PromptTemplate instance for prompting."
             )
 
+        # kwargs override model kwargs
+        kwargs = {**self._prepare_model_kwargs(), **kwargs}
         prompt_template_used = prompt_template or self.default_prompt_template
         if prompt_template_used:
             if isinstance(prompt_template_used, PromptTemplate):
@@ -771,15 +784,15 @@ class PromptNode(BaseComponent):
 
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
-                # merge any additional model kwargs
-                kwargs = {**kwargs, **self._prepare_model_kwargs()}
-                # and pass the prepared prompt and kwargs to the model
-                output = self.prompt_model.invoke(prompt, **kwargs)
+                kwargs_copy = copy.copy(kwargs)
+                # and pass the prepared prompt and kwargs copy to the model
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
-                output = self.prompt_model.invoke(prompt)
+                kwargs_copy = copy.copy(kwargs)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         return results
 
@@ -864,16 +877,6 @@ class PromptNode(BaseComponent):
 
         return list(self.prompt_templates[prompt_template].prompt_params)
 
-    def __eq__(self, other):
-        if isinstance(other, PromptNode):
-            if self.default_prompt_template != other.default_prompt_template:
-                return False
-            return self.model_name_or_path == other.model_name_or_path
-        return False
-
-    def __hash__(self):
-        return hash((self.default_prompt_template, self.model_name_or_path))
-
     def run(
         self,
         query: Optional[str] = None,
@@ -909,9 +912,14 @@ class PromptNode(BaseComponent):
             **invocation_context,
         )
 
+        final_result: Dict[str, Any] = {}
         if self.output_variable:
             invocation_context[self.output_variable] = results
-        return {"results": results, "invocation_context": invocation_context}, "output_1"
+            final_result[self.output_variable] = results
+
+        final_result["results"] = results
+        final_result["invocation_context"] = invocation_context
+        return final_result, "output_1"
 
     def run_batch(
         self,
@@ -923,7 +931,9 @@ class PromptNode(BaseComponent):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
-        pass
+        raise NotImplementedError("run_batch is not implemented for PromptNode.")
 
     def _prepare_model_kwargs(self):
-        return {"stop": self.stop_words}
+        # these are the parameters from PromptNode level
+        # that are passed to the prompt model invocation layer
+        return {"stop_words": self.stop_words}

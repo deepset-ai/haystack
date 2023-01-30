@@ -42,6 +42,13 @@ def test_check_error_for_pipeline_not_found():
     assert p is None
 
 
+def test_overwrite_params_with_env_variables_when_no_params_in_pipeline_yaml(monkeypatch):
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.docstore-no-params-pipeline.yml"
+    monkeypatch.setenv("INMEMORYDOCUMENTSTORE_PARAMS_INDEX", "custom_index")
+    _, document_store = _load_pipeline(yaml_pipeline_path, None)
+    assert document_store.index == "custom_index"
+
+
 def test_bad_yaml_pipeline_configuration_error():
 
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
@@ -438,10 +445,7 @@ def test_query_with_dataframe(client):
         response = client.post(url="/query", json={"query": TEST_QUERY})
         assert 200 == response.status_code
         assert len(response.json()["documents"]) == 1
-        assert response.json()["documents"][0]["content"] == [
-            {"col1": "text_1", "col2": 1},
-            {"col1": "text_2", "col2": 2},
-        ]
+        assert response.json()["documents"][0]["content"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
         assert response.json()["documents"][0]["content_type"] == "table"
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
