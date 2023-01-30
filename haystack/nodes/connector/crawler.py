@@ -101,7 +101,7 @@ class Crawler(BaseComponent):
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0
+        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
