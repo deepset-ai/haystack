@@ -1769,9 +1769,11 @@ class EmbeddingRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        query_embs: List[np.ndarray] = []
-        for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(queries=batch))
+        # embed_queries is already batched within by batch_size
+        query_embs: np.ndarray = self.embed_queries(queries=queries)
+        batched_query_embs: List[np.ndarray] = []
+        for index in range(0, len(query_embs), batch_size):
+            batched_query_embs.extend(query_embs[index : index + batch_size])
         documents = document_store.query_by_embedding_batch(
             query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
