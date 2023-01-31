@@ -7,7 +7,7 @@
 # Summary
 
 When returning answers for a TableQA pipeline we would like to return the column and row index as the answer location
-within the table since the table is either returned as a list of lists or a pandas dataframe in Haystack.
+within the table since the table is either returned as a list of lists in Haystack.
 This would allow users to easily look up the answer in the returned table to fetch the text directly from the table,
 identify the row or column labels for that answer, or generally perform operations on the table near or around the
 answer cell.
@@ -32,7 +32,9 @@ prediction = reader.predict(query="Who was in the most number of movies?", docum
 answer = prediction["answers"][0]
 
 # New feature
-print(answer.context.iloc[answer.offsets_in_context[0].row, answer.offsets_in_context[0].col])
+# answer.context -> [["actor", "age", "number of movies"], ["Brad Pitt",...], [...]]
+# answer.offsets_in_context[0] -> (row=1, col=1)
+print(answer.context[answer.offsets_in_context[0].row][answer.offsets_in_context[0].col])
 ```
 
 # Motivation
@@ -78,7 +80,6 @@ class TableCell:
     :param col: Column index of the cell
     """
 ```
-**Note:** I am open to a name change since this isn't really a span, but the location of a single table cell.
 
 # Detailed design
 
@@ -152,10 +153,7 @@ dict_table_doc = table_doc.to_dict()
 print(dict_table_doc["content"][span[0]][span[1]])  # prints "actors"
 ```
 
-I see a few ways to address this:
-- Update the `Span` (or `TableCell`) to be updated when the table is converted into a list of lists in the Answer primitive.
-- Only store the table internally as a list of lists. We can't only use pandas dataframes since we need to be able json serialize the table to be used in the rest-api and to be compatible with our `to_dict` and `from_dict` methods.
-- Expand `TableCell` to have additional member variables like `pandas_row`, `pandas_col` in addition to the normal `row` and `col`.
+We have decided to store the table internally as a list of lists to avoid this issue. See discussion starting [here](https://github.com/deepset-ai/haystack/pull/3875#discussion_r1088766318).
 
 # Drawbacks
 
@@ -181,9 +179,11 @@ This feature directly integrates and impacts the TableQA feature of Haystack.
 
 - What's the cost of migrating existing Haystack pipelines (is it a breaking change?)?
 
-Yes this is a breaking change that would affect end users. The way to access the offsets in returned Answers would be different.
+Yes there are breaking changes that would affect end users.
+1. The way to access the offsets in returned Answers would be different.
 Following the deprecation policy we will support both `Span` and `TableCell` (can be toggled between using a boolean flag)
 for 2 additional versions of Haystack.
+2. Tables in Haystack Documents and Answers will change from type pandas Dataframe to a list of lists.
 
 # Alternatives
 
@@ -231,4 +231,4 @@ to reflect the `Span` is no longer linearzied.
 
 # Unresolved questions
 
-The issue brought up above under the header [Edge Case/Bug](#edge-case/bug)
+No more unresolved questions.
