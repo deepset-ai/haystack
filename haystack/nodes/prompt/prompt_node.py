@@ -909,7 +909,7 @@ class PromptNode(BaseComponent):
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
         prompt_collector: List[str] = []
-        
+
         invocation_context = invocation_context or {}
         if query and "query" not in invocation_context.keys():
             invocation_context["query"] = query
@@ -936,14 +936,14 @@ class PromptNode(BaseComponent):
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
+        final_result = {}
         if self.output_variable:
             invocation_context[self.output_variable] = results
             final_result[self.output_variable] = results
-            
+
         final_result["invocation_context"] = invocation_context
         final_result["_debug"] = {"prompts_used": prompt_collector}
         return final_result, "output_1"
-
 
     def run_batch(
         self,
