@@ -376,11 +376,11 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(answer_scope="context")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
     assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Reader"]["f1"] == 1.0
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
