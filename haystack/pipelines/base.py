@@ -1743,7 +1743,9 @@ class Pipeline:
                     df_docs["gold_id_and_answer_match"] = df_docs.map_rows(
                         lambda row: max(
                             min(id_match, answer_match)
-                            for id_match, answer_match in zip(row["gold_documents_id_match"], row["gold_answers_match"])
+                            for id_match, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_answers_match"] + [0.0]
+                            )
                         )
                     )
 
@@ -1764,7 +1766,7 @@ class Pipeline:
                         lambda row: max(
                             min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0)
                             for id_match, context_similarity in zip(
-                                row["gold_documents_id_match"], row["gold_contexts_similarity"]
+                                row["gold_documents_id_match"] + [0.0], row["gold_contexts_similarity"] + [0.0]
                             )
                         )
                     )
@@ -1774,9 +1776,9 @@ class Pipeline:
                         lambda row: max(
                             min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
                             for id_match, context_similarity, answer_match in zip(
-                                row["gold_documents_id_match"],
-                                row["gold_contexts_similarity"],
-                                row["gold_answers_match"],
+                                row["gold_documents_id_match"] + [0.0],
+                                row["gold_contexts_similarity"] + [0.0],
+                                row["gold_answers_match"] + [0.0],
                             )
                         )
                     )
@@ -1789,6 +1791,8 @@ class Pipeline:
                                 row["gold_contexts_similarity"], row["gold_answers_match"]
                             )
                         )
+                        if any(row["gold_answers_match"]) and any(row["gold_contexts_similarity"])
+                        else 0.0
                     )
 
                     df_docs["rank"] = np.arange(1, len(df_docs) + 1)

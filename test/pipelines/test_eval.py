@@ -304,6 +304,81 @@ EVAL_LABELS = [
     ),
 ]
 
+NO_ANSWER_EVAL_LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="Why does probability work?",
+                document=Document(""),
+                answer=None,
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    )
+]
+
+DOC_SEARCH_EVAL_LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="Who lives in Berlin?",
+                answer=None,
+                document=Document(
+                    id="a0747b83aea0b60c4b114b15476dd32d",
+                    content_type="text",
+                    content="My name is Carla and I live in Berlin",
+                ),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+    MultiLabel(
+        labels=[
+            Label(
+                query="Who lives in Munich?",
+                answer=None,
+                document=Document(
+                    id="something_else", content_type="text", content="My name is Carla and I live in Munich"
+                ),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+]
+
+DOC_SEARCH_ID_EVAL_LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="Who lives in Berlin?",
+                answer=None,
+                document=Document(id="a0747b83aea0b60c4b114b15476dd32d", content_type="text", content=""),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+    MultiLabel(
+        labels=[
+            Label(
+                query="Who lives in Munich?",
+                answer=None,
+                document=Document(id="something_else", content_type="text", content=""),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+]
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
@@ -622,7 +697,7 @@ def test_reader_eval_in_pipeline(reader):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_document_search_eval_document_scope(retriever_with_docs):
+def test_extractive_qa_eval_document_scope(retriever_with_docs):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
@@ -682,6 +757,160 @@ def test_document_search_eval_document_scope(retriever_with_docs):
     assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
+    assert metrics["Retriever"]["ndcg"] == 1.0
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_document_search_eval_document_scope(retriever_with_docs):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=DOC_SEARCH_EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
+    )
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    metrics = eval_result.calculate_metrics(document_scope="context")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0
+    assert metrics["Retriever"]["ndcg"] == 1.0
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_and_context")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_or_context")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0
+    assert metrics["Retriever"]["ndcg"] == 1.0
+
+    metrics = eval_result.calculate_metrics(document_scope="answer")
+
+    assert metrics["Retriever"]["mrr"] == 0.0
+    assert metrics["Retriever"]["map"] == 0.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.0
+    assert metrics["Retriever"]["recall_single_hit"] == 0.0
+    assert metrics["Retriever"]["precision"] == 0.0
+    assert metrics["Retriever"]["ndcg"] == 0.0
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_document_search_id_only_eval_document_scope(retriever_with_docs):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=DOC_SEARCH_ID_EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
+    )
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    metrics = eval_result.calculate_metrics(document_scope="context")
+
+    assert metrics["Retriever"]["mrr"] == 0.0
+    assert metrics["Retriever"]["map"] == 0.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.0
+    assert metrics["Retriever"]["recall_single_hit"] == 0.0
+    assert metrics["Retriever"]["precision"] == 0.0
+    assert metrics["Retriever"]["ndcg"] == 0.0
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_and_context")
+
+    assert metrics["Retriever"]["mrr"] == 0.0
+    assert metrics["Retriever"]["map"] == 0.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.0
+    assert metrics["Retriever"]["recall_single_hit"] == 0.0
+    assert metrics["Retriever"]["precision"] == 0.0
+    assert metrics["Retriever"]["ndcg"] == 0.0
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_or_context")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    metrics = eval_result.calculate_metrics(document_scope="answer")
+
+    assert metrics["Retriever"]["mrr"] == 0.0
+    assert metrics["Retriever"]["map"] == 0.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.0
+    assert metrics["Retriever"]["recall_single_hit"] == 0.0
+    assert metrics["Retriever"]["precision"] == 0.0
+    assert metrics["Retriever"]["ndcg"] == 0.0
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize(
+    "document_scope",
+    ["document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"],
+)
+def test_document_search_eval_document_scope_no_answer(retriever_with_docs, document_scope):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=NO_ANSWER_EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
+    )
+
+    metrics = eval_result.calculate_metrics(document_scope=document_scope)
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
 
 

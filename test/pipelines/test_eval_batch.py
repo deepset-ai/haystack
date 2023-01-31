@@ -285,7 +285,7 @@ def test_reader_eval_in_pipeline(reader):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_document_search_eval_document_scope(retriever_with_docs):
+def test_extractive_qa_eval_document_scope(retriever_with_docs):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval_batch(
         labels=EVAL_LABELS,
