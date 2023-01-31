@@ -112,7 +112,7 @@ This includes:
      answer: str
      type: Literal["generative", "extractive", "other"] = "extractive"
      score: Optional[float] = None
-     context: Optional[Union[str, pd.DataFrame]] = None
+     context: Optional[Union[str, List[List]]] = None
      offsets_in_document: Optional[List[Span], List[TableCell]] = None
      offsets_in_context: Optional[List[Span], List[TableCell]] = None
      document_id: Optional[str] = None
@@ -122,7 +122,11 @@ This includes:
  when multiple `TableCell`s are returned to form a final answer.
 - Updating any functions that accept table answers as input to use the new `col` and `row` variables instead of `start` and `end` variables.
 This type of check for table answers is most likely already done by checking if the `context` is of type `pd.DataFrame`.
-- `TableReader` and `RCIReader` to return `TableCell` objects instead of `Span`
+- `TableReader` and `RCIReader` to return `TableCell` objects instead of `Span`.
+
+Changes related to the Edge Case/Bug below
+- Update `Document.content` and `Answer.context` to use `List[List]` instead of `pd.DataFrame`.
+- Update `TableReader` nodes to convert table from `List[List]` into `pd.DataFrame` before inputting to the model.
 
 ## Edge Case/Bug
 Internally, Haystack stores a table as a pandas DataFrame in the `Answer` dataclass, which does not treat the column
