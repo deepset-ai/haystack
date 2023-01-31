@@ -356,7 +356,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
         supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
-        config = AutoConfig.from_pretrained(model_name_or_path)
+        try:
+            config = AutoConfig.from_pretrained(model_name_or_path)
+        except OSError:
+            # This is needed so OpenAI models are skipped over
+            return False
         return config.architectures[0] in supported_models
 
 
