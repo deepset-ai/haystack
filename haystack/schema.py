@@ -1437,7 +1437,7 @@ class EvaluationResult:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
 
         # find out which label matched
-        def find_matched_label_idxs(row):
+        def find_matched_label_idxs(row) -> List[int]:  # pylint: disable=too-many-return-statements
             id_matches = [idx for idx, val in enumerate(row["gold_documents_id_match"]) if val == 1.0]
             context_matches = [idx for idx, val in enumerate(row["gold_contexts_similarity"]) if val > 65.0]
             answer_matches = [idx for idx, val in enumerate(row["gold_answers_match"]) if val == 1.0]
@@ -1459,6 +1459,8 @@ class EvaluationResult:
                 return list(set(context_matches) & set(answer_matches))
             elif document_relevance_criterion == "document_id_and_context_and_answer":
                 return list(set(id_matches) & set(context_matches) & set(answer_matches))
+            else:
+                raise ValueError(f"document_relevance_criterion '{document_relevance_criterion}' not supported.")
 
         documents["matched_label_idxs"] = documents.apply(find_matched_label_idxs, axis=1)
 
@@ -1481,7 +1483,7 @@ class EvaluationResult:
                 gold_document_ids.remove("00")
 
             num_labels = len(gold_document_ids)
-            num_matched_labels = len(set([idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs]))
+            num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
             num_missing_labels = num_labels - num_matched_labels
 
             relevance_criterion_ids = list(relevant_rows["document_id"].values)
