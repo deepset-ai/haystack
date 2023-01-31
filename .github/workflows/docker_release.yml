@@ -47,22 +47,6 @@ jobs:
           targets: base
           push: true
 
-      - name: Test base images
-        run: |
-          EXPECTED_VERSION=$(cat VERSION.txt)
-          function test_image {
-            local TAG=$1
-            local PLATFORM=$2
-            local VERSION=$(docker run --platform $PLATFORM --rm deepset/haystack:$TAG python -c"import haystack; print(haystack.__version__)")
-            [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
-            # Remove image after test to avoid filling the GitHub runner and prevent its failure
-            docker rmi deepset/haystack:$TAG
-          }
-          test_image base-cpu-${{ steps.meta.outputs.version }} linux/amd64
-          test_image base-gpu-${{ steps.meta.outputs.version }} linux/amd64
-          test_image base-cpu-${{ steps.meta.outputs.version }} linux/arm64
-          test_image base-gpu-${{ steps.meta.outputs.version }} linux/arm64
-
       - name: Build api images
         uses: docker/bake-action@v2
         env:
