@@ -9,7 +9,8 @@ from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
 import requests
 import torch
-from transformers import pipeline, AutoModelForSeq2SeqLM, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
+from transformers import pipeline, StoppingCriteria, StoppingCriteriaList, AutoTokenizer, AutoConfig
+from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
@@ -245,7 +246,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         Creates an instance of HFLocalInvocationLayer used to invoke local Hugging Face models.
 
-
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of the output text.
         :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
@@ -257,8 +257,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
         For more details about these kwargs, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
-
-
         """
         super().__init__(model_name_or_path, max_length)
         self.use_auth_token = use_auth_token
@@ -357,15 +355,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
-        if not all(m in model_name_or_path for m in ["google", "flan", "t5"]):
-            return False
-
-        try:
-            # if it is google flan t5, load it, we'll use it anyway and also check if model loads correctly
-            AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
-        except EnvironmentError:
-            return False
-        return True
+        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
+        config = AutoConfig.from_pretrained(model_name_or_path)
+        return config.architectures[0] in supported_models
 
 
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
@@ -561,8 +553,8 @@ class PromptModel(BaseComponent):
                 )
         raise ValueError(
             f"Model {self.model_name_or_path} is not supported - no invocation layer found."
-            f"Currently supported models are: {self.invocation_layers}"
-            f"Register new invocation layer for {self.model_name_or_path} using the register method."
+            f" Currently supported models are: {self.invocation_layers}"
+            f" Register a new invocation layer for {self.model_name_or_path} using the register method."
         )
 
     def register(self, invocation_layer: Type[PromptModelInvocationLayer]):
@@ -677,7 +669,6 @@ class PromptNode(BaseComponent):
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
 
     For more details, see the PromptNode [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
-
     """
 
     outgoing_edges: int = 1
