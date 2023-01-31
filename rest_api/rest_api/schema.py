@@ -61,4 +61,5 @@ class QueryResponse(BaseModel):
     query: str
     answers: List[Answer] = []
     documents: List[Document] = []
+    results: Optional[List[str]] = None
     debug: Optional[Dict] = Field(None, alias="_debug")

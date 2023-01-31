@@ -1,3 +1,5 @@
+# mypy: disable_error_code = "empty-body, override, union-attr"
+
 from typing import Dict, List, Optional, Union, Generator
 
 import os
@@ -438,6 +440,34 @@ def test_query_with_dataframe(client):
         assert len(response.json()["documents"]) == 1
         assert response.json()["documents"][0]["content"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
         assert response.json()["documents"][0]["content_type"] == "table"
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
+
+
+def test_query_with_prompt_node(client):
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {
+            "query": TEST_QUERY,
+            "documents": [
+                Document(
+                    content="test",
+                    content_type="text",
+                    score=0.9,
+                    meta={"test_key": "test_value"},
+                    embedding=np.array([0.1, 0.2, 0.3]),
+                )
+            ],
+            "results": ["test"],
+        }
+        response = client.post(url="/query", json={"query": TEST_QUERY})
+        assert 200 == response.status_code
+        assert len(response.json()["documents"]) == 1
+        assert response.json()["documents"][0]["content"] == "test"
+        assert response.json()["documents"][0]["content_type"] == "text"
+        assert response.json()["documents"][0]["embedding"] == [0.1, 0.2, 0.3]
+        assert len(response.json()["results"]) == 1
+        assert response.json()["results"][0] == "test"
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
 
