@@ -1457,7 +1457,7 @@ class EvaluationResult:
                 # Omit gold_document_ids if it is not used in the document_relevance_criterion
                 num_relevants = len(set(relevance_criterion_ids))
                 # num_relevants can be 0 even though there are relevant documents in the corpus, just because no relevant document has been retrieved.
-                # We fix this here by adding 1 if we know that this is not a no_answer query.
+                # We fix this here by setting it to >> 0 if we know that this is not a no_answer query.
                 is_no_answer_query = query_df["gold_document_ids"].iloc[0] == []
                 if num_relevants == 0 and not is_no_answer_query:
                     num_relevants = 999
@@ -1465,7 +1465,7 @@ class EvaluationResult:
             num_retrieved = len(
                 query_df["document_id"]
             )  # cannot be 0 as we have at least one (empty) document in the query_df
-            num_retrieved_relevants = relevant_rows[relevance_criterion_col].values.sum()
+            num_retrieved_relevants = len(relevant_rows)
             rank_retrieved_relevants = relevant_rows["rank"].values
 
             if num_relevants == 0:
