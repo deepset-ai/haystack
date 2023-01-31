@@ -220,87 +220,102 @@ The MRKLAgent can be either created programmatically or loaded from a YAML file:
 
 **Example programmatic creation:**
 ```python
-    prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
-    prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    search = SerpAPIComponent(api_key=os.environ.get("SERPAPI_API_KEY"))
-    search_pipeline = Pipeline()
-    search_pipeline.add_node(component=search, name="Serp", inputs=["Query"])
+search_tool = Pipeline()
+search_tool.add_node(
+    component=SerpAPIComponent(api_key=os.environ.get("SERPAPI_API_KEY")), name="Serp", inputs=["Query"]
+)
 
-    tools = [
-        {
-            "pipeline_name": "serpapi_pipeline",
-            "tool_name": "Search",
-            "description": "useful for when you need to answer questions about current events. You should ask targeted questions",
-        }
-    ]
-    tool_map = {"Search": search_pipeline}
-    mrkl_agent = MRKLAgent(prompt_node=prompt_node, tools=tools, tool_map=tool_map)
-    result = mrkl_agent.run(query="What is 2 to the power of 3?")
+prompt_model=PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+
+calculator = Pipeline()
+calculator.add_node(PromptNode(
+    model_name_or_path=prompt_model,
+    default_prompt_template=PromptTemplate(prompt_text="Write a simple python function that calculates...")),
+    output_variable="python_runtime_input")  # input
+calculator.add_node(PythonRuntime())  # actual calculator
+
+prompt_node = PromptNode(
+    model_name_or_path=prompt_model,
+    stop_words=["Observation:"]
+)
+
+agent = MRKLAgent(prompt_node=prompt_node)
+agent.add_tool("Search", search_tool, "useful for when you need to answer questions about current events. You should ask targeted questions")
+agent.add_tool("Calculator", calculator, "useful for when you need to answer questions about math")
+
+result = agent.run("What is 2 to the power of 3?")
 ```
 
 **Example YAML file:**
 ```yaml
-    version: ignore
-    components:
-      - name: MRKLAgent
-        type: MRKLAgent
-        params:
-          prompt_node: MRKLAgentPromptNode
-          tools: [{'pipeline_name': 'serpapi_pipeline', 'tool_name': 'Search', 'description': 'useful for when you need to answer questions about current events. You should ask targeted questions'}, {'pipeline_name': 'calculator_pipeline', 'tool_name': 'Calculator', 'description': 'useful for when you need to answer questions about math'}]
-      - name: MRKLAgentPromptNode
-        type: PromptNode
-        params:
-          model_name_or_path: DavinciModel
-          stop_words: ['Observation:']
-      - name: DavinciModel
-        type: PromptModel
-        params:
-          model_name_or_path: 'text-davinci-003'
-          api_key: 'XYZ'
+version: ignore
+
+components:
+  - name: MRKLAgentPromptNode
+    type: PromptNode
+    params:
+      model_name_or_path: DavinciModel
+      stop_words: ['Observation:']
+  - name: DavinciModel
+    type: PromptModel
+    params:
+      model_name_or_path: 'text-davinci-003'
+      api_key: 'XYZ'
+  - name: Serp
+    type: SerpAPIComponent
+    params:
+      api_key: 'XYZ'
+  - name: CalculatorInput
+    type: PromptNode
+    params:
+      model_name_or_path: DavinciModel
+      default_prompt_template: CalculatorTemplate
+      output_variable: python_runtime_input
+  - name: Calculator
+    type: PythonRuntime
+  - name: CalculatorTemplate
+    type: PromptTemplate
+    params:
+      name: calculator
+      prompt_text:  |
+          # Write a simple python function that calculates
+          # $query
+          # Do not print the result; invoke the function and assign the result to final_result variable
+          # Start with import statement
+
+pipelines:
+  - name: serpapi_pipeline
+    nodes:
       - name: Serp
-        type: SerpAPIComponent
-        params:
-          api_key: 'XYZ'
+        inputs: [Query]
+  - name: calculator_pipeline
+    nodes:
       - name: CalculatorInput
-        type: PromptNode
-        params:
-          model_name_or_path: DavinciModel
-          default_prompt_template: CalculatorTemplate
-          output_variable: python_runtime_input
+        inputs: [Query]
       - name: Calculator
-        type: PythonRuntime
-      - name: CalculatorTemplate
-        type: PromptTemplate
-        params:
-          name: calculator
-          prompt_text:  |
-              # Write a simple python function that calculates
-              # $query
-              # Do not print the result; invoke the function and assign the result to final_result variable
-              # Start with import statement
-    pipelines:
-      - name: mrkl_query_pipeline
-        nodes:
-          - name: MRKLAgent
-            inputs: [Query]
-      - name: serpapi_pipeline
-        nodes:
-          - name: Serp
-            inputs: [Query]
-      - name: calculator_pipeline
-        nodes:
-          - name: CalculatorInput
-            inputs: [Query]
-          - name: Calculator
-            inputs: [CalculatorInput]
-"""
+        inputs: [CalculatorInput]
+
+agents:
+  - name: agent
+    params:
+      prompt_node: MRKLAgentPromptNode
+      tools:
+        - name: Search
+          pipeline_name: serpapi_pipeline
+          description: >
+            useful for when you need to answer questions about current events.
+            You should ask targeted questions
+        - name: Calculator
+          pipeline_name: calculator_pipeline
+          description: >
+            useful for when you need to answer questions about math
 ```
 
 and loading from the YAML file into a MRKLAgent:
 
 ```python
-mrkl_agent = MRKLAgent.load_from_yaml(
-    "test.mrkl.haystack-pipeline.yml", pipeline_name="mrkl_query_pipeline"
+agent = MRKLAgent.load_from_yaml(
+    "test.mrkl.haystack-pipeline.yml", agent_name="agent"
 )
 ```
 
