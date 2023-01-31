@@ -573,7 +573,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         """
         Return the count of embeddings in the document store.
         """
-        documents = self.get_all_documents(filters=filters, index=index)
+        documents = self.get_all_documents_generator(filters=filters, index=index, return_embedding=True)
         embedding_count = sum(doc.embedding is not None for doc in documents)
         return embedding_count
 

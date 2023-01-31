@@ -21,6 +21,7 @@ from haystack.nodes.file_converter import (
     ParsrConverter,
     CsvTextConverter,
 )
+from haystack.nodes.image_to_text import TransformersImageToText
 from haystack.nodes.label_generator import PseudoLabelGenerator
 from haystack.nodes.other import (
     Docs2Answers,
