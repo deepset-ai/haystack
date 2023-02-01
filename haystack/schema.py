@@ -1439,7 +1439,9 @@ class EvaluationResult:
         # find out which label matched
         def find_matched_label_idxs(row) -> List[int]:  # pylint: disable=too-many-return-statements
             id_matches = [idx for idx, val in enumerate(row["gold_documents_id_match"]) if val == 1.0]
-            context_matches = [idx for idx, val in enumerate(row["gold_contexts_similarity"]) if val > 65.0]
+            context_matches = [
+                idx for idx, val in enumerate(row["gold_contexts_similarity"]) if val > 65.0
+            ]  # TODO: hardcoded threshold for now, will be param of calculate_metrics
             answer_matches = [idx for idx, val in enumerate(row["gold_answers_match"]) if val == 1.0]
             if document_relevance_criterion == "document_id":
                 return id_matches
