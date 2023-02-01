@@ -178,9 +178,10 @@ class DensePassageRetriever(DenseRetriever):
 
         if document_store and document_store.similarity != "dot_product":
             logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                "You are using a Dense Passage Retriever model with the %s function. "
                 "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
         # Init & Load Encoders
@@ -236,7 +237,7 @@ class DensePassageRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -479,7 +480,7 @@ class DensePassageRetriever(DenseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -499,7 +500,7 @@ class DensePassageRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -550,8 +551,9 @@ class DensePassageRetriever(DenseRetriever):
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -658,7 +660,7 @@ class DensePassageRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -672,7 +674,7 @@ class DensePassageRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -712,7 +714,7 @@ class DensePassageRetriever(DenseRetriever):
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
         if len(self.devices) > 1 and not isinstance(self.model, DataParallel):
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -930,7 +932,7 @@ class TableTextRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -1097,7 +1099,7 @@ class TableTextRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
 
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -1117,7 +1119,7 @@ class TableTextRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -1163,8 +1165,9 @@ class TableTextRetriever(DenseRetriever):
 
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -1299,7 +1302,7 @@ class TableTextRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -1309,7 +1312,7 @@ class TableTextRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -1355,7 +1358,7 @@ class TableTextRetriever(DenseRetriever):
         self.table_tokenizer.save_pretrained(f"{save_dir}/{table_encoder_save_dir}")
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -1532,10 +1535,11 @@ class EmbeddingRetriever(DenseRetriever):
             and model_format != "sentence_transformers"
         ):
             logger.warning(
-                f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
-                f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
-                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
-                f"'model_format' parameter at all."
+                "You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '%s'."
+                " You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                "As an alternative, you can let Haystack derive the format automatically by not setting the "
+                "'model_format' parameter at all.",
+                self.model_format,
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
@@ -1822,7 +1826,7 @@ class EmbeddingRetriever(DenseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(
+                hf_hub_download(  # type: ignore [call-arg]
                     repo_id=model_name_or_path,
                     filename="config_sentence_transformers.json",
                     use_auth_token=use_auth_token,

@@ -100,8 +100,8 @@ class Crawler(BaseComponent):
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
-        IN_AZUREML = True if os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True" else False
-        IS_ROOT = True if os.geteuid() == 0 else False
+        IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
+        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
@@ -125,9 +125,38 @@ class Crawler(BaseComponent):
                 raise NodeError(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        !apt-get update
-                        !apt install chromium-driver
-                        !cp /usr/lib/chromium-browser/chromedriver /usr/bin
+                        %%shell
+                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
+                        EOF
+
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
+                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
+                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
+                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
+
+                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
+                        Package: *
+                        Pin: release a=eoan
+                        Pin-Priority: 500
+
+
+                        Package: *
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 300
+
+
+                        Package: chromium*
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 700
+                        EOF
+
+                        apt-get update
+                        apt-get install chromium chromium-driver
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
                 ) from exc
         else:
@@ -295,7 +324,9 @@ class Crawler(BaseComponent):
             if base_url:
                 data["meta"]["base_url"] = base_url
             data["content"] = text
-            document = Document.from_dict(data, id_hash_keys=id_hash_keys)
+            if id_hash_keys:
+                data["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(data)
 
             if crawler_naming_function is not None:
                 file_name_prefix = crawler_naming_function(link, text)
@@ -309,9 +340,14 @@ class Crawler(BaseComponent):
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(document.to_dict(), f)
-            except Exception as e:
+            except Exception:
                 logging.exception(
-                    f"Crawler can't save the content of '{link}' under '{file_path}'. This webpage will be skipped, but links from this page will still be crawled. Make sure the path above is accessible and the file name is valid. If the file name is invalid, consider setting 'crawler_naming_function' to another function."
+                    "Crawler can't save the content of '%s' under '%s'. "
+                    "This webpage will be skipped, but links from this page will still be crawled. "
+                    "Make sure the path above is accessible and the file name is valid. "
+                    "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+                    link,
+                    file_path,
                 )
 
             paths.append(file_path)
@@ -377,7 +413,9 @@ class Crawler(BaseComponent):
             crawled_data = []
             for _file in file_paths:
                 with open(_file.absolute(), "r") as read_file:
-                    crawled_data.append(Document.from_dict(json.load(read_file), id_hash_keys=id_hash_keys))
+                    document = json.load(read_file)
+                    document["id_hash_keys"] = id_hash_keys
+                    crawled_data.append(Document.from_dict(document))
             results = {"documents": crawled_data}
         else:
             results = {"paths": file_paths}
@@ -441,7 +479,7 @@ class Crawler(BaseComponent):
         for i in a_elements:
             try:
                 sub_link = i.get_attribute("href")
-            except StaleElementReferenceException as error:
+            except StaleElementReferenceException:
                 logger.error(
                     "The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript."
                 )

@@ -1,8 +1,12 @@
 import sys
 from pathlib import Path
-import os
+from typing import Any, Optional, List
+from unittest.mock import Mock
 
+import nltk.data
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from _pytest.tmpdir import TempPathFactory
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
@@ -57,6 +61,32 @@ redação final aprovada. O projeto aprovado será encaminhado em autógrafos
 ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
 do RICD e arts. 328 a 331 do RISF.
 """
+
+
+@pytest.fixture(scope="module")
+def module_tmp_dir(tmp_path_factory: TempPathFactory) -> Path:
+    """Module fixture to avoid that the model data is downloaded for each test."""
+    return tmp_path_factory.mktemp("nltk_data")
+
+
+@pytest.fixture(autouse=True)
+def patched_nltk_data_path(module_tmp_dir: Path, monkeypatch: MonkeyPatch, tmp_path: Path) -> Path:
+    """Patch the NLTK data path to use a temporary directory instead of a local, persistent directory."""
+    old_find = nltk.data.find
+
+    def patched_find(resource_name: str, paths: Optional[List[str]] = None) -> str:
+        return old_find(resource_name, paths=[str(tmp_path)])
+
+    monkeypatch.setattr(nltk.data, nltk.data.find.__name__, patched_find)
+
+    old_download = nltk.download
+
+    def patched_download(*args: Any, **kwargs: Any) -> bool:
+        return old_download(*args, **kwargs, download_dir=str(tmp_path))
+
+    monkeypatch.setattr(nltk, nltk.download.__name__, patched_download)
+
+    return tmp_path
 
 
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
@@ -467,3 +497,27 @@ def test_headline_processing_split_by_passage_overlap():
 
     for doc, expected in zip(documents, expected_headlines):
         assert doc.meta["headlines"] == expected
+
+
+def test_file_exists_error_during_download(monkeypatch: MonkeyPatch, module_tmp_dir: Path):
+    # Pretend the model resources were not found in the first attempt
+    monkeypatch.setattr(nltk.data, "find", Mock(side_effect=[LookupError, str(module_tmp_dir)]))
+
+    # Pretend download throws a `FileExistsError` exception as a different process already downloaded it
+    monkeypatch.setattr(nltk, "download", Mock(side_effect=FileExistsError))
+
+    # This shouldn't raise an exception as the `FileExistsError` is ignored
+    PreProcessor(split_length=2, split_respect_sentence_boundary=False)
+
+
+def test_preprocessor_very_long_document(caplog):
+    preproc = PreProcessor(
+        clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars_check=10
+    )
+    documents = [
+        Document(content=f"this is a test document with more than max_char characters: {'1'*i}") for i in range(9)
+    ]
+    results = preproc.process(documents)
+    assert results == documents
+    for i in range(5):
+        assert f"is 6{i} characters long after preprocessing, where the maximum length should be 10." in caplog.text

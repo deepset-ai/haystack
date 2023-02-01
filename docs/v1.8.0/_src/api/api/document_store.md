@@ -5074,7 +5074,7 @@ namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
 
 **Returns**:
 
-`None`: 
+`None`:
 
 <a id="pinecone.PineconeDocumentStore.delete_index"></a>
 
@@ -5301,4 +5301,3 @@ and UTC as default time zone.
 
 This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
 and filter_utils.py.
-

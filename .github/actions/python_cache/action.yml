@@ -12,7 +12,7 @@ inputs:
   pythonVersion:
     description: 'Python version to use'
     required: true
-    default: "3.7"
+    default: "3.8"
 
 runs:
   using: "composite"
@@ -33,7 +33,7 @@ runs:
     with:
       python-version: ${{ inputs.pythonVersion }}
 
-  - name: Cache
+  - name: Cache Python path
     id: cache-python-env
     uses: actions/cache@v3
     with:

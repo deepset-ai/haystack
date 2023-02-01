@@ -51,7 +51,7 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event
+from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -293,10 +293,13 @@ class Pipeline:
         for document_store in document_stores:
             if document_store["type"] != "DeepsetCloudDocumentStore":
                 logger.info(
-                    f"In order to be used on Deepset Cloud, component '{document_store['name']}' of type '{document_store['type']}' "
-                    f"has been automatically converted to type DeepsetCloudDocumentStore. "
-                    f"Usually this replacement will result in equivalent pipeline quality. "
-                    f"However depending on chosen settings of '{document_store['name']}' differences might occur."
+                    "In order to be used on Deepset Cloud, component '%s' of type '%s' "
+                    "has been automatically converted to type DeepsetCloudDocumentStore. "
+                    "Usually this replacement will result in equivalent pipeline quality. "
+                    "However depending on chosen settings of '%s' differences might occur.",
+                    document_store["name"],
+                    document_store["type"],
+                    document_store["name"],
                 )
                 document_store["type"] = "DeepsetCloudDocumentStore"
                 document_store["params"] = {}
@@ -784,7 +787,7 @@ class Pipeline:
 
         # crop dataset if `dataset_size` is provided and is valid
         if num_documents is not None and 0 < num_documents < len(corpus):
-            logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
+            logger.info("Cropping dataset from %s to %s documents", len(corpus), num_documents)
             corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
             corpus_ids = set(list(corpus.keys()))
@@ -800,8 +803,9 @@ class Pipeline:
             qrels = qrels_new
         elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
             logging.warning(
-                f"'num_documents' variable should be lower than corpus length and have a positive value, but it's {num_documents}."
-                " Dataset size remains unchanged."
+                "'num_documents' variable should be lower than corpus length and have a positive value, but it's %s."
+                " Dataset size remains unchanged.",
+                num_documents,
             )
 
         # check index before eval
@@ -1000,7 +1004,7 @@ class Pipeline:
                     f"Please specify a valid experiment_tracking_tool. Possible values are: {TRACKING_TOOL_TO_HEAD.keys()}"
                 )
             if experiment_tracking_uri is None:
-                raise HaystackError(f"experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
+                raise HaystackError("experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
             tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
             tracker.set_tracking_head(tracking_head)
 
@@ -1033,7 +1037,7 @@ class Pipeline:
             # check index before eval
             document_store = index_pipeline.get_document_store()
             if document_store is None:
-                raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
+                raise HaystackError("Document store not found. Please provide pipelines with proper document store.")
             document_count = document_store.get_document_count()
 
             if document_count > 0:
@@ -1842,9 +1846,9 @@ class Pipeline:
             import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
-                f"Could not import `pygraphviz`. Please install via: \n"
-                f"pip install pygraphviz\n"
-                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
+                "Could not import `pygraphviz`. Please install via: \n"
+                "pip install pygraphviz\n"
+                "(You might need to run this first: apt install libgraphviz-dev graphviz )"
             )
 
         graphviz = to_agraph(self.graph)
@@ -1997,7 +2001,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
+            logger.debug("Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
@@ -2288,7 +2292,8 @@ class Pipeline:
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
     def send_pipeline_event(self, is_indexing: bool = False):
-        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
+        fingerprint = sha1(json_repr.encode()).hexdigest()
         send_custom_event(
             "pipeline",
             payload={
@@ -2304,18 +2309,21 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
-        if should_send_event and not self.sent_event_in_window:
-            self.send_pipeline_event(is_indexing)
-            self.sent_event_in_window = True
-        elif self.has_event_time_interval_exceeded():
-            self.sent_event_in_window = False
+        if is_telemetry_enabled():
+            should_send_event = (
+                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
+            )
+            if should_send_event and not self.sent_event_in_window:
+                self.send_pipeline_event(is_indexing)
+                self.sent_event_in_window = True
+            elif self._has_event_time_interval_exceeded():
+                self.sent_event_in_window = False
 
-    def has_event_time_interval_exceeded(self):
+    def _has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         return now - self.time_of_last_sent_event > self.event_time_interval
 
-    def has_event_run_total_threshold_exceeded(self):
+    def _has_event_run_total_threshold_exceeded(self):
         return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 

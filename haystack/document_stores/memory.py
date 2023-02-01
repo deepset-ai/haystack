@@ -110,8 +110,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.main_device = self.devices[0]
@@ -184,7 +185,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                     )
                 if duplicate_documents == "skip":
                     logger.warning(
-                        f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
+                        "Duplicate Documents: Document with id '%s' already exists in index '%s'", document.id, index
                     )
                     continue
             self.indexes[index][document.id] = document
@@ -205,8 +206,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         textual_documents = [doc for doc in all_documents if doc.content_type == "text"]
         if len(textual_documents) < len(all_documents):
             logger.warning(
-                f"Some documents in {index} index are non-textual."
-                f" They will be written to the index, but the corresponding BM25 representations will not be generated."
+                "Some documents in %s index are non-textual."
+                " They will be written to the index, but the corresponding BM25 representations will not be generated.",
+                index,
             )
 
         tokenized_corpus = [
@@ -236,10 +238,11 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_objects, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f" Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                " Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
 
         for label in label_objects:
@@ -281,32 +284,32 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param document_to_search: List of documents to compare `query_emb` against.
         """
-        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
+        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)  # type: ignore [assignment]
         if len(query_emb.shape) == 1:
-            query_emb = query_emb.unsqueeze(dim=0)
+            query_emb = query_emb.unsqueeze(dim=0)  # type: ignore [attr-defined]
 
         doc_embeds = np.array([doc.embedding for doc in document_to_search])
-        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)
+        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)  # type: ignore [assignment]
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
+            doc_embeds = doc_embeds.unsqueeze(dim=0)  # type: ignore [attr-defined]
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
             return []
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
             query_emb_norm = torch.norm(query_emb, dim=1)
-            query_emb = torch.div(query_emb, query_emb_norm)
+            query_emb = torch.div(query_emb, query_emb_norm)  # type: ignore [assignment,arg-type]
 
             doc_embeds_norms = torch.norm(doc_embeds, dim=1)
-            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T
+            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T  # type: ignore [assignment,arg-type]
 
         curr_pos = 0
-        scores = []
+        scores = []  # type: ignore [var-annotated]
         while curr_pos < len(doc_embeds):
             doc_embeds_slice = doc_embeds[curr_pos : curr_pos + self.scoring_batch_size]
-            doc_embeds_slice = doc_embeds_slice.to(self.main_device)
+            doc_embeds_slice = doc_embeds_slice.to(self.main_device)  # type: ignore [attr-defined]
             with torch.inference_mode():
-                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
+                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()  # type: ignore [arg-type,arg-type]
                 slice_scores = slice_scores.squeeze(dim=1)
                 slice_scores = slice_scores.numpy().tolist()
 
@@ -327,7 +330,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         doc_embeds = np.array([doc.embedding for doc in document_to_search])
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
+            doc_embeds = doc_embeds.unsqueeze(dim=0)  # type: ignore [attr-defined]
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
             return []
 
@@ -570,7 +573,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         """
         Return the count of embeddings in the document store.
         """
-        documents = self.get_all_documents(filters=filters, index=index)
+        documents = self.get_all_documents_generator(filters=filters, index=index, return_embedding=True)
         embedding_count = sum(doc.embedding is not None for doc in documents)
         return embedding_count
 

@@ -283,7 +283,7 @@ The checkpoint format matches huggingface transformers' model format
                     {"text": "my text", "meta": {"name": "my title"}}.
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
-                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
                             Options: `dot_product` (Default) or `cosine`
 - `progress_bar`: Whether to show a tqdm progress bar or not.
@@ -508,4 +508,3 @@ Create embeddings for a list of passages. For this Retriever type: The same as c
 **Returns**:
 
 Embeddings, one per input passage
-

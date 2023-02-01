@@ -4755,4 +4755,3 @@ You can use certifi package with `certifi.where()` to find where the CA certs fi
 - `verify_certs`: Whether to be strict about ca certificates.
 - `timeout`: Number of seconds after which an Elasticsearch request times out.
 - `use_system_proxy`: Whether to use system proxy.
-

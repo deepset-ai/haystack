@@ -1,6 +1,7 @@
 from typing import List, Union, Dict, Any
 
 import os
+import numpy as np
 from inspect import getmembers, isclass, isfunction
 from unittest.mock import MagicMock
 
@@ -8,7 +9,7 @@ import pytest
 
 from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.schema import Document
-from haystack.errors import FilterError
+from haystack.errors import FilterError, PineconeDocumentStoreError
 
 
 from .test_base import DocumentStoreBaseTestAbstract
@@ -139,6 +140,24 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     #
     #  Tests
     #
+    @pytest.mark.integration
+    def test_doc_store_wrong_init(self):
+        """
+        This is just a failure check case.
+        """
+        try:
+            _ = PineconeDocumentStore(
+                api_key=os.environ.get("PINECONE_API_KEY") or "fake-pinecone-test-key",
+                embedding_dim=768,
+                pinecone_index="p_index",
+                embedding_field="embedding",
+                index="haystack_tests",
+                similarity="cosine",
+                metadata_config={"indexed": META_FIELDS},
+            )
+            assert False
+        except PineconeDocumentStoreError as pe:
+            assert "`pinecone_index` needs to be a `pinecone.Index` object" in pe.message
 
     @pytest.mark.integration
     def test_ne_filters(self, ds, documents):
@@ -410,7 +429,9 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "parent1": {"parent2": {"parent3": {"child1": 1, "child2": 2}}},
             "meta_field": "multilayer-test",
         }
-        doc = Document(content=f"Multilayered dict", meta=multilayer_meta, embedding=[0.0] * 768)
+        doc = Document(
+            content=f"Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
+        )
 
         doc_store_with_docs.write_documents([doc])
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "multilayer-test"}})
@@ -429,3 +450,13 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         ds._validate_embeddings_shape.assert_called_once()
         ds.update_embeddings(retriever, update_existing_embeddings=False)
         ds._validate_embeddings_shape.assert_called_once()
+
+    @pytest.mark.integration
+    def test_get_embedding_count(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
+        embeddings.
+        """
+        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc])
+        assert doc_store_with_docs.get_embedding_count() == 1

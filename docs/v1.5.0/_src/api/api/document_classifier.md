@@ -158,4 +158,3 @@ Documents are updated in place.
 **Returns**:
 
 List of Documents or list of lists of Documents enriched with meta information.
-
