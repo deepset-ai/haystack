@@ -936,10 +936,11 @@ class PromptNode(BaseComponent):
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
-        final_result = {}
-        if self.output_variable:
-            invocation_context[self.output_variable] = results
-            final_result[self.output_variable] = results
+        final_result: Dict[str, Any] = {}
+        output_variable = self.output_variable or "results"
+        if output_variable:
+            invocation_context[output_variable] = results
+            final_result[output_variable] = results
 
         final_result["invocation_context"] = invocation_context
         final_result["_debug"] = {"prompts_used": prompt_collector}
