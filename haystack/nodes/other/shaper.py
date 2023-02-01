@@ -158,20 +158,20 @@ REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
 }
 
 
-class InvocationContextMapper(BaseComponent):
+class Shaper(BaseComponent):
 
     """
-    InvocationContextMapper is a component that can invoke arbitrary, registered functions on the invocation context
+    Shaper is a component that can invoke arbitrary, registered functions on the invocation context
     (query, documents, and so on) of a pipeline. It then passes the new or modified variables further down the pipeline.
 
-    Using YAML configuration, the InvocationContextMapper component is initialized with functions to invoke on pipeline invocation
+    Using YAML configuration, the Shaper component is initialized with functions to invoke on pipeline invocation
     context.
 
     For example, in the YAML snippet below:
     ```yaml
         components:
-        - name: mapper
-          type: InvocationContextMapper
+        - name: shaper
+          type: Shaper
           params:
             func: value_to_list
             inputs:
@@ -179,16 +179,16 @@ class InvocationContextMapper(BaseComponent):
                 target_list: documents
             output: [questions]
     ```
-    InvocationContextMapper component is initialized with a directive to invoke function expand on the variable query and to store
+    Shaper component is initialized with a directive to invoke function expand on the variable query and to store
     the result in the invocation context variable questions. All other invocation context variables are passed down
     the pipeline as they are.
 
-    InvocationContextMapper is especially useful for pipelines with PromptNodes, where we need to modify the invocation
+    Shaper is especially useful for pipelines with PromptNodes, where we need to modify the invocation
     context to match the templates of PromptNodes.
 
-    You can use multiple InvocationContextMapper components in a pipeline to modify the invocation context as needed.
+    You can use multiple Shaper components in a pipeline to modify the invocation context as needed.
 
-    `InvocationContextMapper` supports the current functions:
+    `Shaper` supports the current functions:
 
     - `value_to_list`
     - `join_strings`
@@ -210,13 +210,13 @@ class InvocationContextMapper(BaseComponent):
         params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Initializes the InvocationContextMapper component.
+        Initializes the Shaper component.
 
         Some examples:
 
         ```yaml
-        - name: mapper
-          type: InvocationContextMapper
+        - name: shaper
+          type: Shaper
           params:
           func: value_to_list
           inputs:
@@ -229,8 +229,8 @@ class InvocationContextMapper(BaseComponent):
         This list is stored in the invocation context under the key `questions`.
 
         ```yaml
-        - name: mapper
-          type: InvocationContextMapper
+        - name: shaper
+          type: Shaper
           params:
           func: join_documents
           inputs:
@@ -242,11 +242,11 @@ class InvocationContextMapper(BaseComponent):
         ```
         This node overwrites the content of `documents` in the invocation context with a list containing a single Document
         whose content is the concatenation of all the original Documents. So if `documents` contained
-        `[Document("A"), Document("B"), Document("C")]`, this mapper overwrites it with `[Document("A - B - C")]`
+        `[Document("A"), Document("B"), Document("C")]`, this shaper overwrites it with `[Document("A - B - C")]`
 
         ```yaml
-        - name: mapper
-          type: InvocationContextMapper
+        - name: shaper
+          type: Shaper
           params:
           func: join_strings
           params:
@@ -255,8 +255,8 @@ class InvocationContextMapper(BaseComponent):
           outputs:
             - single_string
 
-        - name: mapper
-          type: InvocationContextMapper
+        - name: shaper
+          type: Shaper
           params:
           func: strings_to_documents
           inputs:
@@ -329,14 +329,14 @@ class InvocationContextMapper(BaseComponent):
         input_values = {**self.params, **input_values}
         try:
             logger.debug(
-                "InvocationContextMapper is invoking this function: %s(%s)",
+                "Shaper is invoking this function: %s(%s)",
                 self.function.__name__,
                 ", ".join([f"{key}={value}" for key, value in input_values.items()]),
             )
             output_values = self.function(**input_values)
         except TypeError as e:
             raise ValueError(
-                "InvocationContextMapper couldn't apply the function to your inputs and parameters. "
+                "Shaper couldn't apply the function to your inputs and parameters. "
                 "Check the above stacktrace and make sure you provided all the correct inputs, parameters, "
                 "and parameter types."
             ) from e
