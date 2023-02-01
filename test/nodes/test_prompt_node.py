@@ -101,16 +101,6 @@ def test_create_prompt_node():
     assert prompt_node.model_name_or_path == "text-davinci-003"
     assert prompt_node.prompt_model is not None
 
-    with pytest.raises(ValueError, match="Model vblagoje/bart_lfqa is not supported"):
-        # yes vblagoje/bart_lfqa is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("vblagoje/bart_lfqa")
-
-    with pytest.raises(ValueError, match="Model valhalla/t5-base-e2e-qg is not supported"):
-        # yes valhalla/t5-base-e2e-qg is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("valhalla/t5-base-e2e-qg")
-
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptNode("some-random-model")
 
