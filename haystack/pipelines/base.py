@@ -2313,15 +2313,6 @@ class Pipeline:
             should_send_event = (
                 self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
             )
-            
-            # RayPipeline's components are not compatible with the serialization in `get_config()` called by
-            # `send_pipeline_event()`, so the event sending is suspended for RayPipelines (it would crash anyhow)
-            from haystack.pipelines.ray import RayPipeline
-
-            if isinstance(self, RayPipeline):
-                should_send_event = False
-                logger.debug("The event sending is currently disabled for RayPipelines.")
-
             if should_send_event and not self.sent_event_in_window:
                 self.send_pipeline_event(is_indexing)
                 self.sent_event_in_window = True

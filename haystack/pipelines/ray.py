@@ -405,6 +405,11 @@ class RayPipeline(Pipeline):
         # self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
+    def send_pipeline_event(self, is_indexing: bool = False):
+        """To avoid the RayPipeline serialization bug described at
+        https://github.com/deepset-ai/haystack/issues/3970"""
+        pass
+
 
 class _RayDeploymentWrapper:
     """
