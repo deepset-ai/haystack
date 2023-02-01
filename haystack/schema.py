@@ -1477,10 +1477,13 @@ class EvaluationResult:
 
             # all labels without no_answers
             # we need to match all (except for single hit recall)
-            gold_document_ids = list(query_df["gold_document_ids"].iloc[0])
+            gold_document_ids = (
+                list(query_df["gold_custom_document_ids"].iloc[0])
+                if "gold_custom_document_ids" in query_df
+                else list(query_df["gold_document_ids"].iloc[0])
+            )
             # remove no_answer label
-            if "00" in gold_document_ids:
-                gold_document_ids.remove("00")
+            gold_document_ids = [id for id in gold_document_ids if id != "00"]
 
             num_labels = len(gold_document_ids)
             num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
