@@ -401,9 +401,9 @@ def test_strings_to_answers_no_meta_no_hashkeys():
     shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
     results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"]})
     assert results["invocation_context"]["answers"] == [
-        Answer(answer="first"),
-        Answer(answer="second"),
-        Answer(answer="third"),
+        Answer(answer="first", type="generative"),
+        Answer(answer="second", type="generative"),
+        Answer(answer="third", type="generative"),
     ]
 
 
@@ -431,7 +431,11 @@ def test_strings_to_answers_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run()
-    assert result["invocation_context"]["answers"] == [Answer(answer="a"), Answer(answer="b"), Answer(answer="c")]
+    assert result["invocation_context"]["answers"] == [
+        Answer(answer="a", type="generative"),
+        Answer(answer="b", type="generative"),
+        Answer(answer="c", type="generative"),
+    ]
 
 
 #
