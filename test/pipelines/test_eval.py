@@ -989,7 +989,7 @@ def test_file_search_eval_document_scope(retriever_with_docs):
     "document_scope",
     ["document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"],
 )
-def test_document_search_eval_document_scope_no_answer(retriever_with_docs, document_scope):
+def test_extractive_qa_eval_document_scope_no_answer(retriever_with_docs, document_scope):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=NO_ANSWER_EVAL_LABELS,
