@@ -391,6 +391,86 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
 
 
 #
+# strings_to_answers
+#
+
+
+def test_strings_to_answers_no_meta_no_hashkeys():
+    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
+    results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"]})
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first"),
+        Answer(answer="second"),
+        Answer(answer="third"),
+    ]
+
+
+def test_strings_to_answers_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: strings_to_answers
+                params:
+                  strings: ['a', 'b', 'c']
+                outputs:
+                  - answers
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run()
+    assert result["invocation_context"]["answers"] == [Answer(answer="a"), Answer(answer="b"), Answer(answer="c")]
+
+
+#
+# answers_to_strings
+#
+
+
+def test_answers_to_strings():
+    shaper = Shaper(func="answers_to_strings", inputs={"answers": "documents"}, outputs=["strings"])
+    results, _ = shaper.run(documents=[Answer(answer="first"), Answer(answer="second"), Answer(answer="third")])
+    assert results["invocation_context"]["strings"] == ["first", "second", "third"]
+
+
+def test_answers_to_strings_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: answers_to_strings
+                inputs:
+                  answers: documents
+                outputs:
+                  - strings
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(documents=[Answer(answer="a"), Answer(answer="b"), Answer(answer="c")])
+    assert result["invocation_context"]["strings"] == ["a", "b", "c"]
+
+
+#
 # strings_to_documents
 #
 

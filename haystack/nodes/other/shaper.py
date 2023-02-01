@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any, Tuple, Union, Callable
 import logging
 
 from haystack.nodes.base import BaseComponent
-from haystack.schema import Document, MultiLabel
+from haystack.schema import Document, Answer, MultiLabel
 
 
 logger = logging.getLogger(__name__)
@@ -88,6 +88,42 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
     return ([Document(content=delimiter.join([d.content for d in documents]))],)
 
 
+def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
+    """
+    Transforms a list of strings into a list of Answers.
+
+    Example:
+
+    ```python
+    assert strings_to_answers(strings=["first", "second", "third"]) == ([
+            Answer(answer="first"),
+            Answer(answer="second"),
+            Answer(answer="third"),
+        ], )
+    ```
+    """
+    return ([Answer(answer=string) for string in strings],)
+
+
+def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
+    """
+    Extracts the content field of Documents and returns a list of strings.
+
+    Example:
+
+    ```python
+    assert answers_to_strings(
+            answers=[
+                Answer(answer="first"),
+                Answer(answer="second"),
+                Answer(answer="third")
+            ]
+        ) == (["first", "second", "third"],)
+    ```
+    """
+    return ([answer.answer for answer in answers],)
+
+
 def strings_to_documents(
     strings: List[str],
     meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
@@ -106,11 +142,11 @@ def strings_to_documents(
             strings=["first", "second", "third"],
             meta=[{"position": i} for i in range(3)],
             id_hash_keys=['content', 'meta]
-        ) == [
+        ) == ([
             Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
             Document(content="second", metadata={"position": 2}, id_hash_keys=['content', 'meta]),
             Document(content="third", metadata={"position": 3}, id_hash_keys=['content', 'meta])
-        ]
+        ], )
     ```
     """
     all_metadata: List[Optional[Dict[str, Any]]]
@@ -141,7 +177,7 @@ def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
                 Document(content="second"),
                 Document(content="third")
             ]
-        ) == ["first", "second", "third"],
+        ) == (["first", "second", "third"],)
     ```
     """
     return ([doc.content for doc in documents],)
@@ -153,6 +189,8 @@ REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
     "join_lists": join_lists,
     "join_strings": join_strings,
     "join_documents": join_documents,
+    "strings_to_answers": strings_to_answers,
+    "answers_to_strings": answers_to_strings,
     "strings_to_documents": strings_to_documents,
     "documents_to_strings": documents_to_strings,
 }
