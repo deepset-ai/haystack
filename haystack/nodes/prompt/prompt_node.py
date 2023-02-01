@@ -910,21 +910,45 @@ class PromptNode(BaseComponent):
         :param meta: The meta to be used for the prompt. Usually not used.
         :param invocation_context: The invocation context to be used for the prompt.
         """
+        # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
+        # so that they can be returned by `run()` as part of the pipeline's debug output.
+        prompt_collector: List[str] = []
 
-        # invocation_context is a dictionary that is passed from a pipeline node to a pipeline node and can be used
-        # to pass results from a pipeline node to any other downstream pipeline node.
         invocation_context = invocation_context or {}
+        if query and "query" not in invocation_context.keys():
+            invocation_context["query"] = query
 
-        results = self(
-            query=query,
-            labels=labels,
-            documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
-            **invocation_context,
-        )
+        if file_paths and "file_paths" not in invocation_context.keys():
+            invocation_context["file_paths"] = file_paths
 
-        if self.output_variable:
-            invocation_context[self.output_variable] = results
-        return {"results": results, "invocation_context": invocation_context}, "output_1"
+        if labels and "labels" not in invocation_context.keys():
+            invocation_context["labels"] = labels
+
+        if documents and "documents" not in invocation_context.keys():
+            invocation_context["documents"] = documents
+
+        if meta and "meta" not in invocation_context.keys():
+            invocation_context["meta"] = meta
+
+        if "documents" in invocation_context.keys():
+            for doc in invocation_context.get("documents", []):
+                if not isinstance(doc, str) and not isinstance(doc.content, str):
+                    raise ValueError("PromptNode only accepts text documents.")
+            invocation_context["documents"] = [
+                doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
+            ]
+
+        results = self(prompt_collector=prompt_collector, **invocation_context)
+
+        final_result: Dict[str, Any] = {}
+        output_variable = self.output_variable or "results"
+        if output_variable:
+            invocation_context[output_variable] = results
+            final_result[output_variable] = results
+
+        final_result["invocation_context"] = invocation_context
+        final_result["_debug"] = {"prompts_used": prompt_collector}
+        return final_result, "output_1"
 
     def run_batch(
         self,
