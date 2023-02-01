@@ -219,8 +219,12 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 train_examples.append(InputExample(texts=texts))
 
         logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
-        train_dataloader = DataLoader(  # type: ignore [var-annotated,arg-type]
-            train_examples, batch_size=batch_size, drop_last=True, shuffle=True, num_workers=num_workers
+        train_dataloader = DataLoader(
+            train_examples,  # type: [var-annotated, arg-type]
+            batch_size=batch_size,
+            drop_last=True,
+            shuffle=True,
+            num_workers=num_workers,
         )
         train_loss = st_loss.loss(self.embedding_model)
 
