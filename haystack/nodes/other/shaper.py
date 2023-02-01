@@ -51,18 +51,18 @@ def join_lists(lists: List[List[Any]]) -> Tuple[List[Any]]:
     return (merged_list,)
 
 
-def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[List[str]]:
+def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
     """
-    Transforms a list of strings into a list containing a single string. The content of this list
+    Transforms a list of strings into a single string. The content of this string
     is the content of all original strings separated by the delimiter you specify.
 
     Example:
 
     ```python
-    assert join_strings(strings=["first", "second", "third"], delimiter=" - ") == (["first - second - third"], )
+    assert join_strings(strings=["first", "second", "third"], delimiter=" - ") == ("first - second - third", )
     ```
     """
-    return ([delimiter.join(strings)],)
+    return (delimiter.join(strings),)
 
 
 def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Document]]:
@@ -382,7 +382,11 @@ class Shaper(BaseComponent):
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
 
-        return {"invocation_context": invocation_context}, "output_1"
+        results = {"invocation_context": invocation_context}
+        if output_key in ["query", "file_paths", "labels", "documents", "meta"]:
+            results[output_key] = output_value
+
+        return results, "output_1"
 
     def run_batch(  # type: ignore
         self,

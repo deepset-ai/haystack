@@ -241,13 +241,13 @@ def test_join_strings():
         func="join_strings", params={"strings": ["first", "second"], "delimiter": " | "}, outputs=["single_string"]
     )
     results, _ = shaper.run()
-    assert results["invocation_context"]["single_string"] == ["first | second"]
+    assert results["invocation_context"]["single_string"] == "first | second"
 
 
 def test_join_strings_default_delimiter():
     shaper = Shaper(func="join_strings", params={"strings": ["first", "second"]}, outputs=["single_string"])
     results, _ = shaper.run()
-    assert results["invocation_context"]["single_string"] == ["first second"]
+    assert results["invocation_context"]["single_string"] == "first second"
 
 
 def test_join_strings_yaml(tmp_path):
@@ -276,7 +276,7 @@ def test_join_strings_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(documents=["first", "second", "third"])
-    assert result["invocation_context"]["single_string"] == ["first - second - third"]
+    assert result["invocation_context"]["single_string"] == "first - second - third"
 
 
 def test_join_strings_default_delimiter_yaml(tmp_path):
@@ -303,7 +303,7 @@ def test_join_strings_default_delimiter_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(documents=["first", "second", "third"])
-    assert result["invocation_context"]["single_string"] == ["first second third"]
+    assert result["invocation_context"]["single_string"] == "first second third"
 
 
 #
@@ -334,6 +334,7 @@ def test_join_documents_yaml(tmp_path):
         tmp_file.write(
             f"""
             version: ignore
+
             components:
             - name: shaper
               type: Shaper
@@ -345,6 +346,7 @@ def test_join_documents_yaml(tmp_path):
                   delimiter: ' - '
                 outputs:
                   - documents
+
             pipelines:
               - name: query
                 nodes:
@@ -358,7 +360,7 @@ def test_join_documents_yaml(tmp_path):
         query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert result["invocation_context"]["documents"] == [Document(content="first - second - third")]
-    assert result["documents"] == [Document(content="first"), Document(content="second"), Document(content="third")]
+    assert result["documents"] == [Document(content="first - second - third")]
 
 
 def test_join_documents_default_delimiter_yaml(tmp_path):
@@ -761,6 +763,17 @@ def test_chain_shapers_yaml_2(tmp_path):
                 outputs:
                   - many_greetings
 
+            - name: expander
+              type: Shaper
+              params:
+                func: value_to_list
+                inputs:
+                  value: many_greetings
+                params:
+                  target_list: [1]
+                outputs:
+                  - many_greetings
+
             - name: shaper_4
               type: Shaper
               params:
@@ -782,15 +795,16 @@ def test_chain_shapers_yaml_2(tmp_path):
                   - name: shaper_3
                     inputs:
                       - shaper_2
-                  - name: shaper_4
+                  - name: expander
                     inputs:
                       - shaper_3
+                  - name: shaper_4
+                    inputs:
+                      - expander
         """
         )
     pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-
     results = pipe.run()
-
     assert results["invocation_context"]["documents_with_greetings"] == [Document(content="hello. hello. hello")]
 
 
@@ -920,3 +934,162 @@ def test_with_multiple_prompt_nodes(tmp_path):
     results = result["answers"]
     assert len(results) == 2
     assert any([True for r in results if "Berlin" in r])
+
+
+def test_join_query_and_documents_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+
+            components:
+            - name: expander
+              type: Shaper
+              params:
+                func: value_to_list
+                inputs:
+                  value: query
+                params:
+                  target_list: [1]
+                outputs:
+                  - query
+
+            - name: joiner
+              type: Shaper
+              params:
+                func: join_lists
+                inputs:
+                  lists:
+                   - documents
+                   - query
+                outputs:
+                  - query
+
+            pipelines:
+              - name: query
+                nodes:
+                  - name: expander
+                    inputs:
+                      - Query
+                  - name: joiner
+                    inputs:
+                      - expander
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(query="What is going on here?", documents=["first", "second", "third"])
+    assert result["query"] == ["first", "second", "third", "What is going on here?"]
+
+
+def test_join_query_and_documents_into_single_string_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: expander
+              type: Shaper
+              params:
+                func: value_to_list
+                inputs:
+                  value: query
+                params:
+                  target_list: [1]
+                outputs:
+                  - query
+
+            - name: joiner
+              type: Shaper
+              params:
+                func: join_lists
+                inputs:
+                  lists:
+                   - documents
+                   - query
+                outputs:
+                  - query
+
+            - name: concatenator
+              type: Shaper
+              params:
+                func: join_strings
+                inputs:
+                  strings: query
+                outputs:
+                  - query
+
+            pipelines:
+              - name: query
+                nodes:
+                  - name: expander
+                    inputs:
+                      - Query
+                  - name: joiner
+                    inputs:
+                      - expander
+                  - name: concatenator
+                    inputs:
+                      - joiner
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(query="What is going on here?", documents=["first", "second", "third"])
+    assert result["query"] == "first second third What is going on here?"
+
+
+def test_join_query_and_documents_convert_into_documents_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: expander
+              type: Shaper
+              params:
+                func: value_to_list
+                inputs:
+                  value: query
+                params:
+                  target_list: [1]
+                outputs:
+                  - query
+
+            - name: joiner
+              type: Shaper
+              params:
+                func: join_lists
+                inputs:
+                  lists:
+                   - documents
+                   - query
+                outputs:
+                  - query_and_docs
+
+            - name: converter
+              type: Shaper
+              params:
+                func: strings_to_documents
+                inputs:
+                  strings: query_and_docs
+                outputs:
+                  - query_and_docs
+
+            pipelines:
+              - name: query
+                nodes:
+                  - name: expander
+                    inputs:
+                      - Query
+                  - name: joiner
+                    inputs:
+                      - expander
+                  - name: converter
+                    inputs:
+                      - joiner
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(query="What is going on here?", documents=["first", "second", "third"])
+    assert result["invocation_context"]["query_and_docs"]
+    assert len(result["invocation_context"]["query_and_docs"]) == 4
+    assert isinstance(result["invocation_context"]["query_and_docs"][0], Document)
