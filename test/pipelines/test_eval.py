@@ -395,7 +395,6 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     retriever_result = eval_result["Retriever"]
 
     expected_reader_result_columns = [
-        "gold_answers",  # answer-specific
         "answer",  # answer-specific
         "exact_match",  # answer-specific
         "f1",  # answer-specific
@@ -445,6 +444,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "rank",  # generic
         "document_id",  # generic
         "gold_document_ids",  # generic
+        "gold_answers",  # generic
         # "custom_document_id",  # generic optional
         # "gold_custom_document_ids",  # generic optional
     ]
