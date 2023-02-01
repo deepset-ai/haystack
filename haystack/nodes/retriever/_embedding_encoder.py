@@ -94,6 +94,10 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(
             "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
@@ -183,9 +187,9 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
             decreased linearly back to zero.
         :param batch_size: The batch size to use for the training. The default values is 16.
-        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
         :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
             "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
         :param use_amp: Use Automatic Mixed Precision (AMP).
         :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
@@ -335,6 +339,10 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(
             "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
@@ -400,6 +408,10 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(f"Training is not implemented for {self.__class__}")
 
