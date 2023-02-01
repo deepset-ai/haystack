@@ -903,12 +903,10 @@ class PromptNode(BaseComponent):
 
         :param query: The query is usually ignored by the prompt node unless it is used as a parameter in the
         prompt template.
-        :param file_paths: The file paths are usually ignored by the prompt node unless they are used as a parameter
-        in the prompt template.
-        :param labels: The labels are usually ignored by the prompt node unless they are used as a parameter in the
-        prompt template.
+        :param file_paths: This option is ignored.
+        :param labels: This option is ignored.
         :param documents: The documents to be used for the prompt.
-        :param meta: The meta to be used for the prompt. Usually not used.
+        :param meta: This option is ignored.
         :param invocation_context: The invocation context to be used for the prompt.
         """
 
@@ -922,7 +920,6 @@ class PromptNode(BaseComponent):
 
         results = self(
             query=query,
-            labels=labels,
             documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
             prompt_collector=prompt_collector,
             **invocation_context,
@@ -947,8 +944,37 @@ class PromptNode(BaseComponent):
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
+        invocation_context: Optional[Dict[str, Any], List[Dict[str, Any]]] = None,
     ):
-        raise NotImplementedError("run_batch is not implemented for PromptNode.")
+        """
+        Runs PromptNode in batch mode.
+
+        :param queries:
+        :param file_paths: This option is ignored.
+        :param labels: This option is ignored.
+        :param documents:
+        :param meta: This option is ignored.
+        :param params: This option is ignored.
+        :param debug:
+        :param invocation_context:
+        """
+        # TODO Create all_data_points by flattening queries, documents and invocation contexts.
+        #      Will require queries and invocation contexts to be same length??
+        all_data_points = []
+        if invocation_context is not None:
+            if isinstance(queries, str):
+                queries = [queries]
+                assert isinstance(invocation_context, Dict)
+            if isinstance(queries, List):
+                assert isinstance(invocation_context, List)
+
+        results: Dict = {"results": [], "invocation_contexts": [], "_debug": []}
+        for query_docs in all_data_points:
+            result = self.run(query=query_docs[0], documents=query_docs[1], invocation_context=query_docs[2])[0]
+            results["results"].append(result["results"])
+            results["invocation_contexts"].append(result["invocation_contexts"])
+            results["_debug"].append(result["_debug"])
+        return results, "output_1"
 
     def _prepare_model_kwargs(self):
         # these are the parameters from PromptNode level
