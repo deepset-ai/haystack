@@ -20,7 +20,7 @@ from transformers import (
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.errors import OpenAIError, OpenAIRateLimitError, HaystackError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
@@ -942,9 +942,9 @@ class PromptNode(BaseComponent):
         labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        invocation_contexts: Optional[Dict[str, Any], List[Dict[str, Any]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
-        invocation_context: Optional[Dict[str, Any], List[Dict[str, Any]]] = None,
     ):
         """
         Runs PromptNode in batch mode.
@@ -956,21 +956,12 @@ class PromptNode(BaseComponent):
         :param meta: This option is ignored.
         :param params: This option is ignored.
         :param debug:
-        :param invocation_context:
+        :param invocation_contexts:
         """
-        # TODO Create all_data_points by flattening queries, documents and invocation contexts.
-        #      Will require queries and invocation contexts to be same length??
-        all_data_points = []
-        if invocation_context is not None:
-            if isinstance(queries, str):
-                queries = [queries]
-                assert isinstance(invocation_context, Dict)
-            if isinstance(queries, List):
-                assert isinstance(invocation_context, List)
-
-        results: Dict = {"results": [], "invocation_contexts": [], "_debug": []}
-        for query_docs in all_data_points:
-            result = self.run(query=query_docs[0], documents=query_docs[1], invocation_context=query_docs[2])[0]
+        inputs = self._flatten_inputs(queries, documents, invocation_contexts)
+        results: Dict[str, List] = {"results": [], "invocation_contexts": [], "_debug": []}
+        for query, docs, invocation_context in zip(inputs["queries"], inputs["docs"], inputs["invocation_contexts"]):
+            result = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
             results["results"].append(result["results"])
             results["invocation_contexts"].append(result["invocation_contexts"])
             results["_debug"].append(result["_debug"])
@@ -980,3 +971,60 @@ class PromptNode(BaseComponent):
         # these are the parameters from PromptNode level
         # that are passed to the prompt model invocation layer
         return {"stop_words": self.stop_words}
+
+    @staticmethod
+    def _flatten_inputs(
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        invocation_contexts: Optional[Dict[str, Any], List[Dict[str, Any]]] = None,
+    ) -> Dict[str, List]:
+        """Flatten (and copy) the queries and documents into lists of equal length.
+
+        - If you provide a list containing a single query...
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of multiple queries...
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query string or list of queries.
+        :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+                          Documents should be of content_type ``'table'``.
+        """
+        # TODO Create all_data_points by flattening queries, documents and invocation contexts.
+        #      Will require queries and invocation contexts to be same length??
+
+        if invocation_contexts is not None:
+            if isinstance(queries, str):
+                queries = [queries]
+                assert isinstance(invocation_contexts, Dict)
+            if isinstance(queries, List):
+                assert isinstance(invocation_contexts, List)
+
+        # Docs case 1: single list of Documents -> apply each query to all Documents
+        inputs: Dict[str, List] = {"queries": [], "docs": []}
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            for query in queries:
+                for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    inputs["queries"].append(query)
+                    inputs["docs"].append([doc])
+
+        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
+        # contains only one query, apply it to each list of Documents
+        elif len(documents) > 0 and isinstance(documents[0], list):
+            total_queries = queries.copy()
+            if len(total_queries) == 1:
+                total_queries = queries * len(documents)
+            if len(total_queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(total_queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                inputs["queries"].append(query)
+                inputs["docs"].append(cur_docs)
+        return inputs
