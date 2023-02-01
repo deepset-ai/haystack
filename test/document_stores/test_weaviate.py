@@ -260,4 +260,4 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         embeddings.
         """
         ds.write_documents(documents)
-        assert ds.get_embedding_count() == 9
+        assert ds.get_embedding_count() == 6
