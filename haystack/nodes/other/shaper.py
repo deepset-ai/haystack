@@ -102,7 +102,7 @@ def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
         ], )
     ```
     """
-    return ([Answer(answer=string) for string in strings],)
+    return ([Answer(answer=string, type="generative") for string in strings],)
 
 
 def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
