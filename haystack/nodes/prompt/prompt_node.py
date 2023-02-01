@@ -9,7 +9,14 @@ from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
 import requests
 import torch
-from transformers import pipeline, AutoModelForSeq2SeqLM, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
+from transformers import (
+    pipeline,
+    AutoModelForSeq2SeqLM,
+    StoppingCriteria,
+    StoppingCriteriaList,
+    PreTrainedTokenizerFast,
+    PreTrainedTokenizer,
+)
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
@@ -215,9 +222,8 @@ class StopWordsCriteria(StoppingCriteria):
     Stops text generation if any one of the stop words is generated.
     """
 
-    def __init__(self, model_name_or_path: str, stop_words: List[str]):
+    def __init__(self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stop_words: List[str]):
         super().__init__()
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
@@ -244,7 +250,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     ):
         """
         Creates an instance of HFLocalInvocationLayer used to invoke local Hugging Face models.
-
 
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of the output text.
@@ -342,7 +347,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 if key in kwargs
             }
             if stop_words:
-                sw = StopWordsCriteria(model_name_or_path=self.model_name_or_path, stop_words=stop_words)
+                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
