@@ -340,10 +340,18 @@ def test_complex_pipeline_with_qa(prompt_model):
             Document("My name is Carla and I live in Berlin"),
             Document("My name is Christelle and I live in Paris"),
         ],
+        debug=True,  # so we can verify that the constructed prompt is returned in debug
     )
 
     assert len(result["results"]) == 1
     assert "carla" in result["results"][0].casefold()
+
+    # also verify that the PromptNode has included its constructed prompt LLM model input in the returned debug
+    assert (
+        result["_debug"]["prompt_node"]["runtime"]["prompts_used"][0]
+        == "Given the context please answer the question. Context: My name is Carla and I live in Berlin; "
+        "Question: Who lives in Berlin?; Answer:"
+    )
 
 
 def test_complex_pipeline_with_shared_model():
