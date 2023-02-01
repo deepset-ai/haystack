@@ -51,7 +51,7 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event
+from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -2309,27 +2309,30 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
+        if is_telemetry_enabled():           
+            should_send_event = (
+                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
+            )
+            
+            # RayPipeline's components are not compatible with the serialization in `get_config()` called by
+            # `send_pipeline_event()`, so the event sending is suspended for RayPipelines (it would crash anyhow)
+            from haystack.pipelines.ray import RayPipeline
 
-        # RayPipeline's components are not compatible with the serialization in `get_config()` called by
-        # `send_pipeline_event()`, so the event sending is suspended for RayPipelines (it would crash anyhow)
-        from haystack.pipelines.ray import RayPipeline
+            if isinstance(self, RayPipeline):
+                should_send_event = False
+                logger.debug("The event sending is currently disabled for RayPipelines.")
 
-        if isinstance(self, RayPipeline):
-            should_send_event = False
-            logger.debug("The event sending is currently disabled for RayPipelines.")
+            if should_send_event and not self.sent_event_in_window:
+                self.send_pipeline_event(is_indexing)
+                self.sent_event_in_window = True
+            elif self._has_event_time_interval_exceeded():
+                self.sent_event_in_window = False
 
-        if should_send_event and not self.sent_event_in_window:
-            self.send_pipeline_event(is_indexing)
-            self.sent_event_in_window = True
-        elif self.has_event_time_interval_exceeded():
-            self.sent_event_in_window = False
-
-    def has_event_time_interval_exceeded(self):
+    def _has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         return now - self.time_of_last_sent_event > self.event_time_interval
 
-    def has_event_run_total_threshold_exceeded(self):
+    def _has_event_run_total_threshold_exceeded(self):
         return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 

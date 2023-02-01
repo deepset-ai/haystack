@@ -765,6 +765,8 @@ class PromptNode(BaseComponent):
         :return: A list of strings as model responses.
         """
         results = []
+        # we pop the prompt_collector kwarg to avoid passing it to the model
+        prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
         if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
             raise ValueError(
                 f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} "
@@ -786,12 +788,16 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         return results
@@ -905,10 +911,15 @@ class PromptNode(BaseComponent):
         # to pass results from a pipeline node to any other downstream pipeline node.
         invocation_context = invocation_context or {}
 
+        # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
+        # so that they can be returned by `run()` as part of the pipeline's debug output.
+        prompt_collector: List[str] = []
+
         results = self(
             query=query,
             labels=labels,
             documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
+            prompt_collector=prompt_collector,
             **invocation_context,
         )
 
@@ -919,6 +930,7 @@ class PromptNode(BaseComponent):
 
         final_result["results"] = results
         final_result["invocation_context"] = invocation_context
+        final_result["_debug"] = {"prompts_used": prompt_collector}
         return final_result, "output_1"
 
     def run_batch(
@@ -931,7 +943,7 @@ class PromptNode(BaseComponent):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
-        pass
+        raise NotImplementedError("run_batch is not implemented for PromptNode.")
 
     def _prepare_model_kwargs(self):
         # these are the parameters from PromptNode level
