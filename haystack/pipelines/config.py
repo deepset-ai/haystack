@@ -79,6 +79,8 @@ def get_component_definitions(
                 env_prefix = f"{name}_params_".upper()
                 if key.startswith(env_prefix):
                     param_name = key.replace(env_prefix, "").lower()
+                    if "params" not in component_definition:
+                        component_definition["params"] = {}
                     component_definition["params"][param_name] = value
                     logger.info(
                         "Param '%s' of component '%s' overwritten with environment variable '%s' value '%s'.",

@@ -2,11 +2,9 @@ name: benchmarks
 
 on:
   workflow_dispatch:
-  pull_request:
-    types: [labeled]
+
 jobs:
   deploy-cloud-runner:
-    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'benchmark') || github.event.action == 'workflow_dispatch' }}
     runs-on: [ubuntu-latest]
     container: docker://dvcorg/cml
     steps:
@@ -65,7 +63,6 @@ jobs:
           sleep 20 && echo "Deployed $MACHINE"
           ) || (echo "Shut down machine" && docker-machine rm -y -f $MACHINE && exit 1)
   run-benchmark:
-    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'benchmark') || github.event.action == 'workflow_dispatch' }}
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]
     steps:

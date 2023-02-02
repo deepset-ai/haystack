@@ -31,8 +31,11 @@ user_id: Optional[str] = None
 logger = logging.getLogger(__name__)
 
 # disable posthog logging
-logging.getLogger("posthog").setLevel(CRITICAL)
-logging.getLogger("backoff").setLevel(CRITICAL)
+for module_name in ["posthog", "backoff"]:
+    logging.getLogger(module_name).setLevel(CRITICAL)
+    # Prevent module from sending errors to stderr when an exception is encountered during an emit() call
+    logging.getLogger(module_name).addHandler(logging.NullHandler())
+    logging.getLogger(module_name).propagate = False
 
 
 class TelemetryFileType(Enum):

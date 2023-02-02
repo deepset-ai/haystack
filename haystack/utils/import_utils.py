@@ -29,6 +29,8 @@ def safe_import(import_path: str, classname: str, dep_group: str):
     try:
         module = importlib.import_module(import_path)
         classs = vars(module).get(classname)
+        if classs is None:
+            raise ImportError(f"Failed to import '{classname}' from '{import_path}'")
     except ImportError as ie:
         classs = _missing_dependency_stub_factory(classname, dep_group, ie)
     return classs
@@ -42,6 +44,7 @@ def _missing_dependency_stub_factory(classname: str, dep_group: str, import_erro
 
     class MissingDependency:
         def __init__(self, *args, **kwargs):
+
             _optional_component_not_installed(classname, dep_group, import_error)
 
         def __getattr__(self, *a, **k):

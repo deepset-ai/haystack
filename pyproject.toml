@@ -87,6 +87,9 @@ dependencies = [
   # Elasticsearch
   "elasticsearch>=7.7,<8",
 
+  # OpenAI tokenizer
+  "tiktoken>=0.1.2; python_version >= '3.8' and (platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
 
@@ -159,6 +162,7 @@ crawler = [
 preprocessing = [
   "beautifulsoup4",
   "markdown",
+  "python-frontmatter",
   "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
 ]
@@ -293,6 +297,7 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
+  "broad-exception-raised",
 
   # To review later
   "cyclic-import",
