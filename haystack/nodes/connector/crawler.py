@@ -106,9 +106,7 @@ class Crawler(BaseComponent):
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
-        else:
-            webdriver_options.append("--headless")
-
+        webdriver_options.append("--headless")
         if IS_ROOT or IN_WINDOWS:
             webdriver_options.append("--no-sandbox")
         if IN_WINDOWS:
