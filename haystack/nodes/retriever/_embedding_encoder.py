@@ -191,7 +191,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
         :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
         :param use_amp: Use Automatic Mixed Precision (AMP).
-        :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
+        :param kwargs: Additional training keyword arguments to pass to the `SentenceTransformer.fit` function. Please
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
