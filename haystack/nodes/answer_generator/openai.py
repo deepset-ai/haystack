@@ -53,7 +53,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self,
         api_key: str,
         model: str = "text-curie-001",
-        max_tokens: int = 16,
+        max_tokens: int = 13,
         top_k: int = 5,
         temperature: float = 0.2,
         presence_penalty: float = 0.1,
