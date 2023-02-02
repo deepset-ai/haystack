@@ -68,7 +68,7 @@ jobs:
           exit 1
         fi
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -105,7 +105,7 @@ jobs:
         mkdir .mypy_cache/
         mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -125,7 +125,7 @@ jobs:
       run: |
         pylint -ry -j 0 haystack/ rest_api/rest_api
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -156,7 +156,7 @@ jobs:
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -192,7 +192,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -220,7 +220,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -256,7 +256,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -284,7 +284,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -312,7 +312,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_faiss.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -350,7 +350,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_weaviate.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -380,7 +380,7 @@ jobs:
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_pinecone.py
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -416,7 +416,7 @@ jobs:
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_milvus.py
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -444,7 +444,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -494,7 +494,7 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -540,7 +540,7 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -569,7 +569,7 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -666,7 +666,7 @@ jobs:
       if: failure()
       uses: jwalton/gh-docker-logs@v1
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -716,7 +716,7 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
