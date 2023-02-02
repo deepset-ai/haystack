@@ -1,11 +1,11 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/prompt]
-    modules: ['prompt_node']
+    search_path: [../../../haystack/nodes/translator]
+    modules: ['base', 'transformers']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Uses Large Language Models directly in your pipelines.
+   excerpt: Does what it says on the tin - it translates text from one language into another.
    category: 6310ca73c622850ddd3875a2
-   title: PromptNode API
-   slug: prompt-node-api
-   order: 115
+   title: Translator API
+   slug: translator-api
+   order: 190
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: prompt_node_api.md
+     filename: translator_api.md
