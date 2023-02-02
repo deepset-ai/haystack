@@ -186,7 +186,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
             increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
             decreased linearly back to zero.
-        :param batch_size: The batch size to use for the training. The default values is 16.
+        :param batch_size: The batch size to use for the training. The default value is 16.
         :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
             "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
         :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
