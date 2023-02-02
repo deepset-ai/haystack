@@ -182,7 +182,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         :param training_data: The training data in a dictionary format.
         :param learning_rate: The speed at which the model learns.
-        :param n_epochs: The number of epochs that you want the train for.
+        :param n_epochs: The number of iterations on the whole training data set you want to train for.
         :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
             increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
             decreased linearly back to zero.
