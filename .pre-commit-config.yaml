@@ -20,5 +20,9 @@ repos:
   hooks:
   - id: black-jupyter
 
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.6.23
+  hooks:
+  - id: actionlint
 
 # TODO we can make mypy and pylint run at this stage too, once their execution gets normalized
