@@ -182,16 +182,16 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         :param training_data: The training data in a dictionary format.
         :param learning_rate: The learning rate of the optimizer.
-        :param n_epochs: The number of epochs that you want the train for.
+        :param n_epochs: The number of iterations on the whole training data set you want to train for.
         :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
             increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
             decreased linearly back to zero.
-        :param batch_size: The batch size to use for the training. The default values is 16.
+        :param batch_size: The batch size to use for the training. The default value is 16.
         :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
             "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
         :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
         :param use_amp: Use Automatic Mixed Precision (AMP).
-        :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
+        :param kwargs: Additional training keyword arguments to pass to the `SentenceTransformer.fit` function. Please
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
