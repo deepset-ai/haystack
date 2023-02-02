@@ -1125,7 +1125,11 @@ class TableTextRetriever(DenseRetriever):
             disable=disable_tqdm,
         ) as progress_bar:
             for batch in data_loader:
-                batch = {key: batch[key].to(self.devices[0]) for key in batch}
+                # LanguageModel expects [batch, seq] not [batch, num_hard, seq]
+                for key in batch:
+                    batch[key].to(self.devices[0])
+                    if batch[key].ndim == 3:
+                        batch[key] = batch[key].squeeze(1)
 
                 # get logits
                 with torch.inference_mode():
