@@ -53,15 +53,16 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self,
         api_key: str,
         model: str = "text-curie-001",
-        max_tokens: int = 13,
+        max_tokens: int = 16,
         top_k: int = 5,
         temperature: float = 0.2,
-        presence_penalty: float = -2.0,
-        frequency_penalty: float = -2.0,
+        presence_penalty: float = 0.1,
+        frequency_penalty: float = 0.1,
         examples_context: Optional[str] = None,
-        examples: Optional[List] = None,
-        stop_words: Optional[List] = None,
+        examples: Optional[List[List[str]]] = None,
+        stop_words: Optional[List[str]] = None,
         progress_bar: bool = True,
+        instruction_prompt: Optional[str] = None
     ):
 
         """
@@ -81,23 +82,31 @@ class OpenAIAnswerGenerator(BaseGenerator):
                                   verbatim.
         :param examples_context: A text snippet containing the contextual information used to generate the Answers for
                                  the examples you provide.
-                                 If not supplied, the default from OpenAPI docs is used:
+                                 If not supplied, the default from OpenAI API docs is used:
                                  "In 2017, U.S. life expectancy was 78.6 years."
         :param examples: List of (question, answer) pairs that helps steer the model towards the tone and answer
                          format you'd like. We recommend adding 2 to 3 examples.
-                         If not supplied, the default from OpenAPI docs is used:
+                         If not supplied, the default from OpenAI API docs is used:
                          [["What is human life expectancy in the United States?", "78 years."]]
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
-                           If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+                           If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
+        :param instruction_prompt: A text snippet explaining to the model how to generate answers given a supplied context.
+                                   If not supplied, the default instruction prompt is:
+                                   "Please answer the question according to the above context."
         """
         super().__init__(progress_bar=progress_bar)
-        if not examples_context:
+        if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
+            logger.warning("If providing examples or a examples_context, we recommend providing both of them "
+                           "so the examples correctly refer to the examples_context.")
+        if examples_context is None:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
-        if not examples:
+        if examples is None:
             examples = [["What is human life expectancy in the United States?", "78 years."]]
-        if not stop_words:
+        if stop_words is None:
             stop_words = ["\n", "<|endoftext|>"]
+        if instruction_prompt is None:
+            instruction_prompt = "Please answer the question according to the above context."
 
         if not api_key:
             raise ValueError("OpenAIAnswerGenerator requires an API key.")
@@ -112,6 +121,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples_context = examples_context
         self.examples = examples
         self.stop_words = stop_words
+        self.instruction_prompt = instruction_prompt
 
         tokenizer = "gpt2"
         if "davinci" in self.model:
@@ -167,6 +177,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         # convert input to OpenAI format
         prompt, input_docs = self._build_prompt(query=query, documents=documents)
+        logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
 
         # get answers from OpenAI API
         url = "https://api.openai.com/v1/completions"
@@ -210,7 +221,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         """
         example_context = f"===\nContext: {self.examples_context}\n===\n"
         example_prompts = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
-        instruction = "Please answer the question according to the above context.\n" + example_context + example_prompts
+        instruction = self.instruction_prompt + "\n" + example_context + example_prompts
         instruction = f"{instruction.strip()}\n\n"
 
         qa_prompt = f"Q: {query}\nA:"
