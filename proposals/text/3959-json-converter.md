@@ -8,6 +8,7 @@
 Right now we don't have a node that can take json files as input to be fed into a pipeline.
 
 Proposal: Add a `JsonConverter` node that takes in a json file, parses it, and generates `Document`s.
+It would also support the `jsonl` format with one line corresponding to one document.
 
 # Basic example
 
@@ -34,6 +35,10 @@ With the `data_file.json` as a list of json representation of documents:
     }
 ]
 ```
+
+Alternatively, the data can also be `jsonl`.
+By default, the converter will try to auto-detect between `json` and `jsonl`.
+Or the format can be explicitly specified during initialization with e.g. `JsonConverter(format='jsonl')`
 
 The main use case would be to be able to include this directly in the YAML specification
 
@@ -64,6 +69,23 @@ Having a `JsonConverter` node would allow users to setup a haystack pipeline to 
 # Detailed design
 
 The converter would primarily be a wrapper around `Document.from_dict`.
+
+The schema accepted would be the a list of json dictionary of Documents.
+So, the following, with `content` being the only compulsory field.
+
+```
+[
+    {
+        "content": str or list[list],
+        "content_type": str,
+        "meta": dict,
+        "id_hash_keys": list,
+        "score": float,
+        "embedding": array
+    },
+    ...
+]
+```
 
 ```python
 class JsonConverter(BaseConverter):
