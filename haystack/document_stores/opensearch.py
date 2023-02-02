@@ -124,10 +124,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param index_type: The type of index you want to create. Choose from 'flat', 'hnsw', 'ivf', or 'ivf_pq'.
                            'ivf_pq' is an IVF index optimized for memory through product quantization.
                            ('ivf' and 'ivf_pq' are only available with 'faiss' as knn_engine.)
-                           As OpenSearch currently does not support all similarity functions (for example, dot_product) in exact vector similarity calculations,
-                           we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but further optimized for accuracy.
-                           Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
-                           In these cases however, a warning will be displayed. See similarity param for more information.
+                           If index_type='flat', we use OpenSearch's default index settings (which is an hnsw index
+                           optimized for accuracy and memory footprint), since OpenSearch does not require a special
+                           index for exact vector similarity calculations. Note that OpenSearchDocumentStore will only
+                           perform exact vector calculations if the selected knn_engine supports it (currently only
+                           knn_engine='score_script'). For the other knn_engines we use hnsw, as this usually achieves
+                           the best balance between nearly as good accuracy and latency.
         :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
                        Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
                        For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
@@ -150,6 +152,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                  - `ivf`: `"nlist"`, `"nprobes"`
                                  - `ivf_pq`: `"nlist"`, `"nprobes"`, `"m"`, `"code_size"`
                                If you don't specify any parameters, the OpenSearch's default values are used.
+                               (With the exception of index_type='hnsw', where we use values other than OpenSearch's
+                               default ones to achieve comparability throughout DocumentStores in Haystack.)
                                For more information on configuration of knn indices, see
                                [OpenSearch Documentation](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#method-definitions).
         """
@@ -485,7 +489,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         ]
 
         if self.index_type == "hnsw":
-            ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+            ef_search = self._get_ef_search_value()
             if top_k > ef_search:
                 logger.warning(
                     "top_k (%i) is greater than ef_search (%i). "
@@ -552,7 +556,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 index_definition["settings"]["index"] = {"knn": True}  # TODO: option to turn off for script scoring
                 # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
                 if self.knn_engine == "nmslib" and self.index_type == "hnsw":
-                    ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+                    ef_search = self._get_ef_search_value()
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = ef_search
                 index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     index=index_name
@@ -693,7 +697,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             # Adjust global ef_search setting (nmslib only).
             if self.knn_engine == "nmslib":
                 ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
-                desired_ef_search = self.knn_parameters.get("ef_search", 20)
+                desired_ef_search = self._get_ef_search_value()
                 if self.index_type == "hnsw" and ef_search != desired_ef_search:
                     body = {"knn.algo_param.ef_search": desired_ef_search}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
@@ -878,7 +882,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             ef_construction = (
                 80 if "ef_construction" not in self.knn_parameters else self.knn_parameters["ef_construction"]
             )
-            ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+            ef_search = self._get_ef_search_value()
             m = 64 if "m" not in self.knn_parameters else self.knn_parameters["m"]
 
             if index_type == "flat":
@@ -1114,6 +1118,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             raise DocumentStoreError(f"Failed to train the KNN model. Error message: {error_message}")
 
         return False
+
+    def _get_ef_search_value(self) -> int:
+        ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+        return ef_search
 
     def _delete_index(self, index: str):
         if self._index_exists(index):
