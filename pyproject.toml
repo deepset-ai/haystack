@@ -298,6 +298,7 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
+  "broad-exception-raised",
 
   # To review later
   "cyclic-import",
