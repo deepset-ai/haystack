@@ -195,7 +195,10 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
+    orig_batch_size = retriever_with_docs.batch_size
+    retriever_with_docs.batch_size = 1
     res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+    retriever_with_docs.batch_size = orig_batch_size
 
     # Expected return type: list of lists of Documents
     assert isinstance(res, list)
