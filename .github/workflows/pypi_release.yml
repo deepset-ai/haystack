@@ -1,8 +1,9 @@
 name: Project release on PyPi
 
 on:
-  tags:
-    - "v[0-9].[0-9]+.[0-9]+*"
+  push:
+    tags:
+      - "v[0-9].[0-9]+.[0-9]+*"
 
 jobs:
   release-on-pypi:
