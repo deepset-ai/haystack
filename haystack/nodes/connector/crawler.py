@@ -101,21 +101,23 @@ class Crawler(BaseComponent):
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
+        IN_WINDOWS = sys.platform in ["win32", "cygwin"]
+        IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
-        elif "--headless" not in webdriver_options:
+        else:
             webdriver_options.append("--headless")
 
-        if IS_ROOT and "--no-sandbox" not in webdriver_options:
+        if IS_ROOT or IN_WINDOWS:
             webdriver_options.append("--no-sandbox")
-
-        if (IN_COLAB or IN_AZUREML) and "--disable-dev-shm-usage" not in webdriver_options:
+        if IN_WINDOWS:
+            webdriver_options.append("--no--remote-debugging-port=9222")
+        if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
         options = Options()
-        for option in webdriver_options:
+        for option in set(webdriver_options):
             options.add_argument(option)
 
         if IN_COLAB:
