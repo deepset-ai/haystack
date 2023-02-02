@@ -310,9 +310,9 @@ class TriAdaptiveModel(nn.Module):
             # Current batch consists of only tables
             if all(table_mask):
                 pooled_output2, _ = self.language_model3(
-                    passage_input_ids=kwargs["passage_input_ids"],
-                    passage_segment_ids=kwargs["table_segment_ids"],
-                    passage_attention_mask=kwargs["passage_attention_mask"],
+                    input_ids=kwargs["passage_input_ids"],
+                    segment_ids=kwargs["table_segment_ids"],
+                    attention_mask=kwargs["passage_attention_mask"],
                     output_hidden_states=False,
                     output_attentions=False,
                 )
