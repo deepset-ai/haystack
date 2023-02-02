@@ -1103,7 +1103,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
             # Reindex original index to newly created IVF index
             self._create_document_index(index_name=index, headers=headers)
-            self.client.reindex(body={"source": {"index": f".{index}_temp"}, "dest": {"index": index}})
+            self.client.reindex(
+                body={"source": {"index": f".{index}_temp"}, "dest": {"index": index}},
+                params={"request_timeout": 24 * 60 * 60},
+            )
             self.client.indices.delete(index=f".{index}_temp")
 
     @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
