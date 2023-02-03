@@ -6,6 +6,7 @@ import re
 from abc import ABC, abstractmethod
 from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
+from functools import reduce
 
 import requests
 import torch
@@ -196,7 +197,15 @@ class QuestionAnsweringPromptTemplate(PromptTemplate):
     A prompt template for question answering.
     """
 
-    def __init__(self, name: str, prompt_text: str, prompt_params: Optional[List[str]] = None):
+    def __init__(
+        self,
+        name: str,
+        prompt_text: str,
+        prompt_params: Optional[List[str]] = None,
+        documents_delimiter: str = " ",
+        document_pattern: str = "$content",
+        character_replace: Optional[Dict[str, str]] = None,
+    ):
         """
         Creates a QuestionAnsweringPromptTemplate instance.
 
@@ -204,6 +213,9 @@ class QuestionAnsweringPromptTemplate(PromptTemplate):
         :param prompt_text: The prompt text including placeholders for the prompt_params.
         :param prompt_params: The optional parameters that need to be filled in the prompt text. If not specified, they're inferred from the prompt text.
         """
+        self.documents_delimiter = documents_delimiter
+        self.document_pattern = document_pattern
+        self.character_replace = character_replace or {}
         super().__init__(name, prompt_text, prompt_params)
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
@@ -214,7 +226,22 @@ class QuestionAnsweringPromptTemplate(PromptTemplate):
         :param kwargs: Keyword arguments to use for filling the prompt text.
         :return: A dictionary with the prompt text and the prompt parameters.
         """
-        kwargs["context"] = [" - ".join([document.content for document in kwargs["documents"]])]
+        document_template = Template(self.document_pattern)
+        kwargs["documents"] = [
+            self.documents_delimiter.join(
+                [
+                    document_template.substitute(
+                        {
+                            "idx": i + 1,
+                            "content": reduce(
+                                lambda content, kv: content.replace(*kv), self.character_replace.items(), doc.content
+                            ),
+                        }
+                    )
+                    for i, doc in enumerate(kwargs["documents"])
+                ]
+            )
+        ]
         kwargs["query"] = [kwargs["query"]]
         template_dict = super().prepare(*args, **kwargs)
         return template_dict
@@ -673,7 +700,15 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         QuestionAnsweringPromptTemplate(
             name="question-answering",
-            prompt_text="Given the context please answer the question. Context: $context; Question: " "$query; Answer:",
+            prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
+        ),
+        QuestionAnsweringPromptTemplate(
+            name="question-answering-with-references",
+            prompt_text="Given the context please answer the question. Cite the documents using Document[number] notation. If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n $documents; Question: "
+            "$query; Answer:",
+            character_replace={"\n": " ", "[": "(", "]": ")"},
+            document_pattern="\nDocument[$idx]: $content",
+            documents_delimiter="\n",
         ),
         PromptTemplate(
             name="question-generation",
