@@ -130,7 +130,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             # Check for required prompts
             required_params = ["context", "query"]
-            if all([p in instruction_prompt.prompt_params for p in required_params]):
+            if all(p in instruction_prompt.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
                     "`query` in its `prompt_params`. Please supply a different `instruction_prompt` or "
@@ -268,16 +268,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
         """
         example_prompts = "\n---\n".join([f"Q: {query}\nA: {answer}" for query, answer in self.examples])
         qa_prompt = f"Q: {query}\nA:"
-        context = self._create_context(documents, join_str=self.context_join_str)
 
-        full_prompt = next(
-            self.instruction_prompt.fill(
-                examples_context=[self.examples_context],
-                examples=[example_prompts],
-                context=[context],
-                query=[qa_prompt],
-            )
-        )
+        kwargs = {"context": self._create_context(documents, join_str=self.context_join_str), "query": qa_prompt}
+        if (
+            "examples_context" in self.instruction_prompt.prompt_params
+            and "examples" in self.instruction_prompt.prompt_params
+        ):
+            kwargs["examples_context"] = self.examples_context
+            kwargs["examples"] = example_prompts
+        full_prompt = next(self.instruction_prompt.fill(**kwargs))
         n_full_prompt_tokens = self._count_tokens(full_prompt)
 
         # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
@@ -298,15 +297,14 @@ class OpenAIAnswerGenerator(BaseGenerator):
                     break
 
             input_docs = documents[:-skipped_docs]
-            context = self._create_context(input_docs, join_str=self.context_join_str)
-            full_prompt = next(
-                self.instruction_prompt.fill(
-                    examples_context=[self.examples_context],
-                    examples=[example_prompts],
-                    context=[context],
-                    query=[qa_prompt],
-                )
-            )
+            kwargs = {"context": self._create_context(input_docs, join_str=self.context_join_str), "query": qa_prompt}
+            if (
+                "examples_context" in self.instruction_prompt.prompt_params
+                and "examples" in self.instruction_prompt.prompt_params
+            ):
+                kwargs["examples_context"] = self.examples_context
+                kwargs["examples"] = example_prompts
+            full_prompt = next(self.instruction_prompt.fill(**kwargs))
             n_full_prompt_tokens = self._count_tokens(full_prompt)
 
             if len(input_docs) == 0:
