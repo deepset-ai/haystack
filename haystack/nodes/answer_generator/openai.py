@@ -16,6 +16,7 @@ from haystack.environment import (
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.nodes.prompt import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         examples: Optional[List[List[str]]] = None,
         stop_words: Optional[List[str]] = None,
         progress_bar: bool = True,
-        instruction_prompt: Optional[str] = None,
+        instruction_prompt: Optional[PromptTemplate] = None,
     ):
 
         """
@@ -91,9 +92,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
                            If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
-        :param instruction_prompt: A text snippet explaining to the model how to generate answers given a supplied context.
-                                   If not supplied, the default instruction prompt is:
-                                   "Please answer the question according to the above context."
+        :param instruction_prompt: A `PromptTemplate` explaining to the model how to generate answers given a supplied context.
+            If not supplied, the default instruction prompt is:
+            ```python
+                PromptTemplate(
+                    name="question-answering",
+                    prompt_text="Please answer the question according to the above context.",
+                    prompt_params=["documents", "query"]
+                )
+            ```
         """
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
@@ -108,10 +115,18 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if stop_words is None:
             stop_words = ["\n", "<|endoftext|>"]
         if instruction_prompt is None:
-            instruction_prompt = "Please answer the question according to the above context."
-
-        if not api_key:
-            raise ValueError("OpenAIAnswerGenerator requires an API key.")
+            instruction_prompt = PromptTemplate(
+                name="question-answering",
+                prompt_text="Please answer the question according to the above context.",
+                prompt_params=["documents", "query"],
+            )
+        else:
+            if set(instruction_prompt.prompt_params) != {"documents", "query"}:
+                raise ValueError(
+                    "The OpenAIAnswerGenerator only supports PromptTemplates that have `documents` and "
+                    "`query` as its `prompt_params`. Please supply a different `instruction_prompt` or "
+                    "use the default one."
+                )
 
         self.api_key = api_key
         self.model = model
