@@ -28,8 +28,112 @@ env:
 
 jobs:
 
+  black:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Install Haystack
+      run: |
+        pip install --upgrade pip
+        pip install .[dev]
+
+    - name: Check status
+      run: |
+        if ! black . --check; then
+          git status
+          echo "###################################################################################################"
+          echo "# "
+          echo "# CHECK FAILED! Black found issues with your code formatting."
+          echo "# "
+          echo "# Either:"
+          echo "# 1. Run Black locally before committing:"
+          echo "# "
+          echo "#     pip install black==22.6.0"
+          echo "#     black ."
+          echo "# "
+          echo "# 2. Install the pre-commit hook:"
+          echo "# "
+          echo "#     pre-commit install --hook-type pre-push"
+          echo "# "
+          echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
+          echo "# "
+          echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
+          echo "# "
+          echo "##################################################################################################"
+          exit 1
+        fi
+
+    - uses: act10ns/slack@v2
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+
+      # https://stackoverflow.com/questions/74265821/get-modified-files-in-github-actions
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+    - name: Get changed files
+      id: files
+      uses: tj-actions/changed-files@v34
+      with:
+        files: |
+          **/*.py
+        files_ignore: |
+          test/**
+          rest_api/test/**
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+      with:
+        pythonVersion: 3.8   # Literals and mypy just don't work well together.
+
+    - name: Mypy
+      if: steps.files.outputs.any_changed == 'true'
+      run: |
+        mkdir .mypy_cache/
+        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+
+    - uses: act10ns/slack@v2
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Pylint
+      run: |
+        pylint -ry -j 0 haystack/ rest_api/rest_api
+
+    - uses: act10ns/slack@v2
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
+    needs: [mypy, pylint, black]
     strategy:
       fail-fast: false
       matrix:
@@ -353,6 +457,7 @@ jobs:
 
 
   unit-tests-linux:
+    needs: [mypy, pylint, black]
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
@@ -396,6 +501,7 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   unit-tests-windows:
+    needs: [mypy, pylint, black]
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
@@ -441,6 +547,8 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   rest_api:
+    needs: [mypy, pylint, black]
+
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
