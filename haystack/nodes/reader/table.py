@@ -298,7 +298,7 @@ class _TapasEncoder:
             context=string_table,
             offsets_in_document=answer_offsets,
             offsets_in_context=answer_offsets,
-            document_id=document.id,
+            document_ids=[document.id],
             meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
         return answer
@@ -513,7 +513,7 @@ class _TapasScoredEncoder:
                     context=string_table,
                     offsets_in_document=answer_offsets,
                     offsets_in_context=answer_offsets,
-                    document_id=document.id,
+                    document_ids=[document.id],
                     meta={"aggregation_operator": "NONE", "answer_cells": string_table.iat[current_answer_span[:2]]},
                 )
             )
@@ -546,7 +546,7 @@ class _TapasScoredEncoder:
                     context=None,
                     offsets_in_context=[Span(start=0, end=0)],
                     offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
+                    document_ids=None,
                     meta=None,
                 )
             )
@@ -762,7 +762,7 @@ class RCIReader(BaseReader):
                             context=string_table,
                             offsets_in_document=[answer_offsets],
                             offsets_in_context=[answer_offsets],
-                            document_id=document.id,
+                            document_ids=[document.id],
                         )
                     )
 

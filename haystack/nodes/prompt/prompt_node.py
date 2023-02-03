@@ -23,7 +23,7 @@ from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOT
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
-from haystack.schema import Document
+from haystack.schema import Answer, Document
 from haystack.utils.reflection import retry_with_exponential_backoff
 
 logger = logging.getLogger(__name__)
@@ -139,6 +139,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
         if kwargs:
             for param in self.prompt_params:
                 if param in kwargs:
+                    if param == "documents":
+                        for doc in kwargs.get("documents", []):
+                            if not isinstance(doc, str) and not isinstance(doc.content, str):
+                                raise ValueError("PromptNode only accepts text documents.")
+                        kwargs["documents"] = [
+                            doc.content if isinstance(doc, Document) else doc for doc in kwargs.get("documents", [])
+                        ]
                     template_dict[param] = kwargs[param]
 
         if set(template_dict.keys()) != set(self.prompt_params):
@@ -172,6 +179,57 @@ class PromptTemplate(BasePromptTemplate, ABC):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
             prompt_prepared: str = template.substitute(template_input)
             yield prompt_prepared
+
+    def post_process(self, prompt_output: List[str], **kwargs) -> List[Any]:
+        """
+        Post-processes the output of the prompt template.
+
+        :param args: Non-keyword arguments to use for post-processing the prompt output.
+        :param kwargs: Keyword arguments to use for post-processing the prompt output.
+        :return: A dictionary with the post-processed output.
+        """
+        return prompt_output
+
+
+class QuestionAnsweringPromptTemplate(PromptTemplate):
+    """
+    A prompt template for question answering.
+    """
+
+    def __init__(self, name: str, prompt_text: str, prompt_params: Optional[List[str]] = None):
+        """
+        Creates a QuestionAnsweringPromptTemplate instance.
+
+        :param name: The name of the prompt template (for example, sentiment-analysis, question-generation).
+        :param prompt_text: The prompt text including placeholders for the prompt_params.
+        :param prompt_params: The optional parameters that need to be filled in the prompt text. If not specified, they're inferred from the prompt text.
+        """
+        super().__init__(name, prompt_text, prompt_params)
+
+    def prepare(self, *args, **kwargs) -> Dict[str, Any]:
+        """
+        Prepares and verifies the prompt template with input parameters.
+
+        :param args: Non-keyword arguments to use for filling the prompt text.
+        :param kwargs: Keyword arguments to use for filling the prompt text.
+        :return: A dictionary with the prompt text and the prompt parameters.
+        """
+        kwargs["context"] = [" - ".join([document.content for document in kwargs["documents"]])]
+        kwargs["query"] = [kwargs["query"]]
+        template_dict = super().prepare(*args, **kwargs)
+        return template_dict
+
+    def post_process(self, prompt_output: List[str], documents: List[Document], **kwargs) -> List[Any]:  # type: ignore
+        """
+        Post-processes the output of the prompt template.
+
+        :param args: Non-keyword arguments to use for post-processing the prompt output.
+        :param kwargs: Keyword arguments to use for post-processing the prompt output.
+        :return: A dictionary with the post-processed output.
+        """
+        document_ids = [document.id for document in documents]
+        answers = [Answer(answer=answer, type="generative", document_ids=document_ids) for answer in prompt_output]
+        return answers
 
 
 class PromptModelInvocationLayer:
@@ -613,10 +671,9 @@ class PromptModel(BaseComponent):
 
 def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
-        PromptTemplate(
+        QuestionAnsweringPromptTemplate(
             name="question-answering",
-            prompt_text="Given the context please answer the question. Context: $documents; Question: "
-            "$questions; Answer:",
+            prompt_text="Given the context please answer the question. Context: $context; Question: " "$query; Answer:",
         ),
         PromptTemplate(
             name="question-generation",
@@ -796,6 +853,7 @@ class PromptNode(BaseComponent):
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                output = template_to_fill.post_process(output, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
@@ -930,14 +988,6 @@ class PromptNode(BaseComponent):
 
         if meta and "meta" not in invocation_context.keys():
             invocation_context["meta"] = meta
-
-        if "documents" in invocation_context.keys():
-            for doc in invocation_context.get("documents", []):
-                if not isinstance(doc, str) and not isinstance(doc.content, str):
-                    raise ValueError("PromptNode only accepts text documents.")
-            invocation_context["documents"] = [
-                doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
-            ]
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 

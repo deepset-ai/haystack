@@ -12,7 +12,7 @@ LABELS = [
             answer="an answer",
             type="extractive",
             score=0.1,
-            document_id="123",
+            document_ids=["123"],
             offsets_in_document=[Span(start=1, end=3)],
         ),
         document=Document(content="some text", content_type="text"),
@@ -22,7 +22,7 @@ LABELS = [
     ),
     Label(
         query="some",
-        answer=Answer(answer="annother answer", type="extractive", score=0.1, document_id="123"),
+        answer=Answer(answer="annother answer", type="extractive", score=0.1, document_ids=["123"]),
         document=Document(content="some text", content_type="text"),
         is_correct_answer=True,
         is_correct_document=True,
@@ -34,7 +34,7 @@ LABELS = [
             answer="an answer",
             type="extractive",
             score=0.1,
-            document_id="123",
+            document_ids=["123"],
             offsets_in_document=[Span(start=1, end=3)],
         ),
         document=Document(content="some text", content_type="text"),
@@ -120,7 +120,7 @@ def test_answer_to_json():
         context="abc",
         offsets_in_document=[Span(start=1, end=10)],
         offsets_in_context=[Span(start=3, end=5)],
-        document_id="123",
+        document_ids=["123"],
     )
     j = a.to_json()
     assert type(j) == str
@@ -138,7 +138,7 @@ def test_answer_to_dict():
         context="abc",
         offsets_in_document=[Span(start=1, end=10)],
         offsets_in_context=[Span(start=3, end=5)],
-        document_id="123",
+        document_ids=["123"],
     )
     j = a.to_dict()
     assert type(j) == dict
