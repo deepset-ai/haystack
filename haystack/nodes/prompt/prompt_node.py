@@ -173,6 +173,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
             prompt_prepared: str = template.substitute(template_input)
             yield prompt_prepared
 
+    def __repr__(self):
+        return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
+
 
 class PromptModelInvocationLayer:
     """
