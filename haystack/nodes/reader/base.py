@@ -64,7 +64,7 @@ class BaseReader(BaseComponent):
             context=None,
             offsets_in_context=[Span(start=0, end=0)],
             offsets_in_document=[Span(start=0, end=0)],
-            document_id=None,
+            document_ids=None,
             meta=None,
         )
 
@@ -103,7 +103,7 @@ class BaseReader(BaseComponent):
                     context=None,
                     offsets_in_context=[Span(start=0, end=0)],
                     offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
+                    document_ids=None,
                     meta=None,
                 )
                 results = {"answers": [no_ans_prediction]}

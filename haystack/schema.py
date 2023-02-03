@@ -395,7 +395,7 @@ class Answer:
     context: Optional[Union[str, pd.DataFrame]] = None
     offsets_in_document: Optional[List[Span]] = None
     offsets_in_context: Optional[List[Span]] = None
-    document_id: Optional[str] = None
+    document_ids: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
     """

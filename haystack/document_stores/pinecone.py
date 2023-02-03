@@ -1504,7 +1504,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     context=label_meta["label-answer-context"],
                     offsets_in_document=offsets["document"],
                     offsets_in_context=offsets["context"],
-                    document_id=label_meta["label-answer-document-id"],
+                    document_ids=[label_meta["label-answer-document-id"]],
                     meta=other_meta,
                 )
             # Extract Label metadata
