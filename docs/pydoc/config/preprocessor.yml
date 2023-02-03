@@ -1,11 +1,11 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/retriever]
-    modules: ['base', 'sparse', 'dense', 'text2sparql', 'multimodal/retriever']
+    search_path: [../../../haystack/nodes/preprocessor]
+    modules: ['base', 'preprocessor']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Sweeps through a document store and returns a set of candidate documents that are relevant to the query.
+   excerpt: Normalize white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
    category: 6310ca73c622850ddd3875a2
-   title: Retriever API
-   slug: retriever-api
-   order: 170
+   title: PreProcessor API
+   slug: preprocessor-api
+   order: 100
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: retriever_api.md
+     filename: preprocessor_api.md

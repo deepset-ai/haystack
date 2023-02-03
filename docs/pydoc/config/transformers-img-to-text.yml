@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/translator]
+    search_path: [../../../haystack/nodes/image_to_text]
     modules: ['base', 'transformers']
     ignore_when_discovered: ['__init__']
 processors:
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Does what it says on the tin - it translates text from one language into another.
+   excerpt: Generates captions for images.
    category: 6310ca73c622850ddd3875a2
-   title: Translator API
-   slug: translator-api
-   order: 190
+   title: TransformersImageToText API
+   slug: transformers-image-to-text-api
+   order: 185
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: translator_api.md
+     filename: transformers-image-to-text.md
