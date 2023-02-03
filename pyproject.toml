@@ -201,7 +201,7 @@ dev = [
   "python-multipart",
   "psutil",
   # Linting
-  "pylint",
+  "pylint==2.15.10",
   # Code formatting
   "black[jupyter]==22.6.0",
   # Documentation

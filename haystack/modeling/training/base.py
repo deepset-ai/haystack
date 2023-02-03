@@ -277,7 +277,7 @@ class Trainer:
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from %s", self.early_stopping.save_dir)
-            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
+            self.model = self.model.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
         # Eval on test set
