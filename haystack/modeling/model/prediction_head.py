@@ -110,7 +110,7 @@ class PredictionHead(nn.Module):
         prediction_head = cls.subclasses[config["name"]](**config)
         if load_weights:
             model_file = cls._get_model_file(config_file=config_file)
-            logger.info("Loading prediction head from {}".format(model_file))
+            logger.info("Loading prediction head from %s", model_file)
             prediction_head.load_state_dict(torch.load(model_file, map_location=torch.device("cpu")), strict=strict)
         return prediction_head
 

@@ -6,21 +6,19 @@ on:
     branches:
       - main
       # release branches have the form v1.9.x
-      - 'v[0-9].*[0-9].x'
-
+      - "v[0-9].*[0-9].x"
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout this repo
         uses: actions/checkout@v3
 
       - name: Set up Python 3.8.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
@@ -34,7 +32,7 @@ jobs:
         id: current-version
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
-        run: echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+        run: echo "minor=$(cat VERSION.txt | cut -d "." -f 1,2)" >> $GITHUB_OUTPUT
 
       - name: Sync docs with unstable release
         # Instead of putting more logic into the previous step, let's just assume that commits on `main`

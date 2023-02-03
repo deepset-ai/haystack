@@ -2271,9 +2271,9 @@ def _download_extract_downstream_data(input_file: str, proxies=None):
     directory = full_path.parent
     taskname = directory.stem
     datadir = directory.parent
-    logger.info("downloading and extracting file {} to dir {}".format(taskname, datadir))
+    logger.info("downloading and extracting file %s to dir %s", taskname, datadir)
     if taskname not in DOWNSTREAM_TASK_MAP:
-        logger.error("Cannot download {}. Unknown data source.".format(taskname))
+        logger.error("Cannot download %s. Unknown data source.", taskname)
     else:
         if os.name == "nt":  # make use of NamedTemporaryFile compatible with Windows
             delete_tmp_file = False

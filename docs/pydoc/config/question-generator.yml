@@ -1,0 +1,26 @@
+loaders:
+  - type: python
+    search_path: [../../../haystack/nodes/question_generator]
+    modules: ['question_generator']
+    ignore_when_discovered: ['__init__']
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+   type: renderers.ReadmeRenderer
+   excerpt: Takes a Document as input and generates questions which it believes the Document can answer.
+   category: 6310ca73c622850ddd3875a2
+   title: Question Generator API
+   slug: question-generator-api
+   order: 140
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: question_generator_api.md
