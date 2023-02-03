@@ -238,17 +238,13 @@ class Trainer:
                             do_stopping, save_model, eval_value = self.early_stopping.check_stopping(result)
                             if save_model:
                                 logger.info(
-                                    "Saving current best model to {}, eval={}".format(
-                                        self.early_stopping.save_dir, eval_value
-                                    )
+                                    "Saving current best model to %s, eval=%s", self.early_stopping.save_dir, eval_value
                                 )
                                 self.model.save(self.early_stopping.save_dir)
                                 self.data_silo.processor.save(self.early_stopping.save_dir)
                             if do_stopping:
                                 # log the stopping
-                                logger.info(
-                                    "STOPPING EARLY AT EPOCH {}, STEP {}, EVALUATION {}".format(epoch, step, evalnr)
-                                )
+                                logger.info("STOPPING EARLY AT EPOCH %s, STEP %s, EVALUATION %s", epoch, step, evalnr)
                 if do_stopping:
                     break
 
@@ -280,7 +276,7 @@ class Trainer:
 
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
-            logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
+            logger.info("Restoring best model so far from %s", self.early_stopping.save_dir)
             self.model = self.model.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
