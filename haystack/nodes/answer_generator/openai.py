@@ -93,7 +93,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
                            If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
-        :param instruction_prompt: A `PromptTemplate` explaining to the model how to generate answers given a supplied context.
+        :param instruction_prompt: A PromptTemplate used to explain to the model how to generate answers given a
+            supplied `context` and `query` at runtime. An `example_context` and a list of `examples` are used to provide
+            the model with examples to help steer the model towards the tone and answer format you would like.
             If not supplied, the default instruction prompt is:
             ```python
                 PromptTemplate(
@@ -104,6 +106,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
                     prompt_params=["examples_context", "examples", "context", "query"],
                 )
             ```
+            An explanation of how variables (for example '$context') are substituted into the `prompt_text` refer to
+            the PromptTemplate [documentation](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string to use to join the input documents together to create the context
             that will be used by the PromptTemplate.
         """
