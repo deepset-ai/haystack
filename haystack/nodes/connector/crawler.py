@@ -95,7 +95,10 @@ class Crawler(BaseComponent):
                     and spawn a single process.
                  2) ["--no-sandbox"]
                     This option disables the sandbox, which is required for running Chrome as root.
-            See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
+                 3) ["--remote-debugging-port=9222"]
+                    This option enables remote debug over HTTP.
+            See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
+            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread] can be helpful. Contains useful suggestions for webdriver_options.
         """
         super().__init__()
 
@@ -108,9 +111,7 @@ class Crawler(BaseComponent):
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
         webdriver_options.append("--headless")
         if IS_ROOT or IN_WINDOWS:
-            webdriver_options.append("--no-sandbox")
-        if IN_WINDOWS:
-            webdriver_options.append("--no--remote-debugging-port=9222")
+            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
         if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
