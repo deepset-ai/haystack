@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/utils]
-    modules: ['doc_store', 'export_utils', 'preprocessing', 'squad_data', 'early_stopping', 'cleaning', 'context_matching', 'deepsetcloud', 'docker']
+    search_path: [../../../haystack/pipelines]
+    modules: ['base', 'ray', 'standard_pipelines']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Utility functions for Haystack.
+   excerpt: Arranges nodes in a predefined flow.
    category: 6310ca73c622850ddd3875a2
-   title: Utils API
-   slug: utils-api
-   order: 200
+   title: Pipelines API
+   slug: pipelines-api
+   order: 90
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: utils_api.md
+     filename: pipelines_api.md

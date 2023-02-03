@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/answer_generator]
-    modules: ['base', 'transformers', 'openai']
+    search_path: [../../../haystack/nodes/query_classifier]
+    modules: ['base', 'sklearn', 'transformers']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Reads a set of documents and generates an answer to a question, word by word
+   excerpt: Distinguishes between keyword, question and statements queries.
    category: 6310ca73c622850ddd3875a2
-   title: Answer Generator API
-   slug: answer-generator-api
-   order: 0
+   title: Query Classifier API
+   slug: query-classifier-api
+   order: 130
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: answer_generator_api.md
+     filename: query_classifier_api.md
