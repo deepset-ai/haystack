@@ -704,8 +704,12 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         ),
         QuestionAnsweringPromptTemplate(
             name="question-answering-with-references",
-            prompt_text="Given the context please answer the question. Cite the documents using Document[number] notation. If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n $documents; Question: "
-            "$query; Answer:",
+            prompt_text="Create a concise and informative answer (no more than 50 words) for a given question "
+            "based solely on the given documents. You must only use information from the given documents. "
+            "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
+            "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. "
+            "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
+            "$documents; \n Question: $query; Answer: ",
             character_replace={"\n": " ", "[": "(", "]": ")"},
             document_pattern="\nDocument[$idx]: $content",
             documents_delimiter="\n",
@@ -723,7 +727,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         PromptTemplate(
             name="question-answering-check",
             prompt_text="Does the following context contain the answer to the question. "
-            "Context: $documents; Question: $questions; Please answer yes or no! Answer:",
+            "Context: $documents; Question: $query; Please answer yes or no! Answer:",
         ),
         PromptTemplate(
             name="sentiment-analysis",
@@ -732,7 +736,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         ),
         PromptTemplate(
             name="multiple-choice-question-answering",
-            prompt_text="Question:$questions ; Choose the most suitable option to answer the above question. "
+            prompt_text="Question:$query ; Choose the most suitable option to answer the above question. "
             "Options: $options; Answer:",
         ),
         PromptTemplate(
