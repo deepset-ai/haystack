@@ -281,7 +281,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         n_full_prompt_tokens = self._count_tokens(full_prompt)
 
         # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
-        self.MAX_TOKENS_LIMIT = 116
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
 
         input_docs = documents
