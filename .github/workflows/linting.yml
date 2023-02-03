@@ -1,3 +1,4 @@
+# If you change this name also do it in linting-skipper.yml
 name: Linting
 
 on:
