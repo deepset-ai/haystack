@@ -1436,36 +1436,103 @@ class EvaluationResult:
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
 
+        # find out which label matched
+        def find_matched_label_idxs(row) -> List[int]:  # pylint: disable=too-many-return-statements
+            id_matches = [idx for idx, val in enumerate(row["gold_documents_id_match"]) if val == 1.0]
+            context_matches = [
+                idx for idx, val in enumerate(row["gold_contexts_similarity"]) if val > 65.0
+            ]  # TODO: hardcoded threshold for now, will be param of calculate_metrics
+            answer_matches = [idx for idx, val in enumerate(row["gold_answers_match"]) if val == 1.0]
+            if document_relevance_criterion == "document_id":
+                return id_matches
+            elif document_relevance_criterion == "context":
+                return context_matches
+            elif document_relevance_criterion == "answer":
+                return answer_matches
+            elif document_relevance_criterion == "document_id_and_context":
+                return list(set(id_matches) & set(context_matches))
+            elif document_relevance_criterion == "document_id_or_context":
+                return list(set(id_matches) | set(context_matches))
+            elif document_relevance_criterion == "document_id_and_answer":
+                return list(set(id_matches) & set(answer_matches))
+            elif document_relevance_criterion == "document_id_or_answer":
+                return list(set(id_matches) | set(answer_matches))
+            elif document_relevance_criterion == "context_and_answer":
+                return list(set(context_matches) & set(answer_matches))
+            elif document_relevance_criterion == "document_id_and_context_and_answer":
+                return list(set(id_matches) & set(context_matches) & set(answer_matches))
+            else:
+                raise ValueError(f"document_relevance_criterion '{document_relevance_criterion}' not supported.")
+
+        documents["matched_label_idxs"] = documents.apply(find_matched_label_idxs, axis=1)
+
         metrics = []
 
         for multilabel_id in documents["multilabel_id"].unique():
             query_df = documents[documents["multilabel_id"] == multilabel_id]
-            gold_ids = list(query_df["gold_document_ids"].iloc[0])
-            retrieved = len(query_df)
 
+            # Note: Metrics are always calculated on document_ids.
+            # For some document relevance criteria (e.g. context), the gold_document_ids are not enough or not useful at all.
+            # So, we have to adjust the relevant ids according to the document_relevance_criterion.
             relevance_criterion_col = f"{document_relevance_criterion.replace('document_id', 'gold_id')}_match"
-            relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
-            num_relevants = len(set(gold_ids + relevance_criterion_ids))
-            num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()
-            rank_retrieved_relevants = query_df[query_df[relevance_criterion_col] == 1]["rank"].values
-            avp_retrieved_relevants = [
-                query_df[relevance_criterion_col].values[: int(rank)].sum() / rank for rank in rank_retrieved_relevants
-            ]
+            relevant_rows = query_df[query_df[relevance_criterion_col] == 1]
 
-            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
-            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
-            precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
-            rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
-            dcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
-                if len(rank_retrieved_relevants) > 0
-                else 0.0
+            # all labels without no_answers
+            # we need to match all (except for single hit recall)
+            gold_document_ids = (
+                list(query_df["gold_custom_document_ids"].iloc[0])
+                if "gold_custom_document_ids" in query_df
+                else list(query_df["gold_document_ids"].iloc[0])
             )
-            idcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)]) if num_relevants > 0 else 1.0
-            )
-            ndcg = dcg / idcg
+            # remove no_answer label
+            gold_document_ids = [id for id in gold_document_ids if id != "00"]
+
+            num_labels = len(gold_document_ids)
+            num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
+            num_missing_labels = num_labels - num_matched_labels
+
+            relevance_criterion_ids = list(relevant_rows["document_id"].values)
+            num_relevants = len(set(relevance_criterion_ids)) + num_missing_labels
+
+            num_retrieved = len(query_df["document_id"])
+            num_retrieved_relevants = len(relevant_rows)
+            rank_retrieved_relevants = relevant_rows["rank"].values
+
+            if num_labels == 0:
+                # For no_answer queries, we set all metrics to 1.0, to indicate that the retriever cannot improve the pipeline.
+                # This behavior is different from pytrec_eval, which sets the metrics to 0.0 if there is no relevant document in the evalset.
+                rr = 1.0
+                avg_precision = 1.0
+                recall_multi_hit = 1.0
+                recall_single_hit = 1.0
+                precision = 1.0
+                ndcg = 1.0
+            elif num_retrieved_relevants == 0:
+                # Set all metrics to 0.0 if no relevant document has been retrieved to avoid undefined metrics.
+                rr = 0.0
+                avg_precision = 0.0
+                recall_multi_hit = 0.0
+                recall_single_hit = 0.0
+                precision = 0.0
+                ndcg = 0.0
+            else:
+                # The previous checks ensure:
+                # - `num_labels` > 0
+                # - `num_retrieved_relevants` > 0
+                # - `num_relevants` > 0  (`num_relevants` is always >= `num_labels`)
+                # - `num_retrieved` > 0  (`num_retrieved` is always >= `num_retrieved_relevants`)
+                # - `len(rank_retrieved_relevants)` > 0 (`len(rank_retrieved_relevants)` is always == `num_retrieved_relevants`)
+                avp_retrieved_relevants = [
+                    len(relevant_rows[relevant_rows["rank"] <= rank]) / rank for rank in rank_retrieved_relevants
+                ]
+                avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
+                recall_multi_hit = num_matched_labels / num_labels
+                recall_single_hit = 1.0
+                precision = num_retrieved_relevants / num_retrieved
+                rr = 1.0 / rank_retrieved_relevants.min()
+                dcg = np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
+                idcg = np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)])
+                ndcg = dcg / idcg
 
             metrics.append(
                 {

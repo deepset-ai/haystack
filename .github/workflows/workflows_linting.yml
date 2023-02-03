@@ -1,0 +1,19 @@
+name: Github workflows linter
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows"
+
+jobs:
+  lint-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+
+      - name: Run actionlint
+        run: actionlint

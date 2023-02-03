@@ -201,7 +201,7 @@ dev = [
   "python-multipart",
   "psutil",
   # Linting
-  "pylint",
+  "pylint==2.15.10",
   # Code formatting
   "black[jupyter]==22.6.0",
   # Documentation
@@ -298,6 +298,7 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
+  "broad-exception-raised",
 
   # To review later
   "cyclic-import",
