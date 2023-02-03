@@ -64,6 +64,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         stop_words: Optional[List[str]] = None,
         progress_bar: bool = True,
         instruction_prompt: Optional[PromptTemplate] = None,
+        context_join_str: str = " ",
     ):
 
         """
@@ -97,10 +98,14 @@ class OpenAIAnswerGenerator(BaseGenerator):
             ```python
                 PromptTemplate(
                     name="question-answering",
-                    prompt_text="Please answer the question according to the above context.",
-                    prompt_params=["documents", "query"]
+                    prompt_text="Please answer the question according to the above context."
+                                "\n===\nContext: $examples_context\n===\n$examples\n\n"
+                                "===\nContext: $context\n===\n$query",
+                    prompt_params=["examples_context", "examples", "context", "query"],
                 )
             ```
+        :param context_join_str: The separation string to use to join the input documents together to create the context
+            that will be used by the PromptTemplate.
         """
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
@@ -117,15 +122,32 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if instruction_prompt is None:
             instruction_prompt = PromptTemplate(
                 name="question-answering",
-                prompt_text="Please answer the question according to the above context.",
-                prompt_params=["documents", "query"],
+                prompt_text="Please answer the question according to the above context."
+                "\n===\nContext: $examples_context\n===\n$examples\n\n"
+                "===\nContext: $context\n===\n$query",
+                prompt_params=["examples_context", "examples", "context", "query"],
             )
         else:
-            if set(instruction_prompt.prompt_params) != {"documents", "query"}:
+            # Check for required prompts
+            required_params = ["context", "query"]
+            if all([p in instruction_prompt.prompt_params for p in required_params]):
                 raise ValueError(
-                    "The OpenAIAnswerGenerator only supports PromptTemplates that have `documents` and "
-                    "`query` as its `prompt_params`. Please supply a different `instruction_prompt` or "
+                    "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
+                    "`query` in its `prompt_params`. Please supply a different `instruction_prompt` or "
                     "use the default one."
+                )
+
+            # Check for unsupported prompt parameters
+            optional_params = ["examples_context", "examples"]
+            unknown_params = []
+            for p in instruction_prompt.prompt_params:
+                if p not in set(required_params + optional_params):
+                    unknown_params.append(p)
+            if len(unknown_params) > 1:
+                raise ValueError(
+                    f"The provided PromptTemplate has the prompt parameters, {unknown_params}, that are not supported "
+                    f"by the OpenAIAnswerGenerator. The only prompt parameters that are supported are "
+                    f"`examples_context`, `examples`, `context`, and `query`."
                 )
 
         self.api_key = api_key
@@ -139,6 +161,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples = examples
         self.stop_words = stop_words
         self.instruction_prompt = instruction_prompt
+        self.context_join_str = context_join_str
 
         tokenizer = "gpt2"
         if "davinci" in self.model:
@@ -232,59 +255,76 @@ class OpenAIAnswerGenerator(BaseGenerator):
         result = {"query": query, "answers": answers}
         return result
 
+    @staticmethod
+    def _create_context(documents: List[Document], join_str: str = " ") -> str:
+        """Join the documents together to create a single context to be used in the PromptTemplate."""
+        doc_contents = [doc.content for doc in documents]
+        context = join_str.join(reversed(doc_contents))
+        return context
+
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
         Builds the prompt for the GPT-3 model so that it can generate an Answer.
         """
-        example_context = f"===\nContext: {self.examples_context}\n===\n"
-        example_prompts = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
-        instruction = self.instruction_prompt + "\n" + example_context + example_prompts
-        instruction = f"{instruction.strip()}\n\n"
-
+        example_prompts = "\n---\n".join([f"Q: {query}\nA: {answer}" for query, answer in self.examples])
         qa_prompt = f"Q: {query}\nA:"
+        context = self._create_context(documents, join_str=self.context_join_str)
 
-        n_instruction_tokens = self._count_tokens(instruction + qa_prompt + "===\nContext: \n===\n")
-
-        logger.debug("Number of tokens in instruction: %s", n_instruction_tokens)
-
-        n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
-        logger.debug("Number of tokens in documents: %s", n_docs_tokens)
+        full_prompt = next(
+            self.instruction_prompt.fill(
+                examples_context=[self.examples_context],
+                examples=[example_prompts],
+                context=[context],
+                query=[qa_prompt],
+            )
+        )
+        n_full_prompt_tokens = self._count_tokens(full_prompt)
 
         # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
-        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
+        self.MAX_TOKENS_LIMIT = 116
+        leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
 
-        # Add as many Documents as context as fit into the model
-        input_docs = []
-        input_docs_content = []
+        input_docs = documents
         skipped_docs = 0
-        for doc, doc_token_len in zip(documents, n_docs_tokens):
-            if doc_token_len <= leftover_token_len:
-                input_docs.append(doc)
-                input_docs_content.append(doc.content)
-                leftover_token_len -= doc_token_len
-            else:
+        if leftover_token_len < 0:
+            n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
+            logger.debug("Number of tokens in documents: %s", n_docs_tokens)
+
+            rev_n_docs_tokens = reversed(n_docs_tokens)
+            n_skipped_tokens = 0
+            for doc_token_len in rev_n_docs_tokens:
+                n_skipped_tokens += doc_token_len
                 skipped_docs += 1
+                if n_skipped_tokens >= abs(leftover_token_len):
+                    break
 
-        if len(input_docs) == 0:
-            logger.warning(
-                "Skipping all of the provided Documents, as none of them fits the maximum token limit of %s"
-                "The generated answers will therefore not be conditioned on any context.",
-                self.MAX_TOKENS_LIMIT,
+            input_docs = documents[:-skipped_docs]
+            context = self._create_context(input_docs, join_str=self.context_join_str)
+            full_prompt = next(
+                self.instruction_prompt.fill(
+                    examples_context=[self.examples_context],
+                    examples=[example_prompts],
+                    context=[context],
+                    query=[qa_prompt],
+                )
             )
-        elif skipped_docs >= 1:
-            logger.warning(
-                "Skipping %s of the provided Documents, as using them would exceed the maximum token limit of %s.",
-                skipped_docs,
-                self.MAX_TOKENS_LIMIT,
-            )
+            n_full_prompt_tokens = self._count_tokens(full_prompt)
 
-        # Top ranked documents should go at the end
-        context = " ".join(reversed(input_docs_content))
-        context = f"===\nContext: {context}\n===\n"
+            if len(input_docs) == 0:
+                logger.warning(
+                    "Skipping all of the provided Documents, as none of them fits the maximum token limit of %s. "
+                    "The generated answers will therefore not be conditioned on any context.",
+                    self.MAX_TOKENS_LIMIT,
+                )
+            elif skipped_docs >= 1:
+                logger.warning(
+                    "Skipping %s of the provided Documents, as using them would exceed the maximum token limit of %s.",
+                    skipped_docs,
+                    self.MAX_TOKENS_LIMIT,
+                )
 
-        full_prompt = instruction + context + qa_prompt
+        logger.debug("Number of tokens in full prompt: %s", n_full_prompt_tokens)
         logger.debug("Full prompt: %s", full_prompt)
-
         return full_prompt, input_docs
 
     def _count_tokens(self, text: str) -> int:
