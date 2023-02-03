@@ -79,7 +79,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
     the [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
-    def __init__(self, name: str, prompt_text: str, prompt_params: Optional[List[str]] = None):
+    def __init__(
+        self,
+        name: str,
+        prompt_text: str,
+        prompt_params: Optional[List[str]] = None,
+        output_variable: Optional[str] = None,
+    ):
         """
          Creates a PromptTemplate instance.
 
@@ -114,6 +120,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         self.name = name
         self.prompt_text = prompt_text
         self.prompt_params = prompt_params
+        self.output_variable: Optional[str] = output_variable
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -202,6 +209,7 @@ class QuestionAnsweringPromptTemplate(PromptTemplate):
         name: str,
         prompt_text: str,
         prompt_params: Optional[List[str]] = None,
+        output_variable: Optional[str] = None,
         documents_delimiter: str = " ",
         document_pattern: str = "$content",
         character_replace: Optional[Dict[str, str]] = None,
@@ -216,7 +224,7 @@ class QuestionAnsweringPromptTemplate(PromptTemplate):
         self.documents_delimiter = documents_delimiter
         self.document_pattern = document_pattern
         self.character_replace = character_replace or {}
-        super().__init__(name, prompt_text, prompt_params)
+        super().__init__(name, prompt_text, prompt_params, output_variable)
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -713,6 +721,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             character_replace={"\n": " ", "[": "(", "]": ")"},
             document_pattern="\nDocument[$idx]: $content",
             documents_delimiter="\n",
+            output_variable="answers",
         ),
         PromptTemplate(
             name="question-generation",
@@ -837,9 +846,9 @@ class PromptNode(BaseComponent):
         else:
             raise ValueError("model_name_or_path must be either a string or a PromptModel object")
 
-    def __call__(self, *args, **kwargs) -> List[str]:
+    def __call__(self, *args, **kwargs) -> Dict[str, Any]:
         """
-        This method is invoked when the component is called directly, for example:
+        This method is invoked when the component is called directly, for example:ny
         ```python
             PromptNode pn = ...
             sa = pn.set_default_prompt_template("sentiment-analysis")
@@ -853,7 +862,7 @@ class PromptNode(BaseComponent):
         else:
             return self.prompt(self.default_prompt_template, *args, **kwargs)
 
-    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
+    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> Dict[str, Any]:
         """
         Prompts the model and represents the central API for the PromptNode. It takes a prompt template,
         a list of non-keyword and keyword arguments, and returns a list of strings - the responses from
@@ -866,6 +875,7 @@ class PromptNode(BaseComponent):
         :return: A list of strings as model responses.
         """
         results = []
+        output_variable = self.output_variable
         # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
         if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
@@ -894,6 +904,8 @@ class PromptNode(BaseComponent):
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 output = template_to_fill.post_process(output, **kwargs_copy)
                 results.extend(output)
+                if not output_variable:
+                    output_variable = template_to_fill.output_variable
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
@@ -902,7 +914,12 @@ class PromptNode(BaseComponent):
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
-        return results
+
+        final_result: Dict[str, Any] = {}
+        output_variable = output_variable or "results"
+        final_result[output_variable] = results
+
+        return final_result
 
     def add_prompt_template(self, prompt_template: PromptTemplate) -> None:
         """
@@ -1028,17 +1045,11 @@ class PromptNode(BaseComponent):
         if meta and "meta" not in invocation_context.keys():
             invocation_context["meta"] = meta
 
-        results = self(prompt_collector=prompt_collector, **invocation_context)
+        result = self(prompt_collector=prompt_collector, **invocation_context)
 
-        final_result: Dict[str, Any] = {}
-        output_variable = self.output_variable or "results"
-        if output_variable:
-            invocation_context[output_variable] = results
-            final_result[output_variable] = results
-
-        final_result["invocation_context"] = invocation_context
-        final_result["_debug"] = {"prompts_used": prompt_collector}
-        return final_result, "output_1"
+        result["invocation_context"] = {**invocation_context, **result}
+        result["_debug"] = {"prompts_used": prompt_collector}
+        return result, "output_1"
 
     def run_batch(
         self,
