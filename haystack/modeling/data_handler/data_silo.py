@@ -150,7 +150,7 @@ class DataSilo:
         :return: None
         """
 
-        logger.info("\nLoading data into the data silo ..." "{}".format(TRACTOR_SMALL))
+        logger.info("\nLoading data into the data silo ... %s", TRACTOR_SMALL)
         # train data
         logger.info("LOADING TRAIN DATA")
         logger.info("==================")
@@ -161,7 +161,7 @@ class DataSilo:
         elif self.processor.train_filename:
             # or from a file (default)
             train_file = self.processor.data_dir / self.processor.train_filename
-            logger.info("Loading train set from: {} ".format(train_file))
+            logger.info("Loading train set from: %s ", train_file)
             self.data["train"], self.tensor_names = self._get_dataset(train_file)
         else:
             logger.info("No train set is being loaded")
@@ -178,7 +178,7 @@ class DataSilo:
         elif self.processor.dev_filename:
             # or from file (default)
             dev_file = self.processor.data_dir / self.processor.dev_filename
-            logger.info("Loading dev set from: {}".format(dev_file))
+            logger.info("Loading dev set from: %s", dev_file)
             self.data["dev"], _ = self._get_dataset(dev_file)
         elif self.processor.dev_split > 0.0:
             # or split it apart from train set
@@ -199,7 +199,7 @@ class DataSilo:
         elif self.processor.test_filename:
             # or from file (default)
             test_file = self.processor.data_dir / self.processor.test_filename
-            logger.info("Loading test set from: {}".format(test_file))
+            logger.info("Loading test set from: %s", test_file)
             if self.tensor_names:
                 self.data["test"], _ = self._get_dataset(test_file)
             else:
@@ -406,16 +406,16 @@ class DataSilo:
         else:
             self.counts["test"] = 0
 
-        logger.info("Examples in train: {}".format(self.counts["train"]))
-        logger.info("Examples in dev  : {}".format(self.counts["dev"]))
-        logger.info("Examples in test : {}".format(self.counts["test"]))
-        logger.info("Total examples   : {}".format(self.counts["train"] + self.counts["dev"] + self.counts["test"]))
+        logger.info("Examples in train: %s", self.counts["train"])
+        logger.info("Examples in dev  : %s", self.counts["dev"])
+        logger.info("Examples in test : %s", self.counts["test"])
+        logger.info("Total examples   : %s", self.counts["train"] + self.counts["dev"] + self.counts["test"])
         logger.info("")
         if self.data["train"]:
             if "input_ids" in self.tensor_names:
-                logger.info("Longest sequence length observed after clipping:     {}".format(max(seq_lens)))
-                logger.info("Average sequence length after clipping: {}".format(ave_len))
-                logger.info("Proportion clipped:      {}".format(clipped))
+                logger.info("Longest sequence length observed after clipping:     %s", max(seq_lens))
+                logger.info("Average sequence length after clipping: %s", ave_len)
+                logger.info("Proportion clipped:      %s", clipped)
                 if clipped > 0.5:
                     logger.info(
                         "[Haystack Tip] %s%% of your samples got cut down to %s tokens. "
@@ -429,20 +429,20 @@ class DataSilo:
                     )
             elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
                 logger.info(
-                    "Longest query length observed after clipping: {}   - for max_query_len: {}".format(
-                        max(seq_lens[0]), max_seq_len[0]
-                    )
+                    "Longest query length observed after clipping: %s   - for max_query_len: %s",
+                    max(seq_lens[0]),
+                    max_seq_len[0],
                 )
-                logger.info("Average query length after clipping:          {}".format(ave_len[0]))
-                logger.info("Proportion queries clipped:                   {}".format(clipped[0]))
+                logger.info("Average query length after clipping:          %s", ave_len[0])
+                logger.info("Proportion queries clipped:                   %s", clipped[0])
                 logger.info("")
                 logger.info(
-                    "Longest passage length observed after clipping: {}   - for max_passage_len: {}".format(
-                        max(seq_lens[1]), max_seq_len[1]
-                    )
+                    "Longest passage length observed after clipping: %s   - for max_passage_len: %s",
+                    max(seq_lens[1]),
+                    max_seq_len[1],
                 )
-                logger.info("Average passage length after clipping:          {}".format(ave_len[1]))
-                logger.info("Proportion passages clipped:                    {}".format(clipped[1]))
+                logger.info("Average passage length after clipping:          %s", ave_len[1])
+                logger.info("Proportion passages clipped:                    %s", clipped[1])
 
         tracker.track_params(
             {

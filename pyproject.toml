@@ -273,7 +273,6 @@ disable = [
   "too-many-instance-attributes",
   "super-with-arguments",
   "redefined-builtin",
-  "logging-format-interpolation",
   "abstract-method",
   "too-many-branches",
   "unspecified-encoding",
