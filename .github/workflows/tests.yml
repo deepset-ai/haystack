@@ -41,7 +41,7 @@ jobs:
     - name: Install Black
       run: |
         pip install --upgrade pip
-        pip install black
+        pip install black==22.6.0
 
     - name: Check status
       run: |
