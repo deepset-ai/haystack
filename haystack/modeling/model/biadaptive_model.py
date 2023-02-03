@@ -92,19 +92,18 @@ class BiAdaptiveModel(nn.Module):
             loss_aggregation_fn = loss_per_head_sum
         self.loss_aggregation_fn = loss_aggregation_fn
 
-    def save(self, save_dir: Path, lm1_name: str = "lm1", lm2_name: str = "lm2"):
+    def save(self, save_dir: Union[str, Path], lm1_name: str = "lm1", lm2_name: str = "lm2"):
         """
         Saves the 2 language model weights and respective config_files in directories lm1 and lm2 within save_dir.
 
-        :param save_dir: Path to save the BiAdaptiveModel to.
+        :param save_dir: Path | str to save the BiAdaptiveModel to.
         """
         os.makedirs(save_dir, exist_ok=True)
-        if not os.path.exists(Path.joinpath(save_dir, Path(lm1_name))):
-            os.makedirs(Path.joinpath(save_dir, Path(lm1_name)))
-        if not os.path.exists(Path.joinpath(save_dir, Path(lm2_name))):
-            os.makedirs(Path.joinpath(save_dir, Path(lm2_name)))
-        self.language_model1.save(Path.joinpath(save_dir, Path(lm1_name)))
-        self.language_model2.save(Path.joinpath(save_dir, Path(lm2_name)))
+        for name, model in zip([lm1_name, lm2_name], [self.language_model1, self.language_model2]):
+            model_save_dir = Path.joinpath(Path(save_dir), Path(name))
+            os.makedirs(model_save_dir, exist_ok=True)
+            model.save(model_save_dir)
+
         for i, ph in enumerate(self.prediction_heads):
             logger.info("prediction_head saving")
             ph.save(save_dir, i)
