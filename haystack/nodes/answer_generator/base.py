@@ -72,9 +72,9 @@ class BaseGenerator(BaseComponent):
             answers.append(
                 Answer(
                     answer=generated_answer,
+                    document_ids=flat_docs_dict["id"],
                     type="generative",
                     meta={
-                        "doc_ids": flat_docs_dict["id"],
                         "doc_scores": flat_docs_dict["score"],
                         "content": flat_docs_dict["content"],
                         "titles": [d.get("name", "") for d in flat_docs_dict["meta"]],
