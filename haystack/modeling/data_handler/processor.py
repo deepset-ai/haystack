@@ -59,7 +59,7 @@ class Processor(ABC):
         test_filename: Optional[Union[Path, str]],
         dev_split: float,
         data_dir: Optional[Union[Path, str]],
-        tasks: Dict = {},
+        tasks: Optional[Dict] = None,
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
     ):
@@ -82,6 +82,8 @@ class Processor(ABC):
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         """
+        if tasks is None:
+            tasks = {}
         if not multithreading_rust:
             os.environ["RAYON_RS_NUM_CPUS"] = "1"
 
@@ -313,7 +315,7 @@ class Processor(ABC):
 
     @abstractmethod
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         raise NotImplementedError()
 
@@ -444,7 +446,7 @@ class SquadProcessor(Processor):
             )
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         """
         Convert input dictionaries into a pytorch dataset for Question Answering.
@@ -456,6 +458,8 @@ class SquadProcessor(Processor):
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
         :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
+        if indices is None:
+            indices = []
         # Convert to standard format
         pre_baskets = [self.convert_qa_input_dict(x) for x in dicts]  # TODO move to input object conversion
 
@@ -990,7 +994,7 @@ class TextSimilarityProcessor(Processor):
             json.dump(config, file)
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity (e.g. DPR).
@@ -1013,6 +1017,8 @@ class TextSimilarityProcessor(Processor):
         :param return_baskets: whether to return the baskets or not (baskets are needed during inference)
         :return: dataset, tensor_names, problematic_ids, [baskets]
         """
+        if indices is None:
+            indices = []
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
@@ -1254,7 +1260,7 @@ class TableTextSimilarityProcessor(Processor):
         dev_split: float = 0.1,
         proxies: Optional[Dict] = None,
         max_samples: Optional[int] = None,
-        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         num_positives: int = 1,
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
@@ -1284,7 +1290,7 @@ class TableTextSimilarityProcessor(Processor):
         :param proxies: Proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
         :param max_samples: maximum number of samples to use.
-        :param embed_meta_fields: List of meta fields to embed in text passages and tables during tensorization.
+        :param embed_meta_fields: List of meta fields to embed in text passages and tables during tensorization. By default, "page_title", "section_title", and "caption" are used.
         :param num_hard_negatives: Maximum number of hard negative context passages in a sample.
         :param num_positives: Maximum number of positive context passages in a sample.
         :param shuffle_negatives: Whether to shuffle all the hard_negative passages before selecting the
@@ -1296,6 +1302,8 @@ class TableTextSimilarityProcessor(Processor):
         """
         # TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
 
+        if embed_meta_fields is None:
+            embed_meta_fields = ["page_title", "section_title", "caption"]
         # Custom processor attributes
         self.max_samples = max_samples
         self.query_tokenizer = query_tokenizer
@@ -1511,7 +1519,7 @@ class TableTextSimilarityProcessor(Processor):
         return standard_dicts
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity.
@@ -1533,7 +1541,8 @@ class TableTextSimilarityProcessor(Processor):
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
         :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
-
+        if indices is None:
+            indices = []
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
@@ -1861,8 +1870,10 @@ class TextClassificationProcessor(Processor):
         raise NotImplementedError
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
+        if indices is None:
+            indices = []
         baskets = []
         # Tokenize in batches
         texts = [x["text"] for x in dicts]
@@ -2043,10 +2054,12 @@ class UnlabeledTextProcessor(Processor):
         test_filename: Optional[Union[Path, str]] = None,
         dev_split: float = 0,
         data_dir: Optional[Union[Path, str]] = None,
-        tasks: Dict = {},
+        tasks: Optional[Dict] = None,
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
     ):
+        if tasks is None:
+            tasks = {}
         super().__init__(
             tokenizer,
             max_seq_len,
@@ -2069,8 +2082,10 @@ class UnlabeledTextProcessor(Processor):
         return dicts
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
+        if indices is None:
+            indices = []
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]

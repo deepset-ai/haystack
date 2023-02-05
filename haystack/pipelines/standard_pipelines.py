@@ -241,7 +241,7 @@ class BaseStandardPipeline(ABC):
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+        wrong_examples_fields: Optional[List[str]] = None,
         max_characters_per_field: int = 150,
     ):
         """
@@ -277,9 +277,11 @@ class BaseStandardPipeline(ABC):
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-        :param wrong_examples_fields: A list of field names to include in the worst samples.
+        :param wrong_examples_fields: A list of field names to include in the worst samples. By default, "answer", "context", and "document_id" are used.
         :param max_characters_per_field: The maximum number of characters per wrong example to show (per field).
         """
+        if wrong_examples_fields is None:
+            wrong_examples_fields = ["answer", "context", "document_id"]
         if metrics_filter is None:
             metrics_filter = self.metrics_filter
         self.pipeline.print_eval_report(
