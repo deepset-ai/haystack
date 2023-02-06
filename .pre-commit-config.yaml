@@ -24,5 +24,6 @@ repos:
   rev: v1.6.23
   hooks:
   - id: actionlint-docker
+    args: ["-ignore", "SC2102"]
 
 # TODO we can make mypy and pylint run at this stage too, once their execution gets normalized
