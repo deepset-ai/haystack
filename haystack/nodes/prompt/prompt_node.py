@@ -1025,7 +1025,7 @@ class PromptNode(BaseComponent):
         is_invocation_contexts = invocation_contexts is not None
         if is_queries and is_invocation_contexts:
             if len(queries) != len(invocation_contexts):
-                raise ValueError(f"The input variables queries and invocation_contexts should have the same length.")
+                raise ValueError("The input variables queries and invocation_contexts should have the same length.")
             input_queries = queries
             input_invocation_contexts = invocation_contexts
         elif is_queries and not is_invocation_contexts:
