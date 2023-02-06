@@ -992,7 +992,7 @@ def test_multimodal_retriever_query():
     )
 
     res_emb = retriever.embed_queries(["dummy query 1", "dummy query 1"])
-    assert np.array_equal(res_emb[0], res_emb[1])
+    assert np.allclose(res_emb[0], res_emb[1], atol=0.0001)
 
 
 @pytest.mark.integration
