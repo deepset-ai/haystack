@@ -42,7 +42,7 @@ jobs:
         - name: Run
           run: pytest examples/
 
-        - uses: act10ns/slack@v1
+        - uses: act10ns/slack@v2
           with:
             status: ${{ job.status }}
             channel: '#haystack'

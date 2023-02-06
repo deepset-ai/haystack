@@ -1,0 +1,37 @@
+name: Project release on PyPi
+
+on:
+  push:
+    tags:
+      - "v[0-9].[0-9]+.[0-9]+*"
+
+jobs:
+  release-on-pypi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Build Haystack
+        run: hatch build
+
+      - name: Publish on PyPi
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_API_TOKEN }}
+        run: hatch publish -y
+
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          VERSION: ${{ github.ref_name }}
+        if: always()
+        uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: "#haystack"
+          config: .github/config/pypi-release-slack-notification.yml
