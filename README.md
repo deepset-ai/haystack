@@ -28,20 +28,23 @@
         <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
     </a>
         <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
-        <img alt="Twitter" src="https://img.shields.io/twitter/follow/deepset_ai?style=social">
+        <img alt="Twitter" src="https://img.shields.io/badge/follow-%40deepset_ai-1DA1F2?logo=twitter">
+    </a>
+    <a href="https://discord.com/invite/qZxjM4bAHU">
+        <img alt="chat on Discord" src="https://img.shields.io/discord/993534733298450452?logo=discord">
     </a>
 </p>
 
 [Haystack](https://haystack.deepset.ai) is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
-Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
-Haystack is built in a modular fashion so that you can combine the best technology from other open-source projects like Huggingface's Transformers, Elasticsearch, or Milvus.
+Whether you want to perform question answering (QA) or semantic document search, you can use the state-of-the-art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
+Haystack is built in a modular fashion so that you can combine the best technology from other open source projects, like Hugging Face's transformers, Elasticsearch, or Milvus.
 
 <p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/main_example.gif"></p>
 
-## What to build with Haystack
+## What to Build with Haystack
 
 - **Ask questions in natural language** and find granular answers in your documents.
-- Perform **semantic search** and retrieve documents according to meaning, not keywords
+- Perform **semantic search** and retrieve documents according to meaning, not keywords.
 - Use **off-the-shelf models** or **fine-tune** them to your domain.
 - Use **user feedback** to evaluate, benchmark, and continuously improve your live models.
 - Leverage existing **knowledge bases** and better handle the long tail of queries that **chatbots** receive.
@@ -49,15 +52,15 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 ## Core Features
 
-- **Latest models**: Utilize all latest transformer-based models (e.g., BERT, RoBERTa, MiniLM) for extractive QA, generative QA, and document retrieval.
+- **Latest models**: Utilize all latest transformer-based models (for example, BERT, RoBERTa, MiniLM) for extractive QA, generative QA, and document retrieval.
 - **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter, or modeling framework.
-- **Pipelines**: The Node and Pipeline design of Haystack allows for custom routing of queries to only the relevant components.
-- **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g., Transformers, FARM, sentence-transformers)
-- **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS, and a fastAPI REST API
-- **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, etc.
-- **Developer friendly**: Easy to debug, extend and modify.
+- **Pipelines**: Use the Node and Pipeline design of Haystack to route queries to only the relevant components.
+- **Open**: 100% compatible with Hugging Face's model hub. Tight interfaces to other frameworks (for example, transformers, FARM, sentence-transformers).
+- **Scalable**: Scale to millions of docs using retrievers, production-ready backends like Elasticsearch / FAISS, and a fastAPI REST API.
+- **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, and more.
+- **Developer friendly**: Easy to debug, extend, and modify.
 - **Customizable**: Fine-tune models to your domain or implement your custom DocumentStore.
-- **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
+- **Continuous Learning**: Collect new training data from user feedback in production & improve your models continuously.
 
 |                                                                                               |                                                                                                                                                                                                                                                   |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -75,21 +78,19 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 ## :floppy_disk: Installation
 
-**1. Basic Installation**
+**Basic Installation**
 
-You can install a basic version of Haystack's latest release by using [pip](https://github.com/pypa/pip).
+Use [pip](https://github.com/pypa/pip) to install a basic version of Haystack's latest release:
 
 ```
-    pip3 install farm-haystack
+    pip install farm-haystack
 ```
 
-This command will install everything needed for basic Pipelines that use an Elasticsearch Document Store.
+This command installs everything needed for basic Pipelines that use an Elasticsearch DocumentStore.
 
-**2. Full Installation**
+**Full Installation**
 
-If you plan to be using more advanced features like Milvus, FAISS, Weaviate, OCR or Ray,
-you will need to install a full version of Haystack.
-The following command will install the latest version of Haystack from the main branch.
+To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the latest version of Haystack and all its dependencies from the main branch:
 
 ```
 git clone https://github.com/deepset-ai/haystack.git
@@ -98,28 +99,43 @@ pip install --upgrade pip
 pip install -e '.[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
-If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
-- `'.[all]'` with `'.[sql,only-faiss,only-milvus,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]'`
-- `'.[all-gpu]'` with `'.[sql,only-faiss-gpu,only-milvus,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'`
+**Custom Installation**
+You can choose the dependencies you want to install. To do so, specify them in the `pip install` command:
 
-For an complete list of the dependency groups available, have a look at the `haystack/pyproject.toml` file.
+```
+pip install 'farm-haystack[DEPENDENCY_OPTION]'
+```
+You can find a full list of dependency options at [haystack/pyproject.toml](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml#L96).
 
-To install the REST API and UI, run the following from the root directory of the Haystack repo
+If you're running pip version earlier than 21.3, you can't install dependency groups that reference other groups. Instead, you can only specify groups that contain direct package references:
+
+```
+# instead of '[all]'
+pip install 'farm-haystack[sql,only-faiss,only-milvus1,weaviate,pinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx,ray,dev]'
+
+# instead of '[all-gpu]'
+pip install 'farm-haystack[sql,only-faiss-gpu,only-milvus1,weaviatepinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'
+```
+
+**Installing the REST API**
+Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
 
 ```
 pip install rest_api/
-pip install ui/
 ```
 
-**3. Installing on Windows**
+**Other Operating Systems**
+
+**Windows**
+We recommend installing [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to use Haystack on Windows:
 
 ```
 pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
-**4. Installing on Apple Silicon (M1)**
+**Apple Silicon (M1)**
 
-M1 Macbooks require some extra dependencies in order to install Haystack.
+Macs with an M1 processor require some extra dependencies to install Haystack:
 
 ```
 # some additional dependencies needed on m1 mac
@@ -131,9 +147,9 @@ brew install rust
 GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai/haystack.git
 ```
 
-**5. Learn More**
+**Learn More**
 
-See our [installation guide](https://haystack.deepset.ai/overview/quick-start) for more options.
+See our [installation guide](https://docs.haystack.deepset.ai/docs/installation) for more options.
 You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/).
 
 ## :mortar_board: Tutorials
@@ -141,9 +157,9 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/concepts_haystack_handdrawn.png)
 
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system)
-to setup a question answering system using Python and start performing queries!
+to set up a question answering system using Python and start performing queries!
 Explore [the rest of our tutorials](https://haystack.deepset.ai/tutorials)
-to learn how to tweak pipelines, train models and perform evaluation.
+to learn how to tweak pipelines, train models, and perform evaluation.
 
 ## :beginner: Quick Demo
 
@@ -181,9 +197,9 @@ Thanks so much to all those who have contributed to our project!
 </a>
 
 
-## Who uses Haystack
+## Who Uses Haystack
 
-Here's a list of organizations who use Haystack. Don't hesitate to send a PR to let the world know that you use Haystack. Join our growing community!
+Here's a list of organizations that use Haystack. Don't hesitate to send a PR to let the world know that you use Haystack. Join our growing community!
 
 - [Airbus](https://www.airbus.com/en)
 - [Alcatel-Lucent](https://www.al-enterprise.com/)

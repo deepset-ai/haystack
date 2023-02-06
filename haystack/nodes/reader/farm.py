@@ -744,7 +744,7 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face."
+        self, repo_id: str, private: bool = False, commit_message: str = "Add new model to Hugging Face."
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -787,7 +787,7 @@ class FARMReader(BaseReader):
                         large_files.append(rel_path)
 
             if len(large_files) > 0:
-                logger.info("Track files with git lfs: {}".format(", ".join(large_files)))
+                logger.info("Track files with git lfs: %s", ", ".join(large_files))
                 repo.lfs_track(large_files)
 
             logger.info("Push model to the hub. This might take a while")
