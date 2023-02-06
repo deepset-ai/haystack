@@ -954,7 +954,7 @@ class PromptNode(BaseComponent):
         final_result["_debug"] = {"prompts_used": prompt_collector}
         return final_result, "output_1"
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
@@ -996,8 +996,8 @@ class PromptNode(BaseComponent):
         # that are passed to the prompt model invocation layer
         return {"stop_words": self.stop_words}
 
+    @staticmethod
     def _flatten_inputs(
-        self,
         queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         invocation_contexts: Optional[List[Dict[str, Any]]] = None,
