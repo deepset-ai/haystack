@@ -251,7 +251,7 @@ class RayPipeline(Pipeline):
             if "." in i:
                 [input_node_name, input_edge_name] = i.split(".")
                 assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
-                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
+                outgoing_edges_input_node = self.graph.nodes[input_node_name]["outgoing_edges"]
                 assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
                     f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
                     f"{outgoing_edges_input_node} outgoing edge(s)."
