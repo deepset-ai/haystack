@@ -23,4 +23,4 @@ renderer:
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: transformers-image-to-text.md
+     filename: transformers_image_to_text.md
