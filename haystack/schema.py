@@ -1313,9 +1313,12 @@ class EvaluationResult:
                 ].unique()
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
+
                 simulated_query_answers = query_answers[
                     query_answers["document_ids"].apply(
-                        lambda document_ids: all(document_id in top_k_document_ids for document_id in document_ids)
+                        lambda document_ids, top_k_document_ids=top_k_document_ids: all(
+                            document_id in top_k_document_ids for document_id in document_ids
+                        )
                     )
                 ]
                 # simulate top k reader
