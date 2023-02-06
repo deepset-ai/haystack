@@ -45,6 +45,9 @@ jobs:
         with:
           files: |
             **/*.py
+          files_ignore: |
+            test/**
+            rest_api/test/**
 
       - name: Setup Python
         uses: ./.github/actions/python_cache/
