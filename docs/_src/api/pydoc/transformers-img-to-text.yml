@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Generates captions for images.
-   category: 6310ca73c622850ddd3875a2
+   category: 63cffd5033018f0010bde74a
    title: TransformersImageToText API
    slug: transformers-image-to-text-api
    order: 185
