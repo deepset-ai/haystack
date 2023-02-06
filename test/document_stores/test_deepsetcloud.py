@@ -379,7 +379,13 @@ class TestDeepsetCloudDocumentStore:
             url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
             match=[
                 matchers.json_params_matcher(
-                    {"query_emb": query_emb.tolist(), "top_k": 10, "return_embedding": False, "scale_score": True}
+                    {
+                        "query_emb": query_emb.tolist(),
+                        "top_k": 10,
+                        "return_embedding": False,
+                        "scale_score": True,
+                        "use_prefiltering": False,
+                    }
                 )
             ],
             json=[],

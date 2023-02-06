@@ -19,6 +19,7 @@ from haystack.nodes import (
     ParsrConverter,
     TextConverter,
     CsvTextConverter,
+    PreProcessor,
 )
 
 from ..conftest import SAMPLES_PATH
@@ -111,6 +112,33 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_page_range(Converter):
+    converter = Converter()
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+    pages = document.content.split("\f")
+
+    assert (
+        len(pages) == 4
+    )  # the sample PDF file has four pages, we skipped first (but we wanna correct number of pages)
+    assert pages[0] == ""  # the page 1 was skipped.
+    assert pages[1] != ""  # the page 2 is not empty.
+    assert pages[2] == ""  # the page 3 is empty.
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_page_range_numbers(Converter):
+    converter = Converter()
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+
+    preprocessor = PreProcessor(
+        split_by="word", split_length=5, split_overlap=0, split_respect_sentence_boundary=False, add_page_number=True
+    )
+    documents = preprocessor.process([document])
+
+    assert documents[1].meta["page"] == 4
+
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
@@ -143,7 +171,8 @@ def test_docx_converter():
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
-    assert document.content.startswith("What to build with Haystack")
+    assert document.content.startswith("\nWhat to build with Haystack")
+    assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
 def test_markdown_converter_headline_extraction():
@@ -169,6 +198,19 @@ def test_markdown_converter_headline_extraction():
         start_idx = extracted_headline["start_idx"]
         hl_len = len(extracted_headline["headline"])
         assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
+
+
+def test_markdown_converter_frontmatter_to_meta():
+    converter = MarkdownConverter(add_frontmatter_to_meta=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.meta["type"] == "intro"
+    assert document.meta["date"] == "1.1.2023"
+
+
+def test_markdown_converter_remove_code_snippets():
+    converter = MarkdownConverter(remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.content.startswith("pip install farm-haystack")
 
 
 def test_azure_converter():

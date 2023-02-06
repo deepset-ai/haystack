@@ -6,13 +6,10 @@ inputs:
     description: 'prefix for the cache (to distinguish OS)'
     required: true
     default: 'linux'
-  pythonPath:
-    description: 'Python path to cache/restore'
-    required: true
   pythonVersion:
     description: 'Python version to use'
     required: true
-    default: "3.7"
+    default: "3.8"
 
 runs:
   using: "composite"

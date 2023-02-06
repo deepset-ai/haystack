@@ -22,4 +22,4 @@ ENV TIKA_LOG_PATH="/var/log/$SERVICE_NAME/"
 EXPOSE 8000
 
 USER $SERVICE_NAME
-CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]
+CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "1000"]

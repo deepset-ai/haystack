@@ -162,6 +162,7 @@ crawler = [
 preprocessing = [
   "beautifulsoup4",
   "markdown",
+  "python-frontmatter",
   "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
 ]
@@ -200,7 +201,7 @@ dev = [
   "python-multipart",
   "psutil",
   # Linting
-  "pylint",
+  "pylint==2.15.10",
   # Code formatting
   "black[jupyter]==22.6.0",
   # Documentation
@@ -272,7 +273,6 @@ disable = [
   "too-many-instance-attributes",
   "super-with-arguments",
   "redefined-builtin",
-  "logging-format-interpolation",
   "abstract-method",
   "too-many-branches",
   "unspecified-encoding",
@@ -297,6 +297,7 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
+  "broad-exception-raised",
 
   # To review later
   "cyclic-import",

@@ -1,19 +1,24 @@
 import json
 import logging
+import os
+import platform
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
-import platform
 
 import numpy as np
 import requests
 from tqdm.auto import tqdm
 
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+)
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
-
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -34,6 +39,11 @@ else:
         "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
     )
     from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
+
+
+OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
+OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 logger = logging.getLogger(__name__)
@@ -94,11 +104,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return decoded_string
 
-    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
+    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "input": text}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
         res = json.loads(response.text)
 
         if response.status_code != 200:

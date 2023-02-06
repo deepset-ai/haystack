@@ -94,6 +94,15 @@ class DocumentStoreBaseTestAbstract:
         with pytest.raises(Exception):
             ds.write_documents(duplicate_documents, duplicate_documents="fail")
 
+    @pytest.mark.integration
+    def test_get_embedding_count(self, ds, documents):
+        """
+        We expect 6 docs with embeddings because only 6 documents in the documents fixture for this class contain
+        embeddings.
+        """
+        ds.write_documents(documents)
+        assert ds.get_embedding_count() == 6
+
     @pytest.mark.skip
     @pytest.mark.integration
     def test_get_all_documents_without_filters(self, ds, documents):

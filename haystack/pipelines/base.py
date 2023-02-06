@@ -51,7 +51,7 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event
+from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -1413,7 +1413,7 @@ class Pipeline:
             "multilabel_id",  # generic
             "query",  # generic
             "filters",  # generic
-            "gold_answers",  # answer-specific
+            "gold_answers",  # generic
             "answer",  # answer-specific
             "context",  # generic
             "exact_match",  # answer-specific
@@ -1690,6 +1690,7 @@ class Pipeline:
                     df_docs.map_rows = partial(df_docs.apply, axis=1)
                     df_docs.rename(columns={"id": "document_id", "content": "context"}, inplace=True)
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
+                    df_docs["gold_answers"] = [gold_answers] * len(df_docs)
                     df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)
                     df_docs["gold_contexts_similarity"] = df_docs.map_rows(
                         lambda row: [
@@ -1740,7 +1741,12 @@ class Pipeline:
 
                     # document_relevance_criterion: "document_id_and_answer",
                     df_docs["gold_id_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["answer_match"])
+                        lambda row: max(
+                            min(id_match, answer_match)
+                            for id_match, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_answers_match"] + [0.0]
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "context",
@@ -1757,17 +1763,36 @@ class Pipeline:
 
                     # document_relevance_criterion: "document_id_and_context",
                     df_docs["gold_id_and_context_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["context_match"])
+                        lambda row: max(
+                            min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0)
+                            for id_match, context_similarity in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_contexts_similarity"] + [0.0]
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "document_id_and_context_and_answer",
                     df_docs["gold_id_and_context_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["context_match"], row["answer_match"])
+                        lambda row: max(
+                            min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
+                            for id_match, context_similarity, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0],
+                                row["gold_contexts_similarity"] + [0.0],
+                                row["gold_answers_match"] + [0.0],
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "context_and_answer",
                     df_docs["context_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["context_match"], row["answer_match"])
+                        lambda row: max(
+                            min(1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
+                            for context_similarity, answer_match in zip(
+                                row["gold_contexts_similarity"], row["gold_answers_match"]
+                            )
+                        )
+                        if any(row["gold_answers_match"]) and any(row["gold_contexts_similarity"])
+                        else 0.0
                     )
 
                     df_docs["rank"] = np.arange(1, len(df_docs) + 1)
@@ -2309,18 +2334,21 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
-        if should_send_event and not self.sent_event_in_window:
-            self.send_pipeline_event(is_indexing)
-            self.sent_event_in_window = True
-        elif self.has_event_time_interval_exceeded():
-            self.sent_event_in_window = False
+        if is_telemetry_enabled():
+            should_send_event = (
+                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
+            )
+            if should_send_event and not self.sent_event_in_window:
+                self.send_pipeline_event(is_indexing)
+                self.sent_event_in_window = True
+            elif self._has_event_time_interval_exceeded():
+                self.sent_event_in_window = False
 
-    def has_event_time_interval_exceeded(self):
+    def _has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         return now - self.time_of_last_sent_event > self.event_time_interval
 
-    def has_event_run_total_threshold_exceeded(self):
+    def _has_event_run_total_threshold_exceeded(self):
         return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
