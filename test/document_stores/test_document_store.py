@@ -219,17 +219,6 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
     )
 
 
-@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
-@pytest.mark.embedding_dim(512)
-def test_update_embeddings_table_text_retriever_with_dataframe(retriever):
-    table = pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]])
-    doc = Document(content=table, content_type="table")
-    doc_store = InMemoryDocumentStore()
-    retriever = retriever(document_store=doc_store)
-    doc_store.write_documents([doc])
-    doc_store.update_embeddings(retriever)
-
-
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type, tmp_path):
     document_store = get_document_store(

@@ -444,6 +444,36 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
         assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
 
 
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_table(document_store, retriever):
+    document_store = InMemoryDocumentStore()
+    docs = [
+        Document(content="This is a test", content_type="text"),
+        Document(content="This is another test", content_type="text"),
+    ]
+    retriever = retriever(document_store=document_store)
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_table(document_store, retriever):
+    document_store = InMemoryDocumentStore()
+    doc = Document(
+        content=pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]]),
+        content_type="table",
+    )
+    retriever = retriever(document_store=document_store)
+    document_store.write_documents([doc])
+    document_store.update_embeddings(retriever)
+
+
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
