@@ -76,13 +76,14 @@ class BaseReader(BaseComponent):
         if answer.meta is None:
             answer.meta = {}
         # get meta from doc
-        meta_from_doc = {}
-        for doc in documents:
-            if doc.id == answer.document_id:
-                meta_from_doc = deepcopy(doc.meta)
-                break
+        meta_from_docs = {}
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids:
+                    meta_from_doc = deepcopy(doc.meta)
+                    meta_from_docs[doc.id] = meta_from_doc
         # append to "own" meta
-        answer.meta.update(meta_from_doc)
+        answer.meta["document_meta"] = meta_from_docs
         return answer
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
