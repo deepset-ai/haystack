@@ -32,7 +32,7 @@ class BaseGenerator(BaseComponent):
         """
         pass
 
-    def run(
+    def run(  # type: ignore
         self,
         query: str,
         documents: List[Document],
