@@ -78,6 +78,7 @@ class BaseGenerator(BaseComponent):
                         "doc_scores": flat_docs_dict["score"],
                         "content": flat_docs_dict["content"],
                         "titles": [d.get("name", "") for d in flat_docs_dict["meta"]],
+                        "doc_metas": flat_docs_dict["meta"],
                     },
                 )
             )

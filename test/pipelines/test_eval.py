@@ -119,7 +119,7 @@ def test_add_eval_data(document_store, batch_size):
         label.answer.context[label.answer.offsets_in_context[0].start : label.answer.offsets_in_context[0].end]
         == "France"
     )
-    assert label.answer.document_id == label.document.id
+    assert label.answer.document_ids == [label.document.id]
 
     # check combination
     doc = document_store.get_document_by_id(label.document.id)

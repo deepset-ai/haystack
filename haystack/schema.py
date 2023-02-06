@@ -1313,7 +1313,11 @@ class EvaluationResult:
                 ].unique()
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
-                simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+                simulated_query_answers = query_answers[
+                    query_answers["document_ids"].apply(
+                        lambda document_ids: all(document_id in top_k_document_ids for document_id in document_ids)
+                    )
+                ]
                 # simulate top k reader
                 if simulated_top_k_reader != -1:
                     # consider only the simulated_top_k_reader answers within simulated_query_answers
@@ -1598,6 +1602,8 @@ class EvaluationResult:
             "gold_answers_match",
             "gold_contexts_similarity",
             "offsets_in_document",
+            "document_ids",
+            "custom_document_ids",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
@@ -1606,5 +1612,16 @@ class EvaluationResult:
         # backward compatibility mappings
         for df in node_results.values():
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
+            # convert single document_id to list
+            if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
+                df["document_ids"] = df["document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["document_id"], inplace=True)
+            if (
+                "answer" in df.columns
+                and "custom_document_id" in df.columns
+                and not "custom_document_ids" in df.columns
+            ):
+                df["custom_document_ids"] = df["custom_document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["custom_document_id"], inplace=True)
         result = cls(node_results)
         return result
