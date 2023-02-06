@@ -20,27 +20,38 @@ class BaseGenerator(BaseComponent):
         self.progress_bar = progress_bar
 
     @abstractmethod
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
         """
         Abstract method to generate answers.
 
         :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param top_k: Number of returned answers
+        :param max_tokens: Maximum number of tokens in the generated answer
         :return: Generated answers plus additional infos in a dict
         """
         pass
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
+    def run(
+        self,
+        query: str,
+        documents: List[Document],
+        top_k: Optional[int] = None,
+        labels: Optional[MultiLabel] = None,
+        add_isolated_node_eval: bool = False,
+        max_tokens: Optional[int] = None,
+    ):  # type: ignore
         if documents:
-            results = self.predict(query=query, documents=documents, top_k=top_k)
+            results = self.predict(query=query, documents=documents, top_k=top_k, max_tokens=max_tokens)
         else:
             results = {"answers": []}
 
         # run evaluation with "perfect" labels as node inputs to calculate "upper bound" metrics for just this node
         if add_isolated_node_eval and labels is not None:
             relevant_documents = list({label.document.id: label.document for label in labels.labels}.values())
-            results_label_input = self.predict(query=query, documents=relevant_documents, top_k=top_k)
+            results_label_input = self.predict(
+                query=query, documents=relevant_documents, top_k=top_k, max_tokens=max_tokens
+            )
             results["answers_isolated"] = results_label_input["answers"]
 
         return results, "output_1"
@@ -51,8 +62,11 @@ class BaseGenerator(BaseComponent):
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
+        max_tokens: Optional[int] = None,
     ):
-        results = self.predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
+        results = self.predict_batch(
+            queries=queries, documents=documents, top_k=top_k, batch_size=batch_size, max_tokens=max_tokens
+        )
         return results, "output_1"
 
     def _flatten_docs(self, documents: List[Document]):
@@ -89,6 +103,7 @@ class BaseGenerator(BaseComponent):
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
+        max_tokens: Optional[int] = None,
     ):
         """
         Generate the answer to the input queries. The generation will be conditioned on the supplied documents.
@@ -111,6 +126,7 @@ class BaseGenerator(BaseComponent):
                           Can be a single list of Documents or a list of lists of Documents.
         :param top_k: Number of returned answers per query.
         :param batch_size: Not applicable.
+        :param max_tokens: Maximum number of tokens in the generated answer
         :return: Generated answers plus additional infos in a dict like this:
 
          ```python
@@ -139,7 +155,7 @@ class BaseGenerator(BaseComponent):
                 for doc in documents:
                     if not isinstance(doc, Document):
                         raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
+                    preds = self.predict(query=query, documents=[doc], top_k=top_k, max_tokens=max_tokens)
                     results["answers"].append(preds["answers"])
                     pb.update(1)
             pb.close()
@@ -155,7 +171,7 @@ class BaseGenerator(BaseComponent):
             for query, cur_docs in zip(queries, documents):
                 if not isinstance(cur_docs, list):
                     raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
+                preds = self.predict(query=query, documents=cur_docs, top_k=top_k, max_tokens=max_tokens)
                 results["answers"].append(preds["answers"])
                 pb.update(1)
             pb.close()

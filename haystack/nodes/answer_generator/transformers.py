@@ -206,7 +206,9 @@ class RAGenerator(BaseGenerator):
 
         return embeddings_in_tensor.to(self.devices[0])
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def predict(
+        self, query: str, documents: List[Document], top_k: Optional[int] = None, max_tokens: Optional[int] = None
+    ) -> Dict:
         """
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These documents can for example be retrieved via the Retriever.
@@ -214,6 +216,7 @@ class RAGenerator(BaseGenerator):
         :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param top_k: Number of returned answers
+        :param max_tokens: Maximum number of tokens to generate
         :return: Generated answers plus additional infos in a dict like this:
 
         ```python
@@ -271,7 +274,7 @@ class RAGenerator(BaseGenerator):
             doc_scores=doc_scores,
             num_return_sequences=top_k,
             num_beams=self.num_beams,
-            max_length=self.max_length,
+            max_length=max_tokens or self.max_length,
             min_length=self.min_length,
             n_docs=len(flat_docs_dict["content"]),
         )
@@ -415,7 +418,9 @@ class Seq2SeqGenerator(BaseGenerator):
     def _get_converter(cls, model_name_or_path: str) -> Optional[Callable]:
         return cls._model_input_converters.get(model_name_or_path)
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def predict(
+        self, query: str, documents: List[Document], top_k: Optional[int] = None, max_tokens: Optional[int] = None
+    ) -> Dict:
         """
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These document can be retrieved via the Retriever or supplied directly via predict method.
@@ -423,6 +428,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param top_k: Number of returned answers
+        :param max_tokens: Maximum number of tokens in the generated answer
         :return: Generated answers
 
         """
@@ -459,7 +465,7 @@ class Seq2SeqGenerator(BaseGenerator):
             input_ids=query_and_docs_encoded["input_ids"],
             attention_mask=query_and_docs_encoded["attention_mask"],
             min_length=self.min_length,
-            max_length=self.max_length,
+            max_length=max_tokens or self.max_length,
             do_sample=True if self.num_beams == 1 else False,
             early_stopping=True,
             num_beams=self.num_beams,

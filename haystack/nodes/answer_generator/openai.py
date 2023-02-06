@@ -193,6 +193,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         documents: List[Document],
         top_k: Optional[int] = None,
         timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
+        max_tokens: Optional[int] = None,
     ):
         """
         Use the loaded QA model to generate Answers for a query based on the Documents it receives.
@@ -218,6 +219,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
+        :param max_tokens: The maximum number of tokens allowed for the generated Answer.
         :return: Dictionary containing query and Answers.
         """
         if top_k is None:
@@ -233,7 +235,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens or self.max_tokens,
             "stop": self.stop_words,
             "n": top_k,
             "temperature": self.temperature,
