@@ -77,10 +77,11 @@ class BaseReader(BaseComponent):
             answer.meta = {}
         # get meta from doc
         meta_from_doc = {}
-        for doc in documents:
-            if doc.id == answer.document_id:
-                meta_from_doc = deepcopy(doc.meta)
-                break
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids:
+                    meta_from_doc = deepcopy(doc.meta)
+                    break
         # append to "own" meta
         answer.meta.update(meta_from_doc)
         return answer
