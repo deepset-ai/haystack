@@ -326,13 +326,6 @@ class TriAdaptiveModel(nn.Module):
 
             # Current batch consists of tables and texts
             elif any(table_mask):
-
-                # Make input two-dimensional
-                max_seq_len = kwargs["passage_input_ids"].shape[-1]
-                passage_input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
-                passage_attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
-                passage_segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
-
                 table_segment_ids = kwargs["table_segment_ids"].view(-1, max_seq_len)
                 table_input_ids = passage_input_ids[table_mask]
                 table_segment_ids = table_segment_ids[table_mask]
@@ -379,16 +372,10 @@ class TriAdaptiveModel(nn.Module):
 
             # Current batch consists of only texts
             else:
-                # Make input two-dimensional
-                max_seq_len = kwargs["passage_input_ids"].shape[-1]
-                input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
-                attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
-                segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
-
                 pooled_output2, _ = self.language_model2(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    segment_ids=segment_ids,
+                    input_ids=passage_input_ids,
+                    attention_mask=passage_attention_mask,
+                    segment_ids=passage_segment_ids,
                     output_hidden_states=False,
                     output_attentions=False,
                 )
