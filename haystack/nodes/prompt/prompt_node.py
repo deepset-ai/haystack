@@ -899,14 +899,19 @@ class PromptNode(BaseComponent):
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
-        Parameters file_paths, labels, and meta are usually ignored.
+        The parameters `query`, `file_paths`, `labels`, `documents` and `meta` are added to the invocation context
+        before invoking the prompt model. These variables are only used by the prompt node if they are present as a
+        parameter in the prompt template.
 
         :param query: The query is usually ignored by the prompt node unless it is used as a parameter in the
         prompt template.
-        :param file_paths: This option is ignored.
-        :param labels: This option is ignored.
+        :param file_paths: The file paths are usually ignored by the prompt node unless they are used as a parameter
+        in the prompt template.
+        :param labels: The labels are usually ignored by the prompt node unless they are used as a parameter in the
+        prompt template.
         :param documents: The documents to be used for the prompt.
-        :param meta: This option is ignored.
+        :param meta: Meta information is usually ignored by the prompt node unless it is used as a parameter in the
+        prompt template.
         :param invocation_context: The invocation context to be used for the prompt.
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
@@ -951,46 +956,39 @@ class PromptNode(BaseComponent):
 
     def run_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-        invocation_contexts: Optional[Dict[str, Any], List[Dict[str, Any]]] = None,
-        params: Optional[dict] = None,
-        debug: Optional[bool] = None,
+        invocation_contexts: Optional[List[Dict[str, Any]]] = None,
     ):
         """
         Runs PromptNode in batch mode.
 
         :param queries:
-        :param file_paths: This option is ignored.
-        :param labels: This option is ignored.
         :param documents:
-        :param meta: This option is ignored.
-        :param params: This option is ignored.
-        :param debug:
         :param invocation_contexts:
         """
         inputs = self._flatten_inputs(queries, documents, invocation_contexts)
-        results: Dict[str, List] = {"results": [], "invocation_contexts": [], "_debug": []}
-        for query, docs, invocation_context in zip(inputs["queries"], inputs["docs"], inputs["invocation_contexts"]):
-            result = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
-            results["results"].append(result["results"])
-            results["invocation_contexts"].append(result["invocation_contexts"])
-            results["_debug"].append(result["_debug"])
-        return results, "output_1"
+        all_results: Dict[str, List] = {"results": [], "invocation_contexts": [], "_debug": []}
+        for query, docs, invocation_context in zip(
+            inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
+        ):
+            results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
+            output_variable = self.output_variable or "results"
+            all_results[output_variable].append(results[output_variable])
+            all_results["invocation_contexts"].append(all_results["invocation_contexts"])
+            all_results["_debug"].append(all_results["_debug"])
+        return all_results, "output_1"
 
     def _prepare_model_kwargs(self):
         # these are the parameters from PromptNode level
         # that are passed to the prompt model invocation layer
         return {"stop_words": self.stop_words}
 
-    @staticmethod
     def _flatten_inputs(
-        queries: List[str],
-        documents: Union[List[Document], List[List[Document]]],
-        invocation_contexts: Optional[Dict[str, Any], List[Dict[str, Any]]] = None,
+        self,
+        queries: Optional[List[str]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        invocation_contexts: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, List]:
         """Flatten (and copy) the queries and documents into lists of equal length.
 
@@ -1006,39 +1004,57 @@ class PromptNode(BaseComponent):
 
         :param queries: Single query string or list of queries.
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
-                          Documents should be of content_type ``'table'``.
         """
-        # TODO Create all_data_points by flattening queries, documents and invocation contexts.
-        #      Will require queries and invocation contexts to be same length??
+        # Check that queries, and invocation_contexts are of the same length if provided
+        is_queries = queries is not None
+        is_invocation_contexts = invocation_contexts is not None
+        if is_queries and is_invocation_contexts:
+            if len(queries) != len(invocation_contexts):
+                raise ValueError(f"The input variables queries and invocation_contexts should have the same length.")
+            input_queries = queries
+            input_invocation_contexts = invocation_contexts
+        elif is_queries and not is_invocation_contexts:
+            input_queries = queries
+            input_invocation_contexts = [None] * len(queries)
+        elif not is_queries and is_invocation_contexts:
+            input_queries = [None] * len(invocation_contexts)
+            input_invocation_contexts = invocation_contexts
+        else:
+            input_queries = [None]
+            input_invocation_contexts = [None]
 
-        if invocation_contexts is not None:
-            if isinstance(queries, str):
-                queries = [queries]
-                assert isinstance(invocation_contexts, Dict)
-            if isinstance(queries, List):
-                assert isinstance(invocation_contexts, List)
+        is_docs = documents is not None
+        multi_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], list)
+        single_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], Document)
 
-        # Docs case 1: single list of Documents -> apply each query to all Documents
-        inputs: Dict[str, List] = {"queries": [], "docs": []}
-        if len(documents) > 0 and isinstance(documents[0], Document):
-            for query in queries:
-                for doc in documents:
-                    if not isinstance(doc, Document):
-                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+        # Docs (and file_paths) case 1: single list of Documents (and file_paths)
+        # -> apply each query (and invocation_contexts) to all Documents
+        inputs: Dict[str, List] = {"queries": [], "invocation_contexts": [], "documents": []}
+        if is_docs:
+            if single_docs_list:
+                for query, invocation_context in zip(input_queries, input_invocation_contexts):
+                    for doc in documents:
+                        inputs["queries"].append(query)
+                        inputs["invocation_contexts"].append(invocation_context)
+                        inputs["documents"].append([doc])
+            # Docs (and file_paths) case 2: list of lists of Documents
+            # -> apply each query (and invocation_context) to corresponding list of Documents (and file_paths),
+            # if queries contains only one query, apply it to each list of Documents
+            elif multi_docs_list:
+                total_queries = queries.copy()
+                total_invocation_contexts = invocation_contexts.copy()
+                if len(total_queries) == 1 and len(total_invocation_contexts) == 1:
+                    total_queries = queries * len(documents)
+                    total_invocation_contexts = invocation_contexts * len(documents)
+                if len(total_queries) != len(documents) or len(total_invocation_contexts) != len(documents):
+                    raise ValueError("Number of queries must be equal to number of provided Document lists.")
+                for query, invocation_context, cur_docs in zip(total_queries, total_invocation_contexts, documents):
                     inputs["queries"].append(query)
-                    inputs["docs"].append([doc])
-
-        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
-        # contains only one query, apply it to each list of Documents
-        elif len(documents) > 0 and isinstance(documents[0], list):
-            total_queries = queries.copy()
-            if len(total_queries) == 1:
-                total_queries = queries * len(documents)
-            if len(total_queries) != len(documents):
-                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-            for query, cur_docs in zip(total_queries, documents):
-                if not isinstance(cur_docs, list):
-                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                    inputs["invocation_contexts"].append(invocation_context)
+                    inputs["documents"].append(cur_docs)
+        elif is_queries or is_invocation_contexts:
+            for query, invocation_context in zip(input_queries, input_invocation_contexts):
                 inputs["queries"].append(query)
-                inputs["docs"].append(cur_docs)
+                inputs["invocation_contexts"].append(invocation_context)
+                inputs["documents"].append([None])
         return inputs
