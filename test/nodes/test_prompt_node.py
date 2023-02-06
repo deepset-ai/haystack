@@ -55,7 +55,6 @@ def test_prompt_template_repr():
     p = PromptTemplate("t", "Here is variable $baz")
     desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable $baz, prompt_params=['baz'])"
     assert p.__repr__() == desired_repr
-    assert p.__str__() == desired_repr
     assert str(p) == desired_repr
 
 
