@@ -53,7 +53,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def __init__(
         self,
         api_key: str,
-        model: str = "text-curie-001",
+        model: str = "text-davinci-003",
         max_tokens: int = 13,
         top_k: int = 5,
         temperature: float = 0.2,
@@ -70,7 +70,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
-                     `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
+                     `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
                      refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
         :param max_tokens: The maximum number of tokens allowed for the generated Answer.
