@@ -963,9 +963,21 @@ class PromptNode(BaseComponent):
         """
         Runs PromptNode in batch mode.
 
-        :param queries:
-        :param documents:
-        :param invocation_contexts:
+        - If you provide a list containing a single query (and/or invocation context)...
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the results
+              will be aggregated per Document list.
+
+        - If you provide a list of multiple queries (and/or multiple invocation contexts)...
+            - ... and a single list of Documents, each query (and/or invocation context) will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query (and/or invocation context) will be applied to its corresponding list of Documents
+              and the results will be aggregated per query-Document pair.
+
+        - If you provide no Documents then each query (and/or invocation context) will be applied directly to the prompt template.
+
+        :param queries: List of queries.
+        :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+        :param invocation_contexts: List of invocation contexts.
         """
         inputs = self._flatten_inputs(queries, documents, invocation_contexts)
         all_results: Dict[str, List] = {"results": [], "invocation_contexts": [], "_debug": []}
@@ -990,20 +1002,23 @@ class PromptNode(BaseComponent):
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         invocation_contexts: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, List]:
-        """Flatten (and copy) the queries and documents into lists of equal length.
+        """Flatten (and copy) the queries, documents and invocation contexts into lists of equal length.
 
-        - If you provide a list containing a single query...
+        - If you provide a list containing a single query (and/or invocation context)...
             - ... and a single list of Documents, the query will be applied to each Document individually.
-            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the results
               will be aggregated per Document list.
 
-        - If you provide a list of multiple queries...
-            - ... and a single list of Documents, each query will be applied to each Document individually.
-            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
-              and the Answers will be aggregated per query-Document pair.
+        - If you provide a list of multiple queries (and/or multiple invocation contexts)...
+            - ... and a single list of Documents, each query (and/or invocation context) will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query (and/or invocation context) will be applied to its corresponding list of Documents
+              and the results will be aggregated per query-Document pair.
 
-        :param queries: Single query string or list of queries.
+        - If you provide no Documents then each query (and/or invocation context) will be applied to the prompt template.
+
+        :param queries: List of queries.
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+        :param invocation_contexts: List of invocation contexts.
         """
         # Check that queries, and invocation_contexts are of the same length if provided
         is_queries = queries is not None
