@@ -1447,7 +1447,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                         "label-answer-type": label.answer.type,
                         "label-answer-score": label.answer.score,
                         "label-answer-context": label.answer.context,
-                        "label-answer-document-id": label.answer.document_id,
+                        "label-answer-document-ids": label.answer.document_ids,
                     }
                 )
                 # Get offset data
@@ -1504,7 +1504,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     context=label_meta["label-answer-context"],
                     offsets_in_document=offsets["document"],
                     offsets_in_context=offsets["context"],
-                    document_ids=[label_meta["label-answer-document-id"]],
+                    document_ids=label_meta["label-answer-document-ids"],
                     meta=other_meta,
                 )
             # Extract Label metadata
