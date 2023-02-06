@@ -20,7 +20,7 @@ from transformers import (
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
-from haystack.errors import OpenAIError, OpenAIRateLimitError, HaystackError
+from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
@@ -1041,11 +1041,11 @@ class PromptNode(BaseComponent):
             # -> apply each query (and invocation_context) to corresponding list of Documents (and file_paths),
             # if queries contains only one query, apply it to each list of Documents
             elif multi_docs_list:
-                total_queries = queries.copy()
-                total_invocation_contexts = invocation_contexts.copy()
+                total_queries = input_queries.copy()
+                total_invocation_contexts = input_invocation_contexts.copy()
                 if len(total_queries) == 1 and len(total_invocation_contexts) == 1:
-                    total_queries = queries * len(documents)
-                    total_invocation_contexts = invocation_contexts * len(documents)
+                    total_queries = input_queries * len(documents)
+                    total_invocation_contexts = input_invocation_contexts * len(documents)
                 if len(total_queries) != len(documents) or len(total_invocation_contexts) != len(documents):
                     raise ValueError("Number of queries must be equal to number of provided Document lists.")
                 for query, invocation_context, cur_docs in zip(total_queries, total_invocation_contexts, documents):
