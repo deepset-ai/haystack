@@ -1021,31 +1021,30 @@ class PromptNode(BaseComponent):
         :param invocation_contexts: List of invocation contexts.
         """
         # Check that queries, and invocation_contexts are of the same length if provided
-        is_queries = queries is not None
-        is_invocation_contexts = invocation_contexts is not None
-        if is_queries and is_invocation_contexts:
+        input_queries: List[Any]
+        input_invocation_contexts: List[Any]
+        if queries is not None and invocation_contexts is not None:
             if len(queries) != len(invocation_contexts):
                 raise ValueError("The input variables queries and invocation_contexts should have the same length.")
             input_queries = queries
             input_invocation_contexts = invocation_contexts
-        elif is_queries and not is_invocation_contexts:
+        elif queries is not None and invocation_contexts is None:
             input_queries = queries
             input_invocation_contexts = [None] * len(queries)
-        elif not is_queries and is_invocation_contexts:
+        elif queries is None and invocation_contexts is not None:
             input_queries = [None] * len(invocation_contexts)
             input_invocation_contexts = invocation_contexts
         else:
             input_queries = [None]
             input_invocation_contexts = [None]
 
-        is_docs = documents is not None
         multi_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], list)
         single_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], Document)
 
         # Docs (and file_paths) case 1: single list of Documents (and file_paths)
         # -> apply each query (and invocation_contexts) to all Documents
         inputs: Dict[str, List] = {"queries": [], "invocation_contexts": [], "documents": []}
-        if is_docs:
+        if documents is not None:
             if single_docs_list:
                 for query, invocation_context in zip(input_queries, input_invocation_contexts):
                     for doc in documents:
@@ -1067,7 +1066,7 @@ class PromptNode(BaseComponent):
                     inputs["queries"].append(query)
                     inputs["invocation_contexts"].append(invocation_context)
                     inputs["documents"].append(cur_docs)
-        elif is_queries or is_invocation_contexts:
+        elif queries is not None or invocation_contexts is not None:
             for query, invocation_context in zip(input_queries, input_invocation_contexts):
                 inputs["queries"].append(query)
                 inputs["invocation_contexts"].append(invocation_context)
