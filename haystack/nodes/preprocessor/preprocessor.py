@@ -263,13 +263,15 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        remove_substrings: List[str],
+        remove_substrings: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> Document:
         """
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
         and empty lines. Its exact functionality is defined by the parameters passed into PreProcessor.__init__().
         """
+        if remove_substrings is None:
+            remove_substrings = []
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
