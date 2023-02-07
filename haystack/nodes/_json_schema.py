@@ -261,10 +261,12 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
-def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
+def get_json_schema(filename: str, version: str, modules: Optional[List[str]] = None):
     """
     Generate JSON schema for Haystack pipelines.
     """
+    if modules is None:
+        modules = ["haystack.document_stores", "haystack.nodes"]
     schema_definitions = {}  # All the schemas for the node and accessory classes
     node_refs = []  # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
 

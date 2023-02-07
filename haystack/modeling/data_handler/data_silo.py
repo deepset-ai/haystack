@@ -555,7 +555,7 @@ class DataSiloForCrossVal:
     def make(
         cls,
         datasilo: DataSilo,
-        sets: List[str] = ["train", "dev", "test"],
+        sets: Optional[List[str]] = None,
         n_splits: int = 5,
         shuffle: bool = True,
         random_state: Optional[int] = None,
@@ -568,7 +568,7 @@ class DataSiloForCrossVal:
         original data silo passed on.
 
         :param datasilo: The data silo that contains the original data.
-        :param sets: Which sets to use to create the xval folds (strings)
+        :param sets: Which sets to use to create the xval folds (strings). By default, "train", "dev", and "test" are used.
         :param n_splits: number of folds to create
         :param shuffle: shuffle each class' samples before splitting
         :param random_state: random state for shuffling
@@ -576,6 +576,8 @@ class DataSiloForCrossVal:
             It is never done with question answering.
         :param n_neg_answers_per_question: number of negative answers per question to include for training
         """
+        if sets is None:
+            sets = ["train", "dev", "test"]
         if "question_answering" in datasilo.processor.tasks and n_inner_splits is None:  # type: ignore
             return cls._make_question_answering(
                 datasilo, sets, n_splits, shuffle, random_state, n_neg_answers_per_question
@@ -588,7 +590,7 @@ class DataSiloForCrossVal:
     def _make_question_answering(
         cls,
         datasilo: DataSilo,
-        sets: List[str] = ["train", "dev", "test"],
+        sets: Optional[List[str]] = None,
         n_splits: int = 5,
         shuffle: bool = True,
         random_state: Optional[int] = None,
@@ -600,12 +602,14 @@ class DataSiloForCrossVal:
         data for question-answering-
 
         :param datasilo: The data silo that contains the original data.
-        :param sets: Which sets to use to create the xval folds (strings).
+        :param sets: Which sets to use to create the xval folds (strings). By default, "train", "dev", and "test" are used.
         :param n_splits: Number of folds to create.
         :param shuffle: Shuffle each class' samples before splitting.
         :param random_state: Random state for shuffling.
         :param n_neg_answers_per_question: Number of negative answers per question to include for training.
         """
+        if sets is None:
+            sets = ["train", "dev", "test"]
         assert "id" in datasilo.tensor_names, f"Expected tensor 'id' in tensor names, found {datasilo.tensor_names}"  # type: ignore
         assert "labels" in datasilo.tensor_names, f"Expected tensor 'labels' in tensor names, found {datasilo.tensor_names}"  # type: ignore
 
