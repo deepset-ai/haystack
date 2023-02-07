@@ -461,6 +461,7 @@ class Answer:
     def from_dict(cls, dict: dict):
         # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
         if "document_id" in dict:
+            dict = dict.copy()
             document_id = dict.pop("document_id")
             dict["document_ids"] = [document_id] if document_id is not None else None
 
@@ -637,7 +638,8 @@ class Label:
     @classmethod
     def from_dict(cls, dict: dict):
         # backward compatibility for old labels using answers with document_id instead of document_ids
-        if "answer" in dict and dict["answer"]:
+        if "document_id" in dict.get("answer", {}):
+            dict = dict.copy()
             dict["answer"] = Answer.from_dict(dict["answer"])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 

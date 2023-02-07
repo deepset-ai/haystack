@@ -864,7 +864,7 @@ class EvaluationSetClient:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="user-feedback",
-                answer=Answer.from_dict(label_dict["answer"]),
+                answer=Answer(label_dict["answer"]),
                 id=label_dict["label_id"],
                 pipeline_id=None,
                 created_at=None,
