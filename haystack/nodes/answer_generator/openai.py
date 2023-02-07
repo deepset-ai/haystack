@@ -94,7 +94,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
                            not contain the stop sequence.
                            If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
         :param prompt_template: A PromptTemplate used to explain to the model how to generate answers given a
-            supplied `context` and `query` at runtime. An `example_context` and a list of `examples` are used to provide
+            supplied `context` and `query` at runtime. The `context` is automatically constructed at runtime from a
+            list of provided documents at runtime. An `example_context` and a list of `examples` are used to provide
             the model with examples to help steer the model towards the tone and answer format you would like.
             If not supplied, the default instruction prompt is:
             ```python
@@ -220,7 +221,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             top_k = self.top_k
 
         # convert input to OpenAI format
-        prompt, input_docs = self._build_prompt(query=query, documents=documents)
+        prompt, input_docs = self._build_prompt_within_max_length(query=query, documents=documents)
         logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
 
         # get answers from OpenAI API
@@ -266,10 +267,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         context = join_str.join(reversed(doc_contents))
         return context
 
-    def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
-        """
-        Builds the prompt for the GPT-3 model so that it can generate an Answer.
-        """
+    def _fill_prompt(self, query: str, documents: List[Document]) -> str:
+        """Fills in the `prompt_template` with its `prompt_params` and returns the full prompt."""
         example_prompts = "\n---\n".join([f"Q: {query}\nA: {answer}" for query, answer in self.examples])
         qa_prompt = f"Q: {query}\nA:"
 
@@ -281,6 +280,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
             kwargs["examples_context"] = self.examples_context
             kwargs["examples"] = example_prompts
         full_prompt = next(self.instruction_prompt.fill(**kwargs))
+        return full_prompt
+
+    def _build_prompt_within_max_length(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
+        """
+        Builds the prompt for the GPT-3 model so that it can generate an Answer. If the prompt is too long based on the
+        MAX_TOKENS_LIMIT of the OpenAI model and `max_tokens` provided by the user, then enough documents (used to
+        construct the context) will be thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
+        """
+        full_prompt = self._fill_prompt(query, documents)
         n_full_prompt_tokens = self._count_tokens(full_prompt)
 
         # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
@@ -301,14 +309,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
                     break
 
             input_docs = documents[:-skipped_docs]
-            kwargs = {"context": self._create_context(input_docs, join_str=self.context_join_str), "query": qa_prompt}
-            if (
-                "examples_context" in self.instruction_prompt.prompt_params
-                and "examples" in self.instruction_prompt.prompt_params
-            ):
-                kwargs["examples_context"] = self.examples_context
-                kwargs["examples"] = example_prompts
-            full_prompt = next(self.instruction_prompt.fill(**kwargs))
+            full_prompt = self._fill_prompt(query, input_docs)
             n_full_prompt_tokens = self._count_tokens(full_prompt)
 
             if len(input_docs) == 0:
