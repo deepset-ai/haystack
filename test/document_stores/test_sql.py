@@ -97,7 +97,7 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
                 no_answer=False,
                 document=json.dumps(
                     {
-                        "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
+                        "content": "Some content",
                         "content_type": "text",
                         "score": None,
                         "id": "fc18c987a8312e72a47fb1524f230bb0",
@@ -113,7 +113,7 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
                     {
                         "answer": "Adobe Systems",
                         "type": "extractive",
-                        "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
+                        "context": "Some content",
                         "offsets_in_context": [{"start": 60, "end": 73}],
                         "offsets_in_document": [{"start": 60, "end": 73}],
                         # legacy document_id answer
