@@ -794,7 +794,7 @@ class TableTextRetriever(DenseRetriever):
         top_k: int = 10,
         use_gpu: bool = True,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         use_fast_tokenizers: bool = True,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
@@ -825,7 +825,8 @@ class TableTextRetriever(DenseRetriever):
                                   then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
-                                  (topic, entities etc.).
+                                  (topic, entities etc.). If no value is provided, a default will be created.
+                                  That default embeds name, section title and caption.
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
@@ -849,6 +850,8 @@ class TableTextRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name", "section_title", "caption"]
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -1225,7 +1228,7 @@ class TableTextRetriever(DenseRetriever):
         max_processes: int = 128,
         dev_split: float = 0,
         batch_size: int = 2,
-        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         num_hard_negatives: int = 1,
         num_positives: int = 1,
         n_epochs: int = 3,
@@ -1260,7 +1263,7 @@ class TableTextRetriever(DenseRetriever):
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
         :param embed_meta_fields: Concatenate meta fields with each passage and table.
-                                  The default setting in official MMRetrieval embeds page title,
+                                  If no value is provided, a default will be created. That default embeds page title,
                                   section title and caption with the corresponding table and title with
                                   corresponding text passage.
         :param num_hard_negatives: Number of hard negative passages (passages which are
@@ -1290,6 +1293,8 @@ class TableTextRetriever(DenseRetriever):
         :param checkpoints_to_keep: The maximum number of train checkpoints to save.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["page_title", "section_title", "caption"]
 
         self.processor.embed_meta_fields = embed_meta_fields
         self.processor.data_dir = Path(data_dir)
@@ -1393,7 +1398,7 @@ class TableTextRetriever(DenseRetriever):
         max_seq_len_table: int = 256,
         use_gpu: bool = True,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         use_fast_tokenizers: bool = True,
         similarity_function: str = "dot_product",
         query_encoder_dir: str = "query_encoder",
@@ -1403,6 +1408,8 @@ class TableTextRetriever(DenseRetriever):
         """
         Load TableTextRetriever from the specified directory.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name", "section_title", "caption"]
 
         load_dir = Path(load_dir)
         mm_retriever = cls(
@@ -1441,7 +1448,7 @@ class EmbeddingRetriever(DenseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = [],
+        embed_meta_fields: Optional[List[str]] = None,
         api_key: Optional[str] = None,
     ):
         """
@@ -1494,10 +1501,13 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
 
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = []
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -1929,7 +1939,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = [],
+        embed_meta_fields: Optional[List[str]] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1977,7 +1987,10 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default empty list will be created.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = []
         super().__init__(
             embedding_model=embedding_model,
             document_store=document_store,
