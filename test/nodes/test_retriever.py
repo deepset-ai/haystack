@@ -448,7 +448,7 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.embedding_dim(512)
-def test_table_text_retriever_embedding_only_table(document_store, retriever):
+def test_table_text_retriever_embedding_only_text(document_store, retriever):
     document_store = InMemoryDocumentStore()
     docs = [
         Document(content="This is a test", content_type="text"),
