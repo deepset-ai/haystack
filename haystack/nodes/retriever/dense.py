@@ -1125,6 +1125,8 @@ class TableTextRetriever(DenseRetriever):
             disable=disable_tqdm,
         ) as progress_bar:
             for batch in data_loader:
+                batch = {key: batch[key].to(self.devices[0]) for key in batch}
+
                 # get logits
                 with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
