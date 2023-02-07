@@ -249,6 +249,11 @@ def test_open_ai_prompt_with_params():
     assert len(r) == 1 and len(r[0]) > 0
 
 
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
     pm = PromptModel("text-davinci-003", api_key=os.environ["OPENAI_API_KEY"])
     pn = PromptNode(pm)
