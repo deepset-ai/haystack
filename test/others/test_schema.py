@@ -453,7 +453,7 @@ def test_multilabel_serialization():
             "context": "\n\n\n\n\nThe eighth and final season of the fantasy drama television series ''Game of Thrones'', produced by HBO, premiered on April 14, 2019, and concluded on May 19, 2019. Unlike the first six seasons, which consisted of ten episodes each, and the seventh season, which consisted of seven episodes, the eighth season consists of only six episodes.\n\nThe final season depicts the culmination of the series' two primary conflicts: the G",
             "offsets_in_document": [{"start": 124, "end": 132}],
             "offsets_in_context": None,
-            "document_id": None,
+            "document_ids": None,
             "meta": {},
         },
         "no_answer": False,
@@ -568,3 +568,75 @@ def test_id_hash_keys_not_ignored():
     doc3 = Document(content="hello world", meta={"doc_id": "3"})
     doc4 = Document(content="hello world", meta={"doc_id": "4"})
     assert doc3.id == doc4.id
+
+
+def test_legacy_answer_document_id():
+    legacy_label = {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": [0.1, 0.2, 0.3],
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            # legacy document_id answer
+            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
+
+    answer = Answer.from_dict(legacy_label["answer"])
+    assert answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+    label = Label.from_dict(legacy_label)
+    assert label.answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+
+def test_legacy_answer_document_id_is_none():
+    legacy_label = {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": [0.1, 0.2, 0.3],
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            # legacy document_id answer
+            "document_id": None,
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
+
+    answer = Answer.from_dict(legacy_label["answer"])
+    assert answer.document_ids is None
+
+    label = Label.from_dict(legacy_label)
+    assert label.answer.document_ids is None

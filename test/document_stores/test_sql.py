@@ -1,8 +1,9 @@
+import json
 import logging
 
 import pytest
 
-from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores.sql import LabelORM, SQLDocumentStore
 from haystack.schema import Document
 
 from .test_base import DocumentStoreBaseTestAbstract
@@ -87,6 +88,46 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
         with caplog.at_level(logging.WARNING):
             ds.get_all_documents(filters={"year": {"$ne": "2020"}})
             assert "filters won't work on metadata fields" in caplog.text
+
+    @pytest.mark.integration
+    def test_get_all_labels_legacy_document_id(self, ds):
+        ds.session.add(
+            LabelORM(
+                id="123",
+                no_answer=False,
+                document=json.dumps(
+                    {
+                        "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
+                        "content_type": "text",
+                        "score": None,
+                        "id": "fc18c987a8312e72a47fb1524f230bb0",
+                        "meta": {},
+                        "embedding": [0.1, 0.2, 0.3],
+                    }
+                ),
+                origin="user-feedback",
+                query="Who made the PDF specification?",
+                is_correct_answer=True,
+                is_correct_document=True,
+                answer=json.dumps(
+                    {
+                        "answer": "Adobe Systems",
+                        "type": "extractive",
+                        "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
+                        "offsets_in_context": [{"start": 60, "end": 73}],
+                        "offsets_in_document": [{"start": 60, "end": 73}],
+                        # legacy document_id answer
+                        "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+                        "meta": {},
+                        "score": None,
+                    }
+                ),
+                pipeline_id="some-123",
+                index=ds.label_index,
+            )
+        )
+        labels = ds.get_all_labels()
+        assert labels[0].answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
 
     @pytest.mark.skip
     @pytest.mark.integration
