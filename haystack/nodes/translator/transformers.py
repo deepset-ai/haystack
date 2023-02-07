@@ -144,6 +144,16 @@ class TransformersTranslator(BaseTranslator):
         else:
             text_for_translator: List[str] = [query]  # type: ignore
 
+        # avoid silent truncation if max_seq_len is not passed (or longer than model's max_len)
+        if self.max_seq_len is None or self.max_seq_len > self.tokenizer.model_max_length:
+            for text in text_for_translator:
+                token_ids = self.tokenizer.encode(text)
+                if len(token_ids) > self.tokenizer.model_max_length:
+                    logger.warning(f"The text passed for translation is longer than the model's max length. "
+                                   f"Model's limit: {self.tokenizer.model_max_length} tokens. "
+                                   f"Input's length: {len(token_ids) + 2} tokens.")
+                    break
+
         batch = self.tokenizer(
             text=text_for_translator,
             return_tensors="pt",
