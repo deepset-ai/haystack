@@ -68,7 +68,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
-        metadata_config: dict = {"indexed": []},
+        metadata_config: Optional[Dict] = None,
         validate_index_sync: bool = True,
     ):
         """
@@ -106,6 +106,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
             no fields are indexed.
         """
+        if metadata_config is None:
+            metadata_config = {"indexed": []}
         # Connect to Pinecone server using python client binding
         if not api_key:
             raise PineconeDocumentStoreError(
@@ -201,12 +203,14 @@ class PineconeDocumentStore(BaseDocumentStore):
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
         recreate_index: bool = False,
-        metadata_config: dict = {"indexed": []},
+        metadata_config: Optional[Dict] = None,
     ):
         """
         Create a new index for storing documents in case an
         index with the name doesn't exist already.
         """
+        if metadata_config is None:
+            metadata_config = {"indexed": []}
         index = self._index_name(index)
 
         if recreate_index:

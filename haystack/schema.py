@@ -302,7 +302,9 @@ class SpeechDocument(Document):
             return f"<SpeechDocument: id={self.id}, content=None>"
         return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map=None) -> Dict:
+        if field_map is None:
+            field_map = {}
         dictionary = super().to_dict(field_map=field_map)
         for key, value in dictionary.items():
             if isinstance(value, Path):
@@ -310,7 +312,9 @@ class SpeechDocument(Document):
         return dictionary
 
     @classmethod
-    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+    def from_dict(cls, dict, field_map=None, id_hash_keys=None):
+        if field_map is None:
+            field_map = {}
         doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
         doc.content_audio = Path(dict["content_audio"])
         return doc

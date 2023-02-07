@@ -77,7 +77,10 @@ class RayPipeline(Pipeline):
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
-        ray.init(address=address, **ray_args)
+        if not ray.is_initialized():
+            ray.init(address=address, **ray_args)
+        else:
+            logger.warning("Ray was already initialized, so reusing that for this RayPipeline.")
         self._serve_controller_client = serve.start(**serve_args)
         super().__init__()
 
@@ -202,7 +205,7 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def _create_ray_deployment(
-        cls, component_name: str, pipeline_config: dict, serve_deployment_kwargs: Optional[Dict[str, Any]] = {}
+        cls, component_name: str, pipeline_config: dict, serve_deployment_kwargs: Optional[Dict[str, Any]] = None
     ):
         """
         Create a Ray Deployment for the Component.
@@ -215,6 +218,8 @@ class RayPipeline(Pipeline):
                                          Ray Serve API docs (https://docs.ray.io/en/latest/serve/package-ref.html)
                                          under the `ray.serve.deployment()` method
         """
+        if serve_deployment_kwargs is None:
+            serve_deployment_kwargs = {}
         RayDeployment = serve.deployment(
             _RayDeploymentWrapper, name=component_name, **serve_deployment_kwargs  # type: ignore
         )

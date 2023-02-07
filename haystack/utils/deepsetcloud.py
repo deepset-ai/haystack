@@ -144,7 +144,7 @@ class DeepsetCloudClient:
     def post(
         self,
         url: str,
-        json: dict = {},
+        json: Optional[Dict] = None,
         data: Optional[Any] = None,
         query_params: Optional[dict] = None,
         headers: Optional[dict] = None,
@@ -152,6 +152,8 @@ class DeepsetCloudClient:
         files: Optional[Any] = None,
         raise_on_error: bool = True,
     ):
+        if json is None:
+            json = {}
         return self._execute_request(
             method="POST",
             url=url,
@@ -167,7 +169,7 @@ class DeepsetCloudClient:
     def post_with_auto_paging(
         self,
         url: str,
-        json: dict = {},
+        json: Optional[Dict] = None,
         data: Optional[Any] = None,
         query_params: Optional[dict] = None,
         headers: Optional[dict] = None,
@@ -175,6 +177,8 @@ class DeepsetCloudClient:
         raise_on_error: bool = True,
         auto_paging_page_size: Optional[int] = None,
     ):
+        if json is None:
+            json = {}
         return self._execute_auto_paging_request(
             method="POST",
             url=url,
@@ -211,7 +215,7 @@ class DeepsetCloudClient:
     def put_with_auto_paging(
         self,
         url: str,
-        json: dict = {},
+        json: Optional[Dict] = None,
         data: Optional[Any] = None,
         query_params: Optional[dict] = None,
         headers: Optional[dict] = None,
@@ -219,6 +223,8 @@ class DeepsetCloudClient:
         raise_on_error: bool = True,
         auto_paging_page_size: Optional[int] = None,
     ):
+        if json is None:
+            json = {}
         return self._execute_auto_paging_request(
             method="PUT",
             url=url,
