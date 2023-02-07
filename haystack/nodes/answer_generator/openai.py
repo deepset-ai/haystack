@@ -54,7 +54,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self,
         api_key: str,
         model: str = "text-davinci-003",
-        max_tokens: int = 13,
+        max_tokens: int = 50,
         top_k: int = 5,
         temperature: float = 0.2,
         presence_penalty: float = 0.1,
@@ -73,7 +73,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
                      refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
-        :param max_tokens: The maximum number of tokens allowed for the generated Answer.
+        :param max_tokens: The maximum number of tokens reserved for the generated Answer. 
+                           A higher number allows for longer answers without exceeding the max prompt length of the OpenAI model.
+                           A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens. 
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
