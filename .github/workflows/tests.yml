@@ -15,7 +15,8 @@ on:
       - ready_for_review
     paths:
       - "**.py"
-      - "**/pyproject.toml"
+      - "pyproject.toml"
+      - "!rest_api/**/*.py"
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
