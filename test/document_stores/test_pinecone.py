@@ -498,6 +498,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                                 "label-answer-type": "extractive",
                                 "label-answer-score": None,
                                 "label-answer-context": None,
+                                # legacy document_id answer
                                 "label-answer-document-id": "a0747b83aea0b60c4b114b15476dd32d",
                                 "label-answer-offsets-in-document-start": None,
                                 "label-answer-offsets-in-document-end": None,
