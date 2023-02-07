@@ -9,16 +9,16 @@ import os
 
 if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
 
-    def send_event():
-        pass
+    def send_event(func):
+        return func
 
-    def send_custom_event():
+    def send_custom_event(event, payload):
         pass
 
     def is_telemetry_enabled():
-        pass
+        return False
 
-    def send_tutorial_event():
+    def send_tutorial_event(url):
         pass
 
 else:
