@@ -1,7 +1,5 @@
 from typing import Any, Dict, List, Optional, Union, Generator
 
-import pandas as pd
-
 try:
     from typing import Literal
 except ImportError:
@@ -17,6 +15,7 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 import rank_bm25
+import pandas as pd
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
