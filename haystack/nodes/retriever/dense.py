@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Dict, Union, Optional, Any
+from typing import List, Dict, Union, Optional, Any, Literal
 
 import logging
 from pathlib import Path
@@ -1850,10 +1850,13 @@ class EmbeddingRetriever(DenseRetriever):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
-        train_loss: str = "mnrl",
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ) -> None:
         """
-        Trains/adapts the underlying embedding model.
+        Trains/adapts the underlying embedding model. We only support the training of sentence-transformer embedding models.
 
         Each training data example is a dictionary with the following keys:
 
@@ -1862,21 +1865,21 @@ class EmbeddingRetriever(DenseRetriever):
         * neg_doc: the negative document string
         * score: the score margin
 
-
-        :param training_data: The training data
-        :type training_data: List[Dict[str, Any]]
-        :param learning_rate: The learning rate
-        :type learning_rate: float
-        :param n_epochs: The number of epochs
-        :type n_epochs: int
-        :param num_warmup_steps: The number of warmup steps
-        :type num_warmup_steps: int
-        :param batch_size: The batch size to use for the training, defaults to 16
-        :type batch_size: int (optional)
+        :param training_data: The training data in a dictionary format.
+        :param learning_rate: The learning rate.
+        :param n_epochs: The number of epochs that you want the train for.
+        :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
+            increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
+            decreased linearly back to zero.
+        :param batch_size: The batch size to use for the training. The default values is 16.
         :param train_loss: The loss to use for training.
-                           If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+                           If you're using a sentence-transformer embedding_model (which is the only model that training is supported for),
                            possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
-        :type train_loss: str (optional)
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
+        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
+            reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
+            for a full list of keyword arguments.
         """
         self.embedding_encoder.train(
             training_data,
@@ -1885,6 +1888,9 @@ class EmbeddingRetriever(DenseRetriever):
             num_warmup_steps=num_warmup_steps,
             batch_size=batch_size,
             train_loss=train_loss,
+            num_workers=num_workers,
+            use_amp=use_amp,
+            **kwargs,
         )
 
     def save(self, save_dir: Union[Path, str]) -> None:
