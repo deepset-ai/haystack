@@ -1500,6 +1500,14 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Extract Answer
             answer = None
             if label_meta.get("label-answer-answer") is not None:
+
+                # backwards compatibility: if legacy answer object with `document_id` is present, convert to `document_ids
+                if "label-answer-document-id" in label_meta:
+                    document_id = label_meta["label-answer-document-id"]
+                    document_ids = [document_id] if document_id is not None else None
+                else:
+                    document_ids = label_meta["label-answer-document-ids"]
+
                 answer = Answer(
                     answer=label_meta["label-answer-answer"]
                     or "",  # If we leave as None a schema validation error will be thrown
@@ -1508,7 +1516,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     context=label_meta["label-answer-context"],
                     offsets_in_document=offsets["document"],
                     offsets_in_context=offsets["context"],
-                    document_ids=label_meta["label-answer-document-ids"],
+                    document_ids=document_ids,
                     meta=other_meta,
                 )
             # Extract Label metadata
