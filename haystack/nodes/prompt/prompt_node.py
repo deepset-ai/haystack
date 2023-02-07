@@ -379,7 +379,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
     PromptModelInvocationLayer implementation for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
-    See [OpenAI GPT-3](https://beta.openai.com/docs/models/gpt-3) for more details.
+    See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
 
     Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
     as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
@@ -399,13 +399,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
-        [documentation](https://beta.openai.com/docs/api-reference/completions/create).
+        [documentation](https://platform.openai.com/docs/api-reference/completions/create).
 
         """
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
-                f"api_key {api_key} must be a valid OpenAI key. Visit https://beta.openai.com/ to get one."
+                f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
         self.url = "https://api.openai.com/v1/completions"
@@ -443,7 +443,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :return: The responses are being returned.
 
         Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see OpenAI [documentation](https://beta.openai.com/docs/api-reference/completions/create).
+        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
         """
         prompt = kwargs.get("prompt")
         if not prompt:
@@ -491,6 +491,14 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                     status_code=response.status_code,
                 )
             raise openai_error
+
+        for ans in res["choices"]:
+            if ans["finish_reason"] == "length":
+                logger.warning(
+                    "At least one of the completions has been truncated before reaching a natural stopping point."
+                    "Consider increasing max_tokens parameter to produce better completions."
+                )
+                break
 
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
