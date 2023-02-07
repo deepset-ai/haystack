@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional, Union, Generator
 
+import pandas as pd
+
 try:
     from typing import Literal
 except ImportError:
@@ -206,7 +208,15 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index = index or self.index
 
         all_documents = self.get_all_documents(index=index)
-        textual_documents = [doc for doc in all_documents if doc.content_type == "text"]
+        textual_documents = []
+        for doc in all_documents:
+            if doc.content_type == "text":
+                textual_documents.append(doc.content.lower())
+            elif doc.content_type == "table":
+                if isinstance(doc.content, pd.DataFrame):
+                    textual_documents.append(doc.content.to_csv(index=False).lower())
+                else:
+                    raise DocumentStoreError("Documents of type 'table' need to have a pd.DataFrame as content field")
         if len(textual_documents) < len(all_documents):
             logger.warning(
                 "Some documents in %s index are non-textual."
@@ -215,7 +225,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             )
 
         tokenized_corpus = [
-            self.bm25_tokenization_regex(doc.content.lower())
+            self.bm25_tokenization_regex(doc)
             for doc in tqdm(textual_documents, unit=" docs", desc="Updating BM25 representation...")
         ]
         self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
