@@ -459,6 +459,11 @@ class Answer:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
+        if "document_id" in dict:
+            document_id = dict.pop("document_id")
+            dict["document_ids"] = [document_id] if document_id is not None else None
+
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
