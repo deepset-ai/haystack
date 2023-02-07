@@ -264,6 +264,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def _create_context(documents: List[Document], join_str: str = " ") -> str:
         """Join the documents together to create a single context to be used in the PromptTemplate."""
         doc_contents = [doc.content for doc in documents]
+        # We reverse the docs to put the most relevant documents at the bottom of the context
         context = join_str.join(reversed(doc_contents))
         return context
 
@@ -294,20 +295,25 @@ class OpenAIAnswerGenerator(BaseGenerator):
         # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
 
+        # Trim down the prompt (by removing documents) until it fits the models MAX_TOKENS_LIMIT
         input_docs = documents
         skipped_docs = 0
+        # If leftover_token_len is negative we have gone past the MAX_TOKENS_LIMIT and the prompt must be trimmed
         if leftover_token_len < 0:
             n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
             logger.debug("Number of tokens in documents: %s", n_docs_tokens)
 
+            # Reversing the order of documents b/c we want to throw away less relevant docs first
             rev_n_docs_tokens = reversed(n_docs_tokens)
             n_skipped_tokens = 0
             for doc_token_len in rev_n_docs_tokens:
                 n_skipped_tokens += doc_token_len
                 skipped_docs += 1
+                # Only skip enough tokens to fit within the MAX_TOKENS_LIMIT
                 if n_skipped_tokens >= abs(leftover_token_len):
                     break
 
+            # Throw away least relevant docs
             input_docs = documents[:-skipped_docs]
             full_prompt = self._fill_prompt(query, input_docs)
             n_full_prompt_tokens = self._count_tokens(full_prompt)
