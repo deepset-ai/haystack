@@ -63,7 +63,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         examples: Optional[List[List[str]]] = None,
         stop_words: Optional[List[str]] = None,
         progress_bar: bool = True,
-        instruction_prompt: Optional[PromptTemplate] = None,
+        prompt_template: Optional[PromptTemplate] = None,
         context_join_str: str = " ",
     ):
 
@@ -93,13 +93,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
                            If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
-        :param instruction_prompt: A PromptTemplate used to explain to the model how to generate answers given a
+        :param prompt_template: A PromptTemplate used to explain to the model how to generate answers given a
             supplied `context` and `query` at runtime. An `example_context` and a list of `examples` are used to provide
             the model with examples to help steer the model towards the tone and answer format you would like.
             If not supplied, the default instruction prompt is:
             ```python
                 PromptTemplate(
-                    name="question-answering",
+                    name="question-answering-with-examples",
                     prompt_text="Please answer the question according to the above context."
                                 "\n===\nContext: $examples_context\n===\n$examples\n\n"
                                 "===\nContext: $context\n===\n$query",
@@ -123,9 +123,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             examples = [["What is human life expectancy in the United States?", "78 years."]]
         if stop_words is None:
             stop_words = ["\n", "<|endoftext|>"]
-        if instruction_prompt is None:
-            instruction_prompt = PromptTemplate(
-                name="question-answering",
+        if prompt_template is None:
+            prompt_template = PromptTemplate(
+                name="question-answering-with-examples",
                 prompt_text="Please answer the question according to the above context."
                 "\n===\nContext: $examples_context\n===\n$examples\n\n"
                 "===\nContext: $context\n===\n$query",
@@ -134,7 +134,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             # Check for required prompts
             required_params = ["context", "query"]
-            if all(p in instruction_prompt.prompt_params for p in required_params):
+            if all(p in prompt_template.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
                     "`query` in its `prompt_params`. Please supply a different `instruction_prompt` or "
@@ -144,7 +144,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             # Check for unsupported prompt parameters
             optional_params = ["examples_context", "examples"]
             unknown_params = []
-            for p in instruction_prompt.prompt_params:
+            for p in prompt_template.prompt_params:
                 if p not in set(required_params + optional_params):
                     unknown_params.append(p)
             if len(unknown_params) > 1:
@@ -164,7 +164,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples_context = examples_context
         self.examples = examples
         self.stop_words = stop_words
-        self.instruction_prompt = instruction_prompt
+        self.instruction_prompt = prompt_template
         self.context_join_str = context_join_str
 
         tokenizer = "gpt2"
