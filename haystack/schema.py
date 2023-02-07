@@ -419,7 +419,9 @@ class Answer:
                                 For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
                                 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
-    :param document_id: ID of the document that the answer was located it (if any)
+    :param document_ids: IDs of the documents the answer came from (if any).
+                                For extractive QA, this will be a list of length 1.
+                                For generative QA, this will be a list of length > 0.
     :param meta: Dict that can be used to associate any kind of custom meta data with the answer.
                  In extractive QA, this will carry the meta data of the document where the answer was found.
     """
