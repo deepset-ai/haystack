@@ -301,50 +301,6 @@ def test_simple_pipeline(prompt_model):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
-def test_simple_pipeline_batch_single_query_single_doc_list(prompt_model):
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
-
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
-
-    pipe = Pipeline()
-    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
-    result = pipe.run_batch(
-        queries=None, documents=[Document("Berlin is an amazing city."), Document("I am not feeling well.")]
-    )
-    assert isinstance(result["results"], list)
-    assert isinstance(result["results"][0], list)
-    assert isinstance(result["results"][0][0], str)
-    assert result["results"][0][0].casefold() == "positive"
-    assert result["results"][1][0].casefold() == "negative"
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
-def test_simple_pipeline_batch_single_query_multiple_doc_list(prompt_model):
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
-
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
-
-    pipe = Pipeline()
-    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
-    result = pipe.run_batch(
-        queries=None,
-        documents=[
-            [Document("Berlin is an amazing city."), Document("Paris is an amazing city.")],
-            [Document("I am not feeling well.")],
-        ],
-    )
-    assert isinstance(result["results"], list)
-    assert isinstance(result["results"][0], list)
-    assert isinstance(result["results"][0][0], str)
-    assert all(x.casefold() == "positive" for x in result["results"][0])
-    assert result["results"][1][0].casefold() == "negative"
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_complex_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
@@ -735,3 +691,47 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline is not None
+
+
+class TestRunBatch:
+    @pytest.mark.integration
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
+        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+            pytest.skip("No API key found for OpenAI, skipping test")
+
+        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+
+        pipe = Pipeline()
+        pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+        result = pipe.run_batch(
+            queries=None, documents=[Document("Berlin is an amazing city."), Document("I am not feeling well.")]
+        )
+        assert isinstance(result["results"], list)
+        assert isinstance(result["results"][0], list)
+        assert isinstance(result["results"][0][0], str)
+        assert result["results"][0][0].casefold() == "positive"
+        assert result["results"][1][0].casefold() == "negative"
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    def test_simple_pipeline_batch_no_query_multiple_doc_list(self, prompt_model):
+        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+            pytest.skip("No API key found for OpenAI, skipping test")
+
+        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+
+        pipe = Pipeline()
+        pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+        result = pipe.run_batch(
+            queries=None,
+            documents=[
+                [Document("Berlin is an amazing city."), Document("Paris is an amazing city.")],
+                [Document("I am not feeling well.")],
+            ],
+        )
+        assert isinstance(result["results"], list)
+        assert isinstance(result["results"][0], list)
+        assert isinstance(result["results"][0][0], str)
+        assert all(x.casefold() == "positive" for x in result["results"][0])
+        assert result["results"][1][0].casefold() == "negative"
