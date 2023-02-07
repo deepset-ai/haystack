@@ -77,7 +77,10 @@ class RayPipeline(Pipeline):
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
-        ray.init(address=address, **ray_args)
+        if not ray.is_initialized():
+            ray.init(address=address, **ray_args)
+        else:
+            logger.warning("Ray was already initialized, so reusing that for this RayPipeline.")
         self._serve_controller_client = serve.start(**serve_args)
         super().__init__()
 
