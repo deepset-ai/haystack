@@ -2,7 +2,7 @@ import logging
 import os
 import platform
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import torch
 import transformers
@@ -77,3 +77,17 @@ def _get_execution_environment():
         except NameError:
             execution_env = "script"
     return execution_env
+
+
+def is_containerized() -> Optional[bool]:
+    # https://www.baeldung.com/linux/is-process-running-inside-container
+    # Using CPU scheduling info as I found it to be the only one usable on my machine.
+    path = "/proc/1/sched"
+    try:
+        with open(path, "r") as cgroupfile:
+            first_line = cgroupfile.readline()
+            if first_line.startswith("systemd") or first_line.startswith("init"):
+                return False
+            return True
+    except Exception:
+        return None
