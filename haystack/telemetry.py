@@ -8,11 +8,18 @@
 import os
 
 if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
-    no_op = lambda *args, **kwargs: None
-    send_event = no_op
-    send_custom_event = no_op
-    is_telemetry_enabled = no_op
-    send_tutorial_event = no_op
+
+    def send_event():
+        pass
+
+    def send_custom_event():
+        pass
+
+    def is_telemetry_enabled():
+        pass
+
+    def send_tutorial_event():
+        pass
 
 else:
     print("Telemetry 1!")
