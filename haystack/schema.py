@@ -636,6 +636,9 @@ class Label:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backward compatibility for old labels using answers with document_id instead of document_ids
+        if "answer" in dict and dict["answer"]:
+            dict["answer"] = Answer.from_dict(dict["answer"])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
