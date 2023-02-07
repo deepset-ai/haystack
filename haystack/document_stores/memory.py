@@ -972,7 +972,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
-        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type == "text"]
+        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
         top_docs = []
         for i in top_docs_positions:
             doc = textual_docs_list[i]
