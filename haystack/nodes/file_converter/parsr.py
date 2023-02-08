@@ -257,7 +257,6 @@ class ParsrConverter(BaseConverter):
         meta: Optional[Dict[str, Any]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> Document:
-
         row_idx_start = 0
         caption = ""
         number_of_columns = max(len(row["content"]) for row in element["content"])

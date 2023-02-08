@@ -132,7 +132,6 @@ def add_is_impossible(squad_data: dict, json_file_path: Path):
     squad_articles = list(squad_data["data"])  # create new list with this list although lists are inmutable :/
     for article in squad_articles:
         for paragraph in article["paragraphs"]:
-
             for question in paragraph["qas"]:
                 question["is_impossible"] = False
 

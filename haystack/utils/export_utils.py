@@ -123,7 +123,6 @@ def print_questions(results: dict):
         for query, answers in zip(results["queries"], results["answers"]):
             print(f" - Q: {query}")
             for answer in answers:
-
                 # Verify that the pairs contains Answers under the `answer` key
                 if not isinstance(answer, Answer):
                     raise ValueError(

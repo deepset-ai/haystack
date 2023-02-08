@@ -201,9 +201,8 @@ dev = [
   "python-multipart",
   "psutil",
   # Linting
-  "pylint==2.15.10",
-  # Code formatting
-  "black[jupyter]==22.6.0",
+  "pylint",
+  "farm-haystack[formatting]",
   # Documentation
   "pydoc-markdown",
   "mkdocs",
@@ -211,6 +210,13 @@ dev = [
   "watchdog",
   "requests-cache",
 ]
+
+formatting = [
+  # Version specified following Black stability policy:
+  # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
+  "black[jupyter]~=23.0",
+]
+
 all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
 ]
