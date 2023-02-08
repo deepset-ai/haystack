@@ -81,11 +81,15 @@ jobs:
           pip install .
 
       - name: Run tests
+        env:
+          PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
         run: |
           pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
       - uses: act10ns/slack@v2
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
           status: ${{ job.status }}
           channel: "#haystack"
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        if: failure() && github.ref == 'refs/heads/main'
