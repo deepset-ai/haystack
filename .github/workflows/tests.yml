@@ -39,13 +39,11 @@ jobs:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
-      with:
-        python-version: "3.8"
 
     - name: Install Black
       run: |
         pip install --upgrade pip
-        pip install black==22.6.0
+        pip install .[formatting]
 
     - name: Check status
       run: |
@@ -58,7 +56,7 @@ jobs:
           echo "# Either:"
           echo "# 1. Run Black locally before committing:"
           echo "# "
-          echo "#     pip install black==22.6.0"
+          echo "#     pip install .[formatting]"
           echo "#     black ."
           echo "# "
           echo "# 2. Install the pre-commit hook:"

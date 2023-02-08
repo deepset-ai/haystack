@@ -94,7 +94,6 @@ class AzureConverter(BaseConverter):
         pages: Optional[str] = None,
         known_language: Optional[str] = None,
     ) -> List[Document]:
-
         """
         Extract text and tables from a PDF, JPEG, PNG, BMP or TIFF file using Azure's Form Recognizer service.
 

@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class BasePromptTemplate(BaseComponent):
-
     outgoing_edges = 1
 
     def run(

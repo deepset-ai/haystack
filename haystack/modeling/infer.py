@@ -402,7 +402,6 @@ class Inferencer:
         unaggregated_preds_all = []
 
         for batch in tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm):
-
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits

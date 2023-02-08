@@ -323,7 +323,6 @@ class TriAdaptiveModel(nn.Module):
 
             # Current batch consists of tables and texts
             elif any(table_mask):
-
                 # Make input two-dimensional
                 max_seq_len = kwargs["passage_input_ids"].shape[-1]
                 passage_input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
