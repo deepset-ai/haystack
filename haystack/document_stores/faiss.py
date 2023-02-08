@@ -479,7 +479,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if documents:
             document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-            doc_embeddings = [doc.embedding for doc in document_objects]
+            doc_embeddings = [doc.embedding for doc in document_objects if doc.embedding is not None]
             embeddings_for_train = np.array(doc_embeddings, dtype="float32")
             self.faiss_indexes[index].train(embeddings_for_train)
         elif isinstance(embeddings, np.ndarray):

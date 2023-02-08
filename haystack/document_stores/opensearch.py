@@ -34,6 +34,8 @@ SIMILARITY_SPACE_TYPE_MAPPINGS = {
 
 
 class OpenSearchDocumentStore(SearchEngineDocumentStore):
+    valid_index_types = ["flat", "hnsw", "ivf", "ivf_pq"]
+
     def __init__(
         self,
         scheme: str = "https",  # Mind this different default param
@@ -71,6 +73,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         use_system_proxy: bool = False,
         knn_engine: str = "nmslib",
         knn_parameters: Optional[Dict] = None,
+        ivf_train_size: Optional[int] = None,
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.
@@ -156,6 +159,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                default ones to achieve comparability throughout DocumentStores in Haystack.)
                                For more information on configuration of knn indices, see
                                [OpenSearch Documentation](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#method-definitions).
+        :param ivf_train_size: Number of embeddings to use for training the IVF index. Training starts automatically
+                               once the number of indexed embeddings exceeds ivf_train_size. If `None`, the minimum
+                               number of embeddings recommended for training by FAISS is used (depends on the desired
+                               index type and knn parameters). If `0`, training doesn't happen automatically but needs
+                               to be triggered manually via the `train_index` method.
+                               Default: `None`
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -194,17 +203,23 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if knn_engine not in {"nmslib", "faiss", "score_script"}:
             raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
 
-        if index_type in ["flat", "hnsw", "ivf", "ivf_pq"]:
+        if index_type in self.valid_index_types:
             if index_type in ["ivf", "ivf_pq"] and knn_engine != "faiss":
                 raise DocumentStoreError("Use 'faiss' as knn_engine when using 'ivf' as index_type.")
             self.index_type = index_type
         else:
             raise DocumentStoreError(
-                "Invalid value for index_type in constructor. Choose one of these values: 'flat', 'hnsw', 'ivf', or 'ivf_pq'."
+                f"Invalid value for index_type in constructor. Choose one of these values: {self.valid_index_types}."
             )
 
         self.knn_engine = knn_engine
         self.knn_parameters = {} if knn_parameters is None else knn_parameters
+        if ivf_train_size is not None:
+            if ivf_train_size <= 0:
+                raise DocumentStoreError("`ivf_train_on_write_size` must be None or a positive integer.")
+            self.ivf_train_size = ivf_train_size
+        elif self.index_type in ["ivf", "ivf_pq"]:
+            self.ivf_train_size = self._recommended_ivf_train_size()
         self.space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
         super().__init__(
             client=client,
@@ -309,7 +324,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         batch_size: int = 10_000,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        ivf_train_size: Optional[int] = 0,
     ):
         """
         Indexes documents for later queries in OpenSearch.
@@ -338,13 +352,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                     exists.
         :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
-        :param ivf_train_size: Number of embeddings to use for training the IVF index. If `None`, the embeddings of
-                               all provided Documents are used for training. If `0`, no training is performed.
-                               Only applicable for indices of type `"ivf"` and `"ivf_pq"` that haven't been trained yet.
-                               Default: `0`.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
+        if index is None:
+            index = self.index
+
         if self.knn_engine == "faiss" and self.similarity == "cosine":
             field_map = self._create_document_field_map()
             documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
@@ -353,12 +366,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             for document, embedding in zip(documents, embeddings_to_index):
                 document.embedding = None if np.isnan(embedding).any() else embedding
 
-        if self.index_type in ["ivf", "ivf_pq"] and ivf_train_size != 0:
-            field_map = self._create_document_field_map()
-            documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-            training_docs = [doc for doc in documents[:ivf_train_size] if doc.embedding is not None]
-            self._train_ivf_index(index=index, documents=training_docs)
-
         super().write_documents(
             documents=documents,
             index=index,
@@ -366,6 +373,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             duplicate_documents=duplicate_documents,
             headers=headers,
         )
+
+        # Train IVF index if number of embeddings exceeds ivf_train_size
+        if not index.startswith(".") and not self._ivf_model_exists(index=index):
+            if self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
+                train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
+                self._train_ivf_index(index=index, documents=train_docs, headers=headers)
 
     def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
         """
@@ -473,6 +486,18 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         if return_embedding is None:
             return_embedding = self.return_embedding
+
+        if self.index_type in ["ivf", "ivf_pq"] and not self._ivf_model_exists(index=index):
+            add_num_of_embs = ""
+            if self.ivf_train_size != 0:
+                embs_to_add = self.get_embedding_count(index=index, headers=headers) - self.ivf_train_size
+                add_num_of_embs = (
+                    f"or add at least {embs_to_add} more embeddings to automatically start the " f"training process "
+                )
+            raise DocumentStoreError(
+                f"Index of type '{self.index_type}' is not trained yet. Train the index manually using "
+                f"`train_index` {add_num_of_embs}before querying it."
+            )
 
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
@@ -690,8 +715,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'`. "
                     )
 
+                # We use score_script for IVF indices that are not trained yet
+                if self.index_type in ["ivf", "ivf_pq"] and "model_id" not in existing_embedding_field:
+                    knn_engine = "score_script"
+                else:
+                    knn_engine = self.knn_engine
                 # Check if existing embedding field fits desired knn settings
-                if self.knn_engine != "score_script":
+                if knn_engine != "score_script":
                     self._validate_approximate_knn_settings(existing_embedding_field, index_settings, index_id)
 
             # Adjust global ef_search setting (nmslib only).
@@ -901,27 +931,15 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 if knn_engine != "faiss":
                     raise DocumentStoreError("To use 'ivf' or 'ivf_pq as index_type, set knn_engine to 'faiss'.")
                 # Check if IVF model already exists
-                if self._index_exists(".opensearch-knn-models"):
-                    response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
-                    existing_ivf_models = set(
-                        model["_source"]["model_id"]
-                        for model in response["hits"]["hits"]
-                        if model["_source"]["state"] == "created"
-                        and model["_source"]["dimension"] == embedding_dim
-                        and model["_source"]["space_type"] == space_type
-                    )
-                else:
-                    existing_ivf_models = set()
-                if f"{index}-ivf" in existing_ivf_models:
+                if self._ivf_model_exists(index):
                     logger.info("Using existing IVF model '%s-ivf' for index '%s'.", index, index)
                     embeddings_field_mapping = {"type": "knn_vector", "model_id": f"{index}-ivf"}
                     method = {}
                 else:
                     # IVF indices require training before they can be initialized. Setting index_type to HNSW until
                     # index is trained
-                    logger.info("Using index of type HNSW for index '%s' until IVF model is trained.", index)
-                    method["name"] = "hnsw"
-                    method["parameters"] = {"ef_construction": ef_construction, "m": m, "ef_search": ef_search}
+                    logger.info("Using index of type 'flat' for index '%s' until IVF model is trained.", index)
+                    method = {}
             else:
                 logger.error("Set index_type to either 'flat', 'hnsw', 'ivf', or 'ivf_pq'.")
                 method["name"] = "hnsw"
@@ -930,6 +948,19 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 embeddings_field_mapping["method"] = method
 
         return embeddings_field_mapping
+
+    def _ivf_model_exists(self, index: str) -> bool:
+        if self._index_exists(".opensearch-knn-models"):
+            response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
+            existing_ivf_models = set(
+                model["_source"]["model_id"]
+                for model in response["hits"]["hits"]
+                if model["_source"]["state"] != "failed"
+            )
+        else:
+            existing_ivf_models = set()
+
+        return f"{index}-ivf" in existing_ivf_models
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         mapping = {
@@ -1024,13 +1055,22 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             logger.info("IVF index '%s' is already trained. Skipping training.", index)
         # IVF model is not trained yet -> train it and convert HNSW index to IVF index
         else:
-            nlist = 4 if "nlist" not in self.knn_parameters else self.knn_parameters["nlist"]
-            nprobes = 1 if "nprobes" not in self.knn_parameters else self.knn_parameters["nprobes"]
+            nlist = self.knn_parameters.get("nlist", 4)
+            nprobes = self.knn_parameters.get("nprobes", 1)
+            recommended_train_size = self._recommended_ivf_train_size()
+            documents = [doc for doc in documents if doc.embedding is not None]
             if len(documents) < nlist:
                 raise DocumentStoreError(
                     f"IVF training requires the number of training samples to be greater than or "
                     f"equal to `nlist`. Number of provided training samples is `{len(documents)}` "
                     f"and nlist is `{nlist}`."
+                )
+            if len(documents) < recommended_train_size:
+                logger.warning(
+                    "Consider increasing the number of training samples to at least "
+                    "`%i` to get a reliable %s index.",
+                    recommended_train_size,
+                    self.index_type,
                 )
             # Create temporary index containing training embeddings
             self._create_document_index(index_name=f".{index}_ivf_training", headers=headers)
@@ -1050,8 +1090,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             }
             # Add product quantization
             if self.index_type == "ivf_pq":
-                m = 1 if "m" not in self.knn_parameters else self.knn_parameters["m"]
-                code_size = 8 if "code_size" not in self.knn_parameters else self.knn_parameters["code_size"]
+                m = self.knn_parameters.get("m", 1)
+                code_size = self.knn_parameters.get("code_size", 8)
                 if code_size > 8:
                     raise DocumentStoreError(
                         f"code_size parameter for product quantization must be less than or equal to 8. "
@@ -1059,19 +1099,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     )
 
                 # see FAISS doc for details: https://github.com/facebookresearch/faiss/wiki/FAQ#can-i-ignore-warning-clustering-xxx-points-to-yyy-centroids
-                min_points_per_cluster = 39
                 n_clusters = 2**code_size
                 if len(documents) < n_clusters:
                     raise DocumentStoreError(
                         f"PQ training requires the number of training samples to be greater than or "
                         f"equal to the number of clusters. Number of provided training samples is `{len(documents)}` "
                         f"and the number of clusters is `{n_clusters}`."
-                    )
-                if len(documents) < n_clusters * min_points_per_cluster:
-                    logger.warning(
-                        "Consider increasing the number of training samples to at least "
-                        "`%i` to get a reliable PQ index.",
-                        n_clusters * min_points_per_cluster,
                     )
 
                 encoder = {"name": "pq", "parameters": {"m": m, "code_size": code_size}}
@@ -1108,6 +1141,21 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 params={"request_timeout": 24 * 60 * 60},
             )
             self.client.indices.delete(index=f".{index}_temp")
+
+    def _recommended_ivf_train_size(self) -> int:
+        """
+        Calculates the minumum recommended number of training samples for IVF training as suggested in FAISS docs.
+        https://github.com/facebookresearch/faiss/wiki/FAQ#can-i-ignore-warning-clustering-xxx-points-to-yyy-centroids
+        """
+        min_points_per_cluster = 39
+        if self.index_type == "ivf":
+            n_clusters = self.knn_parameters.get("nlist", 4)
+            return n_clusters * min_points_per_cluster
+        elif self.index_type == "ivf_pq":
+            n_clusters = 2 ** self.knn_parameters.get("code_size", 8)
+            return n_clusters * min_points_per_cluster
+        else:
+            raise DocumentStoreError(f"Invalid index type '{self.index_type}'.")
 
     @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
     def _knn_model_trained(self, model_name: str, headers: Optional[Dict[str, str]] = None) -> bool:

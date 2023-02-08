@@ -202,18 +202,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             knn_parameters={"code_size": 2},
         )
 
-        # Check that IVF indices use HNSW with default settings before training
+        # Check that IVF indices use score_script before training
         emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
-        assert emb_field_settings == {
-            "type": "knn_vector",
-            "dimension": 768,
-            "method": {
-                "engine": "faiss",
-                "space_type": "innerproduct",
-                "name": "hnsw",
-                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
-            },
-        }
+        assert emb_field_settings == {"type": "knn_vector", "dimension": 768}
 
         ds.train_index(documents)
         # Check that embedding_field_settings have been updated
@@ -246,16 +237,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         # Check that IVF indices use HNSW with default settings before training
         emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
-        assert emb_field_settings == {
-            "type": "knn_vector",
-            "dimension": 768,
-            "method": {
-                "engine": "faiss",
-                "space_type": "innerproduct",
-                "name": "hnsw",
-                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
-            },
-        }
+        assert emb_field_settings == {"type": "knn_vector", "dimension": 768}
 
         embeddings = np.array([doc.embedding for doc in documents if doc.embedding is not None])
         ds.train_index(embeddings=embeddings)
@@ -285,22 +267,14 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             knn_engine="faiss",
             index_type=index_type,
             knn_parameters={"code_size": 2},
+            ivf_train_size=6,
         )
 
         # Check that IVF indices use HNSW with default settings before training
         emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
-        assert emb_field_settings == {
-            "type": "knn_vector",
-            "dimension": 768,
-            "method": {
-                "engine": "faiss",
-                "space_type": "innerproduct",
-                "name": "hnsw",
-                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
-            },
-        }
+        assert emb_field_settings == {"type": "knn_vector", "dimension": 768}
 
-        ds.write_documents(documents, ivf_train_size=None)
+        ds.write_documents(documents)
         # Check that embedding_field_settings have been updated
         emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
         assert emb_field_settings == {"type": "knn_vector", "model_id": f"{ds.index}-ivf"}
