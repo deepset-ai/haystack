@@ -55,7 +55,6 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
-
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
@@ -85,7 +84,6 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
-
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
@@ -111,7 +109,6 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_for_join_nodes(document_store_with_docs, tmp_path):
-
     es_retriever_1 = BM25Retriever(document_store=document_store_with_docs)
     es_retriever_2 = BM25Retriever(document_store=document_store_with_docs)
 
@@ -145,7 +142,6 @@ def test_debug_attributes_for_join_nodes(document_store_with_docs, tmp_path):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
-
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 

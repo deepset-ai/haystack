@@ -43,7 +43,6 @@ logger = logging.getLogger(__name__)
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-
         self.embedding_model = Inferencer.load(
             retriever.embedding_model,
             revision=retriever.model_version,
@@ -244,7 +243,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
         self.max_length = retriever.max_seq_len
@@ -310,7 +308,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         return np.concatenate(embeddings)
 
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
-
         dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names

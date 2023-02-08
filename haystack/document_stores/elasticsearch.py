@@ -207,7 +207,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         timeout: int,
         use_system_proxy: bool,
     ) -> Elasticsearch:
-
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):

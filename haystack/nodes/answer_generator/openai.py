@@ -63,7 +63,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         stop_words: Optional[List] = None,
         progress_bar: bool = True,
     ):
-
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
