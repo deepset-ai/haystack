@@ -375,7 +375,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         )
 
         # Train IVF index if number of embeddings exceeds ivf_train_size
-        if not index.startswith(".") and not self._ivf_model_exists(index=index):
+        if (
+            self.index_type in ["ivf", "ivf_pq"]
+            and not index.startswith(".")
+            and not self._ivf_model_exists(index=index)
+        ):
             if self.get_embedding_count(index=index, headers=headers) >= self.ivf_train_size:
                 train_docs = self.get_all_documents(index=index, return_embedding=True, headers=headers)
                 self._train_ivf_index(index=index, documents=train_docs, headers=headers)

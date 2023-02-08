@@ -1001,16 +1001,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.client.indices.exists.return_value = False
 
         # Before training, IVF indices use HNSW with default settings
-        assert mocked_document_store._get_embedding_field_mapping() == {
-            "type": "knn_vector",
-            "dimension": 768,
-            "method": {
-                "space_type": "innerproduct",
-                "engine": "faiss",
-                "name": "hnsw",
-                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
-            },
-        }
+        assert mocked_document_store._get_embedding_field_mapping() == {"type": "knn_vector", "dimension": 768}
 
         # Assume we have trained the index
         mocked_document_store.client.indices.exists.return_value = True
@@ -1048,26 +1039,13 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         }
 
     @pytest.mark.unit
-    def test__get_embedding_field_mapping_custom_ivf(self, mocked_document_store):
-        pass
-
-    @pytest.mark.unit
     def test__get_embedding_field_mapping_ivfpq(self, mocked_document_store):
         mocked_document_store.index_type = "ivf_pq"
         mocked_document_store.knn_engine = "faiss"
         mocked_document_store.client.indices.exists.return_value = False
 
         # Before training, IVF indices use HNSW with default settings
-        assert mocked_document_store._get_embedding_field_mapping() == {
-            "type": "knn_vector",
-            "dimension": 768,
-            "method": {
-                "space_type": "innerproduct",
-                "engine": "faiss",
-                "name": "hnsw",
-                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
-            },
-        }
+        assert mocked_document_store._get_embedding_field_mapping() == {"type": "knn_vector", "dimension": 768}
 
         # Assume we have trained the index
         mocked_document_store.client.indices.exists.return_value = True
