@@ -91,3 +91,60 @@ def is_containerized() -> Optional[bool]:
             return True
     except Exception:
         return None
+
+
+def collect_system_specs() -> Dict[str, Any]:
+    """
+    Collects meta data about the setup that is used with Haystack, such as:
+    operating system, python version, Haystack version, transformers version,
+    pytorch version, number of GPUs, execution environment.
+    """
+    return {
+        # Ok to keep as they are
+        "libraries": {
+            "haystack": __version__,
+            "transformers": transformers.__version__,
+            "torch": torch.__version__,
+            "cuda": torch.version.cuda if torch.cuda.is_available() else 0,
+            "pytest": sys.modules["pytest"].__version__ if "pytest" in sys.modules.keys() else False,
+            "ray": sys.modules["ray"].__version__ if "ray" in sys.modules.keys() else False,
+            # "ipython": get_ipython() if get_ipython in globals() else False,
+            "colab": sys.modules["pytest"].__version__ if "google.colab" in sys.modules.keys() else False,
+        },
+        # FIXME improve
+        "os": {
+            "os_version": platform.release(),
+            "os_family": platform.system(),
+            "os_machine": platform.machine(),
+            "containerized": is_containerized(),
+        },
+        "python": {"version": platform.python_version()},  # FIXME verify
+        "hardware": {
+            "cpus": os.cpu_count(),  # FIXME verify
+            "gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,  # probably ok
+        },
+    }
+
+
+# def _get_execution_environment():
+#     """
+#     Identifies the execution environment that Haystack is running in.
+#     Options are: colab notebook, kubernetes, CPU/GPU docker container, test environment, jupyter notebook, python script
+#     """
+#     if os.environ.get("CI", "False").lower() == "true":
+#         execution_env = "ci"
+#     elif "google.colab" in sys.modules:
+#         execution_env = "colab"
+#     elif "KUBERNETES_SERVICE_HOST" in os.environ:
+#         execution_env = "kubernetes"
+#     elif HAYSTACK_DOCKER_CONTAINER in os.environ:
+#         execution_env = os.environ.get(HAYSTACK_DOCKER_CONTAINER)
+#     # check if pytest is imported
+#     elif "pytest" in sys.modules:
+#         execution_env = "test"
+#     else:
+#         try:
+#             execution_env = get_ipython().__class__.__name__  # pylint: disable=undefined-variable
+#         except NameError:
+#             execution_env = "script"
+#     return execution_env

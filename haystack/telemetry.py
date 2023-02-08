@@ -6,6 +6,7 @@
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
 import os
+from typing import Any, Dict, List, Optional
 
 if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
 
@@ -24,7 +25,6 @@ if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
 else:
     print("Telemetry 1!")
 
-    from typing import Any, Dict, List, Optional
     import uuid
     import logging
     from logging import CRITICAL

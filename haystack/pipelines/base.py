@@ -7,6 +7,7 @@ import itertools
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
+from copy import deepcopy
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -21,7 +22,9 @@ import logging
 import tempfile
 from pathlib import Path
 
+import os
 import yaml
+import mmh3
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -55,6 +58,12 @@ from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabl
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
+if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
+    from haystack.telemetry_2 import telemetry
+else:
+    telemetry = None
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -79,6 +88,7 @@ class Pipeline:
         self.last_window_run_total = 0
         self.run_total = 0
         self.sent_event_in_window = False
+        self.yaml_path = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -456,6 +466,54 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
+    def send_telemetry_event(
+        self,
+        event_name: str,
+        query: Optional[str] = None,
+        queries: Optional[List[str]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
+        try:
+            if telemetry:
+                config = self.get_config()
+
+                fingerprint_config = deepcopy(config)
+                for component in fingerprint_config["components"]:
+                    del component["name"]
+
+                fingerprint = json.dumps(fingerprint_config, default=str)
+                config["pipeline_fingerprint"] = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
+                if self.yaml_path:
+                    config["yaml_fingerprint"] = "{:02x}".format(
+                        mmh3.hash128(str(self.yaml_path) + fingerprint, signed=False)
+                    )
+
+                for component in config["components"]:
+                    del component["params"]
+
+                config["run_parameters"] = {
+                    "queries": len(queries) if queries else bool(query),
+                    "file_paths": len(file_paths or []),
+                    "labels": 1 if isinstance(labels, MultiLabel) else len(labels or []),
+                    "documents": [len(docs) if isinstance(docs, list) else 0 for docs in documents]
+                    if documents and isinstance(documents[0], list)
+                    else len(documents or []),
+                    "meta": [len(m) if isinstance(m, list) else 0 for m in meta]
+                    if meta and isinstance(meta, dict) and isinstance(meta[0], list)
+                    else len(meta or []),
+                    "params": bool(params),
+                    "debug": bool(debug),
+                }
+                telemetry.send_event(event_name=event_name, event_properties={"config": config})
+        except Exception as e:
+            # Never let telemetry break things
+            logger.debug("There was an issue sending a %s telemetry event", event_name, exc_info=e)
+
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -482,6 +540,17 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        self.send_telemetry_event(
+            event_name="Pipeline.run()",
+            query=query,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         # validate the node names
         self._validate_node_names_in_params(params=params)
 
@@ -618,6 +687,17 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        self.send_telemetry_event(
+            event_name="Pipeline.run_batch()",
+            queries=queries,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         if file_paths is not None or meta is not None:
             logger.info(
                 "It seems that an indexing Pipeline is run, so using the nodes' run method instead of run_batch."
@@ -1957,14 +2037,15 @@ class Pipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
-
         config = read_pipeline_config_from_yaml(path)
-        return cls.load_from_config(
+        pipeline = cls.load_from_config(
             pipeline_config=config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
         )
+        pipeline.yaml_path = path
+        return pipeline
 
     @classmethod
     def load_from_config(

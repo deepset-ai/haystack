@@ -8,10 +8,10 @@ from pathlib import Path
 import yaml
 import posthog
 
-from haystack.environment import is_containerized
+from haystack.environment import collect_system_specs
 
-posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
-posthog.host = "https://tm.hs.deepset.ai"
+posthog.api_key = "phc_C44vUK9R1J6HYVdfJarTEPqVAoRPJzMXzFcj8PIrJgP"
+posthog.host = "https://eu.posthog.com"
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED = "HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
@@ -80,7 +80,7 @@ class Telemetry:
             except Exception as e:
                 logger.debug("Telemetry could not write config file to %s", CONFIG_PATH, exc_info=e)
 
-        self.event_properties = {"containerized": is_containerized()}
+        self.event_properties = collect_system_specs()
 
     def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None):
         """
@@ -163,3 +163,4 @@ class Telemetry:
 
 
 telemetry = Telemetry()
+print("Telemetry 2!")
