@@ -302,7 +302,9 @@ class SpeechDocument(Document):
             return f"<SpeechDocument: id={self.id}, content=None>"
         return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map=None) -> Dict:
+        if field_map is None:
+            field_map = {}
         dictionary = super().to_dict(field_map=field_map)
         for key, value in dictionary.items():
             if isinstance(value, Path):
@@ -310,7 +312,9 @@ class SpeechDocument(Document):
         return dictionary
 
     @classmethod
-    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+    def from_dict(cls, dict, field_map=None, id_hash_keys=None):
+        if field_map is None:
+            field_map = {}
         doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
         doc.content_audio = Path(dict["content_audio"])
         return doc
@@ -395,7 +399,7 @@ class Answer:
     context: Optional[Union[str, pd.DataFrame]] = None
     offsets_in_document: Optional[List[Span]] = None
     offsets_in_context: Optional[List[Span]] = None
-    document_id: Optional[str] = None
+    document_ids: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
     """
@@ -419,7 +423,9 @@ class Answer:
                                 For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
                                 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
-    :param document_id: ID of the document that the answer was located it (if any)
+    :param document_ids: IDs of the documents the answer came from (if any).
+                                For extractive QA, this will be a list of length 1.
+                                For generative QA, this will be a list of length > 0.
     :param meta: Dict that can be used to associate any kind of custom meta data with the answer.
                  In extractive QA, this will carry the meta data of the document where the answer was found.
     """
@@ -453,6 +459,12 @@ class Answer:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
+        if "document_id" in dict:
+            dict = dict.copy()
+            document_id = dict.pop("document_id")
+            dict["document_ids"] = [document_id] if document_id is not None else None
+
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -625,6 +637,11 @@ class Label:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backward compatibility for old labels using answers with document_id instead of document_ids
+        answer = dict.get("answer")
+        if answer and "document_id" in answer:
+            dict = dict.copy()
+            dict["answer"] = Answer.from_dict(dict["answer"])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -1313,7 +1330,14 @@ class EvaluationResult:
                 ].unique()
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
-                simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+
+                simulated_query_answers = query_answers[
+                    query_answers["document_ids"].apply(
+                        lambda document_ids, top_k_document_ids=top_k_document_ids: all(
+                            document_id in top_k_document_ids for document_id in document_ids
+                        )
+                    )
+                ]
                 # simulate top k reader
                 if simulated_top_k_reader != -1:
                     # consider only the simulated_top_k_reader answers within simulated_query_answers
@@ -1436,36 +1460,103 @@ class EvaluationResult:
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
 
+        # find out which label matched
+        def find_matched_label_idxs(row) -> List[int]:  # pylint: disable=too-many-return-statements
+            id_matches = [idx for idx, val in enumerate(row["gold_documents_id_match"]) if val == 1.0]
+            context_matches = [
+                idx for idx, val in enumerate(row["gold_contexts_similarity"]) if val > 65.0
+            ]  # TODO: hardcoded threshold for now, will be param of calculate_metrics
+            answer_matches = [idx for idx, val in enumerate(row["gold_answers_match"]) if val == 1.0]
+            if document_relevance_criterion == "document_id":
+                return id_matches
+            elif document_relevance_criterion == "context":
+                return context_matches
+            elif document_relevance_criterion == "answer":
+                return answer_matches
+            elif document_relevance_criterion == "document_id_and_context":
+                return list(set(id_matches) & set(context_matches))
+            elif document_relevance_criterion == "document_id_or_context":
+                return list(set(id_matches) | set(context_matches))
+            elif document_relevance_criterion == "document_id_and_answer":
+                return list(set(id_matches) & set(answer_matches))
+            elif document_relevance_criterion == "document_id_or_answer":
+                return list(set(id_matches) | set(answer_matches))
+            elif document_relevance_criterion == "context_and_answer":
+                return list(set(context_matches) & set(answer_matches))
+            elif document_relevance_criterion == "document_id_and_context_and_answer":
+                return list(set(id_matches) & set(context_matches) & set(answer_matches))
+            else:
+                raise ValueError(f"document_relevance_criterion '{document_relevance_criterion}' not supported.")
+
+        documents["matched_label_idxs"] = documents.apply(find_matched_label_idxs, axis=1)
+
         metrics = []
 
         for multilabel_id in documents["multilabel_id"].unique():
             query_df = documents[documents["multilabel_id"] == multilabel_id]
-            gold_ids = list(query_df["gold_document_ids"].iloc[0])
-            retrieved = len(query_df)
 
+            # Note: Metrics are always calculated on document_ids.
+            # For some document relevance criteria (e.g. context), the gold_document_ids are not enough or not useful at all.
+            # So, we have to adjust the relevant ids according to the document_relevance_criterion.
             relevance_criterion_col = f"{document_relevance_criterion.replace('document_id', 'gold_id')}_match"
-            relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
-            num_relevants = len(set(gold_ids + relevance_criterion_ids))
-            num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()
-            rank_retrieved_relevants = query_df[query_df[relevance_criterion_col] == 1]["rank"].values
-            avp_retrieved_relevants = [
-                query_df[relevance_criterion_col].values[: int(rank)].sum() / rank for rank in rank_retrieved_relevants
-            ]
+            relevant_rows = query_df[query_df[relevance_criterion_col] == 1]
 
-            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
-            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
-            precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
-            rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
-            dcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
-                if len(rank_retrieved_relevants) > 0
-                else 0.0
+            # all labels without no_answers
+            # we need to match all (except for single hit recall)
+            gold_document_ids = (
+                list(query_df["gold_custom_document_ids"].iloc[0])
+                if "gold_custom_document_ids" in query_df
+                else list(query_df["gold_document_ids"].iloc[0])
             )
-            idcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)]) if num_relevants > 0 else 1.0
-            )
-            ndcg = dcg / idcg
+            # remove no_answer label
+            gold_document_ids = [id for id in gold_document_ids if id != "00"]
+
+            num_labels = len(gold_document_ids)
+            num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
+            num_missing_labels = num_labels - num_matched_labels
+
+            relevance_criterion_ids = list(relevant_rows["document_id"].values)
+            num_relevants = len(set(relevance_criterion_ids)) + num_missing_labels
+
+            num_retrieved = len(query_df["document_id"])
+            num_retrieved_relevants = len(relevant_rows)
+            rank_retrieved_relevants = relevant_rows["rank"].values
+
+            if num_labels == 0:
+                # For no_answer queries, we set all metrics to 1.0, to indicate that the retriever cannot improve the pipeline.
+                # This behavior is different from pytrec_eval, which sets the metrics to 0.0 if there is no relevant document in the evalset.
+                rr = 1.0
+                avg_precision = 1.0
+                recall_multi_hit = 1.0
+                recall_single_hit = 1.0
+                precision = 1.0
+                ndcg = 1.0
+            elif num_retrieved_relevants == 0:
+                # Set all metrics to 0.0 if no relevant document has been retrieved to avoid undefined metrics.
+                rr = 0.0
+                avg_precision = 0.0
+                recall_multi_hit = 0.0
+                recall_single_hit = 0.0
+                precision = 0.0
+                ndcg = 0.0
+            else:
+                # The previous checks ensure:
+                # - `num_labels` > 0
+                # - `num_retrieved_relevants` > 0
+                # - `num_relevants` > 0  (`num_relevants` is always >= `num_labels`)
+                # - `num_retrieved` > 0  (`num_retrieved` is always >= `num_retrieved_relevants`)
+                # - `len(rank_retrieved_relevants)` > 0 (`len(rank_retrieved_relevants)` is always == `num_retrieved_relevants`)
+                avp_retrieved_relevants = [
+                    len(relevant_rows[relevant_rows["rank"] <= rank]) / rank for rank in rank_retrieved_relevants
+                ]
+                avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
+                recall_multi_hit = num_matched_labels / num_labels
+                recall_single_hit = 1.0
+                precision = num_retrieved_relevants / num_retrieved
+                rr = 1.0 / rank_retrieved_relevants.min()
+                dcg = np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
+                idcg = np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)])
+                ndcg = dcg / idcg
 
             metrics.append(
                 {
@@ -1531,6 +1622,8 @@ class EvaluationResult:
             "gold_answers_match",
             "gold_contexts_similarity",
             "offsets_in_document",
+            "document_ids",
+            "custom_document_ids",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
@@ -1539,5 +1632,16 @@ class EvaluationResult:
         # backward compatibility mappings
         for df in node_results.values():
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
+            # convert single document_id to list
+            if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
+                df["document_ids"] = df["document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["document_id"], inplace=True)
+            if (
+                "answer" in df.columns
+                and "custom_document_id" in df.columns
+                and not "custom_document_ids" in df.columns
+            ):
+                df["custom_document_ids"] = df["custom_document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["custom_document_id"], inplace=True)
         result = cls(node_results)
         return result

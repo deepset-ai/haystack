@@ -22,11 +22,11 @@ class MultiModalRetriever(DenseRetriever):
         query_embedding_model: Union[Path, str],
         document_embedding_models: Dict[str, Union[Path, str]],  # Replace str with ContentTypes starting Python3.8
         query_type: str = "text",  # Replace str with ContentTypes starting Python3.8
-        query_feature_extractor_params: Dict[str, Any] = {"max_length": 64},
-        document_feature_extractors_params: Dict[str, Dict[str, Any]] = {"text": {"max_length": 256}},
+        query_feature_extractor_params: Optional[Dict[str, Any]] = None,
+        document_feature_extractors_params: Optional[Dict[str, Dict[str, Any]]] = None,
         top_k: int = 10,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name"],
+        embed_meta_fields: Optional[List[str]] = None,
         similarity_function: str = "dot_product",
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
@@ -46,14 +46,14 @@ class MultiModalRetriever(DenseRetriever):
             checkpoint with the content type it should handle ("text", "table", "image", and so on).
             The format equals the one used by Hugging Face transformers' modelhub models.
         :param query_type: The content type of the query ("text", "image" and so on).
-        :param query_feature_extraction_params: The parameters to pass to the feature extractor of the query.
-        :param document_feature_extraction_params: The parameters to pass to the feature extractor of the documents.
+        :param query_feature_extraction_params: The parameters to pass to the feature extractor of the query. If no value is provided, a default dictionary with "max_length": 64 will be set.
+        :param document_feature_extraction_params: The parameters to pass to the feature extractor of the documents. If no value is provided, a default dictionary with "text": {"max_length": 256} will be set.
         :param top_k: How many documents to return per query.
         :param batch_size: Number of questions or documents to encode at once. For multiple GPUs, this is
             the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields to a (text) pair that is then used to create
             the embedding. This is likely to improve performance if your titles contain meaningful information
-            for retrieval (topic, entities, and so on). Note that only text and table documents support this feature.
+            for retrieval (topic, entities, and so on). Note that only text and table documents support this feature. If no values is provided, a default with "name" as embedding field will be created.
         :param similarity_function: Which function to apply for calculating the similarity of query and document
             embeddings during training. Options: `dot_product` (default) or `cosine`.
         :param progress_bar: Whether to show a tqdm progress bar or not.
@@ -72,6 +72,12 @@ class MultiModalRetriever(DenseRetriever):
             range are scaled to a range of [0,1], where 1 means extremely relevant.
             Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
+        if query_feature_extractor_params is None:
+            query_feature_extractor_params = {"max_length": 64}
+        if document_feature_extractors_params is None:
+            document_feature_extractors_params = {"text": {"max_length": 256}}
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name"]
         super().__init__()
 
         self.similarity_function = similarity_function
