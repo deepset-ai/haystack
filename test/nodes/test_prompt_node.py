@@ -51,6 +51,13 @@ def test_prompt_templates():
     assert p.prompt_text == "Here is some fake template with variable $baz"
 
 
+def test_prompt_template_repr():
+    p = PromptTemplate("t", "Here is variable $baz")
+    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable $baz, prompt_params=['baz'])"
+    assert repr(p) == desired_repr
+    assert str(p) == desired_repr
+
+
 def test_create_prompt_model():
     model = PromptModel("google/flan-t5-small")
     assert model.model_name_or_path == "google/flan-t5-small"

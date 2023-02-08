@@ -1,11 +1,11 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/file_classifier]
-    modules: ['file_type']
+    search_path: [../../../haystack/nodes/file_converter]
+    modules: ['base', 'csv', 'docx', 'image', 'markdown', 'pdf', 'parsr', 'azure', 'tika', 'txt']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Distinguishes between text, PDF, Markdown, Docx and HTML files and routes them to the appropriate File Converter in an indexing pipeline.
+   excerpt: Extracts text from files in different formats and cast it into the unified Document format.
    category: 6310ca73c622850ddd3875a2
-   title: File Classifier API
-   slug: file-classifier-api
-   order: 60
+   title: File Converters API
+   slug: file-converters-api
+   order: 70
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: file_classifier_api.md
+     filename: file_converters_api.md
