@@ -1456,9 +1456,11 @@ class Pipeline:
             "gold_id_and_context_and_answer_match",  # doc-specific
             "context_and_answer_match",  # doc-specific
             "rank",  # generic
-            "document_id",  # generic
+            "document_id",  # document-specific
+            "document_ids",  # answer-specific
             "gold_document_ids",  # generic
-            "custom_document_id",  # generic
+            "custom_document_id",  # document-specific
+            "custom_document_ids",  # answer-specific
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
@@ -1562,7 +1564,7 @@ class Pipeline:
                         ]
                     answer_cols_to_keep = [
                         "answer",
-                        "document_id",
+                        "document_ids",
                         "offsets_in_document",
                         "offsets_in_context",
                         "context",
@@ -1593,17 +1595,23 @@ class Pipeline:
                         ]
                     )
                     df_answers["gold_documents_id_match"] = df_answers.map_rows(
-                        lambda row: [1.0 if row["document_id"] == gold_id else 0.0 for gold_id in gold_document_ids]
+                        lambda row: [
+                            1.0 if gold_id in (row["document_ids"] or []) else 0.0 for gold_id in gold_document_ids
+                        ]
                     )
 
                     if custom_document_id_field is not None:
                         df_answers["gold_custom_document_ids"] = [gold_custom_document_ids] * len(df_answers)
-                        df_answers["custom_document_id"] = [
-                            answer.meta.get(custom_document_id_field, "") for answer in answers
+                        df_answers["custom_document_ids"] = [
+                            [
+                                meta.get(custom_document_id_field, "")
+                                for meta in answer.meta.get("doc_metas", [answer.meta])
+                            ]
+                            for answer in answers
                         ]
                         df_answers["gold_documents_id_match"] = df_answers.map_rows(
                             lambda row: [
-                                1.0 if row["custom_document_id"] == gold_custom_id else 0.0
+                                1.0 if gold_custom_id in row["custom_document_ids"] else 0.0
                                 for gold_custom_id in gold_custom_document_ids
                             ]
                         )

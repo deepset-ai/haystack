@@ -1174,7 +1174,7 @@ class FARMReader(BaseReader):
                         type="extractive",
                         score=ans.confidence if self.use_confidence_scores else ans.score,
                         context=ans.context_window,
-                        document_id=pred.id,
+                        document_ids=[pred.id],
                         offsets_in_context=[
                             Span(
                                 start=ans.offset_answer_start - ans.offset_context_window_start,

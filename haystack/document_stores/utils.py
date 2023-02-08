@@ -226,7 +226,7 @@ def _extract_docs_and_labels_from_dict(
                             context=cur_doc.content,
                             offsets_in_document=[Span(start=cur_ans_start, end=cur_ans_start + len(ans))],
                             offsets_in_context=[Span(start=cur_ans_start, end=cur_ans_start + len(ans))],
-                            document_id=cur_doc.id,
+                            document_ids=[cur_doc.id],
                         )
                         label = Label(
                             query=qa["question"],
