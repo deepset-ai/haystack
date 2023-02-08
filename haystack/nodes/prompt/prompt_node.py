@@ -493,11 +493,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             raise openai_error
 
         number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_completions>0:
+        if number_of_truncated_completions > 0:
             logger.warning(
                 "%s out of the %s completions have been truncated before reaching a natural stopping point."
                 "Consider increasing the max_tokens parameter to allow for longer completions.",
-                number_of_truncated_completions, payload["n"])            
+                number_of_truncated_completions,
+                payload["n"],
+            )
 
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
