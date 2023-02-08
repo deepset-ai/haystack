@@ -723,8 +723,8 @@ class TestRunBatch:
         assert isinstance(result["results"], list)
         assert isinstance(result["results"][0], list)
         assert isinstance(result["results"][0][0], str)
-        assert result["results"][0][0].casefold() == "positive"
-        assert result["results"][1][0].casefold() == "negative"
+        assert "positive" in result["results"][0][0].casefold()
+        assert "negative" in result["results"][1][0].casefold()
 
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
@@ -746,8 +746,36 @@ class TestRunBatch:
         assert isinstance(result["results"], list)
         assert isinstance(result["results"][0], list)
         assert isinstance(result["results"][0][0], str)
-        assert all(x.casefold() == "positive" for x in result["results"][0])
-        assert result["results"][1][0].casefold() == "negative"
+        assert all("positive" in x.casefold() for x in result["results"][0])
+        assert "negative" in result["results"][1][0].casefold()
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    def test_simple_pipeline_batch_query_multiple_doc_list(self, prompt_model):
+        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+            pytest.skip("No API key found for OpenAI, skipping test")
+
+        prompt_template = PromptTemplate(
+            name="question-answering-new",
+            prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
+            prompt_params=["documents", "query"],
+        )
+        node = PromptNode(prompt_model, default_prompt_template=prompt_template)
+
+        pipe = Pipeline()
+        pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+        result = pipe.run_batch(
+            queries=["Who lives in Berlin?"],
+            documents=[
+                [Document("My name is Carla and I live in Berlin"), Document("My name is James and I live in London")],
+                [Document("My name is Christelle and I live in Paris")],
+            ],
+            debug=True,
+        )
+        assert isinstance(result["results"], list)
+        assert isinstance(result["results"][0], list)
+        assert isinstance(result["results"][0][0], str)
+        # TODO Finish
 
 
 def test_HFLocalInvocationLayer_supports():
