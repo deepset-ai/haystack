@@ -66,7 +66,7 @@ dependencies = [
   "azure-ai-formrecognizer>=3.2.0b2",  # forms reader
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "huggingface-hub>=0.5.0",
-  "tenacity",  # retry decorator
+  "tenacity<8.2",  # retry decorator
 
   # Preprocessing
   "more_itertools",  # for windowing
