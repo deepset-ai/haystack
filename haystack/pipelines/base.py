@@ -472,9 +472,9 @@ class Pipeline:
         query: Optional[str] = None,
         queries: Optional[List[str]] = None,
         file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[Union[dict, List[dict]]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
