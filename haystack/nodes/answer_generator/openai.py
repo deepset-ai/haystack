@@ -63,13 +63,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
         stop_words: Optional[List] = None,
         progress_bar: bool = True,
     ):
-
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
-                     refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
+                     refer to the [OpenAI Documentation](https://platform.openai.com/docs/models/gpt-3).
         :param max_tokens: The maximum number of tokens allowed for the generated Answer.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
@@ -199,6 +198,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 )
             raise openai_error
 
+        number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
+        if number_of_truncated_answers > 0:
+            logger.warning(
+                "%s out of the %s answers have been truncated before reaching a natural stopping point."
+                "Consider increasing the max_tokens parameter to allow for longer answers.",
+                number_of_truncated_answers,
+                top_k,
+            )
+
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
         result = {"query": query, "answers": answers}
@@ -222,7 +230,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
         logger.debug("Number of tokens in documents: %s", n_docs_tokens)
 
-        # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
+        # for length restrictions of prompt see: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
 
         # Add as many Documents as context as fit into the model

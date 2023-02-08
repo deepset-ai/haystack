@@ -4,6 +4,7 @@ from haystack.pipelines import TranslationWrapperPipeline, ExtractiveQAPipeline
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from .test_summarizer import SPLIT_DOCS
 
+
 # Keeping few (retriever,document_store,reader) combination to reduce test time
 @pytest.mark.integration
 @pytest.mark.elasticsearch

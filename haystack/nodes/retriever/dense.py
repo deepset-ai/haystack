@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Dict, Union, Optional, Any
+from typing import List, Dict, Union, Optional, Any, Literal
 
 import logging
 from pathlib import Path
@@ -794,7 +794,7 @@ class TableTextRetriever(DenseRetriever):
         top_k: int = 10,
         use_gpu: bool = True,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         use_fast_tokenizers: bool = True,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
@@ -825,7 +825,8 @@ class TableTextRetriever(DenseRetriever):
                                   then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
-                                  (topic, entities etc.).
+                                  (topic, entities etc.). If no value is provided, a default will be created.
+                                  That default embeds name, section title and caption.
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
@@ -849,6 +850,8 @@ class TableTextRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name", "section_title", "caption"]
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -1072,11 +1075,18 @@ class TableTextRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        query_embs: List[np.ndarray] = []
-        for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(queries=batch))
+        # embed_queries is already batched within by batch_size, so no need to batch the input here
+        query_embs: np.ndarray = self.embed_queries(queries=queries)
+        batched_query_embs: List[np.ndarray] = []
+        for i in range(0, len(query_embs), batch_size):
+            batched_query_embs.extend(query_embs[i : i + batch_size])
         documents = document_store.query_by_embedding_batch(
-            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+            query_embs=batched_query_embs,
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
         )
 
         return documents
@@ -1225,7 +1235,7 @@ class TableTextRetriever(DenseRetriever):
         max_processes: int = 128,
         dev_split: float = 0,
         batch_size: int = 2,
-        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         num_hard_negatives: int = 1,
         num_positives: int = 1,
         n_epochs: int = 3,
@@ -1260,7 +1270,7 @@ class TableTextRetriever(DenseRetriever):
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
         :param embed_meta_fields: Concatenate meta fields with each passage and table.
-                                  The default setting in official MMRetrieval embeds page title,
+                                  If no value is provided, a default will be created. That default embeds page title,
                                   section title and caption with the corresponding table and title with
                                   corresponding text passage.
         :param num_hard_negatives: Number of hard negative passages (passages which are
@@ -1290,6 +1300,8 @@ class TableTextRetriever(DenseRetriever):
         :param checkpoints_to_keep: The maximum number of train checkpoints to save.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["page_title", "section_title", "caption"]
 
         self.processor.embed_meta_fields = embed_meta_fields
         self.processor.data_dir = Path(data_dir)
@@ -1393,7 +1405,7 @@ class TableTextRetriever(DenseRetriever):
         max_seq_len_table: int = 256,
         use_gpu: bool = True,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         use_fast_tokenizers: bool = True,
         similarity_function: str = "dot_product",
         query_encoder_dir: str = "query_encoder",
@@ -1403,6 +1415,8 @@ class TableTextRetriever(DenseRetriever):
         """
         Load TableTextRetriever from the specified directory.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name", "section_title", "caption"]
 
         load_dir = Path(load_dir)
         mm_retriever = cls(
@@ -1441,7 +1455,7 @@ class EmbeddingRetriever(DenseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = [],
+        embed_meta_fields: Optional[List[str]] = None,
         api_key: Optional[str] = None,
     ):
         """
@@ -1494,10 +1508,13 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
 
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = []
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -1759,11 +1776,18 @@ class EmbeddingRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        query_embs: List[np.ndarray] = []
-        for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(queries=batch))
+        # embed_queries is already batched within by batch_size, so no need to batch the input here
+        query_embs: np.ndarray = self.embed_queries(queries=queries)
+        batched_query_embs: List[np.ndarray] = []
+        for i in range(0, len(query_embs), batch_size):
+            batched_query_embs.extend(query_embs[i : i + batch_size])
         documents = document_store.query_by_embedding_batch(
-            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+            query_embs=batched_query_embs,
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
         )
 
         return documents
@@ -1850,10 +1874,13 @@ class EmbeddingRetriever(DenseRetriever):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
-        train_loss: str = "mnrl",
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ) -> None:
         """
-        Trains/adapts the underlying embedding model.
+        Trains/adapts the underlying embedding model. We only support the training of sentence-transformer embedding models.
 
         Each training data example is a dictionary with the following keys:
 
@@ -1862,21 +1889,21 @@ class EmbeddingRetriever(DenseRetriever):
         * neg_doc: the negative document string
         * score: the score margin
 
-
-        :param training_data: The training data
-        :type training_data: List[Dict[str, Any]]
-        :param learning_rate: The learning rate
-        :type learning_rate: float
-        :param n_epochs: The number of epochs
-        :type n_epochs: int
-        :param num_warmup_steps: The number of warmup steps
-        :type num_warmup_steps: int
-        :param batch_size: The batch size to use for the training, defaults to 16
-        :type batch_size: int (optional)
+        :param training_data: The training data in a dictionary format.
+        :param learning_rate: The learning rate.
+        :param n_epochs: The number of epochs that you want the train for.
+        :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
+            increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
+            decreased linearly back to zero.
+        :param batch_size: The batch size to use for the training. The default values is 16.
         :param train_loss: The loss to use for training.
-                           If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+                           If you're using a sentence-transformer embedding_model (which is the only model that training is supported for),
                            possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
-        :type train_loss: str (optional)
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
+        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
+            reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
+            for a full list of keyword arguments.
         """
         self.embedding_encoder.train(
             training_data,
@@ -1885,6 +1912,9 @@ class EmbeddingRetriever(DenseRetriever):
             num_warmup_steps=num_warmup_steps,
             batch_size=batch_size,
             train_loss=train_loss,
+            num_workers=num_workers,
+            use_amp=use_amp,
+            **kwargs,
         )
 
     def save(self, save_dir: Union[Path, str]) -> None:
@@ -1923,7 +1953,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = [],
+        embed_meta_fields: Optional[List[str]] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1971,7 +2001,10 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default empty list will be created.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = []
         super().__init__(
             embedding_model=embedding_model,
             document_store=document_store,

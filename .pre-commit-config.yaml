@@ -16,9 +16,14 @@ repos:
     - id: no-commit-to-branch  # prevents committing to main
 
 - repo: https://github.com/psf/black
-  rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in pyproject.toml
+  rev: 23.1.0
   hooks:
   - id: black-jupyter
 
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.6.23
+  hooks:
+  - id: actionlint-docker
+    args: ["-ignore", "SC2102"]
 
 # TODO we can make mypy and pylint run at this stage too, once their execution gets normalized

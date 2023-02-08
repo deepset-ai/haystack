@@ -44,7 +44,6 @@ def _missing_dependency_stub_factory(classname: str, dep_group: str, import_erro
 
     class MissingDependency:
         def __init__(self, *args, **kwargs):
-
             _optional_component_not_installed(classname, dep_group, import_error)
 
         def __getattr__(self, *a, **k):
@@ -112,8 +111,9 @@ def fetch_archive_from_http(
             tar_archive.extractall(output_dir)
         else:
             logger.warning(
-                "Skipped url {0} as file type is not supported here. "
-                "See haystack documentation for support of more file types".format(url)
+                "Skipped url %s as file type is not supported here. "
+                "See haystack documentation for support of more file types",
+                url,
             )
 
         return True

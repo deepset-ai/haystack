@@ -283,11 +283,9 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
             break
 
         except ValidationError as validation:
-
             # If the validation comes from an unknown node, try to find it and retry:
             if list(validation.relative_schema_path) == ["properties", "components", "items", "anyOf"]:
                 if validation.instance["type"] not in loaded_custom_nodes:
-
                     logger.info(
                         "Missing definition for node of type %s. Looking into local classes...",
                         validation.instance["type"],
@@ -431,7 +429,6 @@ def _add_node_to_pipeline_graph(
 
     try:
         for input_node in node["inputs"]:
-
             # Separate node and edge name, if specified
             input_node_name, input_edge_name = input_node, None
             if "." in input_node:

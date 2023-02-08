@@ -63,7 +63,7 @@ def convert_offset_from_word_reference_to_text_reference(offsets, words, word_sp
     Not a fixture, just a utility.
     """
     token_offsets = []
-    for ((start, end), word_index) in zip(offsets, words):
+    for (start, end), word_index in zip(offsets, words):
         word_start = word_spans[word_index][0]
         token_offsets.append((start + word_start, end + word_start))
     return token_offsets

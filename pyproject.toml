@@ -202,8 +202,7 @@ dev = [
   "psutil",
   # Linting
   "pylint",
-  # Code formatting
-  "black[jupyter]==22.6.0",
+  "farm-haystack[formatting]",
   # Documentation
   "pydoc-markdown",
   "mkdocs",
@@ -211,6 +210,13 @@ dev = [
   "watchdog",
   "requests-cache",
 ]
+
+formatting = [
+  # Version specified following Black stability policy:
+  # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
+  "black[jupyter]~=23.0",
+]
+
 all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
 ]
@@ -273,13 +279,11 @@ disable = [
   "too-many-instance-attributes",
   "super-with-arguments",
   "redefined-builtin",
-  "logging-format-interpolation",
   "abstract-method",
   "too-many-branches",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
-  "dangerous-default-value",
   "consider-using-with",
   "redefined-outer-name",
   "arguments-renamed",
@@ -298,6 +302,7 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
+  "broad-exception-raised",
 
   # To review later
   "cyclic-import",

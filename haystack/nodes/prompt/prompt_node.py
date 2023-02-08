@@ -9,7 +9,15 @@ from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
 import requests
 import torch
-from transformers import pipeline, AutoModelForSeq2SeqLM, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
+from transformers import (
+    pipeline,
+    AutoConfig,
+    StoppingCriteria,
+    StoppingCriteriaList,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
+from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
@@ -23,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class BasePromptTemplate(BaseComponent):
-
     outgoing_edges = 1
 
     def run(
@@ -166,6 +173,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
             prompt_prepared: str = template.substitute(template_input)
             yield prompt_prepared
 
+    def __repr__(self):
+        return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
+
 
 class PromptModelInvocationLayer:
     """
@@ -215,9 +225,8 @@ class StopWordsCriteria(StoppingCriteria):
     Stops text generation if any one of the stop words is generated.
     """
 
-    def __init__(self, model_name_or_path: str, stop_words: List[str]):
+    def __init__(self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stop_words: List[str]):
         super().__init__()
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
@@ -245,7 +254,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         Creates an instance of HFLocalInvocationLayer used to invoke local Hugging Face models.
 
-
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of the output text.
         :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
@@ -257,8 +265,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
         For more details about these kwargs, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
-
-
         """
         super().__init__(model_name_or_path, max_length)
         self.use_auth_token = use_auth_token
@@ -342,7 +348,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 if key in kwargs
             }
             if stop_words:
-                sw = StopWordsCriteria(model_name_or_path=self.model_name_or_path, stop_words=stop_words)
+                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
@@ -357,21 +363,28 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
-        if not all(m in model_name_or_path for m in ["google", "flan", "t5"]):
+        try:
+            config = AutoConfig.from_pretrained(model_name_or_path)
+        except OSError:
+            # This is needed so OpenAI models are skipped over
             return False
 
-        try:
-            # if it is google flan t5, load it, we'll use it anyway and also check if model loads correctly
-            AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
-        except EnvironmentError:
-            return False
-        return True
+        if not all(m in model_name_or_path for m in ["flan", "t5"]):
+            logger.warning(
+                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
+                "Many of the default prompts and PromptTemplates will likely not work as intended. "
+                "Please use custom prompts and PromptTemplates specific to the %s model",
+                model_name_or_path,
+            )
+
+        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
+        return config.architectures[0] in supported_models
 
 
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
     PromptModelInvocationLayer implementation for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
-    See [OpenAI GPT-3](https://beta.openai.com/docs/models/gpt-3) for more details.
+    See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
 
     Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
     as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
@@ -391,13 +404,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
-        [documentation](https://beta.openai.com/docs/api-reference/completions/create).
+        [documentation](https://platform.openai.com/docs/api-reference/completions/create).
 
         """
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
-                f"api_key {api_key} must be a valid OpenAI key. Visit https://beta.openai.com/ to get one."
+                f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
         self.url = "https://api.openai.com/v1/completions"
@@ -435,7 +448,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :return: The responses are being returned.
 
         Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see OpenAI [documentation](https://beta.openai.com/docs/api-reference/completions/create).
+        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
         """
         prompt = kwargs.get("prompt")
         if not prompt:
@@ -483,6 +496,15 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                     status_code=response.status_code,
                 )
             raise openai_error
+
+        number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
+        if number_of_truncated_completions > 0:
+            logger.warning(
+                "%s out of the %s completions have been truncated before reaching a natural stopping point."
+                "Consider increasing the max_tokens parameter to allow for longer completions.",
+                number_of_truncated_completions,
+                payload["n"],
+            )
 
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
@@ -561,8 +583,8 @@ class PromptModel(BaseComponent):
                 )
         raise ValueError(
             f"Model {self.model_name_or_path} is not supported - no invocation layer found."
-            f"Currently supported models are: {self.invocation_layers}"
-            f"Register new invocation layer for {self.model_name_or_path} using the register method."
+            f" Currently supported models are: {self.invocation_layers}"
+            f" Register a new invocation layer for {self.model_name_or_path} using the register method."
         )
 
     def register(self, invocation_layer: Type[PromptModelInvocationLayer]):
@@ -677,7 +699,6 @@ class PromptNode(BaseComponent):
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
 
     For more details, see the PromptNode [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
-
     """
 
     outgoing_edges: int = 1
@@ -765,6 +786,8 @@ class PromptNode(BaseComponent):
         :return: A list of strings as model responses.
         """
         results = []
+        # we pop the prompt_collector kwarg to avoid passing it to the model
+        prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
         if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
             raise ValueError(
                 f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} "
@@ -786,12 +809,16 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         return results
@@ -900,25 +927,44 @@ class PromptNode(BaseComponent):
         :param meta: The meta to be used for the prompt. Usually not used.
         :param invocation_context: The invocation context to be used for the prompt.
         """
+        # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
+        # so that they can be returned by `run()` as part of the pipeline's debug output.
+        prompt_collector: List[str] = []
 
-        # invocation_context is a dictionary that is passed from a pipeline node to a pipeline node and can be used
-        # to pass results from a pipeline node to any other downstream pipeline node.
         invocation_context = invocation_context or {}
+        if query and "query" not in invocation_context.keys():
+            invocation_context["query"] = query
 
-        results = self(
-            query=query,
-            labels=labels,
-            documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
-            **invocation_context,
-        )
+        if file_paths and "file_paths" not in invocation_context.keys():
+            invocation_context["file_paths"] = file_paths
+
+        if labels and "labels" not in invocation_context.keys():
+            invocation_context["labels"] = labels
+
+        if documents and "documents" not in invocation_context.keys():
+            invocation_context["documents"] = documents
+
+        if meta and "meta" not in invocation_context.keys():
+            invocation_context["meta"] = meta
+
+        if "documents" in invocation_context.keys():
+            for doc in invocation_context.get("documents", []):
+                if not isinstance(doc, str) and not isinstance(doc.content, str):
+                    raise ValueError("PromptNode only accepts text documents.")
+            invocation_context["documents"] = [
+                doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
+            ]
+
+        results = self(prompt_collector=prompt_collector, **invocation_context)
 
         final_result: Dict[str, Any] = {}
-        if self.output_variable:
-            invocation_context[self.output_variable] = results
-            final_result[self.output_variable] = results
+        output_variable = self.output_variable or "results"
+        if output_variable:
+            invocation_context[output_variable] = results
+            final_result[output_variable] = results
 
-        final_result["results"] = results
         final_result["invocation_context"] = invocation_context
+        final_result["_debug"] = {"prompts_used": prompt_collector}
         return final_result, "output_1"
 
     def run_batch(

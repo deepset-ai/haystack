@@ -992,7 +992,6 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             properties.append("_additional {id, distance, vector}")
 
         if query is None:
-
             # Retrieval via custom query, no BM25
             if custom_query:
                 query_output = self.weaviate_client.query.raw(custom_query)

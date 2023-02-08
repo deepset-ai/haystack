@@ -152,7 +152,6 @@ def get_model(
 
 
 def _is_sentence_transformers_model(pretrained_model_name_or_path: Union[Path, str], use_auth_token: Union[bool, str]):
-
     # Check if sentence transformers config file is in local path
     if Path(pretrained_model_name_or_path).exists():
         if (Path(pretrained_model_name_or_path) / "config_sentence_transformers.json").exists():
