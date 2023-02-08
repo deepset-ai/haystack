@@ -12,13 +12,13 @@ if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
     def send_event(func):
         return func
 
-    def send_custom_event(event, payload):
+    def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None) -> Any:
         pass
 
-    def is_telemetry_enabled():
+    def is_telemetry_enabled() -> bool:
         return False
 
-    def send_tutorial_event(url):
+    def send_tutorial_event(url: str) -> Any:
         pass
 
 else:
