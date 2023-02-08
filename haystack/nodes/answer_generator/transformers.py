@@ -168,7 +168,6 @@ class RAGenerator(BaseGenerator):
     def _get_contextualized_inputs(
         self, texts: List[str], query: str, titles: Optional[List[str]] = None, return_tensors: str = "pt"
     ):
-
         titles_list = titles if self.embed_title and titles is not None else [""] * len(texts)
         prefix = self.prefix if self.prefix is not None else self.model.config.generator.prefix
 
@@ -190,7 +189,6 @@ class RAGenerator(BaseGenerator):
         )
 
     def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> torch.Tensor:
-
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
 

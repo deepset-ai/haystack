@@ -32,7 +32,6 @@ class BaseGenerator(BaseComponent):
         pass
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
-
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k)
         else:

@@ -70,7 +70,6 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.

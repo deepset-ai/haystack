@@ -441,7 +441,6 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
     if not main_only and "rc" not in haystack_version:
-
         # Create/update the specific version file too
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
         with open(destination_path / filename, "w") as json_file:

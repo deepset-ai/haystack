@@ -813,7 +813,6 @@ def test_chain_shapers_yaml_2(tmp_path):
 
 
 def test_with_prompt_node(tmp_path):
-
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -863,7 +862,6 @@ def test_with_prompt_node(tmp_path):
 
 
 def test_with_multiple_prompt_nodes(tmp_path):
-
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""

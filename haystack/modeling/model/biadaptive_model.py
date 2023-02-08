@@ -350,7 +350,6 @@ class BiAdaptiveModel(nn.Module):
             pooled_output[0] = pooled_output1
 
         if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
-
             max_seq_len = passage_input_ids.shape[-1]
             passage_input_ids = passage_input_ids.view(-1, max_seq_len)
             passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
