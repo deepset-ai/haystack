@@ -95,27 +95,28 @@ class Crawler(BaseComponent):
                     and spawn a single process.
                  2) ["--no-sandbox"]
                     This option disables the sandbox, which is required for running Chrome as root.
-            See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
+                 3) ["--remote-debugging-port=9222"]
+                    This option enables remote debug over HTTP.
+            See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
+            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
+        IN_WINDOWS = sys.platform in ["win32", "cygwin"]
+        IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
-        elif "--headless" not in webdriver_options:
-            webdriver_options.append("--headless")
-
-        if IS_ROOT and "--no-sandbox" not in webdriver_options:
-            webdriver_options.append("--no-sandbox")
-
-        if (IN_COLAB or IN_AZUREML) and "--disable-dev-shm-usage" not in webdriver_options:
+        webdriver_options.append("--headless")
+        if IS_ROOT or IN_WINDOWS:
+            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+        if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
         options = Options()
-        for option in webdriver_options:
+        for option in set(webdriver_options):
             options.add_argument(option)
 
         if IN_COLAB:
