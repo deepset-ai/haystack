@@ -846,9 +846,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str
     ):
         # Index is not trained yet and should therefore be an HNSW index with default settings until index is trained
-        if "model_id" not in existing_embedding_field:
-            self._validate_hnsw_settings(existing_embedding_field, index_settings, index_id)
-        else:
+        if "model_id" in existing_embedding_field:
             model_endpoint = f"/_plugins/_knn/models/{existing_embedding_field['model_id']}"
             response = self.client.transport.perform_request("GET", url=model_endpoint)
             model_settings_list = [setting.split(":") for setting in response["description"].split()]
