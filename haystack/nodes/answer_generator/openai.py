@@ -72,7 +72,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
-                     refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
+                     refer to the [OpenAI Documentation](https://platform.openai.com/docs/models/gpt-3).
         :param max_tokens: The maximum number of tokens reserved for the generated Answer.
                            A higher number allows for longer answers without exceeding the max prompt length of the OpenAI model.
                            A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens.
@@ -257,6 +257,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 )
             raise openai_error
 
+        number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
+        if number_of_truncated_answers > 0:
+            logger.warning(
+                "%s out of the %s answers have been truncated before reaching a natural stopping point."
+                "Consider increasing the max_tokens parameter to allow for longer answers.",
+                number_of_truncated_answers,
+                top_k,
+            )
+
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
         result = {"query": query, "answers": answers}
@@ -294,7 +303,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         full_prompt = self._fill_prompt(query, documents)
         n_full_prompt_tokens = self._count_tokens(full_prompt)
 
-        # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
+        # for length restrictions of prompt see: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
 
         # Trim down the prompt (by removing documents) until it fits the models MAX_TOKENS_LIMIT
