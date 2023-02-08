@@ -221,7 +221,7 @@ def feedback():
             "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
             "offsets_in_context": [{"start": 60, "end": 73}],
             "offsets_in_document": [{"start": 60, "end": 73}],
-            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "document_ids": ["fc18c987a8312e72a47fb1524f230bb0"],
             "meta": {},
             "score": None,
         },

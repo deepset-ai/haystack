@@ -119,7 +119,7 @@ def test_add_eval_data(document_store, batch_size):
         label.answer.context[label.answer.offsets_in_context[0].start : label.answer.offsets_in_context[0].end]
         == "France"
     )
-    assert label.answer.document_id == label.document.id
+    assert label.answer.document_ids == [label.document.id]
 
     # check combination
     doc = document_store.get_document_by_id(label.document.id)
@@ -442,6 +442,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "gold_answers_exact_match",  # answer-specific
         "gold_answers_f1",  # answer-specific
         # "gold_answers_sas",  # answer-specific optional
+        "document_ids",  # answer-specific
     ]
 
     expected_retriever_result_columns = [
@@ -454,7 +455,8 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "gold_id_and_context_match",  # doc-specific
         "gold_id_and_context_and_answer_match",  # doc-specific
         "context_and_answer_match",  # doc-specific
-        "gold_answers_match",  # doc-specific
+        "gold_answers_match",  # doc-specific,
+        "document_id",  # doc-specific
     ]
 
     expected_generic_result_columns = [
@@ -469,7 +471,6 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "node",  # generic
         "eval_mode",  # generic
         "rank",  # generic
-        "document_id",  # generic
         "gold_document_ids",  # generic
         "gold_answers",  # generic
         # "custom_document_id",  # generic optional
