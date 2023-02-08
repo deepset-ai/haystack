@@ -364,12 +364,21 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
-        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
         try:
             config = AutoConfig.from_pretrained(model_name_or_path)
         except OSError:
             # This is needed so OpenAI models are skipped over
             return False
+
+        if not all(m in model_name_or_path for m in ["flan", "t5"]):
+            logger.warning(
+                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
+                "Many of the default prompts and PromptTemplates will likely not work as intended. "
+                "Please use custom prompts and PromptTemplates specific to the %s model",
+                model_name_or_path,
+            )
+
+        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
         return config.architectures[0] in supported_models
 
 
