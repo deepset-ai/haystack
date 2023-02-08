@@ -53,7 +53,6 @@ def benchmark_indexing(
     save_markdown,
     **kwargs,
 ):
-
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:

@@ -1196,7 +1196,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
@@ -1500,7 +1499,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Extract Answer
             answer = None
             if label_meta.get("label-answer-answer") is not None:
-
                 # backwards compatibility: if legacy answer object with `document_id` is present, convert to `document_ids
                 if "label-answer-document-id" in label_meta:
                     document_id = label_meta["label-answer-document-id"]

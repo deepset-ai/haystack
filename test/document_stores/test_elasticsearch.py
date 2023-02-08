@@ -223,7 +223,6 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
     @pytest.mark.integration
     def test_existing_alias_missing_fields(self, ds):
-
         client = ds.client
         client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
         client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
