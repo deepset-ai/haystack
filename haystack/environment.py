@@ -124,27 +124,3 @@ def collect_system_specs() -> Dict[str, Any]:
             "gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,  # probably ok
         },
     }
-
-
-# def _get_execution_environment():
-#     """
-#     Identifies the execution environment that Haystack is running in.
-#     Options are: colab notebook, kubernetes, CPU/GPU docker container, test environment, jupyter notebook, python script
-#     """
-#     if os.environ.get("CI", "False").lower() == "true":
-#         execution_env = "ci"
-#     elif "google.colab" in sys.modules:
-#         execution_env = "colab"
-#     elif "KUBERNETES_SERVICE_HOST" in os.environ:
-#         execution_env = "kubernetes"
-#     elif HAYSTACK_DOCKER_CONTAINER in os.environ:
-#         execution_env = os.environ.get(HAYSTACK_DOCKER_CONTAINER)
-#     # check if pytest is imported
-#     elif "pytest" in sys.modules:
-#         execution_env = "test"
-#     else:
-#         try:
-#             execution_env = get_ipython().__class__.__name__  # pylint: disable=undefined-variable
-#         except NameError:
-#             execution_env = "script"
-#     return execution_env
