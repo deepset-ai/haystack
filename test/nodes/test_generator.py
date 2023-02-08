@@ -154,6 +154,6 @@ def test_openai_answer_generator_max_token(docs, caplog):
     openai_generator.MAX_TOKENS_LIMIT = 116
     with caplog.at_level(logging.INFO):
         prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
-        assert "Skipping" in caplog.text
+        assert "Skipping all of the provided Documents" in caplog.text
         assert len(prediction["answers"]) == 1
-        assert "Carla" in prediction["answers"][0].answer
+        # Can't easily check content of answer since it is generative and can change between runs
