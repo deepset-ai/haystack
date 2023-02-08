@@ -73,9 +73,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
                      refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
-        :param max_tokens: The maximum number of tokens reserved for the generated Answer. 
+        :param max_tokens: The maximum number of tokens reserved for the generated Answer.
                            A higher number allows for longer answers without exceeding the max prompt length of the OpenAI model.
-                           A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens. 
+                           A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
@@ -91,7 +91,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param examples: List of (question, answer) pairs that helps steer the model towards the tone and answer
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAI API docs is used:
-                         [["What is human life expectancy in the United States?", "78 years."]]
+                         [["Q: What is human life expectancy in the United States?", "A: 78 years."]]
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
                            If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
@@ -99,7 +99,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             supplied `context` and `query` at runtime. The `context` is automatically constructed at runtime from a
             list of provided documents at runtime. An `example_context` and a list of `examples` are used to provide
             the model with examples to help steer the model towards the tone and answer format you would like.
-            If not supplied, the default instruction prompt is:
+            If not supplied, the default prompt template is:
             ```python
                 PromptTemplate(
                     name="question-answering-with-examples",
@@ -123,7 +123,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if examples_context is None:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
         if examples is None:
-            examples = [["What is human life expectancy in the United States?", "78 years."]]
+            examples = [["Q: What is human life expectancy in the United States?", "A: 78 years."]]
         if stop_words is None:
             stop_words = ["\n", "<|endoftext|>"]
         if prompt_template is None:
@@ -140,7 +140,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             if all(p in prompt_template.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
-                    "`query` in its `prompt_params`. Please supply a different `instruction_prompt` or "
+                    "`query` in its `prompt_params`. Please supply a different `prompt_template` or "
                     "use the default one."
                 )
 
@@ -167,7 +167,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples_context = examples_context
         self.examples = examples
         self.stop_words = stop_words
-        self.instruction_prompt = prompt_template
+        self.prompt_template = prompt_template
         self.context_join_str = context_join_str
 
         tokenizer = "gpt2"
@@ -272,17 +272,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def _fill_prompt(self, query: str, documents: List[Document]) -> str:
         """Fills in the `prompt_template` with its `prompt_params` and returns the full prompt."""
-        example_prompts = "\n---\n".join([f"Q: {query}\nA: {answer}" for query, answer in self.examples])
+        example_prompts = "\n---\n".join([f"{query}\n{answer}" for query, answer in self.examples])
         qa_prompt = f"Q: {query}\nA:"
 
         kwargs = {"context": self._create_context(documents, join_str=self.context_join_str), "query": qa_prompt}
         if (
-            "examples_context" in self.instruction_prompt.prompt_params
-            and "examples" in self.instruction_prompt.prompt_params
+            "examples_context" in self.prompt_template.prompt_params
+            and "examples" in self.prompt_template.prompt_params
         ):
             kwargs["examples_context"] = self.examples_context
             kwargs["examples"] = example_prompts
-        full_prompt = next(self.instruction_prompt.fill(**kwargs))
+        full_prompt = next(self.prompt_template.fill(**kwargs))
         return full_prompt
 
     def _build_prompt_within_max_length(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
