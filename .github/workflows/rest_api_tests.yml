@@ -27,7 +27,7 @@ jobs:
       - name: Install Black
         run: |
           pip install --upgrade pip
-          pip install black==22.6.0
+          pip install .[formatting]
 
       - name: Check status
         run: |
@@ -40,7 +40,7 @@ jobs:
             echo "# Either:"
             echo "# 1. Run Black locally before committing:"
             echo "# "
-            echo "#     pip install black==22.6.0"
+            echo "#     pip install .[formatting]"
             echo "#     black ."
             echo "# "
             echo "# 2. Install the pre-commit hook:"
@@ -81,11 +81,15 @@ jobs:
           pip install .
 
       - name: Run tests
+        env:
+          PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
         run: |
           pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
       - uses: act10ns/slack@v2
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
           status: ${{ job.status }}
           channel: "#haystack"
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        if: failure() && github.ref == 'refs/heads/main'

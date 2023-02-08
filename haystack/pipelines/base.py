@@ -1606,7 +1606,6 @@ class Pipeline:
 
         partial_dfs = []
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
-
             if query_labels is None or query_labels.labels is None:
                 logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
@@ -2299,7 +2298,6 @@ class Pipeline:
         """
         if params:
             if not all(node_id in self.graph.nodes for node_id in params.keys()):
-
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 # "debug" will be picked up by _dispatch_run, see its code

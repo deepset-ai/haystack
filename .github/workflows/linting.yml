@@ -53,5 +53,6 @@ jobs:
         uses: ./.github/actions/python_cache/
 
       - name: Pylint
+        if: steps.files.outputs.any_changed == 'true'
         run: |
           pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}

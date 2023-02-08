@@ -44,7 +44,6 @@ def _missing_dependency_stub_factory(classname: str, dep_group: str, import_erro
 
     class MissingDependency:
         def __init__(self, *args, **kwargs):
-
             _optional_component_not_installed(classname, dep_group, import_error)
 
         def __getattr__(self, *a, **k):
