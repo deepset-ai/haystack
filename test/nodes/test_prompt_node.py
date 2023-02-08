@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Optional, Union, List, Dict, Any, Tuple
 
 import pytest
@@ -7,6 +8,7 @@ import torch
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
+from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
 
 def is_openai_api_key_set(api_key: str):
@@ -49,6 +51,13 @@ def test_prompt_templates():
     assert p.prompt_params == ["baz"]
     # strip double quotes, happens in YAML as we need to use single quotes for the template string
     assert p.prompt_text == "Here is some fake template with variable $baz"
+
+
+def test_prompt_template_repr():
+    p = PromptTemplate("t", "Here is variable $baz")
+    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable $baz, prompt_params=['baz'])"
+    assert repr(p) == desired_repr
+    assert str(p) == desired_repr
 
 
 def test_create_prompt_model():
@@ -100,16 +109,6 @@ def test_create_prompt_node():
     assert prompt_node is not None
     assert prompt_node.model_name_or_path == "text-davinci-003"
     assert prompt_node.prompt_model is not None
-
-    with pytest.raises(ValueError, match="Model vblagoje/bart_lfqa is not supported"):
-        # yes vblagoje/bart_lfqa is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("vblagoje/bart_lfqa")
-
-    with pytest.raises(ValueError, match="Model valhalla/t5-base-e2e-qg is not supported"):
-        # yes valhalla/t5-base-e2e-qg is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("valhalla/t5-base-e2e-qg")
 
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptNode("some-random-model")
@@ -239,6 +238,20 @@ def test_open_ai_prompt_with_params():
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 10, "top_p": 1, "frequency_penalty": 0.5}
     r = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
     assert len(r) == 1 and len(r[0]) > 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
+    pm = PromptModel("text-davinci-003", api_key=os.environ["OPENAI_API_KEY"])
+    pn = PromptNode(pm)
+    optional_davinci_params = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
+    with caplog.at_level(logging.WARNING):
+        _ = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
+        assert "Consider increasing the max_tokens parameter to allow for longer completions." in caplog.text
 
 
 @pytest.mark.integration
@@ -735,3 +748,8 @@ class TestRunBatch:
         assert isinstance(result["results"][0][0], str)
         assert all(x.casefold() == "positive" for x in result["results"][0])
         assert result["results"][1][0].casefold() == "negative"
+
+
+def test_HFLocalInvocationLayer_supports():
+    assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
+    assert HFLocalInvocationLayer.supports("bigscience/T0_3B")

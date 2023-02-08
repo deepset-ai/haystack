@@ -67,7 +67,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
         task: str = "text-classification",
-        labels: List[str] = DEFAULT_LABELS,
+        labels: Optional[List[str]] = None,
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
@@ -96,6 +96,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        if labels is None:
+            labels = DEFAULT_LABELS
         super().__init__()
         resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(resolved_devices) > 1:

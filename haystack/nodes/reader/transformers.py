@@ -304,7 +304,7 @@ class TransformersReader(BaseReader):
                         context=cur_doc.content[context_start:context_end],
                         offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
                         offsets_in_context=[Span(start=pred["start"] - context_start, end=pred["end"] - context_start)],
-                        document_id=cur_doc.id,
+                        document_ids=[cur_doc.id],
                         meta=cur_doc.meta,
                     )
                 )
