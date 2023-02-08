@@ -66,23 +66,19 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         assert set(ids) == result
 
     @pytest.mark.integration
-    def test_update_bm25(self, documents):
-        ds = InMemoryDocumentStore(use_bm25=False)
+    def test_update_bm25(self, ds, documents):
         ds.write_documents(documents)
-        ds.update_bm25()
         bm25_representation = ds.bm25[ds.index]
         assert isinstance(bm25_representation, BM25)
         assert bm25_representation.corpus_size == ds.get_document_count()
 
     @pytest.mark.integration
-    def test_update_bm25_table(self):
+    def test_update_bm25_table(self, ds):
         table_doc = Document(
-            content=pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]]),
+            content=pd.DataFrame(columns=["id", "text"], data=[[0, "This is a test"], ["2", "This is another test"]]),
             content_type="table",
         )
-        ds = InMemoryDocumentStore(use_bm25=False)
         ds.write_documents([table_doc])
-        ds.update_bm25()
         bm25_representation = ds.bm25[ds.index]
         assert isinstance(bm25_representation, BM25)
         assert bm25_representation.corpus_size == ds.get_document_count()

@@ -213,7 +213,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                 textual_documents.append(doc.content.lower())
             elif doc.content_type == "table":
                 if isinstance(doc.content, pd.DataFrame):
-                    textual_documents.append(doc.content.to_csv(index=False).lower())
+                    textual_documents.append(doc.content.astype(str).to_csv(index=False).lower())
                 else:
                     raise DocumentStoreError("Documents of type 'table' need to have a pd.DataFrame as content field")
         if len(textual_documents) < len(all_documents):
