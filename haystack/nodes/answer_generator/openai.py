@@ -199,13 +199,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 )
             raise openai_error
 
-        for ans in res["choices"]:
-            if ans["finish_reason"] == "length":
-                logger.warning(
-                    "At least one of the answers has been truncated before reaching a natural stopping point."
-                    "Consider increasing max_tokens parameter to produce better answers."
-                )
-                break
+        number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
+        if number_of_truncated_answers>0:
+            logger.warning(
+                "%s out of the %s answers have been truncated before reaching a natural stopping point."
+                "Consider increasing the max_tokens parameter to allow for longer answers.",
+                number_of_truncated_answers, top_k)
 
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
