@@ -7,6 +7,7 @@ import torch
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
+from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
 
 def is_openai_api_key_set(api_key: str):
@@ -688,3 +689,8 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline is not None
+
+
+def test_HFLocalInvocationLayer_supports():
+    assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
+    assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
