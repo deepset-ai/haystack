@@ -64,7 +64,7 @@ class BaseReader(BaseComponent):
             context=None,
             offsets_in_context=[Span(start=0, end=0)],
             offsets_in_document=[Span(start=0, end=0)],
-            document_id=None,
+            document_ids=None,
             meta=None,
         )
 
@@ -77,10 +77,11 @@ class BaseReader(BaseComponent):
             answer.meta = {}
         # get meta from doc
         meta_from_doc = {}
-        for doc in documents:
-            if doc.id == answer.document_id:
-                meta_from_doc = deepcopy(doc.meta)
-                break
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids:
+                    meta_from_doc = deepcopy(doc.meta)
+                    break
         # append to "own" meta
         answer.meta.update(meta_from_doc)
         return answer
@@ -103,7 +104,7 @@ class BaseReader(BaseComponent):
                     context=None,
                     offsets_in_context=[Span(start=0, end=0)],
                     offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
+                    document_ids=None,
                     meta=None,
                 )
                 results = {"answers": [no_ans_prediction]}
