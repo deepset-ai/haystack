@@ -23,8 +23,6 @@ if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
         pass
 
 else:
-    print("Telemetry 1!")
-
     import uuid
     import logging
     from logging import CRITICAL

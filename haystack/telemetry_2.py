@@ -163,4 +163,3 @@ class Telemetry:
 
 
 telemetry = Telemetry()
-print("Telemetry 2!")
