@@ -8,6 +8,7 @@ import torch
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
+from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
 
 def is_openai_api_key_set(api_key: str):
@@ -108,16 +109,6 @@ def test_create_prompt_node():
     assert prompt_node is not None
     assert prompt_node.model_name_or_path == "text-davinci-003"
     assert prompt_node.prompt_model is not None
-
-    with pytest.raises(ValueError, match="Model vblagoje/bart_lfqa is not supported"):
-        # yes vblagoje/bart_lfqa is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("vblagoje/bart_lfqa")
-
-    with pytest.raises(ValueError, match="Model valhalla/t5-base-e2e-qg is not supported"):
-        # yes valhalla/t5-base-e2e-qg is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("valhalla/t5-base-e2e-qg")
 
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptNode("some-random-model")
@@ -713,3 +704,8 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline is not None
+
+
+def test_HFLocalInvocationLayer_supports():
+    assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
+    assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
