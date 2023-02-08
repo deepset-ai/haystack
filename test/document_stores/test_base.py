@@ -57,7 +57,7 @@ class DocumentStoreBaseTestAbstract:
                     is_correct_answer=False,
                     # create a mix set of labels
                     origin="user-feedback" if i % 2 else "gold-label",
-                    answer=None if not i else Answer(f"the answer is {i}"),
+                    answer=None if not i else Answer(f"the answer is {i}", document_ids=[d.id]),
                     meta={"name": f"label_{i}", "year": f"{2020 + i}"},
                 )
             )

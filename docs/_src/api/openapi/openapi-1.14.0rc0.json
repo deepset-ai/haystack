@@ -479,9 +479,12 @@
                             "$ref": "#/components/schemas/Span"
                         }
                     },
-                    "document_id": {
-                        "title": "Document Id",
-                        "type": "string"
+                    "document_ids": {
+                        "title": "Document Ids",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "meta": {
                         "title": "Meta",

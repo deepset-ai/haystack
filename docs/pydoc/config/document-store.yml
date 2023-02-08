@@ -1,0 +1,26 @@
+loaders:
+  - type: python
+    search_path: [../../../haystack/document_stores]
+    modules: ['base', 'elasticsearch', 'opensearch', 'memory', 'sql', 'faiss', 'milvus', 'weaviate', 'graphdb', 'deepsetcloud', 'pinecone', 'search_engine', 'utils']
+    ignore_when_discovered: ['__init__']
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+   type: renderers.ReadmeRenderer
+   excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
+   category: 6310ca73c622850ddd3875a2
+   title: Document Store API
+   slug: document-store-api
+   order: 30
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: document_store_api.md

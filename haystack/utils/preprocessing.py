@@ -45,8 +45,10 @@ def convert_files_to_docs(
             suffix2paths[file_suffix].append(path)
         elif not path.is_dir():
             logger.warning(
-                "Skipped file {0} as type {1} is not supported here. "
-                "See haystack.file_converter for support of more file types".format(path, file_suffix)
+                "Skipped file %s as type %s is not supported here. "
+                "See haystack.file_converter for support of more file types",
+                path,
+                file_suffix,
             )
 
     # No need to initialize converter if file type not present
@@ -61,7 +63,7 @@ def convert_files_to_docs(
     documents = []
     for suffix, paths in suffix2paths.items():
         for path in paths:
-            logger.info("Converting {}".format(path))
+            logger.info("Converting %s", path)
             # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single Document
             document = suffix2converter[suffix].convert(
                 file_path=path, meta=None, encoding=encoding, id_hash_keys=id_hash_keys
@@ -108,7 +110,7 @@ def tika_convert_files_to_docs(
     try:
         from haystack.nodes.file_converter import TikaConverter
     except Exception as ex:
-        logger.error("Tika not installed. Please install tika and try again. Error: {}".format(ex))
+        logger.error("Tika not installed. Please install tika and try again. Error: %s", ex)
         raise ex
     converter = TikaConverter()
     paths = [p for p in Path(dir_path).glob("**/*")]
@@ -121,13 +123,15 @@ def tika_convert_files_to_docs(
             file_paths.append(path)
         elif not path.is_dir():
             logger.warning(
-                "Skipped file {0} as type {1} is not supported here. "
-                "See haystack.file_converter for support of more file types".format(path, file_suffix)
+                "Skipped file %s as type %s is not supported here. "
+                "See haystack.file_converter for support of more file types",
+                path,
+                file_suffix,
             )
 
     documents = []
     for path in file_paths:
-        logger.info("Converting {}".format(path))
+        logger.info("Converting %s", path)
         # TikaConverter returns a list containing a single Document
         document = converter.convert(path)[0]
         meta = document.meta or {}

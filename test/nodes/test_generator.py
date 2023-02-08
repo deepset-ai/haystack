@@ -53,6 +53,9 @@ def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_
     answers = output["answers"]
     assert len(answers) == 2
     assert "berlin" in answers[0].answer
+    for doc_idx, document in enumerate(output["documents"]):
+        assert document.id == answers[0].document_ids[doc_idx]
+        assert document.meta == answers[0].meta["doc_metas"][doc_idx]
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")

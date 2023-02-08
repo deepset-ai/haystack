@@ -248,7 +248,7 @@ class QAPred(Pred):
         aggregation_level: str,
         no_answer_gap: float,
         ground_truth_answer: Optional[str] = None,
-        answer_types: List[str] = [],
+        answer_types: Optional[List[str]] = None,
     ):
         """
         :param id: The id of the passage or document
@@ -262,6 +262,8 @@ class QAPred(Pred):
         :param ground_truth_answer: Ground truth answers
         :param answer_types: List of answer_types supported by this task e.g. ["span", "yes_no", "no_answer"]
         """
+        if answer_types is None:
+            answer_types = []
         super().__init__(id, prediction, context)
         self.question = question
         self.token_offsets = token_offsets

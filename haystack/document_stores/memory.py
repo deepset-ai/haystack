@@ -49,7 +49,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         use_bm25: bool = False,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
-        bm25_parameters: dict = {},
+        bm25_parameters: Optional[Dict] = None,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -87,7 +87,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
                                 For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
+                                By default, no parameters are set.
         """
+        if bm25_parameters is None:
+            bm25_parameters = {}
         super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
