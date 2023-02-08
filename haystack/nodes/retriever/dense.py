@@ -1075,7 +1075,7 @@ class TableTextRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        # embed_queries is already batched within by batch_size
+        # embed_queries is already batched within by batch_size, so no need to batch the input here
         query_embs: np.ndarray = self.embed_queries(queries=queries)
         batched_query_embs: List[np.ndarray] = []
         for i in range(0, len(query_embs), batch_size):
@@ -1776,7 +1776,7 @@ class EmbeddingRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        # embed_queries is already batched within by batch_size
+        # embed_queries is already batched within by batch_size, so no need to batch the input here
         query_embs: np.ndarray = self.embed_queries(queries=queries)
         batched_query_embs: List[np.ndarray] = []
         for i in range(0, len(query_embs), batch_size):
