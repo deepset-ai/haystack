@@ -61,7 +61,7 @@ from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tr
 if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
     from haystack.telemetry_2 import telemetry
 else:
-    telemetry = None
+    telemetry = None  # type: ignore
 
 
 logger = logging.getLogger(__name__)
@@ -496,16 +496,29 @@ class Pipeline:
                 for component in config["components"]:
                     del component["params"]
 
+                if isinstance(labels, MultiLabel):
+                    labels_len = 1
+                else:
+                    labels_len = len(labels or [])
+
+                if documents and isinstance(documents, list) and isinstance(documents[0], list):
+                    documents_len = [len(docs) if isinstance(docs, list) else 0 for docs in documents]
+                elif isinstance(documents, list):
+                    documents_len = [len(documents)]
+                else:
+                    documents_len = [0]
+
+                if meta and isinstance(meta, list):
+                    meta_len = len(meta)
+                else:
+                    meta_len = 1
+
                 config["run_parameters"] = {
                     "queries": len(queries) if queries else bool(query),
                     "file_paths": len(file_paths or []),
-                    "labels": 1 if isinstance(labels, MultiLabel) else len(labels or []),
-                    "documents": [len(docs) if isinstance(docs, list) else 0 for docs in documents]
-                    if documents and isinstance(documents[0], list)
-                    else len(documents or []),
-                    "meta": [len(m) if isinstance(m, list) else 0 for m in meta]
-                    if meta and isinstance(meta, dict) and isinstance(meta[0], list)
-                    else len(meta or []),
+                    "labels": labels_len,
+                    "documents": documents_len,
+                    "meta": meta_len,
                     "params": bool(params),
                     "debug": bool(debug),
                 }
