@@ -53,7 +53,6 @@ class Telemetry:
         self.user_id = None
 
         if CONFIG_PATH.exists():
-
             # Load the config file
             try:
                 with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
@@ -63,7 +62,6 @@ class Telemetry:
             except Exception as e:
                 logger.debug("Telemetry could not read the config file %s", CONFIG_PATH, exc_info=e)
         else:
-
             # Create the config file
             logger.info(
                 "Haystack sends anonymous usage data to understand the actual usage and steer dev efforts "
