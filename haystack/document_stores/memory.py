@@ -285,7 +285,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self,
         ids: List[str],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
@@ -293,8 +293,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        if batch_size != 10_000:
-            raise ValueError("InMemoryDocumentStore does not support batching.")
+        if batch_size:
+            logger.warning(
+                "InMemoryDocumentStore does not support batching in `get_documents_by_id` method. This parameter is ignored."
+            )
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
