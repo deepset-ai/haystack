@@ -50,6 +50,7 @@ class TestTextToSpeech:
         )
         assert os.path.exists(audio_file)
         assert audio_file.suffix == ".mp3"
+
         # FIXME find a way to make sure the compressed audio is similar enough to the wav version.
         # At a manual inspection, the code seems to be working well.
 
@@ -64,6 +65,7 @@ class TestTextToSpeech:
         )
         assert os.path.exists(audio_file)
         assert audio_file.name == expected_audio_file.name
+
         assert np.allclose(sf.read(expected_audio_file)[0], sf.read(audio_file)[0], atol=0.001)
 
     def test_answer_to_speech(self, tmp_path):
@@ -111,6 +113,7 @@ class TestTextToSpeech:
             audio_params={"audio_naming_function": lambda text: text},
             transformers_params={"seed": 777, "always_fix_seed": True},
         )
+
         results, _ = doc2speech.run(documents=[text_doc])
 
         audio_doc: SpeechDocument = results["documents"][0]
