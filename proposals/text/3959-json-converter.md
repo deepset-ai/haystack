@@ -38,7 +38,6 @@ With the `data_file.json` as a list of json representation of documents:
 
 Alternatively, the data can also be `jsonl`.
 By default, the converter will try to auto-detect between `json` and `jsonl`.
-Or the format can be explicitly specified during initialization with e.g. `JsonConverter(format='jsonl')`
 
 The main use case would be to be able to include this directly in the YAML specification
 
