@@ -30,7 +30,6 @@ RUN python3 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -U torchaudio && \
     pip install --no-cache-dir .${haystack_extras} && \
     pip install --no-cache-dir ./rest_api
 
