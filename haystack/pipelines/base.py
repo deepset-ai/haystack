@@ -65,9 +65,9 @@ TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 class Pipeline:
     """
-    Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
-
-    Under the hood, a Pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
+        Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
+    asdfasdf
+        Under the hood, a Pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
     def __init__(self):
