@@ -1,6 +1,7 @@
 import logging
 import pytest
 import sys
+from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
@@ -1267,7 +1268,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
-    labels = EVAL_LABELS.copy()
+    labels = deepcopy(EVAL_LABELS)
     labels[0].labels.append(
         Label(
             query="Who lives in Berlin?",
