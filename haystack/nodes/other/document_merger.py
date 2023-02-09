@@ -70,7 +70,6 @@ class DocumentMerger(BaseComponent):
     def _keep_common_keys(self, list_of_dicts: List[Dict[str, Any]]) -> dict:
         merge_dictionary = deepcopy(list_of_dicts[0])
         for key, value in list_of_dicts[0].items():
-
             # if not all other dicts have this key, delete directly
             if not all(key in dict.keys() for dict in list_of_dicts):
                 del merge_dictionary[key]

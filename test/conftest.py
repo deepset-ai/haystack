@@ -730,7 +730,6 @@ def retriever_with_docs(request, document_store_with_docs):
 
 
 def get_retriever(retriever_type, document_store):
-
     if retriever_type == "dpr":
         retriever = DensePassageRetriever(
             document_store=document_store,

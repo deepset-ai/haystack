@@ -36,7 +36,6 @@ def test_single_worker_warning_for_indexing_pipelines(caplog):
 
 
 def test_check_error_for_pipeline_not_found():
-
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
     p, _ = _load_pipeline(yaml_pipeline_path, "ThisPipelineDoesntExist")
     assert p is None
@@ -50,7 +49,6 @@ def test_overwrite_params_with_env_variables_when_no_params_in_pipeline_yaml(mon
 
 
 def test_bad_yaml_pipeline_configuration_error():
-
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
     with pytest.raises(PipelineSchemaError) as excinfo:
         _load_pipeline(yaml_pipeline_path, None)
@@ -221,7 +219,7 @@ def feedback():
             "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
             "offsets_in_context": [{"start": 60, "end": 73}],
             "offsets_in_document": [{"start": 60, "end": 73}],
-            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "document_ids": ["fc18c987a8312e72a47fb1524f230bb0"],
             "meta": {},
             "score": None,
         },

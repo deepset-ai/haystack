@@ -133,7 +133,7 @@ def send_event(func):
     return wrapper
 
 
-def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
+def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None):
     """
     This method can be called directly from anywhere in Haystack to send an event.
     Enriches the given event with metadata and sends it to the posthog server if telemetry is enabled.
@@ -143,6 +143,8 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
     global user_id  # pylint: disable=global-statement
+    if payload is None:
+        payload = {}
     try:
 
         def send_request(payload: Dict[str, Any]):
