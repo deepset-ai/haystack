@@ -3,12 +3,13 @@ from typing import List, Union, Optional
 from haystack.nodes._json_schema import load_schema
 
 
-def cache_nltk_models():
-    # download punkt tokenizer models
-    logging.info("Caching punkt data")
+def cache_nltk_model(model: Optional[str] = None):
+    logging.info("Caching %s model..." % model)
     import nltk
 
-    nltk.download("punkt")
+    if model is None:
+        model = "punkt"
+    nltk.download(model)
 
 
 def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Union[str, bool]] = None):
