@@ -1775,5 +1775,3 @@ def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
         .iloc[0]
         == ""
     )
-
-    # test
