@@ -16,6 +16,7 @@ on:
     paths:
       - "**.py"
       - "pyproject.toml"
+      - "!.github/**/*.py"
       - "!rest_api/**/*.py"
 
 env:
