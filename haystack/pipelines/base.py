@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import datetime
 import itertools
-from datetime import timedelta
 from functools import partial
-from hashlib import sha1
-from copy import deepcopy
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -20,9 +17,9 @@ import json
 import inspect
 import logging
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 
-import os
 import yaml
 import mmh3
 import numpy as np
@@ -50,18 +47,12 @@ from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
-from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
-
-if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
-    from haystack.telemetry_2 import telemetry
-else:
-    telemetry = None  # type: ignore
+from haystack.telemetry import sent_pipeline_run_event, sent_pipeline_event, send_event
 
 
 logger = logging.getLogger(__name__)
@@ -88,7 +79,7 @@ class Pipeline:
         self.last_window_run_total = 0
         self.run_total = 0
         self.sent_event_in_window = False
-        self.yaml_path = False
+        self.yaml_hash = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -442,6 +433,14 @@ class Pipeline:
             node={"name": name, "inputs": inputs},
             instance=component,
         )
+        # TELEMETRY: Hash the config of the pipeline without node names
+        # to be able to cluster later by "pipeline type"
+        # (is any specific pipeline configuration very popular?)
+        fingerprint_config = deepcopy(self.get_config())
+        for component in fingerprint_config["components"]:
+            del component["name"]
+        fingerprint = json.dumps(fingerprint_config, default=str)
+        self.fingerprint = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -465,67 +464,6 @@ class Pipeline:
 
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
-
-    def send_telemetry_event(
-        self,
-        event_name: str,
-        query: Optional[str] = None,
-        queries: Optional[List[str]] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
-        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-        params: Optional[dict] = None,
-        debug: Optional[bool] = None,
-    ):
-        try:
-            if telemetry:
-                config = self.get_config()
-
-                fingerprint_config = deepcopy(config)
-                for component in fingerprint_config["components"]:
-                    del component["name"]
-
-                fingerprint = json.dumps(fingerprint_config, default=str)
-                config["pipeline_fingerprint"] = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
-                if self.yaml_path:
-                    config["yaml_fingerprint"] = "{:02x}".format(
-                        mmh3.hash128(str(self.yaml_path) + fingerprint, signed=False)
-                    )
-
-                for component in config["components"]:
-                    del component["params"]
-
-                if isinstance(labels, MultiLabel):
-                    labels_len = 1
-                else:
-                    labels_len = len(labels or [])
-
-                if documents and isinstance(documents, list) and isinstance(documents[0], list):
-                    documents_len = [len(docs) if isinstance(docs, list) else 0 for docs in documents]
-                elif isinstance(documents, list):
-                    documents_len = [len(documents)]
-                else:
-                    documents_len = [0]
-
-                if meta and isinstance(meta, list):
-                    meta_len = len(meta)
-                else:
-                    meta_len = 1
-
-                config["run_parameters"] = {
-                    "queries": len(queries) if queries else bool(query),
-                    "file_paths": len(file_paths or []),
-                    "labels": labels_len,
-                    "documents": documents_len,
-                    "meta": meta_len,
-                    "params": bool(params),
-                    "debug": bool(debug),
-                }
-                telemetry.send_event(event_name=event_name, event_properties={"config": config})
-        except Exception as e:
-            # Never let telemetry break things
-            logger.debug("There was an issue sending a %s telemetry event", event_name, exc_info=e)
 
     def run(  # type: ignore
         self,
@@ -553,7 +491,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        self.send_telemetry_event(
+        sent_pipeline_run_event(
+            pipeline=self,
             event_name="Pipeline.run()",
             query=query,
             file_paths=file_paths,
@@ -660,7 +599,6 @@ class Pipeline:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
         self.run_total += 1
-        self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
     def run_batch(  # type: ignore
@@ -700,7 +638,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        self.send_telemetry_event(
+        sent_pipeline_run_event(
+            pipeline=self,
             event_name="Pipeline.run_batch()",
             queries=queries,
             file_paths=file_paths,
@@ -866,6 +805,17 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
+        sent_event(
+            event_name="Pipeline.eval_beir()",
+            event_properties={
+                "dataset": dataset,
+                "index_pipeline": index_pipeline.yaml_path,
+                "query_pipeline": query_pipeline.yaml_path,
+                "num_documents": num_documents,
+                "top_k_values": top_k_values,
+            },
+        )
+
         if index_params is None:
             index_params = {}
         if query_params is None:
@@ -1233,7 +1183,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
@@ -1304,6 +1253,8 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        sent_pipeline_event(pipeline=self, event_name="Pipeline.eval()")
+
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             params = {} if params is None else params.copy()
@@ -1350,7 +1301,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval_batch(
         self,
         labels: List[MultiLabel],
@@ -1421,6 +1371,8 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        sent_pipeline_event(pipeline=self, event_name="Pipeline.eval_batch()")
+
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             params = {} if params is None else params.copy()
@@ -2056,7 +2008,7 @@ class Pipeline:
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
         )
-        pipeline.yaml_path = path
+        pipeline.yaml_hash = "{:02x}".format(mmh3.hash128(str(path), signed=False))
         return pipeline
 
     @classmethod
@@ -2382,93 +2334,6 @@ class Pipeline:
             wrong_examples_fields=wrong_examples_fields,
             max_characters_per_field=max_characters_per_field,
         )
-
-    def get_type(self) -> str:
-        """
-        Returns the type of the pipeline.
-        """
-        # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
-        # specified by dict keys
-        pipeline_types = {
-            # QuestionGenerationPipeline has only one component, which is a QuestionGenerator
-            "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
-            # GenerativeQAPipeline has at least BaseGenerator and BaseRetriever components
-            "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
-            and any(isinstance(x, BaseGenerator) for x in x.values()),
-            # FAQPipeline has at least one Docs2Answers component
-            "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
-            # ExtractiveQAPipeline has at least one BaseRetriever component and one BaseReader component
-            "ExtractiveQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
-            and any(isinstance(x, BaseReader) for x in x.values()),
-            # ExtractiveQAPipeline has at least one BaseSummarizer component and one BaseRetriever component
-            "SearchSummarizationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
-            and any(isinstance(x, BaseSummarizer) for x in x.values()),
-            # TranslationWrapperPipeline has two or more BaseTranslator components
-            "TranslationWrapperPipeline": lambda x: [isinstance(x, BaseTranslator) for x in x.values()].count(True)
-            >= 2,
-            # RetrieverQuestionGenerationPipeline has at least one BaseRetriever component and one
-            # QuestionGenerator component
-            "RetrieverQuestionGenerationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
-            and any(isinstance(x, QuestionGenerator) for x in x.values()),
-            # QuestionAnswerGenerationPipeline has at least one BaseReader component and one QuestionGenerator component
-            "QuestionAnswerGenerationPipeline": lambda x: any(isinstance(x, BaseReader) for x in x.values())
-            and any(isinstance(x, QuestionGenerator) for x in x.values()),
-            # MostSimilarDocumentsPipeline has only BaseDocumentStore component
-            "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
-            and isinstance(list(x.values())[0], BaseDocumentStore),
-            # DocumentSearchPipeline has at least one BaseRetriever component
-            "DocumentSearchPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values()),
-        }
-        retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
-        doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
-
-        pipeline_type = next(
-            (p_type for p_type, eval_f in pipeline_types.items() if eval_f(self.components)), "Unknown pipeline"
-        )
-        retrievers_used = retrievers if retrievers else "None"
-        doc_stores_used = doc_stores if doc_stores else "None"
-        return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
-
-    def uptime(self) -> timedelta:
-        """
-        Returns the uptime of the pipeline in timedelta.
-        """
-        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
-
-    def send_pipeline_event(self, is_indexing: bool = False):
-        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
-        fingerprint = sha1(json_repr.encode()).hexdigest()
-        send_custom_event(
-            "pipeline",
-            payload={
-                "fingerprint": fingerprint,
-                "type": "Indexing" if is_indexing else self.get_type(),
-                "uptime": int(self.uptime().total_seconds()),
-                "run_total": self.run_total,
-                "run_total_window": self.run_total - self.last_window_run_total,
-            },
-        )
-        now = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        self.last_window_run_total = self.run_total
-
-    def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        if is_telemetry_enabled():
-            should_send_event = (
-                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
-            )
-            if should_send_event and not self.sent_event_in_window:
-                self.send_pipeline_event(is_indexing)
-                self.sent_event_in_window = True
-            elif self._has_event_time_interval_exceeded():
-                self.sent_event_in_window = False
-
-    def _has_event_time_interval_exceeded(self):
-        now = datetime.datetime.now(datetime.timezone.utc)
-        return now - self.time_of_last_sent_event > self.event_time_interval
-
-    def _has_event_run_total_threshold_exceeded(self):
-        return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:

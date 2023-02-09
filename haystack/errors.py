@@ -2,8 +2,6 @@
 
 from typing import Optional
 
-from haystack.telemetry import send_custom_event
-
 
 class HaystackError(Exception):
     """
@@ -19,8 +17,6 @@ class HaystackError(Exception):
     def __init__(
         self, message: Optional[str] = None, docs_link: Optional[str] = None, send_message_in_event: bool = True
     ):
-        payload = {"message": message} if send_message_in_event else {}
-        send_custom_event(event=f"{type(self).__name__} raised", payload=payload)
         super().__init__()
         if message:
             self.message = message

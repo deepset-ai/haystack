@@ -28,7 +28,7 @@ set_pytorch_secure_model_loading()
 
 import os
 
-if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
-    from haystack.telemetry_2 import telemetry
 
-    telemetry.send_event("Haystack imported")
+from haystack.telemetry import send_event
+
+send_event(event_name="Haystack imported")
