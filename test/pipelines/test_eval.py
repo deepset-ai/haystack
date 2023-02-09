@@ -285,7 +285,19 @@ EVAL_LABELS = [
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-            )
+            ),
+            Label(
+                query="Who lives in Berlin?",
+                answer=Answer(answer="I", offsets_in_context=[Span(21, 22)]),
+                document=Document(
+                    id="a0747b83aea0b60c4b114b15476dd32d",
+                    content_type="text",
+                    content="My name is Carla and I live in Berlin",
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
         ]
     ),
     MultiLabel(
@@ -1291,6 +1303,11 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Reader"]["exact_match"] == 1.0
     assert metrics_top_1["Reader"]["f1"] == 1.0
     assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
+
+    # Check if same Document in MultiLabel got deduplicated
+    reader_eval_df = eval_result.node_results["Reader"]
+    isolated_reader_eval_df = reader_eval_df[reader_eval_df["eval_mode"] == "isolated"]
+    assert len(isolated_reader_eval_df) == len(EVAL_LABELS) * reader.top_k_per_candidate
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
