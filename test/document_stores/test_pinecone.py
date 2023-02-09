@@ -21,7 +21,6 @@ META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
 
 
 class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
-
     # Fixtures
 
     @pytest.fixture
