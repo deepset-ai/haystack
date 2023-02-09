@@ -118,10 +118,13 @@ class BaseReader(BaseComponent):
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
-            # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID
-            relevant_documents = list({label.document.id: label.document for label in labels.labels}.values())
-            # Filter out empty documents
-            relevant_documents = [d for d in relevant_documents if d.content.strip() != ""]
+            # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID and
+            # filters out empty documents
+            relevant_documents = list(
+                {
+                    label.document.id: label.document for label in labels.labels if label.document.content.strip() != ""
+                }.values()
+            )
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
@@ -175,10 +178,15 @@ class BaseReader(BaseComponent):
         if add_isolated_node_eval and labels is not None:
             relevant_documents = []
             for labelx in labels:
-                # Filter out empty documents
-                relevant_docs_labelx = [
-                    label.document for label in labelx.labels if label.document.content.strip() != ""
-                ]
+                # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID
+                # and filters out empty documents
+                relevant_docs_labelx = list(
+                    {
+                        label.document.id: label.document
+                        for label in labelx.labels
+                        if label.document.content.strip() != ""
+                    }.values()
+                )
                 relevant_documents.append(relevant_docs_labelx)
             results_label_input = predict_batch(queries=queries, documents=relevant_documents, top_k=top_k)
 

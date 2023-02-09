@@ -299,17 +299,7 @@ EVAL_LABELS = [
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-            ),
-            Label(
-                query="Who lives in Munich?",
-                answer=Answer(answer="Carl", offsets_in_context=[Span(11, 15)]),
-                document=Document(
-                    id="something_else", content_type="text", content="My name is Carla and I live in Munich"
-                ),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            ),
+            )
         ]
     ),
 ]
@@ -1277,9 +1267,24 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
+    labels = EVAL_LABELS.copy()
+    labels[0].labels.append(
+        Label(
+            query="Who lives in Berlin?",
+            answer=Answer(answer="I", offsets_in_context=[Span(21, 22)]),
+            document=Document(
+                id="a0747b83aea0b60c4b114b15476dd32d",
+                content_type="text",
+                content="My name is Carla and I live in Berlin",
+            ),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="gold-label",
+        )
+    )
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=labels,
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         add_isolated_node_eval=True,
     )
@@ -1305,7 +1310,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     # Check if same Document in MultiLabel got deduplicated
     reader_eval_df = eval_result.node_results["Reader"]
     isolated_reader_eval_df = reader_eval_df[reader_eval_df["eval_mode"] == "isolated"]
-    assert len(isolated_reader_eval_df) == len(EVAL_LABELS) * reader.top_k_per_candidate
+    assert len(isolated_reader_eval_df) == len(labels) * reader.top_k_per_candidate
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
