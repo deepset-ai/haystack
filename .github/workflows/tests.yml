@@ -506,7 +506,6 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-          - "document_stores"
 
     runs-on: ubuntu-latest
 
