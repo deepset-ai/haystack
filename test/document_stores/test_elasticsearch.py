@@ -260,7 +260,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
         new_document_store = elasticsearch_index_to_document_store(
             document_store=InMemoryDocumentStore(),
-            original_index_name=ds.index_name,
+            original_index_name=ds.index,
             original_content_field="content",
             original_name_field="name",
             included_metadata_fields=["date_field"],
@@ -284,7 +284,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         # Test transferring docs with PreProcessor
         new_document_store = elasticsearch_index_to_document_store(
             document_store=InMemoryDocumentStore(),
-            original_index_name=ds.index_name,
+            original_index_name=ds.index,
             original_content_field="content",
             excluded_metadata_fields=["date_field"],
             index="test_brownfield_support_2",
