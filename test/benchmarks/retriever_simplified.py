@@ -14,7 +14,6 @@ from utils import get_document_store
 
 
 def benchmark_querying(index_type, n_docs=100_000, similarity="dot_product"):
-
     doc_index = "document"
     label_index = "label"
 

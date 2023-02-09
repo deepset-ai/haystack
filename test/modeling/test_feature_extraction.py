@@ -67,7 +67,6 @@ FEATURE_EXTRACTORS_TO_TEST = ["bert-base-cased"]
 @pytest.mark.integration
 @pytest.mark.parametrize("model_name", FEATURE_EXTRACTORS_TO_TEST)
 def test_load_modify_save_load(tmp_path, model_name: str):
-
     # Load base tokenizer
     feature_extractor = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False)
 

@@ -677,7 +677,6 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
 
 
 def test_pipeline_classify_type(tmp_path):
-
     pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
     assert pipe.get_type().startswith("GenerativeQAPipeline")
 

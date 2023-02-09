@@ -397,7 +397,6 @@ class Shaper(BaseComponent):
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
-
         return self.run(
             query=query,
             file_paths=file_paths,

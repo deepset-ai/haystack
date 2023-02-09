@@ -54,7 +54,7 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool = True,
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
-        remove_substrings: List[str] = [],
+        remove_substrings: Optional[List[str]] = None,
         split_by: Optional[Literal["word", "sentence", "passage"]] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
@@ -73,7 +73,7 @@ class PreProcessor(BasePreProcessor):
                                      or similar.
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
-        :param remove_substrings: Remove specified substrings from the text.
+        :param remove_substrings: Remove specified substrings from the text. If no value is provided an empty list is created by default.
         :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
@@ -100,6 +100,8 @@ class PreProcessor(BasePreProcessor):
                                 `AzureConverter`.
         :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than max_chars_check in characters after pre-processing will raise a warning.
         """
+        if remove_substrings is None:
+            remove_substrings = []
         super().__init__()
 
         try:
@@ -132,17 +134,18 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
-        remove_substrings: List[str] = [],
+        remove_substrings: Optional[List[str]] = None,
         split_by: Optional[Literal["word", "sentence", "passage"]] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
-
         """
         Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
         """
+        if remove_substrings is None:
+            remove_substrings = []
         if not isinstance(documents, list):
             warnings.warn(
                 "Using a single Document as argument to the 'documents' parameter is deprecated. Use a list "
@@ -197,14 +200,15 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
-        remove_substrings: List[str] = [],
+        remove_substrings: Optional[List[str]] = None,
         split_by: Optional[Literal["word", "sentence", "passage"]] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
-
+        if remove_substrings is None:
+            remove_substrings = []
         if clean_whitespace is None:
             clean_whitespace = self.clean_whitespace
         if clean_header_footer is None:
@@ -258,13 +262,15 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        remove_substrings: List[str],
+        remove_substrings: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> Document:
         """
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
         and empty lines. Its exact functionality is defined by the parameters passed into PreProcessor.__init__().
         """
+        if remove_substrings is None:
+            remove_substrings = []
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
@@ -316,7 +322,8 @@ class PreProcessor(BasePreProcessor):
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
         with different strides. It can also respect sentence boundaries. Its exact functionality is defined by
-        the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents."""
+        the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents.
+        """
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
@@ -755,7 +762,6 @@ class PreProcessor(BasePreProcessor):
         return sentences
 
     def _load_sentence_tokenizer(self, language_name: Optional[str]) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
-
         # Try to load a custom model from 'tokenizer_model_path'
         if self.tokenizer_model_folder is not None:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"

@@ -1,11 +1,11 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/ranker]
-    modules: ['base', 'sentence_transformers']
+    search_path: [../../../haystack/nodes/query_classifier]
+    modules: ['base', 'sklearn', 'transformers']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: Reorders a set of Documents based on their relevance to the Query.
+   excerpt: Distinguishes between keyword, question and statements queries.
    category: 6310ca73c622850ddd3875a2
-   title: Ranker API
-   slug: ranker-api
-   order: 150
+   title: Query Classifier API
+   slug: query-classifier-api
+   order: 130
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: ranker_api.md
+     filename: query_classifier_api.md
