@@ -62,7 +62,7 @@ jobs:
         run: echo "should_run=${{ needs.base-docstrings.outputs.checksum != needs.head-docstrings.outputs.checksum }}" >> "$GITHUB_OUTPUT"
 
       - name: Add label
-        if: ${{ steps.run-check.outputs.should_run }}
+        if: ${{ steps.run-check.outputs.should_run == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr edit ${{ github.event.pull_request.html_url }} --add-label "type:documentation"
