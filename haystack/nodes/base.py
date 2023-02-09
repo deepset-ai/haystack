@@ -26,7 +26,6 @@ def exportable_to_yaml(init_func):
 
     @wraps(init_func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
-
         # Create the configuration dictionary if it doesn't exist yet
         if not self._component_config:
             self._component_config = {"params": {}, "type": type(self).__name__}
@@ -68,7 +67,6 @@ class BaseComponent(ABC):
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
     # (not instantiated). It works approximately as a metaclass.
     def __init_subclass__(cls, **kwargs):
-
         super().__init_subclass__(**kwargs)
 
         # Each component must specify the number of outgoing edges (= different outputs).

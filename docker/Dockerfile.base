@@ -1,5 +1,5 @@
 ARG build_image
-ARG base_immage
+ARG base_image
 
 FROM $build_image AS build-image
 
@@ -30,12 +30,11 @@ RUN python3 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -U torchaudio && \
     pip install --no-cache-dir .${haystack_extras} && \
     pip install --no-cache-dir ./rest_api
 
 
-FROM $base_immage AS final
+FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
 COPY --from=build-image /opt/pdftotext /usr/local/bin

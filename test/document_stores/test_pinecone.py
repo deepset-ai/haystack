@@ -1,6 +1,7 @@
 from typing import List, Union, Dict, Any
 
 import os
+import numpy as np
 from inspect import getmembers, isclass, isfunction
 from unittest.mock import MagicMock
 
@@ -20,7 +21,6 @@ META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
 
 
 class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
-
     # Fixtures
 
     @pytest.fixture
@@ -428,7 +428,9 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
             "parent1": {"parent2": {"parent3": {"child1": 1, "child2": 2}}},
             "meta_field": "multilayer-test",
         }
-        doc = Document(content=f"Multilayered dict", meta=multilayer_meta, embedding=[0.0] * 768)
+        doc = Document(
+            content=f"Multilayered dict", meta=multilayer_meta, embedding=np.random.rand(768).astype(np.float32)
+        )
 
         doc_store_with_docs.write_documents([doc])
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "multilayer-test"}})
@@ -447,3 +449,70 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         ds._validate_embeddings_shape.assert_called_once()
         ds.update_embeddings(retriever, update_existing_embeddings=False)
         ds._validate_embeddings_shape.assert_called_once()
+
+    @pytest.mark.integration
+    def test_get_embedding_count(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
+        embeddings.
+        """
+        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc])
+        assert doc_store_with_docs.get_embedding_count() == 1
+
+    @pytest.mark.unit
+    def test_get_all_labels_legacy_document_id(self, ds, monkeypatch):
+        monkeypatch.setattr(
+            ds,
+            "get_all_documents",
+            MagicMock(
+                return_value=[
+                    Document.from_dict(
+                        {
+                            "content": "My name is Carla and I live in Berlin",
+                            "content_type": "text",
+                            "score": None,
+                            "meta": {
+                                "label-id": "d9256445-7b8a-4a33-a558-402ec84d6881",
+                                "query": "query_1",
+                                "label-is-correct-answer": False,
+                                "label-is-correct-document": True,
+                                "label-document-content": "My name is Carla and I live in Berlin",
+                                "label-document-id": "a0747b83aea0b60c4b114b15476dd32d",
+                                "label-no-answer": False,
+                                "label-origin": "user-feedback",
+                                "label-created-at": "2023-02-07 14:46:54",
+                                "label-updated-at": None,
+                                "label-pipeline-id": None,
+                                "label-document-meta-meta_field": "test-2",
+                                "label-document-meta-name": "file_2.txt",
+                                "label-document-meta-date": "2020-03-01",
+                                "label-document-meta-numeric_field": 5.5,
+                                "label-document-meta-odd_document": False,
+                                "label-document-meta-year": "2021",
+                                "label-document-meta-month": "02",
+                                "label-meta-name": "label_1",
+                                "label-meta-year": "2021",
+                                "label-answer-answer": "the answer is 1",
+                                "label-answer-type": "extractive",
+                                "label-answer-score": None,
+                                "label-answer-context": None,
+                                # legacy document_id answer
+                                "label-answer-document-id": "a0747b83aea0b60c4b114b15476dd32d",
+                                "label-answer-offsets-in-document-start": None,
+                                "label-answer-offsets-in-document-end": None,
+                                "label-answer-offsets-in-context-start": None,
+                                "label-answer-offsets-in-context-end": None,
+                            },
+                            "id_hash_keys": ["content"],
+                            "embedding": None,
+                            "id": "d9256445-7b8a-4a33-a558-402ec84d6881",
+                        }
+                    )
+                ]
+            ),
+        )
+
+        labels = ds.get_all_labels()
+
+        assert labels[0].answer.document_ids == ["a0747b83aea0b60c4b114b15476dd32d"]

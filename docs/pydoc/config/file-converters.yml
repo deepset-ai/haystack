@@ -1,0 +1,26 @@
+loaders:
+  - type: python
+    search_path: [../../../haystack/nodes/file_converter]
+    modules: ['base', 'csv', 'docx', 'image', 'markdown', 'pdf', 'parsr', 'azure', 'tika', 'txt']
+    ignore_when_discovered: ['__init__']
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+   type: renderers.ReadmeRenderer
+   excerpt: Extracts text from files in different formats and cast it into the unified Document format.
+   category: 6310ca73c622850ddd3875a2
+   title: File Converters API
+   slug: file-converters-api
+   order: 70
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: file_converters_api.md

@@ -57,7 +57,7 @@ class DocumentStoreBaseTestAbstract:
                     is_correct_answer=False,
                     # create a mix set of labels
                     origin="user-feedback" if i % 2 else "gold-label",
-                    answer=None if not i else Answer(f"the answer is {i}"),
+                    answer=None if not i else Answer(f"the answer is {i}", document_ids=[d.id]),
                     meta={"name": f"label_{i}", "year": f"{2020 + i}"},
                 )
             )
@@ -93,6 +93,15 @@ class DocumentStoreBaseTestAbstract:
         assert results[0] == duplicate_documents[0]
         with pytest.raises(Exception):
             ds.write_documents(duplicate_documents, duplicate_documents="fail")
+
+    @pytest.mark.integration
+    def test_get_embedding_count(self, ds, documents):
+        """
+        We expect 6 docs with embeddings because only 6 documents in the documents fixture for this class contain
+        embeddings.
+        """
+        ds.write_documents(documents)
+        assert ds.get_embedding_count() == 6
 
     @pytest.mark.skip
     @pytest.mark.integration

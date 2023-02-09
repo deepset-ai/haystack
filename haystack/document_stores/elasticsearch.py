@@ -207,7 +207,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         timeout: int,
         use_system_proxy: bool,
     ) -> Elasticsearch:
-
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
@@ -231,6 +230,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         elif aws4auth:
             # aws elasticsearch with IAM
             # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
+            if username:
+                logger.warning(
+                    "aws4auth and a username are passed to the ElasticsearchDocumentStore. The username will be ignored and aws4auth will be used for authentication."
+                )
             client = Elasticsearch(
                 hosts=hosts,
                 http_auth=aws4auth,

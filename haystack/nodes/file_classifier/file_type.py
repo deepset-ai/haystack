@@ -1,5 +1,5 @@
 import mimetypes
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 import logging
 from pathlib import Path
@@ -29,14 +29,16 @@ class FileTypeClassifier(BaseComponent):
 
     outgoing_edges = len(DEFAULT_TYPES)
 
-    def __init__(self, supported_types: List[str] = DEFAULT_TYPES):
+    def __init__(self, supported_types: Optional[List[str]] = None):
         """
         Node that sends out files on a different output edge depending on their extension.
 
         :param supported_types: The file types that this node can distinguish between.
-             The default values are: `txt`, `pdf`, `md`, `docx`, and `html`.
+              If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
              Lists with duplicate elements are not allowed.
         """
+        if supported_types is None:
+            supported_types = DEFAULT_TYPES
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types
             for item in set(supported_types):
@@ -87,7 +89,7 @@ class FileTypeClassifier(BaseComponent):
             if path_suffix == "":
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
-                raise ValueError(f"Multiple file types are not allowed at once.")
+                raise ValueError("Multiple file types are not allowed at once.")
 
         return extension.lstrip(".")
 

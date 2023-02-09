@@ -1,0 +1,26 @@
+loaders:
+  - type: python
+    search_path: [../../../haystack/nodes/query_classifier]
+    modules: ['base', 'sklearn', 'transformers']
+    ignore_when_discovered: ['__init__']
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+   type: renderers.ReadmeRenderer
+   excerpt: Distinguishes between keyword, question and statements queries.
+   category: 6310ca73c622850ddd3875a2
+   title: Query Classifier API
+   slug: query-classifier-api
+   order: 130
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: query_classifier_api.md

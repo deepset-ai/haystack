@@ -7,7 +7,6 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout this repo
         uses: actions/checkout@v3
 
@@ -19,7 +18,7 @@ jobs:
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: |
-          echo "::set-output name=current_release_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+          echo "current_release_minor=$(cat VERSION.txt | cut -d "." -f 1,2)" >> $GITHUB_OUTPUT
 
       - name: Create new version branch
         run: |
@@ -31,7 +30,7 @@ jobs:
       - name: Bump version on main
         shell: bash
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git checkout main
           cat VERSION.txt | awk -F. '/[0-9]+\./{$2++;print}' OFS=. | tee VERSION.txt

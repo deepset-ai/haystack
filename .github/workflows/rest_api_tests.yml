@@ -1,0 +1,95 @@
+name: REST API Tests
+
+on:
+  push:
+    branches:
+      - main
+      # release branches have the form v1.9.x
+      - "v[0-9].*[0-9].x"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "rest_api/**.py"
+      - "rest_api/pyproject.toml"
+
+jobs:
+  black:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+
+      - name: Install Black
+        run: |
+          pip install --upgrade pip
+          pip install .[formatting]
+
+      - name: Check status
+        run: |
+          if ! black . --check; then
+            git status
+            echo "###################################################################################################"
+            echo "# "
+            echo "# CHECK FAILED! Black found issues with your code formatting."
+            echo "# "
+            echo "# Either:"
+            echo "# 1. Run Black locally before committing:"
+            echo "# "
+            echo "#     pip install .[formatting]"
+            echo "#     black ."
+            echo "# "
+            echo "# 2. Install the pre-commit hook:"
+            echo "# "
+            echo "#     pre-commit install --hook-type pre-push"
+            echo "# "
+            echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
+            echo "# "
+            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
+            echo "# "
+            echo "##################################################################################################"
+            exit 1
+          fi
+
+      - uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: "#haystack"
+        if: failure() && github.ref == 'refs/heads/main'
+
+  rest_api:
+    needs: black
+
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install REST API
+        run: |
+          pip install -U "./rest_api[dev]"
+          pip install .
+
+      - name: Run tests
+        env:
+          PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
+        run: |
+          pytest ${{ env.PYTEST_PARAMS }} rest_api/
+
+      - uses: act10ns/slack@v2
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          status: ${{ job.status }}
+          channel: "#haystack"
+        if: failure() && github.ref == 'refs/heads/main'

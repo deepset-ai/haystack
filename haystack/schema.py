@@ -1,5 +1,6 @@
 from __future__ import annotations
 import csv
+import warnings
 import hashlib
 import inspect
 
@@ -16,7 +17,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict, InitVar
+from dataclasses import asdict
 
 import mmh3
 import numpy as np
@@ -46,9 +47,9 @@ class Document:
     content: Union[str, pd.DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
+    id_hash_keys: List[str] = Field(default=["content"])
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: InitVar[Optional[List[str]]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -89,7 +90,7 @@ class Document:
         """
 
         if content is None:
-            raise ValueError(f"Can't create 'Document': Mandatory 'content' field is None")
+            raise ValueError("Can't create 'Document': Mandatory 'content' field is None")
 
         self.content = content
         self.content_type = content_type
@@ -99,10 +100,14 @@ class Document:
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
         if id_hash_keys is not None:
-            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):  # type: ignore
+            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):
                 raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)"
+                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}). "
+                    "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
                 )
+        # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
+        self.id_hash_keys = id_hash_keys or ["content"]
 
         if embedding is not None:
             embedding = np.asarray(embedding)
@@ -110,6 +115,10 @@ class Document:
 
         # Create a unique ID (either new one, or one from user input)
         if id is not None:
+            logger.info(
+                "Setting the ID manually. This might cause a mismatch with the ID "
+                "that would be generated from the document content and id_hash_keys value."
+            )
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
@@ -131,12 +140,12 @@ class Document:
 
         if final_hash_key == "":
             raise ValueError(
-                f"Cant't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta']"
+                "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
         return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Convert Document to dict. An optional field_map can be supplied to change the names of the keys in the
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
@@ -144,15 +153,18 @@ class Document:
         Example:
 
         ```python
-        doc = Document(content="some text", content_type="text")
-        doc.to_dict(field_map={"custom_content_field": "content"})
+            doc = Document(content="some text", content_type="text")
+            doc.to_dict(field_map={"custom_content_field": "content"})
 
-        # Returns {"custom_content_field": "some text", "content_type": "text"}
+            # Returns {"custom_content_field": "some text", content_type": "text"}
         ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
         """
+        if not field_map:
+            field_map = {}
+
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
@@ -169,25 +181,37 @@ class Document:
 
     @classmethod
     def from_dict(
-        cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None
+        cls, dict: Dict[str, Any], field_map: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
     ) -> Document:
         """
-        Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
+        Create Document from dict. An optional `field_map` parameter can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
-        they are serialized / stored in other places (e.g. elasticsearch)
+        they are serialized / stored in other places (e.g. elasticsearch).
+
         Example:
 
         ```python
-        my_dict = {"custom_content_field": "some text", content_type": "text"}
-        Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+            my_dict = {"custom_content_field": "some text", "content_type": "text"}
+            Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
         ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
-        :return: dict with content of the Document
+        :return: A Document object
         """
+        if not field_map:
+            field_map = {}
+        if id_hash_keys:
+            warnings.warn(
+                message="Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
+                "Old API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}}, id_hash_keys=['meta'])\n"
+                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            dict["id_hash_keys"] = id_hash_keys
 
         _doc = dict.copy()
-        init_args = ["content", "content_type", "id", "score", "question", "meta", "embedding"]
+        init_args = ["content", "content_type", "id", "score", "id_hash_keys", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
@@ -206,24 +230,24 @@ class Document:
                 k = field_map[k]
                 _new_doc[k] = v
 
-        if _doc.get("id") is None:
-            _new_doc["id_hash_keys"] = id_hash_keys
-
         # Convert list of rows to pd.DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
             _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
 
         return cls(**_new_doc)
 
-    def to_json(self, field_map={}) -> str:
-        d = self.to_dict(field_map=field_map)
-        j = json.dumps(d, cls=NumpyEncoder)
-        return j
+    def to_json(self, field_map: Optional[Dict[str, Any]] = None) -> str:
+        if not field_map:
+            field_map = {}
+        dictionary = self.to_dict(field_map=field_map)
+        return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data: str, field_map={}):
-        d = json.loads(data)
-        return cls.from_dict(d, field_map=field_map)
+    def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
+        if not field_map:
+            field_map = {}
+        dictionary = json.loads(data)
+        return cls.from_dict(dictionary, field_map=field_map)
 
     def __eq__(self, other):
         return (
@@ -231,6 +255,7 @@ class Document:
             and getattr(other, "content", None) == self.content
             and getattr(other, "content_type", None) == self.content_type
             and getattr(other, "id", None) == self.id
+            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
@@ -277,7 +302,9 @@ class SpeechDocument(Document):
             return f"<SpeechDocument: id={self.id}, content=None>"
         return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map=None) -> Dict:
+        if field_map is None:
+            field_map = {}
         dictionary = super().to_dict(field_map=field_map)
         for key, value in dictionary.items():
             if isinstance(value, Path):
@@ -285,7 +312,9 @@ class SpeechDocument(Document):
         return dictionary
 
     @classmethod
-    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+    def from_dict(cls, dict, field_map=None, id_hash_keys=None):
+        if field_map is None:
+            field_map = {}
         doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
         doc.content_audio = Path(dict["content_audio"])
         return doc
@@ -370,7 +399,7 @@ class Answer:
     context: Optional[Union[str, pd.DataFrame]] = None
     offsets_in_document: Optional[List[Span]] = None
     offsets_in_context: Optional[List[Span]] = None
-    document_id: Optional[str] = None
+    document_ids: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
     """
@@ -394,7 +423,9 @@ class Answer:
                                 For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
                                 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
-    :param document_id: ID of the document that the answer was located it (if any)
+    :param document_ids: IDs of the documents the answer came from (if any).
+                                For extractive QA, this will be a list of length 1.
+                                For generative QA, this will be a list of length > 0.
     :param meta: Dict that can be used to associate any kind of custom meta data with the answer.
                  In extractive QA, this will carry the meta data of the document where the answer was found.
     """
@@ -428,6 +459,12 @@ class Answer:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
+        if "document_id" in dict:
+            dict = dict.copy()
+            document_id = dict.pop("document_id")
+            dict["document_ids"] = [document_id] if document_id is not None else None
+
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -600,6 +637,11 @@ class Label:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backward compatibility for old labels using answers with document_id instead of document_ids
+        answer = dict.get("answer")
+        if answer and "document_id" in answer:
+            dict = dict.copy()
+            dict["answer"] = Answer.from_dict(dict["answer"])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -1288,7 +1330,14 @@ class EvaluationResult:
                 ].unique()
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
-                simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+
+                simulated_query_answers = query_answers[
+                    query_answers["document_ids"].apply(
+                        lambda document_ids, top_k_document_ids=top_k_document_ids: all(
+                            document_id in top_k_document_ids for document_id in document_ids
+                        )
+                    )
+                ]
                 # simulate top k reader
                 if simulated_top_k_reader != -1:
                     # consider only the simulated_top_k_reader answers within simulated_query_answers
@@ -1411,36 +1460,103 @@ class EvaluationResult:
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
 
+        # find out which label matched
+        def find_matched_label_idxs(row) -> List[int]:  # pylint: disable=too-many-return-statements
+            id_matches = [idx for idx, val in enumerate(row["gold_documents_id_match"]) if val == 1.0]
+            context_matches = [
+                idx for idx, val in enumerate(row["gold_contexts_similarity"]) if val > 65.0
+            ]  # TODO: hardcoded threshold for now, will be param of calculate_metrics
+            answer_matches = [idx for idx, val in enumerate(row["gold_answers_match"]) if val == 1.0]
+            if document_relevance_criterion == "document_id":
+                return id_matches
+            elif document_relevance_criterion == "context":
+                return context_matches
+            elif document_relevance_criterion == "answer":
+                return answer_matches
+            elif document_relevance_criterion == "document_id_and_context":
+                return list(set(id_matches) & set(context_matches))
+            elif document_relevance_criterion == "document_id_or_context":
+                return list(set(id_matches) | set(context_matches))
+            elif document_relevance_criterion == "document_id_and_answer":
+                return list(set(id_matches) & set(answer_matches))
+            elif document_relevance_criterion == "document_id_or_answer":
+                return list(set(id_matches) | set(answer_matches))
+            elif document_relevance_criterion == "context_and_answer":
+                return list(set(context_matches) & set(answer_matches))
+            elif document_relevance_criterion == "document_id_and_context_and_answer":
+                return list(set(id_matches) & set(context_matches) & set(answer_matches))
+            else:
+                raise ValueError(f"document_relevance_criterion '{document_relevance_criterion}' not supported.")
+
+        documents["matched_label_idxs"] = documents.apply(find_matched_label_idxs, axis=1)
+
         metrics = []
 
         for multilabel_id in documents["multilabel_id"].unique():
             query_df = documents[documents["multilabel_id"] == multilabel_id]
-            gold_ids = list(query_df["gold_document_ids"].iloc[0])
-            retrieved = len(query_df)
 
+            # Note: Metrics are always calculated on document_ids.
+            # For some document relevance criteria (e.g. context), the gold_document_ids are not enough or not useful at all.
+            # So, we have to adjust the relevant ids according to the document_relevance_criterion.
             relevance_criterion_col = f"{document_relevance_criterion.replace('document_id', 'gold_id')}_match"
-            relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
-            num_relevants = len(set(gold_ids + relevance_criterion_ids))
-            num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()
-            rank_retrieved_relevants = query_df[query_df[relevance_criterion_col] == 1]["rank"].values
-            avp_retrieved_relevants = [
-                query_df[relevance_criterion_col].values[: int(rank)].sum() / rank for rank in rank_retrieved_relevants
-            ]
+            relevant_rows = query_df[query_df[relevance_criterion_col] == 1]
 
-            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
-            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
-            precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
-            rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
-            dcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
-                if len(rank_retrieved_relevants) > 0
-                else 0.0
+            # all labels without no_answers
+            # we need to match all (except for single hit recall)
+            gold_document_ids = (
+                list(query_df["gold_custom_document_ids"].iloc[0])
+                if "gold_custom_document_ids" in query_df
+                else list(query_df["gold_document_ids"].iloc[0])
             )
-            idcg = (
-                np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)]) if num_relevants > 0 else 1.0
-            )
-            ndcg = dcg / idcg
+            # remove no_answer label
+            gold_document_ids = [id for id in gold_document_ids if id != "00"]
+
+            num_labels = len(gold_document_ids)
+            num_matched_labels = len(set(idx for idxs in relevant_rows["matched_label_idxs"] for idx in idxs))
+            num_missing_labels = num_labels - num_matched_labels
+
+            relevance_criterion_ids = list(relevant_rows["document_id"].values)
+            num_relevants = len(set(relevance_criterion_ids)) + num_missing_labels
+
+            num_retrieved = len(query_df["document_id"])
+            num_retrieved_relevants = len(relevant_rows)
+            rank_retrieved_relevants = relevant_rows["rank"].values
+
+            if num_labels == 0:
+                # For no_answer queries, we set all metrics to 1.0, to indicate that the retriever cannot improve the pipeline.
+                # This behavior is different from pytrec_eval, which sets the metrics to 0.0 if there is no relevant document in the evalset.
+                rr = 1.0
+                avg_precision = 1.0
+                recall_multi_hit = 1.0
+                recall_single_hit = 1.0
+                precision = 1.0
+                ndcg = 1.0
+            elif num_retrieved_relevants == 0:
+                # Set all metrics to 0.0 if no relevant document has been retrieved to avoid undefined metrics.
+                rr = 0.0
+                avg_precision = 0.0
+                recall_multi_hit = 0.0
+                recall_single_hit = 0.0
+                precision = 0.0
+                ndcg = 0.0
+            else:
+                # The previous checks ensure:
+                # - `num_labels` > 0
+                # - `num_retrieved_relevants` > 0
+                # - `num_relevants` > 0  (`num_relevants` is always >= `num_labels`)
+                # - `num_retrieved` > 0  (`num_retrieved` is always >= `num_retrieved_relevants`)
+                # - `len(rank_retrieved_relevants)` > 0 (`len(rank_retrieved_relevants)` is always == `num_retrieved_relevants`)
+                avp_retrieved_relevants = [
+                    len(relevant_rows[relevant_rows["rank"] <= rank]) / rank for rank in rank_retrieved_relevants
+                ]
+                avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
+                recall_multi_hit = num_matched_labels / num_labels
+                recall_single_hit = 1.0
+                precision = num_retrieved_relevants / num_retrieved
+                rr = 1.0 / rank_retrieved_relevants.min()
+                dcg = np.sum([1.0 / np.log2(rank + 1) for rank in rank_retrieved_relevants])
+                idcg = np.sum([1.0 / np.log2(rank + 1) for rank in range(1, num_relevants + 1)])
+                ndcg = dcg / idcg
 
             metrics.append(
                 {
@@ -1506,6 +1622,8 @@ class EvaluationResult:
             "gold_answers_match",
             "gold_contexts_similarity",
             "offsets_in_document",
+            "document_ids",
+            "custom_document_ids",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
@@ -1514,5 +1632,16 @@ class EvaluationResult:
         # backward compatibility mappings
         for df in node_results.values():
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
+            # convert single document_id to list
+            if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
+                df["document_ids"] = df["document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["document_id"], inplace=True)
+            if (
+                "answer" in df.columns
+                and "custom_document_id" in df.columns
+                and not "custom_document_ids" in df.columns
+            ):
+                df["custom_document_ids"] = df["custom_document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["custom_document_id"], inplace=True)
         result = cls(node_results)
         return result

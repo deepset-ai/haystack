@@ -187,7 +187,7 @@ class Evaluator:
         logger.info(header)
 
         for head in results:
-            logger.info("\n _________ {} _________".format(head["task_name"]))
+            logger.info("\n _________ %s _________", head["task_name"])
             for metric_name, metric_val in head.items():
                 # log with experiment tracking framework (e.g. Mlflow)
                 if logging:
@@ -201,10 +201,10 @@ class Evaluator:
                     if metric_name == "report":
                         if isinstance(metric_val, str) and len(metric_val) > 8000:
                             metric_val = metric_val[:7500] + "\n ............................. \n" + metric_val[-500:]
-                        logger.info("{}: \n {}".format(metric_name, metric_val))
+                        logger.info("%s: \n %s", metric_name, metric_val)
                     else:
                         if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
-                            logger.info("{}: {}".format(metric_name, metric_val))
+                            logger.info("%s: %s", metric_name, metric_val)
 
 
 def _to_numpy(container):

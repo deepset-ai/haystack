@@ -1,4 +1,6 @@
+import importlib
 import logging
+import os
 from random import random
 from typing import List
 
@@ -12,6 +14,7 @@ import _pytest
 from ..conftest import fail_at_version, haystack_version
 
 from haystack.errors import OpenAIRateLimitError
+from haystack.environment import set_pytorch_secure_model_loading
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.labels import aggregate_labels
@@ -1243,6 +1246,17 @@ def test_exponential_backoff():
         return f"Hello {name}"
 
     assert greet2("John") == "Hello John"
+
+
+def test_secure_model_loading(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    monkeypatch.setenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD", "0")
+
+    # now testing if just importing haystack is enough to enable secure loading of pytorch models
+    import haystack
+
+    importlib.reload(haystack)
+    assert "already set to" in caplog.text
 
 
 class TestAggregateLabels:

@@ -51,7 +51,7 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event
+from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -745,12 +745,12 @@ class Pipeline:
         cls,
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
-        index_params: dict = {},
-        query_params: dict = {},
+        index_params: Optional[Dict] = None,
+        query_params: Optional[Dict] = None,
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
         num_documents: Optional[int] = None,
-        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        top_k_values: Optional[List[int]] = None,
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
         """
@@ -765,7 +765,7 @@ class Pipeline:
         :param dataset_dir: The directory to store the dataset to.
         :param num_documents: Maximum number of documents to load from given dataset. If set to None (default)
                              or to a value larger than the number of documents in the dataset, the full dataset is loaded.
-        :param top_k_values: The top_k values each metric will be calculated for.
+        :param top_k_values: The top_k values each metric will be calculated for. By default, the values are 1, 3, 5, 10, 100, and 1000.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
                            Defaults to False.
@@ -773,6 +773,12 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
+        if index_params is None:
+            index_params = {}
+        if query_params is None:
+            query_params = {}
+        if top_k_values is None:
+            top_k_values = [1, 3, 5, 10, 100, 1000]
         try:
             from beir import util
             from beir.datasets.data_loader import GenericDataLoader
@@ -855,11 +861,11 @@ class Pipeline:
         experiment_tracking_tool: Literal["mlflow", None] = None,
         experiment_tracking_uri: Optional[str] = None,
         corpus_file_metas: Optional[List[Dict[str, Any]]] = None,
-        corpus_meta: Dict[str, Any] = {},
-        evaluation_set_meta: Dict[str, Any] = {},
-        pipeline_meta: Dict[str, Any] = {},
-        index_params: dict = {},
-        query_params: dict = {},
+        corpus_meta: Optional[Dict[str, Any]] = None,
+        evaluation_set_meta: Optional[Dict[str, Any]] = None,
+        pipeline_meta: Optional[Dict[str, Any]] = None,
+        index_params: Optional[Dict] = None,
+        query_params: Optional[Dict] = None,
         sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
@@ -997,6 +1003,17 @@ class Pipeline:
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
         """
+        if corpus_meta is None:
+            corpus_meta = {}
+        if evaluation_set_meta is None:
+            evaluation_set_meta = {}
+        if pipeline_meta is None:
+            pipeline_meta = {}
+        if index_params is None:
+            index_params = {}
+        if query_params is None:
+            query_params = {}
+
         if experiment_tracking_tool is not None:
             tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
             if tracking_head_cls is None:
@@ -1004,7 +1021,7 @@ class Pipeline:
                     f"Please specify a valid experiment_tracking_tool. Possible values are: {TRACKING_TOOL_TO_HEAD.keys()}"
                 )
             if experiment_tracking_uri is None:
-                raise HaystackError(f"experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
+                raise HaystackError("experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
             tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
             tracker.set_tracking_head(tracking_head)
 
@@ -1037,7 +1054,7 @@ class Pipeline:
             # check index before eval
             document_store = index_pipeline.get_document_store()
             if document_store is None:
-                raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
+                raise HaystackError("Document store not found. Please provide pipelines with proper document store.")
             document_count = document_store.get_document_count()
 
             if document_count > 0:
@@ -1413,7 +1430,7 @@ class Pipeline:
             "multilabel_id",  # generic
             "query",  # generic
             "filters",  # generic
-            "gold_answers",  # answer-specific
+            "gold_answers",  # generic
             "answer",  # answer-specific
             "context",  # generic
             "exact_match",  # answer-specific
@@ -1439,9 +1456,11 @@ class Pipeline:
             "gold_id_and_context_and_answer_match",  # doc-specific
             "context_and_answer_match",  # doc-specific
             "rank",  # generic
-            "document_id",  # generic
+            "document_id",  # document-specific
+            "document_ids",  # answer-specific
             "gold_document_ids",  # generic
-            "custom_document_id",  # generic
+            "custom_document_id",  # document-specific
+            "custom_document_ids",  # answer-specific
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
@@ -1494,7 +1513,6 @@ class Pipeline:
 
         partial_dfs = []
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
-
             if query_labels is None or query_labels.labels is None:
                 logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
@@ -1545,7 +1563,7 @@ class Pipeline:
                         ]
                     answer_cols_to_keep = [
                         "answer",
-                        "document_id",
+                        "document_ids",
                         "offsets_in_document",
                         "offsets_in_context",
                         "context",
@@ -1576,17 +1594,23 @@ class Pipeline:
                         ]
                     )
                     df_answers["gold_documents_id_match"] = df_answers.map_rows(
-                        lambda row: [1.0 if row["document_id"] == gold_id else 0.0 for gold_id in gold_document_ids]
+                        lambda row: [
+                            1.0 if gold_id in (row["document_ids"] or []) else 0.0 for gold_id in gold_document_ids
+                        ]
                     )
 
                     if custom_document_id_field is not None:
                         df_answers["gold_custom_document_ids"] = [gold_custom_document_ids] * len(df_answers)
-                        df_answers["custom_document_id"] = [
-                            answer.meta.get(custom_document_id_field, "") for answer in answers
+                        df_answers["custom_document_ids"] = [
+                            [
+                                meta.get(custom_document_id_field, "")
+                                for meta in answer.meta.get("doc_metas", [answer.meta])
+                            ]
+                            for answer in answers
                         ]
                         df_answers["gold_documents_id_match"] = df_answers.map_rows(
                             lambda row: [
-                                1.0 if row["custom_document_id"] == gold_custom_id else 0.0
+                                1.0 if gold_custom_id in row["custom_document_ids"] else 0.0
                                 for gold_custom_id in gold_custom_document_ids
                             ]
                         )
@@ -1690,6 +1714,7 @@ class Pipeline:
                     df_docs.map_rows = partial(df_docs.apply, axis=1)
                     df_docs.rename(columns={"id": "document_id", "content": "context"}, inplace=True)
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
+                    df_docs["gold_answers"] = [gold_answers] * len(df_docs)
                     df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)
                     df_docs["gold_contexts_similarity"] = df_docs.map_rows(
                         lambda row: [
@@ -1740,7 +1765,12 @@ class Pipeline:
 
                     # document_relevance_criterion: "document_id_and_answer",
                     df_docs["gold_id_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["answer_match"])
+                        lambda row: max(
+                            min(id_match, answer_match)
+                            for id_match, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_answers_match"] + [0.0]
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "context",
@@ -1757,17 +1787,36 @@ class Pipeline:
 
                     # document_relevance_criterion: "document_id_and_context",
                     df_docs["gold_id_and_context_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["context_match"])
+                        lambda row: max(
+                            min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0)
+                            for id_match, context_similarity in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_contexts_similarity"] + [0.0]
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "document_id_and_context_and_answer",
                     df_docs["gold_id_and_context_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["context_match"], row["answer_match"])
+                        lambda row: max(
+                            min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
+                            for id_match, context_similarity, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0],
+                                row["gold_contexts_similarity"] + [0.0],
+                                row["gold_answers_match"] + [0.0],
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "context_and_answer",
                     df_docs["context_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["context_match"], row["answer_match"])
+                        lambda row: max(
+                            min(1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
+                            for context_similarity, answer_match in zip(
+                                row["gold_contexts_similarity"], row["gold_answers_match"]
+                            )
+                        )
+                        if any(row["gold_answers_match"]) and any(row["gold_contexts_similarity"])
+                        else 0.0
                     )
 
                     df_docs["rank"] = np.arange(1, len(df_docs) + 1)
@@ -1846,9 +1895,9 @@ class Pipeline:
             import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
-                f"Could not import `pygraphviz`. Please install via: \n"
-                f"pip install pygraphviz\n"
-                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
+                "Could not import `pygraphviz`. Please install via: \n"
+                "pip install pygraphviz\n"
+                "(You might need to run this first: apt install libgraphviz-dev graphviz )"
             )
 
         graphviz = to_agraph(self.graph)
@@ -2001,7 +2050,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
+            logger.debug("Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
@@ -2155,7 +2204,6 @@ class Pipeline:
         """
         if params:
             if not all(node_id in self.graph.nodes for node_id in params.keys()):
-
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 # "debug" will be picked up by _dispatch_run, see its code
@@ -2188,7 +2236,7 @@ class Pipeline:
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+        wrong_examples_fields: Optional[List[str]] = None,
         max_characters_per_field: int = 150,
     ):
         """
@@ -2224,9 +2272,11 @@ class Pipeline:
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-         :param wrong_examples_fields: A list of fields to include in the worst samples.
+         :param wrong_examples_fields: A list of fields to include in the worst samples. By default, "answer", "context", and "document_id" are included.
          :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
         """
+        if wrong_examples_fields is None:
+            wrong_examples_fields = ["answer", "context", "document_id"]
         graph = DiGraph(self.graph.edges)
         print_eval_report(
             eval_result=eval_result,
@@ -2309,18 +2359,21 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
-        if should_send_event and not self.sent_event_in_window:
-            self.send_pipeline_event(is_indexing)
-            self.sent_event_in_window = True
-        elif self.has_event_time_interval_exceeded():
-            self.sent_event_in_window = False
+        if is_telemetry_enabled():
+            should_send_event = (
+                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
+            )
+            if should_send_event and not self.sent_event_in_window:
+                self.send_pipeline_event(is_indexing)
+                self.sent_event_in_window = True
+            elif self._has_event_time_interval_exceeded():
+                self.sent_event_in_window = False
 
-    def has_event_time_interval_exceeded(self):
+    def _has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         return now - self.time_of_last_sent_event > self.event_time_interval
 
-    def has_event_run_total_threshold_exceeded(self):
+    def _has_event_run_total_threshold_exceeded(self):
         return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 

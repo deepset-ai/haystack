@@ -64,6 +64,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         timeout_config: tuple = (5, 15),
         username: Optional[str] = None,
         password: Optional[str] = None,
+        additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
         content_field: str = "content",
@@ -85,6 +86,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
+        :param additional_headers: additional headers to be included in the requests sent to Weaviate e.g. bearer token
         :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
@@ -121,10 +123,15 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         if username and password:
             secret = AuthClientPassword(username, password)
             self.weaviate_client = client.Client(
-                url=weaviate_url, auth_client_secret=secret, timeout_config=timeout_config
+                url=weaviate_url,
+                auth_client_secret=secret,
+                timeout_config=timeout_config,
+                additional_headers=additional_headers,
             )
         else:
-            self.weaviate_client = client.Client(url=weaviate_url, timeout_config=timeout_config)
+            self.weaviate_client = client.Client(
+                url=weaviate_url, timeout_config=timeout_config, additional_headers=additional_headers
+            )
 
         # Test Weaviate connection
         try:
@@ -261,6 +268,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         if props.get("content_type") is not None:
             content_type = str(props.pop("content_type"))
 
+        id_hash_keys = None
+        if props.get("id_hash_keys") is not None:
+            id_hash_keys = props.pop("id_hash_keys")
+
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
             if "certainty" in props["_additional"]:
@@ -293,7 +304,14 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             meta_data[k] = v
 
         document = Document.from_dict(
-            {"id": id, "content": content, "content_type": content_type, "meta": meta_data, "score": score}
+            {
+                "id": id,
+                "content": content,
+                "content_type": content_type,
+                "meta": meta_data,
+                "score": score,
+                "id_hash_keys": id_hash_keys,
+            }
         )
 
         if return_embedding and embedding:
@@ -961,7 +979,6 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             properties.append("_additional {id, distance, vector}")
 
         if query is None:
-
             # Retrieval via custom query, no BM25
             if custom_query:
                 query_output = self.weaviate_client.query.raw(custom_query)
@@ -1009,23 +1026,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 # BM25 retrieval without filtering
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
-                    .with_near_vector({"vector": [0, 0]})
                     .with_limit(top_k)
+                    .with_bm25({"query": query, "properties": self.content_field})
                     .build()
                 )
-
-            # Build the BM25 part of the GQL manually.
-            # Currently the GetBuilder of the Weaviate-client (v3.6.0)
-            # does not support the BM25 part of GQL building, so
-            # the BM25 part needs to be added manually.
-            # The BM25 query needs to be provided all lowercase while
-            # the functionality is in experimental mode in Weaviate,
-            # see https://app.slack.com/client/T0181DYT9KN/C017EG2SL3H/thread/C017EG2SL3H-1658790227.208119
-            bm25_gql_query = f"""bm25: {{
-                query: "{query.replace('"', ' ').lower()}",
-                properties: ["{self.content_field}"]
-            }}"""
-            gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
 
             query_output = self.weaviate_client.query.raw(gql_query)
 

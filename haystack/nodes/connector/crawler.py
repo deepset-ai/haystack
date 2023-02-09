@@ -95,27 +95,28 @@ class Crawler(BaseComponent):
                     and spawn a single process.
                  2) ["--no-sandbox"]
                     This option disables the sandbox, which is required for running Chrome as root.
-            See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
+                 3) ["--remote-debugging-port=9222"]
+                    This option enables remote debug over HTTP.
+            See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
+            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
         IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0
+        IN_WINDOWS = sys.platform in ["win32", "cygwin"]
+        IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
-        elif "--headless" not in webdriver_options:
-            webdriver_options.append("--headless")
-
-        if IS_ROOT and "--no-sandbox" not in webdriver_options:
-            webdriver_options.append("--no-sandbox")
-
-        if (IN_COLAB or IN_AZUREML) and "--disable-dev-shm-usage" not in webdriver_options:
+        webdriver_options.append("--headless")
+        if IS_ROOT or IN_WINDOWS:
+            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+        if IN_COLAB or IN_AZUREML:
             webdriver_options.append("--disable-dev-shm-usage")
 
         options = Options()
-        for option in webdriver_options:
+        for option in set(webdriver_options):
             options.add_argument(option)
 
         if IN_COLAB:
@@ -125,9 +126,38 @@ class Crawler(BaseComponent):
                 raise NodeError(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        !apt-get update
-                        !apt install chromium-driver
-                        !cp /usr/lib/chromium-browser/chromedriver /usr/bin
+                        %%shell
+                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
+                        EOF
+
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
+                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
+                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
+                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
+
+                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
+                        Package: *
+                        Pin: release a=eoan
+                        Pin-Priority: 500
+
+
+                        Package: *
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 300
+
+
+                        Package: chromium*
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 700
+                        EOF
+
+                        apt-get update
+                        apt-get install chromium chromium-driver
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
                 ) from exc
         else:
@@ -295,7 +325,9 @@ class Crawler(BaseComponent):
             if base_url:
                 data["meta"]["base_url"] = base_url
             data["content"] = text
-            document = Document.from_dict(data, id_hash_keys=id_hash_keys)
+            if id_hash_keys:
+                data["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(data)
 
             if crawler_naming_function is not None:
                 file_name_prefix = crawler_naming_function(link, text)
@@ -382,7 +414,9 @@ class Crawler(BaseComponent):
             crawled_data = []
             for _file in file_paths:
                 with open(_file.absolute(), "r") as read_file:
-                    crawled_data.append(Document.from_dict(json.load(read_file), id_hash_keys=id_hash_keys))
+                    document = json.load(read_file)
+                    document["id_hash_keys"] = id_hash_keys
+                    crawled_data.append(Document.from_dict(document))
             results = {"documents": crawled_data}
         else:
             results = {"paths": file_paths}
@@ -434,7 +468,6 @@ class Crawler(BaseComponent):
         already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> set:
-
         self.driver.get(base_url)
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
@@ -457,7 +490,6 @@ class Crawler(BaseComponent):
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
                     if filter_pattern is not None:
-
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:

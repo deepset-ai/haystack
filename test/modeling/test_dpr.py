@@ -20,6 +20,7 @@ from haystack.modeling.model.prediction_head import TextSimilarityHead
 from haystack.nodes.retriever.dense import DensePassageRetriever
 
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
+from haystack.utils.early_stopping import EarlyStopping
 
 from ..conftest import SAMPLES_PATH
 
@@ -1000,6 +1001,34 @@ def test_dpr_training(document_store, tmp_path):
         embed_title=True,
         num_positives=1,
         num_hard_negatives=1,
+    )
+
+
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_dpr_training_with_earlystopping(document_store, tmp_path):
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        max_seq_len_query=8,
+        max_seq_len_passage=8,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    retriever.train(
+        data_dir=str(SAMPLES_PATH / "dpr"),
+        train_filename="sample.json",
+        dev_filename="sample.json",
+        test_filename="sample.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        save_dir=save_dir,
+        evaluate_every=1,
+        embed_title=True,
+        num_positives=1,
+        num_hard_negatives=1,
+        early_stopping=EarlyStopping(save_dir=save_dir),
     )
 
 

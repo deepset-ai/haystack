@@ -68,7 +68,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
-        metadata_config: dict = {"indexed": []},
+        metadata_config: Optional[Dict] = None,
         validate_index_sync: bool = True,
     ):
         """
@@ -106,6 +106,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
             no fields are indexed.
         """
+        if metadata_config is None:
+            metadata_config = {"indexed": []}
         # Connect to Pinecone server using python client binding
         if not api_key:
             raise PineconeDocumentStoreError(
@@ -201,12 +203,14 @@ class PineconeDocumentStore(BaseDocumentStore):
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
         recreate_index: bool = False,
-        metadata_config: dict = {"indexed": []},
+        metadata_config: Optional[Dict] = None,
     ):
         """
         Create a new index for storing documents in case an
         index with the name doesn't exist already.
         """
+        if metadata_config is None:
+            metadata_config = {"indexed": []}
         index = self._index_name(index)
 
         if recreate_index:
@@ -1192,7 +1196,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
@@ -1447,7 +1450,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                         "label-answer-type": label.answer.type,
                         "label-answer-score": label.answer.score,
                         "label-answer-context": label.answer.context,
-                        "label-answer-document-id": label.answer.document_id,
+                        "label-answer-document-ids": label.answer.document_ids,
                     }
                 )
                 # Get offset data
@@ -1496,6 +1499,13 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Extract Answer
             answer = None
             if label_meta.get("label-answer-answer") is not None:
+                # backwards compatibility: if legacy answer object with `document_id` is present, convert to `document_ids
+                if "label-answer-document-id" in label_meta:
+                    document_id = label_meta["label-answer-document-id"]
+                    document_ids = [document_id] if document_id is not None else None
+                else:
+                    document_ids = label_meta["label-answer-document-ids"]
+
                 answer = Answer(
                     answer=label_meta["label-answer-answer"]
                     or "",  # If we leave as None a schema validation error will be thrown
@@ -1504,7 +1514,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     context=label_meta["label-answer-context"],
                     offsets_in_document=offsets["document"],
                     offsets_in_context=offsets["context"],
-                    document_id=label_meta["label-answer-document-id"],
+                    document_ids=document_ids,
                     meta=other_meta,
                 )
             # Extract Label metadata

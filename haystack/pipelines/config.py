@@ -79,6 +79,8 @@ def get_component_definitions(
                 env_prefix = f"{name}_params_".upper()
                 if key.startswith(env_prefix):
                     param_name = key.replace(env_prefix, "").lower()
+                    if "params" not in component_definition:
+                        component_definition["params"] = {}
                     component_definition["params"][param_name] = value
                     logger.info(
                         "Param '%s' of component '%s' overwritten with environment variable '%s' value '%s'.",
@@ -281,11 +283,9 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
             break
 
         except ValidationError as validation:
-
             # If the validation comes from an unknown node, try to find it and retry:
             if list(validation.relative_schema_path) == ["properties", "components", "items", "anyOf"]:
                 if validation.instance["type"] not in loaded_custom_nodes:
-
                     logger.info(
                         "Missing definition for node of type %s. Looking into local classes...",
                         validation.instance["type"],
@@ -429,7 +429,6 @@ def _add_node_to_pipeline_graph(
 
     try:
         for input_node in node["inputs"]:
-
             # Separate node and edge name, if specified
             input_node_name, input_edge_name = input_node, None
             if "." in input_node:

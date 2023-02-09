@@ -70,7 +70,6 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
@@ -176,7 +175,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -205,6 +204,8 @@ class FARMReader(BaseReader):
         doc_stride: Optional[int] = None,
         max_query_length: Optional[int] = None,
     ):
+        if devices is None:
+            devices = []
         if dev_filename:
             dev_split = 0
 
@@ -363,7 +364,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -469,7 +470,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
@@ -595,7 +596,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 5,
@@ -744,7 +745,7 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face."
+        self, repo_id: str, private: bool = False, commit_message: str = "Add new model to Hugging Face."
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -787,7 +788,7 @@ class FARMReader(BaseReader):
                         large_files.append(rel_path)
 
             if len(large_files) > 0:
-                logger.info("Track files with git lfs: {}".format(", ".join(large_files)))
+                logger.info("Track files with git lfs: %s", ", ".join(large_files))
                 repo.lfs_track(large_files)
 
             logger.info("Push model to the hub. This might take a while")
@@ -1172,7 +1173,7 @@ class FARMReader(BaseReader):
                         type="extractive",
                         score=ans.confidence if self.use_confidence_scores else ans.score,
                         context=ans.context_window,
-                        document_id=pred.id,
+                        document_ids=[pred.id],
                         offsets_in_context=[
                             Span(
                                 start=ans.offset_answer_start - ans.offset_context_window_start,

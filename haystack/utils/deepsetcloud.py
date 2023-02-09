@@ -1,9 +1,7 @@
-# pylint: disable=missing-timeout
-
 import json
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -146,7 +144,7 @@ class DeepsetCloudClient:
     def post(
         self,
         url: str,
-        json: dict = {},
+        json: Optional[Dict] = None,
         data: Optional[Any] = None,
         query_params: Optional[dict] = None,
         headers: Optional[dict] = None,
@@ -154,6 +152,8 @@ class DeepsetCloudClient:
         files: Optional[Any] = None,
         raise_on_error: bool = True,
     ):
+        if json is None:
+            json = {}
         return self._execute_request(
             method="POST",
             url=url,
@@ -169,7 +169,7 @@ class DeepsetCloudClient:
     def post_with_auto_paging(
         self,
         url: str,
-        json: dict = {},
+        json: Optional[Dict] = None,
         data: Optional[Any] = None,
         query_params: Optional[dict] = None,
         headers: Optional[dict] = None,
@@ -177,6 +177,8 @@ class DeepsetCloudClient:
         raise_on_error: bool = True,
         auto_paging_page_size: Optional[int] = None,
     ):
+        if json is None:
+            json = {}
         return self._execute_auto_paging_request(
             method="POST",
             url=url,
@@ -213,7 +215,7 @@ class DeepsetCloudClient:
     def put_with_auto_paging(
         self,
         url: str,
-        json: dict = {},
+        json: Optional[Dict] = None,
         data: Optional[Any] = None,
         query_params: Optional[dict] = None,
         headers: Optional[dict] = None,
@@ -221,6 +223,8 @@ class DeepsetCloudClient:
         raise_on_error: bool = True,
         auto_paging_page_size: Optional[int] = None,
     ):
+        if json is None:
+            json = {}
         return self._execute_auto_paging_request(
             method="PUT",
             url=url,
@@ -315,6 +319,7 @@ class DeepsetCloudClient:
         stream: bool = False,
         files: Optional[Any] = None,
         raise_on_error: bool = True,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
     ):
         if json is not None:
             json = self._remove_null_values(json)
@@ -328,6 +333,7 @@ class DeepsetCloudClient:
             auth=BearerAuth(self.api_key),
             stream=stream,
             files=files,
+            timeout=timeout,
         )
         if raise_on_error and response.status_code > 299:
             raise DeepsetCloudError(
@@ -379,6 +385,7 @@ class IndexClient:
         all_terms_must_match: Optional[bool] = None,
         scale_score: bool = True,
         headers: Optional[dict] = None,
+        use_prefiltering: Optional[bool] = None,
     ) -> List[dict]:
         index_url = self._build_index_url(workspace=workspace, index=index)
         query_url = f"{index_url}/documents-query"
@@ -391,6 +398,7 @@ class IndexClient:
             "return_embedding": return_embedding,
             "all_terms_must_match": all_terms_must_match,
             "scale_score": scale_score,
+            "use_prefiltering": use_prefiltering,
         }
         response = self.client.post(url=query_url, json=request, headers=headers)
         return response.json()

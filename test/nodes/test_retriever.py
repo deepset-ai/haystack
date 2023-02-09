@@ -59,14 +59,13 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
     # so without filters applied it does nothing
     if not isinstance(retriever_with_docs, FilterRetriever):
         # the BM25 implementation in Weaviate would NOT pick up the expected records
-        # just with the "Who lives in Berlin?" query, but would return empty results,
-        # (maybe live & Berlin are stopwords in Weaviate? :-) ), so for Weaviate we need a query with better matching
-        # This was caused by lack of stemming and casing in Weaviate BM25 implementation
-        # TODO - In Weaviate 1.17.0 there is a fix for the lack of casing, which means that once 1.17.0 is released
+        # because of the lack of stemming: "Who lives in berlin" returns only 1 record while
+        # "Who live in berlin" returns all 5 records.
+        # TODO - In Weaviate 1.19.0 there is a fix for the lack of stemming, which means that once 1.19.0 is released
         # this `if` can be removed, as the standard search query "Who lives in Berlin?" should work with Weaviate.
-        # See https://github.com/semi-technologies/weaviate/issues/2455#issuecomment-1355702003
+        # See https://github.com/weaviate/weaviate/issues/2439
         if isinstance(document_store_with_docs, WeaviateDocumentStore):
-            res = retriever_with_docs.retrieve(query="name is Carla, I live in Berlin")
+            res = retriever_with_docs.retrieve(query="Who live in berlin")
         else:
             res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
         assert res[0].content == "My name is Carla and I live in Berlin"
@@ -173,6 +172,7 @@ def test_retrieval_empty_query(document_store: BaseDocumentStore):
     assert result[0]["documents"][0][0] == mock_document
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -190,6 +190,7 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
     assert res[0][0].meta["name"] == "filename1"
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -443,6 +444,32 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     for doc, expected_value in zip(docs, expected_values):
         assert len(doc.embedding) == 512
         assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_text(document_store, retriever):
+    docs = [
+        Document(content="This is a test", content_type="text"),
+        Document(content="This is another test", content_type="text"),
+    ]
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_table(document_store, retriever):
+    doc = Document(
+        content=pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]]),
+        content_type="table",
+    )
+    document_store.write_documents([doc])
+    document_store.update_embeddings(retriever)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)

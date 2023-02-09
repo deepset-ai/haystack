@@ -1062,7 +1062,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str],
         all_terms_must_match: bool,
     ) -> Dict[str, Any]:
-
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]
@@ -1144,7 +1143,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             meta_data = {
                 k: v
                 for k, v in hit["_source"].items()
-                if k not in (self.content_field, "content_type", self.embedding_field)
+                if k not in (self.content_field, "content_type", "id_hash_keys", self.embedding_field)
             }
             name = meta_data.pop(self.name_field, None)
             if name:
@@ -1173,6 +1172,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 "id": hit["_id"],
                 "content": hit["_source"].get(self.content_field),
                 "content_type": hit["_source"].get("content_type", None),
+                "id_hash_keys": hit["_source"].get("id_hash_keys", None),
                 "meta": meta_data,
                 "score": score,
                 "embedding": embedding,
@@ -1180,7 +1180,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             document = Document.from_dict(doc_dict)
         except (KeyError, ValidationError) as e:
             raise DocumentStoreError(
-                f"Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
+                "Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
             ) from e
         return document
 
