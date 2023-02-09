@@ -118,7 +118,8 @@ class BaseReader(BaseComponent):
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
-            relevant_documents = [label.document for label in labels.labels]
+            # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID
+            relevant_documents = list({label.document.id: label.document for label in labels.labels}.values())
             # Filter out empty documents
             relevant_documents = [d for d in relevant_documents if d.content.strip() != ""]
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
