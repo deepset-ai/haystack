@@ -3,7 +3,7 @@ import logging
 import os
 import platform
 import sys
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 
 import requests
 
@@ -53,8 +53,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def __init__(
         self,
         api_key: str,
+        base_url: str,
+        deployment_name: str,
         model: str = "text-davinci-003",
         max_tokens: int = 50,
+        api_version: str = "2022-12-01",
         top_k: int = 5,
         temperature: float = 0.2,
         presence_penalty: float = 0.1,
@@ -159,6 +162,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 )
 
         self.api_key = api_key
+        self.base_url = base_url
+        self.deployment_name = deployment_name
+        self.api_version = api_version
         self.model = model
         self.max_tokens = max_tokens
         self.top_k = top_k
@@ -185,6 +191,23 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             logger.debug("Using GPT2TokenizerFast")
             self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
+
+    def using_azure(self) -> bool:
+        return self.deployment_name is not None and self.base_url is not None
+
+    def resolve_url(self) -> str:
+        url = "https://api.openai.com/v1/completions"
+        if self.using_azure():
+            url = (
+                f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
+            )
+        return url
+
+    def resolve_headers(self) -> Dict[str, str]:
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        if self.using_azure():
+            headers = {"api-key": self.api_key, "Content-Type": "application/json"}
+        return headers
 
     @retry_with_exponential_backoff(
         backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
@@ -229,9 +252,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         prompt, input_docs = self._build_prompt_within_max_length(query=query, documents=documents)
         logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
 
-        # get answers from OpenAI API
-        url = "https://api.openai.com/v1/completions"
-
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -243,8 +263,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "frequency_penalty": self.frequency_penalty,
         }
 
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
+        response = requests.post(
+            self.resolve_url(), headers=self.resolve_headers(), data=json.dumps(payload), timeout=timeout
+        )
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
