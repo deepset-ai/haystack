@@ -87,14 +87,14 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param examples_context: A text snippet containing the contextual information used to generate the Answers for
                                  the examples you provide.
                                  If not supplied, the default from OpenAI API docs is used:
-                                 "In 2017, U.S. life expectancy was 78.6 years."
+                                 `"In 2017, U.S. life expectancy was 78.6 years."`
         :param examples: List of (question, answer) pairs that helps steer the model towards the tone and answer
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAI API docs is used:
-                         [["Q: What is human life expectancy in the United States?", "A: 78 years."]]
+                         `[["Q: What is human life expectancy in the United States?", "A: 78 years."]]`
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
-                           If you don't provide it, the default from OpenAI API docs is used: ["\n", "<|endoftext|>"]
+                           If you don't provide it, the default from OpenAI API docs is used: `["\n", "<|endoftext|>"]`
         :param prompt_template: A PromptTemplate used to explain to the model how to generate answers given a
             supplied `context` and `query` at runtime. The `context` is automatically constructed at runtime from a
             list of provided documents at runtime. An `example_context` and a list of `examples` are used to provide
