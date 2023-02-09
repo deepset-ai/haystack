@@ -31,8 +31,13 @@ def docstrings_checksum(python_files: Generator[Path, None, None]):
 
 if __name__ == "__main__":
     # Get all Haystack and rest_api python files
-    root = Path(".").absolute().parent.parent
-    python_files = root.glob("+(haystack|rest_api)/**/*.py")
+    root = Path(__file__).parent.parent.parent
+    haystack_files = root.glob("haystack/**/*.py")
+    rest_api_files = root.glob("rest_api/**/*.py")
+
+    import itertools
+
+    python_files = itertools.chain(haystack_files, rest_api_files)
 
     md5 = docstrings_checksum(python_files)
     print(md5)
