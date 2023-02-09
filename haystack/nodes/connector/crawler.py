@@ -351,7 +351,7 @@ class Crawler(BaseComponent):
         document: Document,
         output_dir: Path,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        save_file_path_on_meta: bool = False,
+        save_file_path_on_meta: Optional[bool] = None,
         file_path_meta_field_name: str = "file_path",
     ) -> Path:
         url = document.meta["url"]
@@ -391,7 +391,7 @@ class Crawler(BaseComponent):
         loading_wait_time: Optional[int] = None,
         output_dir: Optional[Path] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        save_file_path_on_meta: bool = False,
+        save_file_path_on_meta: Optional[bool] = None,
         file_path_meta_field_name: str = "file_path",
     ) -> List[Document]:
         documents: List[Document] = []
