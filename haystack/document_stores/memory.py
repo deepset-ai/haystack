@@ -309,13 +309,16 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param documents_to_search: List of documents to compare `query_emb` against.
         """
         query_emb_tensor = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
-        if len(query_emb_tensor.shape) == 1:
+        if query_emb_tensor.ndim == 1:
             query_emb_tensor = query_emb_tensor.unsqueeze(dim=0)
 
         doc_embeds = np.array([doc.embedding for doc in documents_to_search])
         doc_embeds_tensor = torch.as_tensor(doc_embeds, dtype=torch.float)
-        if len(doc_embeds_tensor.shape) == 1 and doc_embeds_tensor.shape[0] == 0:
-            return []
+        if doc_embeds_tensor.ndim == 1:
+            # if there are no embeddings, return an empty list
+            if doc_embeds_tensor.shape[0] == 0:
+                return []
+            doc_embeds_tensor = doc_embeds_tensor.unsqueeze(dim=0)
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
@@ -347,12 +350,15 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param documents_to_search: List of documents to compare `query_emb` against.
         """
-        if len(query_emb.shape) == 1:
-            query_emb = np.expand_dims(query_emb, 0)
+        if query_emb.ndim == 1:
+            query_emb = np.expand_dims(a=query_emb, axis=0)
 
         doc_embeds = np.array([doc.embedding for doc in documents_to_search])
-        if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
-            return []
+        if doc_embeds.ndim == 1:
+            # if there are no embeddings, return an empty list
+            if doc_embeds.shape[0] == 0:
+                return []
+            doc_embeds = np.expand_dims(a=doc_embeds, axis=0)
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
