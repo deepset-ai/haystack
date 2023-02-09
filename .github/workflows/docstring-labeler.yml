@@ -65,4 +65,4 @@ jobs:
         if: ${{ steps.run-check.outputs.should_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr edit --add-label "type:documentation"
+        run: gh pr edit ${{ github.event.pull_request.html_url }} --add-label "type:documentation"
