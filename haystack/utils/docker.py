@@ -4,7 +4,7 @@ from haystack.nodes._json_schema import load_schema
 
 
 def cache_nltk_model(model: Optional[str] = None):
-    logging.info("Caching %s model..." % model)
+    logging.info("Caching %s model...", model)
     import nltk
 
     if model is None:
