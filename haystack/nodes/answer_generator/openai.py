@@ -81,9 +81,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
         :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
                                  in the text. This increases the model's likelihood to talk about new topics.
+                                 [See more information about frequency and presence penalties.](https://platform.openai.com/docs/api-reference/parameter-details)
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
                                   frequency in the text so far, decreasing the model's likelihood to repeat the same line
                                   verbatim.
+                                  [See more information about frequency and presence penalties.](https://platform.openai.com/docs/api-reference/parameter-details)
         :param examples_context: A text snippet containing the contextual information used to generate the Answers for
                                  the examples you provide.
                                  If not supplied, the default from OpenAI API docs is used:
