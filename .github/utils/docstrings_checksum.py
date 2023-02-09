@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Generator
+from typing import Iterator
 
 import ast
 import hashlib
 
 
-def docstrings_checksum(python_files: Generator[Path, None, None]):
+def docstrings_checksum(python_files: Iterator[Path]):
     files_content = (f.read_text() for f in python_files)
     trees = (ast.parse(c) for c in files_content)
 
