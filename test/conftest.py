@@ -801,13 +801,6 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
-    # Weaviate currently only supports UUIDs
-    if type(document_store) == WeaviateDocumentStore:
-        for d in docs:
-            d["id"] = str(uuid.uuid4())
-
-
 # FIXME Fix this in the docstore tests refactoring
 from inspect import getmembers, isclass, isfunction
 
