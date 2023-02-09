@@ -120,11 +120,14 @@ class BaseReader(BaseComponent):
         if add_isolated_node_eval and labels is not None:
             # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID and
             # filters out empty documents
-            relevant_documents = list(
-                {
-                    label.document.id: label.document for label in labels.labels if label.document.content.strip() != ""
-                }.values()
-            )
+            # relevant_documents = list(
+            #     {
+            #         label.document.id: label.document for label in labels.labels if label.document.content.strip() != ""
+            #     }.values()
+            # )
+            relevant_documents = [label.document for label in labels.labels]
+            # Filter out empty documents
+            relevant_documents = [d for d in relevant_documents if d.content.strip() != ""]
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
