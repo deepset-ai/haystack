@@ -100,7 +100,7 @@ def test_update_embeddings_table_text_retriever(tmp_path):
             {
                 "content": pd.DataFrame(columns=[f"col_{i}", f"col_{i+1}"], data=[[f"cell_{i}", f"cell_{i+1}"]]),
                 "id": f"table_{i}",
-                f"meta_field": f"value_table_{i}",
+                "meta_field": f"value_table_{i}",
                 "content_type": "table",
             }
         )
