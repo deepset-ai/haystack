@@ -49,28 +49,28 @@ class Crawler(BaseComponent):
 
     def __init__(
         self,
-        output_dir: str,
         urls: Optional[List[str]] = None,
         crawler_depth: int = 1,
         filter_urls: Optional[List] = None,
-        overwrite_existing_files=True,
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text=True,
         loading_wait_time: Optional[int] = None,
+        output_dir: Union[str, Path, None] = None,
+        overwrite_existing_files=True,
+        save_file_path_on_meta: Optional[bool] = None,
+        file_path_meta_field_name: str = "file_path",
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
 
-        :param output_dir: Path for the directory to store files
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
         :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
             0: Only initial list of urls
             1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
             All URLs not matching at least one of the regular expressions will be dropped.
-        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -80,6 +80,10 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param output_dir: Path for the directory to store files
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+        :param save_file_path_on_meta: Whether to save the file path on the meta field of the Document
+        :param file_path_meta_field_name: The name of the meta field where the file path will be saved
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
             E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
@@ -164,7 +168,7 @@ class Crawler(BaseComponent):
             logger.info("'chrome-driver' will be automatically installed.")
             self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         self.urls = urls
-        self.output_dir = output_dir
+
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
         self.overwrite_existing_files = overwrite_existing_files
@@ -172,22 +176,27 @@ class Crawler(BaseComponent):
         self.extract_hidden_text = extract_hidden_text
         self.loading_wait_time = loading_wait_time
         self.crawler_naming_function = crawler_naming_function
+        self.output_dir = output_dir
+        self.save_file_path_on_meta = save_file_path_on_meta
+        self.file_path_meta_field_name = file_path_meta_field_name
 
     def __del__(self):
         self.driver.quit()
 
     def crawl(
         self,
-        output_dir: Union[str, Path, None] = None,
         urls: Optional[List[str]] = None,
         crawler_depth: Optional[int] = None,
         filter_urls: Optional[List] = None,
-        overwrite_existing_files: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = None,
         loading_wait_time: Optional[int] = None,
+        output_dir: Union[str, Path, None] = None,
+        overwrite_existing_files: Optional[bool] = None,
+        save_file_path_on_meta: Optional[bool] = None,
+        file_path_meta_field_name: str = "file_path",
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-    ) -> List[Path]:
+    ) -> List[Document]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
         file per URL, including text and basic meta data).
@@ -195,7 +204,7 @@ class Crawler(BaseComponent):
         All parameters are optional here and only meant to overwrite instance attributes at runtime.
         If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
-        :param output_dir: Path for the directory to store files
+
         :param urls: List of http addresses or single http address
         :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
                               0: Only initial list of urls
@@ -210,6 +219,8 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param output_dir: If provided, the crawled documents will be saved as JSON files in this directory.
+        :param save_file_path_on_meta: Whether to save the path of the stored file on the meta field of the Document object
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
             E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
@@ -217,7 +228,7 @@ class Crawler(BaseComponent):
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 
-        :return: List of paths where the crawled webpages got stored
+        :return: List of Documents that were created during crawling
         """
         # use passed params or fallback to instance attributes
         if id_hash_keys is None:
@@ -236,81 +247,156 @@ class Crawler(BaseComponent):
             extract_hidden_text = self.extract_hidden_text
         if loading_wait_time is None:
             loading_wait_time = self.loading_wait_time
+        if save_file_path_on_meta is None:
+            save_file_path_on_meta = self.save_file_path_on_meta
+        if file_path_meta_field_name is None:
+            file_path_meta_field_name = self.file_path_meta_field_name
         if crawler_naming_function is None:
             crawler_naming_function = self.crawler_naming_function
 
-        output_dir = Path(output_dir)
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True)
+        if isinstance(output_dir, str):
+            output_dir = Path(output_dir)
 
-        file_paths: list = []
-        is_not_empty = len(list(output_dir.rglob("*"))) > 0
-        if is_not_empty and not overwrite_existing_files:
-            logger.info(
-                "Found data stored in `%s`. Delete this first if you really want to fetch new data.", output_dir
-            )
-        else:
-            logger.info("Fetching from %s to `%s`", urls, output_dir)
+        if output_dir:
+            if not output_dir.exists():
+                output_dir.mkdir(parents=True)
 
-            # Start by writing out the initial list of urls
-            if filter_urls:
-                pattern = re.compile("|".join(filter_urls))
-                for url in urls:
-                    if pattern.search(url):
-                        file_paths += self._write_to_files(
-                            [url],
-                            output_dir=output_dir,
-                            extract_hidden_text=extract_hidden_text,
-                            loading_wait_time=loading_wait_time,
-                            crawler_naming_function=crawler_naming_function,
-                        )
-            else:
-                file_paths += self._write_to_files(
-                    urls,
-                    output_dir=output_dir,
-                    extract_hidden_text=extract_hidden_text,
-                    loading_wait_time=loading_wait_time,
-                    crawler_naming_function=crawler_naming_function,
+            is_not_empty = len(list(output_dir.rglob("*"))) > 0
+            if is_not_empty and not overwrite_existing_files:
+                logger.info(
+                    "Found data stored in `%s`. Delete this first if you really want to fetch new data.", output_dir
                 )
-            # follow one level of sublinks if requested
-            if crawler_depth == 1:
-                sub_links: Dict[str, List] = {}
-                for url_ in urls:
-                    already_found_links: List = list(sum(list(sub_links.values()), []))
-                    sub_links[url_] = list(
-                        self._extract_sublinks_from_url(
-                            base_url=url_,
-                            filter_urls=filter_urls,
-                            already_found_links=already_found_links,
-                            loading_wait_time=loading_wait_time,
-                        )
-                    )
-                for url, extracted_sublink in sub_links.items():
-                    file_paths += self._write_to_files(
-                        extracted_sublink,
-                        output_dir=output_dir,
-                        base_url=url,
-                        id_hash_keys=id_hash_keys,
+            else:
+                logger.info("Fetching from %s to `%s`", urls, output_dir)
+
+        documents: List[Document] = []
+
+        # Start by crawling the initial list of urls
+        if filter_urls:
+            pattern = re.compile("|".join(filter_urls))
+            for url in urls:
+                if pattern.search(url):
+                    documents += self._crawl_urls(
+                        [url],
                         extract_hidden_text=extract_hidden_text,
                         loading_wait_time=loading_wait_time,
+                        id_hash_keys=id_hash_keys,
+                        output_dir=output_dir,
+                        save_file_path_on_meta=save_file_path_on_meta,
+                        file_path_meta_field_name=file_path_meta_field_name,
                         crawler_naming_function=crawler_naming_function,
                     )
+        else:
+            documents += self._crawl_urls(
+                urls,
+                extract_hidden_text=extract_hidden_text,
+                loading_wait_time=loading_wait_time,
+                id_hash_keys=id_hash_keys,
+                output_dir=output_dir,
+                save_file_path_on_meta=save_file_path_on_meta,
+                file_path_meta_field_name=file_path_meta_field_name,
+                crawler_naming_function=crawler_naming_function,
+            )
 
-        return file_paths
+        # follow one level of sublinks if requested
+        if crawler_depth == 1:
+            sub_links: Dict[str, List] = {}
+            for url_ in urls:
+                already_found_links: List = list(sum(list(sub_links.values()), []))
+                sub_links[url_] = list(
+                    self._extract_sublinks_from_url(
+                        base_url=url_,
+                        filter_urls=filter_urls,
+                        already_found_links=already_found_links,
+                        loading_wait_time=loading_wait_time,
+                    )
+                )
+            for url, extracted_sublink in sub_links.items():
+                documents += self._crawl_urls(
+                    extracted_sublink,
+                    base_url=url,
+                    extract_hidden_text=extract_hidden_text,
+                    loading_wait_time=loading_wait_time,
+                    id_hash_keys=id_hash_keys,
+                    output_dir=output_dir,
+                    save_file_path_on_meta=save_file_path_on_meta,
+                    file_path_meta_field_name=file_path_meta_field_name,
+                    crawler_naming_function=crawler_naming_function,
+                )
 
-    def _write_to_files(
+        return documents
+
+    def _create_document(
+        self, url: str, text: str, base_url: Optional[str] = None, id_hash_keys: Optional[List[str]] = None
+    ) -> Document:
+        """
+        Create a Document object from the given url and text.
+        :param url: The current url of the webpage.
+        :param text: The text content of the webpage.
+        :param base_url: The original url where we started to crawl.
+        """
+
+        data: Dict[str, Any] = {}
+        data["meta"] = {"url": url}
+        if base_url:
+            data["meta"]["base_url"] = base_url
+        data["content"] = text
+        if id_hash_keys:
+            data["id_hash_keys"] = id_hash_keys
+
+        return Document.from_dict(data)
+
+    def _write_file(
+        self,
+        document: Document,
+        output_dir: Path,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        save_file_path_on_meta: bool = False,
+        file_path_meta_field_name: str = "file_path",
+    ) -> Path:
+        url = document.meta["url"]
+        if crawler_naming_function is not None:
+            file_name_prefix = crawler_naming_function(url, document.content)  # type: ignore
+        else:
+            file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", url[:129])
+            file_name_hash = hashlib.md5(f"{url}".encode("utf-8")).hexdigest()
+            file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
+
+        file_path = output_dir / f"{file_name_prefix}.json"
+
+        if save_file_path_on_meta:
+            document.meta[file_path_meta_field_name] = str(file_path)
+
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(document.to_dict(), f)
+        except Exception:
+            logging.exception(
+                "Crawler can't save the content of '%s' under '%s'. "
+                "This webpage will be skipped, but links from this page will still be crawled. "
+                "Make sure the path above is accessible and the file name is valid. "
+                "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+                url,
+                file_path,
+            )
+
+        return file_path
+
+    def _crawl_urls(
         self,
         urls: List[str],
-        output_dir: Path,
         extract_hidden_text: bool,
         base_url: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
         loading_wait_time: Optional[int] = None,
+        output_dir: Optional[Path] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-    ) -> List[Path]:
-        paths = []
+        save_file_path_on_meta: bool = False,
+        file_path_meta_field_name: str = "file_path",
+    ) -> List[Document]:
+        documents: List[Document] = []
         for link in urls:
-            logger.info("writing contents from '%s'", link)
+            logger.info("Scraping contents from '%s'", link)
             self.driver.get(link)
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)
@@ -320,54 +406,38 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            data: Dict[str, Any] = {}
-            data["meta"] = {"url": link}
-            if base_url:
-                data["meta"]["base_url"] = base_url
-            data["content"] = text
-            if id_hash_keys:
-                data["id_hash_keys"] = id_hash_keys
-            document = Document.from_dict(data)
+            document = self._create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
 
-            if crawler_naming_function is not None:
-                file_name_prefix = crawler_naming_function(link, text)
-            else:
-                file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
-                file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
-                file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
-
-            file_path = output_dir / f"{file_name_prefix}.json"
-
-            try:
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(document.to_dict(), f)
-            except Exception:
-                logging.exception(
-                    "Crawler can't save the content of '%s' under '%s'. "
-                    "This webpage will be skipped, but links from this page will still be crawled. "
-                    "Make sure the path above is accessible and the file name is valid. "
-                    "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
-                    link,
-                    file_path,
+            if output_dir:
+                file_path = self._write_file(
+                    document,
+                    output_dir,
+                    crawler_naming_function,
+                    save_file_path_on_meta=save_file_path_on_meta,
+                    file_path_meta_field_name=file_path_meta_field_name,
                 )
+                logger.debug("Saved content to '%s'", file_path)
 
-            paths.append(file_path)
+            documents.append(document)
 
-        return paths
+        logger.debug("Crawler results: %s Documents", len(documents))
+
+        return documents
 
     def run(  # type: ignore
         self,
-        output_dir: Union[str, Path, None] = None,
         urls: Optional[List[str]] = None,
         crawler_depth: Optional[int] = None,
         filter_urls: Optional[List] = None,
-        overwrite_existing_files: Optional[bool] = None,
-        return_documents: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
+        output_dir: Union[str, Path, None] = None,
+        overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-    ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
+        save_file_path_on_meta: bool = False,
+        file_path_meta_field_name: str = "file_path",
+    ) -> Tuple[Dict[str, List[Document]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
@@ -389,6 +459,8 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param save_file_path_on_meta: Whether to save the file path of the crawled files to the meta field of the Document
+        :param file_path_meta_field_name: The name of the meta field to save the file path of the crawled files to
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
             E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
@@ -396,10 +468,10 @@ class Crawler(BaseComponent):
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 
-        :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
+        :return: Tuple({"documents": List of Documents, ...}, Name of output edge)
         """
 
-        file_paths = self.crawl(
+        documents = self.crawl(
             urls=urls,
             output_dir=output_dir,
             crawler_depth=crawler_depth,
@@ -407,34 +479,28 @@ class Crawler(BaseComponent):
             overwrite_existing_files=overwrite_existing_files,
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
+            id_hash_keys=id_hash_keys,
+            save_file_path_on_meta=save_file_path_on_meta,
+            file_path_meta_field_name=file_path_meta_field_name,
             crawler_naming_function=crawler_naming_function,
         )
-        results: Dict[str, Union[List[Document], List[Path]]] = {}
-        if return_documents:
-            crawled_data = []
-            for _file in file_paths:
-                with open(_file.absolute(), "r") as read_file:
-                    document = json.load(read_file)
-                    document["id_hash_keys"] = id_hash_keys
-                    crawled_data.append(Document.from_dict(document))
-            results = {"documents": crawled_data}
-        else:
-            results = {"paths": file_paths}
+        results = {"documents": documents}
 
         return results, "output_1"
 
     def run_batch(  # type: ignore
         self,
-        output_dir: Union[str, Path, None] = None,
         urls: Optional[List[str]] = None,
         crawler_depth: Optional[int] = None,
         filter_urls: Optional[List] = None,
-        overwrite_existing_files: Optional[bool] = None,
-        return_documents: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
+        output_dir: Union[str, Path, None] = None,
+        overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        save_file_path_on_meta: bool = False,
+        file_path_meta_field_name: str = "file_path",
     ):
         return self.run(
             output_dir=output_dir,
@@ -442,11 +508,12 @@ class Crawler(BaseComponent):
             crawler_depth=crawler_depth,
             filter_urls=filter_urls,
             overwrite_existing_files=overwrite_existing_files,
-            return_documents=return_documents,
             id_hash_keys=id_hash_keys,
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
             crawler_naming_function=crawler_naming_function,
+            save_file_path_on_meta=save_file_path_on_meta,
+            file_path_meta_field_name=file_path_meta_field_name,
         )
 
     @staticmethod
