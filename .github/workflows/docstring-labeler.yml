@@ -3,7 +3,8 @@ name: Add label on docstrings edit
 on:
   pull_request:
     paths:
-      - "**.py"
+      - "haystack/**/*.py"
+      - "rest_api/**/*.py"
 
 permissions:
   pull-requests: write
