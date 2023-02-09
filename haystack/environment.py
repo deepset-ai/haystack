@@ -35,7 +35,7 @@ def set_pytorch_secure_model_loading(flag_val="1"):
 
 def get_or_create_env_meta_data() -> Dict[str, Any]:
     """
-    Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
+    Collect meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
     """
     global env_meta_data  # pylint: disable=global-statement
     if not env_meta_data:
