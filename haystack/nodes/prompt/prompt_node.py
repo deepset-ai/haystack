@@ -210,11 +210,13 @@ class PromptModelInvocationLayer:
         pass
 
     @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
         Checks if the given model is supported by this invocation layer.
 
         :param model_name_or_path: The name or path of the model.
+        :param kwargs: additional keyword arguments passed to the underlying model which might be used to determine
+        if the model is supported.
         :return: True if this invocation layer supports the model, False otherwise.
         """
         return False
@@ -362,7 +364,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return generated_texts
 
     @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         try:
             config = AutoConfig.from_pretrained(model_name_or_path)
         except OSError:
@@ -413,7 +415,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
-        self.url = "https://api.openai.com/v1/completions"
 
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
@@ -436,6 +437,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             ]
             if key in kwargs
         }
+
+    def resolve_url(self) -> str:
+        return "https://api.openai.com/v1/completions"
+
+    def resolve_headers(self) -> Dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     @retry_with_exponential_backoff(
         backoff_in_seconds=int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
@@ -480,8 +487,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "best_of": kwargs.get("best_of", 1),
             "logit_bias": kwargs.get("logit_bias", {}),
         }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        response = requests.post(
+            self.resolve_url(), headers=self.resolve_headers(), data=json.dumps(payload), timeout=30
+        )
         res = json.loads(response.text)
 
         if response.status_code != 200:
@@ -510,8 +518,37 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         return responses
 
     @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
-        return any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        return valid_model and kwargs.get("base_url") is None
+
+
+class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
+    def __init__(
+        self,
+        base_url: str,
+        deployment_name: str,
+        api_key: str,
+        api_version: str = "2022-12-01",
+        model_name_or_path: str = "text-davinci-003",
+        max_length: Optional[int] = 100,
+        **kwargs,
+    ):
+        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+        self.base_url = base_url
+        self.deployment_name = deployment_name
+        self.api_version = api_version
+
+    def resolve_url(self) -> str:
+        return f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
+
+    def resolve_headers(self) -> Dict[str, str]:
+        return {"api-key": self.api_key, "Content-Type": "application/json"}
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        return valid_model and kwargs.get("base_url") is not None and kwargs.get("deployment_name") is not None
 
 
 class PromptModel(BaseComponent):
@@ -534,6 +571,8 @@ class PromptModel(BaseComponent):
         model_name_or_path: str = "google/flan-t5-base",
         max_length: Optional[int] = 100,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        deployment_name: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
@@ -554,6 +593,8 @@ class PromptModel(BaseComponent):
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.api_key = api_key
+        self.base_url = base_url
+        self.deployment_name = deployment_name
         self.use_auth_token = use_auth_token
         self.use_gpu = use_gpu
         self.devices = devices
@@ -564,12 +605,15 @@ class PromptModel(BaseComponent):
 
         self.register(HFLocalInvocationLayer)  # pylint: disable=W0108
         self.register(OpenAIInvocationLayer)  # pylint: disable=W0108
+        self.register(AzureOpenAIInvocationLayer)  # pylint: disable=W0108
 
         self.model_invocation_layer = self.create_invocation_layer()
 
     def create_invocation_layer(self) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
+            "base_url": self.base_url,
+            "deployment_name": self.deployment_name,
             "use_auth_token": self.use_auth_token,
             "use_gpu": self.use_gpu,
             "devices": self.devices,
@@ -577,7 +621,7 @@ class PromptModel(BaseComponent):
         all_kwargs = {**self.model_kwargs, **kwargs}
 
         for invocation_layer in self.invocation_layers:
-            if invocation_layer.supports(self.model_name_or_path):
+            if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
                 )
@@ -626,6 +670,9 @@ class PromptModel(BaseComponent):
         debug: Optional[bool] = None,
     ):
         raise NotImplementedError("This method should never be implemented in the derived class")
+
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, self.__dict__)
 
 
 def get_predefined_prompt_templates() -> List[PromptTemplate]:
