@@ -36,7 +36,6 @@ def test_single_worker_warning_for_indexing_pipelines(caplog):
 
 
 def test_check_error_for_pipeline_not_found():
-
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
     p, _ = _load_pipeline(yaml_pipeline_path, "ThisPipelineDoesntExist")
     assert p is None
@@ -50,7 +49,6 @@ def test_overwrite_params_with_env_variables_when_no_params_in_pipeline_yaml(mon
 
 
 def test_bad_yaml_pipeline_configuration_error():
-
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
     with pytest.raises(PipelineSchemaError) as excinfo:
         _load_pipeline(yaml_pipeline_path, None)
@@ -358,19 +356,6 @@ def test_query_with_filter_list(client):
         assert 200 == response.status_code
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
-
-
-def test_query_with_deprecated_filter_format(client):
-    request_params = {"TestRetriever": {"filters": {"test_key": "i_should_be_a_list"}}}
-    expected_params = {"TestRetriever": {"filters": {"test_key": ["i_should_be_a_list"]}}}
-    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
-        # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
-        response = client.post(url="/query", json={"query": TEST_QUERY, "params": request_params})
-        assert 200 == response.status_code
-        # Ensure `run` was called with the expected parameters. In this case,
-        # `_format_filters` will fix the `filters` format within the params
-        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=expected_params, debug=False)
 
 
 def test_query_with_no_documents_and_no_answers(client):

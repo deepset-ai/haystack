@@ -126,7 +126,6 @@ def get_replacements(
     batch_size: int = 16,
     device: torch.device = torch.device("cpu:0"),
 ) -> List[List[str]]:
-
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 

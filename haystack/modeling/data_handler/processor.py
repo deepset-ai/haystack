@@ -1896,7 +1896,6 @@ class TextClassificationProcessor(Processor):
         for dictionary, input_ids, segment_ids, padding_mask, tokens in zip(
             dicts, input_ids_batch, segment_ids_batch, padding_masks_batch, tokens_batch
         ):
-
             tokenized = {}
             if debug:
                 tokenized["tokens"] = tokens
@@ -1974,7 +1973,6 @@ class InferenceProcessor(TextClassificationProcessor):
     """
 
     def __init__(self, tokenizer, max_seq_len, **kwargs):
-
         super(InferenceProcessor, self).__init__(
             tokenizer=tokenizer,
             max_seq_len=max_seq_len,
