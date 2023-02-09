@@ -1,0 +1,63 @@
+name: Add label on docstrings edit
+
+on:
+  pull_request:
+    paths:
+      - "**.py"
+
+permissions:
+  pull-requests: write
+
+jobs:
+  base-docstrings:
+    runs-on: ubuntu-latest
+    outputs:
+      checksum: ${{ steps.docstrings.outputs.checksum }}
+
+    steps:
+      - name: Checkout base commit
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Get docstrings
+        id: docstrings
+        run: |
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+  head-docstrings:
+    runs-on: ubuntu-latest
+    outputs:
+      checksum: ${{ steps.docstrings.outputs.checksum }}
+
+    steps:
+      - name: Checkout HEAD commit
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Get docstrings
+        id: docstrings
+        run: |
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+  label:
+    runs-on: ubuntu-latest
+    needs: [base-docstrings, head-docstrings]
+
+    steps:
+      - name: Check if we should label
+        id: run-check
+        run: echo "should_run=${{ needs.base-docstrings.outputs.checksum != needs.head-docstrings.outputs.checksum }}" >> "$GITHUB_OUTPUT"
+
+      - name: Add label
+        if: ${{ steps.run-check.outputs.should_run }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit --add-label "type:documentation"
