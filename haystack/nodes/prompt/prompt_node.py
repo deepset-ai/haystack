@@ -629,15 +629,15 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         PromptTemplate(
             name="question-answering",
-            prompt_text="Given the contex, answer the question. Context: $documents; Question: " "$questions; Answer:",
+            prompt_text="Given the contex please answer the question. Context: $documents; Question: " "$questions; Answer:",
         ),
         PromptTemplate(
             name="question-generation",
-            prompt_text="Given the context, generate a question. Context: $documents; Question:",
+            prompt_text="Given the context please generate a question. Context: $documents; Question:",
         ),
         PromptTemplate(
             name="conditioned-question-generation",
-            prompt_text="Formulate a question for the given context and answer. "
+            prompt_text="Please come up with a question for the given context and the answer. "
             "Context: $documents; Answer: $answers; Question:",
         ),
         PromptTemplate(name="summarization", prompt_text="Summarize this document: $documents Summary:"),
@@ -648,7 +648,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         ),
         PromptTemplate(
             name="sentiment-analysis",
-            prompt_text="Give a sentiment for this context. Answer with positive, "
+            prompt_text="Please give a sentiment for this context. Answer with positive, "
             "negative or neutral. Context: $documents; Answer:",
         ),
         PromptTemplate(
