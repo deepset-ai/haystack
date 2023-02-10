@@ -49,7 +49,7 @@ jobs:
     - name: Run Milvus
       run: |
         cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
+        wget https://github.com/milvus-io/milvus/releases/download/v2.2.2/milvus-standalone-docker-compose.yml -O docker-compose.yml
         sudo docker-compose up -d
         sudo docker-compose ps
 
