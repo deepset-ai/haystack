@@ -28,6 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
+from haystack.telemetry_2 import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -434,6 +435,7 @@ class FARMReader(BaseReader):
         :param max_query_length: Maximum length of the question in number of tokens.
         :return: None
         """
+        send_event("FARMReader.train()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -555,6 +557,7 @@ class FARMReader(BaseReader):
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
+        send_event("FARMReader.distil_prediction_layer_from()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -677,6 +680,7 @@ class FARMReader(BaseReader):
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
+        send_event("FARMReader.distil_intermediate_layers_from()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
