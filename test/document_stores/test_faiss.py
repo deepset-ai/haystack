@@ -267,8 +267,12 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
     def test_multilabel_meta_aggregations(self):
         pass
 
-    @pytest.mark.skip
+    @pytest.mark.skip(reason="tested in test_write_index_docs")
     @pytest.mark.integration
     def test_get_embedding_count(self):
-        """Skipped b/c most easily tested in test_write_index_docs"""
+        pass
+
+    @pytest.mark.skip(reason="can't store embeddings in SQL")
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
         pass

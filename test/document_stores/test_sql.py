@@ -178,8 +178,3 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_custom_embedding_field(self, ds):
         pass
-
-    @pytest.mark.skip(reason="embeddings are not supported")
-    @pytest.mark.integration
-    def test_custom_embedding_field(self, ds):
-        pass
