@@ -2,6 +2,9 @@ name: end-to-end
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - massi/ds-tests
 
 
 jobs:
