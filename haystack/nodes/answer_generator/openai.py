@@ -80,8 +80,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
         :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
-                                 in the text. This increases the model's likelihood to talk about new topics.
-                                 [See more information about frequency and presence penalties.](https://platform.openai.com/docs/api-reference/parameter-details)
+                                 in the text. This increases the model's likelihood to talk about new topics. For more information about frequency and presence penalties, see 
+                                 [parameter details in OpenAI](https://platform.openai.com/docs/api-reference/parameter-details).
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
                                   frequency in the text so far, decreasing the model's likelihood to repeat the same line
                                   verbatim.
@@ -94,13 +94,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAI API docs is used:
                          `[["Q: What is human life expectancy in the United States?", "A: 78 years."]]`
-        :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
+        :param stop_words: Up to four sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
-                           If you don't provide it, the default from OpenAI API docs is used: `["\n", "<|endoftext|>"]`
-        :param prompt_template: A PromptTemplate used to explain to the model how to generate answers given a
-            supplied `context` and `query` at runtime. The `context` is automatically constructed at runtime from a
-            list of provided documents at runtime. An `example_context` and a list of `examples` are used to provide
-            the model with examples to help steer the model towards the tone and answer format you would like.
+                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\n", "<|endoftext|>"]`.
+        :param prompt_template: A PromptTemplate that tells the model how to generate answers given a
+             `context` and `query` supplied at runtime. The `context` is automatically constructed at runtime from a
+            list of provided documents. Use `example_context` and a list of `examples` to provide
+            the model with examples to steer it towards the tone and answer format you would like.
             If not supplied, the default prompt template is:
             ```python
                 PromptTemplate(
@@ -111,15 +111,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
                     prompt_params=["examples_context", "examples", "context", "query"],
                 )
             ```
-            An explanation of how variables (for example '$context') are substituted into the `prompt_text` refer to
-            the PromptTemplate [documentation](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
-        :param context_join_str: The separation string to use to join the input documents together to create the context
-            that will be used by the PromptTemplate.
+            To learn how variables, such as'$context', are substituted in the `prompt_text`, see
+            [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
+        :param context_join_str: The separation string used to join the input documents to create the context
+            used by the PromptTemplate.
         """
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
             logger.warning(
-                "If providing examples or a examples_context, we recommend providing both of them "
+                "If providing examples or examples_context, we recommend providing both of them "
                 "so the examples correctly refer to the examples_context."
             )
         if examples_context is None:
@@ -142,7 +142,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             if all(p in prompt_template.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
-                    "`query` in its `prompt_params`. Please supply a different `prompt_template` or "
+                    "`query` in its `prompt_params`. Supply a different `prompt_template` or "
                     "use the default one."
                 )
 
@@ -275,7 +275,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     @staticmethod
     def _create_context(documents: List[Document], join_str: str = " ") -> str:
-        """Join the documents together to create a single context to be used in the PromptTemplate."""
+        """Join the documents to create a single context to be used in the PromptTemplate."""
         doc_contents = [doc.content for doc in documents]
         # We reverse the docs to put the most relevant documents at the bottom of the context
         context = join_str.join(reversed(doc_contents))
@@ -299,8 +299,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def _build_prompt_within_max_length(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
         Builds the prompt for the GPT-3 model so that it can generate an Answer. If the prompt is too long based on the
-        MAX_TOKENS_LIMIT of the OpenAI model and `max_tokens` provided by the user, then enough documents (used to
-        construct the context) will be thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
+        MAX_TOKENS_LIMIT of the OpenAI model and `max_tokens` you specify, then documents (used to
+        construct the context) are thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
         """
         full_prompt = self._fill_prompt(query, documents)
         n_full_prompt_tokens = self._count_tokens(full_prompt)
