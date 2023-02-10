@@ -1269,20 +1269,10 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     labels = deepcopy(EVAL_LABELS)
-    labels[0].labels.append(
-        Label(
-            query="Who lives in Berlin?",
-            answer=Answer(answer="I", offsets_in_context=[Span(21, 22)]),
-            document=Document(
-                id="a0747b83aea0b60c4b114b15476dd32d",
-                content_type="text",
-                content="My name is Carla and I live in Berlin",
-            ),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="gold-label",
-        )
-    )
+    # Copy one of the labels and change only the answer have a label with a different answer but same Document
+    label_copy = deepcopy(labels[0].labels[0])
+    label_copy.answer = Answer(answer="I", offsets_in_context=[Span(21, 22)])
+    labels[0].labels.append(label_copy)
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=labels,
@@ -1309,6 +1299,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
 
     # Check if same Document in MultiLabel got deduplicated
+    assert labels[0].labels[0].id == labels[0].labels[1].id
     reader_eval_df = eval_result.node_results["Reader"]
     isolated_reader_eval_df = reader_eval_df[reader_eval_df["eval_mode"] == "isolated"]
     assert len(isolated_reader_eval_df) == len(labels) * reader.top_k_per_candidate
