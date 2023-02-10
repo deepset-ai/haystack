@@ -152,6 +152,7 @@ audio = [
   "espnet",
   "espnet-model-zoo",
   "pydub",
+  "protobuf<=3.20.1"
 ]
 beir = [
   "beir; platform_system != 'Windows'",

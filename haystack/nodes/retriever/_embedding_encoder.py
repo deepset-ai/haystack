@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 try:
     from typing import Literal
 except ImportError:
-    from typing_extensions import Literal
+    from typing_extensions import Literal  # type: ignore
 
 import numpy as np
 import requests
