@@ -139,7 +139,7 @@ def document_store(
             },
         )
 
-    elif name == "opensearch_faiss":
+    elif name == "opensearch":
         document_store = OpenSearchDocumentStore(
             index=index,
             return_embedding=True,

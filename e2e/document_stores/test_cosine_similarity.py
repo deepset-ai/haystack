@@ -10,6 +10,7 @@ from haystack.document_stores import (
     MilvusDocumentStore,
     OpenSearchDocumentStore,
 )
+from haystack.schema import Document
 
 from .conftest import document_store
 
@@ -48,7 +49,7 @@ DOCUMENTS = [
 ]
 
 
-@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"])
+@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
 def test_cosine_similarity(name, tmp_path):
     with document_store(name, DOCUMENTS, tmp_path) as ds:
         # below we will write documents to the store and then query it to see if vectors were normalized or not
@@ -85,7 +86,7 @@ def test_cosine_similarity(name, tmp_path):
             assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"])
+@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
 def test_update_embeddings_cosine_similarity(name, tmp_path):
     with document_store(name, DOCUMENTS, tmp_path) as ds:
         # below we will write documents to the store and then query it to see if vectors were normalized
@@ -152,10 +153,8 @@ def test_cosine_sanity_check(name, tmp_path):
     KNOWN_COSINE = 0.9746317
     KNOWN_SCALED_COSINE = (KNOWN_COSINE + 1) / 2
 
-    docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
-    with document_store(name, docs, tmp_path) as ds:
-        ds.write_documents(documents=docs)
-
+    docs = [Document.from_dict({"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1})]
+    with document_store(name, docs, tmp_path, embedding_dim=3) as ds:
         query_results = ds.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=True)
 
         # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
