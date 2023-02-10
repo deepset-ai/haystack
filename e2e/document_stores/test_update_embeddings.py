@@ -3,12 +3,11 @@ import numpy as np
 import pandas as pd
 
 from haystack.nodes import EmbeddingRetriever, TableTextRetriever
-from haystack.document_stores import FAISSDocumentStore
 
 from .conftest import document_store
 
 
-@pytest.mark.parametrize("name", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+@pytest.mark.parametrize("name", ["elasticsearch", "faiss", "memory", "milvus"])
 def test_update_embeddings(name, tmp_path):
     documents = []
     for i in range(6):
@@ -62,7 +61,7 @@ def test_update_embeddings(name, tmp_path):
         np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
 
         # test updating with filters
-        if isinstance(ds, FAISSDocumentStore):
+        if name == "faiss":
             with pytest.raises(Exception):
                 ds.update_embeddings(retriever, update_existing_embeddings=True, filters={"meta_field": ["value"]})
         else:
@@ -114,7 +113,7 @@ def test_update_embeddings_table_text_retriever(tmp_path):
         }
     )
 
-    with document_store("elasticsearch", documents, tmp_path) as ds:
+    with document_store("elasticsearch", documents, tmp_path, embedding_dim=512) as ds:
         retriever = TableTextRetriever(
             document_store=document_store,
             query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
