@@ -113,7 +113,7 @@ def document_store(
             index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=recreate_index
         )
         for d in docs:
-            d["id"] = str(uuid.uuid4())
+            d.id = str(uuid.uuid4())
 
     elif name == "pinecone":
         document_store = PineconeDocumentStore(

@@ -66,7 +66,7 @@ def test_similarity_score_without_scaling(name, docs, tmp_path):
 
 @pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
 def test_similarity_score_dot_product(name, docs, tmp_path):
-    with document_store(name, docs, tmp_path, similarity="dot_product") as ds:
+    with document_store(name, docs, tmp_path, similarity="dot_product", embedding_dim=384) as ds:
         retriever = EmbeddingRetriever(
             document_store=ds, embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2", model_format="farm"
         )
