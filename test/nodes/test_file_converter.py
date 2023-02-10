@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 import subprocess
 import csv
+import json
 
+import pandas as pd
 import pytest
 
 from haystack import Document
@@ -19,6 +21,7 @@ from haystack.nodes import (
     ParsrConverter,
     TextConverter,
     CsvTextConverter,
+    JsonConverter,
     PreProcessor,
 )
 
@@ -434,3 +437,129 @@ def test_csv_to_document_many_files(tmp_path):
         assert isinstance(doc, Document)
         assert doc.content == f"{i}. What is Haystack ?"
         assert doc.meta["answer"] == f"{i}. Haystack is an NLP Framework to use transformers in your Applications."
+
+
+@pytest.mark.integration
+class TestJsonConverter:
+    JSON_FILE_NAME = "json_normal.json"
+    JSONL_FILE_NAME = "json_normal.jsonl"
+    JSON_SINGLE_LINE_FILE_NAME = "json_all_single.json"
+    JSONL_LIST_LINE_FILE_NAME = "json_list_line.jsonl"
+    JSON_INVALID = "json_invalid.json"
+
+    @classmethod
+    @pytest.fixture(autouse=True)
+    def setup_class(cls, tmp_path):
+        # Setup the documents
+        # Note: We are tying the behavior of `JsonConverter`
+        # to that of the `to_dict()` method on the `Document`
+        documents = [
+            Document(
+                content=pd.DataFrame(
+                    [["C", "Yes", "No"], ["Haskell", "No", "No"], ["Python", "Yes", "Yes"]],
+                    columns=["Language", "Imperative", "OO"],
+                ),
+                content_type="table",
+                meta={"context": "Programming Languages", "page": 2},
+            ),
+            Document(
+                content="Programming languages are used for controlling the behavior of a machine (often a computer).",
+                content_type="text",
+                meta={"context": "Programming Languages", "page": 1},
+            ),
+            Document(
+                content=pd.DataFrame(
+                    [["C", 1, 1], ["Python", 6, 6.5]], columns=["Language", "Statements ratio", "Line ratio"]
+                ),
+                content_type="table",
+                meta={"context": "Expressiveness", "page": 3},
+            ),
+        ]
+
+        doc_dicts_list = [d.to_dict() for d in documents]
+
+        json_path = tmp_path / TestJsonConverter.JSON_FILE_NAME
+        with open(json_path, "w") as f:
+            json.dump(doc_dicts_list, f)
+
+        jsonl_path = tmp_path / TestJsonConverter.JSONL_FILE_NAME
+        with open(jsonl_path, "w") as f:
+            for doc in doc_dicts_list:
+                f.write(json.dumps(doc) + "\n")
+
+        # json but everything written in a single line
+        json_single_path = tmp_path / TestJsonConverter.JSON_SINGLE_LINE_FILE_NAME
+        with open(json_single_path, "w") as f:
+            f.write(json.dumps(doc_dicts_list))
+
+        # Two lines (jsonl) but each line contains a list of dict instead of dict
+        jsonl_list_line_path = tmp_path / TestJsonConverter.JSONL_LIST_LINE_FILE_NAME
+        with open(jsonl_list_line_path, "w") as f:
+            for doc in [doc_dicts_list[:2], doc_dicts_list[2:3]]:
+                f.write(json.dumps(doc) + "\n")
+
+        json_invalid_path = tmp_path / TestJsonConverter.JSON_INVALID
+        with open(json_invalid_path, "w") as f:
+            f.write("{an invalid json string}")
+
+    def _assert_docs_okay(self, docs):
+        # Two table docs and one text doc
+        # [table, text, table]
+        assert len(docs) == 3
+        assert all(doc.meta["topic"] == "programming" for doc in docs)
+        assert all(d.content_type == expected for d, expected in zip(docs, ("table", "text", "table")))
+
+        # Text doc test
+        assert (
+            docs[1].content
+            == "Programming languages are used for controlling the behavior of a machine (often a computer)."
+        )
+
+        # Table doc tests
+        assert isinstance(docs[0].content, pd.DataFrame)
+        assert docs[0].content.shape == (3, 3)
+
+        assert isinstance(docs[2].content, pd.DataFrame)
+        assert docs[2].content.shape == (2, 3)
+
+    def test_json_to_documents(self, tmp_path):
+        json_path = tmp_path / TestJsonConverter.JSON_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(json_path, meta={"topic": "programming"})
+
+        self._assert_docs_okay(docs)
+
+    def test_json_to_documents_single_line(self, tmp_path):
+        json_path = tmp_path / TestJsonConverter.JSON_SINGLE_LINE_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(json_path, meta={"topic": "programming"})
+
+        self._assert_docs_okay(docs)
+
+    def test_jsonl_to_documents(self, tmp_path):
+        jsonl_path = tmp_path / TestJsonConverter.JSONL_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(jsonl_path, meta={"topic": "programming"})
+
+        self._assert_docs_okay(docs)
+
+    def test_jsonl_to_documents_list_line(self, tmp_path):
+        jsonl_path = tmp_path / TestJsonConverter.JSONL_LIST_LINE_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(jsonl_path, meta={"topic": "programming"})
+
+        self._assert_docs_okay(docs)
+
+    def test_json_invalid(self, tmp_path):
+        json_path = tmp_path / TestJsonConverter.JSON_INVALID
+
+        converter = JsonConverter()
+        with pytest.raises(json.JSONDecodeError) as excinfo:
+            converter.convert(json_path)
+
+        # Assert filename is in the error message
+        assert TestJsonConverter.JSON_INVALID in str(excinfo.value)
