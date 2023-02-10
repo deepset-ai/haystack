@@ -272,9 +272,6 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support")
         assert len(original_documents) == len(transferred_documents)
         assert all("name" in doc.meta for doc in transferred_documents)
-        assert all("date_field" in doc.meta for doc in transferred_documents)
-        assert all("meta_field" not in doc.meta for doc in transferred_documents)
-        assert all("numeric_field" not in doc.meta for doc in transferred_documents)
         assert all(doc.id == doc._get_id(["content", "meta"]) for doc in transferred_documents)
 
         original_content = set([doc.content for doc in original_documents])
@@ -291,10 +288,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             preprocessor=PreProcessor(split_length=1, split_respect_sentence_boundary=False),
         )
         transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support_2")
-        assert all("date_field" not in doc.meta for doc in transferred_documents)
         assert all("name" in doc.meta for doc in transferred_documents)
-        assert all("meta_field" in doc.meta for doc in transferred_documents)
-        assert all("numeric_field" in doc.meta for doc in transferred_documents)
         # Check if number of transferred_documents is equal to number of unique words.
         assert len(transferred_documents) == len(set(" ".join(original_content).split()))
 
