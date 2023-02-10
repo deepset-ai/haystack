@@ -1,31 +1,29 @@
-from typing import Callable, List, Optional, Dict, Tuple, Union, Any
-
+import hashlib
+import json
+import logging
 import os
 import re
 import sys
-import json
 import time
-import logging
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
-import hashlib
 
 try:
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium import webdriver
+    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.common.by import By
+    from webdriver_manager.chrome import ChromeDriverManager
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "crawler", ie)
 
+from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.errors import NodeError
-
 
 logger = logging.getLogger(__name__)
 
