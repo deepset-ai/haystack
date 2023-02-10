@@ -629,7 +629,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         PromptTemplate(
             name="question-answering",
-            prompt_text="Given the contex please answer the question. Context: $documents; Question: "
+            prompt_text="Given the context please answer the question. Context: $documents; Question: "
             "$questions; Answer:",
         ),
         PromptTemplate(
