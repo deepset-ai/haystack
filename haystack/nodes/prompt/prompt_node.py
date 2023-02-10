@@ -437,6 +437,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     @retry_with_exponential_backoff(
         backoff_in_seconds=int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
         max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
+        errors=(OpenAIRateLimitError, OpenAIError),
     )
     def invoke(self, *args, **kwargs):
         """
