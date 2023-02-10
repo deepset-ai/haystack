@@ -705,9 +705,9 @@ class DPREncoder(LanguageModel):
         :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, number_of_hard_negative, max_seq_len].
         :param segment_ids: The ID of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and the tokens in the second sentence are marked with 1.
-           It is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len].
+           It is a tensor of shape [batch_size, max_seq_len].
         :param attention_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
-           of shape [batch_size,  number_of_hard_negative_passages, max_seq_len].
+           of shape [batch_size, max_seq_len].
         :param output_hidden_states: whether to add the hidden states along with the pooled output
         :param output_attentions: unused
         :return: Embeddings for each token in the input sequence.
