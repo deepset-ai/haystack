@@ -773,13 +773,11 @@ class PromptNode(BaseComponent):
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         """
         Prompts the model and represents the central API for the PromptNode. It takes a prompt template,
-        a list of non-keyword and keyword arguments, and returns a list of strings - the responses from
-        the underlying model.
+        a list of non-keyword and keyword arguments, and returns a list of strings - the responses from the underlying model.
 
-        If you specify the optional prompt_template parameter, it takes precedence over the default prompt
-        template for this PromptNode.
+        If you specify the optional prompt_template parameter, it takes precedence over the default PromptTemplate for this PromptNode.
 
-        :param prompt_template: The name of the optional prompt template to use.
+        :param prompt_template: The name or object of the optional PromptTemplate to use.
         :return: A list of strings as model responses.
         """
         results = []
