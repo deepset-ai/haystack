@@ -84,6 +84,8 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
     """
     Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
     """
+    from haystack.telemetry import HAYSTACK_EXECUTION_CONTEXT
+
     global env_meta_data  # pylint: disable=global-statement
     if not env_meta_data:
         env_meta_data = {
@@ -108,6 +110,8 @@ def _get_execution_environment():
     Identifies the execution environment that Haystack is running in.
     Options are: colab notebook, kubernetes, CPU/GPU docker container, test environment, jupyter notebook, python script
     """
+    from haystack.telemetry import HAYSTACK_DOCKER_CONTAINER
+
     if os.environ.get("CI", "False").lower() == "true":
         execution_env = "ci"
     elif "google.colab" in sys.modules:

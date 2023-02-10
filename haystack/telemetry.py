@@ -144,6 +144,8 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
     :param event: Name of the event. Use a noun and a verb, e.g., "evaluation started", "component created"
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
+    if os.environ.get("HAYSTACK_TELEMETRY_VERSION", "2") != "1":
+        return
     global user_id  # pylint: disable=global-statement
     if payload is None:
         payload = {}
@@ -181,6 +183,7 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
             return
 
     except Exception as e:
+        print("Exception! ", e)
         logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 

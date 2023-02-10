@@ -10,8 +10,6 @@ import posthog
 
 from haystack.environment import collect_static_system_specs, collect_dynamic_system_specs
 
-posthog.api_key = "phc_C44vUK9R1J6HYVdfJarTEPqVAoRPJzMXzFcj8PIrJgP"
-posthog.host = "https://eu.posthog.com"
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
 HAYSTACK_DOCKER_CONTAINER = "HAYSTACK_DOCKER_CONTAINER"
@@ -20,14 +18,6 @@ LOG_PATH = Path("~/.haystack/telemetry.log").expanduser()
 
 
 logger = logging.getLogger(__name__)
-
-
-# disable posthog logging
-for module_name in ["posthog", "backoff"]:
-    logging.getLogger(module_name).setLevel(logging.CRITICAL)
-    # Prevent module from sending errors to stderr when an exception is encountered during an emit() call
-    logging.getLogger(module_name).addHandler(logging.NullHandler())
-    logging.getLogger(module_name).propagate = False
 
 
 class Telemetry:
@@ -51,6 +41,16 @@ class Telemetry:
         It also collects system information which cannot change across the lifecycle
         of the process (for example `is_containerized()`)
         """
+        posthog.api_key = "phc_C44vUK9R1J6HYVdfJarTEPqVAoRPJzMXzFcj8PIrJgP"
+        posthog.host = "https://eu.posthog.com"
+
+        # disable posthog logging
+        for module_name in ["posthog", "backoff"]:
+            logging.getLogger(module_name).setLevel(logging.CRITICAL)
+            # Prevent module from sending errors to stderr when an exception is encountered during an emit() call
+            logging.getLogger(module_name).addHandler(logging.NullHandler())
+            logging.getLogger(module_name).propagate = False
+
         self.user_id = None
 
         if CONFIG_PATH.exists():
@@ -95,7 +95,10 @@ class Telemetry:
             posthog.capture(
                 distinct_id=self.user_id,
                 event=event_name,
-                properties=json.dump({**self.event_properties, **dynamic_specs, **event_properties}, sort_keys=True),
+                # loads/dumps to sort the keys
+                properties=json.loads(
+                    json.dumps({**self.event_properties, **dynamic_specs, **event_properties}, sort_keys=True)
+                ),
             )
         except Exception as e:
             logger.debug("Telemetry was not able to make a POST request to posthog.", exc_info=e)
@@ -204,7 +207,7 @@ def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = Non
         logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
 
 
-if os.environ.get("HAYSTACK_TELEMETRY_V2", False):
+if os.environ.get("HAYSTACK_TELEMETRY_VERSION", "2") == "2":
     telemetry = Telemetry()
 else:
     telemetry = None  # type: ignore
