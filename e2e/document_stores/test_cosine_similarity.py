@@ -51,15 +51,16 @@ DOCUMENTS = [
 
 @pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
 def test_cosine_similarity(name, tmp_path):
-    with document_store(name, DOCUMENTS, tmp_path) as ds:
+    documents = [Document.from_dict(d) for d in DOCUMENTS]
+    with document_store(name, documents, tmp_path) as ds:
         # below we will write documents to the store and then query it to see if vectors were normalized or not
         query = np.random.rand(768).astype(np.float32)
         query_results = ds.query_by_embedding(
-            query_emb=query, top_k=len(DOCUMENTS), return_embedding=True, scale_score=False
+            query_emb=query, top_k=len(documents), return_embedding=True, scale_score=False
         )
 
         # check if search with cosine similarity returns the correct number of results
-        assert len(query_results) == len(DOCUMENTS)
+        assert len(query_results) == len(documents)
 
         original_embeddings = {doc["content"]: doc["embedding"] for doc in DOCUMENTS}
 
@@ -69,11 +70,7 @@ def test_cosine_similarity(name, tmp_path):
 
             expected_emb = original_emb
             # embeddings of document stores which only support dot product out of the box must be normalized
-            if (
-                isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
-                or isinstance(document_store, OpenSearchDocumentStore)
-                and document_store.knn_engine == "faiss"
-            ):
+            if name in ["faiss", "milvus", "weaviate", "opensearch_faiss"]:
                 expected_emb = original_emb / np.linalg.norm(original_emb)
 
             # check if the stored embedding was normalized or not
@@ -88,15 +85,14 @@ def test_cosine_similarity(name, tmp_path):
 
 @pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
 def test_update_embeddings_cosine_similarity(name, tmp_path):
-    with document_store(name, DOCUMENTS, tmp_path) as ds:
-        # below we will write documents to the store and then query it to see if vectors were normalized
+    # clear embeddings and convert to Document
+    documents = deepcopy(DOCUMENTS)
+    for doc in documents:
+        doc.pop("embedding")
+    documents = [Document.from_dict(d) for d in documents]
 
-        # clear embeddings
-        docs = deepcopy(DOCUMENTS)
-        for doc in docs:
-            doc.pop("embedding")
-
-        ds.write_documents(documents=docs)
+    with document_store(name, documents, tmp_path) as ds:
+        # we wrote documents to the store and then query it to see if vectors were normalized
         original_embeddings = {}
 
         # now check if vectors are normalized when updating embeddings
@@ -126,11 +122,7 @@ def test_update_embeddings_cosine_similarity(name, tmp_path):
 
             expected_emb = original_emb
             # embeddings of document stores which only support dot product out of the box must be normalized
-            if (
-                isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
-                or isinstance(document_store, OpenSearchDocumentStore)
-                and document_store.knn_engine == "faiss"
-            ):
+            if name in ["faiss", "milvus", "weaviate", "opensearch_faiss"]:
                 expected_emb = original_emb / np.linalg.norm(original_emb)
 
             # check if the stored embedding was normalized or not
@@ -143,7 +135,7 @@ def test_update_embeddings_cosine_similarity(name, tmp_path):
             assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"])
+@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "memory", "elasticsearch", "opensearch_faiss"])
 def test_cosine_sanity_check(name, tmp_path):
     VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
     VEC_2 = np.array([0.4, 0.5, 0.6], dtype="float32")
