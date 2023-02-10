@@ -67,9 +67,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
     ```
 
     Optionally, you can declare prompt parameters in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
-    the prompt_text for the model to perform the task. For example, in the template above, there's one prompt parameter, `documents`. You declare prompt parameters by adding variables to the prompt text. These variables should be in the format: `$variable`. In the template above, the variable is `$documents`. 
-    
-    At runtime, these variables are filled in with arguments passed to the `fill()` method of the PromptTemplate. So in the example above, the `$documents` variable will be filled with the Documents whose sentiment you want the model to analyze. 
+    the prompt_text for the model to perform the task. For example, in the template above, there's one prompt parameter, `documents`. You declare prompt parameters by adding variables to the prompt text. These variables should be in the format: `$variable`. In the template above, the variable is `$documents`.
+
+    At runtime, these variables are filled in with arguments passed to the `fill()` method of the PromptTemplate. So in the example above, the `$documents` variable will be filled with the Documents whose sentiment you want the model to analyze.
 
     For more details on how to use PromptTemplate, see
     [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
@@ -629,8 +629,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         PromptTemplate(
             name="question-answering",
-            prompt_text="Given the contex, answer the question. Context: $documents; Question: "
-            "$questions; Answer:",
+            prompt_text="Given the contex, answer the question. Context: $documents; Question: " "$questions; Answer:",
         ),
         PromptTemplate(
             name="question-generation",
