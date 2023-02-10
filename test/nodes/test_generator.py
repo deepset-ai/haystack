@@ -4,6 +4,7 @@ from typing import List
 
 import pytest
 
+from haystack import Pipeline
 from haystack.schema import Document
 from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
@@ -147,13 +148,26 @@ def test_openai_answer_generator(openai_generator, docs):
     not os.environ.get("OPENAI_API_KEY", None),
     reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
-def test_openai_answer_generator_max_token(docs, caplog):
-    openai_generator = OpenAIAnswerGenerator(
-        api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1
-    )
-    openai_generator.MAX_TOKENS_LIMIT = 116
-    with caplog.at_level(logging.INFO):
-        prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
-        assert "Skipping all of the provided Documents" in caplog.text
-        assert len(prediction["answers"]) == 1
-        # Can't easily check content of answer since it is generative and can change between runs
+def test_openai_answer_generator_max_tokens(openai_generator):
+    nyc_docs = [Document(content="New York is a cool and amazing city to live in the United States of America.")]
+    prediction = openai_generator.predict(query="What is New York City like?", documents=nyc_docs, max_tokens=3)
+    assert len(prediction["answers"]) == 1
+    token_count = prediction["answers"][0].answer.split()
+    assert 1 < len(token_count) <= 3
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_openai_answer_generator_pipeline_max_tokens(openai_generator):
+    nyc_docs = [Document(content="New York is a cool and amazing city to live in the United States of America.")]
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=openai_generator, name="generator", inputs=["Query"])
+    results = pipeline.run(query="What is New York City like?", documents=nyc_docs, params={"max_tokens": 3})
+    assert len(results["answers"]) == 1
+    token_count = results["answers"][0].answer.split()
+    assert 1 < len(token_count) <= 3
+
