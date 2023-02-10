@@ -104,7 +104,7 @@ class Telemetry:
             logger.debug("Telemetry was not able to make a POST request to posthog.", exc_info=e)
 
 
-def send_pipeline_run_event(
+def send_pipeline_run_event(  # type: ignore
     event_name: str,
     pipeline: "Pipeline",
     query: Optional[str] = None,
@@ -117,9 +117,8 @@ def send_pipeline_run_event(
     debug: Optional[bool] = None,
 ):
     try:
-        global telemetry
         if telemetry:
-            event_properties = {}
+            event_properties: Dict[str, Union[str, bool, int]] = {}
 
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
@@ -180,9 +179,8 @@ def send_pipeline_run_event(
         logger.debug("There was an issue sending a %s telemetry event", event_name, exc_info=e)
 
 
-def send_pipeline_event(pipeline: "Pipeline", event_name: str):
+def send_pipeline_event(pipeline: "Pipeline", event_name: str):  # type: ignore
     try:
-        global telemetry
         if telemetry:
             telemetry.send_event(
                 event_name=event_name,
@@ -199,7 +197,6 @@ def send_pipeline_event(pipeline: "Pipeline", event_name: str):
 
 def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = None):
     try:
-        global telemetry
         if telemetry:
             telemetry.send_event(event_name=event_name, event_properties=event_properties)
     except Exception as e:

@@ -11,7 +11,7 @@ from pathlib import Path
 import requests
 
 from haystack.telemetry import send_tutorial_event
-from haystack.telemetry import send_event
+from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
 

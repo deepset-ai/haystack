@@ -440,8 +440,8 @@ class Pipeline:
         # to be able to cluster later by "pipeline type"
         # (is any specific pipeline configuration very popular?)
         fingerprint_config = deepcopy(self.get_config())
-        for component in fingerprint_config["components"]:
-            del component["name"]
+        for comp in fingerprint_config["components"]:
+            del comp["name"]
         fingerprint = json.dumps(fingerprint_config, default=str)
         self.fingerprint = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
 
@@ -813,8 +813,8 @@ class Pipeline:
             event_name="Pipeline.eval_beir()",
             event_properties={
                 "dataset": dataset,
-                "index_pipeline": index_pipeline.yaml_path,
-                "query_pipeline": query_pipeline.yaml_path,
+                "index_pipeline": index_pipeline.yaml_hash,
+                "query_pipeline": query_pipeline.yaml_hash,
                 "num_documents": num_documents,
                 "top_k_values": top_k_values,
             },
