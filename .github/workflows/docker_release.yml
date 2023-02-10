@@ -45,7 +45,6 @@ jobs:
         with:
           workdir: docker
           targets: base
-          load: true
           push: true
 
       - name: Test base images
@@ -106,7 +105,6 @@ jobs:
         with:
           workdir: docker
           targets: api-latest
-          load: true
           push: true
 
       - name: Test api image no version in tag
