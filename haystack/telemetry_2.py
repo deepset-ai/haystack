@@ -104,7 +104,7 @@ class Telemetry:
             logger.debug("Telemetry was not able to make a POST request to posthog.", exc_info=e)
 
 
-def sent_pipeline_run_event(
+def send_pipeline_run_event(
     event_name: str,
     pipeline: "Pipeline",
     query: Optional[str] = None,
@@ -180,7 +180,7 @@ def sent_pipeline_run_event(
         logger.debug("There was an issue sending a %s telemetry event", event_name, exc_info=e)
 
 
-def sent_pipeline_event(pipeline: "Pipeline", event_name: str):
+def send_pipeline_event(pipeline: "Pipeline", event_name: str):
     try:
         global telemetry
         if telemetry:

@@ -942,7 +942,7 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-
+        send_event("FARMReader.eval_on_file()")
         if device is None:
             device = self.devices[0]
         else:
@@ -1020,7 +1020,7 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-
+        send_event("FARMReader.eval()")
         if device is None:
             device = self.devices[0]
         else:

@@ -55,8 +55,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-
-from haystack.telemetry_2 import sent_pipeline_run_event, sent_pipeline_event
+from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
 
 
 logger = logging.getLogger(__name__)
@@ -495,7 +494,7 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        sent_pipeline_run_event(
+        send_pipeline_run_event(
             pipeline=self,
             event_name="Pipeline.run()",
             query=query,
@@ -643,7 +642,7 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        sent_pipeline_run_event(
+        send_pipeline_run_event(
             pipeline=self,
             event_name="Pipeline.run_batch()",
             queries=queries,
@@ -810,7 +809,7 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
-        sent_event(
+        send_event_2(
             event_name="Pipeline.eval_beir()",
             event_properties={
                 "dataset": dataset,
@@ -1259,7 +1258,7 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        sent_pipeline_event(pipeline=self, event_name="Pipeline.eval()")
+        send_pipeline_event(pipeline=self, event_name="Pipeline.eval()")
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1378,7 +1377,7 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        sent_pipeline_event(pipeline=self, event_name="Pipeline.eval_batch()")
+        send_pipeline_event(pipeline=self, event_name="Pipeline.eval_batch()")
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
