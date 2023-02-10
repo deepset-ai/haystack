@@ -4,12 +4,6 @@ import math
 import pytest
 import numpy as np
 
-from haystack.document_stores import (
-    WeaviateDocumentStore,
-    FAISSDocumentStore,
-    MilvusDocumentStore,
-    OpenSearchDocumentStore,
-)
 from haystack.schema import Document
 
 from .conftest import document_store
