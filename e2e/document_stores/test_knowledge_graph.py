@@ -1,14 +1,10 @@
 from pathlib import Path
 
-import pytest
-
 from haystack.nodes import Text2SparqlRetriever
 from haystack.document_stores import GraphDBKnowledgeGraph, InMemoryKnowledgeGraph
 from haystack.utils import fetch_archive_from_http
 
 
-@pytest.mark.graphdb
-@pytest.mark.integration
 def test_graph_retrieval():
     # we use a timeout double the default in the CI to account for slow runners
     timeout = 20
@@ -65,7 +61,6 @@ def test_graph_retrieval():
     assert result[0][0] == "https://deepset.ai/harry_potter/Otter"
 
 
-@pytest.mark.integration
 def test_inmemory_graph_retrieval():
     # TODO rename doc_dir
     graph_dir = "../data/tutorial10_knowledge_graph/"
