@@ -34,6 +34,8 @@ def is_containerized() -> Optional[bool]:
     # Using CPU scheduling info as I found it to be the only one usable on my machine.
     path = "/proc/1/sched"
     try:
+        if os.path.exists("/.dockerenv"):
+            return True
         with open(path, "r") as cgroupfile:
             first_line = cgroupfile.readline()
             if first_line.startswith("systemd") or first_line.startswith("init"):
