@@ -80,7 +80,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
         :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
-                                 in the text. This increases the model's likelihood to talk about new topics. For more information about frequency and presence penalties, see 
+                                 in the text. This increases the model's likelihood to talk about new topics. For more information about frequency and presence penalties, see
                                  [parameter details in OpenAI](https://platform.openai.com/docs/api-reference/parameter-details).
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
                                   frequency in the text so far, decreasing the model's likelihood to repeat the same line
