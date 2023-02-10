@@ -9,6 +9,7 @@ import logging
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
+from haystack.telemetry import send_custom_event
 from haystack.utils import args_to_kwargs
 
 
@@ -58,7 +59,9 @@ class BaseComponent(ABC):
     _component_config: dict = {}
 
     def __init__(self):
+        # a small subset of the component's parameters is sent in an event after applying filters defined in haystack.telemetry.NonPrivateParameters
         component_params = self._component_config.get("params", {})
+        send_custom_event(event=f"{type(self).__name__} initialized", payload=component_params)
         self.outgoing_edges = self._calculate_outgoing_edges(component_params=component_params)
 
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_

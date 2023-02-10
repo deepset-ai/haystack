@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import datetime
 import itertools
+from datetime import timedelta
 from functools import partial
+from hashlib import sha1
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -47,12 +49,14 @@ from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
+from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
-from haystack.telemetry import sent_pipeline_run_event, sent_pipeline_event, send_event
+from haystack.telemetry_2 import sent_pipeline_run_event, sent_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -599,6 +603,7 @@ class Pipeline:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
         self.run_total += 1
+        self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
     def run_batch(  # type: ignore
@@ -1183,6 +1188,7 @@ class Pipeline:
 
         return eval_result
 
+    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
@@ -1301,6 +1307,7 @@ class Pipeline:
 
         return eval_result
 
+    @send_event
     def eval_batch(
         self,
         labels: List[MultiLabel],
@@ -2334,6 +2341,93 @@ class Pipeline:
             wrong_examples_fields=wrong_examples_fields,
             max_characters_per_field=max_characters_per_field,
         )
+
+    def get_type(self) -> str:
+        """
+        Returns the type of the pipeline.
+        """
+        # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
+        # specified by dict keys
+        pipeline_types = {
+            # QuestionGenerationPipeline has only one component, which is a QuestionGenerator
+            "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
+            # GenerativeQAPipeline has at least BaseGenerator and BaseRetriever components
+            "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseGenerator) for x in x.values()),
+            # FAQPipeline has at least one Docs2Answers component
+            "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
+            # ExtractiveQAPipeline has at least one BaseRetriever component and one BaseReader component
+            "ExtractiveQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseReader) for x in x.values()),
+            # ExtractiveQAPipeline has at least one BaseSummarizer component and one BaseRetriever component
+            "SearchSummarizationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseSummarizer) for x in x.values()),
+            # TranslationWrapperPipeline has two or more BaseTranslator components
+            "TranslationWrapperPipeline": lambda x: [isinstance(x, BaseTranslator) for x in x.values()].count(True)
+            >= 2,
+            # RetrieverQuestionGenerationPipeline has at least one BaseRetriever component and one
+            # QuestionGenerator component
+            "RetrieverQuestionGenerationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            # QuestionAnswerGenerationPipeline has at least one BaseReader component and one QuestionGenerator component
+            "QuestionAnswerGenerationPipeline": lambda x: any(isinstance(x, BaseReader) for x in x.values())
+            and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            # MostSimilarDocumentsPipeline has only BaseDocumentStore component
+            "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
+            and isinstance(list(x.values())[0], BaseDocumentStore),
+            # DocumentSearchPipeline has at least one BaseRetriever component
+            "DocumentSearchPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values()),
+        }
+        retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
+        doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
+
+        pipeline_type = next(
+            (p_type for p_type, eval_f in pipeline_types.items() if eval_f(self.components)), "Unknown pipeline"
+        )
+        retrievers_used = retrievers if retrievers else "None"
+        doc_stores_used = doc_stores if doc_stores else "None"
+        return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
+
+    def uptime(self) -> timedelta:
+        """
+        Returns the uptime of the pipeline in timedelta.
+        """
+        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
+
+    def send_pipeline_event(self, is_indexing: bool = False):
+        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
+        fingerprint = sha1(json_repr.encode()).hexdigest()
+        send_custom_event(
+            "pipeline",
+            payload={
+                "fingerprint": fingerprint,
+                "type": "Indexing" if is_indexing else self.get_type(),
+                "uptime": int(self.uptime().total_seconds()),
+                "run_total": self.run_total,
+                "run_total_window": self.run_total - self.last_window_run_total,
+            },
+        )
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
+        self.last_window_run_total = self.run_total
+
+    def send_pipeline_event_if_needed(self, is_indexing: bool = False):
+        if is_telemetry_enabled():
+            should_send_event = (
+                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
+            )
+            if should_send_event and not self.sent_event_in_window:
+                self.send_pipeline_event(is_indexing)
+                self.sent_event_in_window = True
+            elif self._has_event_time_interval_exceeded():
+                self.sent_event_in_window = False
+
+    def _has_event_time_interval_exceeded(self):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return now - self.time_of_last_sent_event > self.event_time_interval
+
+    def _has_event_run_total_threshold_exceeded(self):
+        return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:
