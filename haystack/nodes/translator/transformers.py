@@ -144,28 +144,56 @@ class TransformersTranslator(BaseTranslator):
         else:
             text_for_translator: List[str] = [query]  # type: ignore
 
-        # avoid silent truncation if max_seq_len is not passed (or longer than model's max_len)
-        if self.max_seq_len is None or self.max_seq_len > self.tokenizer.model_max_length:
-            for text in text_for_translator:
-                token_ids = self.tokenizer.encode(text)
-                if len(token_ids) > self.tokenizer.model_max_length:
-                    logger.warning(f"The text passed for translation is longer than the model's max length. "
-                                   f"Model's limit: {self.tokenizer.model_max_length} tokens. "
-                                   f"Input's length: {len(token_ids) + 2} tokens.")
-                    break
-
         batch = self.tokenizer(
-            text=text_for_translator,
-            return_tensors="pt",
-            max_length=self.max_seq_len,
-            padding="longest",
-            truncation=True,
+            text=text_for_translator, return_tensors="pt", max_length=self.max_seq_len, padding="longest"
         ).to(self.devices[0])
 
-        generated_output = self.model.generate(**batch)
-        translated_texts = self.tokenizer.batch_decode(
-            generated_output, skip_special_tokens=True, clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
-        )
+        translated_texts = []
+        input_len = len(batch["input_ids"][0])
+        if input_len > self.tokenizer.model_max_length:
+            logger.warning(
+                f"The text passed for translation is longer than the model's max length. "
+                f"Model's limit: {self.tokenizer.model_max_length} tokens. "
+                f"Input's length: {input_len} tokens. "
+                f"The long text(s) will be cut in pieces and translated separately (it might affect "
+                f"the quality and the speed)"
+            )
+            for i in range(0, len(batch)):
+                ones = (batch["attention_mask"][i] == 1.0).sum(dim=0).item()
+                if ones <= self.tokenizer.model_max_length:
+                    generated_output = self.model.generate(
+                        input_ids=batch["input_ids"][i], attention_mask=batch["attention_mask"][i]
+                    )
+                    translated_text = self.tokenizer.batch_decode(
+                        generated_output,
+                        skip_special_tokens=True,
+                        clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
+                    )
+                    translated_texts.append(translated_text)
+                else:
+                    # todo: check? better? apply attention mask - multiply?
+                    input_ids = batch["input_ids"][i][:ones][:-1]  # assume only right padding is used
+                    split_input = input_ids.split(self.tokenizer.model_max_length - 2)
+
+                    # todo: batch at least the split part
+                    for sp in split_input:
+                        sp = torch.cat((sp, torch.tensor([self.tokenizer.eos_token_id], dtype=torch.int64)), dim=0)
+
+                        generated_output = self.model.generate(sp)
+
+                        translated_text = self.tokenizer.batch_decode(
+                            generated_output,
+                            skip_special_tokens=True,
+                            clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
+                        )
+                        translated_texts.append(translated_text)
+        else:
+            generated_output = self.model.generate(**batch)
+            translated_texts = self.tokenizer.batch_decode(
+                generated_output,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
+            )
 
         if queries_for_translator is not None and answers_for_translator is not None:
             return translated_texts
