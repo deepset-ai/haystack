@@ -1,4 +1,5 @@
 import logging
+from abc import ABC
 from copy import deepcopy
 from functools import wraps
 from pathlib import Path
