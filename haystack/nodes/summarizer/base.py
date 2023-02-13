@@ -30,7 +30,6 @@ class BaseSummarizer(BaseComponent):
         pass
 
     def run(self, documents: List[Document]):  # type: ignore
-
         results: Dict = {"documents": []}
 
         if documents:
@@ -41,7 +40,6 @@ class BaseSummarizer(BaseComponent):
     def run_batch(  # type: ignore
         self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ):
-
         results = self.predict_batch(documents=documents, batch_size=batch_size)
 
         return {"documents": results}, "output_1"

@@ -68,7 +68,6 @@ class AnswerToSpeech(BaseComponent):
     def run(self, answers: List[Answer]) -> Tuple[Dict[str, List[Answer]], str]:  # type: ignore
         audio_answers = []
         for answer in tqdm(answers, disable=not self.progress_bar, desc="Converting answers to audio"):
-
             answer_audio = self.converter.text_to_audio_file(
                 text=answer.answer, generated_audio_dir=self.generated_audio_dir, **self.params
             )

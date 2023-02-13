@@ -122,7 +122,6 @@ class BaseStandardPipeline(ABC):
         context_matching_boost_split_overlaps: bool = True,
         context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
-
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
@@ -181,7 +180,6 @@ class BaseStandardPipeline(ABC):
         context_matching_boost_split_overlaps: bool = True,
         context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
-
         """
          Evaluates the pipeline by running the pipeline once per query in the debug mode
          and putting together all data that is needed for evaluation, for example, calculating metrics.

@@ -18,13 +18,13 @@ def is_openai_api_key_set(api_key: str):
 def test_prompt_templates():
     p = PromptTemplate("t1", "Here is some fake template with variable $foo", ["foo"])
 
-    with pytest.raises(ValueError, match="Number of parameters in"):
+    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
         PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo"])
 
     with pytest.raises(ValueError, match="Invalid parameter"):
         PromptTemplate("t2", "Here is some fake template with variable $footur", ["foo"])
 
-    with pytest.raises(ValueError, match="Number of parameters in"):
+    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
         PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo", "bar", "baz"])
 
     p = PromptTemplate("t3", "Here is some fake template with variable $for and $bar", ["for", "bar"])
@@ -133,7 +133,7 @@ def test_invalid_template(prompt_node):
             name="custom-task", prompt_text="Custom task: $pram1 $param2", prompt_params=["param1", "param2"]
         )
 
-    with pytest.raises(ValueError, match="Number of parameters"):
+    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
         PromptTemplate(name="custom-task", prompt_text="Custom task: $param1", prompt_params=["param1", "param2"])
 
 
@@ -195,12 +195,12 @@ def test_has_supported_template_names(prompt_node):
 
 
 def test_invalid_template_params(prompt_node):
-    with pytest.raises(ValueError, match="Expected prompt params"):
+    with pytest.raises(ValueError, match="Expected prompt parameters"):
         prompt_node.prompt("question-answering", {"some_crazy_key": "Berlin is the capital of Germany."})
 
 
 def test_wrong_template_params(prompt_node):
-    with pytest.raises(ValueError, match="Expected prompt params"):
+    with pytest.raises(ValueError, match="Expected prompt parameters"):
         # with don't have options param, multiple choice QA has
         prompt_node.prompt("question-answering", options=["Berlin is the capital of Germany."])
 

@@ -172,6 +172,7 @@ def test_retrieval_empty_query(document_store: BaseDocumentStore):
     assert result[0]["documents"][0][0] == mock_document
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -189,6 +190,7 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
     assert res[0][0].meta["name"] == "filename1"
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -442,6 +444,32 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     for doc, expected_value in zip(docs, expected_values):
         assert len(doc.embedding) == 512
         assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_text(document_store, retriever):
+    docs = [
+        Document(content="This is a test", content_type="text"),
+        Document(content="This is another test", content_type="text"),
+    ]
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_table(document_store, retriever):
+    doc = Document(
+        content=pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]]),
+        content_type="table",
+    )
+    document_store.write_documents([doc])
+    document_store.update_embeddings(retriever)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)

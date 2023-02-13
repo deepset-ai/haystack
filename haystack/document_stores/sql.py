@@ -41,7 +41,6 @@ Base = declarative_base()  # type: Any
 
 
 class ArrayType(TypeDecorator):
-
     impl = String
     cache_ok = True
 
@@ -624,7 +623,6 @@ class SQLDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
     ) -> List[Document]:
-
         raise NotImplementedError(
             "SQLDocumentStore is currently not supporting embedding queries. "
             "Change the query type (e.g. by choosing a different retriever) "

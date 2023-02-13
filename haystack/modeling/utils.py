@@ -38,7 +38,6 @@ def silence_transformers_logs(from_pretrained_func):
 
     @wraps(from_pretrained_func)
     def quiet_from_pretrained_func(cls, *args, **kwargs):
-
         # Raise the log level of Transformers
         t_logger = logging.getLogger("transformers")
         original_log_level = t_logger.level
@@ -268,6 +267,7 @@ def grouper(iterable, n: int, worker_id: int = 0, total_workers: int = 1):
     :param worker_id: the worker_id for the PyTorch DataLoader
     :param total_workers: total number of workers for the PyTorch DataLoader
     """
+
     # TODO make me comprehensible :)
     def get_iter_start_pos(gen):
         start_pos = worker_id * n
