@@ -492,16 +492,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             return_embedding = self.return_embedding
 
         if self.index_type in ["ivf", "ivf_pq"] and not self._ivf_model_exists(index=index):
-            add_num_of_embs = ""
-            if self.ivf_train_size != 0:
-                embs_to_add = self.get_embedding_count(index=index, headers=headers) - self.ivf_train_size
-                add_num_of_embs = (
-                    f"or add at least {embs_to_add} more embeddings to automatically start the " f"training process "
-                )
-            raise DocumentStoreError(
-                f"Index of type '{self.index_type}' is not trained yet. Train the index manually using "
-                f"`train_index` {add_num_of_embs}before querying it."
-            )
+            self._ivf_index_not_trained_error(index=index, headers=headers)
 
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
@@ -528,6 +519,104 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 )
 
         return documents
+
+    def query_by_embedding_batch(
+        self,
+        query_embs: Union[List[np.ndarray], np.ndarray],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        """
+        Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
+
+        :param query_embs: Embeddings of the queries (e.g. gathered from DPR).
+                        Can be a list of one-dimensional numpy arrays or a two-dimensional numpy array.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :return:
+        """
+        if index is None:
+            index = self.index
+
+        if self.index_type in ["ivf", "ivf_pq"] and not self._ivf_model_exists(index=index):
+            self._ivf_index_not_trained_error(index=index, headers=headers)
+
+        return super().query_by_embedding_batch(
+            query_embs, filters, top_k, index, return_embedding, headers, scale_score
+        )
 
     def _construct_dense_query_body(
         self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
@@ -719,13 +808,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'`. "
                     )
 
-                # We use score_script for IVF indices that are not trained yet
-                if self.index_type in ["ivf", "ivf_pq"] and "model_id" not in existing_embedding_field:
-                    knn_engine = "score_script"
-                else:
-                    knn_engine = self.knn_engine
                 # Check if existing embedding field fits desired knn settings
-                if knn_engine != "score_script":
+                training_required = self.index_type in ["ivf", "ivf_pq"] and "model_id" not in existing_embedding_field
+                if self.knn_engine != "score_script" and not training_required:
                     self._validate_approximate_knn_settings(existing_embedding_field, index_settings, index_id)
 
             # Adjust global ef_search setting (nmslib only).
@@ -963,6 +1048,18 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             existing_ivf_models = set()
 
         return f"{index}-ivf" in existing_ivf_models
+
+    def _ivf_index_not_trained_error(self, index: str, headers: Optional[Dict[str, str]] = None):
+        add_num_of_embs = ""
+        if self.ivf_train_size != 0:
+            embs_to_add = self.get_embedding_count(index=index, headers=headers) - self.ivf_train_size
+            add_num_of_embs = (
+                f"or add at least {embs_to_add} more embeddings to automatically start the " f"training process "
+            )
+        raise DocumentStoreError(
+            f"Index of type '{self.index_type}' is not trained yet. Train the index manually using "
+            f"`train_index` {add_num_of_embs}before querying it."
+        )
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         mapping = {

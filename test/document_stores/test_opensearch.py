@@ -24,7 +24,6 @@ from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 
 class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDocumentStoreTestAbstract):
-
     # Constants
     query_emb = np.random.random_sample(size=(2, 2))
     index_name = __name__
@@ -398,6 +397,20 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.embedding_field = ""
         with pytest.raises(DocumentStoreError):
             mocked_document_store.query_by_embedding(self.query_emb)
+
+    @pytest.mark.unit
+    def test_query_by_embedding_raises_if_ivf_untrained(self, mocked_document_store):
+        mocked_document_store.index_type = "ivf"
+        mocked_document_store.ivf_train_size = 10
+        with pytest.raises(DocumentStoreError):
+            mocked_document_store.query_by_embedding(self.query_emb)
+
+    @pytest.mark.unit
+    def test_query_by_embedding_batch_if_ivf_untrained(self, mocked_document_store):
+        mocked_document_store.index_type = "ivf"
+        mocked_document_store.ivf_train_size = 10
+        with pytest.raises(DocumentStoreError):
+            mocked_document_store.query_by_embedding_batch([self.query_emb])
 
     @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
