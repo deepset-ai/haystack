@@ -62,10 +62,11 @@ from haystack.nodes import (
     TransformersSummarizer,
     TransformersTranslator,
     QuestionGenerator,
+    PromptTemplate,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.prompt import PromptNode, PromptModel
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
 
 try:
@@ -279,11 +280,30 @@ class MockDocumentStore(BaseDocumentStore):
 class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
-    def retrieve(self, query: str, top_k: int):
-        pass
+    def retrieve(
+        self,
+        query: str,
+        filters: Optional[FilterType] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
+    ) -> List[Document]:
+        return []
 
-    def retrieve_batch(self, queries: List[str], top_k: int):
-        pass
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
+    ) -> List[List[Document]]:
+        return [[]]
 
 
 class MockSeq2SegGenerator(BaseGenerator):
@@ -348,6 +368,14 @@ class MockReader(BaseReader):
 
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
+
+
+class MockPromptNode(PromptNode):
+    def __init__(self):
+        pass
+
+    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
+        return [""]
 
 
 #
