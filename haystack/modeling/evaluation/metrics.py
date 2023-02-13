@@ -144,7 +144,7 @@ def squad_EM(preds, labels):
     """
     n_docs = len(preds)
     n_correct = 0
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         qa_candidate = pred[0][0]
         pred_start = qa_candidate.offset_answer_start
         pred_end = qa_candidate.offset_answer_end
@@ -160,7 +160,7 @@ def top_n_EM(preds, labels):
     """
     n_docs = len(preds)
     n_correct = 0
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         qa_candidates = pred[0]
         for qa_candidate in qa_candidates:
             pred_start = qa_candidate.offset_answer_start
@@ -178,7 +178,7 @@ def squad_EM_start(preds, labels):
     """
     n_docs = len(preds)
     n_correct = 0
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         qa_candidate = pred[0][0]
         pred_start = qa_candidate.offset_answer_start
         curr_labels = label
@@ -245,7 +245,7 @@ def metrics_per_bin(preds, labels, num_bins: int = 10):
     pred_bins = [[] for _ in range(num_bins)]  # type: List
     label_bins = [[] for _ in range(num_bins)]  # type: List
     count_per_bin = [0] * num_bins
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         current_score = pred[0][0].confidence
         if current_score >= 1.0:
             current_score = 0.9999

@@ -468,7 +468,6 @@ class Crawler(BaseComponent):
         already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> set:
-
         self.driver.get(base_url)
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
@@ -491,7 +490,6 @@ class Crawler(BaseComponent):
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
                     if filter_pattern is not None:
-
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:

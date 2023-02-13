@@ -1057,7 +1057,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str],
         all_terms_must_match: bool,
     ) -> Dict[str, Any]:
-
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]

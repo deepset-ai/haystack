@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 # Mock Pinecone instance
 CONFIG: dict = {"api_key": None, "environment": None, "indexes": {}}
 
+
 # Mock Pinecone Index instance
 class IndexObject:
     def __init__(

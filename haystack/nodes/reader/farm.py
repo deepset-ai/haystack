@@ -70,7 +70,6 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
@@ -1174,7 +1173,7 @@ class FARMReader(BaseReader):
                         type="extractive",
                         score=ans.confidence if self.use_confidence_scores else ans.score,
                         context=ans.context_window,
-                        document_id=pred.id,
+                        document_ids=[pred.id],
                         offsets_in_context=[
                             Span(
                                 start=ans.offset_answer_start - ans.offset_context_window_start,

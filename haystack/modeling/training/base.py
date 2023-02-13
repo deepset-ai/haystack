@@ -931,7 +931,6 @@ class DistillationLoss(Module):
         for student_attention, teacher_attention, dim_mapping in zip(
             attentions, teacher_attentions[self.teacher_block_size - 1 :: self.teacher_block_size], self.dim_mappings
         ):
-
             # this wasn't described in the paper, but it was used in the original implementation
             student_attention = torch.where(
                 student_attention <= -1e2, torch.zeros_like(student_attention), student_attention

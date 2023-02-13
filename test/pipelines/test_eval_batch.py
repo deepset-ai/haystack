@@ -1,6 +1,7 @@
 import logging
 import pytest
 import sys
+from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
@@ -607,9 +608,14 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
+    labels = deepcopy(EVAL_LABELS)
+    # Copy one of the labels and change only the answer have a label with a different answer but same Document
+    label_copy = deepcopy(labels[0].labels[0])
+    label_copy.answer = Answer(answer="I", offsets_in_context=[Span(21, 22)])
+    labels[0].labels.append(label_copy)
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval_batch(
-        labels=EVAL_LABELS,
+        labels=labels,
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         add_isolated_node_eval=True,
     )
@@ -632,12 +638,17 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Reader"]["f1"] == 1.0
     assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
 
+    # Check if same Document in MultiLabel got deduplicated
+    assert labels[0].labels[0].id == labels[0].labels[1].id
+    reader_eval_df = eval_result.node_results["Reader"]
+    isolated_reader_eval_df = reader_eval_df[reader_eval_df["eval_mode"] == "isolated"]
+    assert len(isolated_reader_eval_df) == len(labels) * reader.top_k_per_candidate
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
-
     labels = [
         MultiLabel(
             labels=[
@@ -685,7 +696,6 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
-
     labels = [
         MultiLabel(
             labels=[

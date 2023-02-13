@@ -13,6 +13,11 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - "!.github/**/*.py"
+      - "!rest_api/**/*.py"
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
@@ -35,13 +40,11 @@ jobs:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
-      with:
-        python-version: "3.8"
 
     - name: Install Black
       run: |
         pip install --upgrade pip
-        pip install black==22.6.0
+        pip install .[formatting]
 
     - name: Check status
       run: |
@@ -54,7 +57,7 @@ jobs:
           echo "# Either:"
           echo "# 1. Run Black locally before committing:"
           echo "# "
-          echo "#     pip install black==22.6.0"
+          echo "#     pip install .[formatting]"
           echo "#     black ."
           echo "# "
           echo "# 2. Install the pre-commit hook:"
@@ -483,35 +486,6 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
-
-    - uses: act10ns/slack@v2
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  rest_api:
-    needs: black
-
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Install REST API
-      run: |
-        pip install -U "./rest_api[dev]"
-        pip install .
-
-    - name: Run tests
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
     - uses: act10ns/slack@v2
       with:

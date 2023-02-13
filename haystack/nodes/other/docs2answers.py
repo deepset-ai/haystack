@@ -68,13 +68,13 @@ class Docs2Answers(BaseComponent):
                 score=doc.score,
                 context=doc.meta["answer"],
                 offsets_in_context=[Span(start=0, end=len(doc.meta["answer"]))],
-                document_id=doc.id,
+                document_ids=[doc.id],
                 meta=doc.meta,
             )
         else:
             # Regular docs
             answer = Answer(
-                answer="", type="other", score=doc.score, context=doc.content, document_id=doc.id, meta=doc.meta
+                answer="", type="other", score=doc.score, context=doc.content, document_ids=[doc.id], meta=doc.meta
             )
 
         return answer
