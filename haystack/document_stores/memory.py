@@ -301,7 +301,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         documents = [self.indexes[index][id] for id in ids]
         return documents
 
-    def get_scores_torch(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
+    def _get_scores_torch(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
         """
         Calculate similarity scores between query embedding and a list of documents using torch.
 
@@ -343,7 +343,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         return scores
 
-    def get_scores_numpy(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
+    def _get_scores_numpy(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
         """
         Calculate similarity scores between query embedding and a list of documents using numpy.
 
@@ -374,11 +374,11 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         return scores
 
-    def get_scores(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
+    def _get_scores(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
         if self.main_device.type == "cuda":
-            scores = self.get_scores_torch(query_emb, documents_to_search)
+            scores = self._get_scores_torch(query_emb, documents_to_search)
         else:
-            scores = self.get_scores_numpy(query_emb, documents_to_search)
+            scores = self._get_scores_numpy(query_emb, documents_to_search)
 
         return scores
 
@@ -481,7 +481,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                 "Skipping some of your documents that don't have embeddings. "
                 "To generate embeddings, run the document store's update_embeddings() method."
             )
-        scores = self.get_scores(query_emb, documents_with_embeddings)
+        scores = self._get_scores(query_emb, documents_with_embeddings)
 
         candidate_docs = []
         for doc, score in zip(documents_with_embeddings, scores):
