@@ -57,7 +57,7 @@ def test_agent_chooses_no_action():
         Tool(
             name="Retriever",
             pipeline_or_node=retriever,
-            description="useful for when you need to " "retrieve documents from your index",
+            description="useful for when you need to retrieve documents from your index",
         )
     )
     with pytest.raises(AgentError, match=r"Wrong output format.*"):
@@ -72,7 +72,7 @@ def test_max_iterations(caplog, monkeypatch):
         Tool(
             name="Retriever",
             pipeline_or_node=retriever,
-            description="useful for when you need to " "retrieve documents from your index",
+            description="useful for when you need to retrieve documents from your index",
         )
     )
 
@@ -121,7 +121,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
         Tool(
             name="Calculator",
             pipeline_or_node=calculator,
-            description="useful for when you need to " "answer questions about math",
+            description="useful for when you need to answer questions about math",
         )
     )
 
@@ -168,7 +168,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
         Tool(
             name="Calculator",
             pipeline_or_node=calculator,
-            description="useful for when you need to " "answer questions about math",
+            description="useful for when you need to answer questions about math",
         )
     )
 

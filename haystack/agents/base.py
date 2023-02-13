@@ -4,12 +4,19 @@ import logging
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Tuple
 
-import yaml
-
 from haystack import Pipeline, BaseComponent, Answer
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, PromptTemplate, BaseRetriever
-from haystack.pipelines import BaseStandardPipeline
+from haystack.pipelines import (
+    BaseStandardPipeline,
+    ExtractiveQAPipeline,
+    DocumentSearchPipeline,
+    GenerativeQAPipeline,
+    SearchSummarizationPipeline,
+    FAQPipeline,
+    TranslationWrapperPipeline,
+    RetrieverQuestionGenerationPipeline,
+)
 from haystack.telemetry import send_custom_event
 
 
@@ -34,7 +41,17 @@ class Tool:
     def __init__(
         self,
         name: str,
-        pipeline_or_node: Optional[Union[BaseComponent, Pipeline, BaseStandardPipeline]],
+        pipeline_or_node: Union[
+            BaseComponent,
+            Pipeline,
+            ExtractiveQAPipeline,
+            DocumentSearchPipeline,
+            GenerativeQAPipeline,
+            SearchSummarizationPipeline,
+            FAQPipeline,
+            TranslationWrapperPipeline,
+            RetrieverQuestionGenerationPipeline,
+        ],
         description: str,
     ):
         self.name = name
@@ -61,14 +78,14 @@ class Agent:
         self.prompt_node = prompt_node
         if tools is not None:
             self.tools = {tool.name: tool for tool in tools}
-            self.prompt_text = self.generate_prompt_text()
+            self.prompt_text = self._generate_prompt_text()
         else:
-            self.tools = dict()
+            self.tools = {}
             self.prompt_text = ""
         self.max_iterations = max_iterations
         send_custom_event(event=f"{type(self).__name__} initialized")
 
-    def generate_prompt_text(self) -> str:
+    def _generate_prompt_text(self) -> str:
         """
         Generate the initial prompt text for the Agent's PromptNode including descriptions and names of tools.
         """
@@ -99,9 +116,9 @@ class Agent:
         :param tool: The Tool to add to the Agent. Any previously added tool with the same name will be overwritten.
         """
         self.tools[tool.name] = tool
-        self.prompt_text = self.generate_prompt_text()
+        self.prompt_text = self._generate_prompt_text()
 
-    def run(self, query: Optional[str] = None, params: Optional[dict] = None):
+    def run(self, query: str, params: Optional[dict] = None):
         """
         Runs the Agent given a query and optional parameters to pass on to the tools used. The result is in the
         same format as a pipeline's result: a dictionary with a key "answers" containing a List of Answers
@@ -132,7 +149,7 @@ class Agent:
             pred = self.prompt_node.prompt(prompt_template=prompt_template, query=query)
             transcript += f"{pred[0]}\n"
 
-            tool_name, tool_input = self.parse_tool_name_and_tool_input(pred=pred[0])
+            tool_name, tool_input = self._parse_tool_name_and_tool_input(pred=pred[0])
             if tool_name == "Final Answer":
                 final_answer = tool_input
                 break
@@ -176,7 +193,7 @@ class Agent:
 
         return {"query": query, "answers": [Answer(answer=final_answer, type="generative")], "transcript": transcript}
 
-    def run_batch(self, queries: Optional[List[str]] = None, params: Optional[dict] = None):
+    def run_batch(self, queries: List[str], params: Optional[dict] = None):
         """
         Runs the Agent in a batch mode
 
@@ -195,7 +212,7 @@ class Agent:
 
         return results
 
-    def parse_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
+    def _parse_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         """
         Parse the tool name and the tool input from the prediction output of the Agent's PromptNode.
 
