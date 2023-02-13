@@ -1,17 +1,77 @@
 name: Add label on docstrings edit
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - "haystack/**/*.py"
       - "rest_api/**/*.py"
 
-permissions:
-  pull-requests: write
-
 jobs:
+  verify-integrity:
+    #
+    # This job is really important!
+    #
+    # It's meant to verify that the python script run in the
+    # label job has not been modified in the PR that triggered
+    # this workflow.
+    #
+    # This must be done because we're using the pull_request_target
+    # event instead of pull_request. That event gives us a GITHUB_TOKEN
+    # with permissions to edit PRs necessary to add labels, but also
+    # do more dangerous operations.
+    #
+    # pull_request runs the HEAD version of the workflow, while
+    # pull_request_target runs the base version. This makes it safe
+    # to also run on PRs from forks, unless the workflow checks out
+    # the PR's HEAD and runs checked out code.
+    # This is exactly what we need to docstrings_checksum.py.
+    #
+    # If we'd run the script with no checks anyone would be
+    # able to use GitHub API tokens with elevated permissions
+    # on this repo and potentially do harmful stuff.
+    #
+    # For more detailed information read this post in GitHub's blog:
+    # https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: read
+
+    steps:
+      - name: Checkout base commit
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Base script checksum
+        id: base-script
+        run: |
+          CHECKSUM=$(md5 .github/utils/docstrings_checksum.py)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout head commit
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Head script checksum
+        id: head-script
+        run: |
+          CHECKSUM=$(md5 .github/utils/docstrings_checksum.py)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Check script has been modified
+        run: |
+          [[ "${{ steps.base-script.outputs.checksum == steps.head-script.outputs.checksum }}" = "true" ]] || \
+          echo "::error 'Script has been modified, this might be an attempt to run malicious code.'"
+
   label:
     runs-on: ubuntu-latest
+    needs: verify-integrity
+
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout base commit
@@ -32,6 +92,8 @@ jobs:
 
       - name: Checkout HEAD commit
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Get docstrings
         id: head-docstrings
