@@ -7,6 +7,7 @@ import torch
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
+from haystack.nodes.other.shaper import Shaper
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
@@ -327,6 +328,22 @@ def test_complex_pipeline(prompt_model):
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
     assert "berlin" in result["results"][0].casefold()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_simple_pipeline_with_topk(prompt_model):
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
+
+    assert len(result["results"]) == 2
+    assert result["results"][0] != result["results"][1]
 
 
 @pytest.mark.integration
