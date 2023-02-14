@@ -55,8 +55,3 @@ AnswerToSpeech = safe_import(
 DocumentToSpeech = safe_import(
     "haystack.nodes.audio.document_to_speech", "DocumentToSpeech", "audio"
 )  # Has optional dependencies
-DocumentLanguageClassifier = safe_import(
-    "haystack.nodes.language_classifier", "DocumentLanguageClassifier", "langdetect"
-)  # Has optional dependencies
-
-
