@@ -28,7 +28,7 @@ class WhisperHelper:
         self._model = WhisperForConditionalGeneration.from_pretrained(model)
         self._model.config.forced_decoder_ids = None
 
-    def media_to_text(self, media_file: str):
+    def transcribe(self, media_file: str):
         output, _ = (
             ffmpeg.input(media_file)
             .output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=16000)
@@ -65,8 +65,8 @@ class TestTextToSpeech:
             samplerate=text2speech.model.fs,
         )
 
-        expedtec_doc = whisper_helper.media_to_text(str(SAMPLES_PATH / "audio" / "answer.wav"))
-        generated_doc = whisper_helper.media_to_text(str(tmp_path / "audio1.wav"))
+        expedtec_doc = whisper_helper.transcribe(str(SAMPLES_PATH / "audio" / "answer.wav"))
+        generated_doc = whisper_helper.transcribe(str(tmp_path / "audio1.wav"))
 
         assert expedtec_doc == generated_doc
 
@@ -79,8 +79,8 @@ class TestTextToSpeech:
         audio_file = text2speech.text_to_audio_file(text="answer", generated_audio_dir=tmp_path / "test_audio")
         assert os.path.exists(audio_file)
 
-        expected_doc = whisper_helper.media_to_text(str(SAMPLES_PATH / "audio" / "answer.wav"))
-        generated_doc = whisper_helper.media_to_text(str(audio_file))
+        expected_doc = whisper_helper.transcribe(str(SAMPLES_PATH / "audio" / "answer.wav"))
+        generated_doc = whisper_helper.transcribe(str(audio_file))
 
         assert expected_doc == generated_doc
 
@@ -96,8 +96,8 @@ class TestTextToSpeech:
         assert os.path.exists(audio_file)
         assert audio_file.suffix == ".mp3"
 
-        expected_doc = whisper_helper.media_to_text(str(expected_audio_file))
-        generated_doc = whisper_helper.media_to_text(str(audio_file))
+        expected_doc = whisper_helper.transcribe(str(expected_audio_file))
+        generated_doc = whisper_helper.transcribe(str(audio_file))
 
         assert expected_doc == generated_doc
 
@@ -113,8 +113,8 @@ class TestTextToSpeech:
         assert os.path.exists(audio_file)
         assert audio_file.name == expected_audio_file.name
 
-        expected_doc = whisper_helper.media_to_text(str(expected_audio_file))
-        generated_doc = whisper_helper.media_to_text(str(audio_file))
+        expected_doc = whisper_helper.transcribe(str(expected_audio_file))
+        generated_doc = whisper_helper.transcribe(str(audio_file))
 
         assert expected_doc == generated_doc
 
@@ -149,8 +149,8 @@ class TestTextToSpeech:
         assert audio_answer.meta["some_meta"] == "some_value"
         assert audio_answer.meta["audio_format"] == "wav"
 
-        expected_doc = whisper_helper.media_to_text(str(expected_audio_answer))
-        generated_doc = whisper_helper.media_to_text(str(audio_answer.answer_audio))
+        expected_doc = whisper_helper.transcribe(str(expected_audio_answer))
+        generated_doc = whisper_helper.transcribe(str(audio_answer.answer_audio))
 
         assert expected_doc == generated_doc
 
@@ -176,7 +176,7 @@ class TestTextToSpeech:
         assert audio_doc.meta["name"] == "test_document.txt"
         assert audio_doc.meta["audio_format"] == "wav"
 
-        expected_doc = whisper_helper.media_to_text(str(expected_audio_content))
-        generated_doc = whisper_helper.media_to_text(str(audio_doc.content_audio))
+        expected_doc = whisper_helper.transcribe(str(expected_audio_content))
+        generated_doc = whisper_helper.transcribe(str(audio_doc.content_audio))
 
         assert expected_doc == generated_doc
