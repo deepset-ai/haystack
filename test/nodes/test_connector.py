@@ -7,8 +7,8 @@ import hashlib
 import os
 
 import pytest
-from selenium.webdriver.common.by import By
 
+from selenium.webdriver.common.by import By
 
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
