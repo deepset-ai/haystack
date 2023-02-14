@@ -1,6 +1,7 @@
 import logging
 import pytest
 import sys
+from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
@@ -119,7 +120,7 @@ def test_add_eval_data(document_store, batch_size):
         label.answer.context[label.answer.offsets_in_context[0].start : label.answer.offsets_in_context[0].end]
         == "France"
     )
-    assert label.answer.document_id == label.document.id
+    assert label.answer.document_ids == [label.document.id]
 
     # check combination
     doc = document_store.get_document_by_id(label.document.id)
@@ -442,6 +443,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "gold_answers_exact_match",  # answer-specific
         "gold_answers_f1",  # answer-specific
         # "gold_answers_sas",  # answer-specific optional
+        "document_ids",  # answer-specific
     ]
 
     expected_retriever_result_columns = [
@@ -454,7 +456,8 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "gold_id_and_context_match",  # doc-specific
         "gold_id_and_context_and_answer_match",  # doc-specific
         "context_and_answer_match",  # doc-specific
-        "gold_answers_match",  # doc-specific
+        "gold_answers_match",  # doc-specific,
+        "document_id",  # doc-specific
     ]
 
     expected_generic_result_columns = [
@@ -469,7 +472,6 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         "node",  # generic
         "eval_mode",  # generic
         "rank",  # generic
-        "document_id",  # generic
         "gold_document_ids",  # generic
         "gold_answers",  # generic
         # "custom_document_id",  # generic optional
@@ -1266,9 +1268,14 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
+    labels = deepcopy(EVAL_LABELS)
+    # Copy one of the labels and change only the answer have a label with a different answer but same Document
+    label_copy = deepcopy(labels[0].labels[0])
+    label_copy.answer = Answer(answer="I", offsets_in_context=[Span(21, 22)])
+    labels[0].labels.append(label_copy)
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
+        labels=labels,
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         add_isolated_node_eval=True,
     )
@@ -1291,12 +1298,17 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Reader"]["f1"] == 1.0
     assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
 
+    # Check if same Document in MultiLabel got deduplicated
+    assert labels[0].labels[0].id == labels[0].labels[1].id
+    reader_eval_df = eval_result.node_results["Reader"]
+    isolated_reader_eval_df = reader_eval_df[reader_eval_df["eval_mode"] == "isolated"]
+    assert len(isolated_reader_eval_df) == len(labels) * reader.top_k_per_candidate
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
-
     labels = [
         MultiLabel(
             labels=[
@@ -1344,7 +1356,6 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
-
     labels = [
         MultiLabel(
             labels=[
@@ -1482,7 +1493,6 @@ def test_faq_calculate_metrics(retriever_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_translation(reader, retriever_with_docs):
-
     # FIXME it makes no sense to have DE->EN input and DE->EN output, right?
     #  Yet switching direction breaks the test. TO BE FIXED.
     input_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")

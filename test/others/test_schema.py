@@ -453,7 +453,7 @@ def test_multilabel_serialization():
             "context": "\n\n\n\n\nThe eighth and final season of the fantasy drama television series ''Game of Thrones'', produced by HBO, premiered on April 14, 2019, and concluded on May 19, 2019. Unlike the first six seasons, which consisted of ten episodes each, and the seventh season, which consisted of seven episodes, the eighth season consists of only six episodes.\n\nThe final season depicts the culmination of the series' two primary conflicts: the G",
             "offsets_in_document": [{"start": 124, "end": 132}],
             "offsets_in_context": None,
-            "document_id": None,
+            "document_ids": None,
             "meta": {},
         },
         "no_answer": False,
@@ -568,3 +568,75 @@ def test_id_hash_keys_not_ignored():
     doc3 = Document(content="hello world", meta={"doc_id": "3"})
     doc4 = Document(content="hello world", meta={"doc_id": "4"})
     assert doc3.id == doc4.id
+
+
+def test_legacy_answer_document_id():
+    legacy_label = {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "Some content",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": [0.1, 0.2, 0.3],
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "Some content",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            # legacy document_id answer
+            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
+
+    answer = Answer.from_dict(legacy_label["answer"])
+    assert answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+    label = Label.from_dict(legacy_label)
+    assert label.answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+
+def test_legacy_answer_document_id_is_none():
+    legacy_label = {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "Some content",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": [0.1, 0.2, 0.3],
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "Some content",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            # legacy document_id answer
+            "document_id": None,
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
+
+    answer = Answer.from_dict(legacy_label["answer"])
+    assert answer.document_ids is None
+
+    label = Label.from_dict(legacy_label)
+    assert label.answer.document_ids is None

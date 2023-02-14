@@ -64,6 +64,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         timeout_config: tuple = (5, 15),
         username: Optional[str] = None,
         password: Optional[str] = None,
+        additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
         content_field: str = "content",
@@ -85,6 +86,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
+        :param additional_headers: additional headers to be included in the requests sent to Weaviate e.g. bearer token
         :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
@@ -121,10 +123,15 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         if username and password:
             secret = AuthClientPassword(username, password)
             self.weaviate_client = client.Client(
-                url=weaviate_url, auth_client_secret=secret, timeout_config=timeout_config
+                url=weaviate_url,
+                auth_client_secret=secret,
+                timeout_config=timeout_config,
+                additional_headers=additional_headers,
             )
         else:
-            self.weaviate_client = client.Client(url=weaviate_url, timeout_config=timeout_config)
+            self.weaviate_client = client.Client(
+                url=weaviate_url, timeout_config=timeout_config, additional_headers=additional_headers
+            )
 
         # Test Weaviate connection
         try:
@@ -972,7 +979,6 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             properties.append("_additional {id, distance, vector}")
 
         if query is None:
-
             # Retrieval via custom query, no BM25
             if custom_query:
                 query_output = self.weaviate_client.query.raw(custom_query)

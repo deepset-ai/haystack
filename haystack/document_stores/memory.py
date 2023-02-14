@@ -15,6 +15,7 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 import rank_bm25
+import pandas as pd
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
@@ -49,7 +50,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         use_bm25: bool = False,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
-        bm25_parameters: dict = {},
+        bm25_parameters: Optional[Dict] = None,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -87,7 +88,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
                                 For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
+                                By default, no parameters are set.
         """
+        if bm25_parameters is None:
+            bm25_parameters = {}
         super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
@@ -203,7 +207,15 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index = index or self.index
 
         all_documents = self.get_all_documents(index=index)
-        textual_documents = [doc for doc in all_documents if doc.content_type == "text"]
+        textual_documents = []
+        for doc in all_documents:
+            if doc.content_type == "text":
+                textual_documents.append(doc.content.lower())
+            elif doc.content_type == "table":
+                if isinstance(doc.content, pd.DataFrame):
+                    textual_documents.append(doc.content.astype(str).to_csv(index=False).lower())
+                else:
+                    raise DocumentStoreError("Documents of type 'table' need to have a pd.DataFrame as content field")
         if len(textual_documents) < len(all_documents):
             logger.warning(
                 "Some documents in %s index are non-textual."
@@ -212,7 +224,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             )
 
         tokenized_corpus = [
-            self.bm25_tokenization_regex(doc.content.lower())
+            self.bm25_tokenization_regex(doc)
             for doc in tqdm(textual_documents, unit=" docs", desc="Updating BM25 representation...")
         ]
         self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
@@ -959,7 +971,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
-        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type == "text"]
+        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
         top_docs = []
         for i in top_docs_positions:
             doc = textual_docs_list[i]

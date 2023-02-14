@@ -70,7 +70,6 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
@@ -176,7 +175,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -205,6 +204,8 @@ class FARMReader(BaseReader):
         doc_stride: Optional[int] = None,
         max_query_length: Optional[int] = None,
     ):
+        if devices is None:
+            devices = []
         if dev_filename:
             dev_split = 0
 
@@ -363,7 +364,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -469,7 +470,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
@@ -595,7 +596,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 5,

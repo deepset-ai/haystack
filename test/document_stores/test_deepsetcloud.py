@@ -64,7 +64,6 @@ def dc_api_mock(request):
 @pytest.mark.integration
 @pytest.mark.usefixtures("dc_api_mock")
 class TestDeepsetCloudDocumentStore:
-
     # Fixtures
 
     @pytest.fixture
@@ -191,7 +190,6 @@ class TestDeepsetCloudDocumentStore:
             assert doc.meta["file_id"] == first_doc.meta["file_id"]
 
     def test_query(self, ds):
-
         with open(SAMPLES_PATH / "dc" / "query_winterfell.response", "r") as f:
             query_winterfell_response = f.read()
             query_winterfell_docs = json.loads(query_winterfell_response)

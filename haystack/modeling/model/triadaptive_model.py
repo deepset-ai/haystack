@@ -44,9 +44,9 @@ class TriAdaptiveModel(nn.Module):
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
         device: torch.device = torch.device("cuda"),
-        lm1_output_types: Union[str, List[str]] = ["per_sequence"],
-        lm2_output_types: Union[str, List[str]] = ["per_sequence"],
-        lm3_output_types: Union[str, List[str]] = ["per_sequence"],
+        lm1_output_types: Optional[Union[str, List[str]]] = None,
+        lm2_output_types: Optional[Union[str, List[str]]] = None,
+        lm3_output_types: Optional[Union[str, List[str]]] = None,
         loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
@@ -58,17 +58,17 @@ class TriAdaptiveModel(nn.Module):
            language model will be zeroed.
         :param lm1_output_types: How to extract the embeddings from the final layer of the first language model. When set
                                 to "per_token", one embedding will be extracted per input token. If set to
-                                "per_sequence", a single embedding will be extracted to represent the full
+                                "per_sequence" (default), a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
         :param lm2_output_types: How to extract the embeddings from the final layer of the second language model. When set
                                 to "per_token", one embedding will be extracted per input token. If set to
-                                "per_sequence", a single embedding will be extracted to represent the full
+                                "per_sequence" (default), a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
         :param lm3_output_types: How to extract the embeddings from the final layer of the third language model. When set
                                 to "per_token", one embedding will be extracted per input token. If set to
-                                "per_sequence", a single embedding will be extracted to represent the full
+                                "per_sequence" (default), a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
@@ -83,7 +83,12 @@ class TriAdaptiveModel(nn.Module):
                                     Note: The loss at this stage is per sample, i.e one tensor of
                                     shape (batchsize) per prediction head.
         """
-
+        if lm1_output_types is None:
+            lm1_output_types = ["per_sequence"]
+        if lm2_output_types is None:
+            lm2_output_types = ["per_sequence"]
+        if lm3_output_types is None:
+            lm3_output_types = ["per_sequence"]
         super(TriAdaptiveModel, self).__init__()
         self.device = device
         self.language_model1 = language_model1.to(device)
@@ -305,12 +310,18 @@ class TriAdaptiveModel(nn.Module):
         if "passage_input_ids" in kwargs.keys():
             table_mask = torch.flatten(kwargs["is_table"]) == 1
 
+            # Make input two-dimensional
+            max_seq_len = kwargs["passage_input_ids"].shape[-1]
+            passage_input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
+            passage_attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
+            passage_segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
+
             # Current batch consists of only tables
             if all(table_mask):
                 pooled_output2, _ = self.language_model3(
-                    passage_input_ids=kwargs["passage_input_ids"],
-                    passage_segment_ids=kwargs["table_segment_ids"],
-                    passage_attention_mask=kwargs["passage_attention_mask"],
+                    input_ids=passage_input_ids,
+                    segment_ids=passage_segment_ids,
+                    attention_mask=passage_attention_mask,
                     output_hidden_states=False,
                     output_attentions=False,
                 )
@@ -318,13 +329,6 @@ class TriAdaptiveModel(nn.Module):
 
             # Current batch consists of tables and texts
             elif any(table_mask):
-
-                # Make input two-dimensional
-                max_seq_len = kwargs["passage_input_ids"].shape[-1]
-                passage_input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
-                passage_attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
-                passage_segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
-
                 table_segment_ids = kwargs["table_segment_ids"].view(-1, max_seq_len)
                 table_input_ids = passage_input_ids[table_mask]
                 table_segment_ids = table_segment_ids[table_mask]
@@ -371,16 +375,10 @@ class TriAdaptiveModel(nn.Module):
 
             # Current batch consists of only texts
             else:
-                # Make input two-dimensional
-                max_seq_len = kwargs["passage_input_ids"].shape[-1]
-                input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
-                attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
-                segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
-
                 pooled_output2, _ = self.language_model2(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    segment_ids=segment_ids,
+                    input_ids=passage_input_ids,
+                    attention_mask=passage_attention_mask,
+                    segment_ids=passage_segment_ids,
                     output_hidden_states=False,
                     output_attentions=False,
                 )

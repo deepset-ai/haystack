@@ -42,8 +42,8 @@ class BiAdaptiveModel(nn.Module):
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
         device: torch.device = torch.device("cuda"),
-        lm1_output_types: Union[str, List[str]] = ["per_sequence"],
-        lm2_output_types: Union[str, List[str]] = ["per_sequence"],
+        lm1_output_types: Optional[Union[str, List[str]]] = None,
+        lm2_output_types: Optional[Union[str, List[str]]] = None,
         loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
@@ -54,12 +54,12 @@ class BiAdaptiveModel(nn.Module):
                                     language models will be zeroed.
         :param lm1_output_types: How to extract the embeddings from the final layer of the first language model. When set
                                  to "per_token", one embedding will be extracted per input token. If set to
-                                 "per_sequence", a single embedding will be extracted to represent the full
+                                 "per_sequence" (default), a single embedding will be extracted to represent the full
                                  input sequence. Can either be a single string, or a list of strings,
                                  one for each prediction head.
         :param lm2_output_types: How to extract the embeddings from the final layer of the second language model. When set
                                  to "per_token", one embedding will be extracted per input token. If set to
-                                 "per_sequence", a single embedding will be extracted to represent the full
+                                 "per_sequence" (default), a single embedding will be extracted to represent the full
                                  input sequence. Can either be a single string, or a list of strings,
                                  one for each prediction head.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
@@ -74,6 +74,10 @@ class BiAdaptiveModel(nn.Module):
                                     Note: The loss at this stage is per sample, i.e one tensor of
                                     shape (batchsize) per prediction head.
         """
+        if lm1_output_types is None:
+            lm1_output_types = ["per_sequence"]
+        if lm2_output_types is None:
+            lm2_output_types = ["per_sequence"]
         super(BiAdaptiveModel, self).__init__()
 
         self.device = device
@@ -346,7 +350,6 @@ class BiAdaptiveModel(nn.Module):
             pooled_output[0] = pooled_output1
 
         if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
-
             max_seq_len = passage_input_ids.shape[-1]
             passage_input_ids = passage_input_ids.view(-1, max_seq_len)
             passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)

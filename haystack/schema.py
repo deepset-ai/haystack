@@ -302,7 +302,9 @@ class SpeechDocument(Document):
             return f"<SpeechDocument: id={self.id}, content=None>"
         return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map=None) -> Dict:
+        if field_map is None:
+            field_map = {}
         dictionary = super().to_dict(field_map=field_map)
         for key, value in dictionary.items():
             if isinstance(value, Path):
@@ -310,7 +312,9 @@ class SpeechDocument(Document):
         return dictionary
 
     @classmethod
-    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+    def from_dict(cls, dict, field_map=None, id_hash_keys=None):
+        if field_map is None:
+            field_map = {}
         doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
         doc.content_audio = Path(dict["content_audio"])
         return doc
@@ -419,7 +423,9 @@ class Answer:
                                 For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
                                 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
-    :param document_id: ID of the document that the answer was located it (if any)
+    :param document_ids: IDs of the documents the answer came from (if any).
+                                For extractive QA, this will be a list of length 1.
+                                For generative QA, this will be a list of length > 0.
     :param meta: Dict that can be used to associate any kind of custom meta data with the answer.
                  In extractive QA, this will carry the meta data of the document where the answer was found.
     """
@@ -453,6 +459,12 @@ class Answer:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
+        if "document_id" in dict:
+            dict = dict.copy()
+            document_id = dict.pop("document_id")
+            dict["document_ids"] = [document_id] if document_id is not None else None
+
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -625,6 +637,11 @@ class Label:
 
     @classmethod
     def from_dict(cls, dict: dict):
+        # backward compatibility for old labels using answers with document_id instead of document_ids
+        answer = dict.get("answer")
+        if answer and "document_id" in answer:
+            dict = dict.copy()
+            dict["answer"] = Answer.from_dict(dict["answer"])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -1313,7 +1330,14 @@ class EvaluationResult:
                 ].unique()
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
-                simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+
+                simulated_query_answers = query_answers[
+                    query_answers["document_ids"].apply(
+                        lambda document_ids, top_k_document_ids=top_k_document_ids: all(
+                            document_id in top_k_document_ids for document_id in document_ids
+                        )
+                    )
+                ]
                 # simulate top k reader
                 if simulated_top_k_reader != -1:
                     # consider only the simulated_top_k_reader answers within simulated_query_answers
@@ -1598,6 +1622,8 @@ class EvaluationResult:
             "gold_answers_match",
             "gold_contexts_similarity",
             "offsets_in_document",
+            "document_ids",
+            "custom_document_ids",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
@@ -1606,5 +1632,16 @@ class EvaluationResult:
         # backward compatibility mappings
         for df in node_results.values():
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
+            # convert single document_id to list
+            if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
+                df["document_ids"] = df["document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["document_id"], inplace=True)
+            if (
+                "answer" in df.columns
+                and "custom_document_id" in df.columns
+                and not "custom_document_ids" in df.columns
+            ):
+                df["custom_document_ids"] = df["custom_document_id"].apply(lambda x: [x], axis=1)
+                df.drop(columns=["custom_document_id"], inplace=True)
         result = cls(node_results)
         return result

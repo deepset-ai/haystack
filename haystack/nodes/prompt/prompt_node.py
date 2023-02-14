@@ -12,12 +12,13 @@ import requests
 import torch
 from transformers import (
     pipeline,
-    AutoModelForSeq2SeqLM,
+    AutoConfig,
     StoppingCriteria,
     StoppingCriteriaList,
-    PreTrainedTokenizerFast,
     PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
 )
+from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
@@ -31,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 
 class BasePromptTemplate(BaseComponent):
-
     outgoing_edges = 1
 
     def run(
@@ -59,24 +59,21 @@ class BasePromptTemplate(BaseComponent):
 
 class PromptTemplate(BasePromptTemplate, ABC):
     """
-    PromptTemplate represents a template for a prompt. For example, a prompt template for the sentiment
-    analysis task might look like this:
+    PromptTemplate is a template for a prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what such prompt template may look like:
 
     ```python
         PromptTemplate(name="sentiment-analysis",
-                   prompt_text="Please give a sentiment for this context. Answer with positive, negative
+                   prompt_text="Give a sentiment for this context. Answer with positive, negative
                    or neutral. Context: $documents; Answer:")
     ```
 
-    PromptTemplate declares optional prompt_params, which are the input parameters that need to be filled in
-    the prompt_text. For example, in the above example, the prompt_params are ["documents"] and the prompt_text is
-    "Please give a sentiment...".
+    Optionally, you can declare prompt parameters in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
+    the prompt_text for the model to perform the task. For example, in the template above, there's one prompt parameter, `documents`. You declare prompt parameters by adding variables to the prompt text. These variables should be in the format: `$variable`. In the template above, the variable is `$documents`.
 
-    The prompt_text contains a placeholder $documents. This variable is filled in runtime with the non-keyword
-    or keyword argument `documents` passed to this PromptTemplate's `fill()` method.
+    At runtime, these variables are filled in with arguments passed to the `fill()` method of the PromptTemplate. So in the example above, the `$documents` variable will be filled with the Documents whose sentiment you want the model to analyze.
 
-    For more details on how to use PromptTemplate, refer to
-    the [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
+    For more details on how to use PromptTemplate, see
+    [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     def __init__(
@@ -89,9 +86,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
         """
          Creates a PromptTemplate instance.
 
-        :param name: The name of the prompt template (for example, sentiment-analysis, question-generation).
-        :param prompt_text: The prompt text including placeholders for the prompt_params.
-        :param prompt_params: The optional parameters that need to be filled in the prompt text. If not specified, they're inferred from the prompt text.
+        :param name: The name of the prompt template (for example, sentiment-analysis, question-generation). You can specify your own name but it must be unique.
+        :param prompt_text: The prompt text, including prompt parameters.
+        :param prompt_params: Optional parameters that need to be filled in the prompt text. If you don't specify them, they're inferred from the prompt text. Any variable in prompt text in the format `$variablename` is interpreted as a prompt parameter.
         """
         super().__init__()
         if not prompt_params:
@@ -101,8 +98,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         if prompt_text.count("$") != len(prompt_params):
             raise ValueError(
-                f"Number of parameters in prompt text {prompt_text} for prompt template {name} "
-                f"does not match number of specified parameters {prompt_params}"
+                f"The number of parameters in prompt text {prompt_text} for prompt template {name} "
+                f"does not match the number of specified parameters {prompt_params}."
             )
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
@@ -126,8 +123,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         """
         Prepares and verifies the prompt template with input parameters.
 
-        :param args: Non-keyword arguments to use for filling the prompt text.
-        :param kwargs: Keyword arguments to use for filling the prompt text.
+        :param args: Non-keyword arguments to fill the parameters in the prompt text of a PromptTemplate.
+        :param kwargs: Keyword arguments to fill the parameters in the prompt text of a PromptTemplate.
         :return: A dictionary with the prompt text and the prompt parameters.
         """
         template_dict = {}
@@ -158,25 +155,25 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         if set(template_dict.keys()) != set(self.prompt_params):
             available_params = set(list(template_dict.keys()) + list(set(kwargs.keys())))
-            raise ValueError(f"Expected prompt params {self.prompt_params} but got {list(available_params)}")
+            raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
 
         return template_dict
 
     def fill(self, *args, **kwargs) -> Iterator[str]:
         """
-        Fills the prompt text parameters from non-keyword and keyword arguments and returns the iterator prompt text.
+        Fills the parameters defined in the prompt text with the arguments passed to it and returns the iterator prompt text.
 
-        In the case of non-keyword arguments, the order of the arguments should match the left-to-right
+        You can pass non-keyword (args) or keyword (kwargs) arguments to this method. If you pass non-keyword arguments, their order must match the left-to-right
         order of appearance of the parameters in the prompt text. For example, if the prompt text is:
-        `Please come up with a question for the given context and the answer. Context: $documents;
-        Answer: $answers; Question:` then the first non-keyword argument fills the $documents placeholder
-        and the second non-keyword argument fills the $answers placeholder.
+        `Come up with a question for the given context and the answer. Context: $documents;
+        Answer: $answers; Question:`, then the first non-keyword argument fills the `$documents` variable
+        and the second non-keyword argument fills the `$answers` variable.
 
-        In the case of keyword arguments, the order of the arguments doesn't matter. Placeholders in the
+        If you pass keyword arguments, the order of the arguments doesn't matter. Variables in the
         prompt text are filled with the corresponding keyword argument.
 
-        :param args: Non-keyword arguments to use for filling the prompt text.
-        :param kwargs: Keyword arguments to use for filling the prompt text.
+        :param args: Non-keyword arguments to fill the parameters in the prompt text. Their order must match the order of appearance of the parameters in prompt text.
+        :param kwargs: Keyword arguments to fill the parameters in the prompt text.
         :return: An iterator of prompt texts.
         """
         template_dict = self.prepare(*args, **kwargs)
@@ -187,6 +184,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
             prompt_prepared: str = template.substitute(template_input)
             yield prompt_prepared
+
+    def __repr__(self):
+        return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
 
     def post_process(self, prompt_output: List[str], **kwargs) -> List[Any]:
         """
@@ -355,8 +355,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
         For more details about these kwargs, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
-
-
         """
         super().__init__(model_name_or_path, max_length)
         self.use_auth_token = use_auth_token
@@ -455,21 +453,28 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
-        if not all(m in model_name_or_path for m in ["google", "flan", "t5"]):
+        try:
+            config = AutoConfig.from_pretrained(model_name_or_path)
+        except OSError:
+            # This is needed so OpenAI models are skipped over
             return False
 
-        try:
-            # if it is google flan t5, load it, we'll use it anyway and also check if model loads correctly
-            AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
-        except EnvironmentError:
-            return False
-        return True
+        if not all(m in model_name_or_path for m in ["flan", "t5"]):
+            logger.warning(
+                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
+                "Many of the default prompts and PromptTemplates will likely not work as intended. "
+                "Use custom prompts and PromptTemplates specific to the %s model",
+                model_name_or_path,
+            )
+
+        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
+        return config.architectures[0] in supported_models
 
 
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
     PromptModelInvocationLayer implementation for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
-    See [OpenAI GPT-3](https://beta.openai.com/docs/models/gpt-3) for more details.
+    See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
 
     Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
     as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
@@ -489,13 +494,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
-        [documentation](https://beta.openai.com/docs/api-reference/completions/create).
+        [documentation](https://platform.openai.com/docs/api-reference/completions/create).
 
         """
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
-                f"api_key {api_key} must be a valid OpenAI key. Visit https://beta.openai.com/ to get one."
+                f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
         self.url = "https://api.openai.com/v1/completions"
@@ -533,7 +538,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :return: The responses are being returned.
 
         Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see OpenAI [documentation](https://beta.openai.com/docs/api-reference/completions/create).
+        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
         """
         prompt = kwargs.get("prompt")
         if not prompt:
@@ -582,6 +587,15 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 )
             raise openai_error
 
+        number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
+        if number_of_truncated_completions > 0:
+            logger.warning(
+                "%s out of the %s completions have been truncated before reaching a natural stopping point."
+                "Consider increasing the max_tokens parameter to allow for longer completions.",
+                number_of_truncated_completions,
+                payload["n"],
+            )
+
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
 
@@ -592,15 +606,15 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
 class PromptModel(BaseComponent):
     """
-    The PromptModel class is a component that uses a pre-trained model to generate text based on a prompt. Out of
+    The PromptModel class is a component that uses a pre-trained model to perform tasks based on a prompt. Out of
     the box, it supports two model invocation layers: Hugging Face transformers and OpenAI, with the ability to
     register additional custom invocation layers.
 
     Although it is possible to use PromptModel to make prompt invocations on the underlying model, use
-    PromptNode for interactions with the model. PromptModel instances are the practical approach for multiple
-    PromptNode instances to use a single PromptNode and thus save computational resources.
+    PromptNode to interact with the model. PromptModel instances are a way for multiple
+    PromptNode instances to use a single PromptNode, and thus save computational resources.
 
-    For more details, refer to the PromptModel [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
+    For more details, refer to [Promptnode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     outgoing_edges = 1
@@ -619,7 +633,7 @@ class PromptModel(BaseComponent):
         Creates an instance of PromptModel.
 
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of the generated output text.
+        :param max_length: The maximum length of the output text generated by the model.
         :param api_key: The API key to use for the model.
         :param use_auth_token: The Hugging Face token to use.
         :param use_gpu: Whether to use GPU or not.
@@ -659,8 +673,8 @@ class PromptModel(BaseComponent):
                 )
         raise ValueError(
             f"Model {self.model_name_or_path} is not supported - no invocation layer found."
-            f"Currently supported models are: {self.invocation_layers}"
-            f"Register new invocation layer for {self.model_name_or_path} using the register method."
+            f" Currently supported models are: {self.invocation_layers}"
+            f" Register a new invocation layer for {self.model_name_or_path} using the register method."
         )
 
     def register(self, invocation_layer: Type[PromptModelInvocationLayer]):
@@ -674,7 +688,7 @@ class PromptModel(BaseComponent):
         """
         It takes in a prompt, and returns a list of responses using the underlying invocation layer.
 
-        :param prompt: The prompt to use for the invocation, it could be a single prompt or a list of prompts.
+        :param prompt: The prompt to use for the invocation. It can be a single prompt or a list of prompts.
         :param kwargs: Additional keyword arguments to pass to the invocation layer.
         :return: A list of model generated responses for the prompt or prompts.
         """
@@ -735,7 +749,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         PromptTemplate(name="summarization", prompt_text="Summarize this document: $documents Summary:"),
         PromptTemplate(
             name="question-answering-check",
-            prompt_text="Does the following context contain the answer to the question. "
+            prompt_text="Does the following context contain the answer to the question? "
             "Context: $documents; Question: $query; Please answer yes or no! Answer:",
         ),
         PromptTemplate(
@@ -767,7 +781,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
 class PromptNode(BaseComponent):
     """
     The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode
-    supports multiple NLP tasks out of the box. You can use it to perform multiple tasks, such as
+    supports multiple NLP tasks out of the box. You can use it to perform tasks, such as
     summarization, question answering, question generation, and more, using a single, unified model within the Haystack framework.
 
     One of the benefits of PromptNode is that you can use it to define and add additional prompt templates
@@ -780,14 +794,13 @@ class PromptNode(BaseComponent):
     the memory and time required to load the model multiple times.
 
     PromptNode also supports multiple model invocation layers: Hugging Face transformers and OpenAI with an
-    ability to register additional custom invocation layers. However, note that we currently support only
+    ability to register additional custom invocation layers. However, we currently support only
     T5 Flan and OpenAI InstructGPT models.
 
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
 
-    For more details, see the PromptNode [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
-
+    For more details, see  [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     outgoing_edges: int = 1
@@ -807,7 +820,7 @@ class PromptNode(BaseComponent):
         """
         Creates a PromptNode instance.
 
-        :param model_name_or_path: The name of the model to use or an instance of PromptModel.
+        :param model_name_or_path: The name of the model to use or an instance of the PromptModel.
         :param default_prompt_template: The default prompt template to use for the model.
         :param output_variable: The name of the output variable in which you want to store the inference results.
         :param max_length: The maximum length of the generated text output.
@@ -868,7 +881,7 @@ class PromptNode(BaseComponent):
         a list of non-keyword and keyword arguments, and returns a list of strings - the responses from
         the underlying model.
 
-        The optional prompt_template parameter, if specified, takes precedence over the default prompt
+        If you specify the optional prompt_template parameter, it takes precedence over the default prompt
         template for this PromptNode.
 
         :param prompt_template: The name of the optional prompt template to use.
@@ -929,8 +942,8 @@ class PromptNode(BaseComponent):
         """
         if prompt_template.name in self.prompt_templates:
             raise ValueError(
-                f"Prompt template {prompt_template.name} already exists "
-                f"Please select a different name to add this prompt template."
+                f"Prompt template {prompt_template.name} already exists. "
+                f"Select a different name for this prompt template."
             )
 
         self.prompt_templates[prompt_template.name] = prompt_template  # type: ignore
@@ -1012,14 +1025,14 @@ class PromptNode(BaseComponent):
         invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
-        Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
-        Parameters file_paths, labels, and meta are usually ignored.
+        Runs the PromptNode on these input parameters. Returns the output of the prompt model.
+        Parameters `file_paths`, `labels`, and `meta` are usually ignored.
 
-        :param query: The query is usually ignored by the prompt node unless it is used as a parameter in the
+        :param query: The PromptNode usually ignores the query, unless it's used as a parameter in the
         prompt template.
-        :param file_paths: The file paths are usually ignored by the prompt node unless they are used as a parameter
+        :param file_paths: The PromptNode usually ignores the file paths, unless they're used as a parameter
         in the prompt template.
-        :param labels: The labels are usually ignored by the prompt node unless they are used as a parameter in the
+        :param labels: The PromptNode usually ignores the labels, unless they're used as a parameter in the
         prompt template.
         :param documents: The documents to be used for the prompt.
         :param meta: The meta to be used for the prompt. Usually not used.

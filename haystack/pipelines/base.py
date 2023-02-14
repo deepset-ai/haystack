@@ -745,12 +745,12 @@ class Pipeline:
         cls,
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
-        index_params: dict = {},
-        query_params: dict = {},
+        index_params: Optional[Dict] = None,
+        query_params: Optional[Dict] = None,
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
         num_documents: Optional[int] = None,
-        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        top_k_values: Optional[List[int]] = None,
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
         """
@@ -765,7 +765,7 @@ class Pipeline:
         :param dataset_dir: The directory to store the dataset to.
         :param num_documents: Maximum number of documents to load from given dataset. If set to None (default)
                              or to a value larger than the number of documents in the dataset, the full dataset is loaded.
-        :param top_k_values: The top_k values each metric will be calculated for.
+        :param top_k_values: The top_k values each metric will be calculated for. By default, the values are 1, 3, 5, 10, 100, and 1000.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
                            Defaults to False.
@@ -773,6 +773,12 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
+        if index_params is None:
+            index_params = {}
+        if query_params is None:
+            query_params = {}
+        if top_k_values is None:
+            top_k_values = [1, 3, 5, 10, 100, 1000]
         try:
             from beir import util
             from beir.datasets.data_loader import GenericDataLoader
@@ -855,11 +861,11 @@ class Pipeline:
         experiment_tracking_tool: Literal["mlflow", None] = None,
         experiment_tracking_uri: Optional[str] = None,
         corpus_file_metas: Optional[List[Dict[str, Any]]] = None,
-        corpus_meta: Dict[str, Any] = {},
-        evaluation_set_meta: Dict[str, Any] = {},
-        pipeline_meta: Dict[str, Any] = {},
-        index_params: dict = {},
-        query_params: dict = {},
+        corpus_meta: Optional[Dict[str, Any]] = None,
+        evaluation_set_meta: Optional[Dict[str, Any]] = None,
+        pipeline_meta: Optional[Dict[str, Any]] = None,
+        index_params: Optional[Dict] = None,
+        query_params: Optional[Dict] = None,
         sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
@@ -997,6 +1003,17 @@ class Pipeline:
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
         """
+        if corpus_meta is None:
+            corpus_meta = {}
+        if evaluation_set_meta is None:
+            evaluation_set_meta = {}
+        if pipeline_meta is None:
+            pipeline_meta = {}
+        if index_params is None:
+            index_params = {}
+        if query_params is None:
+            query_params = {}
+
         if experiment_tracking_tool is not None:
             tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
             if tracking_head_cls is None:
@@ -1439,9 +1456,11 @@ class Pipeline:
             "gold_id_and_context_and_answer_match",  # doc-specific
             "context_and_answer_match",  # doc-specific
             "rank",  # generic
-            "document_id",  # generic
+            "document_id",  # document-specific
+            "document_ids",  # answer-specific
             "gold_document_ids",  # generic
-            "custom_document_id",  # generic
+            "custom_document_id",  # document-specific
+            "custom_document_ids",  # answer-specific
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
@@ -1494,7 +1513,6 @@ class Pipeline:
 
         partial_dfs = []
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
-
             if query_labels is None or query_labels.labels is None:
                 logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
@@ -1545,7 +1563,7 @@ class Pipeline:
                         ]
                     answer_cols_to_keep = [
                         "answer",
-                        "document_id",
+                        "document_ids",
                         "offsets_in_document",
                         "offsets_in_context",
                         "context",
@@ -1576,17 +1594,23 @@ class Pipeline:
                         ]
                     )
                     df_answers["gold_documents_id_match"] = df_answers.map_rows(
-                        lambda row: [1.0 if row["document_id"] == gold_id else 0.0 for gold_id in gold_document_ids]
+                        lambda row: [
+                            1.0 if gold_id in (row["document_ids"] or []) else 0.0 for gold_id in gold_document_ids
+                        ]
                     )
 
                     if custom_document_id_field is not None:
                         df_answers["gold_custom_document_ids"] = [gold_custom_document_ids] * len(df_answers)
-                        df_answers["custom_document_id"] = [
-                            answer.meta.get(custom_document_id_field, "") for answer in answers
+                        df_answers["custom_document_ids"] = [
+                            [
+                                meta.get(custom_document_id_field, "")
+                                for meta in answer.meta.get("doc_metas", [answer.meta])
+                            ]
+                            for answer in answers
                         ]
                         df_answers["gold_documents_id_match"] = df_answers.map_rows(
                             lambda row: [
-                                1.0 if row["custom_document_id"] == gold_custom_id else 0.0
+                                1.0 if gold_custom_id in row["custom_document_ids"] else 0.0
                                 for gold_custom_id in gold_custom_document_ids
                             ]
                         )
@@ -2180,7 +2204,6 @@ class Pipeline:
         """
         if params:
             if not all(node_id in self.graph.nodes for node_id in params.keys()):
-
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 # "debug" will be picked up by _dispatch_run, see its code
@@ -2213,7 +2236,7 @@ class Pipeline:
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+        wrong_examples_fields: Optional[List[str]] = None,
         max_characters_per_field: int = 150,
     ):
         """
@@ -2249,9 +2272,11 @@ class Pipeline:
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-         :param wrong_examples_fields: A list of fields to include in the worst samples.
+         :param wrong_examples_fields: A list of fields to include in the worst samples. By default, "answer", "context", and "document_id" are included.
          :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
         """
+        if wrong_examples_fields is None:
+            wrong_examples_fields = ["answer", "context", "document_id"]
         graph = DiGraph(self.graph.edges)
         print_eval_report(
             eval_result=eval_result,
