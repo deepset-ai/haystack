@@ -19,13 +19,13 @@ from haystack.nodes.audio._text_to_speech import TextToSpeech
 
 from ..conftest import SAMPLES_PATH
 
-WHISPER_MODEL = "openai/whisper-tiny"
+WHISPER_MODEL = "openai/whisper-medium"
 
 
 class WhisperHelper:
     def __init__(self, model):
-        self._processor = WhisperProcessor.from_pretrained(WHISPER_MODEL)
-        self._model = WhisperForConditionalGeneration.from_pretrained(WHISPER_MODEL)
+        self._processor = WhisperProcessor.from_pretrained(model)
+        self._model = WhisperForConditionalGeneration.from_pretrained(model)
         self._model.config.forced_decoder_ids = None
 
     def media_to_text(self, media_file: str):
