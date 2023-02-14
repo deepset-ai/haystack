@@ -130,7 +130,7 @@ def send_pipeline_run_event(  # type: ignore
     """
     try:
         if telemetry:
-            event_properties: Dict[str, Optional[Union[str, bool, int]]] = {}
+            event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {}
 
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
@@ -159,7 +159,7 @@ def send_pipeline_run_event(  # type: ignore
                     event_properties["pipeline.type"] = node
                 else:
                     event_properties["pipeline.nodes." + node_type] = (
-                        event_properties.get("pipeline.nodes." + node_type, 0) + 1
+                        event_properties.get("pipeline.nodes." + node_type, 0) + 1  # type: ignore
                     )
 
             # Inputs of the run() or run_batch() call
@@ -180,7 +180,7 @@ def send_pipeline_run_event(  # type: ignore
             event_properties["pipeline.run_parameters.queries"] = len(queries) if queries else bool(query)
             event_properties["pipeline.run_parameters.file_paths"] = len(file_paths or [])
             event_properties["pipeline.run_parameters.labels"] = labels_len
-            event_properties["pipeline.run_parameters.documents"] = documents_len
+            event_properties["pipeline.run_parameters.documents"] = documents_len  # type: ignore
             event_properties["pipeline.run_parameters.meta"] = meta_len
             event_properties["pipeline.run_parameters.params"] = bool(params)
             event_properties["pipeline.run_parameters.debug"] = bool(debug)
