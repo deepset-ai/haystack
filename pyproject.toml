@@ -149,6 +149,7 @@ docstores-gpu = [
 audio = [
   "pyworld>=0.3.1; python_version >= '3.8'",
   "pyworld<0.3.1; python_version < '3.8'",
+  "ffmpeg-python==0.2.0",
   "espnet",
   "espnet-model-zoo",
   "pydub",
