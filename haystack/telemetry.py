@@ -182,35 +182,8 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
         logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 
-def send_tutorial_event(url: str):
-    """
-    Can be called when a tutorial dataset is downloaded so that the dataset URL is used to identify the tutorial and send an event.
-
-    :param url: URL of the dataset that is loaded in the tutorial.
-    """
-    dataset_url_to_tutorial = {
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip": "1",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt3.zip": "3",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/small_faq_covid.csv.zip": "4",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip": "5",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt6.zip": "6",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/small_generator_dataset.csv.zip": "7",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial8.zip": "8",
-        # "https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-train.json.gz":"9",
-        "https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-dev.json.gz": "9",
-        "https://fandom-qa.s3-eu-west-1.amazonaws.com/saved_models/hp_v3.4.zip": "10",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt11.zip": "11",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt12.zip": "12",
-        # Tutorial 13: no dataset available yet
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip": "14",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/table_text_dataset.zip": "15",
-        # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
-    }
-    send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
+def tutorial_running(id: str):
+    send_custom_event(event=f"tutorial {id} executed")
 
 
 def _get_or_create_user_id() -> Optional[str]:
