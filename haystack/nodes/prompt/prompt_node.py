@@ -464,7 +464,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if "stop_words" in kwargs:
                 kwargs["stop"] = kwargs.pop("stop_words")
             if "top_k" in kwargs:
-                kwargs["n"] = kwargs.pop("top_k")
+                top_k = kwargs.pop("top_k")
+                kwargs["n"] = top_k
+                kwargs["best_of"] = top_k
             kwargs_with_defaults.update(kwargs)
         payload = {
             "model": self.model_name_or_path,
