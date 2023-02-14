@@ -23,14 +23,14 @@ logger = logging.getLogger(__name__)
 class Telemetry:
     """
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
-    An example report can be inspected via calling print_report().
+    You can inspect an example report by calling `print_report()`.
 
-    You can opt-out of sharing usage statistics by calling disable() or by manually setting the environment
-    variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page.
+    You can opt-out of sharing usage statistics by calling `disable()` or by manually setting the environment
+    variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the [documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out).
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment
-    variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
+    variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to `True`.
 
-    Check out the documentation for more details: https://docs.haystack.deepset.ai/docs/telemetry
+    Check out the documentation for more details: [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry).
     """
 
     def __init__(self):
@@ -39,7 +39,7 @@ class Telemetry:
         or creates a new id and saves it if the file is not found.
 
         It also collects system information which cannot change across the lifecycle
-        of the process (for example `is_containerized()`)
+        of the process (for example `is_containerized()`).
         """
         posthog.api_key = "phc_C44vUK9R1J6HYVdfJarTEPqVAoRPJzMXzFcj8PIrJgP"
         posthog.host = "https://eu.posthog.com"
@@ -67,9 +67,9 @@ class Telemetry:
             logger.info(
                 "Haystack sends anonymous usage data to understand the actual usage and steer dev efforts "
                 "towards features that are most meaningful to users. You can opt-out at anytime by calling "
-                "disable() or by manually setting the environment variable  "
-                "HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation "
-                "page. More information at https://docs.haystack.deepset.ai/docs/telemetry"
+                "`disable()` or by manually setting the environment variable  "
+                "HAYSTACK_TELEMETRY_ENABLED as described for different operating systems in the [documentation "
+                "page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out). More information at [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry)."
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
             self.user_id = str(uuid.uuid4())
@@ -85,8 +85,8 @@ class Telemetry:
         """
         Sends an event.
 
-        :param event_name: the name of the event to show in PostHog
-        :param event_properties: additional event metadata. These will be merged with the
+        :param event_name: The name of the event to show in PostHog.
+        :param event_properties: Additional event metadata. These are merged with the
             system metadata collected in __init__, so take care not to overwrite them.
         """
         event_properties = event_properties or {}
@@ -101,7 +101,7 @@ class Telemetry:
                 ),
             )
         except Exception as e:
-            logger.debug("Telemetry was not able to make a POST request to posthog.", exc_info=e)
+            logger.debug("Telemetry couldn't make a POST request to posthog.", exc_info=e)
 
 
 def send_pipeline_run_event(  # type: ignore
