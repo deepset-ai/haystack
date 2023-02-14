@@ -245,6 +245,21 @@ def test_open_ai_prompt_with_params():
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
+def test_open_ai_prompt_with_default_params():
+    pn = PromptNode(
+        model_name_or_path="text-davinci-003",
+        api_key=os.environ["OPENAI_API_KEY"],
+        model_kwargs={"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5},
+    )
+    result = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    assert len(result) == 1 and len(result[0]) > 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
     pm = PromptModel("text-davinci-003", api_key=os.environ["OPENAI_API_KEY"])
     pn = PromptNode(pm)
