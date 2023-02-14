@@ -87,7 +87,6 @@ def fetch_archive_from_http(
 
     if "deepset.ai-farm-qa/datasets" in url or "dl.fbaipublicfiles.com" in url or "fandom-qa.s3" in url:
         send_tutorial_event(url=url)
-        send_event("Tutorial run", event_parameters={"tutorial.dataset_url": url})  # FIXME review
 
     is_not_empty = len(list(Path(path).rglob("*"))) > 0
     if is_not_empty:

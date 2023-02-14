@@ -106,19 +106,19 @@ class Telemetry:
 
 def send_pipeline_run_event(  # type: ignore
     event_name: str,
-    pipeline: "Pipeline",
+    pipeline: "Pipeline",  # type: ignore
     query: Optional[str] = None,
     queries: Optional[List[str]] = None,
     file_paths: Optional[List[str]] = None,
-    labels: Optional[Union["MultiLabel", List["MultiLabel"]]] = None,
-    documents: Optional[Union[List["Document"], List[List["Document"]]]] = None,
+    labels: Optional[Union["MultiLabel", List["MultiLabel"]]] = None,  # type: ignore
+    documents: Optional[Union[List["Document"], List[List["Document"]]]] = None,  # type: ignore
     meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     params: Optional[dict] = None,
     debug: Optional[bool] = None,
 ):
     try:
         if telemetry:
-            event_properties: Dict[str, Union[str, bool, int]] = {}
+            event_properties: Dict[str, Optional[Union[str, bool, int]]] = {}
 
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
