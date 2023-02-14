@@ -420,6 +420,33 @@ def test_simple_pipeline_yaml(tmp_path):
     assert result["results"][0] == "positive"
 
 
+def test_simple_pipeline_yaml_with_default_params(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: p1
+              type: PromptNode
+              params:
+                default_prompt_template: sentiment-analysis
+                model_kwargs:
+                  torch_dtype: torch.bfloat16
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipeline.graph.nodes["p1"]["component"].prompt_model.model_kwargs == {"torch_dtype": "torch.bfloat16"}
+
+    result = pipeline.run(query=None, documents=[Document("Berlin is an amazing city.")])
+    assert result["results"][0] == "positive"
+
+
 def test_complex_pipeline_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
