@@ -24,10 +24,10 @@ A demo idea for the new Agent is to demonstrate Question Answering on Technical 
 **Example Questions:**
 - "Why am I seeing duplicate answers being returned?" based on indexed FAQ documentation
 - "Which organizations use Haystack?" based on web search and Wikipedia returning answers via SerpAPI
-- "How can I choose the model for PromptNode?" based on retrieving documents on-the-fly via web search and then using a Reader
+- "How can I choose the model for PromptNode?" based on retrieving documents via WebRetriever
 - "How can I make overwrite_with_env_variables work in RayPipeline" based on an open issue found with GitHub API or web search
 
-If an answer cannot be found in indexed files, the Agent will use self reflection to rephrase the question and/or search the web. It will give updates while searching, for example print thoughts: “Found nothing in indexed documentation. Will continue with web search.” If still nothing can be found, the Agent will generate a link to a pre-filled and pre-tagged issue template like this that the user can choose to create. Tools required for the demo: SerpAPI, GitHubAPI, Self Reflection Module, "On-the-fly QA" (web search returning documents+reader).
+If an answer cannot be found in indexed files, the Agent will use self reflection to rephrase the question and/or search the web. It will give updates while searching, for example print thoughts: “Found nothing in indexed documentation. Will continue with web search.” If still nothing can be found, the Agent will generate a link to a pre-filled and pre-tagged issue template like this that the user can choose to create. Tools required for the demo: SerpAPI, GitHubAPI, Self Reflection Module, WebRetriever.
 
 We also need to demonstrate how the Agent uses a combination of multiple tools to answer a question instead of just trying them sequentially.
 
@@ -40,7 +40,7 @@ We propose the following tools to be developed for the MVP version of our agent 
 
 - SerpAPI
 - Self reflection module (query rephrasing)
-- On-the-fly QA (no index)
+- WebRetriever
 - deepset Cloud API
 
 # Basic example
@@ -116,37 +116,21 @@ otherwise it will check at least once for alignment/congruency and optionally re
 more often than the parameter allows.
 
 
-## On-the-fly QA (no index)
+## WebRetriever
 
-On-the-fly QA is a neural module that allows users to ask questions on arbitrary document lengths. On-the-fly QA consists
-of retrieval and answer synthesis (reader).
+WebRetriever is a symbolic module that allows users to query the web for relevant documents. It is a wrapper around
+SerpAPI that produces a list of Haystack Documents.
 
-There are many retrieval approaches. We'll name two emerging variants:
+Given a user query passed via the run method, SerpAPI first fetches the top_k relevant URL hits, which are downloaded
+and processed. The processing involves stripping irrelevant HTML tags and producing clean raw text. WebRetriever
+then splits raw text into paragraph-long Documents of the desired size. WebRetriever can use the optional
+Cross-Encoder to filter out query-irrelevant documents.
 
-1. Retrieval via a search engine using SerpAPI to fetch results for a given query
+In the future, we'll develop WebRetriever variants with DocumentStore that caches documents with some expiration
+setting. The enhanced WebRetreiever versions will allow us to avoid downloading the same documents from the web
+multiple times.
 
-2. Retrieval via map-reduce-collate by ingesting a large document (e.g. Wikipedia article, entire FAQ)
-
-Approach 1 is self-evident. Given a well-formed targeted query, we can use SerpAPI to fetch the top_k relevant hits. We
-can then retrieve the top_k web pages and use them as a context for the synthesis step. We'll need to have a good HTML
-to raw text parser to extract the relevant text from the web page.
-
-For approach 2. we can use the map phase to split the large document into smaller chunks (paragraphs).
-In reduce phase, we batch encode all chunks using an encoder, and in collate phase, we find the top_k relevant
-paragraphs returning them as a result (list of strings). The actual approach doesn't have to actually use
-map-reduce-collate. We can use any other algorithm that split text into paragraphs, encodes paragraphs, and finds
-top_k relevant paragraphs.
-
-The result of the retrieval step is a set of top_k paragraphs passed as a context to the synthesis step.
-
-The synthesis step is done with an LLM using a specified prompt (QA, LFQA etc.) Therefore, regardless of where the
-resulting paragraphs come from (SerpAPI, map-reduce-collate, Notion API etc.), we reuse the same synthesis approach
-using instructions following LLM and the prompt of our choice (QA, LFQA etc.).
-
-The most significant advantage of the module is that it doesn't require any pre-indexing. We can use it to answer
-questions on documents "on-the-fly" regardless of the source (web, local file, Rest API).
-
-The variants of this module are going to be implemented as pipelines.
+However, for the first version of the agent, we will keep WebRetriever as simple as possible.
 
 ## deepset Cloud API
 The Agent should be able to use pipelines deployed on deepset Cloud as a tool.
