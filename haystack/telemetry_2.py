@@ -23,12 +23,10 @@ logger = logging.getLogger(__name__)
 class Telemetry:
     """
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
-    You can inspect an example report by calling `print_report()`.
 
-    You can opt-out of sharing usage statistics by calling `disable()` or by manually setting the environment
-    variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the [documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out).
-    You can log all events to the local file specified in LOG_PATH for inspection by setting the environment
-    variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to `True`.
+    You can opt-out of sharing usage statistics by manually setting the environment
+    variable `HAYSTACK_TELEMETRY_ENABLED` as described for different operating systems on the
+    [documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out).
 
     Check out the documentation for more details: [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry).
     """
@@ -66,10 +64,10 @@ class Telemetry:
             # Create the config file
             logger.info(
                 "Haystack sends anonymous usage data to understand the actual usage and steer dev efforts "
-                "towards features that are most meaningful to users. You can opt-out at anytime by calling "
-                "`disable()` or by manually setting the environment variable  "
-                "HAYSTACK_TELEMETRY_ENABLED as described for different operating systems in the [documentation "
-                "page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out). More information at [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry)."
+                "towards features that are most meaningful to users. You can opt-out at anytime by manually "
+                "setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different "
+                "operating systems in the [documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out). "
+                "More information at [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry)."
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
             self.user_id = str(uuid.uuid4())
@@ -83,7 +81,7 @@ class Telemetry:
 
     def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None):
         """
-        Sends an event.
+        Sends a telemetry event.
 
         :param event_name: The name of the event to show in PostHog.
         :param event_properties: Additional event metadata. These are merged with the
@@ -101,7 +99,7 @@ class Telemetry:
                 ),
             )
         except Exception as e:
-            logger.debug("Telemetry couldn't make a POST request to posthog.", exc_info=e)
+            logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
 def send_pipeline_run_event(  # type: ignore
@@ -116,6 +114,20 @@ def send_pipeline_run_event(  # type: ignore
     params: Optional[dict] = None,
     debug: Optional[bool] = None,
 ):
+    """
+    Sends a telemetry event about the execution of a pipeline, if telemetry is enabled.
+
+    :param event_name: The name of the event to show in PostHog.
+    :param pipeline: the pipeline that is running
+    :param query: the value of the `query` input of the pipeline, if any
+    :param queries: the value of the `queries` input of the pipeline, if any
+    :param file_paths: the value of the `file_paths` input of the pipeline, if any
+    :param labels: the value of the `labels` input of the pipeline, if any
+    :param documents: the value of the `documents` input of the pipeline, if any
+    :param meta: the value of the `meta` input of the pipeline, if any
+    :param params: the value of the `params` input of the pipeline, if any
+    :param debug: the value of the `debug` input of the pipeline, if any
+    """
     try:
         if telemetry:
             event_properties: Dict[str, Optional[Union[str, bool, int]]] = {}
@@ -180,6 +192,9 @@ def send_pipeline_run_event(  # type: ignore
 
 
 def send_pipeline_event(pipeline: "Pipeline", event_name: str):  # type: ignore
+    """
+    Send a telemetry event related to a pipeline which is not a call to run(), if telemetry is enabled.
+    """
     try:
         if telemetry:
             telemetry.send_event(
@@ -196,6 +211,9 @@ def send_pipeline_event(pipeline: "Pipeline", event_name: str):  # type: ignore
 
 
 def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = None):
+    """
+    Send a telemetry event, if telemetry is enabled.
+    """
     try:
         if telemetry:
             telemetry.send_event(event_name=event_name, event_properties=event_properties)
