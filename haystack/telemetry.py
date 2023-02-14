@@ -182,7 +182,7 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
         logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 
-def tutorial_running(id: str):
+def send_tutorial_event(id: int):
     send_custom_event(event=f"tutorial {id} executed")
 
 
