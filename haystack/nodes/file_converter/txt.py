@@ -63,7 +63,7 @@ class TextConverter(BaseConverter):
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
                     if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
-                        logger.debug(f"Removing line '{line}' from {file_path}")
+                        logger.debug("Removing line '%s' from %s", line, file_path)
                         continue
 
                 cleaned_lines.append(line)
@@ -75,8 +75,10 @@ class TextConverter(BaseConverter):
             document_text = "".join(cleaned_pages)
             if not self.validate_language(document_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
-                    f"been decoded in the correct text format."
+                    "The language for %s is not one of %s. The file may not have "
+                    "been decoded in the correct text format.",
+                    file_path,
+                    valid_languages,
                 )
 
         text = "".join(cleaned_pages)

@@ -1,8 +1,10 @@
 from abc import abstractmethod
 from typing import Any, List, Optional, Dict, Union
 
+from tqdm.auto import tqdm
+
 from haystack.errors import HaystackError
-from haystack.schema import Answer, Document
+from haystack.schema import Answer, Document, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
@@ -12,6 +14,10 @@ class BaseGenerator(BaseComponent):
     """
 
     outgoing_edges = 1
+
+    def __init__(self, progress_bar: bool = True):
+        super().__init__()
+        self.progress_bar = progress_bar
 
     @abstractmethod
     def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
@@ -25,12 +31,17 @@ class BaseGenerator(BaseComponent):
         """
         pass
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
-
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k)
         else:
             results = {"answers": []}
+
+        # run evaluation with "perfect" labels as node inputs to calculate "upper bound" metrics for just this node
+        if add_isolated_node_eval and labels is not None:
+            relevant_documents = list({label.document.id: label.document for label in labels.labels}.values())
+            results_label_input = self.predict(query=query, documents=relevant_documents, top_k=top_k)
+            results["answers_isolated"] = results_label_input["answers"]
 
         return results, "output_1"
 
@@ -60,12 +71,13 @@ class BaseGenerator(BaseComponent):
             answers.append(
                 Answer(
                     answer=generated_answer,
+                    document_ids=flat_docs_dict.get("id"),
                     type="generative",
                     meta={
-                        "doc_ids": flat_docs_dict["id"],
-                        "doc_scores": flat_docs_dict["score"],
-                        "content": flat_docs_dict["content"],
-                        "titles": [d.get("name", "") for d in flat_docs_dict["meta"]],
+                        "doc_scores": flat_docs_dict.get("score"),
+                        "content": flat_docs_dict.get("content"),
+                        "titles": [d.get("name", "") for d in flat_docs_dict.get("meta", [])],
+                        "doc_metas": flat_docs_dict.get("meta"),
                     },
                 )
             )
@@ -101,18 +113,18 @@ class BaseGenerator(BaseComponent):
         :param batch_size: Not applicable.
         :return: Generated answers plus additional infos in a dict like this:
 
-        ```python
-        |     {'queries': 'who got the first nobel prize in physics',
-        |      'answers':
-        |          [{'query': 'who got the first nobel prize in physics',
-        |            'answer': ' albert einstein',
-        |            'meta': { 'doc_ids': [...],
-        |                      'doc_scores': [80.42758 ...],
-        |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'content': ['Albert Einstein was a ...]
-        |                      'titles': ['"Albert Einstein"', ...]
-        |      }}]}
-        ```
+         ```python
+         {'queries': 'who got the first nobel prize in physics',
+          'answers':
+              [{'query': 'who got the first nobel prize in physics',
+                'answer': ' albert einstein',
+                'meta': { 'doc_ids': [...],
+                          'doc_scores': [80.42758 ...],
+                          'doc_probabilities': [40.71379089355469, ...
+                          'content': ['Albert Einstein was a ...]
+                          'titles': ['"Albert Einstein"', ...]
+          }}]}
+         ```
         """
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
@@ -122,12 +134,15 @@ class BaseGenerator(BaseComponent):
         # Docs case 1: single list of Documents -> apply each query to all Documents
         if len(documents) > 0 and isinstance(documents[0], Document):
             single_doc_list = True
+            pb = tqdm(total=len(queries) * len(documents), disable=not self.progress_bar, desc="Generating answers")
             for query in queries:
                 for doc in documents:
                     if not isinstance(doc, Document):
                         raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                     preds = self.predict(query=query, documents=[doc], top_k=top_k)
                     results["answers"].append(preds["answers"])
+                    pb.update(1)
+            pb.close()
 
         # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
         # contains only one query, apply it to each list of Documents
@@ -136,11 +151,14 @@ class BaseGenerator(BaseComponent):
                 queries = queries * len(documents)
             if len(queries) != len(documents):
                 raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            pb = tqdm(total=min(len(queries), len(documents)), disable=not self.progress_bar, desc="Generating answers")
             for query, cur_docs in zip(queries, documents):
                 if not isinstance(cur_docs, list):
                     raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
                 preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
                 results["answers"].append(preds["answers"])
+                pb.update(1)
+            pb.close()
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:

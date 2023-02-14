@@ -13,7 +13,12 @@ from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.model.language_model import get_language_model, LanguageModel
+from haystack.modeling.model.language_model import (
+    get_language_model,
+    LanguageModel,
+    _get_model_type,
+    capitalize_model_type,
+)
 from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -96,7 +101,7 @@ class BaseAdaptiveModel:
                 kwargs["preds"] = None
             head = self.prediction_heads[0]
             logits_for_head = logits[0]
-            preds = head.formatted_preds(logits=logits_for_head, **kwargs)
+            preds = head.formatted_preds(logits=logits_for_head, **kwargs)  # type: ignore [operator]
             # TODO This is very messy - we need better definition of what the output should look like
             if type(preds) == list:
                 preds_final += preds
@@ -142,7 +147,7 @@ class BaseAdaptiveModel:
                 "does not currently support saving and loading"
             )
             assert len(model_files) == len(config_files), error_str
-        logger.info(f"Found files for loading {len(model_files)} prediction heads")
+        logger.info("Found files for loading %s prediction heads", len(model_files))
 
         return model_files, config_files
 
@@ -275,7 +280,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         * vocab.txt vocab file for language model, turning text to Wordpiece Tokens
 
         :param load_dir: Location where the AdaptiveModel is stored.
-        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
+        :param device: Specifies the device to which you want to send the model, either torch.device("cpu") or torch.device("cuda").
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
@@ -303,10 +308,10 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         cls,
         model_name_or_path,
         device: Union[str, torch.device],
-        revision: str = None,
+        revision: Optional[str] = None,
         task_type: str = "question_answering",
-        processor: Processor = None,
-        use_auth_token: Union[bool, str] = None,
+        processor: Optional[Processor] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
         **kwargs,
     ) -> "AdaptiveModel":
         """
@@ -325,6 +330,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
                          Right now accepts only 'question_answering'.
         :param processor: populates prediction head with information coming from tasks.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: AdaptiveModel
         """
 
@@ -343,13 +353,15 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 )
 
         if task_type == "question_answering":
-            ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
+            ph = QuestionAnsweringHead.load(
+                model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs
+            )
             adaptive_model = cls(
                 language_model=lm,
                 prediction_heads=[ph],
                 embeds_dropout_prob=0.1,
                 lm_output_types="per_token",
-                device=device,
+                device=device,  # type: ignore [arg-type]
             )
         elif task_type == "embeddings":
             adaptive_model = cls(
@@ -357,7 +369,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 prediction_heads=[],
                 embeds_dropout_prob=0.1,
                 lm_output_types=["per_token", "per_sequence"],
-                device=device,
+                device=device,  # type: ignore [arg-type]
             )
 
         if processor:
@@ -378,8 +390,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         for prediction_head in self.prediction_heads:
             if len(prediction_head.layer_dims) != 2:
                 logger.error(
-                    f"Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
-                    f"            Your PredictionHead has {str(prediction_head.layer_dims)} dimensions."
+                    "Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
+                    "            Your PredictionHead has %s dimensions.",
+                    str(prediction_head.layer_dims),
                 )
                 continue
             if prediction_head.model_type == "span_classification":
@@ -387,8 +400,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 converted_models.append(transformers_model)
             else:
                 logger.error(
-                    f"Haystack -> Transformers conversion is not supported yet for"
-                    f" prediction heads of type {prediction_head.model_type}"
+                    "Haystack -> Transformers conversion is not supported yet for prediction heads of type %s",
+                    prediction_head.model_type,
                 )
 
         return converted_models
@@ -566,14 +579,14 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         try:
             tracker.track_params(params)
         except Exception as e:
-            logger.warning(f"ML logging didn't work: {e}")
+            logger.warning("ML logging didn't work: %s", e)
 
     def verify_vocab_size(self, vocab_size: int):
         """
         Verifies that the model fits to the tokenizer vocabulary.
         They could diverge in case of custom vocabulary added via tokenizer.add_tokens()
         """
-        model_vocab_len = self.language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model_vocab_len = self.language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size} doesn't match with model {model_vocab_len}. "
@@ -584,7 +597,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         for head in self.prediction_heads:
             if head.model_type == "language_modelling":
-                ph_decoder_len = head.decoder.weight.shape[0]
+                ph_decoder_len = head.decoder.weight.shape[0]  # type: ignore [union-attr,index]
                 assert vocab_size == ph_decoder_len, msg
 
     def get_language(self):
@@ -599,6 +612,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         convert_to_float16: bool = False,
         quantize: bool = False,
         opset_version: int = 11,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Convert a PyTorch model from transformers hub to an ONNX Model.
@@ -611,10 +625,15 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                    might be more performant.
         :param quantize: Convert floating point number to integers
         :param opset_version: ONNX opset version.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: None.
         """
-        language_model_class = LanguageModel.get_language_model_class(model_name)
-        if language_model_class not in ["Bert", "Roberta", "XLMRoberta"]:
+        model_type = capitalize_model_type(_get_model_type(model_name))  # type: ignore
+        if model_type not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
         task_type_to_pipeline_map = {"question_answering": "question-answering"}
@@ -625,22 +644,30 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if language_model_class == "XLMRoberta" else False,
+            use_external_format=True if model_type == "XLMRoberta" else False,
+            use_auth_token=use_auth_token,
         )
 
         # save processor & model config files that are needed when loading the model with the Haystack.basics Inferencer
         processor = Processor.convert_from_transformers(
-            tokenizer_name_or_path=model_name, task_type=task_type, max_seq_len=256, doc_stride=128, use_fast=True
+            tokenizer_name_or_path=model_name,
+            task_type=task_type,
+            max_seq_len=256,
+            doc_stride=128,
+            use_fast=True,
+            use_auth_token=use_auth_token,
         )
         processor.save(output_path)
-        model = AdaptiveModel.convert_from_transformers(model_name, device=torch.device("cpu"), task_type=task_type)
+        model = AdaptiveModel.convert_from_transformers(
+            model_name, device=torch.device("cpu"), task_type=task_type, use_auth_token=use_auth_token
+        )
         model.save(output_path)
         os.remove(output_path / "language_model.bin")  # remove the actual PyTorch model(only configs are required)
 
         onnx_model_config = {
             "task_type": task_type,
             "onnx_opset_version": opset_version,
-            "language_model_class": language_model_class,
+            "language_model_class": model_type,
             "language": model.language_model.language,
         }
         with open(output_path / "onnx_model_config.json", "w") as f:
@@ -649,7 +676,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         if convert_to_float16:
             from onnxruntime_tools import optimizer
 
-            config = AutoConfig.from_pretrained(model_name)
+            config = AutoConfig.from_pretrained(model_name, use_auth_token=use_auth_token)
             optimized_model = optimizer.optimize_model(
                 input=str(output_path / "model.onnx"),
                 model_type="bert",
@@ -685,7 +712,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         """
         :param onnx_session: ? # TODO
         :param language_model_class: Class of LanguageModel
-        :param langauge: Language the model is trained for.
+        :param language: Language the model is trained for.
         :param prediction_heads: A list of models that take embeddings and return logits for a given task.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
@@ -752,7 +779,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param kwargs: All arguments that need to be passed on to the model.
         :return: All logits as torch.tensor or multiple tensors.
         """
-        with torch.no_grad():
+        with torch.inference_mode():
             if self.language_model_class == "Bert":
                 input_to_onnx = {
                     "input_ids": numpy.ascontiguousarray(kwargs["input_ids"].cpu().numpy()),

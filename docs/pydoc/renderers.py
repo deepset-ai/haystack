@@ -12,6 +12,9 @@ README_FRONTMATTER = """---
 title: {title}
 excerpt: {excerpt}
 category: {category}
+slug: {slug}
+order: {order}
+hidden: false
 ---
 
 """
@@ -29,6 +32,8 @@ class ReadmeRenderer(Renderer):
     title: str
     category: str
     excerpt: str
+    slug: str
+    order: int
     # This exposes a special `markdown` settings value that can be used to pass
     # parameters to the underlying `MarkdownRenderer`
     markdown: MarkdownRenderer = dataclasses.field(default_factory=MarkdownRenderer)
@@ -39,11 +44,13 @@ class ReadmeRenderer(Renderer):
     def render(self, modules: t.List[docspec.Module]) -> None:
         if self.markdown.filename is None:
             sys.stdout.write(self._frontmatter())
-            self.markdown.render_to_stream(modules, sys.stdout)
+            self.markdown.render_single_page(sys.stdout, modules)
         else:
             with io.open(self.markdown.filename, "w", encoding=self.markdown.encoding) as fp:
                 fp.write(self._frontmatter())
-                self.markdown.render_to_stream(modules, t.cast(t.TextIO, fp))
+                self.markdown.render_single_page(t.cast(t.TextIO, fp), modules)
 
     def _frontmatter(self) -> str:
-        return README_FRONTMATTER.format(title=self.title, category=self.category, excerpt=self.excerpt)
+        return README_FRONTMATTER.format(
+            title=self.title, category=self.category, excerpt=self.excerpt, slug=self.slug, order=self.order
+        )

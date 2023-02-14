@@ -1,31 +1,38 @@
 from typing import List, Optional, Union, Dict, Any
 
 import logging
-from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
 
 try:
     from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-    from opensearchpy.helpers import bulk
+    from opensearchpy.helpers import bulk, scan
 except (ImportError, ModuleNotFoundError) as e:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "opensearch", e)
 
 
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
+from haystack.nodes.retriever import DenseRetriever
 
-from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
+from .search_engine import SearchEngineDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 
 
-class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
+SIMILARITY_SPACE_TYPE_MAPPINGS = {
+    "nmslib": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
+    "score_script": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
+    "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
+}
+
+
+class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def __init__(
         self,
         scheme: str = "https",  # Mind this different default param
@@ -61,9 +68,10 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
+        knn_engine: str = "nmslib",
     ):
         """
-        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
+        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.
 
         In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
         the KNN plugin that can scale to a large number of documents.
@@ -130,6 +138,8 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param knn_engine: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib", "faiss" or "score_script". Defaults to "nmslib".
+                        For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -165,9 +175,11 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
             )
 
-        self.embeddings_field_supports_similarity = False
-        self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
-        self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
+        if knn_engine not in {"nmslib", "faiss", "score_script"}:
+            raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
+
+        self.knn_engine = knn_engine
+        self.space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
         super().__init__(
             client=client,
             index=index,
@@ -193,6 +205,17 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             synonym_type=synonym_type,
         )
 
+        # Let the base class catch the right error from the Opensearch client
+        self._RequestError = RequestError
+
+    def _do_bulk(self, *args, **kwargs):
+        """Override the base class method to use the Opensearch client"""
+        return bulk(*args, **kwargs)
+
+    def _do_scan(self, *args, **kwargs):
+        """Override the base class method to use the Opensearch client"""
+        return scan(*args, **kwargs)
+
     @classmethod
     def _init_client(
         cls,
@@ -213,9 +236,24 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         hosts = prepare_hosts(host, port)
         connection_class = Urllib3HttpConnection
         if use_system_proxy:
-            connection_class = RequestsHttpConnection
+            connection_class = RequestsHttpConnection  # type: ignore [assignment]
 
-        if username:
+        if aws4auth:
+            # Sign requests to Opensearch with IAM credentials
+            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
+            if username:
+                logger.warning(
+                    "aws4auth and a username or the default username 'admin' are passed to the OpenSearchDocumentStore. The username will be ignored and aws4auth will be used for authentication."
+                )
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=aws4auth,
+                connection_class=RequestsHttpConnection,
+                use_ssl=True,
+                verify_certs=True,
+                timeout=timeout,
+            )
+        elif username:
             # standard http_auth
             client = OpenSearch(
                 hosts=hosts,
@@ -225,17 +263,6 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 verify_certs=verify_certs,
                 timeout=timeout,
                 connection_class=connection_class,
-            )
-        elif aws4auth:
-            # Sign requests to Opensearch with IAM credentials
-            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
-            client = OpenSearch(
-                hosts=hosts,
-                http_auth=aws4auth,
-                connection_class=RequestsHttpConnection,
-                use_ssl=True,
-                verify_certs=True,
-                timeout=timeout,
             )
         else:
             # no authentication needed
@@ -250,10 +277,76 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
         return client
 
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        """
+        Indexes documents for later queries in OpenSearch.
+
+        If a document with the same ID already exists in OpenSearch:
+        a) (Default) Throw Elastic's standard error message for duplicate IDs.
+        b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
+        (This is only relevant if you pass your own ID when initializing a `Document`.
+        If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
+        they automatically get UUIDs assigned. See the `Document` class for details.)
+
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                          Optionally: Include meta data via {"content": "<the-actual-text>",
+                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                          You can use it for filtering and you can access it in the responses of the Finder.
+                          Advanced: If you are using your own OpenSearch mapping, change the key names in the dictionary
+                          to what you have set for self.content_field and self.name_field.
+        :param index: OpenSearch index where the documents should be indexed. If you don't specify it, self.index is used.
+        :param batch_size: Number of documents that are passed to OpenSearch's bulk function at a time.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.
+                                    Parameter options: ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicate documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: Raises an error if the document ID of the document being added already
+                                    exists.
+        :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
+        :return: None
+        """
+        if self.knn_engine == "faiss" and self.similarity == "cosine":
+            field_map = self._create_document_field_map()
+            documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+            embeddings_to_index = np.array([d.embedding for d in documents], dtype="float32")
+            self.normalize_embedding(embeddings_to_index)
+            for document, embedding in zip(documents, embeddings_to_index):
+                document.embedding = None if np.isnan(embedding).any() else embedding
+
+        super().write_documents(
+            documents=documents,
+            index=index,
+            batch_size=batch_size,
+            duplicate_documents=duplicate_documents,
+            headers=headers,
+        )
+
+    def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
+        """
+        Embed a list of documents using a Retriever.
+        :param documents: List of documents to embed.
+        :param retriever: Retriever to use for embedding.
+        :return: embeddings of documents.
+        """
+        embeddings = super()._embed_documents(documents, retriever)
+        if self.knn_engine == "faiss" and self.similarity == "cosine":
+            self.normalize_embedding(embeddings)
+        return embeddings
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -277,6 +370,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -305,6 +399,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -345,120 +440,41 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
-        # +1 in similarity to avoid negative numbers (for cosine sim)
-        body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            if not "bool" in body["query"]:
-                body["query"]["bool"] = {}
-            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+        body = self._construct_dense_query_body(
+            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding
+        )
 
-        excluded_meta_data: Optional[list] = None
-
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
-
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
             for hit in result
         ]
         return documents
+
+    def _construct_dense_query_body(
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
+    ):
+        body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+            if "script_score" in body["query"]:
+                # set filter for pre-filtering (see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/)
+                body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}
+            else:
+                body["query"]["bool"]["filter"] = filter_
+
+        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
+
+        return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents.
         """
-        # Check if index_name refers to an alias
-        if self.client.indices.exists_alias(name=index_name):
-            logger.debug(f"Index name {index_name} is an alias.")
-
-        # check if the existing index has the embedding field; if not create it
-        if self.client.indices.exists(index=index_name, headers=headers):
-            indices = self.client.indices.get(index_name, headers=headers)
-            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
-            for index_id, index_info in indices.items():
-                mappings = index_info["mappings"]
-                index_settings = index_info["settings"]["index"]
-                if self.search_fields:
-                    for search_field in self.search_fields:
-                        if (
-                            search_field in mappings["properties"]
-                            and mappings["properties"][search_field]["type"] != "text"
-                        ):
-                            raise DocumentStoreError(
-                                f"The search_field '{search_field}' of index '{index_id}' with type '{mappings['properties'][search_field]['type']}' "
-                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                                f'In this case deleting the index with `delete_index(index="{index_id}")` will fix your environment. '
-                                f"Note, that all data stored in the index will be lost!"
-                            )
-
-                # embedding field will be created
-                if self.embedding_field not in mappings["properties"]:
-                    mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping(
-                        similarity=self.similarity
-                    )
-                    self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
-                    self.embeddings_field_supports_similarity = True
-                else:
-                    # bad embedding field
-                    if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
-                        raise DocumentStoreError(
-                            f"The '{index_id}' index in OpenSearch already has a field called '{self.embedding_field}'"
-                            f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
-                            f"document_store to use a different name for the embedding_field parameter."
-                        )
-                    # embedding field with global space_type setting
-                    if "method" not in mappings["properties"][self.embedding_field]:
-                        embedding_field_space_type = index_settings["knn.space_type"]
-                    # embedding field with local space_type setting
-                    else:
-                        # embedding field with global space_type setting
-                        if "method" not in mappings["properties"][self.embedding_field]:
-                            embedding_field_space_type = index_settings["knn.space_type"]
-                        # embedding field with local space_type setting
-                        else:
-                            embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
-                                "space_type"
-                            ]
-
-                        embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
-                        if embedding_field_similarity == self.similarity:
-                            self.embeddings_field_supports_similarity = True
-                        else:
-                            logger.warning(
-                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                                f"Falling back to slow exact vector calculation. "
-                                f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
-                                f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                            )
-
-                # Adjust global ef_search setting. If not set, default is 512.
-                ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
-                if self.index_type == "hnsw" and ef_search != 20:
-                    body = {"knn.algo_param.ef_search": 20}
-                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                elif self.index_type == "flat" and ef_search != 512:
-                    body = {"knn.algo_param.ef_search": 512}
-                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-
-            return
-
         if self.custom_mapping:
             index_definition = self.custom_mapping
         else:
@@ -490,12 +506,11 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                     index_definition["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                index_definition["settings"]["index"] = {"knn": True}
-                if self.index_type == "hnsw":
+                index_definition["settings"]["index"] = {"knn": True}  # TODO: option to turn off for script scoring
+                # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
+                if self.knn_engine == "nmslib" and self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
-                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
-                    similarity=self.similarity
-                )
+                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping()
 
         try:
             self.client.indices.create(index=index_name, body=index_definition, headers=headers)
@@ -504,28 +519,208 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
-    def _get_embedding_field_mapping(self, similarity: str):
-        space_type = self.similarity_to_space_type[similarity]
-        method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        """
+        Validates an existing document index. If there's no embedding field, we'll add it.
+        """
+        indices = self.client.indices.get(index_name, headers=headers)
 
-        if self.index_type == "flat":
-            # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
-            # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
-            method["parameters"] = {"ef_construction": 512, "m": 16}
-        elif self.index_type == "hnsw":
-            method["parameters"] = {"ef_construction": 80, "m": 64}
+        if not any(indices):
+            # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
+            logger.warning(
+                "Before you can use an index, you must create it first. The index '%s' doesn't exist. "
+                "You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                "Note that this instance doesn't validate the index after you created it.",
+                index_name,
+            )
+
+        # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
+        for index_id, index_info in indices.items():
+            mappings = index_info["mappings"]
+            index_settings = index_info["settings"]["index"]
+
+            # validate fulltext fields
+            if self.search_fields:
+                for search_field in self.search_fields:
+                    if search_field in mappings["properties"]:
+                        if mappings["properties"][search_field]["type"] != "text":
+                            raise DocumentStoreError(
+                                f"The index '{index_id}' needs the 'text' type for the search_field '{search_field}' to run full text search, but got type '{mappings['properties'][search_field]['type']}'. "
+                                f"You can fix this issue in one of the following ways: "
+                                f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
+                                f" - Use another index name by setting `index='my_index_name'`. "
+                                f" - Remove '{search_field}' from `search_fields`. "
+                            )
+                    else:
+                        mappings["properties"][search_field] = (
+                            {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
+                        )
+                        self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
+
+            # validate embedding field
+            existing_embedding_field = mappings["properties"].get(self.embedding_field, None)
+
+            if existing_embedding_field is None:
+                # create embedding field
+                mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping()
+                self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
+            else:
+                # check type of existing embedding field
+                if existing_embedding_field["type"] != "knn_vector":
+                    raise DocumentStoreError(
+                        f"The index '{index_id}' needs the 'knn_vector' type for the embedding_field '{self.embedding_field}' to run vector search, but got type '{mappings['properties'][self.embedding_field]['type']}'. "
+                        f"You can fix it in one of these ways: "
+                        f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
+                        f" - Use another index name by setting `index='my_index_name'`. "
+                        f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'`. "
+                    )
+
+                # Check if existing embedding field fits desired knn settings
+                if self.knn_engine != "score_script":
+                    self._validate_approximate_knn_settings(existing_embedding_field, index_settings, index_id)
+
+            # Adjust global ef_search setting (nmslib only). If not set, default is 512.
+            if self.knn_engine == "nmslib":
+                ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
+                if self.index_type == "hnsw" and ef_search != 20:
+                    body = {"knn.algo_param.ef_search": 20}
+                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
+                    logger.info("Set ef_search to 20 for hnsw index '%s'.", index_id)
+                elif self.index_type == "flat" and ef_search != 512:
+                    body = {"knn.algo_param.ef_search": 512}
+                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
+                    logger.info("Set ef_search to 512 for hnsw index '%s'.", index_id)
+
+    def _validate_approximate_knn_settings(
+        self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str
+    ):
+        """
+        Checks if the existing embedding field fits the desired approximate knn settings.
+        If not, it will raise an error.
+        If settings are not specified we infer the same default values as https://opensearch.org/docs/latest/search-plugins/knn/knn-index/
+        """
+        method = existing_embedding_field.get("method", {})
+        embedding_field_space_type = method.get("space_type", "l2")
+        embedding_field_knn_engine = method.get("engine", "nmslib")
+        embedding_field_method_name = method.get("name", "hnsw")
+
+        parameters = method.get("parameters", {})
+        embedding_field_ef_construction = parameters.get("ef_construction", 512)
+        embedding_field_m = parameters.get("m", 16)
+        # ef_search is configured in the index settings and not in the mapping for nmslib
+        if embedding_field_knn_engine == "nmslib":
+            embedding_field_ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
         else:
-            logger.error("Please set index_type to either 'flat' or 'hnsw'")
+            embedding_field_ef_search = parameters.get("ef_search", 512)
 
-        embeddings_field_mapping = {"type": "knn_vector", "dimension": self.embedding_dim, "method": method}
+        if embedding_field_knn_engine != self.knn_engine:
+            raise DocumentStoreError(
+                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "
+                f"'{embedding_field_knn_engine}', but knn_engine was set to '{self.knn_engine}'. "
+                f"To switch knn_engine to '{self.knn_engine}' consider one of these options: "
+                f" - Clone the embedding field in the same index, for example,  `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example, `index='my_new_{self.knn_engine}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+
+        if embedding_field_space_type != self.space_type:
+            supported_similaries = [
+                k
+                for k, v in SIMILARITY_SPACE_TYPE_MAPPINGS[embedding_field_knn_engine].items()
+                if v == embedding_field_space_type
+            ]
+            raise DocumentStoreError(
+                f"Set `similarity` to one of '{supported_similaries}' to properly use the embedding field '{self.embedding_field}' of index '{index_id}'. "
+                f"Similarity '{self.similarity}' is not compatible with embedding field's space type '{embedding_field_space_type}', it requires '{self.space_type}'. "
+                f"If you do want to switch `similarity` of an existing index, note that the dense retriever models have an affinity for a specific similarity function. "
+                f"Switching the similarity function might degrade the performance of your model. "
+                f"\n"
+                f"If you don't want to change the existing index, you can still use similarity '{self.similarity}' by setting `knn_engine='score_script'`. "
+                f"This might be slower because of the exact vector calculation. "
+                f"For a fast ANN search with similarity '{self.similarity}', consider one of these options: "
+                f" - Clone the embedding field in the same index, for example, `clone_embedding_field(similarity='{self.similarity}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.similarity}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+
+        # Check method params according to requested index_type
+        if self.index_type == "flat":
+            self._assert_embedding_param(
+                name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_construction", actual=embedding_field_ef_construction, expected=512, index_id=index_id
+            )
+            self._assert_embedding_param(name="m", actual=embedding_field_m, expected=16, index_id=index_id)
+            if self.knn_engine == "faiss":
+                self._assert_embedding_param(
+                    name="ef_search", actual=embedding_field_ef_search, expected=512, index_id=index_id
+                )
+        if self.index_type == "hnsw":
+            self._assert_embedding_param(
+                name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_construction", actual=embedding_field_ef_construction, expected=80, index_id=index_id
+            )
+            self._assert_embedding_param(name="m", actual=embedding_field_m, expected=64, index_id=index_id)
+            if self.knn_engine == "faiss":
+                self._assert_embedding_param(
+                    name="ef_search", actual=embedding_field_ef_search, expected=20, index_id=index_id
+                )
+
+    def _assert_embedding_param(self, name: str, actual: Any, expected: Any, index_id: str) -> None:
+        if actual != expected:
+            message = (
+                f"The index_type '{self.index_type}' needs '{expected}' as {name} value. "
+                f"Currently, the value for embedding field '{self.embedding_field}' of index '{index_id}' is '{actual}'. "
+                f"To use your embeddings with index_type '{self.index_type}', you can do one of the following: "
+                f" - Clone the embedding field in the same index, for example, `clone_embedding_field(index_type='{self.index_type}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.index_type}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+            raise DocumentStoreError(message)
+
+    def _get_embedding_field_mapping(
+        self,
+        knn_engine: Optional[str] = None,
+        space_type: Optional[str] = None,
+        index_type: Optional[str] = None,
+        embedding_dim: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        if space_type is None:
+            space_type = self.space_type
+        if knn_engine is None:
+            knn_engine = self.knn_engine
+        if index_type is None:
+            index_type = self.index_type
+        if embedding_dim is None:
+            embedding_dim = self.embedding_dim
+
+        embeddings_field_mapping = {"type": "knn_vector", "dimension": embedding_dim}
+        if knn_engine != "score_script":
+            method: dict = {"space_type": space_type, "name": "hnsw", "engine": knn_engine}
+
+            if index_type == "flat":
+                # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
+                # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
+                method["parameters"] = {"ef_construction": 512, "m": 16}
+            elif index_type == "hnsw":
+                method["parameters"] = {"ef_construction": 80, "m": 64}
+                # for nmslib this is a global index setting
+                if knn_engine == "faiss":
+                    method["parameters"]["ef_search"] = 20
+            else:
+                logger.error("Set index_type to either 'flat' or 'hnsw'")
+
+            embeddings_field_mapping["method"] = method
+
         return embeddings_field_mapping
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        if self.client.indices.exists(index=index_name, headers=headers):
-            return
         mapping = {
             "mappings": {
                 "properties": {
@@ -553,20 +748,15 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
         """
-        if self.embeddings_field_supports_similarity:
+        if self.knn_engine == "score_script":
             query: dict = {
-                "bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}
-            }
-        else:
-            # if we do not have a proper similarity field we have to fall back to exact but slow vector similarity calculation
-            query = {
                 "script_score": {
                     "query": {"match_all": {}},
                     "script": {
@@ -575,28 +765,36 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         "params": {
                             "field": self.embedding_field,
                             "query_value": query_emb.tolist(),
-                            "space_type": self.similarity_to_space_type[self.similarity],
+                            "space_type": self.space_type,
                         },
                     },
                 }
             }
+        else:
+            if self.knn_engine == "faiss" and self.similarity == "cosine":
+                self.normalize_embedding(query_emb)
+
+            query = {"bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}}
+
         return query
 
     def _get_raw_similarity_score(self, score):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
-        if self.similarity == "dot_product":
+
+        # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
+        if self.space_type == "innerproduct":
             if score > 1:
                 score = score - 1
             else:
                 score = -(1 / score - 1)
-        elif self.similarity == "l2":
+        elif self.space_type == "l2":
             score = 1 / score - 1
-        elif self.similarity == "cosine":
-            if self.embeddings_field_supports_similarity:
-                score = -(1 / score - 2)
-            else:
+        elif self.space_type == "cosinesimil":
+            if self.knn_engine == "score_script":
                 score = score - 1
+            else:
+                score = -(1 / score - 2)
 
         return score
 
@@ -605,37 +803,50 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         new_embedding_field: str,
         similarity: str,
         batch_size: int = 10_000,
+        knn_engine: Optional[str] = None,
+        index_type: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
+        if knn_engine is None:
+            knn_engine = self.knn_engine
+
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
             raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
             )
-        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
+
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
+        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(
+            space_type=space_type, knn_engine=knn_engine, index_type=index_type
+        )
         self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
 
         document_count = self.get_document_count(headers=headers)
         result = self._get_all_documents_in_index(index=self.index, batch_size=batch_size, headers=headers)
 
-        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
+        opensearch_logger = logging.getLogger("opensearch")
+        original_log_level = opensearch_logger.getEffectiveLevel()
+        try:
+            opensearch_logger.setLevel(logging.CRITICAL)
+            with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
+                for result_batch in get_batches_from_generator(result, batch_size):
+                    document_batch = [self._convert_es_hit_to_document(hit) for hit in result_batch]
+                    doc_updates = []
+                    for doc in document_batch:
+                        if doc.embedding is not None:
+                            update = {
+                                "_op_type": "update",
+                                "_index": self.index,
+                                "_id": doc.id,
+                                "doc": {new_embedding_field: doc.embedding.tolist()},
+                            }
+                            doc_updates.append(update)
 
-        with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
-            for result_batch in get_batches_from_generator(result, batch_size):
-                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
-                doc_updates = []
-                for doc in document_batch:
-                    if doc.embedding is not None:
-                        update = {
-                            "_op_type": "update",
-                            "_index": self.index,
-                            "_id": doc.id,
-                            "doc": {new_embedding_field: doc.embedding.tolist()},
-                        }
-                        doc_updates.append(update)
-
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
-                progress_bar.update(batch_size)
+                    bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                    progress_bar.update(batch_size)
+        finally:
+            opensearch_logger.setLevel(original_log_level)
 
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):

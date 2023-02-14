@@ -1,0 +1,50 @@
+name: Add label on docstrings edit
+
+on:
+  pull_request:
+    paths:
+      - "haystack/**/*.py"
+      - "rest_api/**/*.py"
+
+permissions:
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout base commit
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Get docstrings
+        id: base-docstrings
+        run: |
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout HEAD commit
+        uses: actions/checkout@v3
+
+      - name: Get docstrings
+        id: head-docstrings
+        run: |
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Check if we should label
+        id: run-check
+        run: echo "should_run=${{ steps.base-docstrings.outputs.checksum != steps.head-docstrings.outputs.checksum }}" >> "$GITHUB_OUTPUT"
+
+      - name: Add label
+        if: ${{ steps.run-check.outputs.should_run == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit ${{ github.event.pull_request.html_url }} --add-label "type:documentation"

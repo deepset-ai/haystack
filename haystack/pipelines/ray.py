@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
-
+import inspect
+import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
-
 import networkx as nx
 
 try:
@@ -12,16 +12,19 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
+from haystack.errors import PipelineError
 from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
     validate_config,
 )
-from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
-from haystack.errors import PipelineError
+from haystack.schema import Document, MultiLabel
+
+
+logger = logging.getLogger(__name__)
 
 
 class RayPipeline(Pipeline):
@@ -34,19 +37,19 @@ class RayPipeline(Pipeline):
 
     To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
-            ```yaml
-            |    components:
-            |        ...
-            |
-            |    pipelines:
-            |        - name: ray_query_pipeline
-            |          type: RayPipeline
-            |          nodes:
-            |            - name: ESRetriever
-            |              inputs: [ Query ]
-            |              serve_deployment_kwargs:
-            |                num_replicas: 2  # number of replicas to create on the Ray cluster
-            ```
+    ```yaml
+    components:
+        ...
+
+    pipelines:
+        - name: ray_query_pipeline
+          type: RayPipeline
+          nodes:
+            - name: Retriever
+              inputs: [ Query ]
+              serve_deployment_kwargs:
+                num_replicas: 2  # number of replicas to create on the Ray cluster
+    ```
 
     A Ray Pipeline can only be created with a YAML Pipeline configuration.
 
@@ -64,17 +67,20 @@ class RayPipeline(Pipeline):
 
     def __init__(
         self,
-        address: str = None,
+        address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
         serve_args: Optional[Dict[str, Any]] = None,
     ):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
-        :param kwargs: Optional parameters for initializing Ray.
+        :param ray_args: Optional parameters for initializing Ray.
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
-        ray.init(address=address, **ray_args)
+        if not ray.is_initialized():
+            ray.init(address=address, **ray_args)
+        else:
+            logger.warning("Ray was already initialized, so reusing that for this RayPipeline.")
         self._serve_controller_client = serve.start(**serve_args)
         super().__init__()
 
@@ -142,36 +148,36 @@ class RayPipeline(Pipeline):
 
         Here's a sample configuration:
 
-            ```yaml
-            |   version: '1.0.0'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      type: RayPipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |        serve_deployment_kwargs:
-            |          num_replicas: 2    # number of replicas to create on the Ray cluster
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
+           ```yaml
+           version: '1.0.0'
+
+            components:    # define all the building-blocks for Pipeline
+            - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+              type: FARMReader    # Haystack Class name for the component
+              params:
+                no_ans_boost: -10
+                model_name_or_path: deepset/roberta-base-squad2
+            - name: MyRetriever
+              type: BM25Retriever
+              params:
+                document_store: MyDocumentStore    # params can reference other components defined in the YAML
+                custom_query: null
+            - name: MyDocumentStore
+              type: ElasticsearchDocumentStore
+              params:
+                index: haystack_test
+
+            pipelines:    # multiple Pipelines can be defined using the components from above
+            - name: my_query_pipeline    # a simple extractive-qa Pipeline
+              type: RayPipeline
+              nodes:
+              - name: MyRetriever
+                inputs: [Query]
+                serve_deployment_kwargs:
+                  num_replicas: 2    # number of replicas to create on the Ray cluster
+              - name: MyReader
+                inputs: [MyRetriever]
+           ```
 
 
         Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
@@ -187,7 +193,7 @@ class RayPipeline(Pipeline):
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
-        return RayPipeline.load_from_config(
+        return cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
@@ -199,7 +205,7 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def _create_ray_deployment(
-        cls, component_name: str, pipeline_config: dict, serve_deployment_kwargs: Optional[Dict[str, Any]] = {}
+        cls, component_name: str, pipeline_config: dict, serve_deployment_kwargs: Optional[Dict[str, Any]] = None
     ):
         """
         Create a Ray Deployment for the Component.
@@ -212,67 +218,14 @@ class RayPipeline(Pipeline):
                                          Ray Serve API docs (https://docs.ray.io/en/latest/serve/package-ref.html)
                                          under the `ray.serve.deployment()` method
         """
+        if serve_deployment_kwargs is None:
+            serve_deployment_kwargs = {}
         RayDeployment = serve.deployment(
             _RayDeploymentWrapper, name=component_name, **serve_deployment_kwargs  # type: ignore
         )
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
-
-    def run(  # type: ignore
-        self,
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None,
-    ):
-        has_next_node = True
-
-        root_node = self.root_node
-        if not root_node:
-            raise PipelineError("Cannot run a pipeline with no nodes.")
-
-        current_node_id: str = root_node
-
-        input_dict: Dict[str, Any] = {"root_node": root_node, "params": params}
-        if query:
-            input_dict["query"] = query
-        if file_paths:
-            input_dict["file_paths"] = file_paths
-        if labels:
-            input_dict["labels"] = labels
-        if documents:
-            input_dict["documents"] = documents
-        if meta:
-            input_dict["meta"] = meta
-
-        output_dict = None
-
-        while has_next_node:
-            output_dict, stream_id = ray.get(self.graph.nodes[current_node_id]["component"].remote(**input_dict))
-            input_dict = output_dict
-            next_nodes = self.get_next_nodes(current_node_id, stream_id)
-
-            if len(next_nodes) > 1:
-                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
-                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
-                    raise NotImplementedError(
-                        "The current pipeline does not support multiple levels of parallel nodes."
-                    )
-                inputs_for_join_node: dict = {"inputs": []}
-                for n_id in next_nodes:
-                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
-                    inputs_for_join_node["inputs"].append(output)
-                input_dict = inputs_for_join_node
-                current_node_id = join_node_id
-            elif len(next_nodes) == 1:
-                current_node_id = next_nodes[0]
-            else:
-                has_next_node = False
-
-        return output_dict
 
     def add_node(self, component, name: str, inputs: List[str]):
         raise NotImplementedError(
@@ -284,7 +237,7 @@ class RayPipeline(Pipeline):
         Add the Ray deployment handle in the Pipeline Graph.
 
         :param handle: Ray deployment `handle` to add in the Pipeline Graph. The handle allow calling a Ray deployment
-                       from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
+                       from Python: https://docs.ray.io/en/main/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
                        of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
@@ -303,7 +256,7 @@ class RayPipeline(Pipeline):
             if "." in i:
                 [input_node_name, input_edge_name] = i.split(".")
                 assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
-                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
+                outgoing_edges_input_node = self.graph.nodes[input_node_name]["outgoing_edges"]
                 assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
                     f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
                     f"{outgoing_edges_input_node} outgoing edge(s)."
@@ -317,6 +270,150 @@ class RayPipeline(Pipeline):
                 input_node_name = i
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
+
+    def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        return ray.get(self.graph.nodes[node_id]["component"].remote(**node_input))
+
+    async def _run_node_async(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        # Async calling of Ray Deployments instead of using `ray.get()` as it is done
+        # in the sync version, in `_run_node()` above.
+        # See https://docs.ray.io/en/latest/ray-core/actors/async_api.html#objectrefs-as-asyncio-futures
+        return await self.graph.nodes[node_id]["component"].remote(**node_input)
+
+    def _get_run_node_signature(self, node_id: str):
+        return inspect.signature(self.graph.nodes[node_id]["component"].remote).parameters.keys()
+
+    # async version of the `Pipeline.run()` method
+    async def run_async(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
+        """
+        Runs the Pipeline, one node at a time.
+
+        :param query: The search query (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only).
+        :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
+        :param documents: A list of Document objects to be processed by the Pipeline Nodes.
+        :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
+        :param params: A dictionary of parameters that you want to pass to the nodes.
+                       To pass a parameter to all Nodes, use: `{"top_k": 10}`.
+                       To pass a parameter to targeted Nodes, run:
+                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
+        :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information
+                      about their execution. By default, this information includes the input parameters
+                      the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
+        """
+        # validate the node names
+        self._validate_node_names_in_params(params=params)
+
+        root_node = self.root_node
+        if not root_node:
+            raise PipelineError("Cannot run a pipeline with no nodes.")
+
+        node_output = None
+        queue: Dict[str, Any] = {
+            root_node: {"root_node": root_node, "params": params}
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if query is not None:
+            queue[root_node]["query"] = query
+        if file_paths:
+            queue[root_node]["file_paths"] = file_paths
+        if labels:
+            queue[root_node]["labels"] = labels
+        if documents:
+            queue[root_node]["documents"] = documents
+        if meta:
+            queue[root_node]["meta"] = meta
+
+        i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
+        while queue:
+            node_id = list(queue.keys())[i]
+            node_input = queue[node_id]
+            node_input["node_id"] = node_id
+
+            # Apply debug attributes to the node input params
+            # NOTE: global debug attributes will override the value specified
+            # in each node's params dictionary.
+            if debug is None and node_input:
+                if node_input.get("params", {}):
+                    debug = params.get("debug", None)  # type: ignore
+            if debug is not None:
+                if not node_input.get("params", None):
+                    node_input["params"] = {}
+                if node_id not in node_input["params"].keys():
+                    node_input["params"][node_id] = {}
+                node_input["params"][node_id]["debug"] = debug
+
+            predecessors = set(nx.ancestors(self.graph, node_id))
+            if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
+                try:
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
+                    node_output, stream_id = await self._run_node_async(node_id, node_input)
+                except Exception as e:
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
+                    raise Exception(
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
+                queue.pop(node_id)
+                #
+                if stream_id == "split":
+                    for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
+                        current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
+                        current_docs = node_output.pop(stream_id)
+                        current_node_output["documents"] = current_docs
+                        next_nodes = self.get_next_nodes(node_id, stream_id)
+                        for n in next_nodes:
+                            queue[n] = current_node_output
+                else:
+                    next_nodes = self.get_next_nodes(node_id, stream_id)
+                    for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
+                        if queue.get(n):  # concatenate inputs if it's a join node
+                            existing_input = queue[n]
+                            if "inputs" not in existing_input.keys():
+                                updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                                if "_debug" in existing_input.keys() or "_debug" in node_output.keys():
+                                    updated_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
+                                if query:
+                                    updated_input["query"] = query
+                                if file_paths:
+                                    updated_input["file_paths"] = file_paths
+                                if labels:
+                                    updated_input["labels"] = labels
+                                if documents:
+                                    updated_input["documents"] = documents
+                                if meta:
+                                    updated_input["meta"] = meta
+                            else:
+                                existing_input["inputs"].append(node_output)
+                                updated_input = existing_input
+                            queue[n] = updated_input
+                        else:
+                            queue[n] = node_output
+                i = 0
+            else:
+                i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+
+        self.run_total += 1
+        # Disabled due to issue https://github.com/deepset-ai/haystack/issues/3970
+        # self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
+        return node_output
+
+    def send_pipeline_event(self, is_indexing: bool = False):
+        """To avoid the RayPipeline serialization bug described at
+        https://github.com/deepset-ai/haystack/issues/3970"""
+        pass
 
 
 class _RayDeploymentWrapper:

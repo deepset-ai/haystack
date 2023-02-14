@@ -23,7 +23,7 @@ from ..conftest import SAMPLES_PATH
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_faq_pipeline(retriever, document_store):
@@ -76,7 +76,7 @@ def test_faq_pipeline_batch(retriever, document_store):
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 def test_document_search_pipeline(retriever, document_store):
     documents = [
@@ -120,7 +120,7 @@ def test_document_search_pipeline_batch(retriever, document_store):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch", "dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("retriever_with_docs", ["bm25", "dpr", "embedding"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_documentsearch_es_authentication(retriever_with_docs, document_store_with_docs: ElasticsearchDocumentStore):
     if isinstance(retriever_with_docs, (DensePassageRetriever, EmbeddingRetriever)):
@@ -169,7 +169,7 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
+    [("embedding", "faiss"), ("embedding", "milvus"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_most_similar_documents_pipeline(retriever, document_store):
@@ -200,6 +200,39 @@ def test_most_similar_documents_pipeline(retriever, document_store):
             assert isinstance(document.content, str)
 
 
+@pytest.mark.parametrize(
+    "retriever,document_store", [("embedding", "milvus"), ("embedding", "elasticsearch")], indirect=True
+)
+def test_most_similar_documents_pipeline_with_filters(retriever, document_store):
+    documents = [
+        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    docs_id: list = ["a", "b"]
+    filters = {"source": ["wiki3", "wiki4", "wiki5"]}
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
+    list_of_documents = pipeline.run(document_ids=docs_id, filters=filters)
+
+    assert len(list_of_documents[0]) > 1
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
+
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.content, str)
+            assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
+
+
 @pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
 def test_most_similar_documents_pipeline_batch(retriever, document_store):
     documents = [
@@ -227,6 +260,37 @@ def test_most_similar_documents_pipeline_batch(retriever, document_store):
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
             assert isinstance(document.content, str)
+
+
+@pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
+def test_most_similar_documents_pipeline_with_filters_batch(retriever, document_store):
+    documents = [
+        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    docs_id: list = ["a", "b"]
+    filters = {"source": ["wiki3", "wiki4", "wiki5"]}
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
+    list_of_documents = pipeline.run_batch(document_ids=docs_id, filters=filters)
+
+    assert len(list_of_documents[0]) > 1
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
+
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.content, str)
+            assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
 @pytest.mark.elasticsearch

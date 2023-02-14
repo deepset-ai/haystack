@@ -1,53 +1,34 @@
-version: "3"
 services:
+
   haystack-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: "deepset/haystack-cpu:latest"
-    # Mount custom Pipeline YAML and custom Components.
-    # volumes:
-    #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
+    image: "deepset/haystack:cpu"
+    volumes:
+      - ./rest_api/rest_api/pipeline:/opt/pipelines
     ports:
       - 8000:8000
     restart: on-failure
     environment:
-      # See rest_api/pipeline/pipelines.haystack-pipeline.yml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
-      - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines.haystack-pipeline.yml
-      - CONCURRENT_REQUEST_PER_WORKER
+      - PIPELINE_YAML_PATH=/opt/pipelines/pipelines.haystack-pipeline.yml
+      - TOKENIZERS_PARALLELISM=false
+      # Uncomment the following line to customise how much time (in seconds) a worker can spend serving a request
+      # before it times out. This should include the time required to cache the models and setup the pipelines.
+
+      # - GUNICORN_CMD_ARGS="--timeout=3000"
     depends_on:
-      - elasticsearch
-    # Starts REST API with only 2 workers so that it can be run on systems with just 4GB of memory
-    # If you need to handle large loads of incoming requests and have memory to spare, consider increasing the number of workers
-    command: "/bin/bash -c 'sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 2 --timeout 180'"
+      elasticsearch:
+        condition: service_healthy
+
   elasticsearch:
-    # This will start an empty elasticsearch instance (so you have to add your documents yourself)
-    #image: "elasticsearch:7.9.2"
-    # If you want a demo image instead that is "ready-to-query" with some indexed articles
-    # about countries and capital cities from Wikipedia:
-    image: "deepset/elasticsearch-countries-and-capitals"
+    image: "docker.elastic.co/elasticsearch/elasticsearch:7.17.6"
     ports:
       - 9200:9200
     restart: on-failure
     environment:
       - discovery.type=single-node
-  ui:
-    build:
-      context: ui
-      dockerfile: Dockerfile
-    image: "deepset/haystack-streamlit-ui:latest"
-    ports:
-      - 8501:8501
-    restart: on-failure
-    environment:
-      - API_ENDPOINT=http://haystack-api:8000
-      - EVAL_FILE=eval_labels_example.csv
-      # The value fot the following variables will be read from the host, if present.
-      # They can also be temporarily set for docker-compose, for example:
-      # DISABLE_FILE_UPLOAD=1 DEFAULT_DOCS_FROM_RETRIEVER=5 docker-compose up
-      - DISABLE_FILE_UPLOAD
-      - DEFAULT_QUESTION_AT_STARTUP
-      - DEFAULT_DOCS_FROM_RETRIEVER
-      - DEFAULT_NUMBER_OF_ANSWERS
-    command: "/bin/bash -c 'sleep 15 && python -m streamlit run ui/webapp.py'"
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+    healthcheck:
+        test: curl --fail http://localhost:9200/_cat/health || exit 1
+        interval: 10s
+        timeout: 1s
+        retries: 10

@@ -178,7 +178,7 @@ def print_eval_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+    wrong_examples_fields: Optional[List[str]] = None,
     max_characters_per_field: int = 150,
 ):
     """
@@ -216,9 +216,11 @@ def print_eval_report(
         - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
         The default value is 'any'.
         In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-    :param wrong_examples_fields: A list of field names that should be included in the wrong examples.
+    :param wrong_examples_fields: A list of field names that should be included in the wrong examples. By default, "answer", "context", and "document_id" are used.
     :param max_characters_per_field: The maximum number of characters to show in the wrong examples report (per field).
     """
+    if wrong_examples_fields is None:
+        wrong_examples_fields = ["answer", "context", "document_id"]
     if any(degree > 1 for node, degree in graph.out_degree):
         logger.warning("Pipelines with junctions are currently not supported.")
         return
@@ -261,13 +263,15 @@ def print_eval_report(
     print(f"{pipeline_overview}\n" f"{wrong_examples_report}")
 
 
-def _format_document_answer(document_or_answer: dict, max_chars: int = None, field_filter: List[str] = None):
+def _format_document_answer(
+    document_or_answer: dict, max_chars: Optional[int] = None, field_filter: Optional[List[str]] = None
+):
     if field_filter is None or len(field_filter) == 0:
         field_filter = document_or_answer.keys()  # type: ignore
     return "\n \t".join(f"{name}: {str(value)[:max_chars]} {'...' if len(str(value)) > max_chars else ''}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(query: dict, max_chars: int = 150, field_filter: List[str] = None):
+def _format_wrong_example(query: dict, max_chars: int = 150, field_filter: Optional[List[str]] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
     documents = "\n\n \t".join(
         _format_document_answer(doc, max_chars, field_filter) for doc in query.get("documents", [])
@@ -307,9 +311,11 @@ def _format_wrong_examples_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    fields: List[str] = ["answer", "context", "document_id"],
+    fields: Optional[List[str]] = None,
     max_chars: int = 150,
 ):
+    if fields is None:
+        fields = ["answer", "context", "document_id"]
     examples = {
         node: eval_result.wrong_examples(
             node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples

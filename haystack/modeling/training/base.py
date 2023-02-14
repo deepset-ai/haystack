@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple, List, Callable
+from typing import Optional, Union, List, Callable
 
 import sys
 import shutil
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import dill
 import numpy
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
@@ -18,99 +18,13 @@ from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataS
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
-from haystack.modeling.model.optimization import get_scheduler
+from haystack.modeling.model.optimization import get_scheduler, WrappedDataParallel
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
-
-try:
-    from apex import amp
-
-    AMP_AVAILABLE = True
-except ImportError:
-    AMP_AVAILABLE = False
+from haystack.utils.early_stopping import EarlyStopping
 
 
 logger = logging.getLogger(__name__)
-
-
-class EarlyStopping:
-    """
-    Can be used to control early stopping with a Trainer class. Any object can be used instead which
-    implements the method check_stopping and and provides the attribute save_dir
-    """
-
-    def __init__(
-        self,
-        head: int = 0,
-        metric: str = "loss",
-        save_dir: Optional[str] = None,
-        mode: str = "min",
-        patience: int = 0,
-        min_delta: float = 0.001,
-        min_evals: int = 0,
-    ):
-        """
-        :param head: the prediction head referenced by the metric.
-        :param save_dir: the directory where to save the final best model, if None, no saving.
-        :param metric: name of dev set metric to monitor (default: loss) to get extracted from the 0th head or
-                       a function that extracts a value from the trainer dev evaluation result.
-                       NOTE: this is different from the metric to get specified for the processor which defines how
-                       to calculate one or more evaluation matric values from prediction/target sets, while this
-                       specifies the name of one particular such metric value or a method to calculate that value
-                       from the result returned from a processor metric.
-        :param mode: "min" or "max"
-        :param patience: how many evaluations to wait after the best evaluation to stop
-        :param min_delta: minimum difference to a previous best value to count as an improvement.
-        :param min_evals: minimum number of evaluations to wait before using eval value
-        """
-        self.head = head
-        self.metric = metric
-        self.save_dir = save_dir
-        self.mode = mode
-        self.patience = patience
-        self.min_delta = min_delta
-        self.min_evals = min_evals
-        # for more complex modes
-        self.eval_values = []  # type: List
-        self.n_since_best = None  # type: Optional[int]
-        if mode == "min":
-            self.best_so_far = 1.0e99
-        elif mode == "max":
-            self.best_so_far = -1.0e99
-        else:
-            raise Exception("Mode must be 'min' or 'max'")
-
-    def check_stopping(self, eval_result) -> Tuple[bool, bool, float]:
-        """
-        Provide the evaluation value for the current evaluation. Returns true if stopping should occur.
-        This will save the model, if necessary.
-
-        :param eval_result: the current evaluation result
-        :return: a tuple (stopprocessing, savemodel, evalvalue) indicating if processing should be stopped
-                 and if the current model should get saved and the evaluation value used.
-        """
-        if isinstance(self.metric, str):
-            eval_value = float(eval_result[self.head][self.metric])
-        else:
-            eval_value = float(self.metric(eval_result))
-        self.eval_values.append(eval_value)
-        stopprocessing, savemodel = False, False
-        if len(self.eval_values) <= self.min_evals:
-            return stopprocessing, savemodel, eval_value
-        if self.mode == "min":
-            delta = self.best_so_far - eval_value
-        else:
-            delta = eval_value - self.best_so_far
-        if delta > self.min_delta:
-            self.best_so_far = eval_value
-            self.n_since_best = 0
-            if self.save_dir:
-                savemodel = True
-        else:
-            self.n_since_best += 1  # type: ignore
-        if self.n_since_best > self.patience:
-            stopprocessing = True
-        return stopprocessing, savemodel, eval_value
 
 
 class Trainer:
@@ -130,7 +44,7 @@ class Trainer:
         lr_schedule=None,
         evaluate_every: int = 100,
         eval_report: bool = True,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
@@ -156,21 +70,23 @@ class Trainer:
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                        "O1" is recommended in almost all cases.
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
                can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where
                a SIGTERM notifies to save the training state and subsequently the instance is terminated.
-        :param checkpoint_every: save a train checkpoint after this many steps of training.
-        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+        :param checkpoint_every: Save a training checkpoint after this many steps of training.
+        :param checkpoint_root_dir: The directory Path where all training checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-        :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param checkpoints_to_keep: The maximum number of training checkpoints to save.
         :param from_epoch: the epoch number to start the training from. In the case when training resumes from a saved
                checkpoint, it is used to fast-forward training to the last epoch in the checkpoint.
         :param from_step: the step number to start the training from. In the case when training resumes from a saved
@@ -180,16 +96,32 @@ class Trainer:
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         """
+        amp_mapping = {"O0": False, "O1": True, "O2": True, "O3": True}
         self.model = model
         self.data_silo = data_silo
         self.epochs = int(epochs)
+        if isinstance(use_amp, str):
+            if use_amp in amp_mapping:
+                logger.warning(
+                    "The Trainer only supports native PyTorch automatic mixed precision and no longer supports the Apex library.\n"
+                    "Because you provided Apex optimization level %s, automatic mixed precision was set to %s.\n"
+                    "In the future, set `use_amp=True` to turn on automatic mixed precision.",
+                    use_amp,
+                    amp_mapping[use_amp],
+                )
+                use_amp = amp_mapping[use_amp]
+            else:
+                raise Exception(
+                    f"use_amp value {use_amp} is not supported. Please provide use_amp=True to turn on automatic mixed precision."
+                )
+        self.use_amp = use_amp
         self.optimizer = optimizer
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
         self.evaluate_every = evaluate_every
         self.eval_report = eval_report
         self.evaluator_test = evaluator_test
         self.n_gpu = n_gpu
         self.grad_acc_steps = grad_acc_steps
-        self.use_amp = use_amp
         self.lr_schedule = lr_schedule
         self.device = device
         self.local_rank = local_rank
@@ -201,12 +133,6 @@ class Trainer:
         self.max_grad_norm = max_grad_norm
         self.test_result = None
 
-        if use_amp and not AMP_AVAILABLE:
-            raise ImportError(
-                f"Got use_amp = {use_amp}, but cannot find apex. "
-                "Please install Apex if you want to make use of automatic mixed precision. "
-                "https://github.com/NVIDIA/apex"
-            )
         self.checkpoint_on_sigterm = checkpoint_on_sigterm
         if checkpoint_on_sigterm:
             self.sigterm_handler = GracefulKiller()  # type: Optional[GracefulKiller]
@@ -271,9 +197,9 @@ class Trainer:
                 # when resuming training from a checkpoint, we want to fast forward to the step of the checkpoint
                 if resume_from_step and step <= resume_from_step:
                     if step % 10000 == 0:
-                        logger.info(f"Skipping {step} out of {resume_from_step} steps ...")
+                        logger.info("Skipping %s out of %s steps ...", step, resume_from_step)
                     if resume_from_step == step:
-                        logger.info(f"Finished skipping {resume_from_step} steps ...")
+                        logger.info("Finished skipping %s steps ...", resume_from_step)
                         resume_from_step = None
                     else:
                         continue
@@ -282,7 +208,7 @@ class Trainer:
 
                 # Only for distributed training: we need to ensure that all ranks still have a batch left for training
                 if self.local_rank != -1:
-                    if not self._all_ranks_have_data(has_data=1, step=step):
+                    if not self._all_ranks_have_data(has_data=True, step=step):
                         early_break = True
                         break
 
@@ -312,17 +238,13 @@ class Trainer:
                             do_stopping, save_model, eval_value = self.early_stopping.check_stopping(result)
                             if save_model:
                                 logger.info(
-                                    "Saving current best model to {}, eval={}".format(
-                                        self.early_stopping.save_dir, eval_value
-                                    )
+                                    "Saving current best model to %s, eval=%s", self.early_stopping.save_dir, eval_value
                                 )
                                 self.model.save(self.early_stopping.save_dir)
                                 self.data_silo.processor.save(self.early_stopping.save_dir)
                             if do_stopping:
                                 # log the stopping
-                                logger.info(
-                                    "STOPPING EARLY AT EPOCH {}, STEP {}, EVALUATION {}".format(epoch, step, evalnr)
-                                )
+                                logger.info("STOPPING EARLY AT EPOCH %s, STEP %s, EVALUATION %s", epoch, step, evalnr)
                 if do_stopping:
                     break
 
@@ -354,9 +276,8 @@ class Trainer:
 
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
-            logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
-            lm_name = self.model.language_model.name
-            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
+            logger.info("Restoring best model so far from %s", self.early_stopping.save_dir)
+            self.model = self.model.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
         # Eval on test set
@@ -372,47 +293,49 @@ class Trainer:
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
-        if isinstance(self.model, AdaptiveModel):
-            logits = self.model.forward(
-                input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
-            )
-
-        elif isinstance(self.model, BiAdaptiveModel):
-            logits = self.model.forward(
-                query_input_ids=batch["query_input_ids"],
-                query_segment_ids=batch["query_segment_ids"],
-                query_attention_mask=batch["query_attention_mask"],
-                passage_input_ids=batch["passage_input_ids"],
-                passage_segment_ids=batch["passage_segment_ids"],
-                passage_attention_mask=batch["passage_attention_mask"],
-            )
-
+        if isinstance(self.model, (DataParallel, WrappedDataParallel)):
+            module = self.model.module
         else:
-            logits = self.model.forward(**batch)
+            module = self.model
 
-        per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        return self.backward_propagate(per_sample_loss, step)
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            if isinstance(module, AdaptiveModel):
+                logits = self.model.forward(
+                    input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
+                )
+
+            elif isinstance(module, BiAdaptiveModel):
+                logits = self.model.forward(
+                    query_input_ids=batch["query_input_ids"],
+                    query_segment_ids=batch["query_segment_ids"],
+                    query_attention_mask=batch["query_attention_mask"],
+                    passage_input_ids=batch["passage_input_ids"],
+                    passage_segment_ids=batch["passage_segment_ids"],
+                    passage_attention_mask=batch["passage_attention_mask"],
+                )
+
+            else:
+                logits = self.model.forward(**batch)
+
+            per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+            loss = self.adjust_loss(per_sample_loss)
+        return self.backward_propagate(loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
-        loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
                 tracker.track_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
                 if self.log_learning_rate:
                     tracker.track_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
-        if self.use_amp:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
+
+        self.scaler.scale(loss).backward()
 
         if step % self.grad_acc_steps == 0:
             if self.max_grad_norm is not None:
-                if self.use_amp:
-                    torch.nn.utils.clip_grad_norm_(amp.master_params(self.optimizer), self.max_grad_norm)
-                else:
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-            self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
             self.optimizer.zero_grad()
             if self.lr_schedule:
                 self.lr_schedule.step()
@@ -425,7 +348,7 @@ class Trainer:
         return loss
 
     def log_params(self):
-        params = {"epochs": self.epochs, "n_gpu": self.n_gpu, "device": self.device}
+        params = {"epochs": self.epochs, "n_gpu": self.n_gpu, "device": self.device, "use_amp": self.use_amp}
         tracker.track_params(params)
 
     @classmethod
@@ -465,9 +388,9 @@ class Trainer:
             trainer = cls._load_checkpoint(
                 path=checkpoint_to_load, data_silo=data_silo, model=model, optimizer=optimizer, local_rank=local_rank
             )
-            logging.info(f"Resuming training from the train checkpoint at {checkpoint_to_load} ...")
+            logging.info("Resuming training from the train checkpoint at %s ...", checkpoint_to_load)
         else:
-            logging.info(f"No train checkpoints found. Starting a new training ...")
+            logging.info("No train checkpoints found. Starting a new training ...")
             trainer = cls(
                 data_silo=data_silo,
                 model=model,
@@ -527,7 +450,7 @@ class Trainer:
             data_silo=data_silo, model=model, optimizer=optimizer, lr_schedule=scheduler, **trainer_state_dict
         )
 
-        logger.info(f"Loaded a train checkpoint from {path}")
+        logger.info("Loaded a train checkpoint from %s", path)
         return trainer
 
     @classmethod
@@ -596,7 +519,7 @@ class Trainer:
             for cp in saved_checkpoints[self.checkpoints_to_keep :]:
                 shutil.rmtree(cp)
 
-        logger.info(f"Saved a training checkpoint after {checkpoint_name}")
+        logger.info("Saved a training checkpoint after %s", checkpoint_name)
 
     def _get_state_dict(self):
         """
@@ -620,6 +543,7 @@ class Trainer:
             "log_learning_rate": self.log_learning_rate,
             "log_loss_every": self.log_loss_every,
             "disable_tqdm": self.disable_tqdm,
+            "use_amp": self.use_amp,
         }
 
         return state_dict
@@ -644,8 +568,11 @@ class Trainer:
         if ranks_with_data < torch.distributed.get_world_size():
             if step is not None:
                 logger.info(
-                    f"Stopping epoch {self.from_epoch} at step {step} for rank {self.local_rank} since at least one other rank "
-                    f"(~ one GPU) in distributed training doesn't have any more batches... "
+                    "Stopping epoch %s at step %s for rank %s since at least one other rank "
+                    "(~ one GPU) in distributed training doesn't have any more batches... ",
+                    self.from_epoch,
+                    step,
+                    self.local_rank,
                 )
             return False
         else:
@@ -655,7 +582,7 @@ class Trainer:
 class DistillationTrainer(Trainer):
     """
     This trainer uses the teacher logits from DistillationDataSilo
-    to compute a distillation loss in addtion to the loss based on the labels.
+    to compute a distillation loss in addition to the loss based on the labels.
 
     **Example**
     ```python
@@ -683,7 +610,7 @@ class DistillationTrainer(Trainer):
         lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
@@ -706,7 +633,6 @@ class DistillationTrainer(Trainer):
         """
         :param optimizer: An optimizer object that determines the learning strategy to be used during training
         :param model: The model to be trained
-        :param teacher_model: The teacher model used for distillation
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
@@ -714,12 +640,14 @@ class DistillationTrainer(Trainer):
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                        "O1" is recommended in almost all cases.
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -772,7 +700,7 @@ class DistillationTrainer(Trainer):
         if distillation_loss == "mse":
             self.distillation_loss_fn = MSELoss()
         elif distillation_loss == "kl_div":
-            self.distillation_loss_fn = self._kl_div
+            self.distillation_loss_fn = self._kl_div  # type: ignore [assignment]
         self.temperature = temperature
 
     def _kl_div(self, student_logits, teacher_logits):
@@ -784,23 +712,23 @@ class DistillationTrainer(Trainer):
         keys = list(batch.keys())
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
-
-        logits = self.model.forward(
-            input_ids=batch.get("input_ids"),
-            segment_ids=batch.get("segment_ids"),
-            padding_mask=batch.get("padding_mask"),
-            output_hidden_states=batch.get("output_hidden_states"),
-            output_attentions=batch.get("output_attentions"),
-        )
-
-        student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        distillation_loss = self.distillation_loss_fn(
-            student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
-        )
-        combined_loss = distillation_loss * self.distillation_loss_weight * (self.temperature**2) + student_loss * (
-            1 - self.distillation_loss_weight
-        )
-        return self.backward_propagate(combined_loss, step)
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            logits = self.model.forward(
+                input_ids=batch.get("input_ids"),
+                segment_ids=batch.get("segment_ids"),
+                padding_mask=batch.get("padding_mask"),
+                output_hidden_states=batch.get("output_hidden_states"),
+                output_attentions=batch.get("output_attentions"),
+            )
+            student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+            distillation_loss = self.distillation_loss_fn(
+                student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
+            )
+            combined_loss = distillation_loss * self.distillation_loss_weight * (
+                self.temperature**2
+            ) + student_loss * (1 - self.distillation_loss_weight)
+            loss = self.adjust_loss(combined_loss)
+        return self.backward_propagate(loss, step)
 
 
 class TinyBERTDistillationTrainer(Trainer):
@@ -836,7 +764,7 @@ class TinyBERTDistillationTrainer(Trainer):
         lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
@@ -864,12 +792,14 @@ class TinyBERTDistillationTrainer(Trainer):
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                        "O1" is recommended in almost all cases.
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -921,19 +851,19 @@ class TinyBERTDistillationTrainer(Trainer):
 
         self.loss = DistillationLoss(model, teacher_model, device)
         if torch.cuda.device_count() > 1 and device.type == "cuda":
-            self.loss = DataParallel(self.loss).to(device)
+            self.loss = DataParallel(self.loss).to(device)  # type: ignore [assignment]
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        return self.backward_propagate(
-            torch.sum(
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            loss = torch.sum(
                 self.loss(
                     input_ids=batch.get("input_ids"),
                     segment_ids=batch.get("segment_ids"),
                     padding_mask=batch.get("padding_mask"),
                 )
-            ),
-            step,
-        )
+            )
+            loss = self.adjust_loss(loss)
+        return self.backward_propagate(loss, step)
 
 
 class DistillationLoss(Module):
@@ -947,16 +877,16 @@ class DistillationLoss(Module):
         self.teacher_model = teacher_model.to(device)
 
         # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
-        dummy_inputs = teacher_model.language_model.model.dummy_inputs
-        dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
-        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
-        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
+        dummy_inputs = teacher_model.language_model.model.dummy_inputs  # type: ignore [union-attr]
+        dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)  # type: ignore [operator,index]
+        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)  # type: ignore [operator,index]
+        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)  # type: ignore [operator,index]
 
         with torch.no_grad():
-            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
+            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(  # type: ignore [arg-type]
                 **dummy_inputs, output_attentions=True, output_hidden_states=True
             )
-            _, hidden_states, attentions = self.model.forward(
+            _, hidden_states, attentions = self.model.forward(  # type: ignore [arg-type]
                 **dummy_inputs, output_attentions=True, output_hidden_states=True
             )
 
@@ -971,7 +901,7 @@ class DistillationLoss(Module):
         student_dims = [hidden_state.shape[-1] for hidden_state in hidden_states]
 
         # creating linear mappings in case the teacher and student model have different hidden state dimensions
-        self.dim_mappings: List[Optional[Linear]] = ModuleList([])
+        self.dim_mappings: List[Optional[Linear]] = ModuleList([])  # type: ignore [assignment]
 
         for teacher_dim, student_dim in zip(teacher_dims, student_dims):
             if teacher_dim != student_dim:
@@ -1001,7 +931,6 @@ class DistillationLoss(Module):
         for student_attention, teacher_attention, dim_mapping in zip(
             attentions, teacher_attentions[self.teacher_block_size - 1 :: self.teacher_block_size], self.dim_mappings
         ):
-
             # this wasn't described in the paper, but it was used in the original implementation
             student_attention = torch.where(
                 student_attention <= -1e2, torch.zeros_like(student_attention), student_attention

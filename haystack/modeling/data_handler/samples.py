@@ -32,7 +32,6 @@ class Sample:
         self.tokenized = tokenized
 
     def __str__(self):
-
         if self.clear_text:
             clear_text_str = "\n \t".join([k + ": " + str(v) for k, v in self.clear_text.items()])
             if len(clear_text_str) > 3000:
@@ -81,7 +80,7 @@ class SampleBasket:
         self,
         id_internal: Optional[Union[int, str]],
         raw: dict,
-        id_external: str = None,
+        id_external: Optional[str] = None,
         samples: Optional[List[Sample]] = None,
     ):
         """

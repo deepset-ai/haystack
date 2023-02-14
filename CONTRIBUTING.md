@@ -54,7 +54,7 @@ pip install --upgrade pip
 # Install Haystack in editable mode
 pip install -e '.[dev]'
 ```
-Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change. 
+Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change.
 This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
 
 Last, install the pre-commit hooks with:
@@ -87,9 +87,22 @@ Update API documentation (slow)..........................................Passed
 Note: If you prefer you can run this hook before `git push` instead of `git commit`. To do so, install the hook with `pre-commit install --hook-type pre-push`
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
-- Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
+- Ask for help by opening an issue or reaching out on our Discord channel. We usually give some feedback within a day for most questions.
 - As the last resort, if you are desperate and everything failed, ask Git to skip the hook with `git commit --no-verify`. This command will suspend all pre-commit hooks and let you push in all cases. The CI might fail, but at that point we will be able to help.
 - In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
+
+## Proposing "Substantial" Changes
+Most of the changes to Haystack, including bug fixes and small improvements, are implemented through the normal Pull Request workflow, according to these  contribution guidelines.
+
+Some changes, though, are "substantial", and these are the ones we want to put through a bit of a design process to make sure we're all on the same page before we invest the time into the actual implementation of a new feature or a deep refactoring.
+
+Please check the [Proposals design process](/proposals) if you think your contribution may include the following:
+
+- A new feature that creates new API surface areas.
+- A new component (Nodes, Pipelines, Document Stores).
+- Removing features that already shipped in the current minor version.
+- A deep refactoring that would require new tests or introduce new dependencies.
+- A change that's complex enough to require multiple steps to be delivered.
 
 ## Formatting of Pull Requests
 
@@ -119,7 +132,7 @@ Examples:
 - `feat!: make all document store methods async`
 
 ### PR Description
-Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/master/.github/pull_request_template.md)
+Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md)
 for describing and documenting your changes:
 
 - Link the issue that this relates to
@@ -199,7 +212,7 @@ docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_AN
 docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
 # Tika
-docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
 ```
 
 Tests can be also run **individually**:
@@ -228,6 +241,45 @@ pytest
 ```
 
 ## Writing tests
+
+We formally define three scopes for tests in Haystack with different requirements and purposes:
+
+### Unit test
+- Tests a single logical concept
+- Execution time is a few milliseconds
+- Any external resource is mocked
+- Always returns the same result
+- Can run in any order
+- Runs at every commit in draft and ready PRs, automated through pytest
+- Can run locally with no additional setup
+- **Goal: being confident in merging code**
+
+### Integration test
+- Tests a single logical concept
+- Execution time is a few seconds
+- It uses external resources that must be available before execution
+- When using models, cannot use inference
+- Always returns the same result or an error
+- Can run in any order
+- Runs at every commit in ready PRs, automated through pytest
+- Can run locally with some additional setup (e.g. Docker)
+- **Goal: being confident in merging code**
+
+### End to End (e2e) test
+- Tests a sequence of multiple logical concepts
+- Execution time has no limits (can be always on)
+- Can use inference
+- Evaluates the results of the execution or the status of the system
+- It uses external resources that must be available before execution
+- Can return different results
+- Can be dependent on the order
+- Can be wrapped into any process execution
+- Runs outside the development cycle (nightly or on demand)
+- Might not be possible to run locally due to system and hardware requirements
+- **Goal: being confident in releasing Haystack**
+
+> **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to 
+classify your tests or where to place them.
 
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store
 type this test should/can run:
@@ -287,7 +339,7 @@ You can run it with `python -m black .` from the root folder.
 
 ### Mypy
 
-Mypy currently runs with limited configuration options that can be found at the bottom of `setup.cfg`.
+Mypy currently runs with limited configuration options that can be found at the bottom of `pyproject.toml`.
 
 You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
 

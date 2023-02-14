@@ -1,5 +1,5 @@
 import mimetypes
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 import logging
 from pathlib import Path
@@ -29,17 +29,16 @@ class FileTypeClassifier(BaseComponent):
 
     outgoing_edges = len(DEFAULT_TYPES)
 
-    def __init__(self, supported_types: List[str] = DEFAULT_TYPES):
+    def __init__(self, supported_types: Optional[List[str]] = None):
         """
         Node that sends out files on a different output edge depending on their extension.
 
-        :param supported_types: the file types that this node can distinguish.
-            Note that it's limited to a maximum of 10 outgoing edges, which
-            correspond each to a file extension. Such extension are, by default
-            `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
-            elements will not be allowed. Lists with duplicate elements will
-            also be rejected.
+        :param supported_types: The file types that this node can distinguish between.
+              If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
+             Lists with duplicate elements are not allowed.
         """
+        if supported_types is None:
+            supported_types = DEFAULT_TYPES
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types
             for item in set(supported_types):
@@ -64,10 +63,11 @@ class FileTypeClassifier(BaseComponent):
         try:
             extension = magic.from_file(str(file_path), mime=True)
             return mimetypes.guess_extension(extension) or ""
-        except NameError as ne:
+        except NameError:
             logger.error(
-                f"The type of '{file_path}' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
-                "Please make sure the necessary OS libraries are installed if you need this functionality ('python-magic' or 'python-magic-bin' on Windows)."
+                "The type of '%s' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
+                "Please make sure the necessary OS libraries are installed if you need this functionality ('python-magic' or 'python-magic-bin' on Windows).",
+                file_path,
             )
             return ""
 
@@ -89,7 +89,7 @@ class FileTypeClassifier(BaseComponent):
             if path_suffix == "":
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
-                raise ValueError(f"Multiple file types are not allowed at once.")
+                raise ValueError("Multiple file types are not allowed at once.")
 
         return extension.lstrip(".")
 

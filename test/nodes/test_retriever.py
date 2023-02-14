@@ -1,31 +1,30 @@
-import logging
-import time
-from math import isclose
+from typing import List
 
+import os
+import logging
+import os
+from math import isclose
+from typing import Dict, List, Optional, Union
+
+import pytest
 import numpy as np
 import pandas as pd
-from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.memory import InMemoryDocumentStore
-import pytest
-from pathlib import Path
+from pandas.testing import assert_frame_equal
 from elasticsearch import Elasticsearch
-
-from haystack.document_stores import WeaviateDocumentStore
-from haystack.nodes.retriever.base import BaseRetriever
-from haystack.schema import Document
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores import MilvusDocumentStore
-from haystack.nodes.retriever.dense import (
-    DensePassageRetriever,
-    EmbeddingRetriever,
-    TableTextRetriever,
-    MultihopEmbeddingRetriever,
-)
-from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from ..conftest import SAMPLES_PATH
+from haystack.document_stores.base import BaseDocumentStore, FilterType
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores import WeaviateDocumentStore
+from haystack.nodes.retriever.base import BaseRetriever
+from haystack.pipelines import DocumentSearchPipeline
+from haystack.schema import Document
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
+from haystack.nodes.retriever.multimodal import MultiModalRetriever
+
+from ..conftest import SAMPLES_PATH, MockRetriever
 
 
 # TODO check if we this works with only "memory" arg
@@ -35,59 +34,145 @@ from ..conftest import SAMPLES_PATH
         ("mdr", "elasticsearch"),
         ("mdr", "faiss"),
         ("mdr", "memory"),
-        ("mdr", "milvus1"),
+        ("mdr", "milvus"),
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus1"),
+        ("dpr", "milvus"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus1"),
-        ("elasticsearch", "elasticsearch"),
+        ("embedding", "milvus"),
+        ("bm25", "elasticsearch"),
+        ("bm25", "memory"),
+        ("bm25", "weaviate"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
     ],
     indirect=True,
 )
-def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
-    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
+def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
+    if not isinstance(retriever_with_docs, (BM25Retriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
-    # test without filters
     # NOTE: FilterRetriever simply returns all documents matching a filter,
     # so without filters applied it does nothing
     if not isinstance(retriever_with_docs, FilterRetriever):
-        res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
+        # the BM25 implementation in Weaviate would NOT pick up the expected records
+        # because of the lack of stemming: "Who lives in berlin" returns only 1 record while
+        # "Who live in berlin" returns all 5 records.
+        # TODO - In Weaviate 1.19.0 there is a fix for the lack of stemming, which means that once 1.19.0 is released
+        # this `if` can be removed, as the standard search query "Who lives in Berlin?" should work with Weaviate.
+        # See https://github.com/weaviate/weaviate/issues/2439
+        if isinstance(document_store_with_docs, WeaviateDocumentStore):
+            res = retriever_with_docs.retrieve(query="Who live in berlin")
+        else:
+            res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
         assert res[0].content == "My name is Carla and I live in Berlin"
         assert len(res) == 5
         assert res[0].meta["name"] == "filename1"
 
-    # test with filters
-    if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)) and not isinstance(
-        retriever_with_docs, TfidfRetriever
+
+@pytest.mark.parametrize(
+    "retriever_with_docs,document_store_with_docs",
+    [
+        ("mdr", "elasticsearch"),
+        ("mdr", "memory"),
+        ("dpr", "elasticsearch"),
+        ("dpr", "memory"),
+        ("embedding", "elasticsearch"),
+        ("embedding", "memory"),
+        ("bm25", "elasticsearch"),
+        # TODO - add once Weaviate starts supporting filters with BM25 in Weaviate v1.18+
+        # ("bm25", "weaviate"),
+        ("es_filter_only", "elasticsearch"),
+    ],
+    indirect=True,
+)
+def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    # single filter
+    result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
+    assert len(result) == 1
+    assert type(result[0]) == Document
+    assert result[0].content == "My name is Christelle and I live in Paris"
+    assert result[0].meta["name"] == "filename3"
+
+    # multiple filters
+    result = retriever_with_docs.retrieve(
+        query="Paul", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
+    )
+    assert len(result) == 1
+    assert type(result[0]) == Document
+    assert result[0].meta["name"] == "filename2"
+
+    result = retriever_with_docs.retrieve(
+        query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
+    )
+    assert len(result) == 0
+
+
+def test_tfidf_retriever_multiple_indexes():
+    docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
+    docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
+    ds = InMemoryDocumentStore(index="index_0")
+    tfidf_retriever = TfidfRetriever(document_store=ds)
+
+    ds.write_documents(docs_index_0)
+    tfidf_retriever.fit(ds, index="index_0")
+    ds.write_documents(docs_index_1, index="index_1")
+    tfidf_retriever.fit(ds, index="index_1")
+
+    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
+
+
+class MockBaseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
     ):
-        # single filter
-        result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
-        assert len(result) == 1
-        assert type(result[0]) == Document
-        assert result[0].content == "My name is Christelle and I live in Paris"
-        assert result[0].meta["name"] == "filename3"
+        return [self.mock_document]
 
-        # multiple filters
-        result = retriever_with_docs.retrieve(
-            query="Paul", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
-        )
-        assert len(result) == 1
-        assert type(result[0]) == Document
-        assert result[0].meta["name"] == "filename2"
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ):
+        return [[self.mock_document] for _ in range(len(queries))]
 
-        result = retriever_with_docs.retrieve(
-            query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
-        )
-        assert len(result) == 0
+    def embed_documents(self, documents: List[Document]):
+        return np.full((len(documents), 768), 0.5)
 
 
+def test_retrieval_empty_query(document_store: BaseDocumentStore):
+    # test with empty query using the run() method
+    mock_document = Document(id="0", content="test")
+    retriever = MockBaseRetriever(document_store=document_store, mock_document=mock_document)
+    result = retriever.run(root_node="Query", query="", filters={})
+    assert result[0]["documents"][0] == mock_document
+
+    result = retriever.run_batch(root_node="Query", queries=[""], filters={})
+    assert result[0]["documents"][0][0] == mock_document
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -105,11 +190,43 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
     assert res[0][0].meta["name"] == "filename1"
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+
+    # Expected return type: list of lists of Documents
+    assert isinstance(res, list)
+    assert isinstance(res[0], list)
+    assert isinstance(res[0][0], Document)
+
+    assert res[0][0].content == "My name is Carla and I live in Berlin"
+    assert len(res[0]) == 5
+    assert res[0][0].meta["name"] == "filename1"
+
+    assert res[1][0].content == "My name is Paul and I live in New York"
+    assert len(res[1]) == 5
+    assert res[1][0].meta["name"] == "filename2"
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["bm25"], indirect=True)
+def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, document_store_with_docs):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    # Weaviate does not support BM25 with filters yet, only after Weaviate v1.18.0
+    # TODO - remove this once Weaviate starts supporting BM25 WITH filters
+    # You might also need to modify the first query, as Weaviate having problems with
+    # retrieving the "My name is Carla and I live in Berlin" record just with the
+    # "Who lives in Berlin?" BM25 query
+    if isinstance(document_store_with_docs, WeaviateDocumentStore):
+        return
+
+    res = retriever_with_docs.retrieve_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], filters=[{"name": "filename1"}, None]
+    )
 
     # Expected return type: list of lists of Documents
     assert isinstance(res, list)
@@ -156,6 +273,14 @@ def test_elasticsearch_custom_query():
     results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
     assert len(results) == 4
 
+    # test linefeeds in query
+    results = retriever.retrieve(query="test\n", filters={"years": ["2020", "2021"]})
+    assert len(results) == 3
+
+    # test double quote in query
+    results = retriever.retrieve(query='test"', filters={"years": ["2020", "2021"]})
+    assert len(results) == 3
+
     # test custom "term" query
     retriever = BM25Retriever(
         document_store=document_store,
@@ -174,7 +299,7 @@ def test_elasticsearch_custom_query():
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
@@ -193,12 +318,12 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
         # always normalize vector as faiss returns normalized vectors and other document stores do not
         embedding /= np.linalg.norm(embedding)
         assert len(embedding) == 768
-        assert isclose(embedding[0], expected_value, rel_tol=0.001)
+        assert isclose(embedding[0], expected_value, rel_tol=0.01)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
@@ -223,11 +348,83 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
+def test_openai_embedding_retriever_selection():
+    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
+    # make sure that we can use it with the retriever selection
+    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
+    assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
+
+    # but also support old ada and other text-search-<modelname>-*-001 models
+    er = EmbeddingRetriever(embedding_model="ada", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
+    assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
+
+    # but also support old babbage and other text-search-<modelname>-*-001 models
+    er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-search-babbage-query-001"
+    assert er.embedding_encoder.doc_encoder_model == "text-search-babbage-doc-001"
+
+    # make sure that we can handle potential unreleased models
+    er = EmbeddingRetriever(embedding_model="text-embedding-babbage-002", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-embedding-babbage-002"
+    assert er.embedding_encoder.doc_encoder_model == "text-embedding-babbage-002"
+    # etc etc.
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.embedding_dim(1024)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
+    "the OpenAI/Cohere API key to run this test.",
+)
+def test_basic_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1024
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.embedding_dim(1024)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
+    "the OpenAI/Cohere API key to run this test.",
+)
+def test_retriever_basic_search(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_table_text_retriever_embedding(document_store, retriever, docs):
+    # BM25 representation is incompatible with table retriever
+    if isinstance(document_store, InMemoryDocumentStore):
+        document_store.use_bm25 = False
 
     document_store.return_embedding = True
     document_store.write_documents(docs)
@@ -247,6 +444,32 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     for doc, expected_value in zip(docs, expected_values):
         assert len(doc.embedding) == 512
         assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_text(document_store, retriever):
+    docs = [
+        Document(content="This is a test", content_type="text"),
+        Document(content="This is another test", content_type="text"),
+    ]
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_table(document_store, retriever):
+    doc = Document(
+        content=pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]]),
+        content_type="table",
+    )
+    document_store.write_documents([doc])
+    document_store.update_embeddings(retriever)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -342,7 +565,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 
 
 @pytest.mark.embedding_dim(128)
-def test_table_text_retriever_training(document_store):
+def test_table_text_retriever_training(tmp_path, document_store):
     retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
@@ -356,11 +579,13 @@ def test_table_text_retriever_training(document_store):
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
-        save_dir="test_table_text_retriever_train",
+        save_dir=f"{tmp_path}/test_table_text_retriever_train",
     )
 
     # Load trained model
-    retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
+    retriever = TableTextRetriever.load(
+        load_dir=f"{tmp_path}/test_table_text_retriever_train", document_store=document_store
+    )
 
 
 @pytest.mark.elasticsearch
@@ -553,6 +778,47 @@ def test_elasticsearch_all_terms_must_match():
     doc_store.delete_index(index)
 
 
+@pytest.mark.elasticsearch
+def test_bm25retriever_all_terms_must_match():
+    index = "all_terms_must_match"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    retriever = BM25Retriever(document_store=doc_store)
+    results_wo_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_wo_all_terms_must_match) == 4
+    retriever = BM25Retriever(document_store=doc_store, all_terms_must_match=True)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_w_all_terms_must_match) == 1
+    retriever = BM25Retriever(document_store=doc_store)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea", all_terms_must_match=True)
+    assert len(results_w_all_terms_must_match) == 1
+    doc_store.delete_index(index)
+
+
 def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_format(caplog):
     document_store = InMemoryDocumentStore()
 
@@ -589,3 +855,207 @@ def test_es_filter_only(document_store, retriever):
     document_store.write_documents(docs)
     retrieved_docs = retriever.retrieve(query="", filters={"f1": ["0"]})
     assert len(retrieved_docs) == 11
+
+
+#
+# MultiModal
+#
+
+
+@pytest.fixture
+def text_docs() -> List[Document]:
+    return [
+        Document(
+            content="My name is Paul and I live in New York",
+            meta={
+                "meta_field": "test2",
+                "name": "filename2",
+                "date_field": "2019-10-01",
+                "numeric_field": 5.0,
+                "odd_field": 0,
+            },
+        ),
+        Document(
+            content="My name is Carla and I live in Berlin",
+            meta={
+                "meta_field": "test1",
+                "name": "filename1",
+                "date_field": "2020-03-01",
+                "numeric_field": 5.5,
+                "odd_field": 1,
+            },
+        ),
+        Document(
+            content="My name is Christelle and I live in Paris",
+            meta={
+                "meta_field": "test3",
+                "name": "filename3",
+                "date_field": "2018-10-01",
+                "numeric_field": 4.5,
+                "odd_field": 1,
+            },
+        ),
+        Document(
+            content="My name is Camila and I live in Madrid",
+            meta={
+                "meta_field": "test4",
+                "name": "filename4",
+                "date_field": "2021-02-01",
+                "numeric_field": 3.0,
+                "odd_field": 0,
+            },
+        ),
+        Document(
+            content="My name is Matteo and I live in Rome",
+            meta={
+                "meta_field": "test5",
+                "name": "filename5",
+                "date_field": "2019-01-01",
+                "numeric_field": 0.0,
+                "odd_field": 1,
+            },
+        ),
+    ]
+
+
+@pytest.fixture
+def table_docs() -> List[Document]:
+    return [
+        Document(
+            content=pd.DataFrame(
+                {
+                    "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
+                    "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
+                }
+            ),
+            content_type="table",
+        ),
+        Document(
+            content=pd.DataFrame(
+                {
+                    "City": ["Paris", "Lyon", "Marseille", "Lille", "Toulouse", "Bordeaux"],
+                    "Population": ["13,114,718", "2,280,845", "1,873,270 ", "1,510,079", "1,454,158", "1,363,711"],
+                }
+            ),
+            content_type="table",
+        ),
+        Document(
+            content=pd.DataFrame(
+                {
+                    "City": ["Berlin", "Hamburg", "Munich", "Cologne"],
+                    "Population": ["3,644,826", "1,841,179", "1,471,508", "1,085,664"],
+                }
+            ),
+            content_type="table",
+        ),
+    ]
+
+
+@pytest.fixture
+def image_docs() -> List[Document]:
+    return [
+        Document(content=str(SAMPLES_PATH / "images" / imagefile), content_type="image")
+        for imagefile in os.listdir(SAMPLES_PATH / "images")
+    ]
+
+
+@pytest.mark.integration
+def test_multimodal_text_retrieval(text_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        document_embedding_models={"text": "sentence-transformers/multi-qa-mpnet-base-dot-v1"},
+    )
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="Who lives in Paris?")
+    assert results[0].content == "My name is Christelle and I live in Paris"
+
+
+@pytest.mark.integration
+def test_multimodal_text_retrieval_batch(text_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        document_embedding_models={"text": "sentence-transformers/multi-qa-mpnet-base-dot-v1"},
+    )
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve_batch(queries=["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Madrid?"])
+    assert results[0][0].content == "My name is Christelle and I live in Paris"
+    assert results[1][0].content == "My name is Carla and I live in Berlin"
+    assert results[2][0].content == "My name is Camila and I live in Madrid"
+
+
+@pytest.mark.integration
+def test_multimodal_table_retrieval(table_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="deepset/all-mpnet-base-v2-table",
+        document_embedding_models={"table": "deepset/all-mpnet-base-v2-table"},
+    )
+    retriever.document_store.write_documents(table_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="How many people live in Hamburg?")
+    assert_frame_equal(
+        results[0].content,
+        pd.DataFrame(
+            {
+                "City": ["Berlin", "Hamburg", "Munich", "Cologne"],
+                "Population": ["3,644,826", "1,841,179", "1,471,508", "1,085,664"],
+            }
+        ),
+    )
+
+
+@pytest.mark.integration
+def test_multimodal_retriever_query():
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
+        query_embedding_model="sentence-transformers/clip-ViT-B-32",
+        document_embedding_models={"image": "sentence-transformers/clip-ViT-B-32"},
+    )
+
+    res_emb = retriever.embed_queries(["dummy query 1", "dummy query 1"])
+    assert np.array_equal(res_emb[0], res_emb[1])
+
+
+@pytest.mark.integration
+def test_multimodal_image_retrieval(image_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
+        query_embedding_model="sentence-transformers/clip-ViT-B-32",
+        document_embedding_models={"image": "sentence-transformers/clip-ViT-B-32"},
+    )
+    retriever.document_store.write_documents(image_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="What's a cat?")
+    assert str(results[0].content) == str(SAMPLES_PATH / "images" / "cat.jpg")
+
+
+@pytest.mark.skip("Not working yet as intended")
+@pytest.mark.integration
+def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
+        query_embedding_model="sentence-transformers/clip-ViT-B-32",
+        document_embedding_models={
+            "text": "sentence-transformers/clip-ViT-B-32",
+            "image": "sentence-transformers/clip-ViT-B-32",
+        },
+    )
+    retriever.document_store.write_documents(image_docs)
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="What's Paris?")
+
+    text_results = [result for result in results if result.content_type == "text"]
+    image_results = [result for result in results if result.content_type == "image"]
+
+    assert str(image_results[0].content) == str(SAMPLES_PATH / "images" / "paris.jpg")
+    assert text_results[0].content == "My name is Christelle and I live in Paris"

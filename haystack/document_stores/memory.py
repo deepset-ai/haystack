@@ -1,28 +1,35 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, List, Optional, Union, Generator
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import time
 import logging
 from copy import deepcopy
 from collections import defaultdict
+import re
 
 import numpy as np
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
+import rank_bm25
+import pandas as pd
 
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
-from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
 
-class InMemoryDocumentStore(BaseDocumentStore):
+class InMemoryDocumentStore(KeywordDocumentStore):
+    # pylint: disable=R0904
     """
     In-memory document store
     """
@@ -39,6 +46,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
+        devices: Optional[List[Union[str, torch.device]]] = None,
+        use_bm25: bool = False,
+        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
+        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
+        bm25_parameters: Optional[Dict] = None,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -64,7 +76,22 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                    you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+        :param use_bm25: Whether to build a sparse representation of documents based on BM25.
+                         `use_bm25=True` is required to connect `BM25Retriever` to this Document Store.
+        :param bm25_tokenization_regex: The regular expression to use for tokenization of the text.
+        :param bm25_algorithm: The specific BM25 implementation to adopt.
+                               Parameter options : ( 'BM25Okapi', 'BM25L', 'BM25Plus')
+        :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
+                                For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
+                                By default, no parameters are set.
         """
+        if bm25_parameters is None:
+            bm25_parameters = {}
         super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
@@ -78,9 +105,37 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
+        self.use_bm25 = use_bm25
+        self.bm25_tokenization_regex = bm25_tokenization_regex
+        self.bm25_algorithm = bm25_algorithm
+        self.bm25_parameters = bm25_parameters
+        self.bm25: Dict[str, rank_bm25.BM25] = {}
 
-        self.devices, _ = initialize_device_settings(use_cuda=self.use_gpu)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
+            )
+
         self.main_device = self.devices[0]
+
+    @property
+    def bm25_tokenization_regex(self):
+        return self._tokenizer
+
+    @bm25_tokenization_regex.setter
+    def bm25_tokenization_regex(self, regex_string: str):
+        self._tokenizer = re.compile(regex_string).findall
+
+    @property
+    def bm25_algorithm(self):
+        return self._bm25_class
+
+    @bm25_algorithm.setter
+    def bm25_algorithm(self, algorithm: str):
+        self._bm25_class = getattr(rank_bm25, algorithm)
 
     def write_documents(
         self,
@@ -125,6 +180,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents
         ]
         documents_objects = self._drop_duplicate_documents(documents=documents_objects)
+        modified_documents = 0
         for document in documents_objects:
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":
@@ -133,10 +189,45 @@ class InMemoryDocumentStore(BaseDocumentStore):
                     )
                 if duplicate_documents == "skip":
                     logger.warning(
-                        f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
+                        "Duplicate Documents: Document with id '%s' already exists in index '%s'", document.id, index
                     )
                     continue
             self.indexes[index][document.id] = document
+            modified_documents += 1
+
+        if self.use_bm25 is True and modified_documents > 0:
+            self.update_bm25(index=index)
+
+    def update_bm25(self, index: Optional[str] = None):
+        """
+        Updates the BM25 sparse representation in the the document store.
+
+        :param index: Index name for which the BM25 representation is to be updated. If set to None, the default self.index is used.
+        """
+        index = index or self.index
+
+        all_documents = self.get_all_documents(index=index)
+        textual_documents = []
+        for doc in all_documents:
+            if doc.content_type == "text":
+                textual_documents.append(doc.content.lower())
+            elif doc.content_type == "table":
+                if isinstance(doc.content, pd.DataFrame):
+                    textual_documents.append(doc.content.astype(str).to_csv(index=False).lower())
+                else:
+                    raise DocumentStoreError("Documents of type 'table' need to have a pd.DataFrame as content field")
+        if len(textual_documents) < len(all_documents):
+            logger.warning(
+                "Some documents in %s index are non-textual."
+                " They will be written to the index, but the corresponding BM25 representations will not be generated.",
+                index,
+            )
+
+        tokenized_corpus = [
+            self.bm25_tokenization_regex(doc)
+            for doc in tqdm(textual_documents, unit=" docs", desc="Updating BM25 representation...")
+        ]
+        self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
 
     def _create_document_field_map(self):
         return {self.embedding_field: "embedding"}
@@ -159,10 +250,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_objects, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f" Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                " Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
 
         for label in label_objects:
@@ -204,32 +296,32 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param document_to_search: List of documents to compare `query_emb` against.
         """
-        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
+        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)  # type: ignore [assignment]
         if len(query_emb.shape) == 1:
-            query_emb = query_emb.unsqueeze(dim=0)
+            query_emb = query_emb.unsqueeze(dim=0)  # type: ignore [attr-defined]
 
         doc_embeds = np.array([doc.embedding for doc in document_to_search])
-        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)
+        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)  # type: ignore [assignment]
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
+            doc_embeds = doc_embeds.unsqueeze(dim=0)  # type: ignore [attr-defined]
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
             return []
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
             query_emb_norm = torch.norm(query_emb, dim=1)
-            query_emb = torch.div(query_emb, query_emb_norm)
+            query_emb = torch.div(query_emb, query_emb_norm)  # type: ignore [assignment,arg-type]
 
             doc_embeds_norms = torch.norm(doc_embeds, dim=1)
-            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T
+            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T  # type: ignore [assignment,arg-type]
 
         curr_pos = 0
-        scores = []
+        scores = []  # type: ignore [var-annotated]
         while curr_pos < len(doc_embeds):
             doc_embeds_slice = doc_embeds[curr_pos : curr_pos + self.scoring_batch_size]
-            doc_embeds_slice = doc_embeds_slice.to(self.main_device)
-            with torch.no_grad():
-                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
+            doc_embeds_slice = doc_embeds_slice.to(self.main_device)  # type: ignore [attr-defined]
+            with torch.inference_mode():
+                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()  # type: ignore [arg-type,arg-type]
                 slice_scores = slice_scores.squeeze(dim=1)
                 slice_scores = slice_scores.numpy().tolist()
 
@@ -250,7 +342,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         doc_embeds = np.array([doc.embedding for doc in document_to_search])
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
+            doc_embeds = doc_embeds.unsqueeze(dim=0)  # type: ignore [attr-defined]
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
             return []
 
@@ -279,7 +371,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -374,7 +466,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         candidate_docs = []
         for doc, score in zip(document_to_search, scores):
             curr_meta = deepcopy(doc.meta)
-            new_document = Document(id=doc.id, content=doc.content, meta=curr_meta, embedding=doc.embedding)
+            new_document = Document(
+                id=doc.id, content=doc.content, content_type=doc.content_type, meta=curr_meta, embedding=doc.embedding
+            )
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             new_document.embedding = doc.embedding if return_embedding is True else None
@@ -387,9 +481,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -440,25 +534,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._query(
             index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
-        document_count = len(result)
-        logger.info(f"Updating embeddings for {document_count} docs ...")
+        logger.info("Updating embeddings for %s docs ...", len(result) if logger.level > logging.DEBUG else 0)
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
-            total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
+            total=len(result), disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
             for document_batch in batched_documents:
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if not len(document_batch) == len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                        "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()"
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 for doc, emb in zip(document_batch, embeddings):
                     self.indexes[index][doc.id].embedding = emb
@@ -467,7 +552,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -483,7 +568,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         return len(documents)
 
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
 
@@ -496,11 +581,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for key, value in meta.items():
             self.indexes[index][id].meta[key] = value
 
-    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_embedding_count(self, filters: Optional[FilterType] = None, index: Optional[str] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
-        documents = self.get_all_documents(filters=filters, index=index)
+        documents = self.get_all_documents_generator(filters=filters, index=index, return_embedding=True)
         embedding_count = sum(doc.embedding is not None for doc in documents)
         return embedding_count
 
@@ -517,7 +602,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         only_documents_without_embedding: bool = False,
     ):
@@ -544,7 +629,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -592,7 +677,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -637,8 +722,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_all_labels(
         self,
-        index: str = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        index: Optional[str] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """
@@ -654,10 +739,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
             for label in self.indexes[index].values():
                 label_dict = label.to_dict()
                 is_hit = True
-                for key, values in filters.items():
-                    if label_dict[key] not in values:
-                        is_hit = False
-                        break
+                for key, value_or_values in filters.items():
+                    if isinstance(value_or_values, list):
+                        if label_dict[key] not in value_or_values:
+                            is_hit = False
+                            break
+                    else:
+                        if label_dict[key] != value_or_values:
+                            is_hit = False
+                            break
                 if is_hit:
                     result.append(label)
         else:
@@ -668,7 +758,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -705,7 +795,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
@@ -716,7 +806,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -757,12 +847,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         if not filters and not ids:
             self.indexes[index] = {}
+            if index in self.bm25:
+                self.bm25[index] = {}
             return
         docs_to_delete = self.get_all_documents(index=index, filters=filters)
         if ids:
             docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
+        if self.use_bm25 is True and len(docs_to_delete) > 0:
+            self.update_bm25(index=index)
 
     def delete_index(self, index: str):
         """
@@ -773,13 +867,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if index in self.indexes:
             del self.indexes[index]
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
+
+        if index in self.bm25:
+            del self.bm25[index]
 
     def delete_labels(
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -826,3 +923,106 @@ class InMemoryDocumentStore(BaseDocumentStore):
             labels_to_delete = [label for label in labels_to_delete if label.id in ids]
         for label in labels_to_delete:
             del self.indexes[index][label.id]
+
+    def query(
+        self,
+        query: Optional[str],
+        filters: Optional[FilterType] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = False,
+    ) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query as defined by the BM25 algorithm.
+        :param query: The query.
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        """
+
+        if headers:
+            logger.warning("InMemoryDocumentStore does not support headers. This parameter is ignored.")
+        if custom_query:
+            logger.warning("InMemoryDocumentStore does not support custom_query. This parameter is ignored.")
+        if all_terms_must_match is True:
+            logger.warning("InMemoryDocumentStore does not support all_terms_must_match. This parameter is ignored.")
+        if filters:
+            logger.warning(
+                "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
+            )
+        if scale_score is True:
+            logger.warning(
+                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
+            )
+
+        index = index or self.index
+        if index not in self.bm25:
+            raise DocumentStoreError(
+                f"No BM25 representation found for the index: {index}. The Document store should be initialized with use_bm25=True"
+            )
+
+        if query is None:
+            return []
+
+        tokenized_query = self.bm25_tokenization_regex(query.lower())
+        docs_scores = self.bm25[index].get_scores(tokenized_query)
+        top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
+
+        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
+        top_docs = []
+        for i in top_docs_positions:
+            doc = textual_docs_list[i]
+            doc.score = docs_scores[i]
+            top_docs.append(doc)
+
+        return top_docs
+
+    def query_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = False,
+    ) -> List[List[Document]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
+        This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
+        :param query: The query.
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        """
+
+        if headers:
+            logger.warning("InMemoryDocumentStore does not support headers. This parameter is ignored.")
+        if custom_query:
+            logger.warning("InMemoryDocumentStore does not support custom_query. This parameter is ignored.")
+        if all_terms_must_match is True:
+            logger.warning("InMemoryDocumentStore does not support all_terms_must_match. This parameter is ignored.")
+        if filters:
+            logger.warning(
+                "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
+            )
+        if scale_score is True:
+            logger.warning(
+                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
+            )
+
+        index = index or self.index
+        if index not in self.bm25:
+            raise DocumentStoreError(
+                f"No BM25 representation found for the index: {index}. The Document store should be initialized with use_bm25=True"
+            )
+
+        result_documents = []
+        for query in queries:
+            result_documents.append(self.query(query=query, top_k=top_k, index=index))
+
+        return result_documents

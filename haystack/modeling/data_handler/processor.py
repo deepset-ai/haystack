@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Union, Any, Iterable, Type
+from typing import Optional, Dict, List, Union, Any, Iterable, Type, IO, Tuple
 
 import os
 import json
@@ -14,13 +14,13 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import requests
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from torch.utils.data import TensorDataset
 import transformers
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizer, AutoTokenizer
 
-from haystack.modeling.model.tokenization import (
-    get_tokenizer,
+from haystack.errors import HaystackError
+from haystack.modeling.model.feature_extraction import (
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
@@ -59,7 +59,7 @@ class Processor(ABC):
         test_filename: Optional[Union[Path, str]],
         dev_split: float,
         data_dir: Optional[Union[Path, str]],
-        tasks: Dict = {},
+        tasks: Optional[Dict] = None,
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
     ):
@@ -70,7 +70,7 @@ class Processor(ABC):
         :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: The name of the file containing test data.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if `dev_filename` is set to `None`.
         :param data_dir: The directory in which the train, test and perhaps dev files can be found.
         :param tasks: Tasks for which the processor shall extract labels from the input data.
                       Usually this includes a single, default task, e.g. text classification.
@@ -82,6 +82,8 @@ class Processor(ABC):
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         """
+        if tasks is None:
+            tasks = {}
         if not multithreading_rust:
             os.environ["RAYON_RS_NUM_CPUS"] = "1"
 
@@ -99,7 +101,6 @@ class Processor(ABC):
             self.data_dir = Path(data_dir)
         else:
             self.data_dir = None  # type: ignore
-        self.baskets: List = []
 
         self._log_params()
         self.problematic_sample_ids: set = set()
@@ -136,7 +137,7 @@ class Processor(ABC):
                              If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: The name of the file containing test data.
-        :param dev_split: The proportion of the train set that will sliced.
+        :param dev_split: The proportion of the train set that will be sliced.
                           Only works if dev_filename is set to None
         :param kwargs: placeholder for passing generic parameters
         :return: An instance of the specified processor.
@@ -145,7 +146,7 @@ class Processor(ABC):
         sig = signature(cls.subclasses[processor_name])
         unused_args = {k: v for k, v in kwargs.items() if k not in sig.parameters}
         logger.debug(
-            f"Got more parameters than needed for loading {processor_name}: {unused_args}. " f"Those won't be used!"
+            "Got more parameters than needed for loading %s: %s. Those won't be used!", processor_name, unused_args
         )
         processor = cls.subclasses[processor_name](
             data_dir=data_dir,
@@ -170,7 +171,8 @@ class Processor(ABC):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         config["inference"] = True
         # init tokenizer
         if "lower_case" in config.keys():
@@ -178,9 +180,11 @@ class Processor(ABC):
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
             )
-            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"])
+            tokenizer = AutoTokenizer.from_pretrained(
+                load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
+            )
         else:
-            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
+            tokenizer = AutoTokenizer.from_pretrained(load_dir, tokenizer_class=config["tokenizer"])
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
@@ -213,10 +217,11 @@ class Processor(ABC):
         tokenizer_class=None,
         tokenizer_args=None,
         use_fast=True,
+        max_query_length=64,
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
-        tokenizer = get_tokenizer(
+        tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_name_or_path,
             tokenizer_class=tokenizer_class,
             use_fast=use_fast,
@@ -234,6 +239,7 @@ class Processor(ABC):
                 metric="squad",
                 data_dir="data",
                 doc_stride=doc_stride,
+                max_query_length=max_query_length,
             )
         elif task_type == "embeddings":
             processor = InferenceProcessor(tokenizer=tokenizer, max_seq_len=max_seq_len)
@@ -309,7 +315,7 @@ class Processor(ABC):
 
     @abstractmethod
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         raise NotImplementedError()
 
@@ -322,7 +328,9 @@ class Processor(ABC):
         if problematic_sample_ids:
             n_problematic = len(problematic_sample_ids)
             problematic_id_str = ", ".join([str(i) for i in problematic_sample_ids])
-            logger.error(f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
+            logger.error(
+                "Unable to convert %s samples to features. Their ids are : %s", n_problematic, problematic_id_str
+            )
 
     @staticmethod
     def _check_sample_features(basket: SampleBasket):
@@ -333,24 +341,14 @@ class Processor(ABC):
 
         :return: True if all the samples in the basket has computed its features, False otherwise
         """
-        if basket.samples is None:
-            return False
-        elif len(basket.samples) == 0:
-            return False
-        if basket.samples is None:
-            return False
-        else:
-            for sample in basket.samples:
-                if sample.features is None:
-                    return False
-        return True
+        return basket.samples and not any(sample.features is None for sample in basket.samples)
 
     def _log_samples(self, n_samples: int, baskets: List[SampleBasket]):
-        logger.debug("*** Show {} random examples ***".format(n_samples))
+        logger.debug("*** Show %s random examples ***", n_samples)
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
-        for i in range(n_samples):
+        for _ in range(n_samples):
             random_basket = random.choice(baskets)
             random_sample = random.choice(random_basket.samples)  # type: ignore
             logger.debug(random_sample)
@@ -393,14 +391,14 @@ class SquadProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :param metric: name of metric that shall be used for evaluation, can be "squad" or "top_n_accuracy"
         :param train_filename: The name of the file containing training data.
         :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: None
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if `dev_filename` is set to `None`.
         :param doc_stride: When the document containing the answer is too long it gets split into part, strided by doc_stride
         :param max_query_length: Maximum length of the question (in number of subword tokens)
         :param proxies: proxy configuration to allow downloads of remote datasets.
@@ -448,7 +446,7 @@ class SquadProcessor(Processor):
             )
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         """
         Convert input dictionaries into a pytorch dataset for Question Answering.
@@ -460,6 +458,8 @@ class SquadProcessor(Processor):
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
         :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
+        if indices is None:
+            indices = []
         # Convert to standard format
         pre_baskets = [self.convert_qa_input_dict(x) for x in dicts]  # TODO move to input object conversion
 
@@ -482,7 +482,7 @@ class SquadProcessor(Processor):
         # Logging
         if indices:
             if 0 in indices:
-                self._log_samples(n_samples=1, baskets=self.baskets)
+                self._log_samples(n_samples=1, baskets=baskets)
 
         # During inference we need to keep the information contained in baskets.
         if return_baskets:
@@ -567,8 +567,9 @@ class SquadProcessor(Processor):
                 )
             except Exception as e:
                 logger.warning(
-                    f"Could not devide document into passages. Document: {basket.raw['document_text'][:200]}\n"
-                    f"With error: {e}"
+                    "Could not devide document into passages. Document: %s\nWith error: %s",
+                    basket.raw["document_text"][:200],
+                    e,
                 )
                 passage_spans = []
 
@@ -613,7 +614,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             error_in_answer = False
-            for num, sample in enumerate(basket.samples):  # type: ignore
+            for sample in basket.samples:  # type: ignore
                 # Dealing with potentially multiple answers (e.g. Squad dev set)
                 # Initializing a numpy array of shape (max_answers, 2), filled with -1 for missing values
                 label_idxs = np.full((self.max_answers, 2), fill_value=-1)
@@ -665,8 +666,9 @@ class SquadProcessor(Processor):
                             # check if answer string can be found in context
                             if answer_text not in doc_text:
                                 logger.warning(
-                                    f"Answer '{answer['text']}' not contained in context.\n"
-                                    f"Example will not be converted for training/evaluation."
+                                    "Answer '%s' not contained in context.\n"
+                                    "Example will not be converted for training/evaluation.",
+                                    answer["text"],
                                 )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
@@ -674,8 +676,10 @@ class SquadProcessor(Processor):
                                 break  # Break loop around answers, so the error message is not shown multiple times
                             if answer_indices.strip() != answer_text.strip():
                                 logger.warning(
-                                    f"Answer using start/end indices is '{answer_indices}' while gold label text is '{answer_text}'.\n"
-                                    f"Example will not be converted for training/evaluation."
+                                    "Answer using start/end indices is '%s' while gold label text is '%s'.\n"
+                                    "Example will not be converted for training/evaluation.",
+                                    answer_indices,
+                                    answer_text,
                                 )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
@@ -699,7 +703,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             # Add features to samples
-            for num, sample in enumerate(basket.samples):  # type: ignore
+            for sample in basket.samples:  # type: ignore
                 # Initialize some basic variables
                 if sample.tokenized is not None:
                     question_tokens = sample.tokenized["question_tokens"]
@@ -863,7 +867,7 @@ class TextSimilarityProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
         :param metric: name of metric that shall be used for evaluation, e.g. "acc" or "f1_macro".
                  Alternatively you can also supply a custom function, that takes preds and labels as args and returns a numerical value.
                  For using multiple metrics supply them as a list, e.g ["acc", my_custom_metric_fn].
@@ -932,7 +936,8 @@ class TextSimilarityProcessor(Processor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizers
         query_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["query_tokenizer"])
         query_tokenizer = query_tokenizer_class.from_pretrained(
@@ -989,7 +994,7 @@ class TextSimilarityProcessor(Processor):
             json.dump(config, file)
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity (e.g. DPR).
@@ -1012,6 +1017,8 @@ class TextSimilarityProcessor(Processor):
         :param return_baskets: whether to return the baskets or not (baskets are needed during inference)
         :return: dataset, tensor_names, problematic_ids, [baskets]
         """
+        if indices is None:
+            indices = []
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
@@ -1026,7 +1033,7 @@ class TextSimilarityProcessor(Processor):
 
         if problematic_ids:
             logger.error(
-                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+                "There were %s errors during preprocessing at positions: %s", len(problematic_ids), problematic_ids
             )
 
         if return_baskets:
@@ -1090,8 +1097,8 @@ class TextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1105,7 +1112,7 @@ class TextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                            "The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
                         )
                         return None
 
@@ -1114,7 +1121,7 @@ class TextSimilarityProcessor(Processor):
                     features[0]["query_input_ids"] = query_inputs["input_ids"]
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
-                except Exception as e:
+                except Exception:
                     features = None  # type: ignore
 
             sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
@@ -1155,7 +1162,7 @@ class TextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    ctx_inputs = self.passage_tokenizer.batch_encode_plus(
+                    ctx_inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1179,7 +1186,7 @@ class TextSimilarityProcessor(Processor):
                     sample.features[0]["passage_segment_ids"] = ctx_segment_ids  # type: ignore
                     sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
-                except Exception as e:
+                except Exception:
                     basket.samples[0].features = None  # type: ignore
 
         return baskets
@@ -1223,7 +1230,8 @@ class TextSimilarityProcessor(Processor):
             if title is None:
                 title = ""
                 logger.warning(
-                    f"Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '{ctx}' "
+                    "Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '%s' ",
+                    ctx,
                 )
             res.append(tuple((title, ctx)))
         return res
@@ -1252,7 +1260,7 @@ class TableTextSimilarityProcessor(Processor):
         dev_split: float = 0.1,
         proxies: Optional[Dict] = None,
         max_samples: Optional[int] = None,
-        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         num_positives: int = 1,
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
@@ -1282,7 +1290,7 @@ class TableTextSimilarityProcessor(Processor):
         :param proxies: Proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
         :param max_samples: maximum number of samples to use.
-        :param embed_meta_fields: List of meta fields to embed in text passages and tables during tensorization.
+        :param embed_meta_fields: List of meta fields to embed in text passages and tables during tensorization. By default, "page_title", "section_title", and "caption" are used.
         :param num_hard_negatives: Maximum number of hard negative context passages in a sample.
         :param num_positives: Maximum number of positive context passages in a sample.
         :param shuffle_negatives: Whether to shuffle all the hard_negative passages before selecting the
@@ -1294,6 +1302,8 @@ class TableTextSimilarityProcessor(Processor):
         """
         # TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
 
+        if embed_meta_fields is None:
+            embed_meta_fields = ["page_title", "section_title", "caption"]
         # Custom processor attributes
         self.max_samples = max_samples
         self.query_tokenizer = query_tokenizer
@@ -1344,11 +1354,18 @@ class TableTextSimilarityProcessor(Processor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizer
-        query_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
-        table_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
+        query_tokenizer = AutoTokenizer.from_pretrained(
+            load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query"
+        )
+        passage_tokenizer = AutoTokenizer.from_pretrained(
+            load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage"
+        )
+        table_tokenizer = AutoTokenizer.from_pretrained(
+            load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table"
+        )
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -1451,7 +1468,8 @@ class TableTextSimilarityProcessor(Processor):
                                     ...]
                         }
         """
-        dicts = json.load(open(file))
+        with open(file) as f:
+            dicts = json.load(f)
         if max_samples:
             dicts = random.sample(dicts, min(max_samples, len(dicts)))
         # convert DPR dictionary to standard dictionary
@@ -1501,7 +1519,7 @@ class TableTextSimilarityProcessor(Processor):
         return standard_dicts
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity.
@@ -1523,7 +1541,8 @@ class TableTextSimilarityProcessor(Processor):
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
         :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
-
+        if indices is None:
+            indices = []
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
@@ -1538,7 +1557,7 @@ class TableTextSimilarityProcessor(Processor):
 
         if problematic_ids:
             logger.error(
-                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+                "There were %s errors during preprocessing at positions: %s", len(problematic_ids), problematic_ids
             )
 
         if return_baskets:
@@ -1566,8 +1585,8 @@ class TableTextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1581,7 +1600,7 @@ class TableTextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                            "The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
                         )
                         return None
 
@@ -1590,7 +1609,7 @@ class TableTextSimilarityProcessor(Processor):
                     features[0]["query_input_ids"] = query_inputs["input_ids"]
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
-                except Exception as e:
+                except Exception:
                     features = None  # type: ignore
 
             sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
@@ -1658,7 +1677,7 @@ class TableTextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    inputs = self.passage_tokenizer.batch_encode_plus(
+                    inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1684,7 +1703,7 @@ class TableTextSimilarityProcessor(Processor):
                     sample.features[0]["passage_attention_mask"] = attention_mask  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
                     sample.features[0]["is_table"] = is_table  # type: ignore
-                except Exception as e:
+                except Exception:
                     basket.samples[0].features = None  # type: ignore
 
         return baskets
@@ -1767,7 +1786,7 @@ class TextClassificationProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/master/farm/data_handler/utils.py>`_.
+                         `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/main/farm/data_handler/utils.py>`_.
         :type data_dir: str
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :type label_list: list
@@ -1815,7 +1834,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.debug(f"Currently no support in Processor for returning problematic ids")
+        logger.debug("Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,
@@ -1851,12 +1870,14 @@ class TextClassificationProcessor(Processor):
         raise NotImplementedError
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
-        self.baskets = []
+        if indices is None:
+            indices = []
+        baskets = []
         # Tokenize in batches
         texts = [x["text"] for x in dicts]
-        tokenized_batch = self.tokenizer.batch_encode_plus(
+        tokenized_batch = self.tokenizer(
             texts,
             return_offsets_mapping=True,
             return_special_tokens_mask=True,
@@ -1875,7 +1896,6 @@ class TextClassificationProcessor(Processor):
         for dictionary, input_ids, segment_ids, padding_mask, tokens in zip(
             dicts, input_ids_batch, segment_ids_batch, padding_masks_batch, tokens_batch
         ):
-
             tokenized = {}
             if debug:
                 tokenized["tokens"] = tokens
@@ -1888,28 +1908,28 @@ class TextClassificationProcessor(Processor):
                 label_dict = self.convert_labels(dictionary)
                 feat_dict.update(label_dict)
 
-            # Add Basket to self.baskets
+            # Add Basket to baskets
             curr_sample = Sample(id="", clear_text=dictionary, tokenized=tokenized, features=[feat_dict])
             curr_basket = SampleBasket(id_internal=None, raw=dictionary, id_external=None, samples=[curr_sample])
-            self.baskets.append(curr_basket)
+            baskets.append(curr_basket)
 
         if indices and 0 not in indices:
             pass
         else:
-            self._log_samples(n_samples=1, baskets=self.baskets)
+            self._log_samples(n_samples=1, baskets=baskets)
 
         # TODO populate problematic ids
         problematic_ids: set = set()
-        dataset, tensornames = self._create_dataset()
+        dataset, tensornames = self._create_dataset(baskets)
         if return_baskets:
-            return dataset, tensornames, problematic_ids, self.baskets
+            return dataset, tensornames, problematic_ids, baskets
         else:
             return dataset, tensornames, problematic_ids
 
     def convert_labels(self, dictionary: Dict):
         ret: Dict = {}
         # Add labels for different tasks
-        for task_name, task in self.tasks.items():
+        for task in self.tasks.values():
             label_name = task["label_name"]
             label_raw = dictionary[label_name]
             label_list = task["label_list"]
@@ -1925,13 +1945,16 @@ class TextClassificationProcessor(Processor):
             ret[task["label_tensor_name"]] = label_ids
         return ret
 
-    def _create_dataset(self):
-        # TODO this is the proposed new version to replace the mother function
-        features_flat = []
+    def _create_dataset(self, baskets: List[SampleBasket]):
+        features_flat: List = []
         basket_to_remove = []
-        for basket in self.baskets:
+        for basket in baskets:
             if self._check_sample_features(basket):
+                if not isinstance(basket.samples, Iterable):
+                    raise HaystackError("basket.samples must contain a list of samples.")
                 for sample in basket.samples:
+                    if sample.features is None:
+                        raise HaystackError("sample.features must not be None.")
                     features_flat.extend(sample.features)
             else:
                 # remove the entire basket
@@ -1950,7 +1973,6 @@ class InferenceProcessor(TextClassificationProcessor):
     """
 
     def __init__(self, tokenizer, max_seq_len, **kwargs):
-
         super(InferenceProcessor, self).__init__(
             tokenizer=tokenizer,
             max_seq_len=max_seq_len,
@@ -1972,9 +1994,10 @@ class InferenceProcessor(TextClassificationProcessor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizer
-        tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
+        tokenizer = AutoTokenizer.from_pretrained(load_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
 
@@ -1994,37 +2017,6 @@ class InferenceProcessor(TextClassificationProcessor):
         # For inference we do not need labels
         ret: Dict = {}
         return ret
-
-    def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
-    ):
-        """
-        Function to convert input dictionaries containing text into a torch dataset.
-        For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
-        For slow tokenizers, s3e or wordembedding tokenizers the function works on _dict_to_samples and _sample_to_features
-        """
-        # TODO remove this sections once tokenizers work the same way for slow/fast and our special tokenizers
-        if not self.tokenizer.is_fast:
-            self.baskets = []
-            for d in dicts:
-                sample = self._dict_to_samples(dictionary=d)
-                features = self._sample_to_features(sample)
-                sample.features = features
-                basket = SampleBasket(id_internal=None, raw=d, id_external=None, samples=[sample])
-                self.baskets.append(basket)
-            if indices and 0 not in indices:
-                pass
-            else:
-                self._log_samples(n_samples=1, baskets=self.baskets)
-
-            problematic_ids: set = set()
-            dataset, tensornames = self._create_dataset()
-            ret = [dataset, tensornames, problematic_ids]
-            if return_baskets:
-                ret.append(self.baskets)
-            return ret
-        else:
-            return super().dataset_from_dicts(dicts=dicts, indices=indices, return_baskets=return_baskets, debug=debug)
 
     # Private method to keep s3e pooling and embedding extraction working
     def _dict_to_samples(self, dictionary: Dict, **kwargs) -> Sample:
@@ -2060,10 +2052,12 @@ class UnlabeledTextProcessor(Processor):
         test_filename: Optional[Union[Path, str]] = None,
         dev_split: float = 0,
         data_dir: Optional[Union[Path, str]] = None,
-        tasks: Dict = {},
+        tasks: Optional[Dict] = None,
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
     ):
+        if tasks is None:
+            tasks = {}
         super().__init__(
             tokenizer,
             max_seq_len,
@@ -2086,12 +2080,14 @@ class UnlabeledTextProcessor(Processor):
         return dicts
 
     def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+        self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False, debug: bool = False
     ):
+        if indices is None:
+            indices = []
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(
+        tokens = self.tokenizer(
             texts,
             add_special_tokens=True,
             return_tensors="pt",
@@ -2139,20 +2135,20 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = q["answers"][0]["text"]
         not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
         if len(not_included) > 0:
-            logger.info(f"There were missing predicitons for question ids: {list(not_included)}")
+            logger.info("There were missing predicitons for question ids: %s", list(not_included))
         for x in not_included:
             predictions_json[x] = ""
 
     # os.makedirs("model_output", exist_ok=True)
     # filepath = Path("model_output") / out_filename
     json.dump(predictions_json, open(out_filename, "w"))
-    logger.info(f"Written Squad predictions to: {out_filename}")
+    logger.info("Written Squad predictions to: %s", out_filename)
 
 
 def _read_dpr_json(
     file: str,
     max_samples: Optional[int] = None,
-    proxies: Any = None,
+    proxies: Optional[Any] = None,
     num_hard_negatives: int = 1,
     num_positives: int = 1,
     shuffle_negatives: bool = True,
@@ -2186,7 +2182,7 @@ def _read_dpr_json(
     """
     # get remote dataset if needed
     if not os.path.exists(file):
-        logger.info(f" Couldn't find {file} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", file)
         _download_extract_downstream_data(file, proxies=proxies)
 
     if Path(file).suffix.lower() == ".jsonl":
@@ -2195,7 +2191,8 @@ def _read_dpr_json(
             for line in f:
                 dicts.append(json.loads(line))
     else:
-        dicts = json.load(open(file, encoding="utf-8"))
+        with open(file, encoding="utf-8") as f:
+            dicts = json.load(f)
 
     if max_samples:
         dicts = random.sample(dicts, min(max_samples, len(dicts)))
@@ -2248,15 +2245,29 @@ def _read_dpr_json(
 def _read_squad_file(filename: str, proxies=None):
     """Read a SQuAD json file"""
     if not os.path.exists(filename):
-        logger.info(f" Couldn't find {filename} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", filename)
         _download_extract_downstream_data(filename, proxies)
     with open(filename, "r", encoding="utf-8") as reader:
         input_data = json.load(reader)["data"]
     return input_data
 
 
-def http_get(url, temp_file, proxies=None):
-    req = requests.get(url, stream=True, proxies=proxies)
+def http_get(
+    url: str,
+    temp_file: IO[bytes],
+    proxies: Optional[Dict[str, str]] = None,
+    timeout: Union[float, Tuple[float, float]] = 10.0,
+):
+    """
+    Runs a HTTP GET requests and saves response content to file.
+    :param url: URL address
+    :param temp_file: file-like object open in binary mode
+    :param proxies: (optional) Dictionary mapping protocol to the URL of the proxy.
+    :param timeout: How many seconds to wait for the server to send data before giving up,
+        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+        Defaults to 10 seconds.
+    """
+    req = requests.get(url, stream=True, proxies=proxies, timeout=timeout)
     content_length = req.headers.get("Content-Length")
     total = int(content_length) if content_length is not None else None
     progress = tqdm(unit="B", total=total)
@@ -2273,9 +2284,9 @@ def _download_extract_downstream_data(input_file: str, proxies=None):
     directory = full_path.parent
     taskname = directory.stem
     datadir = directory.parent
-    logger.info("downloading and extracting file {} to dir {}".format(taskname, datadir))
+    logger.info("downloading and extracting file %s to dir %s", taskname, datadir)
     if taskname not in DOWNSTREAM_TASK_MAP:
-        logger.error("Cannot download {}. Unknown data source.".format(taskname))
+        logger.error("Cannot download %s. Unknown data source.", taskname)
     else:
         if os.name == "nt":  # make use of NamedTemporaryFile compatible with Windows
             delete_tmp_file = False

@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, Union
 import logging
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, CrossEncoder
@@ -75,16 +75,18 @@ class EvalDocuments(BaseComponent):
             self.top_k_used = top_k
         elif self.top_k_used != top_k:
             logger.warning(
-                f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
-                f"being run again with top_k={self.top_k}. "
-                f"The evaluation counter is being reset from this point so that the evaluation "
-                f"metrics are interpretable."
+                "EvalDocuments was last run with top_k_eval_documents=%s} but is "
+                "being run again with top_k=%s. "
+                "The evaluation counter is being reset from this point so that the evaluation "
+                "metrics are interpretable.",
+                self.top_k_used,
+                self.top_k,
             )
             self.init_counts()
 
         if len(documents) < top_k and not self.too_few_docs_warning:
             logger.warning(
-                f"EvalDocuments is being provided less candidate documents than top_k " f"(currently set to {top_k})."
+                "EvalDocuments is being provided less candidate documents than top_k (currently set to %s).", top_k
             )
             self.too_few_docs_warning = True
 
@@ -186,7 +188,7 @@ class EvalAnswers(BaseComponent):
         self,
         skip_incorrect_retrieval: bool = True,
         open_domain: bool = True,
-        sas_model: str = None,
+        sas_model: Optional[str] = None,
         debug: bool = False,
     ):
         """
@@ -401,12 +403,13 @@ def semantic_answer_similarity(
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
     batch_size: int = 32,
     use_gpu: bool = True,
+    use_auth_token: Optional[Union[str, bool]] = None,
 ) -> Tuple[List[float], List[float], List[List[float]]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
     Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                         b) the highest similarity of all predictions to gold labels
-                        c) a matrix consisting of the similarities of all the predicitions compared to all gold labels
+                        c) a matrix consisting of the similarities of all the predictions compared to all gold labels
 
     :param predictions: Predicted answers as list of multiple preds per question
     :param gold_labels: Labels as list of multiple possible answers per question
@@ -415,11 +418,16 @@ def semantic_answer_similarity(
     :param batch_size: Number of prediction label pairs to encode at once.
     :param use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                     Falls back to CPU if no GPU is available.
+    :param use_auth_token: The API token used to download private models from Huggingface.
+                           If this parameter is set to `True`, then the token generated when running
+                           `transformers-cli login` (stored in ~/.huggingface) will be used.
+                           Additional information can be found here
+                           https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :return: top_1_sas, top_k_sas, pred_label_matrix
     """
     assert len(predictions) == len(gold_labels)
 
-    config = AutoConfig.from_pretrained(sas_model_name_or_path)
+    config = AutoConfig.from_pretrained(sas_model_name_or_path, use_auth_token=use_auth_token)
     cross_encoder_used = False
     if config.architectures is not None:
         cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
@@ -435,7 +443,12 @@ def semantic_answer_similarity(
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sas_model_name_or_path, device=device)
+        model = CrossEncoder(
+            sas_model_name_or_path,
+            device=device,
+            tokenizer_args={"use_auth_token": use_auth_token},
+            automodel_args={"use_auth_token": use_auth_token},
+        )
         grid = []
         for preds, labels in zip(predictions, gold_labels):
             for p in preds:
@@ -455,7 +468,7 @@ def semantic_answer_similarity(
             current_position += len_p * len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
-        model = SentenceTransformer(sas_model_name_or_path, device=device)
+        model = SentenceTransformer(sas_model_name_or_path, device=device, use_auth_token=use_auth_token)
         all_texts: List[str] = []
         for p, l in zip(predictions, gold_labels):  # type: ignore
             # TODO potentially exclude (near) exact matches from computations

@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Dict, Any, Tuple
 import logging
 import itertools
 
+import torch
 from transformers import pipeline
 from transformers.data.processors.squad import SquadExample
 
@@ -36,6 +37,8 @@ class TransformersReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         batch_size: int = 16,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a QA model from Transformers.
@@ -66,13 +69,35 @@ class TransformersReader(BaseReader):
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
         :param batch_size: Number of documents to process at a time.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if self.devices[0].type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+
+        if len(self.devices) > 1:
+            logger.warning(
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
+            )
+
         self.model = pipeline(
-            "question-answering", model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            "question-answering",
+            model=model_name_or_path,
+            tokenizer=tokenizer,
+            device=self.devices[0],
+            revision=model_version,
+            use_auth_token=use_auth_token,
         )
         self.context_window_size = context_window_size
         self.top_k = top_k
@@ -92,18 +117,18 @@ class TransformersReader(BaseReader):
         Example:
 
          ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
-            |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
-            |              ]
-            |}
+         {
+             'query': 'Who is the father of Arya Stark?',
+             'answers':[
+                          {'answer': 'Eddard,',
+                          'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                          'offset_answer_start': 147,
+                          'offset_answer_end': 154,
+                          'score': 0.9787139466668613,
+                          'document_id': '1337'
+                          },...
+                       ]
+         }
          ```
 
         :param query: Query string
@@ -129,7 +154,7 @@ class TransformersReader(BaseReader):
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
         )
-        # Transformers gives different output dependiing on top_k_per_candidate and number of inputs
+        # Transformers gives different output depending on top_k_per_candidate and number of inputs
         if isinstance(predictions, dict):
             predictions = [[predictions]]
         elif len(inputs) == 1:
@@ -144,7 +169,7 @@ class TransformersReader(BaseReader):
                 pred["doc_id"] = cur_doc_id
         predictions = list(itertools.chain.from_iterable(predictions))
 
-        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, all_docs, top_k)
+        answers, _ = self._extract_answers_of_predictions(predictions, all_docs, top_k)
 
         results = {"query": query, "answers": answers}
         return results
@@ -200,7 +225,7 @@ class TransformersReader(BaseReader):
         # Transformers flattens lists of length 1. This restores the original list structure.
         if isinstance(predictions, dict):
             predictions = [[predictions]]
-        elif len(number_of_docs) == 1:
+        elif len(inputs) == 1:
             predictions = [predictions]
         else:
             predictions = [p if isinstance(p, list) else [p] for p in predictions]
@@ -209,7 +234,6 @@ class TransformersReader(BaseReader):
         grouped_predictions = []
         grouped_inputs = []
         left_idx = 0
-        right_idx = 0
         for number in number_of_docs:
             right_idx = left_idx + number
             grouped_predictions.append(predictions[left_idx:right_idx])
@@ -223,7 +247,9 @@ class TransformersReader(BaseReader):
                 for pred in preds_for_single_doc:
                     cur_doc_id = inp.doc_id
                     pred["doc_id"] = cur_doc_id
-            if isinstance(grouped_pred[0], list):
+            if len(grouped_pred) == 0:
+                group = []
+            elif isinstance(grouped_pred[0], list):
                 group = list(itertools.chain.from_iterable(grouped_pred))
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, all_docs, top_k)
             results["answers"].append(answers)
@@ -247,8 +273,9 @@ class TransformersReader(BaseReader):
         no_ans_gaps = []
         best_overall_score = 0
 
-        cur_doc_id = predictions[0]["doc_id"]
-        cur_doc = docs[cur_doc_id]
+        if len(predictions) > 0:
+            cur_doc_id = predictions[0]["doc_id"]
+            cur_doc = docs[cur_doc_id]
         no_ans_doc_score = 0
         best_doc_score = 0
 
@@ -277,7 +304,7 @@ class TransformersReader(BaseReader):
                         context=cur_doc.content[context_start:context_end],
                         offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
                         offsets_in_context=[Span(start=pred["start"] - context_start, end=pred["end"] - context_start)],
-                        document_id=cur_doc.id,
+                        document_ids=[cur_doc.id],
                         meta=cur_doc.meta,
                     )
                 )
@@ -289,7 +316,9 @@ class TransformersReader(BaseReader):
         # + add no_ans_gap for last Document
         if best_doc_score > best_overall_score:
             best_overall_score = best_doc_score
-        no_ans_gaps.append(no_ans_doc_score - best_doc_score)
+
+        if len(predictions) > 0:
+            no_ans_gaps.append(no_ans_doc_score - best_doc_score)
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_overall_score)

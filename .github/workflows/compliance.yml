@@ -1,0 +1,99 @@
+name: License Compliance Checks
+
+on:
+  pull_request:
+    paths:
+      - '**/pyproject.toml'
+  schedule:
+    - cron: '0 0 * * *'  # every day at midnight
+
+env:
+  GH_ACCESS_TOKEN:  ${{ secrets.GH_ACCESS_TOKEN }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_ALERT_CHANNEL: "#haystack"
+
+jobs:
+  check-license-compliance-cpu:
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    name: Check CPU dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+
+      - name: Install Haystack (CPU)
+        # FIXME audio temporarily not checked as we plan to remove it in the near future
+        run: |
+          pip install --upgrade pip
+          pip install .[docstores,crawler,preprocessing,ocr,ray,onnx,beir]
+          pip install rest_api/
+
+      - name: Create file with full dependency list
+        run: |
+          pip freeze > requirements-full.txt
+
+      - name: Send license report to Fossa
+        # This will collect all necessary information (mostly used dependencies) and send it to the Fossa API
+        uses: fossas/fossa-action@f61a4c0c263690f2ddb54b9822a719c25a7b608f # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+
+      - name: Check license compliance
+        # This will poll the Fossa API until they have processed the information which we've sent in the previous step
+        # and fail if Fossa found an issue with the licences of our dependencies.
+        uses: fossas/fossa-action@f61a4c0c263690f2ddb54b9822a719c25a7b608f # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+          run-tests: true
+
+      - name: Send Slack notification if license check failed
+        uses: act10ns/slack@v2
+        if: failure() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          channel: ${{ env.SLACK_ALERT_CHANNEL }}
+
+  check-license-compliance-gpu:
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    name: Check GPU dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+
+      - name: Install Haystack
+        # FIXME audio temporarily not checked as we plan to remove it in the near future
+        run: |
+          pip install --upgrade pip
+          pip install .[docstores-gpu,crawler,preprocessing,ocr,ray,onnx-gpu]
+
+      - name: Create file with full dependency list
+        run: |
+          pip freeze > requirements-full.txt
+
+      - name: Send license report to Fossa
+        # This will collect all necessary information (mostly used dependencies) and send it to the Fossa API
+        uses: fossas/fossa-action@f61a4c0c263690f2ddb54b9822a719c25a7b608f # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+
+      - name: Check license compliance
+        # This will poll the Fossa API until they have processed the information which we've sent in the previous step
+        # and fail if Fossa found an issue with the licences of our dependencies.
+        uses: fossas/fossa-action@f61a4c0c263690f2ddb54b9822a719c25a7b608f # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+          run-tests: true
+
+      - name: Send Slack notification if license check failed
+        uses: act10ns/slack@v2
+        if: failure() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          channel: ${{ env.SLACK_ALERT_CHANNEL }}

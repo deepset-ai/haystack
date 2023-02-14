@@ -1,5 +1,6 @@
 from typing import Callable, List, Optional, Dict, Tuple, Union, Any
 
+import os
 import re
 import sys
 import json
@@ -12,6 +13,7 @@ import hashlib
 try:
     from webdriver_manager.chrome import ChromeDriverManager
     from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
     from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium import webdriver
@@ -34,12 +36,12 @@ class Crawler(BaseComponent):
 
     **Example:**
     ```python
-    |    from haystack.nodes.connector import Crawler
-    |
-    |    crawler = Crawler(output_dir="crawled_files")
-    |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
-    |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-    |                         filter_urls= ["haystack.deepset.ai/overview/"])
+    from haystack.nodes.connector import Crawler
+
+    crawler = Crawler(output_dir="crawled_files")
+    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
+    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
+                         filter_urls= ["haystack.deepset.ai/overview/"])
     ```
     """
 
@@ -56,6 +58,7 @@ class Crawler(BaseComponent):
         extract_hidden_text=True,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        webdriver_options: Optional[List[str]] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -83,25 +86,78 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param webdriver_options: A list of options to send to Selenium webdriver. If none is provided,
+            Crawler uses, as a default option, a reasonable selection for operating locally, on restricted docker containers,
+            and avoids using GPU.
+            Crawler always appends the following option: "--headless"
+            For example: 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
+                    These are the default options which disable GPU, disable shared memory usage
+                    and spawn a single process.
+                 2) ["--no-sandbox"]
+                    This option disables the sandbox, which is required for running Chrome as root.
+                 3) ["--remote-debugging-port=9222"]
+                    This option enables remote debug over HTTP.
+            See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
+            If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
+        IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
+        IN_WINDOWS = sys.platform in ["win32", "cygwin"]
+        IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
 
-        options = webdriver.chrome.options.Options()
-        options.add_argument("--headless")
+        if webdriver_options is None:
+            webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
+        webdriver_options.append("--headless")
+        if IS_ROOT or IN_WINDOWS:
+            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+        if IN_COLAB or IN_AZUREML:
+            webdriver_options.append("--disable-dev-shm-usage")
+
+        options = Options()
+        for option in set(webdriver_options):
+            options.add_argument(option)
+
         if IN_COLAB:
             try:
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
                 self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
             except WebDriverException as exc:
                 raise NodeError(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
-                        !apt-get update
-                        !apt install chromium-driver
-                        !cp /usr/lib/chromium-browser/chromedriver /usr/bin
+                        %%shell
+                        cat > /etc/apt/sources.list.d/debian.list <<'EOF'
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster.gpg] http://deb.debian.org/debian buster main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-buster-updates.gpg] http://deb.debian.org/debian buster-updates main
+                        deb [arch=amd64 signed-by=/usr/share/keyrings/debian-security-buster.gpg] http://deb.debian.org/debian-security buster/updates main
+                        EOF
+
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
+                        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
+                        apt-key export 77E11517 | gpg --dearmour -o /usr/share/keyrings/debian-buster.gpg
+                        apt-key export 22F3D138 | gpg --dearmour -o /usr/share/keyrings/debian-buster-updates.gpg
+                        apt-key export E562B32A | gpg --dearmour -o /usr/share/keyrings/debian-security-buster.gpg
+
+                        cat > /etc/apt/preferences.d/chromium.pref << 'EOF'
+                        Package: *
+                        Pin: release a=eoan
+                        Pin-Priority: 500
+
+
+                        Package: *
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 300
+
+
+                        Package: chromium*
+                        Pin: origin "deb.debian.org"
+                        Pin-Priority: 700
+                        EOF
+
+                        apt-get update
+                        apt-get install chromium chromium-driver
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
                 ) from exc
         else:
@@ -116,6 +172,9 @@ class Crawler(BaseComponent):
         self.extract_hidden_text = extract_hidden_text
         self.loading_wait_time = loading_wait_time
         self.crawler_naming_function = crawler_naming_function
+
+    def __del__(self):
+        self.driver.quit()
 
     def crawl(
         self,
@@ -187,9 +246,11 @@ class Crawler(BaseComponent):
         file_paths: list = []
         is_not_empty = len(list(output_dir.rglob("*"))) > 0
         if is_not_empty and not overwrite_existing_files:
-            logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
+            logger.info(
+                "Found data stored in `%s`. Delete this first if you really want to fetch new data.", output_dir
+            )
         else:
-            logger.info(f"Fetching from {urls} to `{output_dir}`")
+            logger.info("Fetching from %s to `%s`", urls, output_dir)
 
             # Start by writing out the initial list of urls
             if filter_urls:
@@ -249,7 +310,7 @@ class Crawler(BaseComponent):
     ) -> List[Path]:
         paths = []
         for link in urls:
-            logger.info(f"writing contents from `{link}`")
+            logger.info("writing contents from '%s'", link)
             self.driver.get(link)
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)
@@ -264,7 +325,9 @@ class Crawler(BaseComponent):
             if base_url:
                 data["meta"]["base_url"] = base_url
             data["content"] = text
-            document = Document.from_dict(data, id_hash_keys=id_hash_keys)
+            if id_hash_keys:
+                data["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(data)
 
             if crawler_naming_function is not None:
                 file_name_prefix = crawler_naming_function(link, text)
@@ -278,9 +341,14 @@ class Crawler(BaseComponent):
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(document.to_dict(), f)
-            except Exception as e:
+            except Exception:
                 logging.exception(
-                    f"Crawler can't save the content of '{link}' under '{file_path}'. This webpage will be skipped, but links from this page will still be crawled. Make sure the path above is accessible and the file name is valid. If the file name is invalid, consider setting 'crawler_naming_function' to another function."
+                    "Crawler can't save the content of '%s' under '%s'. "
+                    "This webpage will be skipped, but links from this page will still be crawled. "
+                    "Make sure the path above is accessible and the file name is valid. "
+                    "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+                    link,
+                    file_path,
                 )
 
             paths.append(file_path)
@@ -346,7 +414,9 @@ class Crawler(BaseComponent):
             crawled_data = []
             for _file in file_paths:
                 with open(_file.absolute(), "r") as read_file:
-                    crawled_data.append(Document.from_dict(json.load(read_file), id_hash_keys=id_hash_keys))
+                    document = json.load(read_file)
+                    document["id_hash_keys"] = id_hash_keys
+                    crawled_data.append(Document.from_dict(document))
             results = {"documents": crawled_data}
         else:
             results = {"paths": file_paths}
@@ -398,7 +468,6 @@ class Crawler(BaseComponent):
         already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> set:
-
         self.driver.get(base_url)
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
@@ -410,7 +479,7 @@ class Crawler(BaseComponent):
         for i in a_elements:
             try:
                 sub_link = i.get_attribute("href")
-            except StaleElementReferenceException as error:
+            except StaleElementReferenceException:
                 logger.error(
                     "The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript."
                 )
@@ -421,7 +490,6 @@ class Crawler(BaseComponent):
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
                     if filter_pattern is not None:
-
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:

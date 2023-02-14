@@ -4,6 +4,10 @@ from typing import Union, Any, List, Optional, Iterator, Dict
 import pickle
 import urllib
 
+from tqdm.auto import tqdm
+from sklearn.ensemble._gb_losses import BinomialDeviance
+from sklearn.ensemble._gb import GradientBoostingClassifier
+
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 
 
@@ -16,38 +20,38 @@ class SklearnQueryClassifier(BaseQueryClassifier):
     and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
 
     Example:
-     ```python
-        |{
-        |pipe = Pipeline()
-        |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
-        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
 
-        |# Keyword queries will use the ElasticRetriever
-        |pipe.run("kubernetes aws")
+    ```python
+    pipe = Pipeline()
+    pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipe.add_node(component=bm25_retriever, name="BM25Retriever", inputs=["QueryClassifier.output_2"])
+    pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
 
-        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
-        |pipe.run("How to manage kubernetes on aws")
+    # Keyword queries will use the BM25Retriever
+    pipe.run("kubernetes aws")
 
-     ```
+    # Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+    pipe.run("How to manage kubernetes on aws")
+
+    ```
 
     Models:
 
     Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
     1) Keywords vs. Questions/Statements (Default)
-       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle)
-       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle)
+       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/model.pickle)
+       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/vectorizer.pickle)
        output_1 => question/statement
        output_2 => keyword query
-       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/readme.txt)
 
 
     2) Questions vs. Statements
-       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle)
-       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle)
+       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/model.pickle)
+       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/vectorizer.pickle)
        output_1 => question
        output_2 => statement
-       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/readme.txt)
 
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
@@ -57,17 +61,19 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         self,
         model_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/model.pickle",
         vectorizer_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/vectorizer.pickle",
         batch_size: Optional[int] = None,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: Gradient boosting based binary classifier to classify between keyword vs statement/question
         queries or statement vs question queries.
         :param vectorizer_name_or_path: A ngram based Tfidf vectorizer for extracting features from query.
         :param batch_size: Number of queries to process at a time.
+        :param progress_bar: Whether to show a progress bar.
         """
         if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (
             (not isinstance(vectorizer_name_or_path, Path)) and (not isinstance(vectorizer_name_or_path, str))
@@ -85,8 +91,17 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             vectorizer_name_or_path = f"file:{file_url}"
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
+        # MONKEY PATCH to support different versions of scikit-learn
+        # see https://github.com/deepset-ai/haystack/issues/2904
+        if isinstance(self.model, GradientBoostingClassifier):
+            if not hasattr(self.model, "_loss"):
+                self.model._loss = BinomialDeviance(2)
+            if not hasattr(self.model, "loss_"):
+                self.model.loss_ = BinomialDeviance(2)
+
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
         self.batch_size = batch_size
+        self.progress_bar = progress_bar
 
     def run(self, query):
         query_vector = self.vectorizer.transform([query])
@@ -105,9 +120,12 @@ class SklearnQueryClassifier(BaseQueryClassifier):
 
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         predictions = []
+        pb = tqdm(batches, total=len(queries), disable=self.progress_bar, desc="Classifying queries")
         for batch in batches:
             query_vectors = self.vectorizer.transform(batch)
             predictions.extend(self.model.predict(query_vectors))
+            pb.update(len(batch))
+        pb.close()
         for query, pred in zip(queries, predictions):
             if pred:
                 split["output_1"]["queries"].append(query)

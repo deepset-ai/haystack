@@ -1,0 +1,49 @@
+ARG build_image
+ARG base_image
+
+FROM $build_image AS build-image
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG haystack_version
+ARG haystack_extras
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc git curl cmake \
+    tesseract-ocr libtesseract-dev poppler-utils
+
+# Install PDF converter
+RUN curl -O https://dl.xpdfreader.com/xpdf-4.04.tar.gz && \
+    tar -xvf xpdf-4.04.tar.gz && \
+    cd xpdf-4.04 && \
+    cmake . && \
+    make && \
+    cp xpdf/pdftotext /opt && \
+    cd .. && \
+    rm -rf xpdf-4.04
+
+# Shallow clone Haystack repo, we'll install from the local sources
+RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
+WORKDIR /opt/haystack
+
+# Use a virtualenv we can copy over the next build stage
+RUN python3 -m venv --system-site-packages /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir .${haystack_extras} && \
+    pip install --no-cache-dir ./rest_api
+
+
+FROM $base_image AS final
+
+COPY --from=build-image /opt/venv /opt/venv
+COPY --from=build-image /opt/pdftotext /usr/local/bin
+# pdftotext requires fontconfig runtime
+RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/opt/venv/bin:$PATH"
+
+# The JSON schema is lazily generated at first usage, but we do it explicitly here for two reasons:
+# - the schema will be already there when the container runs, saving the generation overhead when a container starts
+# - derived images don't need to write the schema and can run with lower user privileges
+RUN python3 -c "from haystack.utils.docker import cache_schema; cache_schema()"

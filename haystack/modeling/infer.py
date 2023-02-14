@@ -1,10 +1,8 @@
-from typing import List, Optional, Dict, Union, Generator, Set, Any
+from typing import List, Optional, Dict, Union, Set, Any
 
 import os
 import logging
-import multiprocessing as mp
-from functools import partial
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
@@ -12,13 +10,7 @@ from torch.utils.data import Dataset
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import (
-    grouper,
-    initialize_device_settings,
-    set_all_seeds,
-    calc_chunksize,
-    log_ascii_workers,
-)
+from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
@@ -46,6 +38,7 @@ class Inferencer:
         extraction_layer: Optional[int] = None,
         num_processes: Optional[int] = None,
         disable_tqdm: bool = False,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -69,12 +62,25 @@ class Inferencer:
                               `multiprocessing.Pool` again! To do so call
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
+                              .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :return: An instance of the Inferencer.
 
         """
         # Init device and distributed settings
-        self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
+            )
 
         self.processor = processor
         self.model = model
@@ -92,18 +98,16 @@ class Inferencer:
                     "Since FARM 0.4.2, you set both when initializing the Inferencer and then call inferencer.inference_from_dicts() instead of inferencer.extract_vectors()"
                 )
             self.model.prediction_heads = torch.nn.ModuleList([])
-            self.model.language_model.extraction_layer = extraction_layer
-            self.model.language_model.extraction_strategy = extraction_strategy
+            self.model.language_model.extraction_layer = extraction_layer  # type: ignore [assignment]
+            self.model.language_model.extraction_strategy = extraction_strategy  # type: ignore [assignment]
 
         # TODO add support for multiple prediction heads
 
-        self.name = name if name != None else f"anonymous-{self.task_type}"
+        self.name = name if name is not None else f"anonymous-{self.task_type}"
         self.return_class_probs = return_class_probs
 
         model.connect_heads_with_processor(processor.tasks, require_labels=False)
         set_all_seeds(42)
-
-        self._set_multiprocessing_pool(num_processes)
 
     @classmethod
     def load(
@@ -123,10 +127,11 @@ class Inferencer:
         disable_tqdm: bool = False,
         tokenizer_class: Optional[str] = None,
         use_fast: bool = True,
-        tokenizer_args: Dict = None,
+        tokenizer_args: Optional[Dict] = None,
         multithreading_rust: bool = True,
-        devices: Optional[List[torch.device]] = None,
-        use_auth_token: Union[bool, str] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
+        max_query_length: int = 64,
         **kwargs,
     ):
         """
@@ -156,6 +161,9 @@ class Inferencer:
                               `multiprocessing.Pool` again! To do so call
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
+                              .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
         :param tokenizer_class: (Optional) Name of the tokenizer class to load (e.g. `BertTokenizer`)
         :param use_fast: (Optional, True by default) Indicate if FARM should try to load the fast version of the tokenizer (True) or
@@ -167,25 +175,34 @@ class Inferencer:
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param max_query_length: Only QA: Maximum length of the question in number of tokens.
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        if devices is None:
-            devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)  # type: ignore [assignment]
+        if devices and len(devices) > 1:
+            logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])  # type: ignore [index]
 
         name = os.path.basename(model_name_or_path)
 
-        # a) either from local dir
-        if os.path.exists(model_name_or_path):
-            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
+        # a) non-hf models (i.e. FARM, ONNX) from local dir
+        farm_model_bin = os.path.join(model_name_or_path, "language_model.bin")
+        onnx_model = os.path.join(model_name_or_path, "model.onnx")
+        if os.path.isfile(farm_model_bin) or os.path.isfile(onnx_model):
+            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)  # type: ignore [index]
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
                 processor = Processor.load_from_dir(model_name_or_path)
 
-        # b) or from remote transformers model hub
+        # b) transformers models from hub or from local
         else:
             if not task_type:
                 raise ValueError(
@@ -212,6 +229,7 @@ class Inferencer:
                 tokenizer_args=tokenizer_args,
                 use_fast=use_fast,
                 use_auth_token=use_auth_token,
+                max_query_length=max_query_length,
                 **kwargs,
             )
 
@@ -225,6 +243,8 @@ class Inferencer:
                 "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384) "
             )
             processor.doc_stride = doc_stride
+        if hasattr(processor, "max_query_length"):
+            processor.max_query_length = max_query_length
 
         return cls(
             model,
@@ -238,55 +258,14 @@ class Inferencer:
             extraction_layer=extraction_layer,
             num_processes=num_processes,
             disable_tqdm=disable_tqdm,
+            devices=devices,
         )
-
-    def _set_multiprocessing_pool(self, num_processes: Optional[int]) -> None:
-        """
-        Initialize a multiprocessing.Pool for instances of Inferencer.
-
-        :param num_processes: the number of processes for `multiprocessing.Pool`.
-                              Set to value of 1 (or 0) to disable multiprocessing.
-                              Set to None to let Inferencer use all CPU cores minus one.
-                              If you want to debug the Language Model, you might need to disable multiprocessing!
-                              **Warning!** If you use multiprocessing you have to close the
-                              `multiprocessing.Pool` again! To do so call
-                              :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
-                              done using this class. The garbage collector will not do this for you!
-        :return: None
-        """
-        self.process_pool = None
-        if num_processes == 0 or num_processes == 1:  # disable multiprocessing
-            self.process_pool = None
-        else:
-            if num_processes is None:  # use all CPU cores
-                if mp.cpu_count() > 3:
-                    num_processes = mp.cpu_count() - 1
-                else:
-                    num_processes = mp.cpu_count()
-            self.process_pool = mp.Pool(processes=num_processes)
-            logger.info(f"Got ya {num_processes} parallel workers to do inference ...")
-            log_ascii_workers(n=num_processes, logger=logger)
-
-    def close_multiprocessing_pool(self, join: bool = False):
-        """Close the `multiprocessing.Pool` again.
-
-        If you use multiprocessing you have to close the `multiprocessing.Pool` again!
-        To do so call this function after you are done using this class.
-        The garbage collector will not do this for you!
-
-        :param join: wait for the worker processes to exit
-        """
-        if self.process_pool is not None:
-            self.process_pool.close()
-            if join:
-                self.process_pool.join()
-            self.process_pool = None
 
     def save(self, path: str):
         self.model.save(path)
         self.processor.save(path)
 
-    def inference_from_file(self, file: str, multiprocessing_chunksize: int = None, return_json: bool = True):
+    def inference_from_file(self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json: bool = True):
         """
         Run down-stream inference on samples created from an input file.
         The file should be in the same format as the ones used during training
@@ -294,6 +273,9 @@ class Inferencer:
 
         :param file: path of the input file for Inference
         :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :return: list of predictions
         """
         dicts = self.processor.file_to_dicts(file)
@@ -314,8 +296,11 @@ class Inferencer:
                       One dict per sample.
         :param return_json: Whether the output should be in a json appropriate format. If False, it returns the prediction
                             object where applicable, else it returns PredObj.to_json()
-                :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
                                           (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :return: list of predictions
         """
         # whether to aggregate predictions across different samples (e.g. for QA on long texts)
@@ -327,26 +312,8 @@ class Inferencer:
         if len(self.model.prediction_heads) > 0:
             aggregate_preds = hasattr(self.model.prediction_heads[0], "aggregate_preds")
 
-        if self.process_pool is None:  # multiprocessing disabled (helpful for debugging or using in web frameworks)
-            predictions: Any = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
-            return predictions
-        else:  # use multiprocessing for inference
-            # Calculate values of multiprocessing_chunksize and num_processes if not supplied in the parameters.
-
-            if multiprocessing_chunksize is None:
-                _chunk_size, _ = calc_chunksize(len(dicts))
-                multiprocessing_chunksize = _chunk_size
-
-            predictions = self._inference_with_multiprocessing(
-                dicts, return_json, aggregate_preds, multiprocessing_chunksize
-            )
-
-            self.processor.log_problematic(self.problematic_sample_ids)
-            # cast the generator to a list if it isnt already a list.
-            if type(predictions) != list:
-                return list(predictions)
-            else:
-                return predictions
+        predictions: Any = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
+        return predictions
 
     def _inference_without_multiprocessing(self, dicts: List[Dict], return_json: bool, aggregate_preds: bool) -> List:
         """
@@ -380,69 +347,6 @@ class Inferencer:
 
         return preds_all
 
-    def _inference_with_multiprocessing(
-        self,
-        dicts: Union[List[Dict], Generator[Dict, None, None]],
-        return_json: bool,
-        aggregate_preds: bool,
-        multiprocessing_chunksize: int,
-    ) -> Generator[Dict, None, None]:
-        """
-        Implementation of inference. This method is a generator that yields the results.
-
-        :param dicts: Samples to run inference on provided as a list of dicts or a generator object that yield dicts.
-        :param return_json: Whether the output should be in a json appropriate format. If False, it returns the prediction
-                            object where applicable, else it returns PredObj.to_json()
-        :param aggregate_preds: whether to aggregate predictions across different samples (e.g. for QA on long texts)
-        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
-        :return: generator object that yield predictions
-        """
-
-        # We group the input dicts into chunks and feed each chunk to a different process
-        # in the pool, where it gets converted to a pytorch dataset
-        if self.process_pool is not None:
-            results = self.process_pool.imap(
-                partial(self._create_datasets_chunkwise, processor=self.processor),
-                grouper(iterable=dicts, n=multiprocessing_chunksize),
-                1,
-            )
-
-        # Once a process spits out a preprocessed chunk. we feed this dataset directly to the model.
-        # So we don't need to wait until all preprocessing has finished before getting first predictions.
-        for dataset, tensor_names, problematic_sample_ids, baskets in results:
-            self.problematic_sample_ids.update(problematic_sample_ids)
-            if dataset is None:
-                logger.error(
-                    f"Part of the dataset could not be converted! \n"
-                    f"BE AWARE: The order of predictions will not conform with the input order!"
-                )
-            else:
-                # TODO change format of formatted_preds in QA (list of dicts)
-                if aggregate_preds:
-                    predictions = self._get_predictions_and_aggregate(dataset, tensor_names, baskets)
-                else:
-                    predictions = self._get_predictions(dataset, tensor_names, baskets)
-
-                if return_json:
-                    # TODO this try catch should be removed when all tasks return prediction objects
-                    try:
-                        predictions = [x.to_json() for x in predictions]
-                    except AttributeError:
-                        pass
-                yield from predictions
-
-    @classmethod
-    def _create_datasets_chunkwise(cls, chunk, processor: Processor):
-        """Convert ONE chunk of data (i.e. dictionaries) into ONE pytorch dataset.
-        This is usually executed in one of many parallel processes.
-        The resulting datasets of the processes are merged together afterwards"""
-        dicts = [d[1] for d in chunk]
-        indices = [d[0] for d in chunk]
-        dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(
-            dicts, indices, return_baskets=True
-        )
-        return dataset, tensor_names, problematic_sample_ids, baskets
-
     def _get_predictions(self, dataset: Dataset, tensor_names: List, baskets):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
@@ -457,17 +361,17 @@ class Inferencer:
         samples = [s for b in baskets for s in b.samples]
 
         data_loader = NamedDataLoader(
-            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore
         preds_all = []
         for i, batch in enumerate(
-            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
+            tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
         ):
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 logits = self.model.forward(**batch)
                 preds = self.model.formatted_preds(
                     logits=logits, samples=batch_samples, padding_mask=batch.get("padding_mask", None)
@@ -491,20 +395,17 @@ class Inferencer:
         :return: list of predictions
         """
         data_loader = NamedDataLoader(
-            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore
         # TODO Sometimes this is the preds of one head, sometimes of two. We need a more advanced stacking operation
         # TODO so that preds of the right shape are passed in to formatted_preds
         unaggregated_preds_all = []
 
-        for i, batch in enumerate(
-            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
-        ):
-
+        for batch in tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm):
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 # Aggregation works on preds, not logits. We want as much processing happening in one batch + on GPU
                 # So we transform logits to preds here as well
                 logits = self.model.forward(
@@ -552,8 +453,8 @@ class Inferencer:
         """
         logger.warning("Deprecated! Please use Inferencer.inference_from_dicts() instead.")
         self.model.prediction_heads = torch.nn.ModuleList([])
-        self.model.language_model.extraction_layer = extraction_layer
-        self.model.language_model.extraction_strategy = extraction_strategy
+        self.model.language_model.extraction_layer = extraction_layer  # type: ignore [assignment]
+        self.model.language_model.extraction_strategy = extraction_strategy  # type: ignore [assignment]
 
         return self.inference_from_dicts(dicts)
 
@@ -573,6 +474,13 @@ class QAInferencer(Inferencer):
     def inference_from_dicts(
         self, dicts: List[dict], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
     ) -> List[QAPred]:
+        """
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                                          (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
+        """
         return Inferencer.inference_from_dicts(
             self, dicts, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
         )
@@ -580,6 +488,13 @@ class QAInferencer(Inferencer):
     def inference_from_file(
         self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json=True
     ) -> List[QAPred]:
+        """
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                                          (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
+        """
         return Inferencer.inference_from_file(
             self, file, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
         )
@@ -587,6 +502,17 @@ class QAInferencer(Inferencer):
     def inference_from_objects(
         self, objects: List[QAInput], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
     ) -> List[QAPred]:
+        """
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                                          (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
+        """
+        # Return no predictions if there are no inputs
+        if not objects:
+            return []
+
         dicts = [o.to_dict() for o in objects]
         # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects,
         # then we can and should use inference from (input) objects!

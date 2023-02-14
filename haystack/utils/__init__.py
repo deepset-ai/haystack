@@ -27,3 +27,5 @@ from haystack.utils.experiment_tracking import (
     MLflowTrackingHead,
     StdoutTrackingHead,
 )
+from haystack.utils.early_stopping import EarlyStopping
+from haystack.utils.labels import aggregate_labels

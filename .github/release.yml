@@ -2,6 +2,7 @@ changelog:
   exclude:
     labels:
       - ignore-for-release-notes
+      - Proposal
   categories:
     - title: Breaking Changes
       labels:
@@ -9,6 +10,17 @@ changelog:
     - title: Pipeline
       labels:
         - topic:pipeline
+        - topic:DPR
+        - topic:reader
+        - topic:retriever
+        - topic:tableQA
+        - topic:file_converter
+        - topic:preprocessing
+        - topic:crawler
+        - topic:images
+        - topic:audio
+        - topic:eval
+        - topic:other_nodes
     - title: Models
       labels:
         - topic:models
@@ -21,6 +33,8 @@ changelog:
         - topic:weaviate
         - topic:pinecone
         - topic:sql
+        - topic:knowledge_graph
+        - topic:graphdb
     - title: REST API
       labels:
         - topic:api
@@ -32,7 +46,7 @@ changelog:
         - type:documentation
     - title: Tutorials
       labels:
-        - type:tutorial
+        - topic:tutorials
     - title: Other Changes
       labels:
         - "*"

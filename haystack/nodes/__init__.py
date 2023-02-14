@@ -19,16 +19,20 @@ from haystack.nodes.file_converter import (
     TextConverter,
     AzureConverter,
     ParsrConverter,
+    CsvTextConverter,
 )
+from haystack.nodes.image_to_text import TransformersImageToText
 from haystack.nodes.label_generator import PseudoLabelGenerator
-from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers
+from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers, DocumentMerger, Shaper
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
+from haystack.nodes.prompt import PromptNode, PromptTemplate, PromptModel
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
 from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
 from haystack.nodes.retriever import (
     BaseRetriever,
+    DenseRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
     BM25Retriever,
@@ -39,6 +43,7 @@ from haystack.nodes.retriever import (
     TfidfRetriever,
     Text2SparqlRetriever,
     TableTextRetriever,
+    MultiModalRetriever,
 )
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator

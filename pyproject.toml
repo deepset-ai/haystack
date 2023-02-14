@@ -1,10 +1,251 @@
 [build-system]
 requires = [
-    "setuptools",
-    "wheel",
+  "hatchling>=1.8.0",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
 
+[project]
+name = "farm-haystack"
+dynamic = [
+  "version",
+]
+description = "Neural Question Answering & Semantic Search at Scale. Use modern transformer based models like BERT to find answers in large document collections"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.7"
+authors = [
+  { name = "deepset.ai", email = "malte.pietsch@deepset.ai" },
+]
+keywords = [
+  "BERT",
+  "QA",
+  "Question-Answering",
+  "Reader",
+  "Retriever",
+  "albert",
+  "language-model",
+  "mrc",
+  "roberta",
+  "search",
+  "semantic-search",
+  "squad",
+  "transfer-learning",
+  "transformer",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "License :: Freely Distributable",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "importlib-metadata; python_version < '3.8'",
+  "requests",
+  "pydantic",
+  "transformers[torch]==4.25.1",
+  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
+  "nltk",
+  "pandas",
+  "rank_bm25",
+
+  # Utils
+  "dill",  # pickle extension for (de-)serialization
+  "tqdm",  # progress bars in model download and training scripts
+  "networkx",  # graphs library
+  "mmh3",  # fast hashing function (murmurhash3)
+  "quantulum3",  # quantities extraction from text
+  "posthog",  # telemetry
+  "azure-ai-formrecognizer>=3.2.0b2",  # forms reader
+  # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
+  "huggingface-hub>=0.5.0",
+
+  # Preprocessing
+  "more_itertools",  # for windowing
+  "python-docx",
+  "langdetect",  # for PDF conversions
+  "tika",  # Apache Tika (text & metadata extractor)
+
+  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
+  "sentence-transformers>=2.2.0",
+
+  # for stats in run_classifier
+  "scipy>=1.3.2",
+  "scikit-learn>=1.0.0",
+
+  # Metrics and logging
+  "seqeval",
+  "mlflow",
+
+  # Elasticsearch
+  "elasticsearch>=7.7,<8",
+
+  # OpenAI tokenizer
+  "tiktoken>=0.1.2; python_version >= '3.8' and (platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+
+  # context matching
+  "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
+
+  # Schema validation
+  "jsonschema",
+]
+
+[project.optional-dependencies]
+sql = [
+  "sqlalchemy>=1.4.2,<2",
+  "sqlalchemy_utils",
+  "psycopg2-binary; platform_system != 'Windows'",
+]
+only-faiss = [
+  "faiss-cpu>=1.6.3,<=1.7.2",
+]
+faiss = [
+  "farm-haystack[sql,only-faiss]",
+]
+only-faiss-gpu = [
+  "faiss-gpu>=1.6.3,<2",
+]
+faiss-gpu = [
+  "farm-haystack[sql,only-faiss-gpu]",
+]
+only-milvus = [
+  "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
+]
+milvus = [
+  "farm-haystack[sql,only-milvus]",
+]
+weaviate = [
+  "weaviate-client==3.10.0",
+]
+only-pinecone = [
+  "pinecone-client>=2.0.11,<3",
+]
+pinecone = [
+  "farm-haystack[sql,only-pinecone]",
+]
+graphdb = [
+  "SPARQLWrapper",
+]
+inmemorygraph = [
+  "SPARQLWrapper",
+]
+opensearch = [
+  "opensearch-py>=2",
+]
+docstores = [
+  "farm-haystack[faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+]
+docstores-gpu = [
+  "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+]
+audio = [
+  "pyworld>=0.3.1; python_version >= '3.8'",
+  "pyworld<0.3.1; python_version < '3.8'",
+  "espnet==202209", # https://github.com/deepset-ai/haystack/pull/3693
+  "espnet-model-zoo",
+  "pydub",
+]
+beir = [
+  "beir; platform_system != 'Windows'",
+]
+crawler = [
+  "selenium>=4.0.0,!=4.1.4",  # Avoid 4.1.4 due to https://github.com/SeleniumHQ/selenium/issues/10612
+  "webdriver-manager",
+]
+preprocessing = [
+  "beautifulsoup4",
+  "markdown",
+  "python-frontmatter",
+  "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
+  "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
+]
+ocr = [
+  "pytesseract>0.3.7",
+  "pdf2image>1.14",
+]
+onnx = [
+  "onnxruntime",
+  "onnxruntime_tools",
+]
+onnx-gpu = [
+  "onnxruntime-gpu",
+  "onnxruntime_tools",
+]
+ray = [
+  "ray>=1.9.1,<2; platform_system != 'Windows'",
+  "ray>=1.9.1,<2,!=1.12.0; platform_system == 'Windows'",  # Avoid 1.12.0 due to https://github.com/ray-project/ray/issues/24169 (fails on windows)
+  "aiorwlock>=1.3.0,<2",
+]
+colab = [
+  "pillow<=9.0.0",
+]
+dev = [
+  "pre-commit",
+  # Type check
+  "mypy",
+  "typing_extensions; python_version < '3.8'",
+  # Test
+  "pytest",
+  "pytest-custom_exit_code",  # used in the CI
+  "pytest-asyncio",
+  "responses",
+  "tox",
+  "coverage",
+  "python-multipart",
+  "psutil",
+  # Linting
+  "pylint",
+  "farm-haystack[formatting]",
+  # Documentation
+  "pydoc-markdown",
+  "mkdocs",
+  "jupytercontrib",
+  "watchdog",
+  "requests-cache",
+]
+
+formatting = [
+  # Version specified following Black stability policy:
+  # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
+  "black[jupyter]~=23.0",
+]
+
+all = [
+  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
+]
+all-gpu = [
+  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
+]
+
+[project.urls]
+"CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
+"Docs: RTD" = "https://haystack.deepset.ai/overview/intro"
+"GitHub: issues" = "https://github.com/deepset-ai/haystack/issues"
+"GitHub: repo" = "https://github.com/deepset-ai/haystack"
+Homepage = "https://github.com/deepset-ai/haystack"
+
+[tool.hatch.version]
+path = "VERSION.txt"
+pattern = "(?P<version>.+)"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/haystack",
+  "/VERSION.txt",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "haystack",
+]
 
 [tool.black]
 line-length = 120
@@ -18,8 +259,6 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
-  "wrong-spelling-in-comment",
-  "wrong-spelling-in-docstring",
 
   # To review:
   "missing-docstring",
@@ -30,28 +269,21 @@ disable = [
   "too-few-public-methods",
   "raise-missing-from",
   "invalid-name",
-  "logging-fstring-interpolation",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",
   "arguments-differ",
   "consider-using-f-string",
   "no-else-return",
-  "unused-variable",
   "attribute-defined-outside-init",
   "too-many-instance-attributes",
   "super-with-arguments",
-  "anomalous-backslash-in-string",
   "redefined-builtin",
-  "logging-format-interpolation",
-  "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
-  "trailing-whitespace",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
-  "dangerous-default-value",
   "consider-using-with",
   "redefined-outer-name",
   "arguments-renamed",
@@ -70,9 +302,7 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
-
-
-
+  "broad-exception-raised",
 
   # To review later
   "cyclic-import",
@@ -84,29 +314,36 @@ max-args=7
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
 
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
-    "integration: integration tests",
-    "unit: unit tests",
+  "unit: unit tests",
+  "integration: integration tests",
 
-    "generator: generator tests",
-    "summarizer: summarizer tests",
-    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
+  "generator: generator tests",
+  "summarizer: summarizer tests",
+  "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 
-    "tika: requires Tika container",
-    "parsr: requires Parsr container",
-    "ocr: requires Tesseract",
+  "tika: requires Tika container",
+  "parsr: requires Parsr container",
+  "ocr: requires Tesseract",
 
-    "elasticsearch: requires Elasticsearch container",
-    "graphdb: requires GraphDB container",
-    "weaviate: requires Weaviate container",
-    "pinecone: requires Pinecone credentials",
-    "faiss: uses FAISS",
-    "milvus: requires a Milvus 2 setup",
-    "milvus1: requires a Milvus 1 container",
-    "opensearch"
+  "elasticsearch: requires Elasticsearch container",
+  "graphdb: requires GraphDB container",
+  "weaviate: requires Weaviate container",
+  "pinecone: requires Pinecone credentials",
+  "faiss: uses FAISS",
+  "milvus: requires a Milvus 2 setup",
+  "opensearch",
+  "document_store",
 ]
 log_cli = true
+
+[tool.mypy]
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+plugins = [
+  "pydantic.mypy",
+]

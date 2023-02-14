@@ -105,11 +105,12 @@ class PredictionHead(nn.Module):
         :return: PredictionHead
         :rtype: PredictionHead[T]
         """
-        config = json.load(open(config_file))
+        with open(config_file) as f:
+            config = json.load(f)
         prediction_head = cls.subclasses[config["name"]](**config)
         if load_weights:
             model_file = cls._get_model_file(config_file=config_file)
-            logger.info("Loading prediction head from {}".format(model_file))
+            logger.info("Loading prediction head from %s", model_file)
             prediction_head.load_state_dict(torch.load(model_file, map_location=torch.device("cpu")), strict=strict)
         return prediction_head
 
@@ -163,8 +164,11 @@ class PredictionHead(nn.Module):
                 return
             new_dims = [input_dim] + old_dims[1:]
             logger.info(
-                f"Resizing input dimensions of {type(self).__name__} ({self.task_name}) "
-                f"from {old_dims} to {new_dims} to match language model"
+                "Resizing input dimensions of %s (%s) from %s to %s to match language model",
+                type(self).__name__,
+                self.task_name,
+                old_dims,
+                new_dims,
             )
             self.feed_forward = FeedForwardBlock(new_dims)
             self.layer_dims[0] = input_dim
@@ -227,7 +231,7 @@ class QuestionAnsweringHead(PredictionHead):
 
     def __init__(
         self,
-        layer_dims: List[int] = [768, 2],
+        layer_dims: Optional[List[int]] = None,
         task_name: str = "question_answering",
         no_ans_boost: float = 0.0,
         context_window_size: int = 100,
@@ -240,7 +244,7 @@ class QuestionAnsweringHead(PredictionHead):
         **kwargs,
     ):
         """
-        :param layer_dims: dimensions of Feed Forward block, e.g. [768,2], for adjusting to BERT embedding. Output should be always 2
+        :param layer_dims: dimensions of Feed Forward block, e.g. [768,2] used by default, for adjusting to BERT embedding. Output should be always 2
         :param kwargs: placeholder for passing generic parameters
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
                              The higher the value, the more likely a "no answer possible given the input text" is returned by the model
@@ -256,16 +260,18 @@ class QuestionAnsweringHead(PredictionHead):
         :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
                                                 Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
+        if layer_dims is None:
+            layer_dims = [768, 2]
         super(QuestionAnsweringHead, self).__init__()
         if len(kwargs) > 0:
             logger.warning(
-                f"Some unused parameters are passed to the QuestionAnsweringHead. "
-                f"Might not be a problem. Params: {json.dumps(kwargs)}"
+                "Some unused parameters are passed to the QuestionAnsweringHead. Might not be a problem. Params: %s",
+                json.dumps(kwargs),
             )
         self.layer_dims = layer_dims
         assert self.layer_dims[-1] == 2
         self.feed_forward = FeedForwardBlock(self.layer_dims)
-        logger.debug(f"Prediction head initialized with size {self.layer_dims}")
+        logger.debug("Prediction head initialized with size %s", self.layer_dims)
         self.num_labels = self.layer_dims[-1]
         self.ph_output_type = "per_token_squad"
         self.model_type = "span_classification"  # predicts start and end token of answer
@@ -286,7 +292,13 @@ class QuestionAnsweringHead(PredictionHead):
         self.use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
+    def load(  # type: ignore
+        cls,
+        pretrained_model_name_or_path: Union[str, Path],
+        revision: Optional[str] = None,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        **kwargs,
+    ):
         """
         Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
@@ -299,9 +311,13 @@ class QuestionAnsweringHead(PredictionHead):
                                               Exemplary public names:
                                               - distilbert-base-uncased-distilled-squad
                                               - bert-large-uncased-whole-word-masking-finetuned-squad
-
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         if (
             os.path.exists(pretrained_model_name_or_path)
@@ -314,7 +330,7 @@ class QuestionAnsweringHead(PredictionHead):
             # b) transformers style
             # load all weights from model
             full_qa_model = AutoModelForQuestionAnswering.from_pretrained(
-                pretrained_model_name_or_path, revision=revision, **kwargs
+                pretrained_model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs
             )
             # init empty head
             head = cls(layer_dims=[full_qa_model.config.hidden_size, 2], task_name="question_answering")
@@ -485,6 +501,8 @@ class QuestionAnsweringHead(PredictionHead):
         sorted_candidates = torch.cat((start_indices, end_indices), dim=2)
 
         # Get the n_best candidate answers for each sample
+        sorted_candidates = sorted_candidates.cpu().numpy()
+        start_end_matrix = start_end_matrix.cpu().numpy()
         for sample_idx in range(batch_size):
             sample_top_n = self.get_top_candidates(
                 sorted_candidates[sample_idx],
@@ -509,24 +527,21 @@ class QuestionAnsweringHead(PredictionHead):
         start_idx_candidates = set()
         end_idx_candidates = set()
 
-        start_matrix_softmax_start = torch.softmax(start_matrix[:, 0], dim=-1)
-        end_matrix_softmax_end = torch.softmax(end_matrix[0, :], dim=-1)
+        start_matrix_softmax_start = torch.softmax(start_matrix[:, 0], dim=-1).cpu().numpy()
+        end_matrix_softmax_end = torch.softmax(end_matrix[0, :], dim=-1).cpu().numpy()
         # Iterate over all candidates and break when we have all our n_best candidates
         for candidate_idx in range(n_candidates):
-            if len(top_candidates) == self.n_best_per_sample:
-                break
-
             # Retrieve candidate's indices
-            start_idx = sorted_candidates[candidate_idx, 0].item()
-            end_idx = sorted_candidates[candidate_idx, 1].item()
+            start_idx = sorted_candidates[candidate_idx, 0]
+            end_idx = sorted_candidates[candidate_idx, 1]
             # Ignore no_answer scores which will be extracted later in this method
             if start_idx == 0 and end_idx == 0:
                 continue
             if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
                 continue
-            score = start_end_matrix[start_idx, end_idx].item()
+            score = start_end_matrix[start_idx, end_idx]
             confidence = (
-                (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+                (start_matrix_softmax_start[start_idx] + end_matrix_softmax_end[end_idx]) / 2
                 if score > -500
                 else np.exp(score / 10)  # disqualify answers according to scores in logits_to_preds()
             )
@@ -549,8 +564,12 @@ class QuestionAnsweringHead(PredictionHead):
                     end_idx_candidates.add(end_idx + i)
                     end_idx_candidates.add(end_idx - i)
 
-        no_answer_score = start_end_matrix[0, 0].item()
-        no_answer_confidence = (start_matrix_softmax_start[0].item() + end_matrix_softmax_end[0].item()) / 2
+            # Only check if we have enough candidates after adding new candidate to the list
+            if len(top_candidates) == self.n_best_per_sample:
+                break
+
+        no_answer_score = start_end_matrix[0, 0]
+        no_answer_confidence = (start_matrix_softmax_start[0] + end_matrix_softmax_end[0]) / 2
         top_candidates.append(
             QACandidate(
                 offset_answer_start=0,
@@ -612,7 +631,6 @@ class QuestionAnsweringHead(PredictionHead):
 
         # Iterate over each set of document level prediction
         for pred_d, no_ans_gap, basket in zip(top_preds, no_ans_gaps, baskets):
-
             # Unpack document offsets, clear text and id
             token_offsets = basket.raw["document_offsets"]
             pred_id = basket.id_external if basket.id_external else basket.id_internal

@@ -1,0 +1,52 @@
+version: ignore
+extras: ray
+
+components:
+  - name: DocumentStore
+    type: ElasticsearchDocumentStore
+    params:
+      index: haystack_test
+      label_index: haystack_test_label
+  - name: ESRetriever
+    type: BM25Retriever
+    params:
+      document_store: DocumentStore
+  - name: Reader
+    type: FARMReader
+    params:
+      no_ans_boost: -10
+      model_name_or_path: deepset/bert-medium-squad2-distilled
+      num_processes: 0
+  - name: PDFConverter
+    type: PDFToTextConverter
+    params:
+      remove_numeric_tables: false
+  - name: Preprocessor
+    type: PreProcessor
+    params:
+      clean_whitespace: true
+  - name: IndexTimeDocumentClassifier
+    type: TransformersDocumentClassifier
+    params:
+      batch_size: 16
+      use_gpu: false
+  - name: QueryTimeDocumentClassifier
+    type: TransformersDocumentClassifier
+    params:
+      use_gpu: false
+
+
+pipelines:
+  - name: ray_query_pipeline
+    nodes:
+      - name: ESRetriever
+        inputs: [ Query ]
+        serve_deployment_kwargs:
+          num_replicas: 2
+          version: Twenty
+          ray_actor_options:
+            # num_gpus: 0.25  # we have no GPU to test this
+            num_cpus: 0.5
+          max_concurrent_queries: 17
+      - name: Reader
+        inputs: [ ESRetriever ]

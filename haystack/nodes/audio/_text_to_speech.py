@@ -1,4 +1,4 @@
-from typing import Union, Callable, Any, Optional, Dict
+from typing import Union, Callable, Any, Optional, Dict, List
 
 import os
 import logging
@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 
 import numpy as np
+import torch
 
 try:
     import soundfile as sf
@@ -20,6 +21,8 @@ from pydub import AudioSegment
 from haystack.errors import AudioNodeError
 from haystack.modeling.utils import initialize_device_settings
 
+logger = logging.getLogger(__name__)
+
 
 class TextToSpeech:
     """
@@ -33,17 +36,29 @@ class TextToSpeech:
         model_name_or_path: Union[str, Path],
         use_gpu: bool = True,
         transformers_params: Optional[Dict[str, Any]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param model_name_or_path: The text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`.
         :param use_gpu: Whether to use GPU (if available). Defaults to True.
         :param transformers_params: Parameters to pass over to the `Text2Speech.from_pretrained()` call.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
-        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(resolved_devices) > 1:
+            logger.warning(
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                resolved_devices[0],
+            )
+
         self.model = _Text2SpeechModel.from_pretrained(
-            model_name_or_path, device=devices[0].type, **(transformers_params or {})
+            model_name_or_path, device=resolved_devices[0].type, **(transformers_params or {})
         )
 
     def text_to_audio_file(
@@ -104,7 +119,7 @@ class TextToSpeech:
 
         return file_path
 
-    def text_to_audio_data(self, text: str, _models_output_key: str = "wav") -> np.array:
+    def text_to_audio_data(self, text: str, _models_output_key: str = "wav") -> np.array:  # type: ignore [valid-type]
         """
         Convert an input string into a numpy array representing the audio.
 
@@ -115,7 +130,7 @@ class TextToSpeech:
         prediction = self.model(text)
         if not prediction:
             raise AudioNodeError(
-                f"The model returned no predictions. Make sure you selected a valid text-to-speech model."
+                "The model returned no predictions. Make sure you selected a valid text-to-speech model."
             )
         output = prediction.get(_models_output_key, None)
         if output is None:
@@ -126,7 +141,7 @@ class TextToSpeech:
 
     def compress_audio(
         self,
-        data: np.array,
+        data: np.array,  # type: ignore [valid-type]
         path: Path,
         format: str,
         sample_rate: int,

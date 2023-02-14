@@ -1,7 +1,7 @@
 from typing import Union, Optional, List, Dict, Tuple, Any
 
 from pathlib import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.nodes import BaseComponent
 from haystack.schema import Document, SpeechDocument
@@ -56,7 +56,6 @@ class DocumentToSpeech(BaseComponent):
     def run(self, documents: List[Document]) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
         audio_documents = []
         for doc in tqdm(documents):
-
             content_audio = self.converter.text_to_audio_file(
                 text=doc.content, generated_audio_dir=self.generated_audio_dir, **self.params
             )

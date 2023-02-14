@@ -1,4 +1,4 @@
-version: 'unstable'
+version: 'ignore'
 
 components:
   - name: TestReader

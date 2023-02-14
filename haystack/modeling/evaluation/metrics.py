@@ -108,7 +108,7 @@ def compute_metrics(metric: str, preds, labels):
 
 def compute_report_metrics(head: PredictionHead, preds, labels):
     if head.ph_output_type in registered_reports:
-        report_fn = registered_reports[head.ph_output_type]
+        report_fn = registered_reports[head.ph_output_type]  # type: ignore [index]
     elif head.ph_output_type == "per_token":
         report_fn = token_classification_report
     elif head.ph_output_type == "per_sequence":
@@ -130,9 +130,9 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
         if head.model_type == "text_similarity":
             labels = reduce(lambda x, y: x + list(y.astype("long")), labels, [])
             preds = reduce(lambda x, y: x + [0] * y[0] + [1] + [0] * (len(y) - y[0] - 1), preds, [])  # type: ignore
-            all_possible_labels = list(range(len(head.label_list)))
+            all_possible_labels = list(range(len(head.label_list)))  # type: ignore [arg-type]
         else:
-            all_possible_labels = head.label_list
+            all_possible_labels = head.label_list  # type: ignore [assignment]
         return report_fn(labels, preds, digits=4, labels=all_possible_labels, target_names=head.label_list)
     else:
         return report_fn(labels, preds)
@@ -144,7 +144,7 @@ def squad_EM(preds, labels):
     """
     n_docs = len(preds)
     n_correct = 0
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         qa_candidate = pred[0][0]
         pred_start = qa_candidate.offset_answer_start
         pred_end = qa_candidate.offset_answer_end
@@ -160,7 +160,7 @@ def top_n_EM(preds, labels):
     """
     n_docs = len(preds)
     n_correct = 0
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         qa_candidates = pred[0]
         for qa_candidate in qa_candidates:
             pred_start = qa_candidate.offset_answer_start
@@ -178,7 +178,7 @@ def squad_EM_start(preds, labels):
     """
     n_docs = len(preds)
     n_correct = 0
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         qa_candidate = pred[0][0]
         pred_start = qa_candidate.offset_answer_start
         curr_labels = label
@@ -245,7 +245,7 @@ def metrics_per_bin(preds, labels, num_bins: int = 10):
     pred_bins = [[] for _ in range(num_bins)]  # type: List
     label_bins = [[] for _ in range(num_bins)]  # type: List
     count_per_bin = [0] * num_bins
-    for (pred, label) in zip(preds, labels):
+    for pred, label in zip(preds, labels):
         current_score = pred[0][0].confidence
         if current_score >= 1.0:
             current_score = 0.9999
@@ -314,7 +314,7 @@ def top_n_accuracy(preds, labels):
     for i in range(n_questions):
         f1_score = 0
         current_preds = preds[i][0]
-        for idx, pred in enumerate(current_preds):
+        for idx in range(len(current_preds)):
             f1_score = max(squad_f1_single(current_preds, label, pred_idx=idx) for label in labels[i])
             if f1_score:
                 break

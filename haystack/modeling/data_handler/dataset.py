@@ -1,6 +1,6 @@
 import logging
 import numbers
-from typing import List
+from typing import Optional, List
 
 import numpy as np
 import torch
@@ -12,7 +12,9 @@ from haystack.modeling.utils import flatten_list
 logger = logging.getLogger(__name__)
 
 
-def flatten_rename(encoded_batch: BatchEncoding, keys: List[str] = None, renamed_keys: List[str] = None):
+def flatten_rename(
+    encoded_batch: BatchEncoding, keys: Optional[List[str]] = None, renamed_keys: Optional[List[str]] = None
+):
     if encoded_batch is None:
         return []
     if not keys:
@@ -57,13 +59,15 @@ def convert_features_to_dataset(features):
                 base = check.ravel()[0]
             if not np.issubdtype(type(base), np.integer):
                 logger.warning(
-                    f"Problem during conversion to torch tensors:\n"
-                    f"A non-integer value for feature '{t_name}' with a value of: "
-                    f"'{base}' will be converted to a torch tensor of dtype long."
+                    "Problem during conversion to torch tensors:\n"
+                    "A non-integer value for feature '%s' with a value of: "
+                    "'%s' will be converted to a torch tensor of dtype long.",
+                    t_name,
+                    base,
                 )
         except:
             logger.debug(
-                f"Could not determine type for feature '{t_name}'. " "Converting now to a tensor of default type long."
+                "Could not determine type for feature '%s'. Converting now to a tensor of default type long.", t_name
             )
 
         # Convert all remaining python objects to torch long tensors

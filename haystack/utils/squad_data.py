@@ -4,10 +4,10 @@ import logging
 import json
 import random
 import pandas as pd
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import mmh3
 
-from haystack.schema import Document, Label
+from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
 
@@ -28,7 +28,7 @@ class SquadData:
 
     def __init__(self, squad_data):
         """
-        :param squad_data: SQuAD format data, either as a dict with a `data` key, or just a list of SQuAD documents
+        :param squad_data: SQuAD format data, either as a dictionary with a `data` key, or just a list of SQuAD documents.
         """
         if type(squad_data) == dict:
             self.version = squad_data.get("version")
@@ -39,14 +39,14 @@ class SquadData:
         self.df = self.to_df(self.data)
 
     def merge_from_file(self, filename: str):
-        """Merge the contents of a SQuAD format json file with the data stored in this object"""
+        """Merge the contents of a JSON file in the SQuAD format with the data stored in this object."""
         new_data = json.load(open(filename))["data"]
         self.merge(new_data)
 
     def merge(self, new_data: List):
         """
-        Merge data in SQuAD format with the data stored in this object
-        :param new_data: A list of SQuAD document data
+        Merge data in SQuAD format with the data stored in this object.
+        :param new_data: A list of SQuAD document data.
         """
         df_new = self.to_df(new_data)
         self.df = pd.concat([df_new, self.df])
@@ -55,14 +55,15 @@ class SquadData:
     @classmethod
     def from_file(cls, filename: str):
         """
-        Create a SquadData object by providing the name of a SQuAD format json file
+        Create a SquadData object by providing the name of a JSON file in the SQuAD format.
         """
-        data = json.load(open(filename))
+        with open(filename) as f:
+            data = json.load(f)
         return cls(data)
 
     def save(self, filename: str):
         """
-        Write the data stored in this object to a json file.
+        Write the data stored in this object to a JSON file.
         """
         with open(filename, "w") as f:
             squad_data = {"version": self.version, "data": self.data}
@@ -84,30 +85,27 @@ class SquadData:
         documents = [Document(content=rd["context"], id=rd["title"]) for rd in record_dicts]
         return documents
 
-    # FIXME currently broken! Refactor to new Label objects
-    def to_label_objs(self):
-        """
-        Export all labels stored in this object to haystack.Label objects.
-        """
-        df_labels = self.df[["id", "question", "answer_text", "answer_start"]]
+    def to_label_objs(self, answer_type="generative"):
+        """Export all labels stored in this object to haystack.Label objects"""
+        df_labels = self.df[["id", "question", "answer_text", "answer_start", "context", "document_id"]]
         record_dicts = df_labels.to_dict("records")
         labels = [
-            Label(  # pylint: disable=no-value-for-parameter
-                query=rd["question"],
-                answer=rd["answer_text"],
+            Label(
+                query=record["question"],
+                answer=Answer(answer=record["answer_text"], answer_type=answer_type),
                 is_correct_answer=True,
                 is_correct_document=True,
-                id=rd["id"],
-                origin=rd.get("origin", "SquadData tool"),
-                document_id=rd.get("document_id", None),
+                id=record["id"],
+                origin=record.get("origin", "gold-label"),
+                document=Document(content=record.get("context"), id=str(record["document_id"])),
             )
-            for rd in record_dicts
+            for record in record_dicts
         ]
         return labels
 
     @staticmethod
     def to_df(data):
-        """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)"""
+        """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)."""
         flat = []
         for document in data:
             title = document.get("title", "")
@@ -117,7 +115,7 @@ class SquadData:
                 for question in paragraph["qas"]:
                     q = question["question"]
                     id = question["id"]
-                    is_impossible = question["is_impossible"]
+                    is_impossible = question.get("is_impossible", False)
                     # For no_answer samples
                     if len(question["answers"]) == 0:
                         flat.append(
@@ -154,7 +152,7 @@ class SquadData:
 
     def count(self, unit="questions"):
         """
-        Count the samples in the data. Choose from unit = "paragraphs", "questions", "answers", "no_answers", "span_answers"
+        Count the samples in the data. Choose a unit: "paragraphs", "questions", "answers", "no_answers", "span_answers".
         """
         c = 0
         for document in self.data:
@@ -170,7 +168,7 @@ class SquadData:
                             c += 1
                     # Count span answers
                     else:
-                        for answer in question["answers"]:
+                        for _ in question["answers"]:
                             if unit in ["answers", "span_answers"]:
                                 c += 1
         return c
@@ -178,7 +176,7 @@ class SquadData:
     @classmethod
     def df_to_data(cls, df):
         """
-        Convert a dataframe into SQuAD format data (list of SQuAD document dictionaries).
+        Convert a data frame into the SQuAD format data (list of SQuAD document dictionaries).
         """
         logger.info("Converting data frame to squad format data")
 
@@ -243,9 +241,9 @@ class SquadData:
 
     def sample_questions(self, n):
         """
-        Return a sample of n questions in SQuAD format (list of SQuAD document dictionaries)
-        Note, that if the same question is asked on multiple different passages, this fn treats that
-        as a single question
+        Return a sample of n questions in the SQuAD format (a list of SQuAD document dictionaries).
+        Note that if the same question is asked on multiple different passages, this function treats that
+        as a single question.
         """
         all_questions = self.get_all_questions()
         sampled_questions = random.sample(all_questions, n)
@@ -260,8 +258,7 @@ class SquadData:
 
     def get_all_questions(self):
         """
-        Return all question strings. Note that if the same question appears for different paragraphs, it will be
-        returned multiple times by this fn
+        Return all question strings. Note that if the same question appears for different paragraphs, this function returns it multiple times.
         """
         df_questions = self.df[["title", "context", "question"]]
         df_questions = df_questions.drop_duplicates()
@@ -269,7 +266,7 @@ class SquadData:
         return questions
 
     def get_all_document_titles(self):
-        """Return all document title strings"""
+        """Return all document title strings."""
         return self.df["title"].unique().tolist()
 
 

@@ -1,7 +1,7 @@
 """
     Telemetry
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
-    An example report can be inspected via calling print_telemetry_report(). Check out the documentation for more details: https://haystack.deepset.ai/guides/telemetry
+    An example report can be inspected via calling print_telemetry_report(). Check out the documentation for more details: https://docs.haystack.deepset.ai/docs/telemetry
     You can opt-out of sharing usage statistics by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page.
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
@@ -31,8 +31,11 @@ user_id: Optional[str] = None
 logger = logging.getLogger(__name__)
 
 # disable posthog logging
-logging.getLogger("posthog").setLevel(CRITICAL)
-logging.getLogger("backoff").setLevel(CRITICAL)
+for module_name in ["posthog", "backoff"]:
+    logging.getLogger(module_name).setLevel(CRITICAL)
+    # Prevent module from sending errors to stderr when an exception is encountered during an emit() call
+    logging.getLogger(module_name).addHandler(logging.NullHandler())
+    logging.getLogger(module_name).propagate = False
 
 
 class TelemetryFileType(Enum):
@@ -73,7 +76,7 @@ def enable_writing_events_to_file():
     Enables writing each event that is sent to the log file specified in LOG_PATH
     """
     os.environ[HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED] = "True"
-    logger.info(f"Writing events to log file {LOG_PATH} has been enabled.")
+    logger.info("Writing events to log file %s has been enabled.", LOG_PATH)
 
 
 def disable_writing_events_to_file():
@@ -81,7 +84,7 @@ def disable_writing_events_to_file():
     Disables writing each event that is sent to the log file specified in LOG_PATH
     """
     os.environ[HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED] = "False"
-    logger.info(f"Writing events to log file {LOG_PATH} has been disabled.")
+    logger.info("Writing events to log file %s has been disabled.", LOG_PATH)
 
 
 def is_telemetry_enabled() -> bool:
@@ -130,7 +133,7 @@ def send_event(func):
     return wrapper
 
 
-def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
+def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None):
     """
     This method can be called directly from anywhere in Haystack to send an event.
     Enriches the given event with metadata and sends it to the posthog server if telemetry is enabled.
@@ -140,6 +143,8 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
     global user_id  # pylint: disable=global-statement
+    if payload is None:
+        payload = {}
     try:
 
         def send_request(payload: Dict[str, Any]):
@@ -203,19 +208,21 @@ def send_tutorial_event(url: str):
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
     }
     send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
 
 
-def _get_or_create_user_id() -> str:
+def _get_or_create_user_id() -> Optional[str]:
     """
     Randomly generates a user id or loads the id defined in the config file and returns it.
+    Returns None if no id has been set previously and a new one cannot be stored because telemetry is disabled
     """
     global user_id  # pylint: disable=global-statement
     if user_id is None:
         # if user_id is not set, read it from config file
         _read_telemetry_config()
-        if user_id is None:
+        if user_id is None and is_telemetry_enabled():
             # if user_id cannot be read from config file, create new user_id and write it to config file
             user_id = str(uuid.uuid4())
             _write_telemetry_config()
@@ -235,7 +242,7 @@ def _read_telemetry_config():
             if "user_id" in config and user_id is None:
                 user_id = config["user_id"]
     except Exception as e:
-        logger.debug(f"Telemetry was not able to read the config file {CONFIG_PATH}.", exc_info=e)
+        logger.debug("Telemetry was not able to read the config file %s", CONFIG_PATH, exc_info=e)
 
 
 def _write_telemetry_config():
@@ -248,7 +255,11 @@ def _write_telemetry_config():
         # show a log message if telemetry config is written for the first time
         if not CONFIG_PATH.is_file():
             logger.info(
-                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt-out at anytime by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page. More information at https://haystack.deepset.ai/guides/telemetry"
+                "Haystack sends anonymous usage data to understand the actual usage and steer dev efforts "
+                "towards features that are most meaningful to users. You can opt-out at anytime by calling "
+                "disable_telemetry() or by manually setting the environment variable  "
+                "HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation "
+                "page. More information at https://docs.haystack.deepset.ai/docs/telemetry"
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()
@@ -257,7 +268,7 @@ def _write_telemetry_config():
         with open(CONFIG_PATH, "w") as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
     except Exception:
-        logger.debug(f"Could not write config file to {CONFIG_PATH}.")
+        logger.debug("Could not write config file to %s", CONFIG_PATH)
         send_custom_event(event="config saving failed")
 
 
@@ -266,7 +277,7 @@ def _write_event_to_telemetry_log_file(distinct_id: str, event: str, properties:
         with open(LOG_PATH, "a") as file_object:
             file_object.write(f"{event}, {properties}, {distinct_id}\n")
     except Exception as e:
-        logger.debug(f"Telemetry was not able to write event to log file {LOG_PATH}.", exc_info=e)
+        logger.debug("Telemetry was not able to write event to log file %s", LOG_PATH, exc_info=e)
 
 
 def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
@@ -279,11 +290,21 @@ def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
     try:
         path.unlink()  # todo add missing_ok=True to the unlink() call when upgrading to python>3.7
     except Exception as e:
-        logger.debug(f"Telemetry was not able to delete the {file_type_to_delete} at {path}.", exc_info=e)
+        logger.debug("Telemetry was not able to delete the %s at %s", file_type_to_delete, path, exc_info=e)
 
 
 class NonPrivateParameters:
-    param_names: List[str] = ["top_k", "model_name_or_path", "add_isolated_node_eval"]
+    param_names: List[str] = [
+        "top_k",
+        "model_name_or_path",
+        "add_isolated_node_eval",
+        "fingerprint",
+        "type",
+        "uptime",
+        "run_total",
+        "run_total_window",
+        "message",
+    ]
 
     @classmethod
     def apply_filter(cls, param_dicts: Dict[str, Any]) -> Dict[str, Any]:

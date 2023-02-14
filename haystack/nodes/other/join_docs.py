@@ -1,9 +1,13 @@
 from collections import defaultdict
+import logging
+from math import inf
 
 from typing import Optional, List
 
 from haystack.schema import Document
 from haystack.nodes.other.join import JoinNode
+
+logger = logging.getLogger(__name__)
 
 
 class JoinDocuments(JoinNode):
@@ -21,7 +25,11 @@ class JoinDocuments(JoinNode):
     outgoing_edges = 1
 
     def __init__(
-        self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
+        self,
+        join_mode: str = "concatenate",
+        weights: Optional[List[float]] = None,
+        top_k_join: Optional[int] = None,
+        sort_by_score: bool = True,
     ):
         """
         :param join_mode: `concatenate` to combine documents from multiple retrievers `merge` to aggregate scores of
@@ -30,6 +38,9 @@ class JoinDocuments(JoinNode):
                         adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                         to each retriever score. This param is not compatible with the `concatenate` join_mode.
         :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
+        :param sort_by_score: Whether to sort the incoming documents by their score. Set this to True if all your
+                              Documents are coming with `score` values. Set to False if any of the Documents come
+                              from sources where the `score` is set to `None`, like `TfidfRetriever` on Elasticsearch.
         """
         assert join_mode in [
             "concatenate",
@@ -46,6 +57,7 @@ class JoinDocuments(JoinNode):
         self.join_mode = join_mode
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
+        self.sort_by_score = sort_by_score
 
     def run_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         results = [inp["documents"] for inp in inputs]
@@ -60,7 +72,17 @@ class JoinDocuments(JoinNode):
         else:
             raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
-        sorted_docs = sorted(scores_map.items(), key=lambda d: d[1], reverse=True)
+        # only sort the docs if that was requested
+        if self.sort_by_score:
+            sorted_docs = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -inf, reverse=True)
+            if any(s is None for s in scores_map.values()):
+                logger.info(
+                    "The `JoinDocuments` node has received some documents with `score=None` - and was requested "
+                    "to sort the documents by score, so the `score=None` documents got sorted as if their "
+                    "score would be `-infinity`."
+                )
+        else:
+            sorted_docs = [(k, v) for k, v in scores_map.items()]
 
         if not top_k_join:
             top_k_join = self.top_k_join
@@ -68,7 +90,7 @@ class JoinDocuments(JoinNode):
             top_k_join = len(sorted_docs)
 
         docs = []
-        for (id, score) in sorted_docs[:top_k_join]:
+        for id, score in sorted_docs[:top_k_join]:
             doc = document_map[id]
             doc.score = score
             docs.append(doc)
@@ -111,7 +133,7 @@ class JoinDocuments(JoinNode):
 
         for result, weight in zip(results, weights):
             for doc in result:
-                scores_map[doc.id] += doc.score * weight
+                scores_map[doc.id] += (doc.score if doc.score else 0) * weight
 
         return scores_map
 

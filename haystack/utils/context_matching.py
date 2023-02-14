@@ -6,7 +6,7 @@ from multiprocessing.pool import Pool
 from collections import namedtuple
 
 from rapidfuzz import fuzz
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 _CandidateScore = namedtuple("_CandidateScore", ["context_id", "candidate_id", "score"])
@@ -68,15 +68,15 @@ def calculate_context_similarity(
         longer_len = context_len
 
     score_alignment = fuzz.partial_ratio_alignment(shorter, longer, processor=_no_processor)
-    score = score_alignment.score
+    score = score_alignment.score  # type: ignore [union-attr]
 
     # Special handling for split overlaps (e.g. [AB] <-> [BC]):
     # If we detect that the score is near a half match and the best fitting part of longer is at its boundaries
     # we cut the shorter on the same side, recalculate the score and take the mean of both.
     # Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total
     if boost_split_overlaps and 40 <= score < 65:
-        cut_shorter_left = score_alignment.dest_start == 0
-        cut_shorter_right = score_alignment.dest_end == longer_len
+        cut_shorter_left = score_alignment.dest_start == 0  # type: ignore [union-attr]
+        cut_shorter_right = score_alignment.dest_end == longer_len  # type: ignore [union-attr]
         cut_len = shorter_len // 2
 
         if cut_shorter_left:
@@ -96,7 +96,7 @@ def match_context(
     candidates: Generator[Tuple[str, str], None, None],
     threshold: float = 65.0,
     show_progress: bool = False,
-    num_processes: int = None,
+    num_processes: Optional[int] = None,
     chunksize: int = 1,
     min_length: int = 100,
     boost_split_overlaps: bool = True,
@@ -153,7 +153,7 @@ def match_contexts(
     candidates: Generator[Tuple[str, str], None, None],
     threshold: float = 65.0,
     show_progress: bool = False,
-    num_processes: int = None,
+    num_processes: Optional[int] = None,
     chunksize: int = 1,
     min_length: int = 100,
     boost_split_overlaps: bool = True,

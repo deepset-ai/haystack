@@ -8,12 +8,13 @@ import inspect
 import networkx as nx
 from enum import Enum
 from pydantic.dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 import haystack
 from haystack import Pipeline
 from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
-from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
+from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError, DocumentStoreError
 from haystack.nodes.base import BaseComponent
 
 from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
@@ -28,7 +29,7 @@ from .. import conftest
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
     """
-    JSON schema with the master version and only mocked nodes.
+    JSON schema with the main version and only mocked nodes.
     """
     # Do not patch integration tests
     if "integration" in request.keywords:
@@ -41,10 +42,10 @@ def mock_json_schema(request, monkeypatch, tmp_path):
         lambda *a, **k: [(conftest, MockDocumentStore), (conftest, MockReader), (conftest, MockRetriever)],
     )
     # Point the JSON schema path to tmp_path
-    monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
+    monkeypatch.setattr(haystack.nodes._json_schema, "JSON_SCHEMAS_PATH", tmp_path)
 
     # Generate mock schema in tmp_path
-    filename = f"haystack-pipeline-master.schema.json"
+    filename = f"haystack-pipeline-main.schema.json"
     test_schema = _json_schema.get_json_schema(filename=filename, version="ignore")
 
     with open(tmp_path / filename, "w") as schema_file:
@@ -138,6 +139,46 @@ def test_load_yaml(tmp_path):
     assert len(pipeline.graph.nodes) == 3
     assert isinstance(pipeline.get_node("retriever"), MockRetriever)
     assert isinstance(pipeline.get_node("reader"), MockReader)
+
+
+def test_load_yaml_elasticsearch_not_responding(tmp_path):
+    # Test if DocumentStoreError is raised if elasticsearch instance is not responding (due to wrong port)
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: ESRetriever
+              type: BM25Retriever
+              params:
+                document_store: DocumentStore
+            - name: DocumentStore
+              type: ElasticsearchDocumentStore
+              params:
+                port: 1234
+            - name: PDFConverter
+              type: PDFToTextConverter
+            - name: Preprocessor
+              type: PreProcessor
+            pipelines:
+            - name: query_pipeline
+              nodes:
+              - name: ESRetriever
+                inputs: [Query]
+            - name: indexing_pipeline
+              nodes:
+              - name: PDFConverter
+                inputs: [File]
+              - name: Preprocessor
+                inputs: [PDFConverter]
+              - name: ESRetriever
+                inputs: [Preprocessor]
+              - name: DocumentStore
+                inputs: [ESRetriever]
+        """
+        )
+    with pytest.raises(DocumentStoreError):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="indexing_pipeline")
 
 
 def test_load_yaml_non_existing_file():
@@ -318,6 +359,40 @@ def test_load_yaml_custom_component(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline.get_node("custom_node").param == 1
+
+
+def test_load_yaml_custom_component_with_null_values(tmp_path):
+    class CustomNode(MockNode):
+        def __init__(self, param: Optional[str], lst_param: Optional[List[Any]], dict_param: Optional[Dict[str, Any]]):
+            super().__init__()
+            self.param = param
+            self.lst_param = lst_param
+            self.dict_param = dict_param
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                param: null
+                lst_param: null
+                dict_param: null
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 2
+    assert pipeline.get_node("custom_node").param is None
+    assert pipeline.get_node("custom_node").lst_param is None
+    assert pipeline.get_node("custom_node").dict_param is None
 
 
 def test_load_yaml_custom_component_with_no_init(tmp_path):
@@ -569,8 +644,8 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
                 - Query
         """
         )
-    with pytest.raises(PipelineConfigError, match="not a valid variable name or value"):
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipe.get_node("custom_node").some_exotic_parameter == 'HelperClass("hello")'
 
 
 def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
@@ -994,6 +1069,45 @@ def test_load_yaml_disconnected_component(tmp_path):
     assert not pipeline.get_node("retriever")
 
 
+def test_load_yaml_unusual_chars_in_values(tmp_path):
+    class DummyNode(BaseComponent):
+        outgoing_edges = 1
+
+        def __init__(self, space_param, non_alphanumeric_param):
+            super().__init__()
+            self.space_param = space_param
+            self.non_alphanumeric_param = non_alphanumeric_param
+
+        def run(self):
+            raise NotImplementedError
+
+        def run_batch(self):
+            raise NotImplementedError
+
+    with open(tmp_path / "tmp_config.yml", "w", encoding="utf-8") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: '1.9.0'
+
+            components:
+                - name: DummyNode
+                  type: DummyNode
+                  params:
+                    space_param: with space
+                    non_alphanumeric_param: \[ümlaut\]
+
+            pipelines:
+                - name: indexing
+                  nodes:
+                    - name: DummyNode
+                      inputs: [File]
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipeline.components["DummyNode"].space_param == "with space"
+    assert pipeline.components["DummyNode"].non_alphanumeric_param == "\\[ümlaut\\]"
+
+
 def test_save_yaml(tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(MockRetriever(), name="retriever", inputs=["Query"])
@@ -1023,8 +1137,9 @@ def test_save_yaml_overwrite(tmp_path):
         assert content != ""
 
 
-def test_load_yaml_ray_args_in_pipeline(tmp_path):
+@pytest.mark.parametrize("pipeline_file", ["ray.simple.haystack-pipeline.yml", "ray.advanced.haystack-pipeline.yml"])
+def test_load_yaml_ray_args_in_pipeline(tmp_path, pipeline_file):
     with pytest.raises(PipelineConfigError) as e:
         pipeline = Pipeline.load_from_yaml(
-            SAMPLES_PATH / "pipeline" / "ray.haystack-pipeline.yml", pipeline_name="ray_query_pipeline"
+            SAMPLES_PATH / "pipeline" / pipeline_file, pipeline_name="ray_query_pipeline"
         )

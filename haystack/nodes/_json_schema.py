@@ -1,5 +1,6 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+import os
 import sys
 import json
 import inspect
@@ -24,11 +25,10 @@ from haystack.nodes.base import BaseComponent
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
-SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/"
+SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack-json-schema/main/json-schema/"
 
 # Allows accessory classes (like enums and helpers) to be registered as valid input for
 # custom node's init parameters. For now we disable this feature, but flipping this variables
@@ -126,6 +126,42 @@ def find_subclasses_in_modules(importable_modules: List[str]):
     ]
 
 
+def handle_optional_params(param_fields: List[inspect.Parameter], params_schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Pydantic v1 cannot generate correct JSON schemas including Optional fields.
+    (https://github.com/samuelcolvin/pydantic/issues/1270)
+    This function detects optional parameters and updates the schema,
+    to allow null values for these parameters.
+    To be removed when Pydantic v2 is released and adopted
+    """
+    optional_params = []
+    for param in param_fields:
+        is_param_optional = (
+            hasattr(param.annotation, "__origin__")
+            and param.annotation.__origin__ == Union
+            and type(None) in param.annotation.__args__
+        )
+        if is_param_optional:
+            optional_params.append(param)
+
+    for param in optional_params:
+        param_dict = params_schema["properties"][param.name]
+        type_ = param_dict.pop("type", None)
+        if type_ is not None:
+            if "items" in param_dict:
+                items = param_dict.pop("items")
+                param_dict["anyOf"] = [{"type": type_, "items": items}, {"type": "null"}]
+            else:
+                param_dict["anyOf"] = [{"type": type_}, {"type": "null"}]
+        else:
+            anyof_list = param_dict.pop("anyOf", None)
+            if anyof_list is not None:
+                anyof_list = list(sorted(anyof_list, key=lambda x: x["type"]))
+                anyof_list.append({"type": "null"})
+                param_dict["anyOf"] = anyof_list
+    return params_schema
+
+
 def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Create the JSON schema for a single BaseComponent subclass,
@@ -141,7 +177,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     node_name = getattr(node_class, "__name__")
 
-    logger.info(f"Creating schema for '{node_name}'")
+    logger.debug("Creating schema for '%s'", node_name)
 
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node_class, "__init__", None)
@@ -177,6 +213,11 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
+
+    # Pydantic v1 patch to generate JSON schemas including Optional fields
+    # to be removed when Pydantic v2 is released and adopted
+    params_schema = handle_optional_params(param_fields, params_schema)
+
     params_schema["title"] = "Parameters"
     desc = "Each parameter can reference other components defined in the same YAML file."
     params_schema["description"] = desc
@@ -220,10 +261,12 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
-def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
+def get_json_schema(filename: str, version: str, modules: Optional[List[str]] = None):
     """
     Generate JSON schema for Haystack pipelines.
     """
+    if modules is None:
+        modules = ["haystack.document_stores", "haystack.nodes"]
     schema_definitions = {}  # All the schemas for the node and accessory classes
     node_refs = []  # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
 
@@ -340,6 +383,7 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         ],
         "definitions": schema_definitions,
     }
+
     return pipeline_schema
 
 
@@ -360,23 +404,43 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     schema_definition, node_ref = create_schema_for_node_class(node_class)
     schema["definitions"].update(schema_definition)
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
-    logger.info(f"Added definition for {getattr(node_class, '__name__')}")
+    logger.info("Added definition for %s", getattr(node_class, "__name__"))
     return schema
 
 
-def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
+def load_schema():
     """
-    If the version contains "rc", only update master's schema.
-    Otherwise, create (or update) a new schema.
+    Generate the json schema if it doesn't exist and load it
     """
-    # Update masters's schema
-    filename = f"haystack-pipeline-master.schema.json"
+    schema_file_path = JSON_SCHEMAS_PATH / "haystack-pipeline-main.schema.json"
+    if not os.path.exists(schema_file_path):
+        logging.info("Json schema not found, generating one at: %s", schema_file_path)
+        try:
+            update_json_schema(main_only=True)
+        except Exception as e:
+            # Be sure not to remain with an empty file if something went wrong
+            if schema_file_path.exists():
+                schema_file_path.unlink()
+            # This error is not recoverable
+            raise e
+
+    with open(schema_file_path, "r") as schema_file:
+        return json.load(schema_file)
+
+
+def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bool = False):
+    """
+    Create (or update) a new schema.
+    """
+    # `main` schema is always updated and will contain the same data as the latest
+    # commit from `main` or a release branch
+    filename = "haystack-pipeline-main.schema.json"
+
+    os.makedirs(destination_path, exist_ok=True)
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
-    # If it's not an rc version:
-    if "rc" not in haystack_version:
-
+    if not main_only and "rc" not in haystack_version:
         # Create/update the specific version file too
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
         with open(destination_path / filename, "w") as json_file:
@@ -386,16 +450,13 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         index_name = "haystack-pipeline.schema.json"
         with open(destination_path / index_name, "r") as json_file:
             index = json.load(json_file)
-            index["oneOf"].append(
-                {
-                    "allOf": [
-                        {"properties": {"version": {"const": haystack_version}}},
-                        {
-                            "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/"
-                            f"haystack-pipeline-{haystack_version}.schema.json"
-                        },
-                    ]
-                }
-            )
+            new_entry = {
+                "allOf": [
+                    {"properties": {"version": {"const": haystack_version}}},
+                    {"$ref": f"{SCHEMA_URL}haystack-pipeline-{haystack_version}.schema.json"},
+                ]
+            }
+            if new_entry not in index["oneOf"]:
+                index["oneOf"].append(new_entry)
         with open(destination_path / index_name, "w") as json_file:
-            json.dump(index, json_file, indent=2)
+            json.dump(obj=index, fp=json_file, indent=2, sort_keys=True)

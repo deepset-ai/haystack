@@ -1,7 +1,9 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import logging
 from transformers import BartForConditionalGeneration, BartTokenizer
+
+from haystack.document_stores import BaseKnowledgeGraph
 from haystack.nodes.retriever.base import BaseGraphRetriever
 
 
@@ -15,20 +17,35 @@ class Text2SparqlRetriever(BaseGraphRetriever):
     The generated SPARQL query is executed on a knowledge graph.
     """
 
-    def __init__(self, knowledge_graph, model_name_or_path, top_k: int = 1):
+    def __init__(
+        self,
+        knowledge_graph: BaseKnowledgeGraph,
+        model_name_or_path: Optional[str] = None,
+        model_version: Optional[str] = None,
+        top_k: int = 1,
+        use_auth_token: Optional[Union[str, bool]] = None,
+    ):
         """
         Init the Retriever by providing a knowledge graph and a pre-trained BART model
 
         :param knowledge_graph: An instance of BaseKnowledgeGraph on which to execute SPARQL queries.
         :param model_name_or_path: Name of or path to a pre-trained BartForConditionalGeneration model.
+        :param model_version: The version of the model to use for entity extraction.
         :param top_k: How many SPARQL queries to generate per text query.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
         self.knowledge_graph = knowledge_graph
         # TODO We should extend this to any seq2seq models and use the AutoModel class
-        self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, forced_bos_token_id=0)
-        self.tok = BartTokenizer.from_pretrained(model_name_or_path)
+        self.model = BartForConditionalGeneration.from_pretrained(
+            model_name_or_path, forced_bos_token_id=0, use_auth_token=use_auth_token, revision=model_version
+        )
+        self.tok = BartTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.top_k = top_k
 
     def retrieve(self, query: str, top_k: Optional[int] = None):
@@ -96,7 +113,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
                 else:
                     result = []
                     for x in response:
-                        for k, v in x.items():
+                        for v in x.values():
                             result.append(v["value"])
             elif isinstance(response, bool):
                 result = str(response)
