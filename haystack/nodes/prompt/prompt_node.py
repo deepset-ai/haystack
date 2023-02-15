@@ -5,7 +5,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from string import Template
-from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
+from typing import Dict, List, Literal, Optional, Tuple, Union, Any, Type, Iterator
 from functools import reduce
 
 import requests
@@ -25,6 +25,7 @@ from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOT
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
+from haystack.nodes.other.shaper import Shaper
 from haystack.schema import Answer, Document
 from haystack.utils.reflection import retry_with_exponential_backoff
 
@@ -81,6 +82,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         name: str,
         prompt_text: str,
         prompt_params: Optional[List[str]] = None,
+        input_shapers: Optional[List[Shaper]] = None,
+        output_shapers: Optional[List[Shaper]] = None,
         output_variable: Optional[str] = None,
     ):
         """
@@ -117,6 +120,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         self.name = name
         self.prompt_text = prompt_text
         self.prompt_params = prompt_params
+        self.input_shapers = input_shapers or []
+        self.output_shapers = output_shapers or []
         self.output_variable: Optional[str] = output_variable
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
@@ -127,6 +132,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param kwargs: Keyword arguments to fill the parameters in the prompt text of a PromptTemplate.
         :return: A dictionary with the prompt text and the prompt parameters.
         """
+        for shaper in self.input_shapers:
+            shaper.run(invocation_context=kwargs)
+
         template_dict = {}
         # attempt to resolve args first
         if args:
@@ -196,75 +204,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param kwargs: Keyword arguments to use for post-processing the prompt output.
         :return: A dictionary with the post-processed output.
         """
-        return prompt_output
+        invocation_context = kwargs
+        invocation_context["results"] = prompt_output
+        for shaper in self.output_shapers:
+            shaper.run(invocation_context=invocation_context)
+        final_output: List[Any] = invocation_context[self.output_variable]
 
-
-class QuestionAnsweringPromptTemplate(PromptTemplate):
-    """
-    A prompt template for question answering.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        prompt_text: str,
-        prompt_params: Optional[List[str]] = None,
-        output_variable: Optional[str] = None,
-        documents_delimiter: str = " ",
-        document_pattern: str = "$content",
-        character_replace: Optional[Dict[str, str]] = None,
-    ):
-        """
-        Creates a QuestionAnsweringPromptTemplate instance.
-
-        :param name: The name of the prompt template (for example, sentiment-analysis, question-generation).
-        :param prompt_text: The prompt text including placeholders for the prompt_params.
-        :param prompt_params: The optional parameters that need to be filled in the prompt text. If not specified, they're inferred from the prompt text.
-        """
-        self.documents_delimiter = documents_delimiter
-        self.document_pattern = document_pattern
-        self.character_replace = character_replace or {}
-        super().__init__(name, prompt_text, prompt_params, output_variable)
-
-    def prepare(self, *args, **kwargs) -> Dict[str, Any]:
-        """
-        Prepares and verifies the prompt template with input parameters.
-
-        :param args: Non-keyword arguments to use for filling the prompt text.
-        :param kwargs: Keyword arguments to use for filling the prompt text.
-        :return: A dictionary with the prompt text and the prompt parameters.
-        """
-        document_template = Template(self.document_pattern)
-        kwargs["documents"] = [
-            self.documents_delimiter.join(
-                [
-                    document_template.substitute(
-                        {
-                            "idx": i + 1,
-                            "content": reduce(
-                                lambda content, kv: content.replace(*kv), self.character_replace.items(), doc.content
-                            ),
-                        }
-                    )
-                    for i, doc in enumerate(kwargs["documents"])
-                ]
-            )
-        ]
-        kwargs["query"] = [kwargs["query"]]
-        template_dict = super().prepare(*args, **kwargs)
-        return template_dict
-
-    def post_process(self, prompt_output: List[str], documents: List[Document], **kwargs) -> List[Any]:  # type: ignore
-        """
-        Post-processes the output of the prompt template.
-
-        :param args: Non-keyword arguments to use for post-processing the prompt output.
-        :param kwargs: Keyword arguments to use for post-processing the prompt output.
-        :return: A dictionary with the post-processed output.
-        """
-        document_ids = [document.id for document in documents]
-        answers = [Answer(answer=answer, type="generative", document_ids=document_ids) for answer in prompt_output]
-        return answers
+        return final_output
 
 
 class PromptModelInvocationLayer:
@@ -720,21 +666,52 @@ class PromptModel(BaseComponent):
 
 def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
-        QuestionAnsweringPromptTemplate(
+        PromptTemplate(
             name="question-answering",
             prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
+            input_shapers=[
+                Shaper(
+                    func="join_documents",
+                    inputs={
+                        "documents": "documents",
+                        "delimiter": "delimiter",
+                        "pattern": "pattern",
+                        "str_replace": "str_replace",
+                    },
+                    outputs=["documents"],
+                ),
+                Shaper(func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["query"]),
+            ],
+            output_shapers=[Shaper(func="strings_to_answers", inputs={"strings": "results"}, outputs=["answers"])],
+            output_variable="answers",
         ),
-        QuestionAnsweringPromptTemplate(
+        PromptTemplate(
             name="question-answering-with-references",
             prompt_text="Create a concise and informative answer (no more than 50 words) for a given question "
             "based solely on the given documents. You must only use information from the given documents. "
             "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
             "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. "
             "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
-            "$documents; \n Question: $query; Answer: ",
-            character_replace={"\n": " ", "[": "(", "]": ")"},
-            document_pattern="\nDocument[$idx]: $content",
-            documents_delimiter="\n",
+            "$documents \n Question: $query; Answer: ",
+            input_shapers=[
+                Shaper(
+                    func="join_documents",
+                    inputs={
+                        "documents": "documents",
+                        "delimiter": "delimiter",
+                        "pattern": "pattern",
+                        "str_replace": "str_replace",
+                    },
+                    outputs=["documents"],
+                    params={
+                        "delimiter": "\n",
+                        "pattern": "\nDocument[$idx]: $content",
+                        "str_replace": {"\n": " ", "[": "(", "]": ")"},
+                    },
+                ),
+                Shaper(func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["query"]),
+            ],
+            output_shapers=[Shaper(func="strings_to_answers", inputs={"strings": "results"}, outputs=["answers"])],
             output_variable="answers",
         ),
         PromptTemplate(
@@ -816,6 +793,7 @@ class PromptNode(BaseComponent):
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
+        shaper_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates a PromptNode instance.
@@ -836,6 +814,7 @@ class PromptNode(BaseComponent):
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
+        self.shaper_params: Dict[str, Any] = shaper_params or {}
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -1079,4 +1058,4 @@ class PromptNode(BaseComponent):
     def _prepare_model_kwargs(self):
         # these are the parameters from PromptNode level
         # that are passed to the prompt model invocation layer
-        return {"stop_words": self.stop_words}
+        return {"stop_words": self.stop_words, **self.shaper_params}

@@ -1,3 +1,5 @@
+from functools import reduce
+from string import Template
 from typing import Optional, List, Dict, Any, Tuple, Union, Callable
 
 import logging
@@ -65,7 +67,12 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
     return (delimiter.join(strings),)
 
 
-def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Document]]:
+def join_documents(
+    documents: List[Document],
+    delimiter: str = " ",
+    pattern: str = "$content",
+    str_replace: Optional[Dict[str, str]] = None,
+) -> Tuple[List[Document]]:
     """
     Transforms a list of documents into a list containing a single Document. The content of this list
     is the content of all original documents separated by the delimiter you specify.
@@ -85,10 +92,34 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
     ) == ([Document(content="first - second - third")], )
     ```
     """
-    return ([Document(content=delimiter.join([d.content for d in documents]))],)
+    str_replace = str_replace or {}
+
+    template = Template(pattern)
+    pattern_params = [
+        match.groupdict().get("named", match.groupdict().get("braced"))
+        for match in template.pattern.finditer(template.template)
+    ]
+    meta_params = [param for param in pattern_params if param and param not in ["content", "idx"]]
+    content = delimiter.join(
+        template.substitute(
+            {
+                "idx": i + 1,
+                "content": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), doc.content),
+                **{k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), doc.meta[k]) for k in meta_params},
+            }
+        )
+        for i, doc in enumerate(documents)
+    )
+
+    return ([Document(content=content)],)
 
 
-def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
+def strings_to_answers(
+    strings: List[str],
+    documents: Optional[List[Document]] = None,
+    add_meta: Optional[Dict[str, str]] = None,
+    copy_meta_from_docs: Optional[Dict[str, str]] = None,
+) -> Tuple[List[Answer]]:
     """
     Transforms a list of strings into a list of Answers.
 
@@ -102,7 +133,22 @@ def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
         ], )
     ```
     """
-    return ([Answer(answer=string, type="generative") for string in strings],)
+    document_ids = [document.id for document in documents] if documents else None
+    answers = [Answer(answer=string, type="generative", document_ids=document_ids, meta={}) for string in strings]
+
+    if add_meta:
+        for key, val in add_meta.items():
+            for answer in answers:
+                answer.meta[key] = add_meta[val]  # type: ignore
+
+    if copy_meta_from_docs and documents:
+        for doc_meta_key, answer_meta_key in copy_meta_from_docs.items():
+            for answer in answers:
+                answer.meta[answer_meta_key] = [doc.meta[doc_meta_key] for doc in documents]  # type: ignore
+
+    # todo: add reference parsing logic here
+
+    return (answers,)
 
 
 def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
