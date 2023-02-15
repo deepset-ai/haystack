@@ -301,9 +301,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         torch_dtype = model_input_kwargs.get("torch_dtype")
         if torch_dtype is not None:
             if isinstance(torch_dtype, str):
-                if "torch." not in torch_dtype:
+                if "torch." not in torch_dtype and torch_dtype != "auto":
                     raise ValueError(
-                        f"torch_dtype should be a torch.dtype or a string with 'torch.' prefix, got {torch_dtype}"
+                        f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
                     )
                 torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
             elif isinstance(torch_dtype, torch.dtype):
