@@ -206,10 +206,10 @@ def send_tutorial_event(input: Union[int, str]):
             "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
             "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
         }
-        send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
+        send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(input, '?')} executed")
 
     elif isinstance(input, int):
-        send_custom_event(event=f"tutorial {id} executed")
+        send_custom_event(event=f"tutorial {input} executed")
 
 
 def _get_or_create_user_id() -> Optional[str]:
