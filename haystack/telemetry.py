@@ -183,6 +183,10 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
 
 
 def send_tutorial_event(url: str):
+    """
+    Can be called when a tutorial dataset is downloaded so that the dataset URL is used to identify the tutorial and send an event.
+    :param url: URL of the dataset that is loaded in the tutorial.
+    """
     dataset_url_to_tutorial = {
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip": "1",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",
@@ -209,6 +213,10 @@ def send_tutorial_event(url: str):
 
 
 def tutorial_running(tutorial_id: int):
+    """
+    Can be called when a tutorial is executed so that the tutorial_id is used to identify the tutorial and send an event.
+    :param tutorial_id: ID number of the tutorial
+    """
     send_custom_event(event=f"tutorial {tutorial_id} executed")
 
 
