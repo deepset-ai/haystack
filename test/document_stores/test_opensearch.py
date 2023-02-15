@@ -402,14 +402,14 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     def test_query_by_embedding_raises_if_ivf_untrained(self, mocked_document_store):
         mocked_document_store.index_type = "ivf"
         mocked_document_store.ivf_train_size = 10
-        with pytest.raises(DocumentStoreError):
+        with pytest.raises(DocumentStoreError, match="Index of type 'ivf' is not trained yet."):
             mocked_document_store.query_by_embedding(self.query_emb)
 
     @pytest.mark.unit
     def test_query_by_embedding_batch_if_ivf_untrained(self, mocked_document_store):
         mocked_document_store.index_type = "ivf"
         mocked_document_store.ivf_train_size = 10
-        with pytest.raises(DocumentStoreError):
+        with pytest.raises(DocumentStoreError, match="Index of type 'ivf' is not trained yet."):
             mocked_document_store.query_by_embedding_batch([self.query_emb])
 
     @pytest.mark.unit
