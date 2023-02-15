@@ -682,7 +682,13 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
                 ),
                 Shaper(func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["query"]),
             ],
-            output_shapers=[Shaper(func="strings_to_answers", inputs={"strings": "results"}, outputs=["answers"])],
+            output_shapers=[
+                Shaper(
+                    func="strings_to_answers",
+                    inputs={"strings": "results", "documents": "documents"},
+                    outputs=["answers"],
+                )
+            ],
             output_variable="answers",
         ),
         PromptTemplate(
@@ -711,7 +717,13 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
                 ),
                 Shaper(func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["query"]),
             ],
-            output_shapers=[Shaper(func="strings_to_answers", inputs={"strings": "results"}, outputs=["answers"])],
+            output_shapers=[
+                Shaper(
+                    func="strings_to_answers",
+                    inputs={"strings": "results", "documents": "documents"},
+                    outputs=["answers"],
+                )
+            ],
             output_variable="answers",
         ),
         PromptTemplate(
