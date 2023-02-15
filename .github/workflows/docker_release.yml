@@ -51,7 +51,7 @@ jobs:
         run: |
           EXPECTED_VERSION=$(cat VERSION.txt)
           function test_image {
-            local TAG, PLATFORM, VERSION
+            local TAG PLATFORM VERSION
             TAG=$1
             PLATFORM=$2
             VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"import haystack; print(haystack.__version__)")
