@@ -182,7 +182,7 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
         logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 
-def send_tutorial_event(input: Union[int, str]):
+def send_tutorial_event(url: str):
     dataset_url_to_tutorial = {
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip": "1",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",
@@ -205,7 +205,7 @@ def send_tutorial_event(input: Union[int, str]):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
     }
-    send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(input, '?')} executed")
+    send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
 
 
 def tutorial_running(tutorial_id: int):
