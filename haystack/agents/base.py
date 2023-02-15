@@ -93,20 +93,24 @@ class Agent:
         tool_names_with_descriptions = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools.values()])
 
         return (
-            "Answer the following questions as best as you can. You have access to the following tools:\n\n"
+            "You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+            "correctly, you have access to the following tools:\n\n"
             f"{tool_names_with_descriptions}\n\n"
+            "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
+            "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
+            "for a final answer, respond with the `Final Answer:`\n\n"
             "Use the following format:\n\n"
-            "Question: the input question you must answer\n"
-            "Thought: you should always think about what to do\n"
-            f"Action: the action to take, should be one of [{tool_names}]\n"
-            "Action Input: the input to the action\n"
-            "Observation: the result of the action\n"
-            "... (this Thought/Action/Action Input/Observation can repeat N times)\n"
-            "Thought: I now know the final answer\n"
-            "Final Answer: the final answer to the original input question\n\n"
-            "Begin!\n"
+            "Question: the question to be answered\n"
+            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
+            f"Tool: [{tool_names}]\n"
+            "Tool Input: the input for the tool\n"
+            "Observation: the tool will respond with the result\n"
+            "...\n"
+            "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
+            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
+            "---\n\n"
             "Question: $query\n"
-            "Thought: "
+            "Thought: Let's think step-by-step, I first need to "
         )
 
     def add_tool(self, tool: Tool):
@@ -173,16 +177,17 @@ class Agent:
             if isinstance(result, tuple):
                 result = result[0]
             if isinstance(result, dict):
-                if "answers" in result and len(result["answers"]) > 0:
+                if "results" in result and len(result["results"]) > 0:
+                    observation = result["results"][0]
+                elif "answers" in result and len(result["answers"]) > 0:
                     observation = result["answers"][0].answer
                 elif "documents" in result and len(result["documents"]) > 0:
                     observation = result["documents"][0].content
-                elif "results" in result and len(result["results"]) > 0:
-                    observation = result["results"][0]
                 else:
                     # no answer/document/result was returned
                     observation = ""
-            transcript += f"Observation: {observation}\nThought: "
+            transcript += f"Observation: {observation}\nThought: Now that I know that {tool_input} is {observation}, I "
+
         else:
             logger.warning(
                 "Maximum number of agent iterations (%s) reached for query (%s). Increase max_iterations "
@@ -219,8 +224,8 @@ class Agent:
         :param pred: Prediction output of the Agent's PromptNode from which to parse the tool and tool input
         """
         final_answer_string = "Final Answer: "
-        tool_name_string = "Action: "
-        tool_input_string = "Action Input: "
+        tool_name_string = "Tool: "
+        tool_input_string = "Tool Input: "
 
         lines = [line for line in pred.split("\n") if line]
         if len(lines) == 0:
@@ -237,7 +242,7 @@ class Agent:
             raise AgentError(f'Wrong output format. The second to last line does not start with "{tool_name_string}"')
         tool_name = lines[-2][len(tool_name_string) :]
         tool_input = lines[-1][len(tool_input_string) :]
-        return tool_name.strip(" ").strip('"'), tool_input.strip(" ").strip('"')
+        return tool_name.strip('" []').strip(), tool_input.strip('" ')
 
     @classmethod
     def load_from_yaml(cls, path: Path, agent_name: Optional[str] = None, strict_version_check: bool = False):
