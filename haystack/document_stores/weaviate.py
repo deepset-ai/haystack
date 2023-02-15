@@ -69,6 +69,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         access_token: Optional[str] = None,
         expires_in: Optional[int] = 60,
         refresh_token: Optional[str] = None,
+        additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
         content_field: str = "content",
@@ -95,6 +96,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param access_token: access token to use when using OIDC and bearer tokens to authenticate
         :param expires_in: time in seconds when the access token expires
         :param refresh_token: refresh token to use when using OIDC and bearer tokens to authenticate
+        :param additional_headers: additional headers to be included in the requests sent to Weaviate e.g. bearer token
         :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
@@ -141,10 +143,15 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         elif access_token:
             secret = AuthBearerToken(access_token, expires_in=expires_in, refresh_token=refresh_token)
             self.weaviate_client = client.Client(
-                url=weaviate_url, auth_client_secret=secret, timeout_config=timeout_config
+                url=weaviate_url,
+                auth_client_secret=secret,
+                timeout_config=timeout_config,
+                additional_headers=additional_headers,
             )
         else:
-            self.weaviate_client = client.Client(url=weaviate_url, timeout_config=timeout_config)
+            self.weaviate_client = client.Client(
+                url=weaviate_url, timeout_config=timeout_config, additional_headers=additional_headers
+            )
 
         # Test Weaviate connection
         try:
