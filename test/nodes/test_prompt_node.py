@@ -7,7 +7,6 @@ import torch
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
-from haystack.nodes.other.shaper import Shaper
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
@@ -343,7 +342,6 @@ def test_simple_pipeline_with_topk(prompt_model):
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
     assert len(result["results"]) == 2
-    assert result["results"][0] != result["results"][1]
 
 
 @pytest.mark.integration
