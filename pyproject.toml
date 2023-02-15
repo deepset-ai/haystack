@@ -151,6 +151,7 @@ audio = [
   "espnet==202209", # https://github.com/deepset-ai/haystack/pull/3693
   "espnet-model-zoo",
   "pydub",
+  "soundfile<0.12",
 ]
 beir = [
   "beir; platform_system != 'Windows'",
