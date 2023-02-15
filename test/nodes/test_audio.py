@@ -47,7 +47,7 @@ def whisper_helper():
     return WhisperHelper(WHISPER_MODEL)
 
 
-@pytest.mark.skipif(soundfile_not_found, reason="soundfile not found")
+@pytest.mark.skipif(soundfile_not_found, reason="soundfile/ffmpeg not found")
 class TestTextToSpeech:
     def test_text_to_speech_audio_data(self, tmp_path, whisper_helper: WhisperHelper):
         text2speech = TextToSpeech(
