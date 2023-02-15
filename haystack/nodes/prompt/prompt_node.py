@@ -588,8 +588,6 @@ class PromptModel(BaseComponent):
         model_name_or_path: str = "google/flan-t5-base",
         max_length: Optional[int] = 100,
         api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        deployment_name: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
@@ -610,8 +608,6 @@ class PromptModel(BaseComponent):
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.api_key = api_key
-        self.base_url = base_url
-        self.deployment_name = deployment_name
         self.use_auth_token = use_auth_token
         self.use_gpu = use_gpu
         self.devices = devices
@@ -629,8 +625,6 @@ class PromptModel(BaseComponent):
     def create_invocation_layer(self) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
-            "base_url": self.base_url,
-            "deployment_name": self.deployment_name,
             "use_auth_token": self.use_auth_token,
             "use_gpu": self.use_gpu,
             "devices": self.devices,
