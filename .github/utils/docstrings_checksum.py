@@ -30,8 +30,14 @@ def docstrings_checksum(python_files: Iterator[Path]):
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", help="Haystack root folder", required=True, type=Path)
+    args = parser.parse_args()
+
     # Get all Haystack and rest_api python files
-    root = Path(__file__).parent.parent.parent
+    root: Path = args.root.absolute()
     haystack_files = root.glob("haystack/**/*.py")
     rest_api_files = root.glob("rest_api/**/*.py")
 
