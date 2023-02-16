@@ -13,6 +13,7 @@ system = platform.system()
 
 
 def get_use_tiktoken():
+    """Return True if the tiktoken library is available and False if it is not."""
     use_tiktoken = False
     if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
         use_tiktoken = True
@@ -25,6 +26,13 @@ def get_use_tiktoken():
 
 
 def get_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
+    """Load either the tokenizer from tiktoken (if the library is available) or fallback to the GPT2TokenizerFast
+    from the transformers library.
+
+    :param use_tiktoken: If True load the tokenizer from the tiktoken library.
+                         Otherwise, load a GPT2 tokenizer from transformers.
+    :param tokenizer_name: The name of the tokenizer to load.
+    """
     if use_tiktoken:
         import tiktoken  # pylint: disable=import-error
 
