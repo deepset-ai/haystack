@@ -17,7 +17,7 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
-from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer
+from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer, openai_request
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -81,25 +81,10 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return decoded_string
 
-    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "input": text}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
-        res = json.loads(response.text)
-
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
+        res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
 
         unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
         ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
