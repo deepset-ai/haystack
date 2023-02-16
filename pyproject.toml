@@ -51,7 +51,6 @@ dependencies = [
   "requests",
   "pydantic",
   "transformers[torch]==4.25.1",
-  "numpy<1.24",  # Keep compatibility with latest numba
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
