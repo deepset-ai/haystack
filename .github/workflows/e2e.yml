@@ -1,0 +1,67 @@
+name: end-to-end
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+  e2e:
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false  # Avoid cancelling the others if one of these fails
+      matrix:
+        folder:
+          - "document_stores"
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
+
+    - name: Run Elasticsearch
+      run: |
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+
+    - name: Run Opensearch
+      run: |
+        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.3.5
+
+    - name: Run Milvus
+      run: |
+        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
+        wget https://github.com/milvus-io/milvus/releases/download/v2.2.2/milvus-standalone-docker-compose.yml -O docker-compose.yml
+        sudo docker-compose up -d
+        sudo docker-compose ps
+
+    - name: Run Weaviate
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
+
+    - name: Run GraphDB
+      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
+
+    - name: Install Haystack
+      run: pip install .
+
+    - name: Run tests
+      env:
+        TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+      # we add "and not document_store" to exclude the tests that were ported to the new strategy
+      run: |
+        pytest e2e/${{ matrix.folder }}

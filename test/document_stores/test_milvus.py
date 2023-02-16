@@ -114,3 +114,8 @@ class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_multilabel_meta_aggregations(self):
         pass
+
+    @pytest.mark.skip(reason="embeddings can't be stored in the SQL database")
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
+        pass
