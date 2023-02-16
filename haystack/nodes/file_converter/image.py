@@ -39,8 +39,8 @@ class ImageToTextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text. If no value is provided, English will be set as default.
                                 Run the following line of code to check available language packs:
-                                # List of available languages
-                                print(pytesseract.get_languages(config=''))
+                                `# List of available languages
+                                print(pytesseract.get_languages(config=''))`
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
