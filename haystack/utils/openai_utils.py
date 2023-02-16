@@ -61,6 +61,20 @@ def load_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
     return tokenizer
 
 
+def _count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
+    """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
+
+    :param text: A string to be tokenized.
+    :param tokenizer: An OpenAI tokenizer.
+    :param use_tiktoken: If True the tokenizer is treated as a tiktoken tokenizer.
+                         Otherwise, treat the tokenizer as a GPT2Tokenizer from transformers.
+    """
+    if use_tiktoken:
+        return len(tokenizer.encode(text))
+    else:
+        return len(tokenizer.tokenize(text))
+
+
 def _openai_text_completion_tokenization_details(model_name: str, use_tiktoken: bool):
     tokenizer_name = "gpt2"
     if "davinci" in model_name:
@@ -103,15 +117,14 @@ def openai_request(url: str, api_key: str, payload: Dict, timeout: Union[float, 
     return res
 
 
-def _count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
-    """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
-
-    :param text: A string to be tokenized.
-    :param tokenizer: An OpenAI tokenizer.
-    :param use_tiktoken: If True the tokenizer is treated as a tiktoken tokenizer.
-                         Otherwise, treat the tokenizer as a GPT2Tokenizer from transformers.
-    """
-    if use_tiktoken:
-        return len(tokenizer.encode(text))
-    else:
-        return len(tokenizer.tokenize(text))
+def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
+    """Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`
+    log a warning to the user."""
+    number_of_truncated_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "length")
+    if number_of_truncated_completions > 0:
+        logger.warning(
+            "%s out of the %s completions have been truncated before reaching a natural stopping point."
+            "Consider increasing the max_tokens parameter to allow for longer completions.",
+            number_of_truncated_completions,
+            payload["n"],
+        )

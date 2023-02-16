@@ -26,6 +26,8 @@ from haystack.utils.openai_utils import (
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
+    _check_openai_text_completion_answers,
+    _count_openai_tokens,
 )
 
 logger = logging.getLogger(__name__)
@@ -459,6 +461,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide prompt in kwargs."
             )
+        prompt = self._ensure_text_limit(prompt)
 
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
@@ -484,18 +487,30 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "logit_bias": kwargs.get("logit_bias", {}),
         }
         res = openai_request(url=self.url, api_key=self.api_key, payload=payload)
-
-        number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_completions > 0:
-            logger.warning(
-                "%s out of the %s completions have been truncated before reaching a natural stopping point."
-                "Consider increasing the max_tokens parameter to allow for longer completions.",
-                number_of_truncated_completions,
-                payload["n"],
-            )
-
+        _check_openai_text_completion_answers(result=res, payload=payload)
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
+
+    def _ensure_text_limit(self, prompt: str) -> str:
+        """Ensure that length of the text is within the maximum length of the model."""
+        n_tokens = _count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
+        if n_tokens <= self.MAX_TOKENS_LIMIT:
+            return prompt
+
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens to fit within the max token limit."
+            " Consider reducing the length of the prompt to avoid truncation.",
+            n_tokens,
+            self.MAX_TOKENS_LIMIT,
+        )
+
+        if USE_TIKTOKEN:
+            tokenized_payload = self._tokenizer.encode(prompt)
+            decoded_string = self._tokenizer.decode(tokenized_payload[: self.MAX_TOKENS_LIMIT])
+        else:
+            tokenized_payload = self._tokenizer.tokenize(prompt)
+            decoded_string = self._tokenizer.convert_tokens_to_string(tokenized_payload[: self.MAX_TOKENS_LIMIT])
+        return decoded_string
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:

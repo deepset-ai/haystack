@@ -12,6 +12,7 @@ from haystack.utils.openai_utils import (
     openai_request,
     _count_openai_tokens,
     _openai_text_completion_tokenization_details,
+    _check_openai_text_completion_answers,
 )
 
 logger = logging.getLogger(__name__)
@@ -211,16 +212,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "frequency_penalty": self.frequency_penalty,
         }
         res = openai_request(url=url, api_key=self.api_key, payload=payload, timeout=timeout)
-
-        number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_answers > 0:
-            logger.warning(
-                "%s out of the %s answers have been truncated before reaching a natural stopping point."
-                "Consider increasing the max_tokens parameter to allow for longer answers.",
-                number_of_truncated_answers,
-                top_k,
-            )
-
+        _check_openai_text_completion_answers(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
         result = {"query": query, "answers": answers}
