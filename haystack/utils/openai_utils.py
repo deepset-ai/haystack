@@ -79,8 +79,10 @@ def _openai_text_completion_tokenization_details(model_name: str, use_tiktoken: 
     tokenizer_name = "gpt2"
     if "davinci" in model_name:
         max_tokens_limit = 4000
-        if model_name.endswith("-003") and use_tiktoken:
-            tokenizer_name = "cl100k_base"
+        if use_tiktoken:
+            from tiktoken.model import MODEL_TO_ENCODING
+
+            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
     else:
         max_tokens_limit = 2048
     return tokenizer_name, max_tokens_limit

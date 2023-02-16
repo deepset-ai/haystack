@@ -46,7 +46,9 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
             self.doc_encoder_model = model_name
             self.max_seq_len = min(8191, max_seq_len)
             if USE_TIKTOKEN:
-                tokenizer_name = "cl100k_base"
+                from tiktoken.model import MODEL_TO_ENCODING
+
+                tokenizer_name = MODEL_TO_ENCODING.get(model_name, "cl100k_base")
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"
