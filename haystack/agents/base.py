@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Tuple
 
@@ -18,7 +19,6 @@ from haystack.pipelines import (
     RetrieverQuestionGenerationPipeline,
 )
 from haystack.telemetry import send_custom_event
-
 
 logger = logging.getLogger(__name__)
 
@@ -149,44 +149,17 @@ class Agent:
         while remaining_iterations > 0:
             remaining_iterations -= 1
 
-            prompt_template = PromptTemplate("think-step-by-step", transcript, ["query"])
-            pred = self.prompt_node.prompt(prompt_template=prompt_template, query=query)
-            transcript += f"{pred[0]}\n"
+            prompt_template = PromptTemplate("think-step-by-step", transcript)
+            pred = self.prompt_node.prompt(prompt_template=prompt_template, query=query)[0]
 
-            tool_name, tool_input = self._parse_tool_name_and_tool_input(pred=pred[0])
+            tool_name, tool_input = self._parse_tool_name_and_tool_input(pred=pred)
             if tool_name == "Final Answer":
                 final_answer = tool_input
                 break
-            if tool_name not in self.tools:
-                # TODO we could try to recover from this error by rephrasing the question and retrying
-                raise AgentError(
-                    f'The Agent tried to use a tool "{tool_name}" but the registered tools are only {self.tools.keys()}.'
-                )
-            pipeline_or_node = self.tools[tool_name].pipeline_or_node
-            # We can only pass params to pipelines but not to nodes
-            if isinstance(pipeline_or_node, (Pipeline, BaseStandardPipeline)):
-                result = pipeline_or_node.run(query=tool_input, params=params)
-            else:
-                if isinstance(pipeline_or_node, BaseRetriever):
-                    result = pipeline_or_node.run(query=tool_input, root_node="Query")
-                else:
-                    result = pipeline_or_node.run(query=tool_input)
 
-            observation = ""
-            # if pipeline_or_node is a node it returns a tuple. We use only the output but not the name of the output.
-            if isinstance(result, tuple):
-                result = result[0]
-            if isinstance(result, dict):
-                if "results" in result and len(result["results"]) > 0:
-                    observation = result["results"][0]
-                elif "answers" in result and len(result["answers"]) > 0:
-                    observation = result["answers"][0].answer
-                elif "documents" in result and len(result["documents"]) > 0:
-                    observation = result["documents"][0].content
-                else:
-                    # no answer/document/result was returned
-                    observation = ""
-            transcript += f"Observation: {observation}\nThought: Now that I know that {tool_input} is {observation}, I "
+            result = self._run_tool(params, tool_input, tool_name)
+            observation = self._extract_observation(result)
+            transcript += f"{pred}\nObservation: {observation}\nThought: Now that I know that {tool_input} is the answer to {observation}, I "
 
         else:
             logger.warning(
@@ -197,6 +170,43 @@ class Agent:
             )
 
         return {"query": query, "answers": [Answer(answer=final_answer, type="generative")], "transcript": transcript}
+
+    def is_registered_tool(self, tool_name):
+        return tool_name in self.tools
+
+    def _run_tool(self, params, tool_input, tool_name):
+        if not self.is_registered_tool(tool_name):
+            raise AgentError(
+                f'The Agent tried to use a tool "{tool_name}" but the registered tools are only {self.tools.keys()}.'
+            )
+
+        pipeline_or_node = self.tools[tool_name].pipeline_or_node
+        # We can only pass params to pipelines but not to nodes
+        if isinstance(pipeline_or_node, (Pipeline, BaseStandardPipeline)):
+            result = pipeline_or_node.run(query=tool_input, params=params)
+        else:
+            if isinstance(pipeline_or_node, BaseRetriever):
+                result = pipeline_or_node.run(query=tool_input, root_node="Query")
+            else:
+                result = pipeline_or_node.run(query=tool_input)
+        return result
+
+    def _extract_observation(self, result):
+        observation = ""
+        # if pipeline_or_node is a node it returns a tuple. We use only the output but not the name of the output.
+        if isinstance(result, tuple):
+            result = result[0]
+        if isinstance(result, dict):
+            if "results" in result and len(result["results"]) > 0:
+                observation = result["results"][0]
+            elif "answers" in result and len(result["answers"]) > 0:
+                observation = result["answers"][0].answer
+            elif "documents" in result and len(result["documents"]) > 0:
+                observation = result["documents"][0].content
+            else:
+                # no answer/document/result was returned
+                observation = ""
+        return observation
 
     def run_batch(self, queries: List[str], params: Optional[dict] = None):
         """
@@ -223,26 +233,21 @@ class Agent:
 
         :param pred: Prediction output of the Agent's PromptNode from which to parse the tool and tool input
         """
-        final_answer_string = "Final Answer: "
-        tool_name_string = "Tool: "
-        tool_input_string = "Tool Input: "
 
-        lines = [line for line in pred.split("\n") if line]
-        if len(lines) == 0:
-            # TODO we could try to recover from this error by rephrasing the question and retrying
-            raise AgentError("Wrong output format. The output does not contain multiple lines.")
-        if lines[-1].startswith(final_answer_string):
-            directive = lines[-1][len(final_answer_string) :]
-            return "Final Answer", directive
-        if not lines[-1].startswith(tool_input_string):
-            # TODO we could try to recover from this error by rephrasing the question and retrying
-            raise AgentError(f'Wrong output format. The last line does not start with "{tool_input_string}"')
-        if not lines[-2].startswith(tool_name_string):
-            # TODO we could try to recover from this error by rephrasing the question and retrying
-            raise AgentError(f'Wrong output format. The second to last line does not start with "{tool_name_string}"')
-        tool_name = lines[-2][len(tool_name_string) :]
-        tool_input = lines[-1][len(tool_input_string) :]
-        return tool_name.strip('" []').strip(), tool_input.strip('" ')
+        tool_pattern = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
+        final_answer_pattern = r"Final Answer:\s*(\w+)\s*"
+        tool_match = re.search(tool_pattern, pred)
+        if tool_match:
+            tool_name = tool_match.group(1)
+            tool_input = tool_match.group(3)
+            return tool_name.strip('" []').strip(), tool_input.strip('" ')
+        else:
+            final_answer_match = re.search(final_answer_pattern, pred)
+            if final_answer_match:
+                final_answer = final_answer_match.group(1)
+                return "Final Answer", final_answer.strip('" ')
+            else:
+                raise AgentError("Wrong output format.")
 
     @classmethod
     def load_from_yaml(cls, path: Path, agent_name: Optional[str] = None, strict_version_check: bool = False):

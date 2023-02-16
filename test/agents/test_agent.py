@@ -79,7 +79,7 @@ def test_max_iterations(caplog, monkeypatch):
     def mock_parse_tool_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
-    monkeypatch.setattr(Agent, "parse_tool_name_and_tool_input", mock_parse_tool_and_tool_input)
+    monkeypatch.setattr(Agent, "_parse_tool_name_and_tool_input", mock_parse_tool_and_tool_input)
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         agent.run("Where does Christelle live?")
     assert "Maximum number of agent iterations (1) reached" in caplog.text

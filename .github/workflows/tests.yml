@@ -411,6 +411,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -455,6 +456,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           #- "others"
 
@@ -504,6 +506,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
           - "document_stores"
@@ -603,6 +606,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
