@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer, openai_request
+from haystack.utils.openai_utils import get_use_tiktoken, load_openai_tokenizer, openai_request
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -32,7 +32,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
 
         tokenizer = self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
-        self._tokenizer = get_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer)
+        self._tokenizer = load_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer)
 
     def _setup_encoding_models(self, model_class: str, model_name: str, max_seq_len: int):
         """

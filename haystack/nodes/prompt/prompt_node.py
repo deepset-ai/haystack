@@ -21,7 +21,12 @@ from haystack.errors import OpenAIError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.utils.openai_utils import get_use_tiktoken, openai_request
+from haystack.utils.openai_utils import (
+    get_use_tiktoken,
+    openai_request,
+    _openai_text_completion_tokenization_details,
+    load_openai_tokenizer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -432,6 +437,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             ]
             if key in kwargs
         }
+
+        tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(
+            model_name=self.model_name_or_path, use_tiktoken=USE_TIKTOKEN
+        )
+        self.MAX_TOKENS_LIMIT = max_tokens_limit
+        self._tokenizer = load_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer_name)
 
     def invoke(self, *args, **kwargs):
         """

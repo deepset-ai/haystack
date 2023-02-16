@@ -42,7 +42,7 @@ def get_use_tiktoken():
     return use_tiktoken
 
 
-def get_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
+def load_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
     """Load either the tokenizer from tiktoken (if the library is available) or fallback to the GPT2TokenizerFast
     from the transformers library.
 
@@ -59,6 +59,17 @@ def get_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
         logger.debug("Using GPT2TokenizerFast tokenizer")
         tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer_name)
     return tokenizer
+
+
+def _openai_text_completion_tokenization_details(model_name: str, use_tiktoken: bool):
+    tokenizer_name = "gpt2"
+    if "davinci" in model_name:
+        max_tokens_limit = 4000
+        if model_name.endswith("-003") and use_tiktoken:
+            tokenizer_name = "cl100k_base"
+    else:
+        max_tokens_limit = 2048
+    return tokenizer_name, max_tokens_limit
 
 
 @retry_with_exponential_backoff(
@@ -90,3 +101,17 @@ def openai_request(url: str, api_key: str, payload: Dict, timeout: Union[float, 
         raise openai_error
 
     return res
+
+
+def _count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
+    """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
+
+    :param text: A string to be tokenized.
+    :param tokenizer: An OpenAI tokenizer.
+    :param use_tiktoken: If True the tokenizer is treated as a tiktoken tokenizer.
+                         Otherwise, treat the tokenizer as a GPT2Tokenizer from transformers.
+    """
+    if use_tiktoken:
+        return len(tokenizer.encode(text))
+    else:
+        return len(tokenizer.tokenize(text))

@@ -6,7 +6,13 @@ from haystack import Document
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.nodes.prompt import PromptTemplate
-from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer, openai_request
+from haystack.utils.openai_utils import (
+    get_use_tiktoken,
+    load_openai_tokenizer,
+    openai_request,
+    _count_openai_tokens,
+    _openai_text_completion_tokenization_details,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -144,15 +150,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.prompt_template = prompt_template
         self.context_join_str = context_join_str
 
-        tokenizer = "gpt2"
-        if "davinci" in self.model:
-            self.MAX_TOKENS_LIMIT = 4000
-            if self.model.endswith("-003") and USE_TIKTOKEN:
-                tokenizer = "cl100k_base"
-        else:
-            self.MAX_TOKENS_LIMIT = 2048
+        tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(
+            model_name=self.model, use_tiktoken=USE_TIKTOKEN
+        )
 
-        self._tokenizer = get_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer)
+        self.MAX_TOKENS_LIMIT = max_tokens_limit
+        self._tokenizer = load_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer_name)
 
     def predict(
         self,
@@ -253,7 +256,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
         construct the context) are thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
         """
         full_prompt = self._fill_prompt(query, documents)
-        n_full_prompt_tokens = self._count_tokens(full_prompt)
+        n_full_prompt_tokens = _count_openai_tokens(
+            text=full_prompt, tokenizer=self._tokenizer, use_tiktoken=USE_TIKTOKEN
+        )
 
         # for length restrictions of prompt see: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
@@ -263,7 +268,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
         skipped_docs = 0
         # If leftover_token_len is negative we have gone past the MAX_TOKENS_LIMIT and the prompt must be trimmed
         if leftover_token_len < 0:
-            n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
+            n_docs_tokens = [
+                _count_openai_tokens(text=doc.content, tokenizer=self._tokenizer, use_tiktoken=USE_TIKTOKEN)
+                for doc in documents
+            ]
             logger.debug("Number of tokens in documents: %s", n_docs_tokens)
 
             # Reversing the order of documents b/c we want to throw away less relevant docs first
@@ -279,7 +287,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             # Throw away least relevant docs
             input_docs = documents[:-skipped_docs]
             full_prompt = self._fill_prompt(query, input_docs)
-            n_full_prompt_tokens = self._count_tokens(full_prompt)
+            n_full_prompt_tokens = _count_openai_tokens(
+                text=full_prompt, tokenizer=self._tokenizer, use_tiktoken=USE_TIKTOKEN
+            )
 
             if len(input_docs) == 0:
                 logger.warning(
@@ -297,9 +307,3 @@ class OpenAIAnswerGenerator(BaseGenerator):
         logger.debug("Number of tokens in full prompt: %s", n_full_prompt_tokens)
         logger.debug("Full prompt: %s", full_prompt)
         return full_prompt, input_docs
-
-    def _count_tokens(self, text: str) -> int:
-        if USE_TIKTOKEN:
-            return len(self._tokenizer.encode(text))
-        else:
-            return len(self._tokenizer.tokenize(text))
