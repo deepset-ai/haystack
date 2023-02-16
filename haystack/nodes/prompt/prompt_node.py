@@ -474,8 +474,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "stop": kwargs_with_defaults.get("stop", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "best_of": kwargs.get("best_of", 1),
-            "logit_bias": kwargs.get("logit_bias", {}),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
