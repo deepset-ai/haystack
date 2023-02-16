@@ -1,21 +1,12 @@
-import json
 import logging
 import os
 from typing import List, Optional, Tuple, Union
 
-import requests
-
 from haystack import Document
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-)
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.answer_generator import BaseGenerator
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.nodes.prompt import PromptTemplate
-from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer
+from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer, openai_request
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +14,6 @@ USE_TIKTOKEN = get_use_tiktoken()
 
 
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
-OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 class OpenAIAnswerGenerator(BaseGenerator):
@@ -167,7 +156,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         self._tokenizer = get_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer)
 
-    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
     def predict(
         self,
         query: str,
@@ -223,21 +211,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         }
 
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
-        res = json.loads(response.text)
-
-        if response.status_code != 200 or "choices" not in res:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
+        res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
 
         number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
         if number_of_truncated_answers > 0:

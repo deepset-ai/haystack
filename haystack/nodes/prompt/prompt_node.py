@@ -21,12 +21,12 @@ from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_L
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.errors import OpenAIError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
-from haystack.utils.openai_utils import get_use_tiktoken
+from haystack.utils.openai_utils import get_use_tiktoken, openai_request
 
 logger = logging.getLogger(__name__)
 
@@ -438,10 +438,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
-    @retry_with_exponential_backoff(
-        backoff_in_seconds=int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
-        max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
-    )
     def invoke(self, *args, **kwargs):
         """
         Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
@@ -482,21 +478,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "logit_bias": kwargs.get("logit_bias", {}),
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
-        res = json.loads(response.text)
-
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
+        res = openai_request(url=self.url, headers=headers, payload=payload)
 
         number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
         if number_of_truncated_completions > 0:
