@@ -48,6 +48,7 @@ jobs:
           files_ignore: |
             test/**
             rest_api/test/**
+            haystack/testing/**
 
       - name: Setup Python
         uses: ./.github/actions/python_cache/
