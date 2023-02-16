@@ -12,7 +12,6 @@ DEFAULT_LANGUAGES = ["en", "de", "es", "cs", "nl"]
 
 
 class DocumentLanguageClassifier(BaseComponent):
-
     outgoing_edges = len(DEFAULT_LANGUAGES)
 
     def __init__(self, languages: List[str] = DEFAULT_LANGUAGES):

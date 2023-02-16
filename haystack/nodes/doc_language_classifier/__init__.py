@@ -1,0 +1,1 @@
+from haystack.nodes.doc_language_classifier.langdetect import LangdetectDocumentLanguageClassifier
