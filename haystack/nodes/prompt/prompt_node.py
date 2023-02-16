@@ -26,8 +26,12 @@ from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.utils.openai_utils import get_use_tiktoken
 
 logger = logging.getLogger(__name__)
+
+
+USE_TIKTOKEN = get_use_tiktoken()
 
 
 class BasePromptTemplate(BaseComponent):

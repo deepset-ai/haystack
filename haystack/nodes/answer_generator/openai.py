@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-import platform
-import sys
 from typing import List, Optional, Tuple, Union
 
 import requests
@@ -17,23 +15,11 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.nodes.prompt import PromptTemplate
+from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine()
-system = platform.system()
-
-USE_TIKTOKEN = False
-if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
-    USE_TIKTOKEN = True
-
-if USE_TIKTOKEN:
-    import tiktoken  # pylint: disable=import-error
-else:
-    logger.warning(
-        "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
-    )
-    from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
+USE_TIKTOKEN = get_use_tiktoken()
 
 
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
@@ -179,12 +165,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
-        if USE_TIKTOKEN:
-            logger.debug("Using tiktoken %s tokenizer", tokenizer)
-            self._tk_tokenizer: tiktoken.Encoding = tiktoken.get_encoding(tokenizer)
-        else:
-            logger.debug("Using GPT2TokenizerFast")
-            self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
+        self._tokenizer = get_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer)
 
     @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
     def predict(
@@ -349,6 +330,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def _count_tokens(self, text: str) -> int:
         if USE_TIKTOKEN:
-            return len(self._tk_tokenizer.encode(text))
+            return len(self._tokenizer.encode(text))
         else:
-            return len(self._hf_tokenizer.tokenize(text))
+            return len(self._tokenizer.tokenize(text))

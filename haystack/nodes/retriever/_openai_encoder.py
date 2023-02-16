@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-import platform
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
@@ -19,34 +17,19 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine()
-system = platform.system()
-
-USE_TIKTOKEN = False
-if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
-    USE_TIKTOKEN = True
-
-if USE_TIKTOKEN:
-    import tiktoken  # pylint: disable=import-error
-else:
-    logger.warning(
-        "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
-    )
-    from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
+USE_TIKTOKEN = get_use_tiktoken()
 
 
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
-
-
-logger = logging.getLogger(__name__)
 
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -61,13 +44,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
 
         tokenizer = self._setup_encoding_models(model_class, retriever.embedding_model, retriever.max_seq_len)
-
-        if USE_TIKTOKEN:
-            logger.debug("Using tiktoken %s tokenizer", tokenizer)
-            self._tk_tokenizer: tiktoken.Encoding = tiktoken.get_encoding(tokenizer)
-        else:
-            logger.debug("Using GPT2TokenizerFast tokenizer")
-            self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
+        self._tokenizer = get_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer)
 
     def _setup_encoding_models(self, model_class: str, model_name: str, max_seq_len: int):
         """
@@ -96,11 +73,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
 
         if USE_TIKTOKEN:
-            tokenized_payload = self._tk_tokenizer.encode(text)
-            decoded_string = self._tk_tokenizer.decode(tokenized_payload[: self.max_seq_len])
+            tokenized_payload = self._tokenizer.encode(text)
+            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_seq_len])
         else:
-            tokenized_payload = self._hf_tokenizer.tokenize(text)
-            decoded_string = self._hf_tokenizer.convert_tokens_to_string(tokenized_payload[: self.max_seq_len])
+            tokenized_payload = self._tokenizer.tokenize(text)
+            decoded_string = self._tokenizer.convert_tokens_to_string(tokenized_payload[: self.max_seq_len])
 
         return decoded_string
 
