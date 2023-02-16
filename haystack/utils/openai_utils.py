@@ -3,9 +3,9 @@ import os
 import logging
 import platform
 import sys
-import requests
 import json
 from typing import Dict, Union, Tuple
+import requests
 
 from transformers import GPT2TokenizerFast
 

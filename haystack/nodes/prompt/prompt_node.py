@@ -1,13 +1,10 @@
 import copy
-import json
 import logging
-import os
 import re
 from abc import ABC, abstractmethod
 from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
-import requests
 import torch
 from transformers import (
     pipeline,
@@ -20,12 +17,10 @@ from transformers import (
 from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
-from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
 from haystack.errors import OpenAIError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.openai_utils import get_use_tiktoken, openai_request
 
 logger = logging.getLogger(__name__)
