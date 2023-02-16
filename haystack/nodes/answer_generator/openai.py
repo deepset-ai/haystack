@@ -321,8 +321,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             temp = query.split("[SEPARATOR]")
             if len(temp) != 2:
                 logger.error(
-                    f"Instructions given to the OpenAIAnswerGenerator were not correct, please follow the structure "
-                    f"from the docstrings. You supplied: {query}"
+                    "Instructions given to the OpenAIAnswerGenerator were not correct, please follow the structure "
+                    "from the docstrings. You supplied: %s",
+                    query,
                 )
                 prompt_template = PromptTemplate(name="custom", prompt_text="$query", prompt_params=["query"])
                 kwargs["query"] = "Say: incorrect prompt."
@@ -398,6 +399,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
     @staticmethod
     def _clean_documents(text: str) -> str:
         to_remove = {"$documents": "#documents", "$query": "#query", "\n": " "}
-        for x in to_remove.keys():
-            text = text.replace(x, to_remove[x])
+        for key, val in to_remove.items():
+            text = text.replace(key, val)
         return text
