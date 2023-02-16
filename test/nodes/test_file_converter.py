@@ -507,6 +507,8 @@ class TestJsonConverter:
         # [table, text, table]
         assert len(docs) == 3
         assert all(doc.meta["topic"] == "programming" for doc in docs)
+        # "context" in metadata should have been overwritten to be "PL" instead of "Programming Languages"
+        assert all(doc.meta["context"] == "PL" for doc in docs)
         assert all(d.content_type == expected for d, expected in zip(docs, ("table", "text", "table")))
 
         # Text doc test
@@ -526,7 +528,7 @@ class TestJsonConverter:
         json_path = tmp_path / TestJsonConverter.JSON_FILE_NAME
 
         converter = JsonConverter()
-        docs = converter.convert(json_path, meta={"topic": "programming"})
+        docs = converter.convert(json_path, meta={"topic": "programming", "context": "PL"})
 
         self._assert_docs_okay(docs)
 
@@ -534,7 +536,7 @@ class TestJsonConverter:
         json_path = tmp_path / TestJsonConverter.JSON_SINGLE_LINE_FILE_NAME
 
         converter = JsonConverter()
-        docs = converter.convert(json_path, meta={"topic": "programming"})
+        docs = converter.convert(json_path, meta={"topic": "programming", "context": "PL"})
 
         self._assert_docs_okay(docs)
 
@@ -542,7 +544,7 @@ class TestJsonConverter:
         jsonl_path = tmp_path / TestJsonConverter.JSONL_FILE_NAME
 
         converter = JsonConverter()
-        docs = converter.convert(jsonl_path, meta={"topic": "programming"})
+        docs = converter.convert(jsonl_path, meta={"topic": "programming", "context": "PL"})
 
         self._assert_docs_okay(docs)
 
@@ -550,7 +552,7 @@ class TestJsonConverter:
         jsonl_path = tmp_path / TestJsonConverter.JSONL_LIST_LINE_FILE_NAME
 
         converter = JsonConverter()
-        docs = converter.convert(jsonl_path, meta={"topic": "programming"})
+        docs = converter.convert(jsonl_path, meta={"topic": "programming", "context": "PL"})
 
         self._assert_docs_okay(docs)
 
