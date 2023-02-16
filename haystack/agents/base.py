@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Tuple
+from typing import List, Optional, Union, Dict, Tuple, Any
 
 from haystack import Pipeline, BaseComponent, Answer
 from haystack.errors import AgentError
@@ -74,7 +74,7 @@ class Agent:
     :param max_iterations: How many times the agent chooses another tool default 10. If set to 1, only one tool is chosen and there are no further iterations afterward.
     """
 
-    def __init__(self, prompt_node: PromptNode, tools: Optional[List[Tool]] = None, max_iterations: int = 10):
+    def __init__(self, prompt_node: PromptNode, tools: Optional[List[Tool]] = None, max_iterations: int = 5):
         self.prompt_node = prompt_node
         if tools is not None:
             self.tools = {tool.name: tool for tool in tools}
@@ -122,7 +122,7 @@ class Agent:
         self.tools[tool.name] = tool
         self.prompt_text = self._generate_prompt_text()
 
-    def run(self, query: str, params: Optional[dict] = None):
+    def run(self, query: str, params: Optional[dict] = None) -> Dict[str, Union[str, List[Answer]]]:
         """
         Runs the Agent given a query and optional parameters to pass on to the tools used. The result is in the
         same format as a pipeline's result: a dictionary with a key "answers" containing a List of Answers
@@ -171,10 +171,12 @@ class Agent:
 
         return {"query": query, "answers": [Answer(answer=final_answer, type="generative")], "transcript": transcript}
 
-    def is_registered_tool(self, tool_name):
+    def is_registered_tool(self, tool_name: str):
         return tool_name in self.tools
 
-    def _run_tool(self, params, tool_input, tool_name):
+    def _run_tool(
+        self, params: Optional[dict], tool_input: str, tool_name: str
+    ) -> Union[Tuple[Dict[str, Any], str], Dict[str, Any]]:
         if not self.is_registered_tool(tool_name):
             raise AgentError(
                 f'The Agent tried to use a tool "{tool_name}" but the registered tools are only {self.tools.keys()}.'
@@ -191,7 +193,7 @@ class Agent:
                 result = pipeline_or_node.run(query=tool_input)
         return result
 
-    def _extract_observation(self, result):
+    def _extract_observation(self, result: Union[Tuple[Dict[str, Any], str], Dict[str, Any]]) -> str:
         observation = ""
         # if pipeline_or_node is a node it returns a tuple. We use only the output but not the name of the output.
         if isinstance(result, tuple):
@@ -208,7 +210,7 @@ class Agent:
                 observation = ""
         return observation
 
-    def run_batch(self, queries: List[str], params: Optional[dict] = None):
+    def run_batch(self, queries: List[str], params: Optional[dict] = None) -> Dict[str, str]:
         """
         Runs the Agent in a batch mode
 
