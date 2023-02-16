@@ -67,6 +67,13 @@ def get_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
 def openai_request(
     url: str, headers: Dict[str, str], payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT
 ):
+    """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
+
+    :param url: The URL of the OpenAI API.
+    :param headers: The headers to send with the request.
+    :param payload: The payload to send with the request.
+    :param timeout: The timeout length of the request. The default is 30s.
+    """
     response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
     res = json.loads(response.text)
 
