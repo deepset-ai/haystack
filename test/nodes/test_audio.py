@@ -19,8 +19,6 @@ from haystack.nodes.audio._text_to_speech import TextToSpeech
 
 from ..conftest import SAMPLES_PATH
 
-WHISPER_MODEL = "openai/whisper-medium"
-
 
 class WhisperHelper:
     def __init__(self, model):
@@ -44,7 +42,7 @@ class WhisperHelper:
 
 @pytest.fixture(scope="session", autouse=True)
 def whisper_helper():
-    return WhisperHelper(WHISPER_MODEL)
+    return WhisperHelper("openai/whisper-medium")
 
 
 @pytest.mark.skipif(soundfile_not_found, reason="soundfile/ffmpeg not found")
