@@ -472,8 +472,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "best_of": kwargs.get("best_of", 1),
             "logit_bias": kwargs.get("logit_bias", {}),
         }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        res = openai_request(url=self.url, headers=headers, payload=payload)
+        res = openai_request(url=self.url, api_key=self.api_key, payload=payload)
 
         number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
         if number_of_truncated_completions > 0:

@@ -64,16 +64,15 @@ def get_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
 @retry_with_exponential_backoff(
     backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
 )
-def openai_request(
-    url: str, headers: Dict[str, str], payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT
-):
+def openai_request(url: str, api_key: str, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT):
     """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
 
     :param url: The URL of the OpenAI API.
-    :param headers: The headers to send with the request.
+    :param api_key: Your API key from OpenAI. It is required for this node to work.
     :param payload: The payload to send with the request.
     :param timeout: The timeout length of the request. The default is 30s.
     """
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
     res = json.loads(response.text)
 

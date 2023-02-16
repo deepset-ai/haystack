@@ -71,8 +71,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "input": text}
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
+        res = openai_request(url=self.url, api_key=self.api_key, payload=payload, timeout=OPENAI_TIMEOUT)
 
         unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
         ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])

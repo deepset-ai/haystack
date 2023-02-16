@@ -207,9 +207,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
         }
-
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
+        res = openai_request(url=url, api_key=self.api_key, payload=payload, timeout=timeout)
 
         number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
         if number_of_truncated_answers > 0:
