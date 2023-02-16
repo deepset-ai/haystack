@@ -1,22 +1,14 @@
-import json
 import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import numpy as np
-import requests
 from tqdm.auto import tqdm
 
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-)
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer, openai_request
 
 if TYPE_CHECKING:
@@ -25,11 +17,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 USE_TIKTOKEN = get_use_tiktoken()
-
-
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
-OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):

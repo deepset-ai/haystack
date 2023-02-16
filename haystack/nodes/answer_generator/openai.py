@@ -11,8 +11,6 @@ from haystack.utils.openai_utils import get_use_tiktoken, get_openai_tokenizer, 
 logger = logging.getLogger(__name__)
 
 USE_TIKTOKEN = get_use_tiktoken()
-
-
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 
