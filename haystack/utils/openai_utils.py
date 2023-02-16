@@ -3,7 +3,7 @@ import logging
 import platform
 import sys
 
-from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
+from transformers import GPT2TokenizerFast
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,8 @@ def get_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
         import tiktoken  # pylint: disable=import-error
 
         logger.debug("Using tiktoken %s tokenizer", tokenizer_name)
-        tokenizer: tiktoken.Encoding = tiktoken.get_encoding(tokenizer_name)
+        tokenizer = tiktoken.get_encoding(tokenizer_name)
     else:
         logger.debug("Using GPT2TokenizerFast tokenizer")
-        tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer_name)
+        tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer_name)
     return tokenizer
