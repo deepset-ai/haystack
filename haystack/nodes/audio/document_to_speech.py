@@ -59,7 +59,6 @@ class DocumentToSpeech(BaseComponent):
             content_audio = self.converter.text_to_audio_file(
                 text=doc.content, generated_audio_dir=self.generated_audio_dir, **self.params
             )
-
             audio_document = SpeechDocument.from_text_document(
                 document_object=doc,
                 audio_content=content_audio,
