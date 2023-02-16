@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 import pytest
 from rank_bm25 import BM25
+import numpy as np
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.schema import Document
@@ -112,3 +113,15 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         for docs, query_emb in zip(docs_batch, query_embs):
             assert len(docs) == 5
             assert (docs[0].embedding == query_emb).all()
+
+    @pytest.mark.integration
+    def test_memory_query_by_embedding_docs_wo_embeddings(self, ds, caplog):
+        # write document but don't update embeddings
+        ds.write_documents([Document(content="test Document")])
+
+        query_embedding = np.random.rand(768).astype(np.float32)
+
+        with caplog.at_level(logging.WARNING):
+            docs = ds.query_by_embedding(query_emb=query_embedding, top_k=1)
+            assert "Skipping some of your documents that don't have embeddings" in caplog.text
+        assert len(docs) == 0
