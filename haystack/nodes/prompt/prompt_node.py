@@ -475,8 +475,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "stop": kwargs_with_defaults.get("stop", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "best_of": kwargs.get("best_of", 1),
-            "logit_bias": kwargs.get("logit_bias", {}),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
@@ -712,6 +712,7 @@ class PromptNode(BaseComponent):
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
+        model_kwargs: Optional[Dict] = None,
     ):
         """
         Creates a PromptNode instance.
@@ -724,6 +725,8 @@ class PromptNode(BaseComponent):
         :param use_auth_token: The authentication token to use for the model.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use for the model.
+        :param stop_words: Stops text generation if any one of the stop words is generated.
+        :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
         """
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
@@ -749,6 +752,7 @@ class PromptNode(BaseComponent):
                 use_auth_token=use_auth_token,
                 use_gpu=use_gpu,
                 devices=devices,
+                model_kwargs=model_kwargs,
             )
         elif isinstance(model_name_or_path, PromptModel):
             self.prompt_model = model_name_or_path
@@ -774,13 +778,11 @@ class PromptNode(BaseComponent):
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         """
         Prompts the model and represents the central API for the PromptNode. It takes a prompt template,
-        a list of non-keyword and keyword arguments, and returns a list of strings - the responses from
-        the underlying model.
+        a list of non-keyword and keyword arguments, and returns a list of strings - the responses from the underlying model.
 
-        If you specify the optional prompt_template parameter, it takes precedence over the default prompt
-        template for this PromptNode.
+        If you specify the optional prompt_template parameter, it takes precedence over the default PromptTemplate for this PromptNode.
 
-        :param prompt_template: The name of the optional prompt template to use.
+        :param prompt_template: The name or object of the optional PromptTemplate to use.
         :return: A list of strings as model responses.
         """
         results = []

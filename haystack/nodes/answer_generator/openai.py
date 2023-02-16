@@ -16,10 +16,11 @@ from haystack.environment import (
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.nodes.prompt import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine()
+machine = platform.machine().lower()
 system = platform.system()
 
 USE_TIKTOKEN = False
@@ -51,17 +52,19 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self,
         api_key: str,
         model: str = "text-davinci-003",
-        max_tokens: int = 40,
+        max_tokens: int = 50,
         top_k: int = 1,
         temperature: float = 0.2,
-        presence_penalty: float = -2.0,
-        frequency_penalty: float = 0,
+        presence_penalty: float = 0.1,
+        frequency_penalty: float = 0.1,
         examples_context: Optional[str] = None,
-        examples: Optional[List] = None,
+        examples: Optional[List[List[str]]] = None,
         instructions: Optional[str] = None,
         add_runtime_instructions: bool = False,
-        stop_words: Optional[List] = None,
+        stop_words: Optional[List[str]] = None,
         progress_bar: bool = True,
+        prompt_template: Optional[PromptTemplate] = None,
+        context_join_str: str = " ",
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
@@ -69,15 +72,19 @@ class OpenAIAnswerGenerator(BaseGenerator):
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
                      refer to the [OpenAI Documentation](https://platform.openai.com/docs/models/gpt-3).
-        :param max_tokens: The maximum number of tokens allowed for the generated Answer.
+        :param max_tokens: The maximum number of tokens reserved for the generated Answer.
+                           A higher number allows for longer answers without exceeding the max prompt length of the OpenAI model.
+                           A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
         :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
-                                 in the text. This increases the model's likelihood to talk about new topics.
+                                 in the text. This increases the model's likelihood to talk about new topics. For more information about frequency and presence penalties, see
+                                 [parameter details in OpenAI](https://platform.openai.com/docs/api-reference/parameter-details).
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
                                   frequency in the text so far, decreasing the model's likelihood to repeat the same line
                                   verbatim.
+                                  [See more information about frequency and presence penalties.](https://platform.openai.com/docs/api-reference/parameter-details)
         :param examples_context: A text snippet containing the contextual information used to generate the Answers for
                                  the examples you provide.
         :param examples: List of (question, answer) pairs that helps steer the model towards the tone and answer
@@ -91,14 +98,83 @@ class OpenAIAnswerGenerator(BaseGenerator):
                                          that those will be replaced in correctly.
         :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
-                           If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+                           If you don't provide any stop words, the default value from OpenAI API docs is used: `["\n", "<|endoftext|>"]`.
+        :param prompt_template: A PromptTemplate that tells the model how to generate answers given a
+             `context` and `query` supplied at runtime. The `context` is automatically constructed at runtime from a
+            list of provided documents. Use `example_context` and a list of `examples` to provide
+            the model with examples to steer it towards the tone and answer format you would like.
+            If not supplied, the default prompt template is:
+            ```python
+                PromptTemplate(
+                    name="question-answering-with-examples",
+                    prompt_text="Please answer the question according to the above context."
+                                "\n===\nContext: $examples_context\n===\n$examples\n\n"
+                                "===\nContext: $context\n===\n$query",
+                    prompt_params=["examples_context", "examples", "context", "query"],
+                )
+            ```
+            To learn how variables, such as'$context', are substituted in the `prompt_text`, see
+            [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
+        :param context_join_str: The separation string used to join the input documents to create the context
+            used by the PromptTemplate.
         """
         super().__init__(progress_bar=progress_bar)
-        if not stop_words:
+        if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
+            logger.warning(
+                "If providing examples or examples_context, we recommend providing both of them "
+                "so the examples correctly refer to the examples_context."
+            )
+        if examples_context is None:
+            examples_context = "In 2017, U.S. life expectancy was 78.6 years."
+        if examples is None:
+            examples = [["Q: What is human life expectancy in the United States?", "A: 78 years."]]
+        if stop_words is None:
             stop_words = ["\n", "<|endoftext|>"]
+        if prompt_template is None:
+            if self.instructions:
+                prompt_template = PromptTemplate(
+                    name="custom",
+                    prompt_text=f"{self.instructions}\n"
+                    "\n===\nContext: $examples_context\n===\n$examples\n\n"
+                    "===\nContext: $context\n===\n$query",
+                    prompt_params=["examples_context", "examples", "context", "query"],
+                )
+            else:
+            prompt_template = PromptTemplate(
+                name="question-answering-with-examples",
+                prompt_text=f"Create a concise and informative answer (no more than {max_tokens} words) for a given "
+                f"question based solely on the given documents. You must only use information from the given "
+                f"documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents "
+                f"using Document[$number] notation. If multiple documents contain the answer, cite "
+                f"each document like Document[$number], Document[$number], Document[$number] ... If "
+                f"the documents do not contain the answer to the question, say that "
+                f"'answering is not possible given the available information.'\n "
+                "\n===\nContext: $examples_context\n===\n$examples\n\n"
+                "===\nContext: $context\n===\n$query",
+                prompt_params=["examples_context", "examples", "context", "query"],
+            )
+        else:
+            # Check for required prompts
+            required_params = ["context", "query"]
+            if all(p in prompt_template.prompt_params for p in required_params):
+                raise ValueError(
+                    "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
+                    "`query` in its `prompt_params`. Supply a different `prompt_template` or "
+                    "use the default one."
+                )
 
-        if not api_key:
-            raise ValueError("OpenAIAnswerGenerator requires an API key.")
+            # Check for unsupported prompt parameters
+            optional_params = ["examples_context", "examples"]
+            unknown_params = []
+            for p in prompt_template.prompt_params:
+                if p not in set(required_params + optional_params):
+                    unknown_params.append(p)
+            if len(unknown_params) > 1:
+                raise ValueError(
+                    f"The provided PromptTemplate has the prompt parameters, {unknown_params}, that are not supported "
+                    f"by the OpenAIAnswerGenerator. The only prompt parameters that are supported are "
+                    f"`examples_context`, `examples`, `context`, and `query`."
+                )
 
         self.api_key = api_key
         self.model = model
@@ -110,27 +186,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples_context = examples_context
         self.examples = examples
         self.add_runtime_instructions = add_runtime_instructions
-        if not instructions:
-            self.instructions = (
-                f"Create a concise and informative answer (no more than {max_tokens} words) for a given "
-                f"question based solely on the given documents. You must only use information from the given "
-                f"documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents "
-                f"using Document[$number] notation. If multiple documents contain the answer, cite "
-                f"each document like Document[$number], Document[$number], Document[$number] ... If "
-                f"the documents do not contain the answer to the question, say that "
-                f"'answering is not possible given the available information.'\n "
-                f"$documents; \n Question: $query; Answer: "
-            )
-        else:
-            if "$documents" in instructions and "$query" in instructions:
-                self.instructions = instructions
-            else:
-                logger.warning(
-                    f"Instructions do not have the right format. You need to include '$documents' and '$query'. "
-                    f"You supplied: {instructions}"
-                )
-                self.instructions = instructions
         self.stop_words = stop_words
+        self.prompt_template = prompt_template
+        self.context_join_str = context_join_str
 
         tokenizer = "gpt2"
         if "davinci" in self.model:
@@ -189,7 +247,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             top_k = self.top_k
 
         # convert input to OpenAI format
-        prompt, input_docs = self._build_prompt(query=query, documents=documents)
+        prompt, input_docs = self._build_prompt_within_max_length(query=query, documents=documents)
+        logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
 
         # get answers from OpenAI API
         url = "https://api.openai.com/v1/completions"
@@ -236,26 +295,27 @@ class OpenAIAnswerGenerator(BaseGenerator):
         result = {"query": query, "answers": answers}
         return result
 
-    def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
-        """
-        Builds the prompt for the GPT-3 model so that it can generate an Answer.
-        """
-        ## Clean documents
-        for doc in documents:
-            doc.content = self._clean_documents(doc.content)
+    @staticmethod
+    def _create_context(documents: List[Document], join_str: str = " ") -> str:
+        """Join the documents to create a single context to be used in the PromptTemplate."""
+        doc_contents = [self._clean_documents(doc.content) for doc in documents]
+        # We reverse the docs to put the most relevant documents at the bottom of the context
+        context = join_str.join(reversed(doc_contents))
+        return context
 
-        ## Add example prompts
-        if self.examples and self.examples_context:
-            example_context = f"===\nContext: {self.examples_context}\n===\n"
-            example_QAs = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
-            example_prompt = (
-                "Please answer the question according to the above context.\n" + example_context + example_QAs
-            )
-            example_prompt = f"{example_prompt.strip()}\n\n"
-        else:
-            example_prompt = ""
+    def _fill_prompt(self, query: str, documents: List[Document]) -> str:
+        """Fills in the `prompt_template` with its `prompt_params` and returns the full prompt."""
+        example_prompts = "\n---\n".join([f"{query}\n{answer}" for query, answer in self.examples])
+        qa_prompt = f"Q: {query}\nA:"
 
-        ## Compose prompt
+        kwargs = {"context": self._create_context(documents, join_str=self.context_join_str), "query": qa_prompt}
+        if (
+            "examples_context" in self.prompt_template.prompt_params
+            and "examples" in self.prompt_template.prompt_params
+        ):
+            kwargs["examples_context"] = self.examples_context
+            kwargs["examples"] = example_prompts
+        prompt_template = self.prompt_template
         # Switch for adding the prompt instructions at runtime.
         if self.add_runtime_instructions:
             temp = query.split("[SEPARATOR]")
@@ -264,54 +324,75 @@ class OpenAIAnswerGenerator(BaseGenerator):
                     f"Instructions given to the OpenAIAnswerGenerator were not correct, please follow the structure "
                     f"from the docstrings. You supplied: {query}"
                 )
-                current_prompt = ""
-                query = "Say: incorrect prompt."
+                prompt_template = PromptTemplate(
+                    name="custom",
+                    prompt_text="$query",
+                    prompt_params=["query"],
+                )
+                kwargs["query"] = "Say: incorrect prompt."
             else:
                 current_prompt = temp[0].strip()
-                query = temp[1].strip()
-        else:
-            current_prompt = self.instructions
+                prompt_template = PromptTemplate(
+                    name="custom",
+                    prompt_text=f"{current_prompt}\n"
+                    "\n===\nContext: $context\n===\n$query",
+                    prompt_params=["context", "query"],
+                )
+                kwargs["query"] = temp[1].strip()
+        full_prompt = next(self.prompt_template.fill(**kwargs))
+        return full_prompt
 
-        # Inserting the query into the prompt here.
-        current_prompt = current_prompt.replace("$query", query)
-        n_instruction_tokens = self._count_tokens(example_prompt + current_prompt)
-        logger.debug("Number of tokens in instruction: %s", n_instruction_tokens)
-        n_docs_tokens = [self._count_tokens(f"\nDocument[{i}]: " + doc.content) for i, doc in enumerate(documents)]
-        logger.debug("Number of tokens in documents: %s", n_docs_tokens)
+    def _build_prompt_within_max_length(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
+        """
+        Builds the prompt for the GPT-3 model so that it can generate an Answer. If the prompt is too long based on the
+        MAX_TOKENS_LIMIT of the OpenAI model and `max_tokens` you specify, then documents (used to
+        construct the context) are thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
+        """
+        full_prompt = self._fill_prompt(query, documents)
+        n_full_prompt_tokens = self._count_tokens(full_prompt)
 
-        # Add as many Documents as fit into the model.
-        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
-        input_docs = []
-        input_docs_content = []
+        # for length restrictions of prompt see: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
+        leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
+
+        # Trim down the prompt (by removing documents) until it fits the models MAX_TOKENS_LIMIT
+        input_docs = documents
         skipped_docs = 0
-        for i, (doc, doc_token_len) in enumerate(zip(documents, n_docs_tokens)):
-            if doc_token_len <= leftover_token_len:
-                input_docs.append(doc)
-                input_docs_content.append(f"\nDocument[{i}]: " + doc.content)
-                leftover_token_len -= doc_token_len
-            else:
+        # If leftover_token_len is negative we have gone past the MAX_TOKENS_LIMIT and the prompt must be trimmed
+        if leftover_token_len < 0:
+            n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
+            logger.debug("Number of tokens in documents: %s", n_docs_tokens)
+
+            # Reversing the order of documents b/c we want to throw away less relevant docs first
+            rev_n_docs_tokens = reversed(n_docs_tokens)
+            n_skipped_tokens = 0
+            for doc_token_len in rev_n_docs_tokens:
+                n_skipped_tokens += doc_token_len
                 skipped_docs += 1
+                # Only skip enough tokens to fit within the MAX_TOKENS_LIMIT
+                if n_skipped_tokens >= abs(leftover_token_len):
+                    break
 
-        if len(input_docs) == 0:
-            logger.warning(
-                "Skipping all of the provided Documents, as none of them fits the maximum token limit of %s"
-                "The generated answers will therefore not be conditioned on any context.",
-                self.MAX_TOKENS_LIMIT,
-            )
-        elif skipped_docs >= 1:
-            logger.warning(
-                "Skipping %s of the provided Documents, as using them would exceed the maximum token limit of %s.",
-                skipped_docs,
-                self.MAX_TOKENS_LIMIT,
-            )
+            # Throw away least relevant docs
+            input_docs = documents[:-skipped_docs]
+            full_prompt = self._fill_prompt(query, input_docs)
+            n_full_prompt_tokens = self._count_tokens(full_prompt)
 
-        # Top ranked documents should go at the end.
-        context_documents = " ".join(reversed(input_docs_content))
+            if len(input_docs) == 0:
+                logger.warning(
+                    "Skipping all of the provided Documents, as none of them fits the maximum token limit of %s. "
+                    "The generated answers will therefore not be conditioned on any context.",
+                    self.MAX_TOKENS_LIMIT,
+                )
+            elif skipped_docs >= 1:
+                logger.warning(
+                    "Skipping %s of the provided Documents, as using them would exceed the maximum token limit of %s.",
+                    skipped_docs,
+                    self.MAX_TOKENS_LIMIT,
+                )
 
-        current_prompt = current_prompt.replace("$documents", context_documents)
-        logger.debug("Full prompt: %s", current_prompt)
-
-        return current_prompt, input_docs
+        logger.debug("Number of tokens in full prompt: %s", n_full_prompt_tokens)
+        logger.debug("Full prompt: %s", full_prompt)
+        return full_prompt, input_docs
 
     def _count_tokens(self, text: str) -> int:
         if USE_TIKTOKEN:

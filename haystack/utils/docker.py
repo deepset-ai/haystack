@@ -3,6 +3,13 @@ from typing import List, Union, Optional
 from haystack.nodes._json_schema import load_schema
 
 
+def cache_nltk_model(model: str = "punkt"):
+    logging.info("Caching %s model...", model)
+    import nltk
+
+    nltk.download(model)
+
+
 def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Union[str, bool]] = None):
     """
     Small function that caches models and other data.
@@ -18,12 +25,6 @@ def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Un
     # Backward compat after adding the `model` param
     if models is None:
         models = ["deepset/roberta-base-squad2"]
-
-    # download punkt tokenizer
-    logging.info("Caching punkt data")
-    import nltk
-
-    nltk.download("punkt")
 
     # Cache models
     import transformers
