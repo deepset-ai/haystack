@@ -131,28 +131,28 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if stop_words is None:
             stop_words = ["\n", "<|endoftext|>"]
         if prompt_template is None:
-            if self.instructions:
+            if instructions:
                 prompt_template = PromptTemplate(
                     name="custom",
-                    prompt_text=f"{self.instructions}\n"
+                    prompt_text=f"{instructions}\n"
                     "\n===\nContext: $examples_context\n===\n$examples\n\n"
                     "===\nContext: $context\n===\n$query",
                     prompt_params=["examples_context", "examples", "context", "query"],
                 )
             else:
-            prompt_template = PromptTemplate(
-                name="question-answering-with-examples",
-                prompt_text=f"Create a concise and informative answer (no more than {max_tokens} words) for a given "
-                f"question based solely on the given documents. You must only use information from the given "
-                f"documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents "
-                f"using Document[$number] notation. If multiple documents contain the answer, cite "
-                f"each document like Document[$number], Document[$number], Document[$number] ... If "
-                f"the documents do not contain the answer to the question, say that "
-                f"'answering is not possible given the available information.'\n "
-                "\n===\nContext: $examples_context\n===\n$examples\n\n"
-                "===\nContext: $context\n===\n$query",
-                prompt_params=["examples_context", "examples", "context", "query"],
-            )
+                prompt_template = PromptTemplate(
+                    name="question-answering-with-examples",
+                    prompt_text=f"Create a concise and informative answer (no more than {max_tokens} words) for a given "
+                    f"question based solely on the given documents. You must only use information from the given "
+                    f"documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents "
+                    f"using Document[$number] notation. If multiple documents contain the answer, cite "
+                    f"each document like Document[$number], Document[$number], Document[$number] ... If "
+                    f"the documents do not contain the answer to the question, say that "
+                    f"'answering is not possible given the available information.'\n "
+                    "\n===\nContext: $examples_context\n===\n$examples\n\n"
+                    "===\nContext: $context\n===\n$query",
+                    prompt_params=["examples_context", "examples", "context", "query"],
+                )
         else:
             # Check for required prompts
             required_params = ["context", "query"]
@@ -298,7 +298,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
     @staticmethod
     def _create_context(documents: List[Document], join_str: str = " ") -> str:
         """Join the documents to create a single context to be used in the PromptTemplate."""
-        doc_contents = [self._clean_documents(doc.content) for doc in documents]
+        doc_contents = [OpenAIAnswerGenerator._clean_documents(doc.content) for doc in documents]
         # We reverse the docs to put the most relevant documents at the bottom of the context
         context = join_str.join(reversed(doc_contents))
         return context
@@ -324,22 +324,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
                     f"Instructions given to the OpenAIAnswerGenerator were not correct, please follow the structure "
                     f"from the docstrings. You supplied: {query}"
                 )
-                prompt_template = PromptTemplate(
-                    name="custom",
-                    prompt_text="$query",
-                    prompt_params=["query"],
-                )
+                prompt_template = PromptTemplate(name="custom", prompt_text="$query", prompt_params=["query"])
                 kwargs["query"] = "Say: incorrect prompt."
             else:
                 current_prompt = temp[0].strip()
                 prompt_template = PromptTemplate(
                     name="custom",
-                    prompt_text=f"{current_prompt}\n"
-                    "\n===\nContext: $context\n===\n$query",
+                    prompt_text=f"{current_prompt}\n" "\n===\nContext: $context\n===\n$query",
                     prompt_params=["context", "query"],
                 )
                 kwargs["query"] = temp[1].strip()
-        full_prompt = next(self.prompt_template.fill(**kwargs))
+        full_prompt = next(prompt_template.fill(**kwargs))
         return full_prompt
 
     def _build_prompt_within_max_length(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
@@ -400,7 +395,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             return len(self._hf_tokenizer.tokenize(text))
 
-    def _clean_documents(self, text: str) -> str:
+    @staticmethod
+    def _clean_documents(text: str) -> str:
         to_remove = {"$documents": "#documents", "$query": "#query", "\n": " "}
         for x in to_remove.keys():
             text = text.replace(x, to_remove[x])
