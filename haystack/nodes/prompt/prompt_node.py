@@ -720,6 +720,7 @@ class PromptNode(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
+        model_kwargs: Optional[Dict] = None,
     ):
         """
         Creates a PromptNode instance.
@@ -733,6 +734,8 @@ class PromptNode(BaseComponent):
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use for the model.
         :param top_k: Number of independently generated text to return per prompt.
+        :param stop_words: Stops text generation if any one of the stop words is generated.
+        :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
         """
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
@@ -759,6 +762,7 @@ class PromptNode(BaseComponent):
                 use_auth_token=use_auth_token,
                 use_gpu=use_gpu,
                 devices=devices,
+                model_kwargs=model_kwargs,
             )
         elif isinstance(model_name_or_path, PromptModel):
             self.prompt_model = model_name_or_path
