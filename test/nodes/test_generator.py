@@ -157,11 +157,3 @@ def test_openai_answer_generator_max_token(docs, caplog):
         assert "Skipping all of the provided Documents" in caplog.text
         assert len(prediction["answers"]) == 1
         # Can't easily check content of answer since it is generative and can change between runs
-
-
-# TODO Is it possible to make this a full test w/o needing all retries to occur
-# def test_openai_retry(docs):
-#     openai_generator = OpenAIAnswerGenerator(
-#         api_key="api_xxx", model="text-babbage-001", top_k=1
-#     )
-#     prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
