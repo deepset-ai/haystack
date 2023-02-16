@@ -318,6 +318,8 @@ disable = [
 max-args=7
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
+[tool.pylint.'MASTER']
+ignore = 'testing'
 
 [tool.pytest.ini_options]
 minversion = "6.0"
