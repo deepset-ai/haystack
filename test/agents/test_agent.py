@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 
-from haystack import BaseComponent
+from haystack import BaseComponent, Answer
 from haystack.agents import Agent
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
@@ -26,6 +26,7 @@ def test_add_and_overwrite_tool():
     )
     assert len(agent.tools) == 1
     assert "Retriever" in agent.tools
+    assert agent.is_registered_tool(tool_name="Retriever")
     assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseComponent)
 
     agent.add_tool(
@@ -47,6 +48,7 @@ def test_add_and_overwrite_tool():
     )
     assert len(agent.tools) == 1
     assert "Retriever" in agent.tools
+    assert agent.is_registered_tool(tool_name="Retriever")
     assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
 
 
@@ -76,13 +78,57 @@ def test_max_iterations(caplog, monkeypatch):
         )
     )
 
-    def mock_parse_tool_and_tool_input(self, pred: str) -> Tuple[str, str]:
+    def mock_extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
-    monkeypatch.setattr(Agent, "_parse_tool_name_and_tool_input", mock_parse_tool_and_tool_input)
+    monkeypatch.setattr(Agent, "_extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
-        agent.run("Where does Christelle live?")
+        result = agent.run("Where does Christelle live?")
+        assert result["answers"] == [Answer(answer="", type="generative")]
     assert "Maximum number of agent iterations (1) reached" in caplog.text
+
+
+def test_run_tool():
+    agent = Agent(prompt_node=MockPromptNode())
+    retriever = MockRetriever()
+    agent.add_tool(
+        Tool(
+            name="Retriever",
+            pipeline_or_node=retriever,
+            description="useful for when you need to retrieve documents from your index",
+        )
+    )
+    result = agent._run_tool(tool_name="Retriever", tool_input="")
+    # TODO check that MockRetriever.run was called
+
+
+def test_extract_observation():
+    agent = Agent(prompt_node=MockPromptNode())
+    observation = agent._extract_observation(
+        result={
+            "answers": [
+                Answer(answer="first answer", type="generative"),
+                Answer(answer="second answer", type="generative"),
+            ]
+        }
+    )
+    assert observation == "first answer"
+
+
+def test_extract_tool_name_and_tool_input():
+    agent = Agent(prompt_node=MockPromptNode())
+
+    pred = "have the final answer to the question.\nFinal Answer: Florida"
+    tool_name, tool_input = agent._extract_tool_name_and_tool_input(pred)
+    assert tool_name == "Final Answer" and tool_input == "Florida"
+
+    pred = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
+    tool_name, tool_input = agent._extract_tool_name_and_tool_input(pred)
+    assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
+
+    with pytest.raises(AgentError, match=r"Wrong output format.*"):
+        pred = " Tool"
+        tool_name, tool_input = agent._extract_tool_name_and_tool_input(pred)
 
 
 @pytest.mark.integration

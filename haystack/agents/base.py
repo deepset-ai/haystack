@@ -152,12 +152,12 @@ class Agent:
             prompt_template = PromptTemplate("think-step-by-step", transcript)
             pred = self.prompt_node.prompt(prompt_template=prompt_template, query=query)[0]
 
-            tool_name, tool_input = self._parse_tool_name_and_tool_input(pred=pred)
+            tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=pred)
             if tool_name == "Final Answer":
                 final_answer = tool_input
                 break
 
-            result = self._run_tool(params, tool_input, tool_name)
+            result = self._run_tool(tool_name=tool_name, tool_input=tool_input, params=params)
             observation = self._extract_observation(result)
             transcript += f"{pred}\nObservation: {observation}\nThought: Now that I know that {tool_input} is the answer to {observation}, I "
 
@@ -175,7 +175,7 @@ class Agent:
         return tool_name in self.tools
 
     def _run_tool(
-        self, params: Optional[dict], tool_input: str, tool_name: str
+        self, tool_name: str, tool_input: str, params: Optional[dict] = None
     ) -> Union[Tuple[Dict[str, Any], str], Dict[str, Any]]:
         if not self.is_registered_tool(tool_name):
             raise AgentError(
@@ -229,7 +229,7 @@ class Agent:
 
         return results
 
-    def _parse_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
+    def _extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         """
         Parse the tool name and the tool input from the prediction output of the Agent's PromptNode.
 
