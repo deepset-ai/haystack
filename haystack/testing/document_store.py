@@ -1,3 +1,4 @@
+# pylint: disable=too-many-public-methods
 import sys
 
 import pytest
