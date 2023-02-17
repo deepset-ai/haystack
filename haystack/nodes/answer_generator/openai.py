@@ -186,7 +186,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             logger.debug("Using GPT2TokenizerFast")
             self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
 
-    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
+    )
     def predict(
         self,
         query: str,
