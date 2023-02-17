@@ -222,6 +222,11 @@ class PromptModelInvocationLayer:
         """
         return False
 
+    @abstractmethod
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that length of the text is within the maximum token length of the PromptModel."""
+        pass
+
 
 class StopWordsCriteria(StoppingCriteria):
     """
@@ -364,6 +369,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
         return generated_texts
 
+    # TODO Implement for HFLocalInvocationLayer
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that length of the text is within the maximum length of the model."""
+        return prompt
+
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
         try:
@@ -461,7 +471,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide prompt in kwargs."
             )
-        prompt = self._ensure_text_limit(prompt)
 
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
@@ -491,25 +500,28 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
 
-    def _ensure_text_limit(self, prompt: str) -> str:
+    def _ensure_token_limit(self, prompt: str) -> str:
         """Ensure that length of the text is within the maximum length of the model."""
-        n_tokens = count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
-        if n_tokens <= self.MAX_TOKENS_LIMIT:
+        n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.MAX_TOKENS_LIMIT:
             return prompt
 
         logger.warning(
             "The prompt has been truncated from %s tokens to %s tokens to fit within the max token limit."
             " Consider reducing the length of the prompt to avoid truncation.",
-            n_tokens,
+            n_prompt_tokens + n_answer_tokens,
             self.MAX_TOKENS_LIMIT,
         )
 
         if USE_TIKTOKEN:
             tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.MAX_TOKENS_LIMIT])
+            decoded_string = self._tokenizer.decode(tokenized_payload[: self.MAX_TOKENS_LIMIT - n_answer_tokens])
         else:
             tokenized_payload = self._tokenizer.tokenize(prompt)
-            decoded_string = self._tokenizer.convert_tokens_to_string(tokenized_payload[: self.MAX_TOKENS_LIMIT])
+            decoded_string = self._tokenizer.convert_tokens_to_string(
+                tokenized_payload[: self.MAX_TOKENS_LIMIT - n_answer_tokens]
+            )
         return decoded_string
 
     @classmethod
@@ -607,6 +619,10 @@ class PromptModel(BaseComponent):
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that length of the text is within the maximum token length of the PromptModel."""
+        return self.model_invocation_layer._ensure_token_limit(prompt=prompt)
 
     def run(
         self,
@@ -814,6 +830,7 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
+                prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
@@ -822,6 +839,7 @@ class PromptNode(BaseComponent):
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
