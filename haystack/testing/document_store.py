@@ -523,6 +523,17 @@ class DocumentStoreBaseTestAbstract:
         assert all(isinstance(d, Document) for d in documents)
         assert len(documents) == len(docs_to_write)
 
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
+        ds.embedding_field = "custom_embedding_field"
+        doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
+        ds.write_documents([doc_to_write])
+        documents = ds.get_all_documents(return_embedding=True)
+        assert len(documents) == 1
+        assert documents[0].content == "test"
+        # Some document stores normalize the embedding on save, let's just compare the length
+        assert doc_to_write["custom_embedding_field"].shape == documents[0].embedding.shape
+
     #
     # Unit tests
     #
