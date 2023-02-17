@@ -33,7 +33,7 @@ def test_add_and_overwrite_tool():
         Tool(
             name="Retriever",
             pipeline_or_node=retriever,
-            description="useful for when you need to " "retrieve documents from your index",
+            description="useful for when you need to retrieve documents from your index",
         )
     )
 
@@ -43,7 +43,7 @@ def test_add_and_overwrite_tool():
         Tool(
             name="Retriever",
             pipeline_or_node=retriever_pipeline,
-            description="useful for when you need " "to retrieve documents " "from your index",
+            description="useful for when you need to retrieve documents from your index",
         )
     )
     assert len(agent.tools) == 1
@@ -142,13 +142,15 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     search = ExtractiveQAPipeline(reader, retriever_with_docs)
     prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
     prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    calculator = PromptNode(
+    counter = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
             name="calculator_template",
-            prompt_text="You can do calculations and answer questions about math. "
-            "When you do calculations, you return the question and the "
-            "final result. $query?",
+            prompt_text="When I give you a word, respond with the number of characters that this word contains.\n"
+            "Word: Rome\nLength: 4\n"
+            "Word: Arles\nLength: 5\n"
+            "Word: Berlin\nLength: 6\n"
+            "Word: $query?\nLength: ",
             prompt_params=["query"],
         ),
     )
@@ -165,14 +167,14 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     )
     agent.add_tool(
         Tool(
-            name="Calculator",
-            pipeline_or_node=calculator,
-            description="useful for when you need to answer questions about math",
+            name="Count",
+            pipeline_or_node=counter,
+            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
         )
     )
 
-    result = agent.run("What is 2 to the power of 3?")
-    assert "8" in result["answers"][0].answer or "eight" in result["answers"][0].answer
+    result = agent.run("How many characters are in the word Madrid?")
+    assert "6" in result["answers"][0].answer or "six" in result["answers"][0].answer
 
     result = agent.run("How many letters does the name of the town where Christelle lives have?")
     assert "5" in result["answers"][0].answer or "five" in result["answers"][0].answer
@@ -189,13 +191,15 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
     search = ExtractiveQAPipeline(reader, retriever_with_docs)
     prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
     prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    calculator = PromptNode(
+    counter = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
             name="calculator_template",
-            prompt_text="You can do calculations and answer questions about math. "
-            "When you do calculations, you return the question and the "
-            "final result. $query?",
+            prompt_text="When I give you a word, respond with the number of characters that this word contains.\n"
+            "Word: Rome\nLength: 4\n"
+            "Word: Arles\nLength: 5\n"
+            "Word: Berlin\nLength: 6\n"
+            "Word: $query?\nLength: ",
             prompt_params=["query"],
         ),
     )
@@ -212,17 +216,17 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
     )
     agent.add_tool(
         Tool(
-            name="Calculator",
-            pipeline_or_node=calculator,
-            description="useful for when you need to answer questions about math",
+            name="Count",
+            pipeline_or_node=counter,
+            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
         )
     )
 
     results = agent.run_batch(
         queries=[
-            "What is 2 to the power of 3?",
+            "How many characters are in the word Madrid?",
             "How many letters does the name of the town where Christelle lives have?",
         ]
     )
-    assert "8" in results["answers"][0][0].answer or "eight" in results["answers"][0][0].answer
+    assert "6" in results["answers"][0][0].answer or "six" in results["answers"][0][0].answer
     assert "5" in results["answers"][1][0].answer or "five" in results["answers"][1][0].answer

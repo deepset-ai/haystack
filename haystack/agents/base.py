@@ -159,7 +159,7 @@ class Agent:
 
             result = self._run_tool(tool_name=tool_name, tool_input=tool_input, params=params)
             observation = self._extract_observation(result)
-            transcript += f"{pred}\nObservation: {observation}\nThought: Now that I know that {tool_input} is the answer to {observation}, I "
+            transcript += f"{pred}\nObservation: {observation}\nThought: Now that I know that {observation} is the answer to {tool_input}, I "
 
         else:
             logger.warning(
