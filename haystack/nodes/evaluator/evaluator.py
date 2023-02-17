@@ -1,46 +1,11 @@
-from typing import List, Tuple, Dict, Any, Optional, Union
+from typing import List, Tuple, Dict, Optional, Union
 import logging
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from haystack.schema import MultiLabel, Label, Document, Answer
-from haystack.nodes.base import BaseComponent
-
-from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
-from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
-
-
 logger = logging.getLogger(__name__)
-
-
-def get_label(labels, node_id):
-    if type(labels) in [Label, MultiLabel]:
-        ret = labels
-    # If labels is a dict, then fetch the value using node_id (e.g. "EvalRetriever") as the key
-    else:
-        ret = labels[node_id]
-    return ret
-
-
-def calculate_em_str_multi(gold_labels, prediction):
-    for gold_label in gold_labels:
-        result = calculate_em_str(gold_label, prediction)
-        if result == 1.0:
-            return 1.0
-    return 0.0
-
-
-def calculate_f1_str_multi(gold_labels, prediction):
-    results = []
-    for gold_label in gold_labels:
-        result = calculate_f1_str(gold_label, prediction)
-        results.append(result)
-    if len(results) > 0:
-        return max(results)
-    else:
-        return 0.0
 
 
 def semantic_answer_similarity(
@@ -137,88 +102,3 @@ def semantic_answer_similarity(
             pred_label_matrix.append(sims.tolist())
 
     return top_1_sas, top_k_sas, pred_label_matrix
-
-
-def _count_overlap(
-    gold_span: Dict[str, Any], predicted_span: Dict[str, Any], metric_counts: Dict[str, float], answer_idx: int
-):
-    # Checks if overlap between prediction and real answer.
-
-    found_answer = False
-
-    if (gold_span["offset_start"] <= predicted_span["offset_end"]) and (
-        predicted_span["offset_start"] <= gold_span["offset_end"]
-    ):
-        # top-1 answer
-        if answer_idx == 0:
-            metric_counts["correct_readings_top1"] += 1
-            metric_counts["correct_readings_top1_has_answer"] += 1
-        # top-k answers
-        metric_counts["correct_readings_topk"] += 1
-        metric_counts["correct_readings_topk_has_answer"] += 1
-        found_answer = True
-
-    return metric_counts, found_answer
-
-
-def _count_exact_match(
-    gold_span: Dict[str, Any], predicted_span: Dict[str, Any], metric_counts: Dict[str, float], answer_idx: int
-):
-    # Check if exact match between prediction and real answer.
-    # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
-
-    found_em = False
-
-    if (gold_span["offset_start"] == predicted_span["offset_start"]) and (
-        gold_span["offset_end"] == predicted_span["offset_end"]
-    ):
-        if metric_counts:
-            # top-1 answer
-            if answer_idx == 0:
-                metric_counts["exact_matches_top1"] += 1
-                metric_counts["exact_matches_top1_has_answer"] += 1
-            # top-k answers
-            metric_counts["exact_matches_topk"] += 1
-            metric_counts["exact_matches_topk_has_answer"] += 1
-        found_em = True
-
-    return metric_counts, found_em
-
-
-def _calculate_f1(gold_span: Dict[str, Any], predicted_span: Dict[str, Any]):
-    # Calculates F1-Score for prediction based on real answer using character offsets.
-    # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
-
-    pred_indices = list(range(predicted_span["offset_start"], predicted_span["offset_end"]))
-    gold_indices = list(range(gold_span["offset_start"], gold_span["offset_end"]))
-    n_overlap = len([x for x in pred_indices if x in gold_indices])
-    if pred_indices and gold_indices and n_overlap:
-        precision = n_overlap / len(pred_indices)
-        recall = n_overlap / len(gold_indices)
-        f1 = (2 * precision * recall) / (precision + recall)
-
-        return f1
-    else:
-        return 0
-
-
-def _count_no_answer(answers: List[dict], metric_counts: Dict[str, float]):
-    # Checks if one of the answers is 'no answer'.
-
-    for answer_idx, answer in enumerate(answers):
-        # check if 'no answer'
-        if answer["answer"] is None:
-            # top-1 answer
-            if answer_idx == 0:
-                metric_counts["correct_no_answers_top1"] += 1
-                metric_counts["correct_readings_top1"] += 1
-                metric_counts["exact_matches_top1"] += 1
-                metric_counts["summed_f1_top1"] += 1
-            # top-k answers
-            metric_counts["correct_no_answers_topk"] += 1
-            metric_counts["correct_readings_topk"] += 1
-            metric_counts["exact_matches_topk"] += 1
-            metric_counts["summed_f1_topk"] += 1
-            break
-
-    return metric_counts
