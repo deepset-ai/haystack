@@ -994,13 +994,13 @@ class PromptNode(BaseComponent):
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
         :param invocation_contexts: List of invocation contexts.
         """
-        inputs = self._flatten_inputs(queries, documents, invocation_contexts)
+        inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts)
         all_results: Dict[str, List] = {"results": [], "invocation_contexts": [], "_debug": []}
+        output_variable = self.output_variable or "results"
         for query, docs, invocation_context in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
         ):
             results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
-            output_variable = self.output_variable or "results"
             all_results[output_variable].append(results[output_variable])
             all_results["invocation_contexts"].append(all_results["invocation_contexts"])
             all_results["_debug"].append(all_results["_debug"])
@@ -1056,7 +1056,7 @@ class PromptNode(BaseComponent):
         multi_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], list)
         single_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], Document)
 
-        # Docs (and file_paths) case 1: single list of Documents (and file_paths)
+        # Docs case 1: single list of Documents
         # -> apply each query (and invocation_contexts) to all Documents
         inputs: Dict[str, List] = {"queries": [], "invocation_contexts": [], "documents": []}
         if documents is not None:
@@ -1066,8 +1066,8 @@ class PromptNode(BaseComponent):
                         inputs["queries"].append(query)
                         inputs["invocation_contexts"].append(invocation_context)
                         inputs["documents"].append([doc])
-            # Docs (and file_paths) case 2: list of lists of Documents
-            # -> apply each query (and invocation_context) to corresponding list of Documents (and file_paths),
+            # Docs case 2: list of lists of Documents
+            # -> apply each query (and invocation_context) to corresponding list of Documents,
             # if queries contains only one query, apply it to each list of Documents
             elif multi_docs_list:
                 total_queries = input_queries.copy()
