@@ -150,5 +150,4 @@ We should show how:
 
 # Unresolved questions
 
-Optional, but suggested for first drafts. What parts of the design are still
-TBD?
+- how to deal with usage of PromptTemplate outside of PromptNode? (e.g. in OpenAIAnswerGenerator)
