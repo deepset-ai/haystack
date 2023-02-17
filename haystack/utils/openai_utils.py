@@ -61,7 +61,7 @@ def load_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
     return tokenizer
 
 
-def _count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
+def count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
     """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
 
     :param text: A string to be tokenized.

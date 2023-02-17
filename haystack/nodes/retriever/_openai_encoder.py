@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.openai_utils import get_use_tiktoken, load_openai_tokenizer, openai_request, _count_openai_tokens
+from haystack.utils.openai_utils import get_use_tiktoken, load_openai_tokenizer, openai_request, count_openai_tokens
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -61,7 +61,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         Ensure that length of the text is within the maximum length of the model.
         OpenAI v1 embedding models have a limit of 2046 tokens, and v2 models have a limit of 8191 tokens.
         """
-        n_tokens = _count_openai_tokens(text, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
+        n_tokens = count_openai_tokens(text, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
         if n_tokens <= self.max_seq_len:
             return text
 

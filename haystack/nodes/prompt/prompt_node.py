@@ -27,7 +27,7 @@ from haystack.utils.openai_utils import (
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
     _check_openai_text_completion_answers,
-    _count_openai_tokens,
+    count_openai_tokens,
 )
 
 logger = logging.getLogger(__name__)
@@ -493,7 +493,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     def _ensure_text_limit(self, prompt: str) -> str:
         """Ensure that length of the text is within the maximum length of the model."""
-        n_tokens = _count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
+        n_tokens = count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
         if n_tokens <= self.MAX_TOKENS_LIMIT:
             return prompt
 
