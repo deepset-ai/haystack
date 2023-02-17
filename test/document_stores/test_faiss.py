@@ -1,6 +1,6 @@
 import faiss
 import pytest
-
+import numpy as np
 
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.testing import DocumentStoreBaseTestAbstract
