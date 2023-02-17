@@ -420,6 +420,11 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
 
         """
+        # This is the default length for answers from OpenAI shown in the docs
+        # here, https://platform.openai.com/docs/api-reference/completions/create.
+        # max_length cannot not be None otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
+        if max_length is None:
+            max_length = 16
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
