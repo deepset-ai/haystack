@@ -1,5 +1,4 @@
 from typing import List, Tuple, Optional, Union
-import logging
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
