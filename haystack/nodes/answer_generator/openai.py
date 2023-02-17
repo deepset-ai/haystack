@@ -20,7 +20,7 @@ from haystack.nodes.prompt import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine()
+machine = platform.machine().lower()
 system = platform.system()
 
 USE_TIKTOKEN = False
