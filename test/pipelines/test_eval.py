@@ -184,7 +184,6 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever):
         assert results["map"] == 1.0
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
