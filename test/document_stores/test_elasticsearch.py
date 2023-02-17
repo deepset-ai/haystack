@@ -9,8 +9,8 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore, E
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes import PreProcessor
+from haystack.testing import DocumentStoreBaseTestAbstract
 
-from .test_base import DocumentStoreBaseTestAbstract
 from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 

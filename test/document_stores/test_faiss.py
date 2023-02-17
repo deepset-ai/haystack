@@ -1,18 +1,11 @@
-import sys
-import os
-
-import yaml
 import faiss
 import pytest
 import numpy as np
 
-from haystack.schema import Document
 from haystack.document_stores.faiss import FAISSDocumentStore
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 from haystack.pipelines import Pipeline
-from haystack.nodes.retriever.dense import EmbeddingRetriever
 
 from ..conftest import MockDenseRetriever
 
