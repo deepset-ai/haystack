@@ -14,7 +14,7 @@ from test.conftest import MockRetriever, MockPromptNode
 
 
 def test_add_and_overwrite_tool():
-    # Add a node as a tool to an agent
+    # Add a Node as a Tool to an Agent
     agent = Agent(prompt_node=MockPromptNode())
     retriever = MockRetriever()
     agent.add_tool(
@@ -26,7 +26,7 @@ def test_add_and_overwrite_tool():
     )
     assert len(agent.tools) == 1
     assert "Retriever" in agent.tools
-    assert agent.is_registered_tool(tool_name="Retriever")
+    assert agent.has_tool(tool_name="Retriever")
     assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseComponent)
 
     agent.add_tool(
@@ -37,7 +37,7 @@ def test_add_and_overwrite_tool():
         )
     )
 
-    # Add a pipeline as a tool to an agent and overwrite the previously added tool
+    # Add a Pipeline as a Tool to an Agent and overwrite the previously added Tool
     retriever_pipeline = DocumentSearchPipeline(MockRetriever())
     agent.add_tool(
         Tool(
@@ -48,7 +48,7 @@ def test_add_and_overwrite_tool():
     )
     assert len(agent.tools) == 1
     assert "Retriever" in agent.tools
-    assert agent.is_registered_tool(tool_name="Retriever")
+    assert agent.has_tool(tool_name="Retriever")
     assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
 
 
@@ -67,7 +67,7 @@ def test_agent_chooses_no_action():
 
 
 def test_max_iterations(caplog, monkeypatch):
-    # Run agent and stop because max_iterations is reached
+    # Run an Agent and stop because max_iterations is reached
     agent = Agent(prompt_node=MockPromptNode(), max_iterations=1)
     retriever = MockRetriever()
     agent.add_tool(
@@ -78,14 +78,23 @@ def test_max_iterations(caplog, monkeypatch):
         )
     )
 
+    # Let the Agent always choose "Retriever" as the Tool with "" as input
     def mock_extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
     monkeypatch.setattr(Agent, "_extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
+
+    # Using max_iterations as specified in the Agent's init method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?")
-        assert result["answers"] == [Answer(answer="", type="generative")]
+    assert result["answers"] == [Answer(answer="", type="generative")]
     assert "Maximum number of agent iterations (1) reached" in caplog.text
+
+    # Setting max_iterations in the Agent's run method
+    with caplog.at_level(logging.WARN, logger="haystack.agents"):
+        result = agent.run("Where does Christelle live?", max_iterations=0)
+    assert result["answers"] == [Answer(answer="", type="generative")]
+    assert "Maximum number of agent iterations (0) reached" in caplog.text
 
 
 def test_run_tool():
