@@ -5,8 +5,6 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-logger = logging.getLogger(__name__)
-
 
 def semantic_answer_similarity(
     predictions: List[List[str]],

@@ -31,7 +31,7 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import __version__
-from haystack.nodes.evaluator.evaluator import semantic_answer_similarity
+from haystack.utils.semantic_answer_similarity import semantic_answer_similarity
 from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
 from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
 from haystack.pipelines.config import (
