@@ -10,7 +10,7 @@ import pytest
 
 from selenium.webdriver.common.by import By
 
-from haystack.nodes.connector import Crawler
+from haystack.nodes.connector.crawler import Crawler
 from haystack.schema import Document
 
 from ..conftest import SAMPLES_PATH
@@ -64,7 +64,7 @@ def test_crawler(tmp_path):
     tmp_dir = tmp_path
     url = ["https://haystack.deepset.ai/"]
 
-    crawler = Crawler(output_dir=tmp_dir, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_dir, file_path_meta_field_name="file_path")
 
     documents = crawler.crawl(urls=url, crawler_depth=0)
     docs_path = [Path(doc.meta["file_path"]) for doc in documents]
@@ -94,14 +94,14 @@ def test_crawler_url_none_exception(tmp_path):
 
 
 def test_crawler_depth_0_single_url(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, crawler_depth=0, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, crawler_depth=0, file_path_meta_field_name="file_path")
     documents = crawler.crawl(urls=[test_url + "/index.html"])
     assert len(documents) == 1
     assert content_match(crawler, test_url + "/index.html", documents[0].meta["file_path"])
 
 
 def test_crawler_depth_0_many_urls(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     _urls = [test_url + "/index.html", test_url + "/page1.html"]
     documents = crawler.crawl(urls=_urls, crawler_depth=0)
     assert len(documents) == 2
@@ -111,7 +111,7 @@ def test_crawler_depth_0_many_urls(test_url, tmp_path):
 
 
 def test_crawler_depth_1_single_url(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=1)
     assert len(documents) == 3
     paths = [doc.meta["file_path"] for doc in documents]
@@ -121,7 +121,7 @@ def test_crawler_depth_1_single_url(test_url, tmp_path):
 
 
 def test_crawler_output_file_structure(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     path = Path(documents[0].meta["file_path"])
     assert content_match(crawler, test_url + "/index.html", path)
@@ -135,7 +135,7 @@ def test_crawler_output_file_structure(test_url, tmp_path):
 
 
 def test_crawler_filter_urls(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
 
     documents = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["index"], crawler_depth=1)
     assert len(documents) == 1
@@ -161,7 +161,7 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
 
 def test_crawler_loading_wait_time(test_url, tmp_path):
     loading_wait_time = 3
-    crawler = Crawler(output_dir=tmp_path, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(
         urls=[test_url + "/page_dynamic.html"], crawler_depth=1, loading_wait_time=loading_wait_time
     )
@@ -190,7 +190,7 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
 
 
 def test_crawler_default_naming_function(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, save_file_path_on_meta=True)
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
 
     link = f"{test_url}/page_with_a_very_long_name_to_do_some_tests_Now_let's_add_some_text_just_to_pass_the_129_chars_mark_and_trigger_the_chars_limit_of_the_default_naming_function.html"
     file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
@@ -207,7 +207,7 @@ def test_crawler_default_naming_function(test_url, tmp_path):
 def test_crawler_naming_function(test_url, tmp_path):
     crawler = Crawler(
         output_dir=tmp_path,
-        save_file_path_on_meta=True,
+        file_path_meta_field_name="file_path",
         crawler_naming_function=lambda link, text: re.sub("[<>:'/\\|?*\0 ]", "_", link),
     )
 
@@ -225,3 +225,11 @@ def test_crawler_not_save_file(test_url):
     crawler = Crawler()
     documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     assert documents[0].meta.get("file_path", None) is None
+
+
+def test_crawler_custom_meta_file_path_name(test_url, tmp_path):
+    crawler = Crawler()
+    documents = crawler.crawl(
+        urls=[test_url + "/index.html"], crawler_depth=0, output_dir=tmp_path, file_path_meta_field_name="custom"
+    )
+    assert documents[0].meta.get("custom", None) is not None

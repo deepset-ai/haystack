@@ -55,8 +55,7 @@ class Crawler(BaseComponent):
         loading_wait_time: Optional[int] = None,
         output_dir: Union[str, Path, None] = None,
         overwrite_existing_files=True,
-        save_file_path_on_meta: Optional[bool] = None,
-        file_path_meta_field_name: str = "file_path",
+        file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
     ):
@@ -80,7 +79,6 @@ class Crawler(BaseComponent):
             E.g. 2: Crawler will wait 2 seconds before scraping page
         :param output_dir: Path for the directory to store files
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
-        :param save_file_path_on_meta: Whether to save the file path on the meta field of the Document
         :param file_path_meta_field_name: The name of the meta field where the file path will be saved
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
@@ -174,7 +172,6 @@ class Crawler(BaseComponent):
         self.loading_wait_time = loading_wait_time
         self.crawler_naming_function = crawler_naming_function
         self.output_dir = output_dir
-        self.save_file_path_on_meta = save_file_path_on_meta
         self.file_path_meta_field_name = file_path_meta_field_name
 
     def __del__(self):
@@ -190,8 +187,7 @@ class Crawler(BaseComponent):
         loading_wait_time: Optional[int] = None,
         output_dir: Union[str, Path, None] = None,
         overwrite_existing_files: Optional[bool] = None,
-        save_file_path_on_meta: Optional[bool] = None,
-        file_path_meta_field_name: str = "file_path",
+        file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> List[Document]:
         """
@@ -217,7 +213,7 @@ class Crawler(BaseComponent):
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
         :param output_dir: If provided, the crawled documents will be saved as JSON files in this directory.
-        :param save_file_path_on_meta: Whether to save the path of the stored file on the meta field of the Document object
+        :param file_path_meta_field_name: The name of the meta field where the file path will be saved
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
             E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
@@ -244,8 +240,6 @@ class Crawler(BaseComponent):
             extract_hidden_text = self.extract_hidden_text
         if loading_wait_time is None:
             loading_wait_time = self.loading_wait_time
-        if save_file_path_on_meta is None:
-            save_file_path_on_meta = self.save_file_path_on_meta
         if file_path_meta_field_name is None:
             file_path_meta_field_name = self.file_path_meta_field_name
         if crawler_naming_function is None:
@@ -282,7 +276,6 @@ class Crawler(BaseComponent):
                         id_hash_keys=id_hash_keys,
                         output_dir=output_dir,
                         overwrite_existing_files=overwrite_existing_files,
-                        save_file_path_on_meta=save_file_path_on_meta,
                         file_path_meta_field_name=file_path_meta_field_name,
                         crawler_naming_function=crawler_naming_function,
                     )
@@ -294,7 +287,6 @@ class Crawler(BaseComponent):
                 id_hash_keys=id_hash_keys,
                 output_dir=output_dir,
                 overwrite_existing_files=overwrite_existing_files,
-                save_file_path_on_meta=save_file_path_on_meta,
                 file_path_meta_field_name=file_path_meta_field_name,
                 crawler_naming_function=crawler_naming_function,
             )
@@ -321,7 +313,6 @@ class Crawler(BaseComponent):
                     id_hash_keys=id_hash_keys,
                     output_dir=output_dir,
                     overwrite_existing_files=overwrite_existing_files,
-                    save_file_path_on_meta=save_file_path_on_meta,
                     file_path_meta_field_name=file_path_meta_field_name,
                     crawler_naming_function=crawler_naming_function,
                 )
@@ -336,6 +327,7 @@ class Crawler(BaseComponent):
         :param url: The current url of the webpage.
         :param text: The text content of the webpage.
         :param base_url: The original url where we started to crawl.
+        :param id_hash_keys: The fields that should be used to generate the document id.
         """
 
         data: Dict[str, Any] = {}
@@ -353,9 +345,8 @@ class Crawler(BaseComponent):
         document: Document,
         output_dir: Path,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        save_file_path_on_meta: Optional[bool] = None,
         overwrite_existing_files: Optional[bool] = None,
-        file_path_meta_field_name: str = "file_path",
+        file_path_meta_field_name: Optional[str] = None,
     ) -> Path:
         url = document.meta["url"]
         if crawler_naming_function is not None:
@@ -367,7 +358,7 @@ class Crawler(BaseComponent):
 
         file_path = output_dir / f"{file_name_prefix}.json"
 
-        if save_file_path_on_meta:
+        if file_path_meta_field_name:
             document.meta[file_path_meta_field_name] = str(file_path)
 
         try:
@@ -400,8 +391,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = False,
         output_dir: Optional[Path] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        save_file_path_on_meta: Optional[bool] = None,
-        file_path_meta_field_name: str = "file_path",
+        file_path_meta_field_name: Optional[str] = None,
     ) -> List[Document]:
         documents: List[Document] = []
         for link in urls:
@@ -422,7 +412,6 @@ class Crawler(BaseComponent):
                     document,
                     output_dir,
                     crawler_naming_function,
-                    save_file_path_on_meta=save_file_path_on_meta,
                     file_path_meta_field_name=file_path_meta_field_name,
                     overwrite_existing_files=overwrite_existing_files,
                 )
@@ -445,8 +434,7 @@ class Crawler(BaseComponent):
         output_dir: Union[str, Path, None] = None,
         overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        save_file_path_on_meta: bool = False,
-        file_path_meta_field_name: str = "file_path",
+        file_path_meta_field_name: Optional[str] = None,
     ) -> Tuple[Dict[str, List[Document]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -469,7 +457,6 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
-        :param save_file_path_on_meta: Whether to save the file path of the crawled files to the meta field of the Document
         :param file_path_meta_field_name: The name of the meta field to save the file path of the crawled files to
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
@@ -490,7 +477,6 @@ class Crawler(BaseComponent):
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
             id_hash_keys=id_hash_keys,
-            save_file_path_on_meta=save_file_path_on_meta,
             file_path_meta_field_name=file_path_meta_field_name,
             crawler_naming_function=crawler_naming_function,
         )
@@ -509,8 +495,7 @@ class Crawler(BaseComponent):
         output_dir: Union[str, Path, None] = None,
         overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        save_file_path_on_meta: bool = False,
-        file_path_meta_field_name: str = "file_path",
+        file_path_meta_field_name: Optional[str] = None,
     ):
         return self.run(
             output_dir=output_dir,
@@ -522,7 +507,6 @@ class Crawler(BaseComponent):
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
             crawler_naming_function=crawler_naming_function,
-            save_file_path_on_meta=save_file_path_on_meta,
             file_path_meta_field_name=file_path_meta_field_name,
         )
 
