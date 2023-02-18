@@ -70,12 +70,16 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
     assert "Reader" in prediction["_debug"].keys()
     assert "input" in prediction["_debug"]["ESRetriever"].keys()
     assert "output" in prediction["_debug"]["ESRetriever"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["ESRetriever"].keys()
     assert "input" in prediction["_debug"]["Reader"].keys()
     assert "output" in prediction["_debug"]["Reader"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["Reader"].keys()
     assert prediction["_debug"]["ESRetriever"]["input"]
     assert prediction["_debug"]["ESRetriever"]["output"]
+    assert prediction["_debug"]["ESRetriever"]["exec_time_ms"]
     assert prediction["_debug"]["Reader"]["input"]
     assert prediction["_debug"]["Reader"]["output"]
+    assert prediction["_debug"]["Reader"]["exec_time_ms"]
 
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)
