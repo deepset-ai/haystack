@@ -1,10 +1,10 @@
 from __future__ import annotations
 import inspect
 import logging
+from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
 import networkx as nx
-from time import time
 
 try:
     from ray import serve
