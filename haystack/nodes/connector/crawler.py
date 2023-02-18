@@ -166,7 +166,6 @@ class Crawler(BaseComponent):
             logger.info("'chrome-driver' will be automatically installed.")
             self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         self.urls = urls
-
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
         self.overwrite_existing_files = overwrite_existing_files
@@ -261,8 +260,10 @@ class Crawler(BaseComponent):
 
             is_not_empty = len(list(output_dir.rglob("*"))) > 0
             if is_not_empty and not overwrite_existing_files:
-                logger.info(
-                    "Found data stored in `%s`. Delete this first if you really want to fetch new data.", output_dir
+                logger.warning(
+                    "Found data stored in `%s`. Use an empty folder or set `overwrite_existing_files=True`, "
+                    "if you want to overwrite any already present saved files.",
+                    output_dir,
                 )
             else:
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
@@ -280,6 +281,7 @@ class Crawler(BaseComponent):
                         loading_wait_time=loading_wait_time,
                         id_hash_keys=id_hash_keys,
                         output_dir=output_dir,
+                        overwrite_existing_files=overwrite_existing_files,
                         save_file_path_on_meta=save_file_path_on_meta,
                         file_path_meta_field_name=file_path_meta_field_name,
                         crawler_naming_function=crawler_naming_function,
@@ -291,6 +293,7 @@ class Crawler(BaseComponent):
                 loading_wait_time=loading_wait_time,
                 id_hash_keys=id_hash_keys,
                 output_dir=output_dir,
+                overwrite_existing_files=overwrite_existing_files,
                 save_file_path_on_meta=save_file_path_on_meta,
                 file_path_meta_field_name=file_path_meta_field_name,
                 crawler_naming_function=crawler_naming_function,
@@ -317,6 +320,7 @@ class Crawler(BaseComponent):
                     loading_wait_time=loading_wait_time,
                     id_hash_keys=id_hash_keys,
                     output_dir=output_dir,
+                    overwrite_existing_files=overwrite_existing_files,
                     save_file_path_on_meta=save_file_path_on_meta,
                     file_path_meta_field_name=file_path_meta_field_name,
                     crawler_naming_function=crawler_naming_function,
@@ -350,6 +354,7 @@ class Crawler(BaseComponent):
         output_dir: Path,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         save_file_path_on_meta: Optional[bool] = None,
+        overwrite_existing_files: Optional[bool] = None,
         file_path_meta_field_name: str = "file_path",
     ) -> Path:
         url = document.meta["url"]
@@ -366,8 +371,13 @@ class Crawler(BaseComponent):
             document.meta[file_path_meta_field_name] = str(file_path)
 
         try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(document.to_dict(), f)
+            if overwrite_existing_files or not file_path.exists():
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(document.to_dict(), f)
+            else:
+                logging.debug(
+                    "File '%s' already exists. Set 'overwrite_existing_files=True' to overwrite it.", file_path
+                )
         except Exception:
             logging.exception(
                 "Crawler can't save the content of '%s' under '%s'. "
@@ -387,6 +397,7 @@ class Crawler(BaseComponent):
         base_url: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
         loading_wait_time: Optional[int] = None,
+        overwrite_existing_files: Optional[bool] = False,
         output_dir: Optional[Path] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         save_file_path_on_meta: Optional[bool] = None,
@@ -413,6 +424,7 @@ class Crawler(BaseComponent):
                     crawler_naming_function,
                     save_file_path_on_meta=save_file_path_on_meta,
                     file_path_meta_field_name=file_path_meta_field_name,
+                    overwrite_existing_files=overwrite_existing_files,
                 )
                 logger.debug("Saved content to '%s'", file_path)
 
