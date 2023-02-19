@@ -3,8 +3,7 @@ import numpy as np
 
 from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):

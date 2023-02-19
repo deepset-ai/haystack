@@ -7,8 +7,7 @@ import numpy as np
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
