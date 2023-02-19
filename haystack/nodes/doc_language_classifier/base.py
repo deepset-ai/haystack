@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class BaseDocumentLanguageClassifier(BaseComponent):
+    """
+    Abstract class for Document Language Classifiers
+    """
+
     outgoing_edges = 1
     route_by_language = False
     languages_to_route: List[str] = []
@@ -24,14 +28,18 @@ class BaseDocumentLanguageClassifier(BaseComponent):
     def _get_edge_from_language(self, language: str) -> str:
         return f"output_{self.languages_to_route.index(language) + 1}"
 
-    def run(self, documents: List[Document]) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
+    def run(self, documents: List[Document], route_by_language: Optional[bool] = None) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
         """
-        Sends out documents on a different output edge depending on their language.
-        :param documents: list of documents to classify.
+        Run language document classifier on a list of documents.
+
+        :param documents: list of documents to detect language.
+        :param route_by_language: whether to send documents on a different output edge depending on their language.
         """
         docs_with_languages = self.predict(documents=documents)
 
-        if self.route_by_language is False:
+        if route_by_language is None:
+            route_by_language = self.route_by_language
+        if route_by_language is False:
             output = {"documents": docs_with_languages}
             return output, "output_1"
 
@@ -41,7 +49,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         if len(unique_languages) > 1:
             raise ValueError(
                 f"If route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
-                "If you want to route documents by language, you can call Pipeline.run() once for each file, or consider using Pipeline.run_batch()."
+                "If you want to route documents by language, you can call Pipeline.run() once for each file."
             )
         if unique_languages[0] is None:
             logging.warning(
@@ -58,13 +66,17 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             )
         return output, self._get_edge_from_language(str(language))
 
-    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict, str]:  # type: ignore
+    def run_batch(self, documents: List[List[Document]], batch_size: Optional[int] = None, route_by_language: Optional[bool] = None) -> Tuple[Dict, str]:  # type: ignore
         """
-        Sends out documents on a different output edge depending on their language, in batches.
-        :param documents: list of lists of documents to classify.
-        """
-        docs_lists_with_languages = self.predict_batch(documents=documents)
+        Run language document classifier on batches of documents.
 
+        :param documents: list of lists of documents to detect language.
+        :param route_by_language: whether to send documents on a different output edge depending on their language.
+        """
+        docs_lists_with_languages = self.predict_batch(documents=documents, batch_size=batch_size)
+
+        if route_by_language is None:
+            route_by_language = self.route_by_language
         if self.route_by_language is False:
             output = {"documents": docs_lists_with_languages}
             return output, "output_1"
