@@ -370,6 +370,32 @@ class MockPromptNode(PromptNode):
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]
 
+    def get_prompt_template(self, prompt_template_name: str) -> PromptTemplate:
+        if prompt_template_name == "think-step-by-step":
+            return PromptTemplate(
+                name="think-step-by-step",
+                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+                "correctly, you have access to the following tools:\n\n"
+                "$tool_names_with_descriptions\n\n"
+                "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
+                "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
+                "for a final answer, respond with the `Final Answer:`\n\n"
+                "Use the following format:\n\n"
+                "Question: the question to be answered\n"
+                "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
+                "Tool: [$tool_names]\n"
+                "Tool Input: the input for the tool\n"
+                "Observation: the tool will respond with the result\n"
+                "...\n"
+                "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
+                "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
+                "---\n\n"
+                "Question: $query\n"
+                "Thought: Let's think step-by-step, I first need to $generated_text",
+            )
+        else:
+            return PromptTemplate(name="", prompt_text="")
+
 
 #
 # Document collections
