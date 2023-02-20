@@ -730,7 +730,9 @@ class PromptNode(BaseComponent):
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
-        self.output_variable: Optional[str] = output_variable
+        if output_variable is None:
+            output_variable = "results"
+        self.output_variable: str = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
@@ -959,14 +961,12 @@ class PromptNode(BaseComponent):
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
-        final_result: Dict[str, Any] = {}
-        output_variable = self.output_variable or "results"
-        if output_variable:
-            invocation_context[output_variable] = results
-            final_result[output_variable] = results
-
-        final_result["invocation_context"] = invocation_context
-        final_result["_debug"] = {"prompts_used": prompt_collector}
+        invocation_context[self.output_variable] = results
+        final_result: Dict[str, Any] = {
+            self.output_variable: results,
+            "invocation_context": invocation_context,
+            "_debug": {"prompts_used": prompt_collector},
+        }
         return final_result, "output_1"
 
     def run_batch(  # type: ignore
@@ -995,13 +995,12 @@ class PromptNode(BaseComponent):
         :param invocation_contexts: List of invocation contexts.
         """
         inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts)
-        output_variable = self.output_variable or "results"
-        all_results: Dict[str, List] = {output_variable: [], "invocation_contexts": [], "_debug": []}
+        all_results: Dict[str, List] = {self.output_variable: [], "invocation_contexts": [], "_debug": []}
         for query, docs, invocation_context in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
         ):
             results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
-            all_results[output_variable].append(results[output_variable])
+            all_results[self.output_variable].append(results[self.output_variable])
             all_results["invocation_contexts"].append(all_results["invocation_contexts"])
             all_results["_debug"].append(all_results["_debug"])
         return all_results, "output_1"
