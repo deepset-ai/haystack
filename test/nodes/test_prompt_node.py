@@ -319,12 +319,12 @@ def test_simple_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
 
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert result["results"][0].casefold() == "positive"
+    assert result["out"][0].casefold() == "positive"
 
 
 @pytest.mark.integration
@@ -774,7 +774,7 @@ class TestRunBatch:
         if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
             pytest.skip("No API key found for OpenAI, skipping test")
 
-        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
 
         pipe = Pipeline()
         pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -785,11 +785,11 @@ class TestRunBatch:
                 [Document("I am not feeling well.")],
             ],
         )
-        assert isinstance(result["results"], list)
-        assert isinstance(result["results"][0], list)
-        assert isinstance(result["results"][0][0], str)
-        assert all("positive" in x.casefold() for x in result["results"][0])
-        assert "negative" in result["results"][1][0].casefold()
+        assert isinstance(result["out"], list)
+        assert isinstance(result["out"][0], list)
+        assert isinstance(result["out"][0][0], str)
+        assert all("positive" in x.casefold() for x in result["out"][0])
+        assert "negative" in result["out"][1][0].casefold()
 
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)

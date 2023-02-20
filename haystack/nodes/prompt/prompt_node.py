@@ -995,8 +995,8 @@ class PromptNode(BaseComponent):
         :param invocation_contexts: List of invocation contexts.
         """
         inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts)
-        all_results: Dict[str, List] = {"results": [], "invocation_contexts": [], "_debug": []}
         output_variable = self.output_variable or "results"
+        all_results: Dict[str, List] = {output_variable: [], "invocation_contexts": [], "_debug": []}
         for query, docs, invocation_context in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
         ):
