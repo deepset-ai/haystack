@@ -213,7 +213,7 @@ class Crawler(BaseComponent):
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
         :param output_dir: If provided, the crawled documents will be saved as JSON files in this directory.
-        :param file_path_meta_field_name: The name of the meta field where the file path will be saved
+        :param file_path_meta_field_name: If provided, the file path will be stored in this meta field.
         :param crawler_naming_function: A function mapping the crawled page to a file name.
             By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
             E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
