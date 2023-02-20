@@ -1,6 +1,5 @@
 from __future__ import annotations
 import csv
-import warnings
 import hashlib
 import inspect
 
