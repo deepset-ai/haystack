@@ -5,8 +5,7 @@ import pytest
 
 from haystack.document_stores.sql import LabelORM, SQLDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
@@ -172,4 +171,9 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip(reason="embeddings are not supported")
     @pytest.mark.integration
     def test_get_embedding_count(self):
+        pass
+
+    @pytest.mark.skip(reason="embeddings are not supported")
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
         pass

@@ -18,8 +18,8 @@ from haystack.document_stores.opensearch import (
     tqdm,
 )
 from haystack.errors import DocumentStoreError
+from haystack.testing import DocumentStoreBaseTestAbstract
 
-from .test_base import DocumentStoreBaseTestAbstract
 from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 
@@ -127,8 +127,11 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         OpenSearchDocumentStore(index="nmslib_index", create_index=True)
 
     @pytest.mark.integration
-    def test___init___faiss(self):
-        OpenSearchDocumentStore(index="faiss_index", create_index=True, knn_engine="faiss")
+    @pytest.mark.parametrize("index_type", ["flat", "hnsw", "ivf", "ivf_pq"])
+    def test___init___faiss(self, index_type):
+        OpenSearchDocumentStore(
+            index=f"faiss_index_{index_type}", recreate_index=True, knn_engine="faiss", index_type=index_type
+        )
 
     @pytest.mark.integration
     def test___init___score_script(self):
@@ -184,6 +187,107 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert len(results) == 2
         for result in results:
             assert len(result) == 3
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("index_type", ["ivf", "ivf_pq"])
+    def test_train_index_from_documents(self, ds: OpenSearchDocumentStore, documents, index_type):
+        # Create another document store on top of the previous one
+        ds = OpenSearchDocumentStore(
+            index=ds.index,
+            label_index=ds.label_index,
+            recreate_index=True,
+            knn_engine="faiss",
+            index_type=index_type,
+            knn_parameters={"code_size": 2},
+        )
+
+        # Check that IVF indices use score_script before training
+        emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
+        assert emb_field_settings == {"type": "knn_vector", "dimension": 768}
+
+        ds.train_index(documents)
+        # Check that embedding_field_settings have been updated
+        emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
+        assert emb_field_settings == {"type": "knn_vector", "model_id": f"{ds.index}-ivf"}
+
+        # Check that model uses expected parameters
+        expected_model_settigns = {"index_type": index_type, "nlist": 4, "nprobes": 1}
+        if index_type == "ivf_pq":
+            expected_model_settigns["code_size"] = 2
+            expected_model_settigns["m"] = 1
+        model_endpoint = f"/_plugins/_knn/models/{ds.index}-ivf"
+        response = ds.client.transport.perform_request("GET", url=model_endpoint)
+        model_settings_list = [setting.split(":") for setting in response["description"].split()]
+        model_settings = {k: (int(v) if v.isnumeric() else v) for k, v in model_settings_list}
+        assert model_settings == expected_model_settigns
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("index_type", ["ivf", "ivf_pq"])
+    def test_train_index_from_embeddings(self, ds: OpenSearchDocumentStore, documents, index_type):
+        # Create another document store on top of the previous one
+        ds = OpenSearchDocumentStore(
+            index=ds.index,
+            label_index=ds.label_index,
+            recreate_index=True,
+            knn_engine="faiss",
+            index_type=index_type,
+            knn_parameters={"code_size": 2},
+        )
+
+        # Check that IVF indices use HNSW with default settings before training
+        emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
+        assert emb_field_settings == {"type": "knn_vector", "dimension": 768}
+
+        embeddings = np.array([doc.embedding for doc in documents if doc.embedding is not None])
+        ds.train_index(embeddings=embeddings)
+        # Check that embedding_field_settings have been updated
+        emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
+        assert emb_field_settings == {"type": "knn_vector", "model_id": f"{ds.index}-ivf"}
+
+        # Check that model uses expected parameters
+        expected_model_settigns = {"index_type": index_type, "nlist": 4, "nprobes": 1}
+        if index_type == "ivf_pq":
+            expected_model_settigns["code_size"] = 2
+            expected_model_settigns["m"] = 1
+        model_endpoint = f"/_plugins/_knn/models/{ds.index}-ivf"
+        response = ds.client.transport.perform_request("GET", url=model_endpoint)
+        model_settings_list = [setting.split(":") for setting in response["description"].split()]
+        model_settings = {k: (int(v) if v.isnumeric() else v) for k, v in model_settings_list}
+        assert model_settings == expected_model_settigns
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("index_type", ["ivf", "ivf_pq"])
+    def test_train_index_with_write_documents(self, ds: OpenSearchDocumentStore, documents, index_type):
+        # Create another document store on top of the previous one
+        ds = OpenSearchDocumentStore(
+            index=ds.index,
+            label_index=ds.label_index,
+            recreate_index=True,
+            knn_engine="faiss",
+            index_type=index_type,
+            knn_parameters={"code_size": 2},
+            ivf_train_size=6,
+        )
+
+        # Check that IVF indices use HNSW with default settings before training
+        emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
+        assert emb_field_settings == {"type": "knn_vector", "dimension": 768}
+
+        ds.write_documents(documents)
+        # Check that embedding_field_settings have been updated
+        emb_field_settings = ds.client.indices.get(ds.index)[ds.index]["mappings"]["properties"][ds.embedding_field]
+        assert emb_field_settings == {"type": "knn_vector", "model_id": f"{ds.index}-ivf"}
+
+        # Check that model uses expected parameters
+        expected_model_settigns = {"index_type": index_type, "nlist": 4, "nprobes": 1}
+        if index_type == "ivf_pq":
+            expected_model_settigns["code_size"] = 2
+            expected_model_settigns["m"] = 1
+        model_endpoint = f"/_plugins/_knn/models/{ds.index}-ivf"
+        response = ds.client.transport.perform_request("GET", url=model_endpoint)
+        model_settings_list = [setting.split(":") for setting in response["description"].split()]
+        model_settings = {k: (int(v) if v.isnumeric() else v) for k, v in model_settings_list}
+        assert model_settings == expected_model_settigns
 
     # Unit tests
 
@@ -293,6 +397,20 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.embedding_field = ""
         with pytest.raises(DocumentStoreError):
             mocked_document_store.query_by_embedding(self.query_emb)
+
+    @pytest.mark.unit
+    def test_query_by_embedding_raises_if_ivf_untrained(self, mocked_document_store):
+        mocked_document_store.index_type = "ivf"
+        mocked_document_store.ivf_train_size = 10
+        with pytest.raises(DocumentStoreError, match="Index of type 'ivf' is not trained yet."):
+            mocked_document_store.query_by_embedding(self.query_emb)
+
+    @pytest.mark.unit
+    def test_query_by_embedding_batch_if_ivf_untrained(self, mocked_document_store):
+        mocked_document_store.index_type = "ivf"
+        mocked_document_store.ivf_train_size = 10
+        with pytest.raises(DocumentStoreError, match="Index of type 'ivf' is not trained yet."):
+            mocked_document_store.query_by_embedding_batch([self.query_emb])
 
     @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
@@ -649,8 +767,10 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test__init_indices_creates_index_if_exists_and_recreate_index(self, mocked_document_store):
-        # delete_index askes twice + one check for each index creation
-        mocked_document_store.client.indices.exists.side_effect = [True, True, False, False]
+        # delete_index asks four times: one check for doc index, one check for label index
+        # + one check for both if ivf model exists
+        # create_index asks two times: one for doc index, one for label index
+        mocked_document_store.client.indices.exists.side_effect = [True, False, True, False, False, False]
         mocked_document_store._init_indices(self.index_name, "label_index", create_index=True, recreate_index=True)
 
         mocked_document_store.client.indices.delete.assert_called()
@@ -824,7 +944,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         }
 
     @pytest.mark.unit
-    def test__get_embedding_field_mapping_hnsw(self, mocked_document_store):
+    def test__get_embedding_field_mapping_default_hnsw(self, mocked_document_store):
         mocked_document_store.index_type = "hnsw"
 
         assert mocked_document_store._get_embedding_field_mapping() == {
@@ -839,7 +959,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         }
 
     @pytest.mark.unit
-    def test__get_embedding_field_mapping_hnsw_faiss(self, mocked_document_store):
+    def test__get_embedding_field_mapping_default_hnsw_faiss(self, mocked_document_store):
         mocked_document_store.index_type = "hnsw"
         mocked_document_store.knn_engine = "faiss"
 
@@ -855,13 +975,134 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         }
 
     @pytest.mark.unit
+    def test__get_embedding_field_mapping_custom_hnsw(self, mocked_document_store):
+        mocked_document_store.index_type = "hnsw"
+        mocked_document_store.knn_parameters = {"ef_construction": 1, "m": 2}
+
+        assert mocked_document_store._get_embedding_field_mapping() == {
+            "type": "knn_vector",
+            "dimension": 768,
+            "method": {
+                "space_type": "innerproduct",
+                "engine": "nmslib",
+                "name": "hnsw",
+                "parameters": {"ef_construction": 1, "m": 2},
+            },
+        }
+
+    @pytest.mark.unit
+    def test__get_embedding_field_mapping_custom_hnsw_faiss(self, mocked_document_store):
+        mocked_document_store.index_type = "hnsw"
+        mocked_document_store.knn_engine = "faiss"
+        mocked_document_store.knn_parameters = {"ef_construction": 1, "m": 2, "ef_search": 3}
+
+        assert mocked_document_store._get_embedding_field_mapping() == {
+            "type": "knn_vector",
+            "dimension": 768,
+            "method": {
+                "space_type": "innerproduct",
+                "engine": "faiss",
+                "name": "hnsw",
+                "parameters": {"ef_construction": 1, "m": 2, "ef_search": 3},
+            },
+        }
+
+    @pytest.mark.unit
+    def test__get_embedding_field_mapping_ivf(self, mocked_document_store):
+        mocked_document_store.index_type = "ivf"
+        mocked_document_store.knn_engine = "faiss"
+        mocked_document_store.client.indices.exists.return_value = False
+
+        # Before training, IVF indices use HNSW with default settings
+        assert mocked_document_store._get_embedding_field_mapping() == {"type": "knn_vector", "dimension": 768}
+
+        # Assume we have trained the index
+        mocked_document_store.client.indices.exists.return_value = True
+        mocked_document_store.client.transport.perform_request.return_value = {
+            "took": 4,
+            "timed_out": False,
+            "_shards": {"total": 1, "successful": 1, "skipped": 0, "failed": 0},
+            "hits": {
+                "total": {"value": 1, "relation": "eq"},
+                "max_score": 1.0,
+                "hits": [
+                    {
+                        "_index": ".opensearch-knn-models",
+                        "_type": "_doc",
+                        "_id": "document-ivf",
+                        "_score": 1.0,
+                        "_source": {
+                            "model_blob": "<SOME MODEL BLOB>",
+                            "engine": "faiss",
+                            "space_type": "innerproduct",
+                            "description": "index_type:ivf nlist:4 nprobes:1",
+                            "model_id": f"{mocked_document_store.index}-ivf",
+                            "state": "created",
+                            "error": "",
+                            "dimension": 768,
+                            "timestamp": "2023-01-25T16:04:21.284398Z",
+                        },
+                    }
+                ],
+            },
+        }
+        assert mocked_document_store._get_embedding_field_mapping() == {
+            "type": "knn_vector",
+            "model_id": f"{mocked_document_store.index}-ivf",
+        }
+
+    @pytest.mark.unit
+    def test__get_embedding_field_mapping_ivfpq(self, mocked_document_store):
+        mocked_document_store.index_type = "ivf_pq"
+        mocked_document_store.knn_engine = "faiss"
+        mocked_document_store.client.indices.exists.return_value = False
+
+        # Before training, IVF indices use HNSW with default settings
+        assert mocked_document_store._get_embedding_field_mapping() == {"type": "knn_vector", "dimension": 768}
+
+        # Assume we have trained the index
+        mocked_document_store.client.indices.exists.return_value = True
+        mocked_document_store.client.transport.perform_request.return_value = {
+            "took": 4,
+            "timed_out": False,
+            "_shards": {"total": 1, "successful": 1, "skipped": 0, "failed": 0},
+            "hits": {
+                "total": {"value": 1, "relation": "eq"},
+                "max_score": 1.0,
+                "hits": [
+                    {
+                        "_index": ".opensearch-knn-models",
+                        "_type": "_doc",
+                        "_id": "document-ivf",
+                        "_score": 1.0,
+                        "_source": {
+                            "model_blob": "<SOME MODEL BLOB>",
+                            "engine": "faiss",
+                            "space_type": "innerproduct",
+                            "description": "index_type:ivf_pq nlist:4 nprobes:1 m:1 code_size:8",
+                            "model_id": f"{mocked_document_store.index}-ivf",
+                            "state": "created",
+                            "error": "",
+                            "dimension": 768,
+                            "timestamp": "2023-01-25T16:04:21.284398Z",
+                        },
+                    }
+                ],
+            },
+        }
+        assert mocked_document_store._get_embedding_field_mapping() == {
+            "type": "knn_vector",
+            "model_id": f"{mocked_document_store.index}-ivf",
+        }
+
+    @pytest.mark.unit
     def test__get_embedding_field_mapping_wrong(self, mocked_document_store, caplog):
         mocked_document_store.index_type = "foo"
 
         with caplog.at_level(logging.ERROR, logger="haystack.document_stores.opensearch"):
             retval = mocked_document_store._get_embedding_field_mapping()
 
-        assert "Set index_type to either 'flat' or 'hnsw'" in caplog.text
+        assert "Set index_type to either 'flat', 'hnsw', 'ivf', or 'ivf_pq'" in caplog.text
         assert retval == {
             "type": "knn_vector",
             "dimension": 768,

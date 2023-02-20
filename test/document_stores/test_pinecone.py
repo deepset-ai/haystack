@@ -10,9 +10,8 @@ import pytest
 from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.schema import Document
 from haystack.errors import FilterError, PineconeDocumentStoreError
+from haystack.testing import DocumentStoreBaseTestAbstract
 
-
-from .test_base import DocumentStoreBaseTestAbstract
 from ..mocks import pinecone as pinecone_mock
 from ..nodes.test_retriever import MockBaseRetriever
 
