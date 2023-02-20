@@ -730,9 +730,7 @@ class PromptNode(BaseComponent):
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
-        if output_variable is None:
-            output_variable = "results"
-        self.output_variable: str = output_variable
+        self.output_variable: str = output_variable or "results"
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
