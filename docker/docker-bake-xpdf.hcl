@@ -6,7 +6,7 @@ target "xpdf" {
   dockerfile = "Dockerfile.xpdf"
   tags = ["deepset/xpdf:latest"]
   args = {
-    XPDF_VERSION = "4.04"
+    xpdf_version = "${XPDF_VERSION}"
   }
   platforms = ["linux/amd64", "linux/arm64"]
 }
