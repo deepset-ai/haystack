@@ -20,7 +20,11 @@ from transformers import (
 from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
-from haystack.environment import HAYSTACK_REMOTE_API_BACKOFF_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+)
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
@@ -435,8 +439,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         }
 
     @retry_with_exponential_backoff(
-        backoff_in_seconds=int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
+        backoff_in_seconds=float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
         max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
+        errors=(OpenAIRateLimitError, OpenAIError),
     )
     def invoke(self, *args, **kwargs):
         """
@@ -474,11 +479,17 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "stop": kwargs_with_defaults.get("stop", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "best_of": kwargs.get("best_of", 1),
-            "logit_bias": kwargs.get("logit_bias", {}),
+            "best_of": kwargs_with_defaults.get("best_of", 1),
+            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        response = requests.request(
+            "POST",
+            self.url,
+            headers=headers,
+            data=json.dumps(payload),
+            timeout=float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30)),
+        )
         res = json.loads(response.text)
 
         if response.status_code != 200:
