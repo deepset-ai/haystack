@@ -11,11 +11,12 @@ RUN apt-get update && \
     poppler-utils \
     tesseract-ocr
 
-ARG xpdf_version
-RUN curl -O https://dl.xpdfreader.com/xpdf-${xpdf_version}.tar.gz && \
-    tar -xvf xpdf-${xpdf_version}.tar.gz && \
-    cd xpdf-${xpdf_version} && \
+ARG XPDF_VERSION
+RUN curl -O https://dl.xpdfreader.com/xpdf-${XPDF_VERSION}.tar.gz && \
+    tar -xvf xpdf-${XPDF_VERSION}.tar.gz && \
+    cd xpdf-${XPDF_VERSION} && \
     cmake . && \
     make && \
     cp xpdf/pdftotext /opt && \
-    rm -rf ../xpdf-${xpdf_version}
+    cd .. \
+    rm -rf xpdf-${XPDF_VERSION}
