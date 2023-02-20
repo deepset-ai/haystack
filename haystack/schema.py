@@ -178,9 +178,7 @@ class Document:
         return _doc
 
     @classmethod
-    def from_dict(
-        cls, dict: Dict[str, Any], field_map: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
-    ) -> Document:
+    def from_dict(cls, dict: Dict[str, Any], field_map: Optional[Dict[str, Any]] = None) -> Document:
         """
         Create Document from dict. An optional `field_map` parameter can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
@@ -198,15 +196,6 @@ class Document:
         """
         if not field_map:
             field_map = {}
-        if id_hash_keys:
-            warnings.warn(
-                message="Passing id_hash_keys directly is deprecated: Document objects now store such information internally.\n"
-                "Old API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}}, id_hash_keys=['meta'])\n"
-                "New API: Document.from_dict({'content': 'test', 'meta': {'some': 'value'}, 'id_hash_keys': ['meta']})\n",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            dict["id_hash_keys"] = id_hash_keys
 
         _doc = dict.copy()
         init_args = ["content", "content_type", "id", "score", "id_hash_keys", "question", "meta", "embedding"]
