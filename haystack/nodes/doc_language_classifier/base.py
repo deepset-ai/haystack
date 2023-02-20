@@ -54,7 +54,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         if unique_languages[0] is None:
             logging.warning(
                 "The model cannot detect the language of any of the documents."
-                "The first language in the list of supported languages ​​will be used to route the document: %s",
+                "The first language in the list of supported languages will be used to route the document: %s",
                 self.languages_to_route[0],
             )
             language: Optional[str] = self.languages_to_route[0]
@@ -83,7 +83,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
 
         # route_by_language is True
         split: Dict[str, Dict[str, List[List[Document]]]] = {
-            f"output_{pos}": {"documents": []} for pos in range(len(self.languages_to_route))
+            f"output_{pos}": {"documents": []} for pos in range(1, len(self.languages_to_route) + 1)
         }
 
         for docs_list in docs_lists_with_languages:
@@ -97,7 +97,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             if unique_languages[0] is None:
                 logging.warning(
                     "The model cannot detect the language of some of the documents."
-                    "The first language in the list of supported languages ​​will be used to route the document: %s",
+                    "The first language in the list of supported languages will be used to route the document: %s",
                     self.languages_to_route[0],
                 )
                 language: Optional[str] = self.languages_to_route[0]

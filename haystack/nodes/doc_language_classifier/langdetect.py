@@ -22,12 +22,7 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         languages_to_route = component_params.get("languages_to_route", DEFAULT_LANGUAGES)
         return len(languages_to_route)
 
-    def __init__(
-        self,
-        add_language_to_meta: bool = True,
-        route_by_language: bool = True,
-        languages_to_route: Optional[List[str]] = None,
-    ):
+    def __init__(self, route_by_language: bool = True, languages_to_route: Optional[List[str]] = None):
         """
         Node that sends out Documents on a different output edge depending on the language the document is written in.
         :param languages: languages that this node can distinguish (ISO code, see `langdetect` documentation).
@@ -41,7 +36,6 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
             duplicates = {lang for lang in languages_to_route if languages_to_route.count(lang) > 1}
             raise ValueError(f"languages_to_route parameter can't contain duplicate values ({duplicates}).")
 
-        self.add_language_to_meta = add_language_to_meta
         self.route_by_language = route_by_language
         self.languages_to_route = languages_to_route
 
@@ -72,11 +66,10 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
                           (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param batch_size: Number of Documents to process at a time.
         """
-
         if len(documents) == 0 or all(len(docs_list) == 0 for docs_list in documents):
             raise AttributeError("DocumentLanguageClassifier needs at least one document to predict the language.")
-
-        # TODO:  if batch_size is None:
-        #     batch_size = self.batch_size
-
+        if batch_size is not None:
+            logger.warning(
+                "LangdetectDocumentLanguageClassifier does not support batch_size. This parameter is ignored."
+            )
         return [self.predict(documents=docs_list) for docs_list in documents]
