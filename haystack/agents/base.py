@@ -160,7 +160,7 @@ class Agent:
                     answer=final_answer,
                     tool_names=tool_names,
                     tool_names_with_descriptions=tool_names_with_descriptions,
-                    generated_text=transcript,
+                    generated_text=transcript + pred,
                 )
             tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=pred)
             if tool_name is None or tool_input is None:
