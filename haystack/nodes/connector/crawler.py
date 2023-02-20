@@ -77,7 +77,7 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
-        :param output_dir: Path for the directory to store files
+        :param output_dir: If provided, the crawled documents will be saved as JSON files in this directory.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         :param file_path_meta_field_name: The name of the meta field where the file path will be saved
         :param crawler_naming_function: A function mapping the crawled page to a file name.
