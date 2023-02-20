@@ -346,6 +346,21 @@ def test_complex_pipeline(prompt_model):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_simple_pipeline_with_topk(prompt_model):
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
+
+    assert len(result["results"]) == 2
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_complex_pipeline_with_qa(prompt_model):
     """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
     because in a question-answering pipeline the retrievers need `query` as a string, so the PromptNode
