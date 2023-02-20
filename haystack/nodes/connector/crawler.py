@@ -197,7 +197,6 @@ class Crawler(BaseComponent):
         All parameters are optional here and only meant to overwrite instance attributes at runtime.
         If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
-
         :param urls: List of http addresses or single http address
         :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
                               0: Only initial list of urls
