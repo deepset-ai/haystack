@@ -337,6 +337,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
+        top_k = kwargs.pop("top_k", None)
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -351,6 +352,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
+            if top_k:
+                model_input_kwargs["num_return_sequences"] = top_k
+                model_input_kwargs["num_beams"] = top_k
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
@@ -464,6 +468,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             # we use keyword stop_words but OpenAI uses stop
             if "stop_words" in kwargs:
                 kwargs["stop"] = kwargs.pop("stop_words")
+            if "top_k" in kwargs:
+                top_k = kwargs.pop("top_k")
+                kwargs["n"] = top_k
+                kwargs["best_of"] = top_k
             kwargs_with_defaults.update(kwargs)
         payload = {
             "model": self.model_name_or_path,
@@ -722,6 +730,7 @@ class PromptNode(BaseComponent):
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
+        top_k: int = 1,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -735,6 +744,7 @@ class PromptNode(BaseComponent):
         :param use_auth_token: The authentication token to use for the model.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use for the model.
+        :param top_k: Number of independently generated text to return per prompt.
         :param stop_words: Stops text generation if any one of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
         """
@@ -745,6 +755,7 @@ class PromptNode(BaseComponent):
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
+        self.top_k: int = top_k
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -1017,7 +1028,7 @@ class PromptNode(BaseComponent):
     def _prepare_model_kwargs(self):
         # these are the parameters from PromptNode level
         # that are passed to the prompt model invocation layer
-        return {"stop_words": self.stop_words}
+        return {"stop_words": self.stop_words, "top_k": self.top_k}
 
     @staticmethod
     def _flatten_inputs(
