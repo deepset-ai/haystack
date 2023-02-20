@@ -298,10 +298,10 @@ class SpeechDocument(Document):
         return dictionary
 
     @classmethod
-    def from_dict(cls, dict, field_map=None):
+    def from_dict(cls, dict, field_map=None, id_hash_keys=None):
         if field_map is None:
             field_map = {}
-        doc = super().from_dict(dict=dict, field_map=field_map)
+        doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
         doc.content_audio = Path(dict["content_audio"])
         return doc
 
