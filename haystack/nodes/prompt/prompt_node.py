@@ -221,7 +221,10 @@ class PromptModelInvocationLayer:
 
     @abstractmethod
     def _ensure_token_limit(self, prompt: str) -> str:
-        """Ensure that length of the text is within the maximum token length of the PromptModel."""
+        """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
         pass
 
 
@@ -375,7 +378,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return generated_texts
 
     def _ensure_token_limit(self, prompt: str) -> str:
-        """Ensure that length of the text is within the maximum length of the model."""
+        """Ensure that length of the prompt and answer is within the maximum length of the model.
+        This is accomplished by truncating the prompt text to fit within the max tokens limit of the model.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
         n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
@@ -532,7 +539,11 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         return responses
 
     def _ensure_token_limit(self, prompt: str) -> str:
-        """Ensure that length of the text is within the maximum length of the model."""
+        """Ensure that length of the prompt and answer is within the maximum length of the model.
+        This is accomplished by truncating the prompt text to fit within the max tokens limit of the model.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
         n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
@@ -655,7 +666,10 @@ class PromptModel(BaseComponent):
         return output
 
     def _ensure_token_limit(self, prompt: str) -> str:
-        """Ensure that length of the text is within the maximum token length of the PromptModel."""
+        """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
         return self.model_invocation_layer._ensure_token_limit(prompt=prompt)
 
     def run(
