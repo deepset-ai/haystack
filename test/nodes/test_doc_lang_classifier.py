@@ -51,6 +51,17 @@ def test_doclangclassifier_run_not_route(doclangclassifier):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+def test_doclangclassifier_run_route(doclangclassifier):
+    for doc, expected_language in zip(DOCUMENTS, EXPECTED_LANGUAGES):
+        result, edge = doclangclassifier.run(documents=[doc])
+        document = result["documents"][0]
+
+        assert edge == doclangclassifier._get_edge_from_language(expected_language)
+        assert document.to_dict()["meta"]["language"] == expected_language
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
 def test_doclangclassifier_run_route_fail_on_mixed_languages(doclangclassifier):
     with pytest.raises(ValueError, match="Documents of multiple languages"):
         doclangclassifier.run(documents=DOCUMENTS)

@@ -12,6 +12,40 @@ DEFAULT_LANGUAGES = ["en", "de", "es", "cs", "nl"]
 
 
 class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
+    """
+    Node based on the [langdetect library](https://github.com/Mimino666/langdetect) for document language classification.
+    This node detects the languge of Documents and adds the output to the Documents metadata.
+    The meta field of the Document is a dictionary with the following format:
+    ``'meta': {'name': '450_Baelor.txt', 'language': 'en'}``
+    - Using the document language classifier, you can directly get predictions via predict()
+    - You can flow the Documents to different branches depending on their language,
+      by setting the `route_by_language` parameter to True and specifying the `languages_to_route` parameter.
+    **Usage example**
+    ```python
+    ...
+    docs = [Document(content="The black dog runs across the meadow")]
+
+    doclangclassifier = LangdetectDocumentLanguageClassifier()
+    results = doclangclassifier.predict(documents=docs)
+
+    # print the predicted language
+    print(results[0].to_dict()["meta"]["language"]
+
+    **Usage example for routing**
+    ```python
+    ...
+    docs = [Document(content="My name is Matteo and I live in Rome"),
+            Document(content="Mi chiamo Matteo e vivo a Roma")]
+
+    doclangclassifier = LangdetectDocumentLanguageClassifier(
+        route_by_language = True,
+        languages_to_route = ['en','it','es']
+        )
+    for doc in docs:
+        doclangclassifier.run(doc)
+    ```
+    """
+
     outgoing_edges = len(DEFAULT_LANGUAGES)
 
     @classmethod
@@ -24,8 +58,8 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
 
     def __init__(self, route_by_language: bool = True, languages_to_route: Optional[List[str]] = None):
         """
-        Node that sends out Documents on a different output edge depending on the language the document is written in.
-        :param languages: languages that this node can distinguish (ISO code, see `langdetect` documentation).
+        :param route_by_language: whether to send Documents on a different output edge depending on their language.
+        :param languages_to_route: list of languages, each corresponding to a different output edge (ISO code, see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
         """
         super().__init__()
 
@@ -41,7 +75,9 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
 
     def predict(self, documents: List[Document]) -> List[Document]:
         """
-        Return the code of the language of the document.
+        Detect the languge of Documents and add the output to the Documents metadata.
+        :param documents: list of Documents to detect language.
+        :return: List of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0:
             raise AttributeError("DocumentLanguageClassifier needs at least one document to predict the language.")
@@ -59,12 +95,9 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
 
     def predict_batch(self, documents: List[List[Document]], batch_size: Optional[int] = None) -> List[List[Document]]:
         """
-        Produce the summarization from the supplied documents.
-        These documents can for example be retrieved via the Retriever.
-
-        :param documents: Single list of related documents or list of lists of related documents
-                          (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param batch_size: Number of Documents to process at a time.
+        Detect the documents language and add the output to the document's meta data.
+        :param documents: list of lists of Documents to detect language.
+        :return: List of lists of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0 or all(len(docs_list) == 0 for docs_list in documents):
             raise AttributeError("DocumentLanguageClassifier needs at least one document to predict the language.")
