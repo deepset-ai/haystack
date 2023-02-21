@@ -420,6 +420,9 @@ class Seq2SeqGenerator(BaseGenerator):
 
         elif model_name_or_path.endswith("bart_eli5"):
             return cls._model_input_converters.get("yjernite/bart_eli5")
+        # added original return statement for linting
+        return cls._model_input_converters.get(model_name_or_path)
+
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
