@@ -413,8 +413,11 @@ class Seq2SeqGenerator(BaseGenerator):
 
     @classmethod
     def _get_converter(cls, model_name_or_path: str) -> Optional[Callable]:
+        # using dictionary key based on model_name_or_path endswit
+
         if model_name_or_path.endswith("bart_lfqa"):
             return cls._model_input_converters.get("vblagoje/bart_lfqa")
+
         elif model_name_or_path.endswith("bart_eli5"):
             return cls._model_input_converters.get("yjernite/bart_eli5")
 
