@@ -11,8 +11,30 @@ from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
 
-def is_openai_api_key_set(api_key: str):
+def is_api_key_set(api_key: str):
     return len(api_key) > 0 and api_key != "KEY_NOT_FOUND"
+
+
+def skip_test_for_invalid_key(prompt_model):
+    if prompt_model.api_key is not None and not is_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found, skipping test")
+
+
+def get_either_openai_or_azure_openai_api_key():
+    openai_api_key = os.environ.get("OPENAI_API_KEY", None)
+    azure_openai_api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
+    if azure_openai_api_key:
+        return azure_openai_api_key
+    elif openai_api_key:
+        return openai_api_key
+    else:
+        return None
+
+
+either_openai_or_azure_openai_api_key_in_env = pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_API_KEY", None),
+    reason="Please export either AZURE_OPENAI_API_KEY or OPENAI_API_KEY containing the valid key to run this test.",
+)
 
 
 @pytest.mark.unit
@@ -253,12 +275,9 @@ def test_invalid_state_ops(prompt_node):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_open_ai_prompt_with_params():
-    pm = PromptModel("text-davinci-003", api_key=os.environ["OPENAI_API_KEY"])
+@either_openai_or_azure_openai_api_key_in_env
+def test_open_ai_prompt_with_params(azure_conf):
+    pm = PromptModel("text-davinci-003", api_key=get_either_openai_or_azure_openai_api_key(), model_kwargs=azure_conf)
     pn = PromptNode(pm)
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 10, "top_p": 1, "frequency_penalty": 0.5}
     r = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
@@ -266,27 +285,23 @@ def test_open_ai_prompt_with_params():
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_open_ai_prompt_with_default_params():
+@either_openai_or_azure_openai_api_key_in_env
+def test_open_ai_prompt_with_default_params(azure_conf):
+    model_kwargs = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
+    model_kwargs.update(azure_conf)
     pn = PromptNode(
         model_name_or_path="text-davinci-003",
-        api_key=os.environ["OPENAI_API_KEY"],
-        model_kwargs={"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5},
+        api_key=get_either_openai_or_azure_openai_api_key(),
+        model_kwargs=model_kwargs,
     )
     result = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."])
     assert len(result) == 1 and len(result[0]) > 0
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
-    pm = PromptModel("text-davinci-003", api_key=os.environ["OPENAI_API_KEY"])
+@either_openai_or_azure_openai_api_key_in_env
+def test_open_ai_warn_if_max_tokens_is_too_short(caplog, azure_conf):
+    pm = PromptModel("text-davinci-003", api_key=get_either_openai_or_azure_openai_api_key(), model_kwargs=azure_conf)
     pn = PromptNode(pm)
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
     with caplog.at_level(logging.WARNING):
@@ -295,10 +310,9 @@ def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_stop_words(prompt_model):
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
+    skip_test_for_invalid_key(prompt_model)
 
     # test stop words for both HF and OpenAI
     # set stop words in PromptNode
@@ -339,10 +353,9 @@ def test_stop_words(prompt_model):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_simple_pipeline(prompt_model):
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
+    skip_test_for_invalid_key(prompt_model)
 
     node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
 
@@ -353,10 +366,9 @@ def test_simple_pipeline(prompt_model):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_complex_pipeline(prompt_model):
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
+    skip_test_for_invalid_key(prompt_model)
 
     node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="questions")
     node2 = PromptNode(prompt_model, default_prompt_template="question-answering")
@@ -370,10 +382,9 @@ def test_complex_pipeline(prompt_model):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_simple_pipeline_with_topk(prompt_model):
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
+    skip_test_for_invalid_key(prompt_model)
 
     node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
 
@@ -385,13 +396,12 @@ def test_simple_pipeline_with_topk(prompt_model):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_complex_pipeline_with_qa(prompt_model):
     """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
     because in a question-answering pipeline the retrievers need `query` as a string, so the PromptNode
     need to be able to handle the `query` being a string instead of a list."""
-    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-        pytest.skip("No API key found for OpenAI, skipping test")
+    skip_test_for_invalid_key(prompt_model)
 
     prompt_template = PromptTemplate(
         name="question-answering-new",
@@ -696,13 +706,17 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
-@pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_complex_pipeline_with_all_features(tmp_path):
-    api_key = os.environ.get("OPENAI_API_KEY", None)
+@either_openai_or_azure_openai_api_key_in_env
+def test_complex_pipeline_with_all_features(tmp_path, azure_conf):
+    api_key = get_either_openai_or_azure_openai_api_key()
+    if not azure_conf:
+        azure_conf_yaml_snippet = ""
+    else:
+        # don't change this indentation, it's important for the yaml to be valid
+        azure_conf_yaml_snippet = f"""
+                  base_url: {azure_conf['base_url']}
+                  deployment_name: {azure_conf['deployment_name']}
+        """
     with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -721,6 +735,7 @@ def test_complex_pipeline_with_all_features(tmp_path):
                 model_kwargs:
                   temperature: 0.9
                   max_tokens: 64
+                  {azure_conf_yaml_snippet}
                 api_key: {api_key}
             - name: question_generation_template
               type: PromptTemplate
@@ -799,10 +814,9 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 
 class TestRunBatch:
     @pytest.mark.integration
-    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
     def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
-        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-            pytest.skip("No API key found for OpenAI, skipping test")
+        skip_test_for_invalid_key(prompt_model)
 
         node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
 
@@ -818,10 +832,9 @@ class TestRunBatch:
         assert "negative" in result["results"][1][0].casefold()
 
     @pytest.mark.integration
-    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
     def test_simple_pipeline_batch_no_query_multiple_doc_list(self, prompt_model):
-        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-            pytest.skip("No API key found for OpenAI, skipping test")
+        skip_test_for_invalid_key(prompt_model)
 
         node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
 
@@ -841,10 +854,9 @@ class TestRunBatch:
         assert "negative" in result["out"][1][0].casefold()
 
     @pytest.mark.integration
-    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
     def test_simple_pipeline_batch_query_multiple_doc_list(self, prompt_model):
-        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
-            pytest.skip("No API key found for OpenAI, skipping test")
+        skip_test_for_invalid_key(prompt_model)
 
         prompt_template = PromptTemplate(
             name="question-answering-new",

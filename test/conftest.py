@@ -974,6 +974,16 @@ def prompt_node():
     return PromptNode("google/flan-t5-small", devices=["cpu"])
 
 
+def haystack_azure_conf():
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
+    base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
+    if api_key and base_url and deployment_name:
+        return {"base_url": base_url, "deployment_name": deployment_name}
+    else:
+        return {}
+
+
 @pytest.fixture
 def prompt_model(request):
     if request.param == "openai":
@@ -981,5 +991,15 @@ def prompt_model(request):
         if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
         return PromptModel("text-davinci-003", api_key=api_key)
+    elif request.param == "azure":
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
+        if api_key is None or api_key == "":
+            api_key = "KEY_NOT_FOUND"
+        return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
+
+
+@pytest.fixture
+def azure_conf():
+    return haystack_azure_conf()
