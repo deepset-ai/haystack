@@ -24,14 +24,14 @@ Haystack). It should be useful and impressive, and it determines what tools we w
 
 **Example Questions:**
 - "Why am I seeing duplicate answers being returned?" based on indexed FAQ documentation
-- "Which organizations use Haystack?" based on web search and Wikipedia returning answers via SerpAPI
+- "Which organizations use Haystack?" based on web search and Wikipedia returning answers via SearchEngine
 - "How can I choose the model for PromptNode?" based on retrieving documents via WebRetriever
 - "How can I make overwrite_with_env_variables work in RayPipeline" based on an open issue found with GitHub API or web search
 
 If an answer cannot be found in indexed files, the Agent will use self reflection to rephrase the question and/or search the
 web. It will give updates while searching, for example print thoughts: “Found nothing in indexed documentation. Will continue
 with web search.” If still nothing can be found, the Agent will generate a link to a pre-filled and pre-tagged issue template
-like this that the user can choose to create. Tools required for the demo: SerpAPI, GitHubAPI, Self Reflection Module, WebRetriever.
+like this that the user can choose to create. Tools required for the demo: SearchEngine, GitHubAPI, Self Reflection Module, WebRetriever.
 
 We also need to demonstrate how the Agent uses a combination of multiple tools to answer a question instead of just trying
 them sequentially.
@@ -44,9 +44,10 @@ searches on GitHub for open issues that mention retriever or reader.
 
 We propose the following tools to be developed for the MVP version of our agent (#3925):
 
-- SerpAPI
+- SearchEngine
 - Self reflection module (query rephrasing)
 - WebRetriever
+- Top-p (nucleus) sampling
 - deepset Cloud API
 
 # Basic example
@@ -62,7 +63,7 @@ for demo purposes (no pull request).
 Agent tools are the main and essential building block of the agent system. They are the modules extending the
 agent's capabilities. Agent, when it relies only on itself, is not as powerful as when it can leverage the
 external modules (tools) that are highly specialized in their respective domains. Agent can't do, for example, lookup of
-restaurants in our neighbourhood, but it can use SerpAPI to do that. When it comes to complex math calculations, LLM
+restaurants in our neighbourhood, but it can use SearchEngine to do that. When it comes to complex math calculations, LLM
 would be a poor choice, but a math calculator would be a good fit, and so on.
 
 Combining the power of LLMs with the power of external tools is the key ingredient to the success of the agent framework.
@@ -106,7 +107,7 @@ its description, and its input and output - SRM does the following:
 2. If they are not aligned, it rephrases the input (while retaining semantic meaning) and attempts to elicit an aligned
 output.
 
-SRM can improve the robustness of any module. For example, SerpAPI can sometimes be very sensitive to query wording.
+SRM can improve the robustness of any module. For example, SearchEngine can sometimes be very sensitive to query wording.
 If we are searching for "Olivia Wilde's boyfriend", the results might not be as precise as if we search for "Who is
 Olivia Wilde's current boyfriend?". SRM can rephrase the query to the latter form if the former form doesn't return
 an aligned answer.
