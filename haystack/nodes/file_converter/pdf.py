@@ -150,13 +150,13 @@ class PDFToTextConverter(BaseConverter):
         return [document]
 
     def _get_page_text(self, page_mp):
-        idx, cpu, filename, layout = page_mp
+        idx, cpu, filename, layout, start, end = page_mp
 
         doc = fitz.open(filename)
-        num_pages = doc.page_count
+        num_pages = end - start
         seg_size = int(num_pages / cpu + 1)
-        seg_from = idx * seg_size  # our first page number
-        seg_to = min(seg_from + seg_size, num_pages)  # last page number
+        seg_from = (idx * seg_size) + start  # our first page number
+        seg_to = min(seg_from + seg_size, num_pages + 1)  # last page number
 
         text = ""
         for i in range(seg_from, seg_to):
@@ -201,14 +201,15 @@ class PDFToTextConverter(BaseConverter):
             or (isinstance(multiprocessing, int) and multiprocessing > 1)
         ):
             cpu = multiprocessing if isinstance(multiprocessing, int) else cpu_count()
-            pages_mp = [(i, cpu, file_path, layout) for i in range(cpu)]
+            pages_mp = [(i, cpu, file_path, layout, start_page, end_page) for i in range(cpu)]
             pool = Pool(processes=cpu)
             results = pool.map(self._get_page_text, pages_mp)
 
             for page in results:
                 document += page
         else:
-            for page in doc:
+            for i in range(start_page, end_page):
+                page = doc[i]
                 document += page.get_text("text", sort=layout) + "\f"
 
         document = "\f" * start_page + document  # tracking skipped pages for correct page numbering
