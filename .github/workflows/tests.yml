@@ -90,6 +90,7 @@ jobs:
           - macos-latest
         topic:
           - document_stores
+          - nodes
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -438,8 +439,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -484,8 +486,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
