@@ -142,6 +142,32 @@ def test_page_range_numbers(Converter):
     assert documents[1].meta["page"] == 4
 
 
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_multiprocessing(Converter):
+    converter = Converter(multiprocessing=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    print("teste", document.content)
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 3000 of the document."
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_multiprocessing_page_range(Converter):
+    converter = Converter(multiprocessing=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf", start_page=2)[0]
+
+    print("teste", document.content)
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == ""
+    assert pages[-1] == "This is the page 3000 of the document."
+
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
