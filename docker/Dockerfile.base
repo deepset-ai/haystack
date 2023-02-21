@@ -9,6 +9,7 @@ ARG haystack_extras
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    build-essential \
     git
 
 # Shallow clone Haystack repo, we'll install from the local sources
