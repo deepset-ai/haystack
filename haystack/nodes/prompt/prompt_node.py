@@ -22,7 +22,7 @@ from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.utils.openai_utils import (
-    get_use_tiktoken,
+    USE_TIKTOKEN,
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
@@ -32,8 +32,7 @@ from haystack.utils.openai_utils import (
 
 logger = logging.getLogger(__name__)
 
-
-USE_TIKTOKEN = get_use_tiktoken()
+print(f"USE_TIKTOKEN: {USE_TIKTOKEN}")
 
 
 class BasePromptTemplate(BaseComponent):
@@ -485,10 +484,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         }
 
         tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(
-            model_name=self.model_name_or_path, use_tiktoken=USE_TIKTOKEN
+            model_name=self.model_name_or_path
         )
         self.max_tokens_limit = max_tokens_limit
-        self._tokenizer = load_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer_name)
+        self._tokenizer = load_openai_tokenizer(tokenizer_name=tokenizer_name)
 
     def invoke(self, *args, **kwargs):
         """
@@ -544,7 +543,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
+        n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer)
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt

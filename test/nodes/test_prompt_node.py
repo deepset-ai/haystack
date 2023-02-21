@@ -775,17 +775,21 @@ class TestTokenLimit:
             assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
             assert "and answer length (100 tokens) will fit within the max token limit (512 tokens)." in caplog.text
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
     def test_openai_token_limit_warning(self, caplog):
         tt = PromptTemplate(
             name="too-long-temp",
             prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
             prompt_params=["documents"],
         )
-        prompt_node = PromptNode("text-ada-001", max_length=2000)
+        prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (100 tokens) will fit within the max token limit (2048 tokens)." in caplog.text
+            assert "and answer length (2000 tokens) will fit within the max token limit (2048 tokens)." in caplog.text
 
 
 class TestRunBatch:

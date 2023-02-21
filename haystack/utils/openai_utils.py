@@ -29,30 +29,26 @@ OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
-def get_use_tiktoken():
-    """Return True if the tiktoken library is available and False if it is not."""
-    use_tiktoken = False
-    if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
-        use_tiktoken = True
+USE_TIKTOKEN = False
+if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
+    USE_TIKTOKEN = True
 
-    if not use_tiktoken:
-        logger.warning(
-            "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
-        )
-    return use_tiktoken
+if USE_TIKTOKEN:
+    import tiktoken  # pylint: disable=import-error
+    from tiktoken.model import MODEL_TO_ENCODING
+else:
+    logger.warning(
+        "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
+    )
 
 
-def load_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
+def load_openai_tokenizer(tokenizer_name: str):
     """Load either the tokenizer from tiktoken (if the library is available) or fallback to the GPT2TokenizerFast
     from the transformers library.
 
-    :param use_tiktoken: If True load the tokenizer from the tiktoken library.
-                         Otherwise, load a GPT2 tokenizer from transformers.
     :param tokenizer_name: The name of the tokenizer to load.
     """
-    if use_tiktoken:
-        import tiktoken  # pylint: disable=import-error
-
+    if USE_TIKTOKEN:
         logger.debug("Using tiktoken %s tokenizer", tokenizer_name)
         tokenizer = tiktoken.get_encoding(tokenizer_name)
     else:
@@ -61,32 +57,27 @@ def load_openai_tokenizer(use_tiktoken: bool, tokenizer_name: str):
     return tokenizer
 
 
-def count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
+def count_openai_tokens(text: str, tokenizer) -> int:
     """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
 
     :param text: A string to be tokenized.
     :param tokenizer: An OpenAI tokenizer.
-    :param use_tiktoken: If True the tokenizer is treated as a tiktoken tokenizer.
-                         Otherwise, treat the tokenizer as a GPT2Tokenizer from transformers.
     """
-    if use_tiktoken:
+    if USE_TIKTOKEN:
         return len(tokenizer.encode(text))
     else:
         return len(tokenizer.tokenize(text))
 
 
-def _openai_text_completion_tokenization_details(model_name: str, use_tiktoken: bool):
+def _openai_text_completion_tokenization_details(model_name: str):
     """Return the tokenizer name and max tokens limit for a given OpenAI `model_name`.
 
     :param model_name: Name of the OpenAI model.
-    :param use_tiktoken: Whether to use the tiktoken library.
     """
     tokenizer_name = "gpt2"
     if "davinci" in model_name:
         max_tokens_limit = 4000
-        if use_tiktoken:
-            from tiktoken.model import MODEL_TO_ENCODING
-
+        if USE_TIKTOKEN:
             tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
     else:
         max_tokens_limit = 2048
