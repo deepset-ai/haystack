@@ -764,7 +764,7 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 
 
 class TestTokenLimit:
-    def test_token_limit_hf(self, prompt_node, caplog):
+    def test_hf_token_limit_warning(self, prompt_node, caplog):
         tt = PromptTemplate(
             name="too-long-temp",
             prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
@@ -772,9 +772,10 @@ class TestTokenLimit:
         )
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
-            assert "The prompt has been truncated from" in caplog.text
+            assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
+            assert "and answer length (100 tokens) will fit within the max token limit (512 tokens)." in caplog.text
 
-    def test_token_limit_openai(self, caplog):
+    def test_openai_token_limit_warning(self, caplog):
         tt = PromptTemplate(
             name="too-long-temp",
             prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
@@ -784,6 +785,7 @@ class TestTokenLimit:
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from" in caplog.text
+            assert "and answer length (100 tokens) will fit within the max token limit (2048 tokens)." in caplog.text
 
 
 class TestRunBatch:
