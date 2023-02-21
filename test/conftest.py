@@ -365,7 +365,7 @@ class MockReader(BaseReader):
 
 class MockPromptNode(PromptNode):
     def __init__(self):
-        pass
+        self.default_prompt_template = None
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]

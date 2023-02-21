@@ -88,13 +88,13 @@ def test_max_iterations(caplog, monkeypatch):
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?")
     assert result["answers"] == [Answer(answer="", type="generative")]
-    assert "Maximum number of agent iterations (1) reached" in caplog.text
+    assert "Maximum number of iterations (1) reached" in caplog.text
 
     # Setting max_iterations in the Agent's run method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?", max_iterations=0)
     assert result["answers"] == [Answer(answer="", type="generative")]
-    assert "Maximum number of agent iterations (0) reached" in caplog.text
+    assert "Maximum number of iterations (0) reached" in caplog.text
 
 
 def test_run_tool():
@@ -107,7 +107,7 @@ def test_run_tool():
             description="useful for when you need to retrieve documents from your index",
         )
     )
-    result = agent._run_tool(tool_name="Retriever", tool_input="")
+    result = agent._run_tool(tool_name="Retriever", tool_input="", transcript="")
     assert result[0]["documents"] == []
 
 
@@ -142,20 +142,10 @@ def test_extract_final_answer():
 
 def test_format_answer():
     agent = Agent(prompt_node=MockPromptNode())
-    formatted_answer = agent._format_answer(
-        query="query",
-        answer="answer",
-        tool_names="tool_names",
-        tool_names_with_descriptions="tool_names_with_descriptions",
-        generated_text="generated_text",
-    )
+    formatted_answer = agent._format_answer(query="query", answer="answer", transcript="transcript")
     assert formatted_answer["query"] == "query"
     assert formatted_answer["answers"] == [Answer(answer="answer", type="generative")]
-    assert formatted_answer["transcript"].endswith("generated_text")
-    assert "query" in formatted_answer["transcript"]
-    assert "answer" in formatted_answer["transcript"]
-    assert "tool_names" in formatted_answer["transcript"]
-    assert "tool_names_with_descriptions" in formatted_answer["transcript"]
+    assert formatted_answer["transcript"] == "transcript"
 
 
 @pytest.mark.integration

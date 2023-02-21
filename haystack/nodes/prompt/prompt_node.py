@@ -682,7 +682,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             prompt_text="Translate the following context to $target_language. Context: $documents; Translation:",
         ),
         PromptTemplate(
-            name="think-step-by-step",
+            name="zero-shot-react",
             prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
             "correctly, you have access to the following tools:\n\n"
             "$tool_names_with_descriptions\n\n"
@@ -700,7 +700,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
             "---\n\n"
             "Question: $query\n"
-            "Thought: Let's think step-by-step, I first need to $generated_text",
+            "Thought: Let's think step-by-step, I first need to ",
         ),
     ]
 
