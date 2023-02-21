@@ -4,6 +4,7 @@ from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.file_converter.csv import CsvTextConverter
 from haystack.nodes.file_converter.docx import DocxToTextConverter
+from haystack.nodes.file_converter.json import JsonConverter
 from haystack.nodes.file_converter.tika import TikaConverter, TikaXHTMLParser
 from haystack.nodes.file_converter.txt import TextConverter
 from haystack.nodes.file_converter.azure import AzureConverter
