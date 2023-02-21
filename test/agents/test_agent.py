@@ -68,7 +68,7 @@ def test_agent_chooses_no_action():
 
 def test_max_iterations(caplog, monkeypatch):
     # Run an Agent and stop because max_iterations is reached
-    agent = Agent(prompt_node=MockPromptNode(), max_iterations=1)
+    agent = Agent(prompt_node=MockPromptNode(), max_iterations=3)
     retriever = MockRetriever()
     agent.add_tool(
         Tool(
@@ -88,13 +88,13 @@ def test_max_iterations(caplog, monkeypatch):
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?")
     assert result["answers"] == [Answer(answer="", type="generative")]
-    assert "Maximum number of iterations (1) reached" in caplog.text
+    assert "Maximum number of iterations (3) reached" in caplog.text
 
     # Setting max_iterations in the Agent's run method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
-        result = agent.run("Where does Christelle live?", max_iterations=0)
+        result = agent.run("Where does Christelle live?", max_iterations=2)
     assert result["answers"] == [Answer(answer="", type="generative")]
-    assert "Maximum number of iterations (0) reached" in caplog.text
+    assert "Maximum number of iterations (2) reached" in caplog.text
 
 
 def test_run_tool():
@@ -190,6 +190,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
         )
     )
 
+    # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
     result = agent.run("How many characters are in the word Madrid?")
     assert any(digit in result["answers"][0].answer for digit in ["5", "6", "five", "six"])
 
@@ -245,5 +246,6 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
             "How many letters does the name of the town where Christelle lives have?",
         ]
     )
+    # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
     assert any(digit in results["answers"][0][0].answer for digit in ["5", "6", "five", "six"])
     assert any(digit in results["answers"][1][0].answer for digit in ["5", "6", "five", "six"])
