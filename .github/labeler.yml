@@ -31,6 +31,9 @@ topic:reader:
 topic:retriever:
 - haystack/nodes/retriever/*
 - test/nodes/test_retriever.py
+topic:agent:
+- haystack/agents/*
+- test/agents/*
 topic:pipeline:
 - haystack/pipelines/*
 - haystack/nodes/other/*
