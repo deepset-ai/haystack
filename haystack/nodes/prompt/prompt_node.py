@@ -521,9 +521,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             return prompt
 
         logger.warning(
-            "The prompt has been truncated from %s tokens to %s tokens to fit within the max token limit."
-            " Consider reducing the length of the prompt to avoid truncation.",
-            n_prompt_tokens + n_answer_tokens,
+            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+            "answer length (%s tokens) will fit within the max token limit (%s tokens). "
+            "Consider reducing the length of the prompt to avoid truncation.",
+            n_prompt_tokens,
+            self.MAX_TOKENS_LIMIT - n_answer_tokens,
+            n_answer_tokens,
             self.MAX_TOKENS_LIMIT,
         )
 
@@ -552,7 +555,7 @@ class PromptModel(BaseComponent):
     PromptNode to interact with the model. PromptModel instances are a way for multiple
     PromptNode instances to use a single PromptNode, and thus save computational resources.
 
-    For more details, refer to [Promptnode](https://docs.haystack.deepset.ai/docs/prompt_node).
+    For more details, refer to [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     outgoing_edges = 1
