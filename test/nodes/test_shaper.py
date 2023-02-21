@@ -1,5 +1,5 @@
-import re
 import pytest
+import logging
 
 import haystack
 from haystack import Pipeline, Document, Answer
@@ -13,10 +13,31 @@ def mock_function(monkeypatch):
     )
 
 
+@pytest.fixture
+def mock_function_two_outputs(monkeypatch):
+    monkeypatch.setattr(
+        haystack.nodes.other.shaper, "REGISTERED_FUNCTIONS", {"two_output_test_function": lambda a: (a, len(a))}
+    )
+
+
 def test_basic_invocation_only_inputs(mock_function):
     shaper = Shaper(func="test_function", inputs={"a": "query", "b": "documents"}, outputs=["c"])
     results, _ = shaper.run(query="test query", documents=["doesn't", "really", "matter"])
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
+
+
+def test_multiple_outputs(mock_function_two_outputs):
+    shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c", "d"])
+    results, _ = shaper.run(query="test")
+    assert results["invocation_context"]["c"] == "test"
+    assert results["invocation_context"]["d"] == 4
+
+
+def test_multiple_outputs_error(mock_function_two_outputs, caplog):
+    shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c"])
+    with caplog.at_level(logging.WARNING):
+        results, _ = shaper.run(query="test")
+        assert "Only 1 output(s) will be stored." in caplog.text
 
 
 def test_basic_invocation_only_params(mock_function):
