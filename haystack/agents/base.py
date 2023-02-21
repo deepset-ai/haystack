@@ -211,11 +211,10 @@ class Agent:
         # We can only pass params to pipelines but not to nodes
         if isinstance(pipeline_or_node, (Pipeline, BaseStandardPipeline)):
             result = pipeline_or_node.run(query=tool_input, params=params)
+        elif isinstance(pipeline_or_node, BaseRetriever):
+            result = pipeline_or_node.run(query=tool_input, root_node="Query")
         else:
-            if isinstance(pipeline_or_node, BaseRetriever):
-                result = pipeline_or_node.run(query=tool_input, root_node="Query")
-            else:
-                result = pipeline_or_node.run(query=tool_input)
+            result = pipeline_or_node.run(query=tool_input)
         return result
 
     def _extract_observation(self, result: Union[Tuple[Dict[str, Any], str], Dict[str, Any]]) -> str:
