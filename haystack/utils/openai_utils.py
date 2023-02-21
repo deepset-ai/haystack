@@ -76,6 +76,11 @@ def count_openai_tokens(text: str, tokenizer, use_tiktoken: bool) -> int:
 
 
 def _openai_text_completion_tokenization_details(model_name: str, use_tiktoken: bool):
+    """Return the tokenizer name and max tokens limit for a given OpenAI `model_name`.
+
+    :param model_name: Name of the OpenAI model.
+    :param use_tiktoken: Whether to use the tiktoken library.
+    """
     tokenizer_name = "gpt2"
     if "davinci" in model_name:
         max_tokens_limit = 4000
@@ -121,7 +126,11 @@ def openai_request(url: str, api_key: str, payload: Dict, timeout: Union[float, 
 
 def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
     """Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`
-    log a warning to the user."""
+    log a warning to the user.
+
+    :param result: The result returned from the OpenAI API.
+    :param payload: The payload sent to the OpenAI API.
+    """
     number_of_truncated_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "length")
     if number_of_truncated_completions > 0:
         logger.warning(
