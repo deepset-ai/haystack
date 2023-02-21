@@ -36,11 +36,11 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         :param route_by_language: whether to send documents on a different output edge depending on their language.
         """
         docs_with_languages = self.predict(documents=documents)
+        output = {"documents": docs_with_languages}
 
         if route_by_language is None:
             route_by_language = self.route_by_language
         if route_by_language is False:
-            output = {"documents": docs_with_languages}
             return output, "output_1"
 
         # route_by_language is True
@@ -51,14 +51,14 @@ class BaseDocumentLanguageClassifier(BaseComponent):
                 f"If route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
                 "If you want to route documents by language, you can call Pipeline.run() once for each file."
             )
-        if unique_languages[0] is None:
+        language = unique_languages[0]
+        if language is None:
             logging.warning(
                 "The model cannot detect the language of any of the documents."
                 "The first language in the list of supported languages will be used to route the document: %s",
                 self.languages_to_route[0],
             )
-            language: Optional[str] = self.languages_to_route[0]
-        language = unique_languages[0]
+            language = self.languages_to_route[0]
         if language not in self.languages_to_route:
             raise ValueError(
                 f"'{language}' is not in the list of languages to route ({', '.join(self.languages_to_route)})."
