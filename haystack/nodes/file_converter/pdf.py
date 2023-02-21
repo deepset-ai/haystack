@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import fitz
+from more_itertools import divide
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
@@ -153,13 +154,11 @@ class PDFToTextConverter(BaseConverter):
         idx, cpu, filename, layout, start, end = page_mp
 
         doc = fitz.open(filename)
-        num_pages = end - start
-        seg_size = int(num_pages / cpu + 1)
-        seg_from = (idx * seg_size) + start  # our first page number
-        seg_to = min(seg_from + seg_size, num_pages + 1)  # last page number
+
+        parts = divide(cpu, [i for i in range(start, end)])
 
         text = ""
-        for i in range(seg_from, seg_to):
+        for i in parts[idx]:
             page = doc[i]
             text += page.get_text("text", sort=layout) + "\f"
 
