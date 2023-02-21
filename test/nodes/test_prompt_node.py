@@ -763,6 +763,29 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
     assert pipeline is not None
 
 
+class TestTokenLimit:
+    def test_token_limit_hf(self, prompt_node, caplog):
+        tt = PromptTemplate(
+            name="too-long-temp",
+            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
+            prompt_params=["documents"],
+        )
+        with caplog.at_level(logging.WARNING):
+            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+            assert "The prompt has been truncated from" in caplog.text
+
+    def test_token_limit_openai(self, caplog):
+        tt = PromptTemplate(
+            name="too-long-temp",
+            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
+            prompt_params=["documents"],
+        )
+        prompt_node = PromptNode("text-ada-001", max_length=2000)
+        with caplog.at_level(logging.WARNING):
+            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+            assert "The prompt has been truncated from" in caplog.text
+
+
 class TestRunBatch:
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
