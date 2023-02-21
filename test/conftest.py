@@ -1,3 +1,4 @@
+import warnings
 from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
@@ -100,9 +101,14 @@ posthog.disabled = True
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
-def fail_at_version(version_major, version_minor):
+def fail_at_version(target_major, target_minor):
     """
     Reminder to remove deprecated features.
+    If it will fail tests if the current major and/or minor version is equal or greater
+    of target_major and/or target_minor.
+    If the current version has `rc0` set the test won't fail but only issue a warning, this
+    is done because we use `rc0` to mark the development version in `main`. If we wouldn't
+    do this tests would continuosly fail in main.
 
     ```python
     from ..conftest import fail_at_version
@@ -114,14 +120,17 @@ def fail_at_version(version_major, version_minor):
     """
 
     def decorator(function):
-        current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
+        (current_major, current_minor) = [int(num) for num in haystack_version.split(".")[:2]]
+        current_rc = int(haystack_version.split("rc")[1]) if "rc" in haystack_version else -1
 
         @wraps(function)
         def wrapper(*args, **kwargs):
-            if current_version[0] > version_major or (
-                current_version[0] == version_major and current_version[1] >= version_minor
-            ):
-                pytest.fail(reason=f"This feature is marked for removal in v{version_major}.{version_minor}")
+            if current_major > target_major or (current_major == target_major and current_minor >= target_minor):
+                message = f"This feature is marked for removal in v{target_major}.{target_minor}"
+                if current_rc == 0:
+                    warnings.warn(message)
+                else:
+                    pytest.fail(reason=message)
             return_value = function(*args, **kwargs)
             return return_value
 
