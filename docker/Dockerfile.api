@@ -12,7 +12,7 @@ RUN addgroup --gid 1001 $SERVICE_NAME && \
 
 
 # Create a folder for the /file-upload API endpoint with write permissions for the service user only
-RUN mkdir -p /opt/file-upload && chown $SERVICE_NAME:$SERVICE_NAME /opt/file-upload && chmod 600 /opt/file-upload
+RUN mkdir -p /opt/file-upload && chown $SERVICE_NAME:$SERVICE_NAME /opt/file-upload && chmod 700 /opt/file-upload
 
 # Tell rest_api which folder to use for uploads
 ENV FILE_UPLOAD_PATH="/opt/file-upload"

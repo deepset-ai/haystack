@@ -138,7 +138,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             # Check for required prompts
             required_params = ["context", "query"]
-            if all(p in prompt_template.prompt_params for p in required_params):
+            if not all(p in prompt_template.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
                     "`query` in its `prompt_params`. Supply a different `prompt_template` or "
