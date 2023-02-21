@@ -47,6 +47,15 @@ class ModelingError(HaystackError):
         super().__init__(message=message, docs_link=docs_link)
 
 
+class AgentError(HaystackError):
+    """Exception for issues raised within an agent"""
+
+    def __init__(
+        self, message: Optional[str] = None, docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/agents"
+    ):
+        super().__init__(message=message, docs_link=docs_link)
+
+
 class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 
