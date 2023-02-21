@@ -20,6 +20,7 @@ from haystack.nodes.file_converter import (
     AzureConverter,
     ParsrConverter,
     CsvTextConverter,
+    JsonConverter,
 )
 from haystack.nodes.image_to_text import TransformersImageToText
 from haystack.nodes.label_generator import PseudoLabelGenerator
