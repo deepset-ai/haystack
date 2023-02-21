@@ -73,6 +73,7 @@ dependencies = [
   "python-docx",
   "langdetect",  # for PDF conversions
   "tika",  # Apache Tika (text & metadata extractor)
+  "PyMuPDF" ,  # PDF text extraction
 
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",

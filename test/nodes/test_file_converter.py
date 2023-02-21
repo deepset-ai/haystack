@@ -79,11 +79,11 @@ def test_pdf_command_whitespaces(Converter):
 def test_pdf_encoding(Converter):
     converter = Converter()
 
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_5.pdf")[0]["documents"][0]
+    assert "Ж" in document.content
+
     document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
     assert "ɪ" in document.content
-
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", encoding="Latin1")[0]["documents"][0]
-    assert "ɪ" not in document.content
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
