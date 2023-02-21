@@ -19,7 +19,8 @@ isolation and subsequently integrated into the agent. The agent can register the
 and route the user input to the appropriate tool. The tools can be either Haystack pipelines or components.
 
 
-A demo idea for the new Agent is to demonstrate Question Answering on Technical Documentation (using the example of Haystack). It should be useful and impressive, and it determines what tools we will implement first.
+A demo idea for the new Agent is to demonstrate Question Answering on Technical Documentation (using the example of
+Haystack). It should be useful and impressive, and it determines what tools we will implement first.
 
 **Example Questions:**
 - "Why am I seeing duplicate answers being returned?" based on indexed FAQ documentation
@@ -27,14 +28,19 @@ A demo idea for the new Agent is to demonstrate Question Answering on Technical 
 - "How can I choose the model for PromptNode?" based on retrieving documents via WebRetriever
 - "How can I make overwrite_with_env_variables work in RayPipeline" based on an open issue found with GitHub API or web search
 
-If an answer cannot be found in indexed files, the Agent will use self reflection to rephrase the question and/or search the web. It will give updates while searching, for example print thoughts: “Found nothing in indexed documentation. Will continue with web search.” If still nothing can be found, the Agent will generate a link to a pre-filled and pre-tagged issue template like this that the user can choose to create. Tools required for the demo: SerpAPI, GitHubAPI, Self Reflection Module, WebRetriever.
+If an answer cannot be found in indexed files, the Agent will use self reflection to rephrase the question and/or search the
+web. It will give updates while searching, for example print thoughts: “Found nothing in indexed documentation. Will continue
+with web search.” If still nothing can be found, the Agent will generate a link to a pre-filled and pre-tagged issue template
+like this that the user can choose to create. Tools required for the demo: SerpAPI, GitHubAPI, Self Reflection Module, WebRetriever.
 
-We also need to demonstrate how the Agent uses a combination of multiple tools to answer a question instead of just trying them sequentially.
+We also need to demonstrate how the Agent uses a combination of multiple tools to answer a question instead of just trying
+them sequentially.
 
 **Example Question:**
 - "Is there an open issue about any of the nodes in a standard QA pipeline not working?"
 
-Here the LLM might first use documentation to find out more about what nodes are part of standard QA pipelines and then searches on GitHub for open issues that mention retriever or reader.
+Here the LLM might first use documentation to find out more about what nodes are part of standard QA pipelines and then
+searches on GitHub for open issues that mention retriever or reader.
 
 We propose the following tools to be developed for the MVP version of our agent (#3925):
 
@@ -47,7 +53,9 @@ We propose the following tools to be developed for the MVP version of our agent 
 
 No code examples are provided, but a high-level overview of how the feature would be used.
 
-There is also a [colab notebook](https://colab.research.google.com/drive/1oJf4gxkokIazLN26NNt6XsewMvCmVrz8?usp=sharing) demonstrating how to use an agent with tools and a [branch](https://github.com/deepset-ai/haystack/compare/main...mrkl-pipeline) for demo purposes (no pull request).
+There is also a [colab notebook](https://colab.research.google.com/drive/1oJf4gxkokIazLN26NNt6XsewMvCmVrz8?usp=sharing)
+demonstrating how to use an agent with tools and a [branch](https://github.com/deepset-ai/haystack/compare/main...mrkl-pipeline)
+for demo purposes (no pull request).
 
 # Motivation
 
@@ -70,22 +78,19 @@ around the actual tool implementation.
 
 The main Agent modules/tools are:
 
-## SerpAPI
+## SearchEngine
 
-SerpAPI (Search Engine Results Page) is a symbolic API module allowing programmatic interaction with Google and other
-search engines. We can use Serp directly via REST API or the Python library provided by SerpAPI.
+SearchEngine is a symbolic API module allowing programmatic interaction with Google and other search engines. We'll have
+multiple providers of SearchEngine including https://serper.dev and https://serpapi.com as initial providers.
 
-Although https://serpapi.com/ provides a Python library, we will implement our Python wrapper around the REST API.
-The wrapper will allow us to use the same SerpAPI module for other search engines (e.g. Bing, DuckDuckGo, etc.) that
-SerpAPI already supports.
+SearchEngine will return a list of results (e.g. List[Document]), the content of each document being a "snippet" of the
+single search result, while all other attributes of the search results (e.g. title, url link, etc.) will
+be metadata of the document.
 
-We'll wrap the SerpAPI module with our best practices regarding retrying failed requests, handling timeouts, etc.
-We'll also enable our standard approach of injecting the API key via environment variables.
+### SearchEngine scoping
 
-### SerpAPI scoping
-
-A great feature of SerpAPI is that it can be scoped to a particular domain. Therefore, in our demo we can search through
-Haystack documentation on docs.haystack.com, github.com/deepset-ai/haystack and so on.
+A great feature of SearchEngine is that it can be scoped to a particular domain. Therefore, in our demo, if so desired,
+we can search through Haystack documentation on docs.haystack.com, github.com/deepset-ai/haystack and so on.
 
 ## Self reflection module
 
@@ -115,28 +120,56 @@ how often SRM should run for this tool (default value 0). If it is 0, SRM will n
 otherwise it will check at least once for alignment/congruency and optionally rephrase. This will repeat but not
 more often than the parameter allows.
 
+One possible implementation of SRM could be https://arxiv.org/abs/2203.11171
+
+The main motivation for addition of SRM (and self-consistency ideas in general) is the finding from
+https://arxiv.org/abs/2210.03629 Google Brain researchers discovered that "Wrong reasoning trace (including failing
+to recover from repetitive steps)" accounts for 47% of agent errors.
 
 ## WebRetriever
 
 WebRetriever is a symbolic module that allows users to query the web for relevant documents. It is a wrapper around
-SerpAPI that produces a list of Haystack Documents.
+SearchEngine that produces a list of Haystack Documents.
 
-Given a user query passed via the run method, SerpAPI first fetches the top_k relevant URL hits, which are downloaded
-and processed. The processing involves stripping irrelevant HTML tags and producing clean raw text. WebRetriever
-then splits raw text into paragraph-long Documents of the desired size. WebRetriever can use the optional
-Cross-Encoder to filter out query-irrelevant documents.
+WebRetriever will operate in two modes:
+
+- snippet mode: WebRetriever will return a list of Documents, each Document being a snippet of the search result
+- document mode: WebRetriever will return a list of Documents, each Document being a full HTML stripped document of the search result
+
+In document mode, given a user query passed via the run method, SearchEngine first fetches the top_k relevant URL hits, which are
+downloaded and processed. The processing involves stripping irrelevant HTML tags and producing clean raw text. WebRetriever
+then splits raw text into paragraph-long Documents of the desired size.
 
 In the future, we'll develop WebRetriever variants with DocumentStore that caches documents with some expiration
 setting. The enhanced WebRetreiever versions will allow us to avoid downloading the same documents from the web
 multiple times.
 
-However, for the first version of the agent, we will keep WebRetriever as simple as possible.
+However, for the first version of the agent, we'll strive to keep WebRetriever as simple as possible.
+
+## Top-p (nucleus) sampling
+
+Although very useful, top-k ranking is sometimes inferior to top-p ranking. Instead of filtering only from the most
+likely k hits, in top-p sampling we choose the smallest possible set of documents whose cumulative probability of
+relevance exceeds the probability p (usually close to 1). The relevance could be calculated via sbert.net CrossEncoder using
+query and the document content.
+
+In web search, this is a very useful feature as it allows us to avoid query irrelevant documents and be super precise
+in our search results. We'll implement top-p sampling as a separate module that WebRetriever can use. Other components
+in Haystack can use it as well.
+
+The main motivation for addition of top-p sampling is the finding from https://arxiv.org/abs/2210.03629 Google Brain
+researchers found that "Search result error" is the main cause in 23% of the cases of agent failure. Top-p sampling
+can help us minimize this point of failure.
+
+Note that one can still use top-k filtering via Ranker and top-p filtering via TopPSampler in combination.
 
 ## deepset Cloud API
 The Agent should be able to use pipelines deployed on deepset Cloud as a tool.
-To this end, the text question needs to be send via REST API to the [search endpoint](https://docs.cloud.deepset.ai/reference/search_api_v1_workspaces__workspace_name__pipelines__pipeline_name__search_post) of a given pipeline deployed on deepset Cloud.
+To this end, the text question needs to be send via REST API to
+the [search endpoint](https://docs.cloud.deepset.ai/reference/search_api_v1_workspaces__workspace_name__pipelines__pipeline_name__search_post) of a given pipeline deployed on deepset Cloud.
 
-In the demo, the Agent will use this tool for question answering on indexed documents of the Haystack documentation, such as documentation web pages or tutorials.
+In the demo, the Agent will use this tool for question answering on indexed documents of the Haystack documentation,
+such as documentation web pages or tutorials.
 
 
 # Drawbacks
