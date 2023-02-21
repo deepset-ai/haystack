@@ -1,11 +1,13 @@
 import logging
 from abc import abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 from haystack.nodes.base import BaseComponent, Document
 
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_LANGUAGES = ["en", "de", "es", "cs", "nl"]
 
 
 class BaseDocumentLanguageClassifier(BaseComponent):
@@ -13,9 +15,37 @@ class BaseDocumentLanguageClassifier(BaseComponent):
     Abstract class for Document Language Classifiers
     """
 
-    outgoing_edges = 1
-    route_by_language = False
-    languages_to_route: List[str] = []
+    outgoing_edges = len(DEFAULT_LANGUAGES)
+
+    @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        route_by_language = component_params.get("route_by_language", True)
+        if route_by_language is False:
+            return 1
+        languages_to_route = component_params.get("languages_to_route", DEFAULT_LANGUAGES)
+        return len(languages_to_route)
+
+    def __init__(self, route_by_language: bool = True, languages_to_route: Optional[List[str]] = None):
+        """
+        :param route_by_language: whether to send Documents on a different output edge depending on their language.
+        :param languages_to_route: list of languages, each corresponding to a different output edge (ISO code, see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
+        """
+        super().__init__()
+
+        if languages_to_route is None:
+            languages_to_route = DEFAULT_LANGUAGES
+            if route_by_language is True:
+                logging.warning(
+                    "languages_to_route list has not been defined. The default list will be used: %s",
+                    languages_to_route,
+                )
+
+        if len(set(languages_to_route)) != len(languages_to_route):
+            duplicates = {lang for lang in languages_to_route if languages_to_route.count(lang) > 1}
+            raise ValueError(f"languages_to_route parameter can't contain duplicate values ({duplicates}).")
+
+        self.route_by_language = route_by_language
+        self.languages_to_route = languages_to_route
 
     @abstractmethod
     def predict(self, documents: List[Document]) -> List[Document]:
@@ -28,22 +58,19 @@ class BaseDocumentLanguageClassifier(BaseComponent):
     def _get_edge_from_language(self, language: str) -> str:
         return f"output_{self.languages_to_route.index(language) + 1}"
 
-    def run(self, documents: List[Document], route_by_language: Optional[bool] = None) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
+    def run(self, documents: List[Document]) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
         """
         Run language document classifier on a list of documents.
 
         :param documents: list of documents to detect language.
-        :param route_by_language: whether to send documents on a different output edge depending on their language.
         """
         docs_with_languages = self.predict(documents=documents)
         output = {"documents": docs_with_languages}
 
-        if route_by_language is None:
-            route_by_language = self.route_by_language
-        if route_by_language is False:
+        if self.route_by_language is False:
             return output, "output_1"
 
-        # route_by_language is True
+        # self.route_by_language is True
         languages = [doc.meta["language"] for doc in docs_with_languages]
         unique_languages = list(set(languages))
         if len(unique_languages) > 1:
@@ -66,22 +93,19 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             )
         return output, self._get_edge_from_language(str(language))
 
-    def run_batch(self, documents: List[List[Document]], batch_size: Optional[int] = None, route_by_language: Optional[bool] = None) -> Tuple[Dict, str]:  # type: ignore
+    def run_batch(self, documents: List[List[Document]], batch_size: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         """
         Run language document classifier on batches of documents.
 
         :param documents: list of lists of documents to detect language.
-        :param route_by_language: whether to send documents on a different output edge depending on their language.
         """
         docs_lists_with_languages = self.predict_batch(documents=documents, batch_size=batch_size)
 
-        if route_by_language is None:
-            route_by_language = self.route_by_language
         if self.route_by_language is False:
             output = {"documents": docs_lists_with_languages}
             return output, "output_1"
 
-        # route_by_language is True
+        # self.route_by_language is True
         split: Dict[str, Dict[str, List[List[Document]]]] = {
             f"output_{pos}": {"documents": []} for pos in range(1, len(self.languages_to_route) + 1)
         }
