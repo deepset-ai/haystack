@@ -188,21 +188,18 @@ class PromptModelInvocationLayer:
     could be even remote, for example, a call to a remote API endpoint.
     """
 
-    def __init__(self, model_name_or_path: str, max_length: Optional[int] = 100, **kwargs):
+    def __init__(self, model_name_or_path: str, **kwargs):
         """
         Creates a new PromptModelInvocationLayer instance.
-
 
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of output text.
         :param kwargs: Additional keyword arguments passed to the underlying model.
-
         """
         if model_name_or_path is None or len(model_name_or_path) == 0:
             raise ValueError("model_name_or_path cannot be None or empty string")
 
         self.model_name_or_path = model_name_or_path
-        self.max_length: Optional[int] = max_length
 
     @abstractmethod
     def invoke(self, *args, **kwargs):
@@ -274,7 +271,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         For more details about these kwargs, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
         """
-        super().__init__(model_name_or_path, max_length)
+        super().__init__(model_name_or_path)
         self.use_auth_token = use_auth_token
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
@@ -333,6 +330,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             use_auth_token=self.use_auth_token,
             model_kwargs=model_input_kwargs,
         )
+        # This is how the default max_length is determined for Text2TextGenerationPipeline shown here
+        # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
+        # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
+        self.max_length = max_length or self.pipe.model.config.max_length
 
     def invoke(self, *args, **kwargs):
         """
@@ -373,10 +374,28 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
         return generated_texts
 
-    # TODO Implement for HFLocalInvocationLayer
     def _ensure_token_limit(self, prompt: str) -> str:
         """Ensure that length of the text is within the maximum length of the model."""
-        return prompt
+        n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
+            return prompt
+
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+            "answer length (%s tokens) will fit within the max token limit (%s tokens). "
+            "Consider reducing the length of the prompt to avoid truncation.",
+            n_prompt_tokens,
+            self.pipe.tokenizer.model_max_length - n_answer_tokens,
+            n_answer_tokens,
+            self.pipe.tokenizer.model_max_length,
+        )
+
+        tokenized_payload = self.pipe.tokenizer.tokenize(prompt)
+        decoded_string = self.pipe.tokenizer.convert_tokens_to_string(
+            tokenized_payload[: self.pipe.tokenizer.model_max_length - n_answer_tokens]
+        )
+        return decoded_string
 
     @classmethod
     def supports(cls, model_name_or_path: str) -> bool:
@@ -422,20 +441,19 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
-
         """
-        # This is the default length for answers from OpenAI shown in the docs
-        # here, https://platform.openai.com/docs/api-reference/completions/create.
-        # max_length cannot not be None otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
-        if max_length is None:
-            max_length = 16
-        super().__init__(model_name_or_path, max_length)
+        super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
         self.url = "https://api.openai.com/v1/completions"
+
+        # 16 is the default length for answers from OpenAI shown in the docs
+        # here, https://platform.openai.com/docs/api-reference/completions/create.
+        # max_length must be set otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
+        self.max_length = max_length or 16
 
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
@@ -462,7 +480,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(
             model_name=self.model_name_or_path, use_tiktoken=USE_TIKTOKEN
         )
-        self.MAX_TOKENS_LIMIT = max_tokens_limit
+        self.max_tokens_limit = max_tokens_limit
         self._tokenizer = load_openai_tokenizer(use_tiktoken=USE_TIKTOKEN, tokenizer_name=tokenizer_name)
 
     def invoke(self, *args, **kwargs):
@@ -517,7 +535,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         """Ensure that length of the text is within the maximum length of the model."""
         n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer, use_tiktoken=USE_TIKTOKEN)
         n_answer_tokens = self.max_length
-        if (n_prompt_tokens + n_answer_tokens) <= self.MAX_TOKENS_LIMIT:
+        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
         logger.warning(
@@ -525,18 +543,18 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "answer length (%s tokens) will fit within the max token limit (%s tokens). "
             "Consider reducing the length of the prompt to avoid truncation.",
             n_prompt_tokens,
-            self.MAX_TOKENS_LIMIT - n_answer_tokens,
+            self.max_tokens_limit - n_answer_tokens,
             n_answer_tokens,
-            self.MAX_TOKENS_LIMIT,
+            self.max_tokens_limit,
         )
 
         if USE_TIKTOKEN:
             tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.MAX_TOKENS_LIMIT - n_answer_tokens])
+            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
         else:
             tokenized_payload = self._tokenizer.tokenize(prompt)
             decoded_string = self._tokenizer.convert_tokens_to_string(
-                tokenized_payload[: self.MAX_TOKENS_LIMIT - n_answer_tokens]
+                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
             )
         return decoded_string
 
