@@ -192,7 +192,7 @@ class PDFToTextConverter(BaseConverter):
             start_page = start_page - 1
 
         if end_page is None or (end_page is not None and end_page > doc.page_count):
-            end_page = doc.page_count
+            end_page = int(doc.page_count)
 
         document = ""
         if multiprocessing is not None and (
