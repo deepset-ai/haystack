@@ -48,7 +48,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         self.languages_to_route = languages_to_route
 
     @abstractmethod
-    def predict(self, documents: List[Document]) -> List[Document]:
+    def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         pass
 
     @abstractmethod

@@ -32,7 +32,7 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     **Usage example for routing**
     ```python
     ...
-    docs = [Document(content="My name is Matteo and I live in Rome"),
+    docs = [Document(content="My name is Ryan and I live in London"),
             Document(content="Mi chiamo Matteo e vivo a Roma")]
 
     doclangclassifier = LangdetectDocumentLanguageClassifier(
@@ -51,14 +51,20 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         """
         super().__init__(route_by_language=route_by_language, languages_to_route=languages_to_route)
 
-    def predict(self, documents: List[Document]) -> List[Document]:
+    def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
         Detect the languge of Documents and add the output to the Documents metadata.
         :param documents: list of Documents to detect language.
         :return: List of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0:
-            raise AttributeError("DocumentLanguageClassifier needs at least one document to predict the language.")
+            raise AttributeError(
+                "LangdetectDocumentLanguageClassifier needs at least one document to predict the language."
+            )
+        if batch_size is not None:
+            logger.warning(
+                "LangdetectDocumentLanguageClassifier does not support batch_size. This parameter is ignored."
+            )
 
         documents_with_language = []
         for document in documents:
@@ -78,7 +84,9 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         :return: List of lists of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0 or all(len(docs_list) == 0 for docs_list in documents):
-            raise AttributeError("DocumentLanguageClassifier needs at least one document to predict the language.")
+            raise AttributeError(
+                "LangdetectDocumentLanguageClassifier needs at least one document to predict the language."
+            )
         if batch_size is not None:
             logger.warning(
                 "LangdetectDocumentLanguageClassifier does not support batch_size. This parameter is ignored."

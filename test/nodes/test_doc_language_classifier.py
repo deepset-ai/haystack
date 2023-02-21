@@ -2,7 +2,10 @@ import pytest
 import logging
 
 from haystack.schema import Document
-from haystack.nodes.doc_language_classifier import LangdetectDocumentLanguageClassifier
+from haystack.nodes.doc_language_classifier import (
+    LangdetectDocumentLanguageClassifier,
+    TransformersDocumentLanguageClassifier,
+)
 
 DOCUMENTS = [
     Document(content="My name is Matteo and I live in Rome"),
@@ -17,12 +20,12 @@ EXPECTED_LANGUAGES = ["en", "it", "es"]
 def doclangclassifier(request):
     if request.param == "langdetect":
         return LangdetectDocumentLanguageClassifier(route_by_language=True, languages_to_route=["en", "es", "it"])
-    # replace
-    return LangdetectDocumentLanguageClassifier(route_by_language=True, languages_to_route=["en", "es", "it"])
+    elif request.param == "transformers":
+        return TransformersDocumentLanguageClassifier(route_by_language=True, languages_to_route=["en", "es", "it"])
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_predict(doclangclassifier):
     results = doclangclassifier.predict(documents=DOCUMENTS)
     for doc, expected_language in zip(results, EXPECTED_LANGUAGES):
@@ -30,7 +33,7 @@ def test_doclangclassifier_predict(doclangclassifier):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_predict_batch(doclangclassifier):
     results = doclangclassifier.predict_batch(documents=[DOCUMENTS, DOCUMENTS[:2]])
     expected_languages = [EXPECTED_LANGUAGES, EXPECTED_LANGUAGES[:2]]
@@ -40,7 +43,7 @@ def test_doclangclassifier_predict_batch(doclangclassifier):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_run_not_route(doclangclassifier):
     doclangclassifier.route_by_language = False
     results, edge = doclangclassifier.run(documents=DOCUMENTS)
@@ -50,7 +53,7 @@ def test_doclangclassifier_run_not_route(doclangclassifier):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_run_route(doclangclassifier):
     for doc, expected_language in zip(DOCUMENTS, EXPECTED_LANGUAGES):
         result, edge = doclangclassifier.run(documents=[doc])
@@ -61,12 +64,13 @@ def test_doclangclassifier_run_route(doclangclassifier):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_run_route_fail_on_mixed_languages(doclangclassifier):
     with pytest.raises(ValueError, match="Documents of multiple languages"):
         doclangclassifier.run(documents=DOCUMENTS)
 
 
+# not testing transformers because current models always predict a language
 @pytest.mark.integration
 @pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
 def test_doclangclassifier_run_route_cannot_detect_language(doclangclassifier, caplog):
@@ -79,7 +83,7 @@ def test_doclangclassifier_run_route_cannot_detect_language(doclangclassifier, c
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_run_route_fail_on_language_not_in_list(doclangclassifier, caplog):
     doc_other_lang = Document("Meu nome é Matteo e moro em Roma")
     with pytest.raises(ValueError, match="is not in the list of languages to route"):
@@ -87,7 +91,7 @@ def test_doclangclassifier_run_route_fail_on_language_not_in_list(doclangclassif
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("doclangclassifier", ["langdetect"], indirect=True)
+@pytest.mark.parametrize("doclangclassifier", ["langdetect", "transformers"], indirect=True)
 def test_doclangclassifier_run_batch(doclangclassifier):
     docs = [[doc] for doc in DOCUMENTS]
     results, split_edge = doclangclassifier.run_batch(documents=docs)
@@ -98,6 +102,3 @@ def test_doclangclassifier_run_batch(doclangclassifier):
         expected_language = EXPECTED_LANGUAGES[num_document]
         assert edge == doclangclassifier._get_edge_from_language(expected_language)
         assert document.to_dict()["meta"]["language"] == expected_language
-
-
-# TODO: test more the base class
