@@ -379,12 +379,34 @@ class Shaper(BaseComponent):
                 "and parameter types."
             ) from e
 
+        if len(self.outputs) < len(output_values):
+            logger.warning(
+                "The number of outputs from function %s is %s. However, only %s output key(s) were provided. "
+                "Only %s output(s) will be stored. "
+                "Provide %s output keys to store all outputs.",
+                self.function.__name__,
+                len(output_values),
+                len(self.outputs),
+                len(self.outputs),
+                len(output_values),
+            )
+
+        if len(self.outputs) > len(output_values):
+            logger.warning(
+                "The number of outputs from function %s is %s. However, %s output key(s) were provided. "
+                "Only the first %s output key(s) will be used.",
+                self.function.__name__,
+                len(output_values),
+                len(self.outputs),
+                len(output_values),
+            )
+
+        results = {}
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
-
-        results = {"invocation_context": invocation_context}
-        if output_key in ["query", "file_paths", "labels", "documents", "meta"]:
-            results[output_key] = output_value
+            if output_key in ["query", "file_paths", "labels", "documents", "meta"]:
+                results[output_key] = output_value
+        results["invocation_context"] = invocation_context
 
         return results, "output_1"
 
