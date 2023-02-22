@@ -16,6 +16,9 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/python_cache/
 
+      - name: Install dependencies
+        run: sudo apt update && sudo apt-get install libsndfile1 ffmpeg
+
       - name: Install Haystack
         run: |
           pip install --upgrade pip
