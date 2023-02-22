@@ -360,6 +360,21 @@ def test_join_documents_without_publish_outputs():
     assert "documents" not in results
 
 
+def test_join_documents_with_publish_outputs_as_list():
+    shaper = Shaper(
+        func="join_documents",
+        inputs={"documents": "documents"},
+        params={"delimiter": " | "},
+        outputs=["documents"],
+        publish_outputs=["documents"],
+    )
+    results, _ = shaper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
+    assert results["documents"] == [Document(content="first | second | third")]
+
+
 def test_join_documents_default_delimiter():
     shaper = Shaper(func="join_documents", inputs={"documents": "documents"}, outputs=["documents"])
     results, _ = shaper.run(
