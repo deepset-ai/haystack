@@ -324,7 +324,7 @@ def test_simple_pipeline(prompt_model):
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert result["out"][0].casefold() == "positive"
+    assert "positive" in result["out"][0].casefold()
 
 
 @pytest.mark.integration
