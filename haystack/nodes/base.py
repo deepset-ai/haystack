@@ -121,7 +121,12 @@ class BaseComponent(ABC):
     @classmethod
     def get_subclass(cls, component_type: str) -> Type[BaseComponent]:
         if component_type not in cls._subclasses.keys():
-            raise PipelineSchemaError(f"Haystack component with the name '{component_type}' not found.")
+            raise PipelineSchemaError(
+                f"Haystack component with the name '{component_type}' not found. "
+                "Check the class name of your component for spelling mistakes and make sure you installed "
+                "Haystack with the proper extras: https://docs.haystack.deepset.ai/docs/installation#custom-installation"
+            )
+
         subclass = cls._subclasses[component_type]
         return subclass
 
