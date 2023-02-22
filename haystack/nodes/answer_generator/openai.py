@@ -53,8 +53,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def __init__(
         self,
         api_key: str,
-        base_url: str,
-        deployment_name: str,
+        base_url: str = None,
+        deployment_name: str = None,
         model: str = "text-davinci-003",
         max_tokens: int = 50,
         api_version: str = "2022-12-01",
