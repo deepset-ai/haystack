@@ -193,10 +193,10 @@ class PDFToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
-        keep_physical_layout: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
         start_page: Optional[int] = None,
         end_page: Optional[int] = None,
+        keep_physical_layout: Optional[bool] = None,
         multiprocessing: Optional[Union[bool, int]] = None,
         skip_xpdf_check: bool = SKIP_XPDF_CHECK,
     ) -> List[Document]:
