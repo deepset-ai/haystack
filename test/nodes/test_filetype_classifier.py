@@ -65,7 +65,7 @@ def test_filetype_classifier_duplicate_custom_extensions():
 
 
 @pytest.mark.unit
-@pytest.mark.skipif(platform.system() == "Windows", reason="python-magic does not install properly on windows")
+@pytest.mark.skipif(platform.system() in ["Windows", "darwin"], reason="python-magic not available")
 def test_filetype_classifier_text_files_without_extension():
     tested_types = ["docx", "html", "odt", "pdf", "pptx", "txt"]
     node = FileTypeClassifier(supported_types=tested_types)
@@ -78,7 +78,7 @@ def test_filetype_classifier_text_files_without_extension():
 
 
 @pytest.mark.unit
-@pytest.mark.skipif(platform.system() == "Windows", reason="python-magic does not install properly on windows")
+@pytest.mark.skipif(platform.system() in ["Windows", "darwin"], reason="python-magic not available")
 def test_filetype_classifier_other_files_without_extension():
     tested_types = ["gif", "jpg", "mp3", "png", "wav", "zip"]
     node = FileTypeClassifier(supported_types=tested_types)
