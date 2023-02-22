@@ -19,7 +19,6 @@ import json
 import inspect
 import logging
 import tempfile
-from copy import copy
 from pathlib import Path
 
 import yaml
@@ -55,7 +54,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, _serializer, send_event as send_event_2
+from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
 
 
 logger = logging.getLogger(__name__)
@@ -439,7 +438,7 @@ class Pipeline:
         # TELEMETRY: Hash the config of the pipeline without node names
         # to be able to cluster later by "pipeline type"
         # (is any specific pipeline configuration very popular?)
-        fingerprint_config = copy(self.get_config())
+        fingerprint_config = copy.copy(self.get_config())
         for comp in fingerprint_config["components"]:
             del comp["name"]
         fingerprint = json.dumps(fingerprint_config, default=str)
