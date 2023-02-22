@@ -1,4 +1,4 @@
-name: OpenAPI Schema
+name: Sync OpenAPI Schema with Readme
 
 on:
   push:
