@@ -31,6 +31,7 @@ from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.telemetry_2 import send_event
 
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
@@ -199,6 +200,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
+        send_event("SentenceTransformersEmbeddingEncoder.train()")
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
