@@ -9,6 +9,7 @@ from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT
 from ..conftest import SAMPLES_PATH
 
 
+@pytest.mark.unit
 def test_filetype_classifier_single_file(tmp_path):
     node = FileTypeClassifier()
     test_files = [tmp_path / f"test.{extension}" for extension in DEFAULT_TYPES]
@@ -19,6 +20,7 @@ def test_filetype_classifier_single_file(tmp_path):
         assert output == {"file_paths": [test_file]}
 
 
+@pytest.mark.unit
 def test_filetype_classifier_many_files(tmp_path):
     node = FileTypeClassifier()
 
@@ -30,6 +32,7 @@ def test_filetype_classifier_many_files(tmp_path):
         assert output == {"file_paths": test_files}
 
 
+@pytest.mark.unit
 def test_filetype_classifier_many_files_mixed_extensions(tmp_path):
     node = FileTypeClassifier()
     test_files = [tmp_path / f"test.{extension}" for extension in DEFAULT_TYPES]
@@ -38,6 +41,7 @@ def test_filetype_classifier_many_files_mixed_extensions(tmp_path):
         node.run(test_files)
 
 
+@pytest.mark.unit
 def test_filetype_classifier_unsupported_extension(tmp_path):
     node = FileTypeClassifier()
     test_file = tmp_path / f"test.really_weird_extension"
@@ -45,6 +49,7 @@ def test_filetype_classifier_unsupported_extension(tmp_path):
         node.run(test_file)
 
 
+@pytest.mark.unit
 def test_filetype_classifier_custom_extensions(tmp_path):
     node = FileTypeClassifier(supported_types=["my_extension"])
     test_file = tmp_path / f"test.my_extension"
@@ -53,11 +58,13 @@ def test_filetype_classifier_custom_extensions(tmp_path):
     assert output == {"file_paths": [test_file]}
 
 
+@pytest.mark.unit
 def test_filetype_classifier_duplicate_custom_extensions():
     with pytest.raises(ValueError):
         FileTypeClassifier(supported_types=[f"my_extension", "my_extension"])
 
 
+@pytest.mark.unit
 @pytest.mark.skipif(platform.system() == "Windows", reason="python-magic does not install properly on windows")
 def test_filetype_classifier_text_files_without_extension():
     tested_types = ["docx", "html", "odt", "pdf", "pptx", "txt"]
@@ -70,6 +77,7 @@ def test_filetype_classifier_text_files_without_extension():
         assert output == {"file_paths": [test_file]}
 
 
+@pytest.mark.unit
 @pytest.mark.skipif(platform.system() == "Windows", reason="python-magic does not install properly on windows")
 def test_filetype_classifier_other_files_without_extension():
     tested_types = ["gif", "jpg", "mp3", "png", "wav", "zip"]
@@ -82,6 +90,7 @@ def test_filetype_classifier_other_files_without_extension():
         assert output == {"file_paths": [test_file]}
 
 
+@pytest.mark.unit
 def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, caplog):
     monkeypatch.delattr(haystack.nodes.file_classifier.file_type, "magic")
 
