@@ -30,6 +30,7 @@ from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
 
@@ -769,6 +770,7 @@ class PromptNode(BaseComponent):
         :param stop_words: Stops text generation if any one of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
         """
+        send_event("PromptNode initialized")
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
@@ -827,6 +829,7 @@ class PromptNode(BaseComponent):
         :param prompt_template: The name or object of the optional PromptTemplate to use.
         :return: A list of strings as model responses.
         """
+        send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
