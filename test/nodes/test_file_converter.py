@@ -116,7 +116,7 @@ def test_pdf_ligatures(Converter):
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_page_range(Converter):
+def test_pdf_page_range(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
     pages = document.content.split("\f")
@@ -130,7 +130,7 @@ def test_page_range(Converter):
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_page_range_numbers(Converter):
+def test_pdf_page_range_numbers(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
 
@@ -143,7 +143,7 @@ def test_page_range_numbers(Converter):
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_multiprocessing(Converter):
+def test_pdf_parallel(Converter):
     converter = Converter(multiprocessing=True)
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
 
@@ -154,7 +154,7 @@ def test_pdf_multiprocessing(Converter):
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_multiprocessing_page_range(Converter):
+def test_pdf_parallel_page_range(Converter):
     converter = Converter(multiprocessing=True)
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf", start_page=2)[0]
 
@@ -164,6 +164,17 @@ def test_pdf_multiprocessing_page_range(Converter):
     # assert pages[-1] == "This is the page 3000 of the document."
 
     assert len(pages) == 3000
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_layout(Converter):
+    converter = Converter(multiprocessing=True, keep_physical_layout=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 3000 of the document."
 
 
 @pytest.mark.tika
