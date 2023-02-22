@@ -537,7 +537,17 @@ def rag_generator():
 
 @pytest.fixture
 def openai_generator():
-    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
+    azure_conf = haystack_azure_conf()
+    if azure_conf:
+        return OpenAIAnswerGenerator(
+            api_key=azure_conf["api_key"],
+            base_url=azure_conf["base_url"],
+            deployment_name=azure_conf["deployment_name"],
+            model="text-babbage-001",
+            top_k=1,
+        )
+    else:
+        return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
 
 
 @pytest.fixture
@@ -979,7 +989,7 @@ def haystack_azure_conf():
     base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
     deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
     if api_key and base_url and deployment_name:
-        return {"base_url": base_url, "deployment_name": deployment_name}
+        return {"api_key": api_key, "base_url": base_url, "deployment_name": deployment_name}
     else:
         return {}
 
