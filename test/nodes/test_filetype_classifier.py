@@ -92,7 +92,11 @@ def test_filetype_classifier_other_files_without_extension():
 
 @pytest.mark.unit
 def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, caplog):
-    monkeypatch.delattr(haystack.nodes.file_classifier.file_type, "magic")
+    try:
+        monkeypatch.delattr(haystack.nodes.file_classifier.file_type, "magic")
+    except AttributeError:
+        # magic not installed, even better
+        pass
 
     node = FileTypeClassifier(supported_types=[""])
 
