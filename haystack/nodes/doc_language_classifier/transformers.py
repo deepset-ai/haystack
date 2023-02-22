@@ -121,7 +121,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         :return: List of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0:
-            raise AttributeError(
+            raise ValueError(
                 "TransformersDocumentLanguageClassifier needs at least one document to predict the language."
             )
         if batch_size is None:
@@ -147,24 +147,20 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         :return: List of lists of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0 or all(len(docs_list) == 0 for docs_list in documents):
-            raise AttributeError(
+            raise ValueError(
                 "TransformersDocumentLanguageClassifier needs at least one document to predict the language."
             )
         if batch_size is None:
             batch_size = self.batch_size
 
-        number_of_documents = [len(doc_list) for doc_list in documents]
         flattened_documents = list(itertools.chain.from_iterable(documents))
         docs_with_preds = self.predict(flattened_documents, batch_size=batch_size)
 
         # Group documents together
         grouped_documents = []
-        left_idx = 0
-        right_idx = 0
-        for number in number_of_documents:
-            right_idx = left_idx + number
-            grouped_documents.append(docs_with_preds[left_idx:right_idx])
-            left_idx = right_idx
+        for docs_list in documents:
+            grouped_documents.append(docs_with_preds[: len(docs_list)])
+            docs_with_preds = docs_with_preds[len(docs_list) :]
 
         return grouped_documents
 

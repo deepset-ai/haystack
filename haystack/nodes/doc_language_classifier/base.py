@@ -35,7 +35,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         if languages_to_route is None:
             languages_to_route = DEFAULT_LANGUAGES
             if route_by_language is True:
-                logging.warning(
+                logging.info(
                     "languages_to_route list has not been defined. The default list will be used: %s",
                     languages_to_route,
                 )
@@ -76,7 +76,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         if len(unique_languages) > 1:
             raise ValueError(
                 f"If route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
-                "If you want to route documents by language, you can call Pipeline.run() once for each file."
+                "If you want to route documents by language, you can call Pipeline.run() once for each Document."
             )
         language = unique_languages[0]
         if language is None:
@@ -116,7 +116,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             if len(unique_languages) > 1:
                 raise ValueError(
                     f"If route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
-                    "If you want to route documents by language, you can call Pipeline.run() once for each file."
+                    "If you want to route documents by language, you can call Pipeline.run() once for each Document."
                 )
             if unique_languages[0] is None:
                 logging.warning(

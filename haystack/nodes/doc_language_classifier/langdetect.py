@@ -58,7 +58,7 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         :return: List of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0:
-            raise AttributeError(
+            raise ValueError(
                 "LangdetectDocumentLanguageClassifier needs at least one document to predict the language."
             )
         if batch_size is not None:
@@ -84,7 +84,7 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         :return: List of lists of Documents, where Document.meta["language"] contains the predicted language
         """
         if len(documents) == 0 or all(len(docs_list) == 0 for docs_list in documents):
-            raise AttributeError(
+            raise ValueError(
                 "LangdetectDocumentLanguageClassifier needs at least one document to predict the language."
             )
         if batch_size is not None:
