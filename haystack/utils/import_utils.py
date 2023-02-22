@@ -12,6 +12,7 @@ import requests
 
 from haystack.telemetry import send_tutorial_event
 
+
 logger = logging.getLogger(__name__)
 
 
