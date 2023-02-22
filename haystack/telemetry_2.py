@@ -222,6 +222,16 @@ def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = Non
         logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
 
 
+def _serializer(obj):
+    """
+    Small function used to build pipeline fingerprints and safely serialize any object.
+    """
+    try:
+        return str(obj)
+    except:
+        return "~ non serializable object ~"
+
+
 if os.environ.get("HAYSTACK_TELEMETRY_VERSION", "2") == "2":
     telemetry = Telemetry()
 else:
