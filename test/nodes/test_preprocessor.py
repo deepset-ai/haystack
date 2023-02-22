@@ -196,7 +196,7 @@ def test_preprocess_passage_split(split_length_and_results):
     assert len(documents) == expected_documents_count
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
 def test_clean_header_footer():
     converter = PDFToTextConverter()
