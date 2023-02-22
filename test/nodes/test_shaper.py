@@ -340,6 +340,22 @@ def test_join_documents():
         documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
+    assert results["documents"] == [Document(content="first | second | third")]
+
+
+def test_join_documents_without_publish_outputs():
+    shaper = Shaper(
+        func="join_documents",
+        inputs={"documents": "documents"},
+        params={"delimiter": " | "},
+        outputs=["documents"],
+        publish_outputs=False,
+    )
+    results, _ = shaper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
+    assert "documents" not in results
 
 
 def test_join_documents_default_delimiter():
@@ -453,6 +469,11 @@ def test_strings_to_answers_yaml(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run()
     assert result["invocation_context"]["answers"] == [
+        Answer(answer="a", type="generative"),
+        Answer(answer="b", type="generative"),
+        Answer(answer="c", type="generative"),
+    ]
+    assert result["answers"] == [
         Answer(answer="a", type="generative"),
         Answer(answer="b", type="generative"),
         Answer(answer="c", type="generative"),

@@ -246,6 +246,7 @@ class Shaper(BaseComponent):
         outputs: List[str],
         inputs: Optional[Dict[str, Union[List[str], str]]] = None,
         params: Optional[Dict[str, Any]] = None,
+        publish_outputs: bool = True,
     ):
         """
         Initializes the Shaper component.
@@ -321,10 +322,30 @@ class Shaper(BaseComponent):
             is not passed to this node by the pipeline.
         :param outputs: THe key to store the outputs in the invocation context. The length of the outputs must match
             the number of outputs produced by the function invoked.
+        :param publish_outputs: Whether to publish the outputs to the pipeline's output. Defaults to True.
+            E.g. if `outputs = ["documents"]` result for `publish_outputs = True` looks like
+            ```python
+                {
+                    "invocation_context": {
+                        "documents": [...]
+                    },
+                    "documents": [...]
+                }
+            ```
+            For `publish_outputs = False` result looks like
+            ```python
+                {
+                    "invocation_context": {
+                        "documents": [...]
+                    },
+                }
+            ```
+            Note that only outputs ["query", "file_paths", "labels", "documents", "meta", "answers"] can be published.
         """
         super().__init__()
         self.function = REGISTERED_FUNCTIONS[func]
         self.outputs = outputs
+        self.publish_outputs = publish_outputs
         self.inputs = inputs or {}
         self.params = params or {}
 
@@ -404,7 +425,7 @@ class Shaper(BaseComponent):
         results = {}
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
-            if output_key in ["query", "file_paths", "labels", "documents", "meta"]:
+            if self.publish_outputs and output_key in ["query", "file_paths", "labels", "documents", "meta", "answers"]:
                 results[output_key] = output_value
         results["invocation_context"] = invocation_context
 
