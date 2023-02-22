@@ -1,15 +1,16 @@
 name: OpenAPI Schema
 
 on:
-  workflow_dispatch: # Activate this workflow manually
-  pull_request:
+  push:
+    branches:
+      - main
+      # release branches have the form v1.9.x
+      - "v[0-9].*[0-9].x"
 
 jobs:
-
   run:
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v3
 
       - name: Setup Python
@@ -18,37 +19,16 @@ jobs:
       - name: Install Haystack
         run: |
           pip install --upgrade pip
-          pip install .[dev]
-          pip install -U rest_api/
+          pip install -U -e .[all]
+          pip install -e ./rest_api
 
       - name: Update OpenAPI specs
         run: python .github/utils/generate_openapi_specs.py
 
-      - name: Check status
-        run: |
-          if [[ `git status --porcelain` ]]; then
-            git status
-            echo "##################################################################################################"
-            git diff
-            echo "##################################################################################################"
-            echo "# "
-            echo "# CHECK FAILED! OpenAPI specs were not updated."
-            echo "# "
-            echo "# Please generate the new OpenAPI specs locally:"
-            echo "# "
-            echo "#     python .github/utils/generate_openapi_specs.py"
-            echo "# "
-            echo "# You need a FULL INSTALLATION of Haystack for this step to work."
-            echo "# "
-            echo "#     pip install -e .[all]"
-            echo "# "
-            echo "# If you cannot do that for any reason, please disable the hook, push "
-            echo "# and let us know in the PR description."
-            echo "# "
-            echo "# See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for instructions."
-            echo "# "
-            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
-            echo "# "
-            echo "###################################################################################################"
-            exit 1
-          fi
+      - name: Sync OpenAPI specs
+        uses: readmeio/rdme@8.3.1
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+          README_API_DEFINITION_ID: ${{ secrets.README_API_DEFINITION_ID }}
+        with:
+          rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID"
