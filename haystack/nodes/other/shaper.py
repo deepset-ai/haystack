@@ -246,6 +246,7 @@ class Shaper(BaseComponent):
         outputs: List[str],
         inputs: Optional[Dict[str, Union[List[str], str]]] = None,
         params: Optional[Dict[str, Any]] = None,
+        publish_outputs: Union[bool, List[str]] = True,
     ):
         """
         Initializes the Shaper component.
@@ -319,14 +320,38 @@ class Shaper(BaseComponent):
             You can use params to provide fallback values for arguments of `run` that you're not sure exist.
             So if you need `query` to exist, you can provide a fallback value in the params, which will be used only if `query`
             is not passed to this node by the pipeline.
-        :param outputs: THe key to store the outputs in the invocation context. The length of the outputs must match
+        :param outputs: The key to store the outputs in the invocation context. The length of the outputs must match
             the number of outputs produced by the function invoked.
+        :param publish_outputs: Controls whether to publish the outputs to the pipeline's output.
+            Set `True` (default value) to publishes all outputs or `False` to publish None.
+            E.g. if `outputs = ["documents"]` result for `publish_outputs = True` looks like
+            ```python
+                {
+                    "invocation_context": {
+                        "documents": [...]
+                    },
+                    "documents": [...]
+                }
+            ```
+            For `publish_outputs = False` result looks like
+            ```python
+                {
+                    "invocation_context": {
+                        "documents": [...]
+                    },
+                }
+            ```
+            If you want to have finer-grained control, pass a list of the outputs you want to publish.
         """
         super().__init__()
         self.function = REGISTERED_FUNCTIONS[func]
         self.outputs = outputs
         self.inputs = inputs or {}
         self.params = params or {}
+        if isinstance(publish_outputs, bool):
+            self.publish_outputs = self.outputs if publish_outputs else []
+        else:
+            self.publish_outputs = publish_outputs
 
     def run(  # type: ignore
         self,
@@ -404,7 +429,7 @@ class Shaper(BaseComponent):
         results = {}
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
-            if output_key in ["query", "file_paths", "labels", "documents", "meta"]:
+            if output_key in self.publish_outputs:
                 results[output_key] = output_value
         results["invocation_context"] = invocation_context
 
