@@ -425,7 +425,7 @@ class Shaper(BaseComponent):
         results = {}
         for output_key, output_value in zip(self.outputs, output_values):
             invocation_context[output_key] = output_value
-            if self.publish_outputs and output_key in ["query", "file_paths", "labels", "documents", "meta", "answers"]:
+            if self.publish_outputs:
                 results[output_key] = output_value
         results["invocation_context"] = invocation_context
 
