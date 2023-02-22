@@ -90,6 +90,7 @@ jobs:
           - macos-latest
         topic:
           - document_stores
+          - nodes
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -411,6 +412,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -438,8 +440,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -455,6 +458,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           #- "others"
 
@@ -484,8 +488,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -504,9 +509,9 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
-          - "document_stores"
 
     runs-on: ubuntu-latest
 
@@ -547,9 +552,6 @@ jobs:
 
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
-
-    - name: Run GraphDB
-      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
@@ -603,6 +605,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 

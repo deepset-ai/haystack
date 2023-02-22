@@ -20,7 +20,7 @@ from haystack.nodes.prompt import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine()
+machine = platform.machine().lower()
 system = platform.system()
 
 USE_TIKTOKEN = False
@@ -138,7 +138,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             # Check for required prompts
             required_params = ["context", "query"]
-            if all(p in prompt_template.prompt_params for p in required_params):
+            if not all(p in prompt_template.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
                     "`query` in its `prompt_params`. Supply a different `prompt_template` or "
@@ -186,7 +186,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             logger.debug("Using GPT2TokenizerFast")
             self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
 
-    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
+    )
     def predict(
         self,
         query: str,

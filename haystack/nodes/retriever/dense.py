@@ -1,5 +1,10 @@
 from abc import abstractmethod
-from typing import List, Dict, Union, Optional, Any, Literal
+from typing import List, Dict, Union, Optional, Any
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import logging
 from pathlib import Path

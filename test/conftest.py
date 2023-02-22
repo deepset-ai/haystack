@@ -1,13 +1,8 @@
 from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
-import subprocess
 from uuid import UUID
-import time
-from subprocess import run
-from sys import platform
 import gc
-import uuid
 import logging
 from pathlib import Path
 import os
@@ -22,7 +17,6 @@ import posthog
 import numpy as np
 import psutil
 import pytest
-import requests
 
 from haystack import Answer, BaseComponent, __version__ as haystack_version
 from haystack.document_stores import (
@@ -33,7 +27,6 @@ from haystack.document_stores import (
     MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
-    GraphDBKnowledgeGraph,
     FAISSDocumentStore,
 )
 from haystack.nodes import (
@@ -62,10 +55,11 @@ from haystack.nodes import (
     TransformersSummarizer,
     TransformersTranslator,
     QuestionGenerator,
+    PromptTemplate,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.prompt import PromptNode, PromptModel
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
 
 try:
@@ -279,11 +273,30 @@ class MockDocumentStore(BaseDocumentStore):
 class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
-    def retrieve(self, query: str, top_k: int):
-        pass
+    def retrieve(
+        self,
+        query: str,
+        filters: Optional[FilterType] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
+    ) -> List[Document]:
+        return []
 
-    def retrieve_batch(self, queries: List[str], top_k: int):
-        pass
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
+    ) -> List[List[Document]]:
+        return [[]]
 
 
 class MockSeq2SegGenerator(BaseGenerator):
@@ -348,6 +361,40 @@ class MockReader(BaseReader):
 
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
+
+
+class MockPromptNode(PromptNode):
+    def __init__(self):
+        self.default_prompt_template = None
+
+    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
+        return [""]
+
+    def get_prompt_template(self, prompt_template_name: str) -> PromptTemplate:
+        if prompt_template_name == "think-step-by-step":
+            return PromptTemplate(
+                name="think-step-by-step",
+                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+                "correctly, you have access to the following tools:\n\n"
+                "$tool_names_with_descriptions\n\n"
+                "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
+                "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
+                "for a final answer, respond with the `Final Answer:`\n\n"
+                "Use the following format:\n\n"
+                "Question: the question to be answered\n"
+                "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
+                "Tool: [$tool_names]\n"
+                "Tool Input: the input for the tool\n"
+                "Observation: the tool will respond with the result\n"
+                "...\n"
+                "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
+                "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
+                "---\n\n"
+                "Question: $query\n"
+                "Thought: Let's think step-by-step, I first need to $generated_text",
+            )
+        else:
+            return PromptTemplate(name="", prompt_text="")
 
 
 #
@@ -436,131 +483,6 @@ def gc_cleanup(request):
     """
     yield
     gc.collect()
-
-
-@pytest.fixture(scope="session")
-def elasticsearch_fixture():
-    # test if a ES cluster is already running. If not, download and start an ES instance locally.
-    try:
-        client = Elasticsearch(hosts=[{"host": "localhost", "port": "9200"}])
-        client.info()
-    except:
-        print("Starting Elasticsearch ...")
-        status = subprocess.run(["docker rm haystack_test_elastic"], shell=True)
-        status = subprocess.run(
-            [
-                'docker run -d --name haystack_test_elastic -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'
-            ],
-            shell=True,
-        )
-        if status.returncode:
-            raise Exception("Failed to launch Elasticsearch. Please check docker container logs.")
-        time.sleep(30)
-
-
-@pytest.fixture(scope="session")
-def milvus_fixture():
-    # test if a Milvus server is already running. If not, start Milvus docker container locally.
-    # Make sure you have given > 6GB memory to docker engine
-    try:
-        milvus_server = Milvus(uri="tcp://localhost:19530", timeout=5, wait_timeout=5)
-        milvus_server.server_status(timeout=5)
-    except:
-        print("Starting Milvus ...")
-        status = subprocess.run(
-            [
-                "docker run -d --name milvus_cpu_0.10.5 -p 19530:19530 -p 19121:19121 "
-                "milvusdb/milvus:0.10.5-cpu-d010621-4eda95"
-            ],
-            shell=True,
-        )
-        time.sleep(40)
-
-
-@pytest.fixture(scope="session")
-def weaviate_fixture():
-    # test if a Weaviate server is already running. If not, start Weaviate docker container locally.
-    # Make sure you have given > 6GB memory to docker engine
-    try:
-        weaviate_server = weaviate.Client(url="http://localhost:8080", timeout_config=(5, 15))
-        weaviate_server.is_ready()
-    except:
-        print("Starting Weaviate servers ...")
-        status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
-        status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:latest"], shell=True
-        )
-        if status.returncode:
-            raise Exception("Failed to launch Weaviate. Please check docker container logs.")
-        time.sleep(60)
-
-
-@pytest.fixture(scope="session")
-def graphdb_fixture():
-    # test if a GraphDB instance is already running. If not, download and start a GraphDB instance locally.
-    try:
-        kg = GraphDBKnowledgeGraph()
-        # fail if not running GraphDB
-        kg.delete_index()
-    except:
-        print("Starting GraphDB ...")
-        status = subprocess.run(["docker rm haystack_test_graphdb"], shell=True)
-        status = subprocess.run(
-            [
-                "docker run -d -p 7200:7200 --name haystack_test_graphdb docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11"
-            ],
-            shell=True,
-        )
-        if status.returncode:
-            raise Exception("Failed to launch GraphDB. Please check docker container logs.")
-        time.sleep(30)
-
-
-@pytest.fixture(scope="session")
-def tika_fixture():
-    try:
-        tika_url = "http://localhost:9998/tika"
-        ping = requests.get(tika_url)
-        if ping.status_code != 200:
-            raise Exception("Unable to connect Tika. Please check tika endpoint {0}.".format(tika_url))
-    except:
-        print("Starting Tika ...")
-        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.28.4"], shell=True)
-        if status.returncode:
-            raise Exception("Failed to launch Tika. Please check docker container logs.")
-        time.sleep(30)
-
-
-@pytest.fixture(scope="session")
-def xpdf_fixture():
-    verify_installation = run(["pdftotext"], shell=True)
-    if verify_installation.returncode == 127:
-        if platform.startswith("linux"):
-            platform_id = "linux"
-            sudo_prefix = "sudo"
-        elif platform.startswith("darwin"):
-            platform_id = "mac"
-            # For Mac, generally sudo need password in interactive console.
-            # But most of the cases current user already have permission to copy to /user/local/bin.
-            # Hence removing sudo requirement for Mac.
-            sudo_prefix = ""
-        else:
-            raise Exception(
-                """Currently auto installation of pdftotext is not supported on {0} platform """.format(platform)
-            )
-        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.03.tar.gz &&
-                       tar -xvf xpdf-tools-{0}-4.03.tar.gz &&
-                       {1} cp xpdf-tools-{0}-4.03/bin64/pdftotext /usr/local/bin""".format(
-            platform_id, sudo_prefix
-        )
-        run([commands], shell=True)
-
-        verify_installation = run(["pdftotext -v"], shell=True)
-        if verify_installation.returncode == 127:
-            raise Exception(
-                """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
-                 You can download for your OS from here: https://www.xpdfreader.com/download.html."""
-            )
 
 
 @pytest.fixture
@@ -801,13 +723,6 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
-    # Weaviate currently only supports UUIDs
-    if type(document_store) == WeaviateDocumentStore:
-        for d in docs:
-            d["id"] = str(uuid.uuid4())
-
-
 # FIXME Fix this in the docstore tests refactoring
 from inspect import getmembers, isclass, isfunction
 
@@ -877,45 +792,6 @@ def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
     document_store.write_documents(docs)
     yield document_store
     document_store.delete_index(document_store.index)
-
-
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "pinecone"])
-def document_store_dot_product_small(request, tmp_path, monkeypatch):
-    if request.param == "pinecone":
-        mock_pinecone(monkeypatch)
-
-    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
-    document_store = get_document_store(
-        document_store_type=request.param,
-        embedding_dim=embedding_dim.args[0],
-        similarity="dot_product",
-        tmp_path=tmp_path,
-    )
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
-def document_store_small(request, tmp_path, monkeypatch):
-    if request.param == "pinecone":
-        mock_pinecone(monkeypatch)
-
-    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
-    document_store = get_document_store(
-        document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path
-    )
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
-@pytest.fixture(autouse=True)
-def postgres_fixture():
-    if SQL_TYPE == "postgres":
-        setup_postgres()
-        yield
-        teardown_postgres()
-    else:
-        yield
 
 
 @pytest.fixture

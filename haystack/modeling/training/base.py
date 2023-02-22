@@ -507,7 +507,7 @@ class Trainer:
                 "scheduler_state": self.lr_schedule.state_dict(),
                 "numpy_rng_state": numpy.random.get_state(),
                 "rng_state": torch.get_rng_state(),
-                "cuda_rng_state": torch.cuda.get_rng_state(),
+                "cuda_rng_state": torch.cuda.get_rng_state() if torch.cuda.is_available() else None,
             },
             checkpoint_path / "trainer",
             pickle_module=dill,
