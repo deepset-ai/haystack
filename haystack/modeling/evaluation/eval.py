@@ -12,6 +12,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import WrappedDataParallel
 from haystack.utils.experiment_tracking import Tracker as tracker
+from haystack.telemetry_2 import send_event
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -57,6 +58,7 @@ class Evaluator:
         :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
+        send_event("Evaluator.eval()")
         model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
         model.prediction_heads[0].use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
         model.eval()
