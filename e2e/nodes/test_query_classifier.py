@@ -22,6 +22,7 @@ def zero_shot_transformers_query_classifier():
     )
 
 
+@pytest.mark.integration
 def test_transformers_query_classifier(transformers_query_classifier):
     output = transformers_query_classifier.run(query="morse code")
     assert output == ({}, "output_2")
@@ -30,6 +31,7 @@ def test_transformers_query_classifier(transformers_query_classifier):
     assert output == ({}, "output_1")
 
 
+@pytest.mark.integration
 def test_transformers_query_classifier_batch(transformers_query_classifier):
     queries = ["morse code", "How old is John?"]
     output = transformers_query_classifier.run_batch(queries=queries)
@@ -37,6 +39,7 @@ def test_transformers_query_classifier_batch(transformers_query_classifier):
     assert output[0] == {"output_2": {"queries": ["morse code"]}, "output_1": {"queries": ["How old is John?"]}}
 
 
+@pytest.mark.integration
 def test_zero_shot_transformers_query_classifier(zero_shot_transformers_query_classifier):
     output = zero_shot_transformers_query_classifier.run(query="What's the answer?")
     assert output == ({}, "output_3")
@@ -48,6 +51,7 @@ def test_zero_shot_transformers_query_classifier(zero_shot_transformers_query_cl
     assert output == ({}, "output_2")
 
 
+@pytest.mark.integration
 def test_zero_shot_transformers_query_classifier_batch(zero_shot_transformers_query_classifier):
     queries = [
         "What's the answer?",
@@ -64,9 +68,10 @@ def test_zero_shot_transformers_query_classifier_batch(zero_shot_transformers_qu
     }
 
 
+@pytest.mark.integration
 def test_transformers_query_classifier_wrong_labels():
     with pytest.raises(ValueError, match="For text-classification, the provided labels must match the model labels"):
-        query_classifier = TransformersQueryClassifier(
+        TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
             task="text-classification",
@@ -74,9 +79,10 @@ def test_transformers_query_classifier_wrong_labels():
         )
 
 
+@pytest.mark.integration
 def test_transformers_query_classifier_no_labels():
     with pytest.raises(ValueError, match="The labels must be provided"):
-        query_classifier = TransformersQueryClassifier(
+        TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
             task="text-classification",
@@ -84,9 +90,10 @@ def test_transformers_query_classifier_no_labels():
         )
 
 
+@pytest.mark.integration
 def test_transformers_query_classifier_unsupported_task():
     with pytest.raises(ValueError, match="Task not supported"):
-        query_classifier = TransformersQueryClassifier(
+        TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
             task="summarization",
