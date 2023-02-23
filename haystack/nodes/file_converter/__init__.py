@@ -20,3 +20,6 @@ ImageToTextConverter = safe_import(
 PDFToTextOCRConverter = safe_import(
     "haystack.nodes.file_converter.pdf_ocr", "PDFToTextOCRConverter", "ocr"
 )  # Has optional dependencies
+PDFToTextConverter = safe_import(
+    "haystack.nodes.file_converter.pdf", "PDFToTextConverter", "pdf"
+)  # Has optional dependencies
