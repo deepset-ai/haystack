@@ -81,6 +81,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param max_tokens: The maximum number of tokens reserved for the generated Answer.
                            A higher number allows for longer answers without exceeding the max prompt length of the OpenAI model.
                            A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens.
+        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
@@ -188,29 +189,14 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
+        self.using_azure = self.deployment_name is not None and self.base_url is not None
+
         if USE_TIKTOKEN:
             logger.debug("Using tiktoken %s tokenizer", tokenizer)
             self._tk_tokenizer: tiktoken.Encoding = tiktoken.get_encoding(tokenizer)
         else:
             logger.debug("Using GPT2TokenizerFast")
             self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
-
-    def using_azure(self) -> bool:
-        return self.deployment_name is not None and self.base_url is not None
-
-    def resolve_url(self) -> str:
-        url = "https://api.openai.com/v1/completions"
-        if self.using_azure():
-            url = (
-                f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
-            )
-        return url
-
-    def resolve_headers(self) -> Dict[str, str]:
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        if self.using_azure():
-            headers = {"api-key": self.api_key, "Content-Type": "application/json"}
-        return headers
 
     @retry_with_exponential_backoff(
         backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
@@ -265,10 +251,19 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
         }
+        url = "https://api.openai.com/v1/completions"
+        if self.using_azure:
+            url = (
+                f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
+            )
 
-        response = requests.post(
-            self.resolve_url(), headers=self.resolve_headers(), data=json.dumps(payload), timeout=timeout
-        )
+        headers = {"Content-Type": "application/json"}
+        if self.using_azure():
+            headers = {"api-key": self.api_key, **headers}
+        else:
+            headers = {"Authorization": f"Bearer {self.api_key}", **headers}
+
+        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
