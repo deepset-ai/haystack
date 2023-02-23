@@ -48,6 +48,7 @@ We propose the following tools to be developed for the MVP version of our agent 
 - Self reflection module (query rephrasing)
 - WebRetriever
 - Top-p (nucleus) sampling
+- Agent memory
 - deepset Cloud API
 
 # Basic example
@@ -163,6 +164,43 @@ researchers found that "Search result error" is the main cause in 23% of the cas
 can help us minimize this point of failure.
 
 Note that one can still use top-k filtering via Ranker and top-p filtering via TopPSampler in combination.
+
+## Agent memory
+
+Although we currently support only so-called ReAct agents, it is not hard to envision a future where we'll have
+additional agent types including conversational agents.
+
+Due to model one-shot-forget nature of inferencing conversational agents might need to remember the context of the
+conversation.
+
+To support conversational agents, we'll need Agent memory component. The memory component will initially contain
+two submodules: entity extraction and summarization
+
+Entity extraction is a neural module extracting entities from the provided conversation transcript (raw text).
+The entities are usually nouns, for example, people, places, organizations, etc.
+
+Entity summarization is a neural module that summarizes the entities extracted by the entity extraction module.
+
+Entity extraction and summarization could be run in the background as the conversation progresses.
+
+The extracted entities along with relevant summaries will be stored in the Agent memory. Agent memory implementation
+details are out of scope of this proposal; they could be various short or long term memory storage options.
+
+For the first version of the agent, we'll strive to keep the memory component as simple as possible; we'll
+only implement entity extraction and summarization while we'll use runtime memory for storing entities.
+
+### Future improvements:
+
+As we have limited token payload for model inferencing, we'll need to implement a mechanism for decaying memory.
+
+If we have many entities in the memory, we'll also need to implement a mechanism for entities selection.
+We'll likely need no summaries for well-known entities like "Elon Musk" or "New York".
+
+Information related to the entities could become stale over time (e.g."I'm currently in New York") and we'll
+need to implement a mechanism for updating the entities.
+
+The mechanism for decaying memory, prioritizing and updating entities is out of scope of this proposal.
+
 
 ## deepset Cloud API
 The Agent should be able to use pipelines deployed on deepset Cloud as a tool.
