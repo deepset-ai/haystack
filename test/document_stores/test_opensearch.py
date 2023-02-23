@@ -18,8 +18,8 @@ from haystack.document_stores.opensearch import (
     tqdm,
 )
 from haystack.errors import DocumentStoreError
+from haystack.testing import DocumentStoreBaseTestAbstract
 
-from .test_base import DocumentStoreBaseTestAbstract
 from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 

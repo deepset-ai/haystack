@@ -1,9 +1,11 @@
-import re
 import pytest
+import logging
 
 import haystack
 from haystack import Pipeline, Document, Answer
+from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes.other.shaper import Shaper
+from haystack.nodes.retriever.sparse import BM25Retriever
 
 
 @pytest.fixture
@@ -13,10 +15,31 @@ def mock_function(monkeypatch):
     )
 
 
+@pytest.fixture
+def mock_function_two_outputs(monkeypatch):
+    monkeypatch.setattr(
+        haystack.nodes.other.shaper, "REGISTERED_FUNCTIONS", {"two_output_test_function": lambda a: (a, len(a))}
+    )
+
+
 def test_basic_invocation_only_inputs(mock_function):
     shaper = Shaper(func="test_function", inputs={"a": "query", "b": "documents"}, outputs=["c"])
     results, _ = shaper.run(query="test query", documents=["doesn't", "really", "matter"])
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
+
+
+def test_multiple_outputs(mock_function_two_outputs):
+    shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c", "d"])
+    results, _ = shaper.run(query="test")
+    assert results["invocation_context"]["c"] == "test"
+    assert results["invocation_context"]["d"] == 4
+
+
+def test_multiple_outputs_error(mock_function_two_outputs, caplog):
+    shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c"])
+    with caplog.at_level(logging.WARNING):
+        results, _ = shaper.run(query="test")
+        assert "Only 1 output(s) will be stored." in caplog.text
 
 
 def test_basic_invocation_only_params(mock_function):
@@ -319,6 +342,37 @@ def test_join_documents():
         documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
+    assert results["documents"] == [Document(content="first | second | third")]
+
+
+def test_join_documents_without_publish_outputs():
+    shaper = Shaper(
+        func="join_documents",
+        inputs={"documents": "documents"},
+        params={"delimiter": " | "},
+        outputs=["documents"],
+        publish_outputs=False,
+    )
+    results, _ = shaper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
+    assert "documents" not in results
+
+
+def test_join_documents_with_publish_outputs_as_list():
+    shaper = Shaper(
+        func="join_documents",
+        inputs={"documents": "documents"},
+        params={"delimiter": " | "},
+        outputs=["documents"],
+        publish_outputs=["documents"],
+    )
+    results, _ = shaper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert results["invocation_context"]["documents"] == [Document(content="first | second | third")]
+    assert results["documents"] == [Document(content="first | second | third")]
 
 
 def test_join_documents_default_delimiter():
@@ -432,6 +486,11 @@ def test_strings_to_answers_yaml(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run()
     assert result["invocation_context"]["answers"] == [
+        Answer(answer="a", type="generative"),
+        Answer(answer="b", type="generative"),
+        Answer(answer="c", type="generative"),
+    ]
+    assert result["answers"] == [
         Answer(answer="a", type="generative"),
         Answer(answer="b", type="generative"),
         Answer(answer="c", type="generative"),
@@ -1095,3 +1154,19 @@ def test_join_query_and_documents_convert_into_documents_yaml(tmp_path):
     assert result["invocation_context"]["query_and_docs"]
     assert len(result["invocation_context"]["query_and_docs"]) == 4
     assert isinstance(result["invocation_context"]["query_and_docs"][0], Document)
+
+
+def test_shaper_publishes_unknown_arg_does_not_break_pipeline():
+    documents = [Document(content="test query")]
+    shaper = Shaper(func="rename", inputs={"value": "query"}, outputs=["unknown_by_retriever"], publish_outputs=True)
+    document_store = InMemoryDocumentStore(use_bm25=True)
+    document_store.write_documents(documents)
+    retriever = BM25Retriever(document_store=document_store)
+    pipeline = Pipeline()
+    pipeline.add_node(component=shaper, name="shaper", inputs=["Query"])
+    pipeline.add_node(component=retriever, name="retriever", inputs=["shaper"])
+
+    result = pipeline.run(query="test query")
+    assert result["invocation_context"]["unknown_by_retriever"] == "test query"
+    assert result["unknown_by_retriever"] == "test query"
+    assert len(result["documents"]) == 1
