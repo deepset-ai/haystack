@@ -8,12 +8,14 @@ from pathlib import Path
 import numpy as np
 import torch
 
+logger = logging.getLogger(__name__)
+
 try:
     import soundfile as sf
     from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
 
 except OSError as ose:
-    logging.exception(
+    logger.exception(
         "`libsndfile` not found, it's probably not installed. The node will most likely crash. "
         "Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
     )
@@ -21,8 +23,6 @@ from pydub import AudioSegment
 
 from haystack.errors import AudioNodeError
 from haystack.modeling.utils import initialize_device_settings
-
-logger = logging.getLogger(__name__)
 
 
 class TextToSpeech:
