@@ -6,9 +6,6 @@ from typing import Any, Dict, List, Optional, Union
 
 from more_itertools import divide
 
-from haystack.nodes.file_converter.base import BaseConverter
-from haystack.schema import Document
-
 try:
     import fitz
 except (ImportError, ModuleNotFoundError) as ie:
@@ -16,6 +13,8 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "pdf", ie)
 
+from haystack.nodes.file_converter.base import BaseConverter
+from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +217,7 @@ class PDFToTextConverter(BaseConverter):
                 document += page.get_text("text", sort=layout) + "\f"
         else:
             cpu = cpu_count() if isinstance(multiprocessing, bool) or multiprocessing is None else multiprocessing
-            parts = divide(cpu, [i for i in range(start_page, end_page)])
+            cpu = cpu_count() if isinstance(multiprocessing, bool) or multiprocessing is None else multiprocessing
             pages_mp = [(i, file_path, parts, layout) for i in range(cpu)]
 
             with ProcessPoolExecutor(max_workers=cpu) as pool:
