@@ -116,7 +116,7 @@ def openai_request(url: str, api_key: str, payload: Dict, timeout: Union[float, 
 
 
 def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
-    """Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`
+    """Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`,
     log a warning to the user.
 
     :param result: The result returned from the OpenAI API.
