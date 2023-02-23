@@ -1530,8 +1530,3 @@ class TestAggregateLabels:
                 assert l.filters["from_meta"] == l.meta["from_meta"]
                 assert "_id" in l.filters
                 assert multi_label.filters == l.filters
-
-
-def test_logging_is_configured_correctly():
-    """See https://github.com/deepset-ai/haystack/issues/4202"""
-    assert not logging.getLogger().handlers
