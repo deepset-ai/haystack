@@ -66,7 +66,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         logger.warning(
             "The prompt has been truncated from %s tokens to %s tokens to fit within the max token limit."
-            " Consider reducing the length of the prompt to avoid truncation.",
+            " Reduce the length of the prompt to prevent it from being cut off.",
             n_tokens,
             self.max_seq_len,
         )
