@@ -51,7 +51,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
-        index_type: str = "flat",
         scroll: str = "1d",
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
@@ -113,8 +112,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
-                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
         :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
                        Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
                        For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
@@ -132,13 +129,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         :param use_system_proxy: Whether to use system proxy.
 
         """
-        # hnsw is only supported in OpensearchDocumentStore
-        if index_type == "hnsw":
-            raise DocumentStoreError(
-                "The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
-                "Try the OpenSearchDocumentStore instead."
-            )
-
         # Base constructor might need the client to be ready, create it first
         client = self._init_elastic_client(
             host=host,
@@ -173,7 +163,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             similarity=similarity,
             return_embedding=return_embedding,
             duplicate_documents=duplicate_documents,
-            index_type=index_type,
             scroll=scroll,
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
@@ -207,7 +196,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         timeout: int,
         use_system_proxy: bool,
     ) -> Elasticsearch:
-
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):

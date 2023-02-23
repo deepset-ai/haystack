@@ -28,6 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
+from haystack.telemetry_2 import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,6 @@ class FARMReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
@@ -176,7 +176,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -205,6 +205,8 @@ class FARMReader(BaseReader):
         doc_stride: Optional[int] = None,
         max_query_length: Optional[int] = None,
     ):
+        if devices is None:
+            devices = []
         if dev_filename:
             dev_split = 0
 
@@ -363,7 +365,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -433,6 +435,7 @@ class FARMReader(BaseReader):
         :param max_query_length: Maximum length of the question in number of tokens.
         :return: None
         """
+        send_event("FARMReader.train()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -469,7 +472,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
@@ -554,6 +557,7 @@ class FARMReader(BaseReader):
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
+        send_event("FARMReader.distil_prediction_layer_from()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -595,7 +599,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 5,
@@ -676,6 +680,7 @@ class FARMReader(BaseReader):
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
+        send_event("FARMReader.distil_intermediate_layers_from()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -787,7 +792,7 @@ class FARMReader(BaseReader):
                         large_files.append(rel_path)
 
             if len(large_files) > 0:
-                logger.info("Track files with git lfs: {}".format(", ".join(large_files)))
+                logger.info("Track files with git lfs: %s", ", ".join(large_files))
                 repo.lfs_track(large_files)
 
             logger.info("Push model to the hub. This might take a while")
@@ -937,7 +942,7 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-
+        send_event("FARMReader.eval_on_file()")
         if device is None:
             device = self.devices[0]
         else:
@@ -1015,7 +1020,7 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-
+        send_event("FARMReader.eval()")
         if device is None:
             device = self.devices[0]
         else:
@@ -1172,7 +1177,7 @@ class FARMReader(BaseReader):
                         type="extractive",
                         score=ans.confidence if self.use_confidence_scores else ans.score,
                         context=ans.context_window,
-                        document_id=pred.id,
+                        document_ids=[pred.id],
                         offsets_in_context=[
                             Span(
                                 start=ans.offset_answer_start - ans.offset_context_window_start,

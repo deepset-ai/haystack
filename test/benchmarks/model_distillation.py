@@ -20,6 +20,7 @@ download_links = {
     },
 }
 
+
 # loading json config file
 def load_config(path: str) -> dict:
     with open(path, "r") as f:

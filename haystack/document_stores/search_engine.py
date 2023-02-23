@@ -66,7 +66,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         similarity: str = "dot_product",
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
-        index_type: str = "flat",
         scroll: str = "1d",
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
@@ -105,10 +104,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity, choose between 'cosine', 'l2' and 'dot_product'"
             )
-        if index_type in ["flat", "hnsw"]:
-            self.index_type = index_type
-        else:
-            raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
 
         self._init_indices(
             index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
@@ -1062,7 +1057,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str],
         all_terms_must_match: bool,
     ) -> Dict[str, Any]:
-
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]

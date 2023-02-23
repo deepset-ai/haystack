@@ -29,7 +29,6 @@ class BaseImageToText(BaseComponent):
         pass
 
     def run(self, file_paths: Optional[List[str]] = None, documents: Optional[List[Document]] = None):  # type: ignore
-
         if file_paths is None and documents is None:
             raise ValueError("You must either specify documents or image file_paths to process.")
 
@@ -49,5 +48,4 @@ class BaseImageToText(BaseComponent):
     def run_batch(  # type: ignore
         self, file_paths: Optional[List[str]] = None, documents: Optional[List[Document]] = None
     ):
-
         return self.run(file_paths=file_paths, documents=documents)

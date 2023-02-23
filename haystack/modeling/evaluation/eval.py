@@ -12,6 +12,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import WrappedDataParallel
 from haystack.utils.experiment_tracking import Tracker as tracker
+from haystack.telemetry_2 import send_event
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -57,6 +58,7 @@ class Evaluator:
         :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
+        send_event("Evaluator.eval()")
         model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
         model.prediction_heads[0].use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
         model.eval()
@@ -187,7 +189,7 @@ class Evaluator:
         logger.info(header)
 
         for head in results:
-            logger.info("\n _________ {} _________".format(head["task_name"]))
+            logger.info("\n _________ %s _________", head["task_name"])
             for metric_name, metric_val in head.items():
                 # log with experiment tracking framework (e.g. Mlflow)
                 if logging:
@@ -201,10 +203,10 @@ class Evaluator:
                     if metric_name == "report":
                         if isinstance(metric_val, str) and len(metric_val) > 8000:
                             metric_val = metric_val[:7500] + "\n ............................. \n" + metric_val[-500:]
-                        logger.info("{}: \n {}".format(metric_name, metric_val))
+                        logger.info("%s: \n %s", metric_name, metric_val)
                     else:
                         if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
-                            logger.info("{}: {}".format(metric_name, metric_val))
+                            logger.info("%s: %s", metric_name, metric_val)
 
 
 def _to_numpy(container):

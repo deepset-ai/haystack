@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Optional, Union, List, Dict, Any, Tuple
 
 import pytest
@@ -7,6 +8,7 @@ import torch
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
+from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
 
 def is_openai_api_key_set(api_key: str):
@@ -16,13 +18,13 @@ def is_openai_api_key_set(api_key: str):
 def test_prompt_templates():
     p = PromptTemplate("t1", "Here is some fake template with variable $foo", ["foo"])
 
-    with pytest.raises(ValueError, match="Number of parameters in"):
+    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
         PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo"])
 
     with pytest.raises(ValueError, match="Invalid parameter"):
         PromptTemplate("t2", "Here is some fake template with variable $footur", ["foo"])
 
-    with pytest.raises(ValueError, match="Number of parameters in"):
+    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
         PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo", "bar", "baz"])
 
     p = PromptTemplate("t3", "Here is some fake template with variable $for and $bar", ["for", "bar"])
@@ -49,6 +51,13 @@ def test_prompt_templates():
     assert p.prompt_params == ["baz"]
     # strip double quotes, happens in YAML as we need to use single quotes for the template string
     assert p.prompt_text == "Here is some fake template with variable $baz"
+
+
+def test_prompt_template_repr():
+    p = PromptTemplate("t", "Here is variable $baz")
+    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable $baz, prompt_params=['baz'])"
+    assert repr(p) == desired_repr
+    assert str(p) == desired_repr
 
 
 def test_create_prompt_model():
@@ -101,16 +110,6 @@ def test_create_prompt_node():
     assert prompt_node.model_name_or_path == "text-davinci-003"
     assert prompt_node.prompt_model is not None
 
-    with pytest.raises(ValueError, match="Model vblagoje/bart_lfqa is not supported"):
-        # yes vblagoje/bart_lfqa is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("vblagoje/bart_lfqa")
-
-    with pytest.raises(ValueError, match="Model valhalla/t5-base-e2e-qg is not supported"):
-        # yes valhalla/t5-base-e2e-qg is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
-        # currently support only T5-Flan models
-        prompt_node = PromptNode("valhalla/t5-base-e2e-qg")
-
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptNode("some-random-model")
 
@@ -134,7 +133,7 @@ def test_invalid_template(prompt_node):
             name="custom-task", prompt_text="Custom task: $pram1 $param2", prompt_params=["param1", "param2"]
         )
 
-    with pytest.raises(ValueError, match="Number of parameters"):
+    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
         PromptTemplate(name="custom-task", prompt_text="Custom task: $param1", prompt_params=["param1", "param2"])
 
 
@@ -196,12 +195,12 @@ def test_has_supported_template_names(prompt_node):
 
 
 def test_invalid_template_params(prompt_node):
-    with pytest.raises(ValueError, match="Expected prompt params"):
+    with pytest.raises(ValueError, match="Expected prompt parameters"):
         prompt_node.prompt("question-answering", {"some_crazy_key": "Berlin is the capital of Germany."})
 
 
 def test_wrong_template_params(prompt_node):
-    with pytest.raises(ValueError, match="Expected prompt params"):
+    with pytest.raises(ValueError, match="Expected prompt parameters"):
         # with don't have options param, multiple choice QA has
         prompt_node.prompt("question-answering", options=["Berlin is the capital of Germany."])
 
@@ -239,6 +238,35 @@ def test_open_ai_prompt_with_params():
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 10, "top_p": 1, "frequency_penalty": 0.5}
     r = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
     assert len(r) == 1 and len(r[0]) > 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_open_ai_prompt_with_default_params():
+    pn = PromptNode(
+        model_name_or_path="text-davinci-003",
+        api_key=os.environ["OPENAI_API_KEY"],
+        model_kwargs={"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5},
+    )
+    result = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    assert len(result) == 1 and len(result[0]) > 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
+    pm = PromptModel("text-davinci-003", api_key=os.environ["OPENAI_API_KEY"])
+    pn = PromptNode(pm)
+    optional_davinci_params = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
+    with caplog.at_level(logging.WARNING):
+        _ = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
+        assert "Consider increasing the max_tokens parameter to allow for longer completions." in caplog.text
 
 
 @pytest.mark.integration
@@ -291,12 +319,12 @@ def test_simple_pipeline(prompt_model):
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
 
-    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+    node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert result["results"][0].casefold() == "positive"
+    assert "positive" in result["out"][0].casefold()
 
 
 @pytest.mark.integration
@@ -314,6 +342,21 @@ def test_complex_pipeline(prompt_model):
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
     assert "berlin" in result["results"][0].casefold()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_simple_pipeline_with_topk(prompt_model):
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
+
+    assert len(result["results"]) == 2
 
 
 @pytest.mark.integration
@@ -340,10 +383,18 @@ def test_complex_pipeline_with_qa(prompt_model):
             Document("My name is Carla and I live in Berlin"),
             Document("My name is Christelle and I live in Paris"),
         ],
+        debug=True,  # so we can verify that the constructed prompt is returned in debug
     )
 
     assert len(result["results"]) == 1
     assert "carla" in result["results"][0].casefold()
+
+    # also verify that the PromptNode has included its constructed prompt LLM model input in the returned debug
+    assert (
+        result["_debug"]["prompt_node"]["runtime"]["prompts_used"][0]
+        == "Given the context please answer the question. Context: My name is Carla and I live in Berlin; "
+        "Question: Who lives in Berlin?; Answer:"
+    )
 
 
 def test_complex_pipeline_with_shared_model():
@@ -381,6 +432,33 @@ def test_simple_pipeline_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
+    assert result["results"][0] == "positive"
+
+
+def test_simple_pipeline_yaml_with_default_params(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: p1
+              type: PromptNode
+              params:
+                default_prompt_template: sentiment-analysis
+                model_kwargs:
+                  torch_dtype: torch.bfloat16
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipeline.graph.nodes["p1"]["component"].prompt_model.model_kwargs == {"torch_dtype": "torch.bfloat16"}
+
+    result = pipeline.run(query=None, documents=[Document("Berlin is an amazing city.")])
     assert result["results"][0] == "positive"
 
 
@@ -683,3 +761,80 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline is not None
+
+
+class TestRunBatch:
+    @pytest.mark.integration
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
+        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+            pytest.skip("No API key found for OpenAI, skipping test")
+
+        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+
+        pipe = Pipeline()
+        pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+        result = pipe.run_batch(
+            queries=None, documents=[Document("Berlin is an amazing city."), Document("I am not feeling well.")]
+        )
+        assert isinstance(result["results"], list)
+        assert isinstance(result["results"][0], list)
+        assert isinstance(result["results"][0][0], str)
+        assert "positive" in result["results"][0][0].casefold()
+        assert "negative" in result["results"][1][0].casefold()
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    def test_simple_pipeline_batch_no_query_multiple_doc_list(self, prompt_model):
+        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+            pytest.skip("No API key found for OpenAI, skipping test")
+
+        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
+
+        pipe = Pipeline()
+        pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+        result = pipe.run_batch(
+            queries=None,
+            documents=[
+                [Document("Berlin is an amazing city."), Document("Paris is an amazing city.")],
+                [Document("I am not feeling well.")],
+            ],
+        )
+        assert isinstance(result["out"], list)
+        assert isinstance(result["out"][0], list)
+        assert isinstance(result["out"][0][0], str)
+        assert all("positive" in x.casefold() for x in result["out"][0])
+        assert "negative" in result["out"][1][0].casefold()
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+    def test_simple_pipeline_batch_query_multiple_doc_list(self, prompt_model):
+        if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+            pytest.skip("No API key found for OpenAI, skipping test")
+
+        prompt_template = PromptTemplate(
+            name="question-answering-new",
+            prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
+            prompt_params=["documents", "query"],
+        )
+        node = PromptNode(prompt_model, default_prompt_template=prompt_template)
+
+        pipe = Pipeline()
+        pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+        result = pipe.run_batch(
+            queries=["Who lives in Berlin?"],
+            documents=[
+                [Document("My name is Carla and I live in Berlin"), Document("My name is James and I live in London")],
+                [Document("My name is Christelle and I live in Paris")],
+            ],
+            debug=True,
+        )
+        assert isinstance(result["results"], list)
+        assert isinstance(result["results"][0], list)
+        assert isinstance(result["results"][0][0], str)
+        # TODO Finish
+
+
+def test_HFLocalInvocationLayer_supports():
+    assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
+    assert HFLocalInvocationLayer.supports("bigscience/T0_3B")

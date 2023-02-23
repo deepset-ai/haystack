@@ -4,6 +4,11 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import numpy as np
 import requests
 import torch
@@ -26,6 +31,7 @@ from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.telemetry_2 import send_event
 
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
@@ -43,7 +49,6 @@ logger = logging.getLogger(__name__)
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-
         self.embedding_model = Inferencer.load(
             retriever.embedding_model,
             revision=retriever.model_version,
@@ -94,6 +99,10 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(
             "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
@@ -160,9 +169,38 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
-        batch_size: int = 16,
-        train_loss: str = "mnrl",
+        batch_size: Optional[int] = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
+        """
+        Trains the underlying Sentence Transformer model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The score margin the answer must fall within.
+
+        :param training_data: The training data in a dictionary format.
+        :param learning_rate: The learning rate of the optimizer.
+        :param n_epochs: The number of iterations on the whole training data set you want to train for.
+        :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
+            increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
+            decreased linearly back to zero.
+        :param batch_size: The batch size to use for the training. The default value is 16.
+        :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
+            "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
+        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param kwargs: Additional training keyword arguments to pass to the `SentenceTransformer.fit` function. Please
+            reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
+            for a full list of keyword arguments.
+        """
+        send_event("SentenceTransformersEmbeddingEncoder.train()")
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
@@ -187,7 +225,13 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 train_examples.append(InputExample(texts=texts))
 
         logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
-        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)  # type: ignore [var-annotated,arg-type]
+        train_dataloader = DataLoader(
+            train_examples,  # type: ignore [var-annotated, arg-type]
+            batch_size=batch_size,
+            drop_last=True,
+            shuffle=True,
+            num_workers=num_workers,
+        )
         train_loss = st_loss.loss(self.embedding_model)
 
         # Tune the model
@@ -196,6 +240,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             epochs=n_epochs,
             optimizer_params={"lr": learning_rate},
             warmup_steps=int(len(train_dataloader) * 0.1) if num_warmup_steps is None else num_warmup_steps,
+            use_amp=use_amp,
+            **kwargs,
         )
 
     def save(self, save_dir: Union[Path, str]):
@@ -204,7 +250,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
         self.max_length = retriever.max_seq_len
@@ -270,7 +315,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         return np.concatenate(embeddings)
 
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
-
         dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
@@ -303,6 +347,10 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(
             "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
@@ -368,6 +416,10 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(f"Training is not implemented for {self.__class__}")
 

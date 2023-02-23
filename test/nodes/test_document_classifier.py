@@ -24,7 +24,6 @@ def test_document_classifier(document_classifier):
 
 @pytest.mark.integration
 def test_document_classifier_details(document_classifier):
-
     docs = [Document(content="""That's good. I like it."""), Document(content="""That's bad. I don't like it.""")]
     results = document_classifier.predict(documents=docs)
     for doc in results:
@@ -78,7 +77,6 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
 
 @pytest.mark.integration
 def test_zero_shot_document_classifier_details(zero_shot_document_classifier):
-
     docs = [Document(content="""That's good. I like it."""), Document(content="""That's bad. I don't like it.""")]
     results = zero_shot_document_classifier.predict(documents=docs)
     for doc in results:

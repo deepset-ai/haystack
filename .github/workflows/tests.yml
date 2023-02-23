@@ -13,6 +13,11 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - "!.github/**/*.py"
+      - "!rest_api/**/*.py"
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
@@ -34,13 +39,12 @@ jobs:
 
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
 
-    - name: Install Haystack
+    - name: Install Black
       run: |
         pip install --upgrade pip
-        pip install .[dev]
+        pip install .[formatting]
 
     - name: Check status
       run: |
@@ -53,7 +57,7 @@ jobs:
           echo "# Either:"
           echo "# 1. Run Black locally before committing:"
           echo "# "
-          echo "#     pip install black==22.6.0"
+          echo "#     pip install .[formatting]"
           echo "#     black ."
           echo "# "
           echo "# 2. Install the pre-commit hook:"
@@ -68,72 +72,15 @@ jobs:
           exit 1
         fi
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-
-      # https://stackoverflow.com/questions/74265821/get-modified-files-in-github-actions
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
-
-    - name: Get changed files
-      id: files
-      uses: tj-actions/changed-files@v34
-      with:
-        files: |
-          **/*.py
-        files_ignore: |
-          test/**
-          rest_api/test/**
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        pythonVersion: 3.8   # Literals and mypy just don't work well together.
-
-    - name: Mypy
-      if: steps.files.outputs.any_changed == 'true'
-      run: |
-        mkdir .mypy_cache/
-        mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  pylint:
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Pylint
-      run: |
-        pylint -ry -j 0 haystack/ rest_api/rest_api
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+      if: failure() && github.ref == 'refs/heads/main'
 
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
-    needs: [mypy, pylint, black]
+    needs: black
     strategy:
       fail-fast: false
       matrix:
@@ -143,6 +90,7 @@ jobs:
           - macos-latest
         topic:
           - document_stores
+          - nodes
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -156,7 +104,7 @@ jobs:
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -192,7 +140,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -220,7 +168,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -256,7 +204,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -284,7 +232,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -312,7 +260,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_faiss.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -350,7 +298,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_weaviate.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -380,7 +328,7 @@ jobs:
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_pinecone.py
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -416,7 +364,7 @@ jobs:
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_milvus.py
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -444,7 +392,7 @@ jobs:
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
 
-      - uses: act10ns/slack@v1
+      - uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           channel: '#haystack'
@@ -457,13 +405,14 @@ jobs:
 
 
   unit-tests-linux:
-    needs: [mypy, pylint, black]
+    needs: black
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -491,23 +440,25 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   unit-tests-windows:
-    needs: [mypy, pylint, black]
+    needs: black
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           #- "others"
 
@@ -537,39 +488,11 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  rest_api:
-    needs: [mypy, pylint, black]
-
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Install REST API
-      run: |
-        pip install -U "./rest_api[dev]"
-        pip install .
-
-    - name: Run tests
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} rest_api/
-
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -586,9 +509,9 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
-          - "document_stores"
 
     runs-on: ubuntu-latest
 
@@ -630,9 +553,6 @@ jobs:
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
 
-    - name: Run GraphDB
-      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
-
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
 
@@ -666,7 +586,7 @@ jobs:
       if: failure()
       uses: jwalton/gh-docker-logs@v1
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
@@ -685,6 +605,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -716,8 +637,32 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
 
-    - uses: act10ns/slack@v1
+    - uses: act10ns/slack@v2
       with:
         status: ${{ job.status }}
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - integration-tests-elasticsearch
+      - integration-tests-sql
+      - integration-tests-opensearch
+      - integration-tests-dc
+      - integration-tests-faiss
+      - integration-tests-weaviate
+      - integration-tests-pinecone
+      - integration-tests-milvus
+      - integration-tests-memory
+      - integration-tests-linux
+      - integration-tests-windows
+
+    steps:
+      - name: Finisher
+        run: echo "Finish him!"

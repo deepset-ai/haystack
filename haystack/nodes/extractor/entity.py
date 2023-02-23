@@ -502,7 +502,6 @@ def simplify_ner_for_qa(output):
     """
     compact_output = []
     for answer in output["answers"]:
-
         entities = []
         for entity in answer.meta["entities"]:
             if (

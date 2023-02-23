@@ -28,7 +28,10 @@
         <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
     </a>
         <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
-        <img alt="Twitter" src="https://img.shields.io/badge/follow-%40deepset_ai-1DA1F2?logo=twitter&style=social">
+        <img alt="Twitter" src="https://img.shields.io/badge/follow-%40deepset_ai-1DA1F2?logo=twitter">
+    </a>
+    <a href="https://discord.com/invite/qZxjM4bAHU">
+        <img alt="chat on Discord" src="https://img.shields.io/discord/993534733298450452?logo=discord">
     </a>
 </p>
 

@@ -24,7 +24,7 @@ try:
         TypeDecorator,
     )
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship, sessionmaker
+    from sqlalchemy.orm import relationship, sessionmaker, aliased
     from sqlalchemy.sql import case, null
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -41,7 +41,6 @@ Base = declarative_base()  # type: Any
 
 
 class ArrayType(TypeDecorator):
-
     impl = String
     cache_ok = True
 
@@ -624,7 +623,6 @@ class SQLDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
     ) -> List[Document]:
-
         raise NotImplementedError(
             "SQLDocumentStore is currently not supporting embedding queries. "
             "Change the query type (e.g. by choosing a different retriever) "
@@ -688,7 +686,8 @@ class SQLDocumentStore(BaseDocumentStore):
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
 
-            self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
+            inner_query = document_ids_to_delete.subquery()
+            self.session.query(DocumentORM).filter(DocumentORM.id.in_(aliased(inner_query))).delete(
                 synchronize_session=False
             )
 
@@ -736,7 +735,8 @@ class SQLDocumentStore(BaseDocumentStore):
             if ids:
                 label_ids_to_delete = label_ids_to_delete.filter(LabelORM.id.in_(ids))
 
-            self.session.query(LabelORM).filter(LabelORM.id.in_(label_ids_to_delete)).delete(synchronize_session=False)
+            inner_query = label_ids_to_delete.subquery()
+            self.session.query(LabelORM).filter(LabelORM.id.in_(aliased(inner_query))).delete(synchronize_session=False)
 
         self.session.commit()
 
