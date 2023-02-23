@@ -23,7 +23,12 @@ def doclangclassifier(request):
     if request.param == "langdetect":
         return LangdetectDocumentLanguageClassifier(route_by_language=True, languages_to_route=LANGUAGES_TO_ROUTE)
     elif request.param == "transformers":
-        return TransformersDocumentLanguageClassifier(route_by_language=True, languages_to_route=LANGUAGES_TO_ROUTE)
+        return TransformersDocumentLanguageClassifier(
+            route_by_language=True,
+            languages_to_route=LANGUAGES_TO_ROUTE,
+            model_name_or_path="jb2k/bert-base-multilingual-cased-language-detection",
+            labels_to_languages_mapping={"LABEL_11": "en", "LABEL_22": "it", "LABEL_38": "es"},
+        )
 
 
 @pytest.mark.integration
@@ -32,6 +37,16 @@ def test_doclangclassifier_predict(doclangclassifier):
     results = doclangclassifier.predict(documents=DOCUMENTS)
     for doc, expected_language in zip(results, EXPECTED_LANGUAGES):
         assert doc.to_dict()["meta"]["language"] == expected_language
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("doclangclassifier", ["transformers"], indirect=True)
+def test_transformers_doclangclassifier_predict_wo_mapping(doclangclassifier):
+    doclangclassifier.labels_to_languages_mapping = {}
+    expected_labels = ["LABEL_11", "LABEL_22", "LABEL_38"]
+    results = doclangclassifier.predict(documents=DOCUMENTS)
+    for doc, expected_label in zip(results, expected_labels):
+        assert doc.to_dict()["meta"]["language"] == expected_label
 
 
 @pytest.mark.integration

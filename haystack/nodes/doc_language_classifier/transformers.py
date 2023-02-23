@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 import itertools
 
 import torch
@@ -54,6 +54,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         self,
         route_by_language: bool = True,
         languages_to_route: Optional[List[str]] = None,
+        labels_to_languages_mapping: Optional[Dict[str, str]] = None,
         model_name_or_path: str = "papluca/xlm-roberta-base-language-detection",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
@@ -70,6 +71,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
 
         :param route_by_language: whether to send Documents on a different output edge depending on their language.
         :param languages_to_route: list of languages, each corresponding to a different output edge (for the list of the supported languages, see the model card of the chosen model).
+        :param labels_to_languages_mapping: some Transformers models do not return language names but generic labels. In this case, you can provide a mapping indicating a language for each label. For example: {"LABEL_1": "ar", "LABEL_2": "bg", ...}.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'papluca/xlm-roberta-base-language-detection'.
         See https://huggingface.co/models for full list of available models.
@@ -112,6 +114,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         )
         self.batch_size = batch_size
         self.progress_bar = progress_bar
+        self.labels_to_languages_mapping = labels_to_languages_mapping or {}
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
@@ -137,7 +140,10 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
             pb.update(len(batch))
         pb.close()
         for prediction, doc in zip(predictions, documents):
-            doc.meta["language"] = prediction[0]["label"]
+            label = prediction[0]["label"]
+            # replace the label with the language, if present in the mapping
+            language = self.labels_to_languages_mapping.get(label, label)
+            doc.meta["language"] = language
         return documents
 
     def predict_batch(self, documents: List[List[Document]], batch_size: Optional[int] = None) -> List[List[Document]]:
