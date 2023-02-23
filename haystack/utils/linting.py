@@ -1,6 +1,6 @@
 # https://pylint.pycqa.org/en/latest/development_guide/how_tos/custom_checkers.html
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List, Any
 
 from astroid import nodes
 
@@ -24,7 +24,7 @@ class DirectLoggingChecker(BaseChecker):
 
     def __init__(self, linter: Optional["PyLinter"] = None) -> None:
         super().__init__(linter)
-        self._function_stack = []
+        self._function_stack: List[Any] = []
 
     def visit_functiondef(self, node: nodes.FunctionDef) -> None:
         self._function_stack.append([])
