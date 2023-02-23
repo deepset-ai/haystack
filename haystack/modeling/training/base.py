@@ -390,9 +390,9 @@ class Trainer:
             trainer = cls._load_checkpoint(
                 path=checkpoint_to_load, data_silo=data_silo, model=model, optimizer=optimizer, local_rank=local_rank
             )
-            logging.info("Resuming training from the train checkpoint at %s ...", checkpoint_to_load)
+            logger.info("Resuming training from the train checkpoint at %s ...", checkpoint_to_load)
         else:
-            logging.info("No train checkpoints found. Starting a new training ...")
+            logger.info("No train checkpoints found. Starting a new training ...")
             trainer = cls(
                 data_silo=data_silo,
                 model=model,
