@@ -11,12 +11,8 @@ from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
 
 
-def is_api_key_set(api_key: str):
-    return len(api_key) > 0 and api_key != "KEY_NOT_FOUND"
-
-
 def skip_test_for_invalid_key(prompt_model):
-    if prompt_model.api_key is not None and not is_api_key_set(prompt_model.api_key):
+    if prompt_model.api_key is not None and prompt_model.api_key == "KEY_NOT_FOUND":
         pytest.skip("No API key found, skipping test")
 
 
@@ -275,10 +271,10 @@ def test_invalid_state_ops(prompt_node):
 
 
 @pytest.mark.integration
-@either_openai_or_azure_openai_api_key_in_env
-def test_open_ai_prompt_with_params(azure_conf):
-    pm = PromptModel("text-davinci-003", api_key=get_either_openai_or_azure_openai_api_key(), model_kwargs=azure_conf)
-    pn = PromptNode(pm)
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_open_ai_prompt_with_params(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    pn = PromptNode(prompt_model)
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 10, "top_p": 1, "frequency_penalty": 0.5}
     r = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
     assert len(r) == 1 and len(r[0]) > 0
@@ -299,10 +295,10 @@ def test_open_ai_prompt_with_default_params(azure_conf):
 
 
 @pytest.mark.integration
-@either_openai_or_azure_openai_api_key_in_env
-def test_open_ai_warn_if_max_tokens_is_too_short(caplog, azure_conf):
-    pm = PromptModel("text-davinci-003", api_key=get_either_openai_or_azure_openai_api_key(), model_kwargs=azure_conf)
-    pn = PromptNode(pm)
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_open_ai_warn_if_max_tokens_is_too_short(prompt_model, caplog):
+    skip_test_for_invalid_key(prompt_model)
+    pn = PromptNode(prompt_model)
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
     with caplog.at_level(logging.WARNING):
         _ = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
