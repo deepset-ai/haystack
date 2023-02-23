@@ -73,7 +73,7 @@ def collect_dynamic_system_specs() -> Dict[str, Any]:
         "libraries.pytest": sys.modules["pytest"].__version__ if "pytest" in sys.modules.keys() else False,
         "libraries.ray": sys.modules["ray"].__version__ if "ray" in sys.modules.keys() else False,
         "libraries.ipython": sys.modules["ipython"].__version__ if "ipython" in sys.modules.keys() else False,
-        "libraries.colab": sys.modules["pytest"].__version__ if "google.colab" in sys.modules.keys() else False,
+        "libraries.colab": sys.modules["google.colab"].__version__ if "google.colab" in sys.modules.keys() else False,
     }
 
 
