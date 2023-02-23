@@ -126,7 +126,7 @@ def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
     if number_of_truncated_completions > 0:
         logger.warning(
             "%s out of the %s completions have been truncated before reaching a natural stopping point."
-            "Consider increasing the max_tokens parameter to allow for longer completions.",
+            "Increase the max_tokens parameter to allow for longer completions.",
             number_of_truncated_completions,
             payload["n"],
         )
