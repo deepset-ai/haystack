@@ -28,10 +28,25 @@ jobs:
       - name: Update OpenAPI specs
         run: python .github/utils/generate_openapi_specs.py
 
+      - name: Get OpenAPI specs id
+        id: openapi-specs
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        run: |
+          VERSION="$(cut -d "." -f 1,2 < VERSION.txt)"
+          if [[ "$(cat VERSION.txt)" == *"rc0" ]]; then
+            VERSION="$VERSION-unstable"
+          fi
+          SPECS_ID=$(curl https://dash.readme.com/api/v1/api-specification \
+            -u "$README_API_KEY:" \
+            --header "x-readme-version: $VERSION" \
+            | jq -r ".[0].version")
+          echo "id=$SPECS_ID" >> "$GITHUB_OUTPUT"
+
       - name: Sync OpenAPI specs
         uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
-          README_API_DEFINITION_ID: ${{ secrets.README_API_DEFINITION_ID }}
+          README_API_DEFINITION_ID: ${{ steps.openapi-specs.outputs.id }}
         with:
           rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID"
