@@ -447,10 +447,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
-    def resolve_url(self) -> str:
+    @property
+    def url(self) -> str:
         return "https://api.openai.com/v1/completions"
 
-    def resolve_headers(self) -> Dict[str, str]:
+    @property
+    def headers(self) -> Dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     @retry_with_exponential_backoff(
@@ -502,8 +504,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         response = requests.post(
-            self.resolve_url(),
-            headers=self.resolve_headers(),
+            self.url,
+            headers=self.headers,
             data=json.dumps(payload),
             timeout=float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30)),
         )
@@ -564,10 +566,12 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         self.deployment_name = deployment_name
         self.api_version = api_version
 
-    def resolve_url(self) -> str:
+    @property
+    def url(self) -> str:
         return f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
 
-    def resolve_headers(self) -> Dict[str, str]:
+    @property
+    def headers(self) -> Dict[str, str]:
         return {"api-key": self.api_key, "Content-Type": "application/json"}
 
     @classmethod
