@@ -10,6 +10,7 @@ from tqdm.auto import tqdm
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
+from haystack.telemetry_2 import send_event
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, FilterType
 
 
@@ -153,7 +154,7 @@ class BaseRetriever(BaseComponent):
                              contains the keys "predictions" and "metrics".
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
-
+        send_event("BaseRetriever.eval()")
         # Extract all questions for evaluation
         filters: Dict = {"origin": [label_origin]}
 

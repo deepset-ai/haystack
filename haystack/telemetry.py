@@ -17,10 +17,12 @@ from pathlib import Path
 import yaml
 import posthog
 
-from haystack.environment import HAYSTACK_EXECUTION_CONTEXT, get_or_create_env_meta_data
+from haystack.environment import get_or_create_env_meta_data
 
 posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
 posthog.host = "https://tm.hs.deepset.ai"
+HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
+HAYSTACK_DOCKER_CONTAINER = "HAYSTACK_DOCKER_CONTAINER"
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED = "HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
@@ -142,6 +144,8 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
     :param event: Name of the event. Use a noun and a verb, e.g., "evaluation started", "component created"
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
+    if os.environ.get("HAYSTACK_TELEMETRY_VERSION", "2") != "1":
+        return
     global user_id  # pylint: disable=global-statement
     if payload is None:
         payload = {}
@@ -179,6 +183,7 @@ def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None)
             return
 
     except Exception as e:
+        print("Exception! ", e)
         logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 

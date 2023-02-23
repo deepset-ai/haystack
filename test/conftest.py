@@ -56,10 +56,11 @@ from haystack.nodes import (
     TransformersSummarizer,
     TransformersTranslator,
     QuestionGenerator,
+    PromptTemplate,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.prompt import PromptNode, PromptModel
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
 
 try:
@@ -281,11 +282,30 @@ class MockDocumentStore(BaseDocumentStore):
 class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
-    def retrieve(self, query: str, top_k: int):
-        pass
+    def retrieve(
+        self,
+        query: str,
+        filters: Optional[FilterType] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
+    ) -> List[Document]:
+        return []
 
-    def retrieve_batch(self, queries: List[str], top_k: int):
-        pass
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
+    ) -> List[List[Document]]:
+        return [[]]
 
 
 class MockSeq2SegGenerator(BaseGenerator):
@@ -350,6 +370,40 @@ class MockReader(BaseReader):
 
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
+
+
+class MockPromptNode(PromptNode):
+    def __init__(self):
+        self.default_prompt_template = None
+
+    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
+        return [""]
+
+    def get_prompt_template(self, prompt_template_name: str) -> PromptTemplate:
+        if prompt_template_name == "think-step-by-step":
+            return PromptTemplate(
+                name="think-step-by-step",
+                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+                "correctly, you have access to the following tools:\n\n"
+                "$tool_names_with_descriptions\n\n"
+                "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
+                "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
+                "for a final answer, respond with the `Final Answer:`\n\n"
+                "Use the following format:\n\n"
+                "Question: the question to be answered\n"
+                "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
+                "Tool: [$tool_names]\n"
+                "Tool Input: the input for the tool\n"
+                "Observation: the tool will respond with the result\n"
+                "...\n"
+                "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
+                "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
+                "---\n\n"
+                "Question: $query\n"
+                "Thought: Let's think step-by-step, I first need to $generated_text",
+            )
+        else:
+            return PromptTemplate(name="", prompt_text="")
 
 
 #

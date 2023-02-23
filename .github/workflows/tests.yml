@@ -90,6 +90,7 @@ jobs:
           - macos-latest
         topic:
           - document_stores
+          - nodes
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -411,6 +412,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -438,8 +440,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -455,6 +458,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           #- "others"
 
@@ -484,8 +488,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -504,6 +509,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -599,6 +605,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
+          - "agents"
           - "modeling"
           - "others"
 
@@ -635,3 +642,27 @@ jobs:
         status: ${{ job.status }}
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - integration-tests-elasticsearch
+      - integration-tests-sql
+      - integration-tests-opensearch
+      - integration-tests-dc
+      - integration-tests-faiss
+      - integration-tests-weaviate
+      - integration-tests-pinecone
+      - integration-tests-milvus
+      - integration-tests-memory
+      - integration-tests-linux
+      - integration-tests-windows
+
+    steps:
+      - name: Finisher
+        run: echo "Finish him!"
