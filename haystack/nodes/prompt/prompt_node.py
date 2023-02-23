@@ -389,7 +389,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         logger.warning(
             "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
-            "answer length (%s tokens) will fit within the max token limit (%s tokens). "
+            "answer length (%s tokens) fits within the max token limit (%s tokens). "
             "Consider reducing the length of the prompt to avoid truncation.",
             n_prompt_tokens,
             self.pipe.tokenizer.model_max_length - n_answer_tokens,
