@@ -3,7 +3,6 @@ name: Sync OpenAPI Schema with Readme
 on:
   push:
     branches:
-      - fix-openapi-sync
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
@@ -50,4 +49,4 @@ jobs:
           README_API_KEY: ${{ secrets.README_API_KEY }}
           README_API_DEFINITION_ID: ${{ steps.openapi-specs.outputs.id }}
         with:
-          rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID" --dryRun
+          rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID"
