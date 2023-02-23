@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     """
-     Transformer based model for document language classification using the HuggingFace's transformers framework
+    Transformer based model for document language classification using the HuggingFace's transformers framework
     (https://github.com/huggingface/transformers).
     While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
     This node detects the languge of Documents and adds the output to the Documents metadata.

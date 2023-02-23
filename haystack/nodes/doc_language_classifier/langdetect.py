@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     """
-    Node based on the [langdetect library](https://github.com/Mimino666/langdetect) for document language classification.
+    Node based on the lightweight and fast [langdetect library](https://github.com/Mimino666/langdetect) for document language classification.
     This node detects the languge of Documents and adds the output to the Documents metadata.
     The meta field of the Document is a dictionary with the following format:
     ``'meta': {'name': '450_Baelor.txt', 'language': 'en'}``
