@@ -28,7 +28,7 @@ class PDFToTextConverter(BaseConverter):
         encoding: Optional[str] = None,
         keep_physical_layout: Optional[bool] = None,
         multiprocessing: Union[bool, int] = True,
-    ):
+    ) -> None:
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
@@ -57,7 +57,7 @@ class PDFToTextConverter(BaseConverter):
         )
 
         self.keep_physical_layout = keep_physical_layout
-        self.multi_processing = multiprocessing
+        self.multiprocessing = multiprocessing
 
     def convert(
         self,
@@ -112,7 +112,7 @@ class PDFToTextConverter(BaseConverter):
         if keep_physical_layout is None:
             keep_physical_layout = self.keep_physical_layout
         if multiprocessing is None:
-            multiprocessing = self.multi_processing
+            multiprocessing = self.multiprocessing
 
         pages = self._read_pdf(
             file_path,
@@ -193,10 +193,7 @@ class PDFToTextConverter(BaseConverter):
         """
 
         if multiprocessing is None:
-            multiprocessing = self.multi_processing
-
-        if encoding is None:
-            encoding = "UTF-8"
+            multiprocessing = self.multiprocessing
 
         if start_page is None:
             start_page = 0
@@ -217,7 +214,7 @@ class PDFToTextConverter(BaseConverter):
                 document += page.get_text("text", sort=layout) + "\f"
         else:
             cpu = cpu_count() if isinstance(multiprocessing, bool) or multiprocessing is None else multiprocessing
-            cpu = cpu_count() if isinstance(multiprocessing, bool) or multiprocessing is None else multiprocessing
+            parts = divide(cpu, [i for i in range(start_page, end_page)])
             pages_mp = [(i, file_path, parts, layout) for i in range(cpu)]
 
             with ProcessPoolExecutor(max_workers=cpu) as pool:
