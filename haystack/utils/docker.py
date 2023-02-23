@@ -3,8 +3,11 @@ from typing import List, Union, Optional
 from haystack.nodes._json_schema import load_schema
 
 
+logger = logging.getLogger(__name__)
+
+
 def cache_nltk_model(model: str = "punkt"):
-    logging.info("Caching %s model...", model)
+    logger.info("Caching %s model...", model)
     import nltk
 
     nltk.download(model)
@@ -30,7 +33,7 @@ def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Un
     import transformers
 
     for model_to_cache in models:
-        logging.info("Caching %s", model_to_cache)
+        logger.info("Caching %s", model_to_cache)
         transformers.AutoTokenizer.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
         transformers.AutoModel.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
 

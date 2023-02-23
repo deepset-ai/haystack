@@ -86,7 +86,7 @@ class ParentComponent(BaseComponent):
         super().__init__()
 
     def run(*args, **kwargs):
-        logging.info("ParentComponent run() was called")
+        logger.info("ParentComponent run() was called")
 
     def run_batch(*args, **kwargs):
         pass
@@ -99,7 +99,7 @@ class ParentComponent2(BaseComponent):
         super().__init__()
 
     def run(*args, **kwargs):
-        logging.info("ParentComponent2 run() was called")
+        logger.info("ParentComponent2 run() was called")
 
     def run_batch(*args, **kwargs):
         pass
@@ -112,7 +112,7 @@ class ChildComponent(BaseComponent):
         super().__init__()
 
     def run(*args, **kwargs):
-        logging.info("ChildComponent run() was called")
+        logger.info("ChildComponent run() was called")
 
     def run_batch(*args, **kwargs):
         pass

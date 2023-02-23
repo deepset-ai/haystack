@@ -4,19 +4,20 @@ from typing import Any, Dict, List, Union, Optional
 import logging
 from pathlib import Path
 
+
+logger = logging.getLogger(__name__)
+
+
 try:
     import magic
 except ImportError as ie:
-    logging.debug(
+    logger.debug(
         "Failed to import 'magic' (from 'python-magic' and 'python-magic-bin' on Windows). "
         "FileTypeClassifier will not perform mimetype detection on extensionless files. "
         "Please make sure the necessary OS libraries are installed if you need this functionality."
     )
 
 from haystack.nodes.base import BaseComponent
-
-
-logger = logging.getLogger(__name__)
 
 
 DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
