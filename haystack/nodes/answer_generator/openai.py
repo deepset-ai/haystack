@@ -71,6 +71,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
+        :param base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
+        :param deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
+        will not be used.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
