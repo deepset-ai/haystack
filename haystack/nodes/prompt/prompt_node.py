@@ -30,6 +30,7 @@ from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
 
@@ -765,10 +766,11 @@ class PromptNode(BaseComponent):
         :param use_auth_token: The authentication token to use for the model.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use for the model.
-        :param top_k: Number of independently generated text to return per prompt.
-        :param stop_words: Stops text generation if any one of the stop words is generated.
-        :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
+        :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model's going to generate three answers to the query. 
+        :param stop_words: Stops text generation if any of the stop words is generated.
+        :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
         """
+        send_event("PromptNode initialized")
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
@@ -827,6 +829,7 @@ class PromptNode(BaseComponent):
         :param prompt_template: The name or object of the optional PromptTemplate to use.
         :return: A list of strings as model responses.
         """
+        send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
