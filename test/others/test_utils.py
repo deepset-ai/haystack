@@ -33,7 +33,7 @@ from ..conftest import (
     haystack_version,
 )
 
-TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
+TEST_CONTEXT = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
 moderne Bildungssysteme etablierte und die Industrialisierung vorantrieb.\n
 Beim Begriff der Aufklärung geht es auch um die Prozesse zwischen diesen frühneuzeitlichen Eckpunkten.
@@ -1530,3 +1530,8 @@ class TestAggregateLabels:
                 assert l.filters["from_meta"] == l.meta["from_meta"]
                 assert "_id" in l.filters
                 assert multi_label.filters == l.filters
+
+
+def test_logging_is_configured_correctly():
+    """See https://github.com/deepset-ai/haystack/issues/4202"""
+    assert not logging.getLogger().handlers
