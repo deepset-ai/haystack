@@ -256,7 +256,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
 
         headers = {"Content-Type": "application/json"}
-        if self.using_azure():
+        if self.using_azure:
             headers = {"api-key": self.api_key, **headers}
         else:
             headers = {"Authorization": f"Bearer {self.api_key}", **headers}
