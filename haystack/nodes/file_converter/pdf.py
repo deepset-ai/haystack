@@ -50,7 +50,7 @@ class PDFToTextConverter(BaseConverter):
             It works by passing the `-layout` parameter to `pdftotext`. When disabled, PDF is read in the stream order.
         :param multiprocessing: We use multiprocessing to speed up PyMuPDf conversion, you can disable it by setting to False.
                                 If set to True (the default value), the total number of cores will be used. If set to an integer,
-                                that number of cores will be used. When using xpdf, it won't have any effect.
+                                that number of cores will be used.
         """
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
@@ -73,8 +73,7 @@ class PDFToTextConverter(BaseConverter):
         multiprocessing: Optional[Union[bool, int]] = None,
     ) -> List[Document]:
         """
-        Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)
-
+        Extract text from a PDF file and convert it to a Document.
         :param file_path: Path to the .pdf file you want to convert
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
                      Can be any custom keys and values.
@@ -101,7 +100,7 @@ class PDFToTextConverter(BaseConverter):
         :param multiprocessing: We use multiprocessing to speed up PyMuPDf conversion, you can disable it by setting to False.
                                 If set to None (the default value), we will use the value defined in the class initialization.
                                 If set to True, the total number of cores will be used. If set to an integer,
-                                that number of cores will be used. When using xpdf, it won't have any effect.
+                                that number of cores will be used.
         """
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
@@ -189,7 +188,7 @@ class PDFToTextConverter(BaseConverter):
         :param multiprocessing: We use multiprocessing to speed up PyMuPDf conversion, you can disable it by setting to False.
                                 If set to None (the default value), we will use the value defined in the class initialization.
                                 If set to True, the total number of cores will be used. If set to an integer,
-                                that number of cores will be used. When using xpdf, it won't have any effect.
+                                that number of cores will be used.
         """
 
         if multiprocessing is None:
