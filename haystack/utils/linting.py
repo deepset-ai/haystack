@@ -69,7 +69,7 @@ class NoLoggingConfigurationChecker(BaseChecker):
     def visit_call(self, node: nodes.Call) -> None:
         if isinstance(node.func, nodes.Attribute) and isinstance(node.func.expr, nodes.Name):
             if node.func.expr.name == "logging" and node.func.attrname in ["basicConfig"]:
-                self.add_message("no-logging-basicconfig", args=node.func.attrname, node=node)
+                self.add_message("no-logging-basicconfig", node=node)
 
 
 def register(linter: "PyLinter") -> None:
