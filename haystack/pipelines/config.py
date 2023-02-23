@@ -260,7 +260,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
             )
         ok_to_ignore_version = pipeline_version == "ignore" and "rc" in __version__
         if not ok_to_ignore_version:
-            logging.warning(
+            logger.warning(
                 "This pipeline is version '%s', but you're using Haystack %s\n"
                 "This might cause bugs and unexpected behaviors."
                 "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "

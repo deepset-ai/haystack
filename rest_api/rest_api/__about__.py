@@ -10,4 +10,4 @@ try:
     __version__ = open(Path(__file__).parent.parent / "VERSION.txt", "r").read()
 except Exception as e:
     logger = logging.getLogger(__name__)
-    logging.exception("No VERSION.txt found!")
+    logger.exception("No VERSION.txt found!")

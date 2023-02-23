@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Union, Optional
 import logging
 from pathlib import Path
 
+from haystack.nodes.base import BaseComponent
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +18,6 @@ except ImportError as ie:
         "FileTypeClassifier will not perform mimetype detection on extensionless files. "
         "Please make sure the necessary OS libraries are installed if you need this functionality."
     )
-
-from haystack.nodes.base import BaseComponent
 
 
 DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]

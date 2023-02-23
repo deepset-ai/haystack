@@ -7,8 +7,14 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from pydub import AudioSegment
+
+from haystack.errors import AudioNodeError
+from haystack.modeling.utils import initialize_device_settings
+
 
 logger = logging.getLogger(__name__)
+
 
 try:
     import soundfile as sf
@@ -19,10 +25,6 @@ except OSError as ose:
         "`libsndfile` not found, it's probably not installed. The node will most likely crash. "
         "Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
     )
-from pydub import AudioSegment
-
-from haystack.errors import AudioNodeError
-from haystack.modeling.utils import initialize_device_settings
 
 
 class TextToSpeech:
