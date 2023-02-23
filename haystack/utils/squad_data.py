@@ -11,6 +11,9 @@ from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
 
+logger = logging.getLogger(__name__)
+
+
 COLUMN_NAMES = ["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"]
 
 
@@ -265,7 +268,6 @@ class SquadData:
 
 if __name__ == "__main__":
     logging.basicConfig()  # pylint: disable=no-logging-basicconfig
-    logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
     tqdm.pandas()
