@@ -541,8 +541,8 @@ def openai_generator():
     if azure_conf:
         return OpenAIAnswerGenerator(
             api_key=azure_conf["api_key"],
-            base_url=azure_conf["base_url"],
-            deployment_name=azure_conf["deployment_name"],
+            azure_base_url=azure_conf["azure_base_url"],
+            azure_deployment_name=azure_conf["azure_deployment_name"],
             model="text-babbage-001",
             top_k=1,
         )
@@ -986,10 +986,10 @@ def prompt_node():
 
 def haystack_azure_conf():
     api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
-    base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
-    deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
-    if api_key and base_url and deployment_name:
-        return {"api_key": api_key, "base_url": base_url, "deployment_name": deployment_name}
+    azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    azure_deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
+    if api_key and azure_base_url and azure_deployment_name:
+        return {"api_key": api_key, "azure_base_url": azure_base_url, "azure_deployment_name": azure_deployment_name}
     else:
         return {}
 

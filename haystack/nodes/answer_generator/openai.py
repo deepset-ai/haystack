@@ -53,8 +53,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def __init__(
         self,
         api_key: str,
-        base_url: Optional[str] = None,
-        deployment_name: Optional[str] = None,
+        azure_base_url: Optional[str] = None,
+        azure_deployment_name: Optional[str] = None,
         model: str = "text-davinci-003",
         max_tokens: int = 50,
         api_version: str = "2022-12-01",
@@ -71,8 +71,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
-        :param base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
-        :param deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
+        :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
         will not be used.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
@@ -166,8 +166,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 )
 
         self.api_key = api_key
-        self.base_url = base_url
-        self.deployment_name = deployment_name
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
         self.api_version = api_version
         self.model = model
         self.max_tokens = max_tokens
@@ -189,7 +189,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
-        self.using_azure = self.deployment_name is not None and self.base_url is not None
+        self.using_azure = self.azure_deployment_name is not None and self.azure_base_url is not None
 
         if USE_TIKTOKEN:
             logger.debug("Using tiktoken %s tokenizer", tokenizer)
@@ -253,9 +253,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         }
         url = "https://api.openai.com/v1/completions"
         if self.using_azure:
-            url = (
-                f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
-            )
+            url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
 
         headers = {"Content-Type": "application/json"}
         if self.using_azure():

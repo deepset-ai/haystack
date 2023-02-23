@@ -710,8 +710,8 @@ def test_complex_pipeline_with_all_features(tmp_path, azure_conf):
     else:
         # don't change this indentation, it's important for the yaml to be valid
         azure_conf_yaml_snippet = f"""
-                  base_url: {azure_conf['base_url']}
-                  deployment_name: {azure_conf['deployment_name']}
+                  azure_base_url: {azure_conf['azure_base_url']}
+                  azure_deployment_name: {azure_conf['azure_deployment_name']}
         """
     with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
         tmp_file.write(

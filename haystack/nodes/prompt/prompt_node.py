@@ -539,7 +539,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-        return valid_model and kwargs.get("base_url") is None
+        return valid_model and kwargs.get("azure_base_url") is None
 
 
 class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
@@ -547,14 +547,14 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
     Azure OpenAI Invocation Layer
 
     This layer is used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIInvocationLayer
-    with additional two parameters: base_url and deployment_name. The base_url is the URL of the Azure OpenAI
-    deployment and the deployment_name is the name of the deployment.
+    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
+    deployment and the azure_deployment_name is the name of the deployment.
     """
 
     def __init__(
         self,
-        base_url: str,
-        deployment_name: str,
+        azure_base_url: str,
+        azure_deployment_name: str,
         api_key: str,
         api_version: str = "2022-12-01",
         model_name_or_path: str = "text-davinci-003",
@@ -562,13 +562,13 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         **kwargs,
     ):
         super().__init__(api_key, model_name_or_path, max_length, **kwargs)
-        self.base_url = base_url
-        self.deployment_name = deployment_name
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
         self.api_version = api_version
 
     @property
     def url(self) -> str:
-        return f"{self.base_url}/openai/deployments/{self.deployment_name}/completions?api-version={self.api_version}"
+        return f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -577,11 +577,13 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
-        Ensures Azure OpenAI Invocation Layer is selected when base_url and deployment_name are provided in
+        Ensures Azure OpenAI Invocation Layer is selected when azure_base_url and azure_deployment_name are provided in
         addition to a list of supported models.
         """
         valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-        return valid_model and kwargs.get("base_url") is not None and kwargs.get("deployment_name") is not None
+        return (
+            valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
+        )
 
 
 class PromptModel(BaseComponent):
@@ -622,8 +624,8 @@ class PromptModel(BaseComponent):
         :param devices: The devices to use where the model is loaded.
         :param model_kwargs: Additional keyword arguments passed to the underlying model.
 
-        Note that Azure OpenAI InstructGPT models require two additional parameters: base_url (The base URL for the
-        Azure OpenAI API deployment) and deployment_name (The name of the Azure OpenAI API deployment).
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The base URL for the
+        Azure OpenAI API deployment) and azure_deployment_name (The name of the Azure OpenAI API deployment).
         These parameters should be supplied in the `model_kwargs` dictionary.
 
         """
@@ -839,8 +841,8 @@ class PromptNode(BaseComponent):
         :param stop_words: Stops text generation if any of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
 
-        Note that Azure OpenAI InstructGPT models require two additional parameters: base_url (The base URL for the
-        Azure OpenAI API deployment) and deployment_name (The name of the Azure OpenAI API deployment).
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The base URL for the
+        Azure OpenAI API deployment) and azure_deployment_name (The name of the Azure OpenAI API deployment).
         These parameters should be supplied in the `model_kwargs` dictionary.
 
         """
