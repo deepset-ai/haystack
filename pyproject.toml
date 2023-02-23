@@ -226,11 +226,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx,beir]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx-gpu]",
 ]
 
 [project.urls]
