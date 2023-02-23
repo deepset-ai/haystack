@@ -23,7 +23,7 @@ def _load_pipeline(pipeline_yaml_path, indexing_pipeline_name):
     # Load pipeline (if available)
     try:
         pipeline = Pipeline.load_from_yaml(Path(pipeline_yaml_path), pipeline_name=indexing_pipeline_name)
-        logging.info("Loaded pipeline nodes: %s", pipeline.graph.nodes.keys())
+        logger.info("Loaded pipeline nodes: %s", pipeline.graph.nodes.keys())
         document_store = _get_pipeline_doc_store(pipeline)
     except PipelineConfigError as e:
         pipeline, document_store = None, None
@@ -35,7 +35,7 @@ def _load_pipeline(pipeline_yaml_path, indexing_pipeline_name):
 
 def _get_pipeline_doc_store(pipeline):
     document_store = pipeline.get_document_store()
-    logging.info("Loaded docstore: %s", document_store)
+    logger.info("Loaded docstore: %s", document_store)
     if isinstance(document_store, SINGLE_PROCESS_DOC_STORES):
         logger.warning("FAISSDocumentStore or InMemoryDocumentStore should only be used with 1 worker.")
     return document_store
@@ -54,7 +54,7 @@ def setup_pipelines() -> Dict[str, Any]:
 
     # Setup concurrency limiter
     concurrency_limiter = RequestLimiter(config.CONCURRENT_REQUEST_PER_WORKER)
-    logging.info("Concurrent requests per worker: %s", config.CONCURRENT_REQUEST_PER_WORKER)
+    logger.info("Concurrent requests per worker: %s", config.CONCURRENT_REQUEST_PER_WORKER)
     pipelines["concurrency_limiter"] = concurrency_limiter
 
     # Load indexing pipeline

@@ -854,7 +854,7 @@ class Pipeline:
                     qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
             qrels = qrels_new
         elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
-            logging.warning(
+            logger.warning(
                 "'num_documents' variable should be lower than corpus length and have a positive value, but it's %s."
                 " Dataset size remains unchanged.",
                 num_documents,
