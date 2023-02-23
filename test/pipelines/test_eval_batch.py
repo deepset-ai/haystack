@@ -5,7 +5,6 @@ from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
-from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever
