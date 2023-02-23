@@ -264,7 +264,7 @@ class SquadData:
 
 
 if __name__ == "__main__":
-    logging.basicConfig()
+    logging.basicConfig()  # pylint: disable=no-logging-basicconfig
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
