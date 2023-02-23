@@ -14,9 +14,11 @@ class DirectLoggingChecker(BaseChecker):
     name = "no-direct-logging"
     msgs = {
         "W0001": (
-            "Used direct logging function instead of a logger",
-            "direct-logging-used",
-            "Do not use direct calls to logging like logging.info(), use a logger instead. See #4202.",
+            "Use a logger object instead of a direct logging function like 'logging.%s()'",
+            "no-direct-logging",
+            "Do not use direct calls to logging functions like logging.info(), "
+            "rather create a logger object with getLogger and use it instead. "
+            "See https://github.com/deepset-ai/haystack/issues/4202.",
         )
     }
 
@@ -40,7 +42,7 @@ class DirectLoggingChecker(BaseChecker):
                 "critical",
                 "exception",
             ]:
-                self.add_message("direct-logging-used", node=node)
+                self.add_message("no-direct-logging", args=node.func.attrname, node=node)
 
 
 def register(linter: "PyLinter") -> None:
