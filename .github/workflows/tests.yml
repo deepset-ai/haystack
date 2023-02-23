@@ -92,6 +92,7 @@ jobs:
         topic:
           - document_stores
           - nodes
+          - agents
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -399,9 +400,37 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-agents:
+    name: Integration / Agents / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/agents
+
+      - uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
 
 #
-# TODO: the following steps need to be revisited
+# IMPORTANT: the following steps need to be revisited PLEASE DO NOT ADD ANYTHING TO THE JOBS BELOW!
 #
 
 
@@ -413,7 +442,6 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
-          - "agents"
           - "modeling"
           - "others"
 
@@ -459,9 +487,7 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
-          - "agents"
           - "modeling"
-          #- "others"
 
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
@@ -510,7 +536,6 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
-          - "agents"
           - "modeling"
           - "others"
 
@@ -606,7 +631,6 @@ jobs:
         folder:
           - "nodes"
           - "pipelines"
-          - "agents"
           - "modeling"
           - "others"
 
