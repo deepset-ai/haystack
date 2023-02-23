@@ -1,0 +1,22 @@
+name: Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths-ignore:
+      - "**.py"
+      - "pyproject.toml"
+      - "!.github/**/*.py"
+      - "!rest_api/**/*.py"
+
+jobs:
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip tests
+        run: echo "Skipped!"
