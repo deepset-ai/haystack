@@ -3,6 +3,7 @@ name: Sync OpenAPI Schema with Readme
 on:
   push:
     branches:
+      - fix-openapi-sync
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
@@ -28,10 +29,13 @@ jobs:
       - name: Update OpenAPI specs
         run: python .github/utils/generate_openapi_specs.py
 
-      - name: Sync OpenAPI specs
-        uses: readmeio/rdme@8.3.1
-        env:
-          README_API_KEY: ${{ secrets.README_API_KEY }}
-          README_API_DEFINITION_ID: ${{ secrets.README_API_DEFINITION_ID }}
-        with:
-          rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID"
+      - name: Check if specs are there
+        run: cat openapi.json
+
+      # - name: Sync OpenAPI specs
+      #   uses: readmeio/rdme@8.3.1
+      #   env:
+      #     README_API_KEY: ${{ secrets.README_API_KEY }}
+      #     README_API_DEFINITION_ID: ${{ secrets.README_API_DEFINITION_ID }}
+      #   with:
+      #     rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID"
