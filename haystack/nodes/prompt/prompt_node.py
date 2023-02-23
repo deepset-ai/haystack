@@ -766,9 +766,9 @@ class PromptNode(BaseComponent):
         :param use_auth_token: The authentication token to use for the model.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use for the model.
-        :param top_k: Number of independently generated text to return per prompt.
-        :param stop_words: Stops text generation if any one of the stop words is generated.
-        :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
+        :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model's going to generate three answers to the query.
+        :param stop_words: Stops text generation if any of the stop words is generated.
+        :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
         """
         send_event("PromptNode initialized")
         super().__init__()
