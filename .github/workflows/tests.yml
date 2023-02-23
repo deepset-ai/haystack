@@ -666,3 +666,27 @@ jobs:
         status: ${{ job.status }}
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - integration-tests-elasticsearch
+      - integration-tests-sql
+      - integration-tests-opensearch
+      - integration-tests-dc
+      - integration-tests-faiss
+      - integration-tests-weaviate
+      - integration-tests-pinecone
+      - integration-tests-milvus
+      - integration-tests-memory
+      - integration-tests-linux
+      - integration-tests-windows
+
+    steps:
+      - name: Finisher
+        run: echo "Finish him!"
