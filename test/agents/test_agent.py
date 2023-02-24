@@ -64,7 +64,7 @@ def test_agent_chooses_no_action():
             description="useful for when you need to retrieve documents from your index",
         )
     )
-    with pytest.raises(AgentError, match=r"Wrong output format.*"):
+    with pytest.raises(AgentError, match=r"Could not identify the next tool from Agent's output.*"):
         agent.run("How many letters does the name of the town where Christelle lives have?")
 
 
