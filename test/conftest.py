@@ -106,8 +106,11 @@ def fail_at_version(target_major, target_minor):
     """
     Reminder to remove deprecated features.
     If you're using this fixture please open an issue in the repo to keep track
-    of the deprecated feature that must be removed. This way will be assured that the
-    feature is actually removed for that release.
+    of the deprecated feature that must be removed.
+    After opening the issue assign it to the target version milestone, if the
+    milestone doesn't exist either create it or notify someone that has permissions
+    to do so.
+    This way will be assured that the feature is actually removed for that release.
     This will fail tests if the current major and/or minor version is equal or greater
     of target_major and/or target_minor.
     If the current version has `rc0` set the test won't fail but only issue a warning, this
