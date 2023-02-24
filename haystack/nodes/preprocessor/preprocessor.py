@@ -155,14 +155,16 @@ class PreProcessor(BasePreProcessor):
             )
 
         kwargs = {
-            "clean_whitespace": clean_whitespace,
-            "clean_header_footer": clean_header_footer,
-            "clean_empty_lines": clean_empty_lines,
-            "remove_substrings": remove_substrings,
-            "split_by": split_by,
-            "split_length": split_length,
-            "split_overlap": split_overlap,
-            "split_respect_sentence_boundary": split_respect_sentence_boundary,
+            "clean_whitespace": self.clean_whitespace if clean_whitespace is None else clean_whitespace,
+            "clean_header_footer": self.clean_header_footer if clean_header_footer is None else clean_header_footer,
+            "clean_empty_lines": self.clean_empty_lines if clean_empty_lines is None else clean_empty_lines,
+            "remove_substrings": self.remove_substrings if remove_substrings is None else remove_substrings,
+            "split_by": self.split_by if split_by is None else split_by,
+            "split_length": self.split_length if split_length is None else split_length,
+            "split_overlap": self.split_overlap if split_overlap is None else split_overlap,
+            "split_respect_sentence_boundary": self.split_respect_sentence_boundary
+            if split_respect_sentence_boundary is None
+            else split_respect_sentence_boundary,
         }
 
         if id_hash_keys is None:
@@ -352,7 +354,7 @@ class PreProcessor(BasePreProcessor):
         headlines = document.meta["headlines"] if "headlines" in document.meta else []
 
         if split_respect_sentence_boundary and split_by == "word":
-            text_splits, splits_pages, splits_start_idxs = self._split_by_word_respecting_sent_boundary(
+            (text_splits, splits_pages, splits_start_idxs) = self._split_by_word_respecting_sent_boundary(
                 text=text, split_length=split_length, split_overlap=split_overlap
             )
         else:
