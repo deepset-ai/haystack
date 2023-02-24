@@ -13,6 +13,7 @@ from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, Bas
 from test.conftest import MockRetriever, MockPromptNode
 
 
+@pytest.mark.unit
 def test_add_and_overwrite_tool():
     # Add a Node as a Tool to an Agent
     agent = Agent(prompt_node=MockPromptNode())
@@ -52,6 +53,7 @@ def test_add_and_overwrite_tool():
     assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
 
 
+@pytest.mark.unit
 def test_agent_chooses_no_action():
     agent = Agent(prompt_node=MockPromptNode())
     retriever = MockRetriever()
@@ -66,6 +68,7 @@ def test_agent_chooses_no_action():
         agent.run("How many letters does the name of the town where Christelle lives have?")
 
 
+@pytest.mark.unit
 def test_max_iterations(caplog, monkeypatch):
     # Run an Agent and stop because max_iterations is reached
     agent = Agent(prompt_node=MockPromptNode(), max_iterations=3)
@@ -97,6 +100,7 @@ def test_max_iterations(caplog, monkeypatch):
     assert "Maximum number of iterations (2) reached" in caplog.text
 
 
+@pytest.mark.unit
 def test_run_tool():
     agent = Agent(prompt_node=MockPromptNode())
     retriever = MockRetriever()
@@ -111,6 +115,7 @@ def test_run_tool():
     assert result[0]["documents"] == []
 
 
+@pytest.mark.unit
 def test_extract_observation():
     agent = Agent(prompt_node=MockPromptNode())
     observation = agent._extract_observation(
@@ -124,6 +129,7 @@ def test_extract_observation():
     assert observation == "first answer"
 
 
+@pytest.mark.unit
 def test_extract_tool_name_and_tool_input():
     agent = Agent(prompt_node=MockPromptNode())
 
@@ -132,6 +138,7 @@ def test_extract_tool_name_and_tool_input():
     assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
 
 
+@pytest.mark.unit
 def test_extract_final_answer():
     agent = Agent(prompt_node=MockPromptNode())
 
@@ -140,6 +147,7 @@ def test_extract_final_answer():
     assert final_answer == "Florida"
 
 
+@pytest.mark.unit
 def test_format_answer():
     agent = Agent(prompt_node=MockPromptNode())
     formatted_answer = agent._format_answer(query="query", answer="answer", transcript="transcript")

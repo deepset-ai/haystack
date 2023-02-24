@@ -365,11 +365,11 @@ class Crawler(BaseComponent):
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(document.to_dict(), f)
             else:
-                logging.debug(
+                logger.debug(
                     "File '%s' already exists. Set 'overwrite_existing_files=True' to overwrite it.", file_path
                 )
         except Exception:
-            logging.exception(
+            logger.exception(
                 "Crawler can't save the content of '%s' under '%s'. "
                 "This webpage will be skipped, but links from this page will still be crawled. "
                 "Make sure the path above is accessible and the file name is valid. "
