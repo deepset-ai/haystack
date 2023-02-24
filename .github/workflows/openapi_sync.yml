@@ -40,7 +40,7 @@ jobs:
           SPECS_ID=$(curl https://dash.readme.com/api/v1/api-specification \
             -u "$README_API_KEY:" \
             --header "x-readme-version: $VERSION" \
-            | jq -r ".[0].version")
+            | jq -r ".[0].id")
           echo "id=$SPECS_ID" >> "$GITHUB_OUTPUT"
 
       - name: Sync OpenAPI specs
