@@ -159,6 +159,10 @@ The result of `Pipeline.draw()`:
 
 **TODO**
 
+## Realistic Agent Pipeline
+
+**TODO**
+
 # Detailed design
 
 This section focuses on the concept rather than the implementation strategy. For a discussion on the implementation, see the draft here: https://github.com/ZanSara/haystack-2.0-draft
