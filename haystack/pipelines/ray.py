@@ -313,7 +313,8 @@ class RayPipeline(Pipeline):
         """
         send_pipeline_run_event(
             pipeline=self,
-            event_name="RayPipeline.run_async()",
+            classname=self.__class__.__name__,
+            function_name="run_async",
             query=query,
             file_paths=file_paths,
             labels=labels,

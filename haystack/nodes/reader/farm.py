@@ -1029,7 +1029,9 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-        send_event("FARMReader.eval()")
+        send_event(
+            event_name="Evaluation", event_properties={"class": self.__class__.__name__, "function_name": "eval"}
+        )
         if device is None:
             device = self.devices[0]
         else:

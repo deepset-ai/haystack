@@ -103,7 +103,8 @@ class Telemetry:
 
 
 def send_pipeline_run_event(  # type: ignore
-    event_name: str,
+    classname: str,
+    function_name: str,
     pipeline: "Pipeline",  # type: ignore
     query: Optional[str] = None,
     queries: Optional[List[str]] = None,
@@ -117,7 +118,8 @@ def send_pipeline_run_event(  # type: ignore
     """
     Sends a telemetry event about the execution of a pipeline, if telemetry is enabled.
 
-    :param event_name: The name of the event to show in PostHog.
+    :param classname: The name of the Pipeline class (Pipeline, RayPipeline, ...)
+    :param function_name: The name of the function that was invoked (run, run_batch, async_run, ...).
     :param pipeline: the pipeline that is running
     :param query: the value of the `query` input of the pipeline, if any
     :param queries: the value of the `queries` input of the pipeline, if any
@@ -130,7 +132,10 @@ def send_pipeline_run_event(  # type: ignore
     """
     try:
         if telemetry:
-            event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {}
+            event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {
+                "class": classname,
+                "function_name": function_name,
+            }
 
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
@@ -138,7 +143,7 @@ def send_pipeline_run_event(  # type: ignore
                 event_properties["pipeline.is_public_demo"] = True
                 event_properties["pipeline.run_parameters.query"] = query
                 event_properties["pipeline.run_parameters.params"] = params
-                telemetry.send_event(event_name=event_name, event_properties=event_properties)
+                telemetry.send_event(event_name=function_name, event_properties=event_properties)
                 return
 
             # Collect pipeline profile
@@ -185,10 +190,10 @@ def send_pipeline_run_event(  # type: ignore
             event_properties["pipeline.run_parameters.params"] = bool(params)
             event_properties["pipeline.run_parameters.debug"] = bool(debug)
 
-            telemetry.send_event(event_name=event_name, event_properties=event_properties)
+            telemetry.send_event(event_name="Pipeline run", event_properties=event_properties)
     except Exception as e:
         # Never let telemetry break things
-        logger.debug("There was an issue sending a %s telemetry event", event_name, exc_info=e)
+        logger.debug("There was an issue sending a '%s' telemetry event", function_name, exc_info=e)
 
 
 def send_pipeline_event(pipeline: "Pipeline", event_name: str, event_properties: Optional[Dict[str, Any]] = None):  # type: ignore
@@ -220,16 +225,6 @@ def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = Non
     except Exception as e:
         # Never let telemetry break things
         logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
-
-
-def _serializer(obj):
-    """
-    Small function used to build pipeline fingerprints and safely serialize any object.
-    """
-    try:
-        return str(obj)
-    except:
-        return "~ non serializable object ~"
 
 
 if os.environ.get("HAYSTACK_TELEMETRY_VERSION", "2") == "2":

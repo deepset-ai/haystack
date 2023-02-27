@@ -495,7 +495,8 @@ class Pipeline:
         """
         send_pipeline_run_event(
             pipeline=self,
-            event_name=f"{self.__class__.__name__}.run()",
+            classname=self.__class__.__name__,
+            function_name="run",
             query=query,
             file_paths=file_paths,
             labels=labels,
@@ -643,7 +644,8 @@ class Pipeline:
         """
         send_pipeline_run_event(
             pipeline=self,
-            event_name=f"{self.__class__.__name__}.run_batch()",
+            classname=self.__class__.__name__,
+            function_name="run_batch",
             queries=queries,
             file_paths=file_paths,
             labels=labels,
