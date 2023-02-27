@@ -191,20 +191,20 @@ def send_pipeline_run_event(  # type: ignore
         logger.debug("There was an issue sending a %s telemetry event", event_name, exc_info=e)
 
 
-def send_pipeline_event(pipeline: "Pipeline", event_name: str):  # type: ignore
+def send_pipeline_event(pipeline: "Pipeline", event_name: str, event_properties: Optional[Dict[str, Any]] = None):  # type: ignore
     """
     Send a telemetry event related to a pipeline which is not a call to run(), if telemetry is enabled.
     """
     try:
         if telemetry:
-            telemetry.send_event(
-                event_name=event_name,
-                event_properties={
+            if event_properties:
+                event_properties = {
+                    **event_properties,
                     "pipeline.classname": pipeline.__class__.__name__,
                     "pipeline.fingerprint": pipeline.fingerprint,
                     "pipeline.yaml_hash": pipeline.yaml_hash,
-                },
-            )
+                }
+            telemetry.send_event(event_name=event_name, event_properties=event_properties)
     except Exception as e:
         # Never let telemetry break things
         logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
