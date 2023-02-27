@@ -196,7 +196,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param batch_size: Number of documents that are passed to bulk function at a time.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
-        logging.warning(
+        logger.warning(
             "`get_all_documents()` can get very slow and resource-heavy since all documents must be loaded from deepset Cloud. "
             "Consider using `get_all_documents_generator()` instead."
         )

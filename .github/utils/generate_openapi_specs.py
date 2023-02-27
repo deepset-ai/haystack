@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 import os
 import sys
-import shutil
 
 import logging
 
@@ -18,7 +17,6 @@ from haystack import __version__  # pylint: disable=wrong-import-position
 REST_PATH = Path("./rest_api/rest_api").absolute()
 PIPELINE_PATH = str(REST_PATH / "pipeline" / "pipeline_empty.haystack-pipeline.yml")
 APP_PATH = str(REST_PATH / "application.py")
-DOCS_PATH = Path("./docs") / "_src" / "api" / "openapi"
 
 os.environ["PIPELINE_YAML_PATH"] = PIPELINE_PATH
 
@@ -34,14 +32,6 @@ specs = get_openapi_specs()
 specs.update({"x-readme": {"proxy-enabled": False, "samples-languages": ["curl", "python"]}})
 
 # Dump the specs into a JSON file
-with open(DOCS_PATH / "openapi.json", "w") as f:
+with open("openapi.json", "w") as f:
     json.dump(specs, f, indent=4)
     f.write("\n")  # We need to add a newline, otherwise there will be a conflict with end-of-file-fixer pre-commit hook
-
-# Remove rc versions of the specs from the folder
-for specs_file in os.listdir():
-    if os.path.isfile(specs_file) and "rc" in specs_file and Path(specs_file).suffix == ".json":
-        os.remove(specs_file)
-
-# Add versioned copy
-shutil.copy(DOCS_PATH / "openapi.json", DOCS_PATH / f"openapi-{__version__}.json")

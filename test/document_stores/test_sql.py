@@ -5,8 +5,7 @@ import pytest
 
 from haystack.document_stores.sql import LabelORM, SQLDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):

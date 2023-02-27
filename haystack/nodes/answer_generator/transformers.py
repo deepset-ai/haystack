@@ -413,6 +413,11 @@ class Seq2SeqGenerator(BaseGenerator):
 
     @classmethod
     def _get_converter(cls, model_name_or_path: str) -> Optional[Callable]:
+        # using dictionary key based on model_name_or_path endswith
+        if model_name_or_path.endswith("bart_lfqa"):
+            model_name_or_path = "vblagoje/bart_lfqa"
+        elif model_name_or_path.endswith("bart_eli5"):
+            model_name_or_path = "yjernite/bart_eli5"
         return cls._model_input_converters.get(model_name_or_path)
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
