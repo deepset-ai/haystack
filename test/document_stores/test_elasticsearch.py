@@ -6,9 +6,11 @@ import numpy as np
 import pytest
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore, Elasticsearch
-from haystack.schema import Document
+from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.nodes import PreProcessor
+from haystack.testing import DocumentStoreBaseTestAbstract
 
-from .test_base import DocumentStoreBaseTestAbstract
 from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 
@@ -251,6 +253,44 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         assert ds.get_document_count(only_documents_without_embedding=True) == 3
         assert ds.get_document_count(only_documents_without_embedding=True, filters={"month": ["01"]}) == 0
         assert ds.get_document_count(only_documents_without_embedding=True, filters={"month": ["03"]}) == 3
+
+    @pytest.mark.integration
+    def test_elasticsearch_brownfield_support(self, ds, documents):
+        ds.write_documents(documents)
+
+        new_document_store = elasticsearch_index_to_document_store(
+            document_store=InMemoryDocumentStore(),
+            original_index_name=ds.index,
+            original_content_field="content",
+            original_name_field="name",
+            included_metadata_fields=["date_field"],
+            index="test_brownfield_support",
+            id_hash_keys=["content", "meta"],
+        )
+
+        original_documents = ds.get_all_documents()
+        transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support")
+        assert len(original_documents) == len(transferred_documents)
+        assert all("name" in doc.meta for doc in transferred_documents)
+        assert all(doc.id == doc._get_id(["content", "meta"]) for doc in transferred_documents)
+
+        original_content = set([doc.content for doc in original_documents])
+        transferred_content = set([doc.content for doc in transferred_documents])
+        assert original_content == transferred_content
+
+        # Test transferring docs with PreProcessor
+        new_document_store = elasticsearch_index_to_document_store(
+            document_store=InMemoryDocumentStore(),
+            original_index_name=ds.index,
+            original_content_field="content",
+            excluded_metadata_fields=["date_field"],
+            index="test_brownfield_support_2",
+            preprocessor=PreProcessor(split_length=1, split_respect_sentence_boundary=False),
+        )
+        transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support_2")
+        assert all("name" in doc.meta for doc in transferred_documents)
+        # Check if number of transferred_documents is equal to number of unique words.
+        assert len(transferred_documents) == len(set(" ".join(original_content).split()))
 
     @pytest.mark.unit
     def test__init_elastic_client_aws4auth_and_username_raises_warning(

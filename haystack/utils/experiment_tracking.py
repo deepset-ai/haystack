@@ -1,10 +1,13 @@
+from typing import Optional, Any, Dict, Union
+
 from abc import ABC, abstractmethod
 import logging
 from pathlib import Path
-from typing import Optional, Any, Dict, Union
+
 import mlflow
 from requests.exceptions import ConnectionError
 
+from haystack import __version__
 from haystack.environment import get_or_create_env_meta_data
 
 
