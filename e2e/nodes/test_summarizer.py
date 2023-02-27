@@ -1,15 +1,10 @@
-from ensurepip import version
 import pytest
 
-import haystack
 from haystack.schema import Document
 from haystack.pipelines import SearchSummarizationPipeline
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, TransformersSummarizer
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, TransformersSummarizer, BM25Retriever
 from haystack.nodes.other.document_merger import DocumentMerger
-
-
-pytestmark = pytest.mark.skip("Tests are too heavy for Github runners, skipping for now")
-
+from haystack.document_stores import ElasticsearchDocumentStore, InMemoryDocumentStore
 
 DOCS = [
     Document(
@@ -42,8 +37,26 @@ EXPECTED_ONE_SUMMARIES = [
 ]
 
 
-@pytest.mark.integration
-@pytest.mark.summarizer
+@pytest.fixture
+def summarizer():
+    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+
+
+@pytest.fixture
+def retriever(request):
+    if request.param == "bm25":
+        retriever = BM25Retriever(document_store=ElasticsearchDocumentStore())
+        yield retriever
+        retriever.document_store.delete_documents()
+
+    elif request.param == "embedding":
+        retriever = EmbeddingRetriever(
+            document_store=InMemoryDocumentStore(), embedding_model="deepset/sentence_bert", use_gpu=False
+        )
+        yield retriever
+        retriever.document_store.delete_documents()
+
+
 def test_summarization(summarizer):
     summarized_docs = summarizer.predict(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
@@ -51,8 +64,6 @@ def test_summarization(summarizer):
         assert expected_summary == summary.meta["summary"]
 
 
-@pytest.mark.integration
-@pytest.mark.summarizer
 def test_summarization_batch_single_doc_list(summarizer):
     summarized_docs = summarizer.predict_batch(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
@@ -60,8 +71,6 @@ def test_summarization_batch_single_doc_list(summarizer):
         assert expected_summary == summary.meta["summary"]
 
 
-@pytest.mark.integration
-@pytest.mark.summarizer
 def test_summarization_batch_multiple_doc_lists(summarizer):
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
     assert len(summarized_docs) == 2  # Number of document lists
@@ -70,16 +79,12 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
         assert expected_summary == summary.meta["summary"]
 
 
-@pytest.mark.integration
-@pytest.mark.summarizer
-@pytest.mark.parametrize(
-    "retriever,document_store", [("embedding", "memory"), ("bm25", "elasticsearch")], indirect=True
-)
-def test_summarization_pipeline(document_store, retriever, summarizer):
-    document_store.write_documents(DOCS)
+@pytest.mark.parametrize("retriever", ["bm25", "embedding"], indirect=True)
+def test_summarization_pipeline(retriever, summarizer):
+    retriever.document_store.write_documents(DOCS)
 
     if isinstance(retriever, EmbeddingRetriever) or isinstance(retriever, DensePassageRetriever):
-        document_store.update_embeddings(retriever=retriever)
+        retriever.document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
@@ -94,8 +99,6 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
 #
 
 
-@pytest.mark.integration
-@pytest.mark.summarizer
 def test_summarization_one_summary(summarizer):
     dm = DocumentMerger()
     merged_document = dm.merge(documents=SPLIT_DOCS)
@@ -104,16 +107,12 @@ def test_summarization_one_summary(summarizer):
     assert EXPECTED_ONE_SUMMARIES[0] == summarized_docs[0].meta["summary"]
 
 
-@pytest.mark.integration
-@pytest.mark.summarizer
-@pytest.mark.parametrize(
-    "retriever,document_store", [("embedding", "memory"), ("bm25", "elasticsearch")], indirect=True
-)
-def test_summarization_pipeline_one_summary(document_store, retriever, summarizer):
-    document_store.write_documents(SPLIT_DOCS)
+@pytest.mark.parametrize("retriever", ["bm25", "embedding"], indirect=True)
+def test_summarization_pipeline_one_summary(retriever, summarizer):
+    retriever.document_store.write_documents(SPLIT_DOCS)
 
-    if isinstance(retriever, EmbeddingRetriever) or isinstance(retriever, DensePassageRetriever):
-        document_store.update_embeddings(retriever=retriever)
+    if isinstance(retriever, EmbeddingRetriever):
+        retriever.document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(
