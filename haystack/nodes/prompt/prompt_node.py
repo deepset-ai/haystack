@@ -32,8 +32,6 @@ from haystack.utils.openai_utils import (
 
 logger = logging.getLogger(__name__)
 
-print(f"USE_TIKTOKEN: {USE_TIKTOKEN}")
-
 
 class BasePromptTemplate(BaseComponent):
     outgoing_edges = 1
@@ -192,7 +190,6 @@ class PromptModelInvocationLayer:
         Creates a new PromptModelInvocationLayer instance.
 
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of output text.
         :param kwargs: Additional keyword arguments passed to the underlying model.
         """
         if model_name_or_path is None or len(model_name_or_path) == 0:
@@ -377,8 +374,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return generated_texts
 
     def _ensure_token_limit(self, prompt: str) -> str:
-        """Ensure that length of the prompt and answer is within the maximum length of the model.
-        This is accomplished by truncating the prompt text to fit within the max tokens limit of the model.
+        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
 
         :param prompt: Prompt text to be sent to the generative model.
         """
@@ -538,8 +535,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         return responses
 
     def _ensure_token_limit(self, prompt: str) -> str:
-        """Ensure that length of the prompt and answer is within the maximum length of the model.
-        This is accomplished by truncating the prompt text to fit within the max tokens limit of the model.
+        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
 
         :param prompt: Prompt text to be sent to the generative model.
         """
@@ -551,7 +548,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         logger.warning(
             "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
             "answer length (%s tokens) fits within the max token limit (%s tokens). "
-            "Consider reducing the length of the prompt to avoid truncation.",
+            "Reduce the length of the prompt to prevent it from being cut off.",
             n_prompt_tokens,
             self.max_tokens_limit - n_answer_tokens,
             n_answer_tokens,
