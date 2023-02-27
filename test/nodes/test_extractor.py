@@ -118,16 +118,12 @@ def test_extractor_indexing(document_store):
 
 
 @pytest.mark.integration
-def test_extractor_doc_query():
-    ner = EntityExtractor(
-        model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english", flatten_entities_in_meta_data=True
-    )
-
+def test_extractor_doc_query(ner_node):
     pipeline = Pipeline()
-    pipeline.add_node(component=ner, name="NER", inputs=["Query"])
+    pipeline.add_node(component=ner_node, name="NER", inputs=["Query"])
 
     prediction = pipeline.run(query=None, documents=[Document(content="Carla lives in Berlin", content_type="text")])
-    entities = prediction["documents"][0].meta["entity_words"]
+    entities = [x["word"] for x in prediction["documents"][0].meta["entities"]]
     assert "Carla" in entities
     assert "Berlin" in entities
 
