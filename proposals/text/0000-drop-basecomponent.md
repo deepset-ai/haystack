@@ -1,8 +1,8 @@
 - Title: Drop `BaseComponent` and reimplement `Pipeline`.
 - Decision driver: @ZanSara
 - Start Date: 27/02/2023
-- Proposal PR: (fill in after opening the PR)
-- Github Issue or Discussion: (only if available, link the original request for this change)
+- Proposal PR: #4284
+- Github Issue or Discussion: #2807
 
 # Summary
 
@@ -148,7 +148,7 @@ assert results == {"value": 18}
 
 The result of `Pipeline.draw()`:
 
-![image](images/0000-drop-basecomponent/pipeline.png)
+![image](images/4284-drop-basecomponent/pipeline.png)
 
 
 ## Realistic Query Pipeline
@@ -193,7 +193,7 @@ Example pipeline topologies supported by the new implementation (images taken fr
 <details>
 <summary>Merging pipeline</summary>
 
-![image](images/0000-drop-basecomponent/merging_pipeline.png)
+![image](images/4284-drop-basecomponent/merging_pipeline.png)
 
 In this pipeline, several nodes send their input into a single output node. Note that this pipeline has several starting nodes, something that is currently not supported by Haystack's `Pipeline`.
 
@@ -202,7 +202,7 @@ In this pipeline, several nodes send their input into a single output node. Note
 <details>
 <summary>Branching pipeline with branch skipping</summary>
 
-![image](images/0000-drop-basecomponent/decision_pipeline.png)
+![image](images/4284-drop-basecomponent/decision_pipeline.png)
 
 In this pipeline, only one edge will run depending on the decision taken by the `remainder` node. Note that this pipeline has several terminal nodes, something that is currently not supported by Haystack's `Pipeline`.
 
@@ -211,7 +211,7 @@ In this pipeline, only one edge will run depending on the decision taken by the 
 <details>
 <summary>Branching pipeline with parallel branch execution</summary>
 
-![image](images/0000-drop-basecomponent/parallel_branches_pipeline.png)
+![image](images/4284-drop-basecomponent/parallel_branches_pipeline.png)
 
 In this pipeline, all the edges that leave `enumerate` are run by `Pipeline`. Note that this usecase is currently not supported by Haystack's `Pipeline`.
 
@@ -220,7 +220,7 @@ In this pipeline, all the edges that leave `enumerate` are run by `Pipeline`. No
 <details>
 <summary>Branching pipeline with branch skipping and merge</summary>
 
-![image](images/0000-drop-basecomponent/decision_and_merge_pipeline.png)
+![image](images/4284-drop-basecomponent/decision_and_merge_pipeline.png)
 
 In this pipeline, the merge node can understand that some of its upstream nodes will never run (`remainder` selects only one output edge) and waits only for the inputs that it can receive, so one from `remainder`, plus `no-op`.
 
@@ -229,7 +229,7 @@ In this pipeline, the merge node can understand that some of its upstream nodes 
 <details>
 <summary>Looping pipeline</summary>
 
-![image](images/0000-drop-basecomponent/looping_pipeline.png)
+![image](images/4284-drop-basecomponent/looping_pipeline.png)
 
 This is a pipeline with a loop and a counter that statefully counts how many times it has been called.
 
@@ -240,7 +240,7 @@ Note that the new `Pipeline` can set a maximum number of allowed visits to nodes
 <details>
 <summary>Looping pipeline with merge</summary>
 
-![image](images/0000-drop-basecomponent/looping_and_merge_pipeline.png)
+![image](images/4284-drop-basecomponent/looping_and_merge_pipeline.png)
 
 This is a pipeline with a loop and a counter that statefully counts how many times it has been called. There is also a merge node at the bottom, which shows how Pipeline can wait for the entire loop to exit before running `sum`.
 
@@ -249,7 +249,7 @@ This is a pipeline with a loop and a counter that statefully counts how many tim
 <details>
 <summary>Arbitrarily complex pipeline</summary>
 
-![image](images/0000-drop-basecomponent/complex_pipeline.png)
+![image](images/4284-drop-basecomponent/complex_pipeline.png)
 
 This is an example of how complex Pipelines the new objects can support. This pipeline combines all cases above:
 - Multiple inputs
