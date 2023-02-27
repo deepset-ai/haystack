@@ -128,7 +128,7 @@ def test_extractor_doc_query(ner_node):
     assert "Berlin" in entities
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_extract_method():
     ner = EntityExtractor(
         model_name_or_path="Jean-Baptiste/camembert-ner", max_seq_len=12, aggregation_strategy="first"
@@ -158,7 +158,7 @@ def test_extract_method():
         ]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_extract_method_pre_split_text():
     ner = EntityExtractor(
         model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english", max_seq_len=6, pre_split_text=True
@@ -188,7 +188,7 @@ def test_extract_method_pre_split_text():
         ]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_extract_method_unknown_token():
     ner = EntityExtractor(
         model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english",
@@ -218,7 +218,7 @@ def test_extract_method_unknown_token():
     assert output == [{"entity_group": "O", "word": "Hi my name is JamesÐ.", "start": 0, "end": 21}]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_extract_method_simple_aggregation():
     ner = EntityExtractor(
         model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english",
