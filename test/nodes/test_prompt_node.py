@@ -91,6 +91,14 @@ def test_create_prompt_model():
         assert model.model_name_or_path == "google/flan-t5-small"
 
 
+def test_create_prompt_model_dtype():
+    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "auto"})
+    assert model.model_name_or_path == "google/flan-t5-small"
+
+    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "torch.bfloat16"})
+    assert model.model_name_or_path == "google/flan-t5-small"
+
+
 def test_create_prompt_node():
     prompt_node = PromptNode()
     assert prompt_node is not None
@@ -547,7 +555,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               params:
                 model_name_or_path: google/flan-t5-small
                 model_kwargs:
-                  torch_dtype: torch.bfloat16
+                  torch_dtype: auto
             - name: question_generation_template
               type: PromptTemplate
               params:
