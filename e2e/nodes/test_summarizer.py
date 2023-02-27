@@ -2,7 +2,7 @@ import pytest
 
 from haystack.schema import Document
 from haystack.pipelines import SearchSummarizationPipeline
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, TransformersSummarizer, BM25Retriever
+from haystack.nodes import EmbeddingRetriever, TransformersSummarizer, BM25Retriever
 from haystack.nodes.other.document_merger import DocumentMerger
 from haystack.document_stores import ElasticsearchDocumentStore, InMemoryDocumentStore
 
@@ -83,7 +83,7 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
 def test_summarization_pipeline(retriever, summarizer):
     retriever.document_store.write_documents(DOCS)
 
-    if isinstance(retriever, EmbeddingRetriever) or isinstance(retriever, DensePassageRetriever):
+    if isinstance(retriever, EmbeddingRetriever):
         retriever.document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
