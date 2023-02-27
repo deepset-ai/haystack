@@ -161,8 +161,7 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
         assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
 def test_eval_elastic_retriever(document_store, open_domain, retriever):
