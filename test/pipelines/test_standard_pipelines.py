@@ -375,7 +375,7 @@ def test_join_concatenate_with_topk(document_store_dot_product_with_docs):
 
     join_node = JoinDocuments(join_mode="concatenate")
     p = Pipeline()
-    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=bm25, name="R1", inputs=["Query"])
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     one_result = p.run(query=query, params={"Join": {"top_k_join": 1}})
