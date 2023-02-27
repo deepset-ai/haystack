@@ -22,6 +22,7 @@ from haystack.modeling.model.optimization import get_scheduler, WrappedDataParal
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.utils.early_stopping import EarlyStopping
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,7 @@ class Trainer:
         :return: Returns the model after training. When you do ``early_stopping``
             with a ``save_dir`` the best model is loaded and returned.
         """
+        send_event("Trainer.train()")
         # connect the prediction heads with the right output from processor
         self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
         # Check that the tokenizer(s) fits the language model(s)
@@ -388,9 +390,9 @@ class Trainer:
             trainer = cls._load_checkpoint(
                 path=checkpoint_to_load, data_silo=data_silo, model=model, optimizer=optimizer, local_rank=local_rank
             )
-            logging.info("Resuming training from the train checkpoint at %s ...", checkpoint_to_load)
+            logger.info("Resuming training from the train checkpoint at %s ...", checkpoint_to_load)
         else:
-            logging.info("No train checkpoints found. Starting a new training ...")
+            logger.info("No train checkpoints found. Starting a new training ...")
             trainer = cls(
                 data_silo=data_silo,
                 model=model,

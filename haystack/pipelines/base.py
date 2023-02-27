@@ -22,6 +22,7 @@ import tempfile
 from pathlib import Path
 
 import yaml
+import mmh3
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -31,7 +32,7 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import __version__
-from haystack.nodes.evaluator.evaluator import semantic_answer_similarity
+from haystack.modeling.evaluation.metrics import semantic_answer_similarity
 from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
 from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
 from haystack.pipelines.config import (
@@ -53,6 +54,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
+from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,7 @@ class Pipeline:
         self.last_window_run_total = 0
         self.run_total = 0
         self.sent_event_in_window = False
+        self.yaml_hash = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -432,6 +435,14 @@ class Pipeline:
             node={"name": name, "inputs": inputs},
             instance=component,
         )
+        # TELEMETRY: Hash the config of the pipeline without node names
+        # to be able to cluster later by "pipeline type"
+        # (is any specific pipeline configuration very popular?)
+        fingerprint_config = copy.copy(self.get_config())
+        for comp in fingerprint_config["components"]:
+            del comp["name"]
+        fingerprint = json.dumps(fingerprint_config, default=str)
+        self.fingerprint = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -482,6 +493,18 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        send_pipeline_run_event(
+            pipeline=self,
+            event_name="Pipeline.run()",
+            query=query,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         # validate the node names
         self._validate_node_names_in_params(params=params)
 
@@ -618,6 +641,18 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        send_pipeline_run_event(
+            pipeline=self,
+            event_name="Pipeline.run_batch()",
+            queries=queries,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         if file_paths is not None or meta is not None:
             logger.info(
                 "It seems that an indexing Pipeline is run, so using the nodes' run method instead of run_batch."
@@ -773,6 +808,17 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
+        send_event_2(
+            event_name="Pipeline.eval_beir()",
+            event_properties={
+                "dataset": dataset,
+                "index_pipeline": index_pipeline.yaml_hash,
+                "query_pipeline": query_pipeline.yaml_hash,
+                "num_documents": num_documents,
+                "top_k_values": top_k_values,
+            },
+        )
+
         if index_params is None:
             index_params = {}
         if query_params is None:
@@ -808,7 +854,7 @@ class Pipeline:
                     qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
             qrels = qrels_new
         elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
-            logging.warning(
+            logger.warning(
                 "'num_documents' variable should be lower than corpus length and have a positive value, but it's %s."
                 " Dataset size remains unchanged.",
                 num_documents,
@@ -1211,6 +1257,8 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        send_pipeline_event(pipeline=self, event_name="Pipeline.eval()")
+
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             params = {} if params is None else params.copy()
@@ -1328,6 +1376,8 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        send_pipeline_event(pipeline=self, event_name="Pipeline.eval_batch()")
+
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             params = {} if params is None else params.copy()
@@ -1956,14 +2006,15 @@ class Pipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
-
         config = read_pipeline_config_from_yaml(path)
-        return cls.load_from_config(
+        pipeline = cls.load_from_config(
             pipeline_config=config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
         )
+        pipeline.yaml_hash = "{:02x}".format(mmh3.hash128(str(path), signed=False))
+        return pipeline
 
     @classmethod
     def load_from_config(

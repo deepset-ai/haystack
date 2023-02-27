@@ -89,6 +89,7 @@ def patched_nltk_data_path(module_tmp_dir: Path, monkeypatch: MonkeyPatch, tmp_p
     return tmp_path
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -101,6 +102,7 @@ def test_preprocess_sentence_split(split_length_and_results):
     assert len(documents) == expected_documents_count
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -118,6 +120,7 @@ def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_
     assert len(documents) == expected_documents_count
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split_custom_models_non_default_language(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -134,6 +137,7 @@ def test_preprocess_sentence_split_custom_models_non_default_language(split_leng
     assert len(documents) == expected_documents_count
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
 def test_preprocess_sentence_split_custom_models(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -151,6 +155,7 @@ def test_preprocess_sentence_split_custom_models(split_length_and_results):
     assert len(documents) == expected_documents_count
 
 
+@pytest.mark.unit
 def test_preprocess_word_split():
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
@@ -178,6 +183,7 @@ def test_preprocess_word_split():
     assert len(documents) == 15
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
 def test_preprocess_passage_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -206,6 +212,7 @@ def test_clean_header_footer():
     assert "footer" not in documents[0].content
 
 
+@pytest.mark.unit
 def test_remove_substrings():
     document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
 
@@ -226,6 +233,7 @@ def test_remove_substrings():
     assert "✨" in documents[0].content
 
 
+@pytest.mark.unit
 def test_id_hash_keys_from_pipeline_params():
     document_1 = Document(content="This is a document.", meta={"key": "a"})
     document_2 = Document(content="This is a document.", meta={"key": "b"})
@@ -242,6 +250,7 @@ def test_id_hash_keys_from_pipeline_params():
 
 # test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
 # and the expected index in the output list of Documents where the page number changes from 1 to 2
+@pytest.mark.unit
 @pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
 def test_page_number_extraction(test_input):
     split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
@@ -261,6 +270,7 @@ def test_page_number_extraction(test_input):
             assert doc.meta["page"] == 2
 
 
+@pytest.mark.unit
 def test_page_number_extraction_on_empty_pages():
     """
     Often "marketing" documents contain pages without text (visuals only). When extracting page numbers, these pages should be counted as well to avoid
@@ -283,6 +293,7 @@ def test_page_number_extraction_on_empty_pages():
     assert documents[1].content.strip() == text_page_three
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_word():
     expected_headlines = [
         [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
@@ -313,6 +324,7 @@ def test_headline_processing_split_by_word():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_word_overlap():
     expected_headlines = [
         [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
@@ -347,6 +359,7 @@ def test_headline_processing_split_by_word_overlap():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_word_respect_sentence_boundary():
     expected_headlines = [
         [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
@@ -378,6 +391,7 @@ def test_headline_processing_split_by_word_respect_sentence_boundary():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_sentence():
     expected_headlines = [
         [
@@ -408,6 +422,7 @@ def test_headline_processing_split_by_sentence():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_sentence_overlap():
     expected_headlines = [
         [
@@ -441,6 +456,7 @@ def test_headline_processing_split_by_sentence_overlap():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_passage():
     expected_headlines = [
         [
@@ -471,6 +487,7 @@ def test_headline_processing_split_by_passage():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_headline_processing_split_by_passage_overlap():
     expected_headlines = [
         [
@@ -499,6 +516,7 @@ def test_headline_processing_split_by_passage_overlap():
         assert doc.meta["headlines"] == expected
 
 
+@pytest.mark.unit
 def test_file_exists_error_during_download(monkeypatch: MonkeyPatch, module_tmp_dir: Path):
     # Pretend the model resources were not found in the first attempt
     monkeypatch.setattr(nltk.data, "find", Mock(side_effect=[LookupError, str(module_tmp_dir)]))
@@ -510,6 +528,7 @@ def test_file_exists_error_during_download(monkeypatch: MonkeyPatch, module_tmp_
     PreProcessor(split_length=2, split_respect_sentence_boundary=False)
 
 
+@pytest.mark.unit
 def test_preprocessor_very_long_document(caplog):
     preproc = PreProcessor(
         clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars_check=10

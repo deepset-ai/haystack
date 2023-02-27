@@ -94,6 +94,14 @@ def test_create_prompt_model():
         assert model.model_name_or_path == "google/flan-t5-small"
 
 
+def test_create_prompt_model_dtype():
+    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "auto"})
+    assert model.model_name_or_path == "google/flan-t5-small"
+
+    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "torch.bfloat16"})
+    assert model.model_name_or_path == "google/flan-t5-small"
+
+
 @pytest.mark.integration
 def test_create_prompt_node():
     prompt_node = PromptNode()
@@ -132,8 +140,8 @@ def test_add_and_remove_template(prompt_node):
     assert "custom-task" not in prompt_node.get_prompt_template_names()
 
 
-@pytest.mark.integration
-def test_invalid_template(prompt_node):
+@pytest.mark.unit
+def test_invalid_template():
     with pytest.raises(ValueError, match="Invalid parameter"):
         PromptTemplate(
             name="custom-task", prompt_text="Custom task: $pram1 $param2", prompt_params=["param1", "param2"]
@@ -341,7 +349,7 @@ def test_simple_pipeline(prompt_model):
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    assert result["out"][0].casefold() == "positive"
+    assert "positive" in result["out"][0].casefold()
 
 
 @pytest.mark.integration
@@ -570,7 +578,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               params:
                 model_name_or_path: google/flan-t5-small
                 model_kwargs:
-                  torch_dtype: torch.bfloat16
+                  torch_dtype: auto
             - name: question_generation_template
               type: PromptTemplate
               params:

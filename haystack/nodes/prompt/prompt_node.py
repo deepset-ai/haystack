@@ -29,6 +29,7 @@ from haystack.utils.openai_utils import (
     _check_openai_text_completion_answers,
     count_openai_tokens,
 )
+from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
 
@@ -308,11 +309,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         torch_dtype = model_input_kwargs.get("torch_dtype")
         if torch_dtype is not None:
             if isinstance(torch_dtype, str):
-                if "torch." not in torch_dtype:
+                if "torch." in torch_dtype:
+                    torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
+                elif torch_dtype == "auto":
+                    torch_dtype_resolved = torch_dtype
+                else:
                     raise ValueError(
-                        f"torch_dtype should be a torch.dtype or a string with 'torch.' prefix, got {torch_dtype}"
+                        f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
                     )
-                torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
             elif isinstance(torch_dtype, torch.dtype):
                 torch_dtype_resolved = torch_dtype
             else:
@@ -736,6 +740,27 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="translation",
             prompt_text="Translate the following context to $target_language. Context: $documents; Translation:",
         ),
+        PromptTemplate(
+            name="zero-shot-react",
+            prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+            "correctly, you have access to the following tools:\n\n"
+            "$tool_names_with_descriptions\n\n"
+            "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
+            "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
+            "for a final answer, respond with the `Final Answer:`\n\n"
+            "Use the following format:\n\n"
+            "Question: the question to be answered\n"
+            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
+            "Tool: [$tool_names]\n"
+            "Tool Input: the input for the tool\n"
+            "Observation: the tool will respond with the result\n"
+            "...\n"
+            "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
+            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
+            "---\n\n"
+            "Question: $query\n"
+            "Thought: Let's think step-by-step, I first need to ",
+        ),
     ]
 
 
@@ -791,10 +816,11 @@ class PromptNode(BaseComponent):
         :param use_auth_token: The authentication token to use for the model.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use for the model.
-        :param top_k: Number of independently generated text to return per prompt.
-        :param stop_words: Stops text generation if any one of the stop words is generated.
-        :param model_kwargs: Additional keyword arguments passed when loading the model specified by `model_name_or_path`.
+        :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model's going to generate three answers to the query.
+        :param stop_words: Stops text generation if any of the stop words is generated.
+        :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
         """
+        send_event("PromptNode initialized")
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
@@ -853,6 +879,7 @@ class PromptNode(BaseComponent):
         :param prompt_template: The name or object of the optional PromptTemplate to use.
         :return: A list of strings as model responses.
         """
+        send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
