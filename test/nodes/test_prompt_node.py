@@ -897,7 +897,6 @@ class TestRunBatch:
         assert isinstance(result["results"], list)
         assert isinstance(result["results"][0], list)
         assert isinstance(result["results"][0][0], str)
-        # TODO Finish
 
 
 @pytest.mark.integration
