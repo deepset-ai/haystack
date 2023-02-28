@@ -65,7 +65,7 @@ def test_pdftoppm_command_format():
     ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_command_whitespaces(Converter):
     converter = Converter()
@@ -76,7 +76,7 @@ def test_pdf_command_whitespaces(Converter):
     assert "ɪ" in document.content
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
@@ -88,7 +88,7 @@ def test_pdf_encoding(Converter):
     assert "ɪ" in document.content
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_layout(Converter):
     converter = Converter(keep_physical_layout=True)
@@ -97,7 +97,7 @@ def test_pdf_layout(Converter):
     assert str(document.content).startswith("This is the second test sentence.")
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
@@ -119,7 +119,7 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_page_range(Converter):
     converter = Converter()
@@ -134,7 +134,7 @@ def test_pdf_page_range(Converter):
     assert pages[2] == ""  # the page 3 is empty.
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_page_range_numbers(Converter):
     converter = Converter()
@@ -148,7 +148,7 @@ def test_pdf_page_range_numbers(Converter):
     assert documents[1].meta["page"] == 4
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_parallel(Converter):
     converter = Converter(multiprocessing=True)
@@ -160,7 +160,7 @@ def test_pdf_parallel(Converter):
     assert pages[-1] == "This is the page 500 of the document."
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_parallel_page_range(Converter):
     converter = Converter(multiprocessing=True)
@@ -172,7 +172,7 @@ def test_pdf_parallel_page_range(Converter):
     assert len(pages) == 500
 
 
-@pytest.mark.pdf
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_parallel_layout(Converter):
     converter = Converter(multiprocessing=True, keep_physical_layout=True)
