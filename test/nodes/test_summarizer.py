@@ -7,10 +7,8 @@ from haystack.nodes import TransformersSummarizer
 
 
 DOCS = [Document(content=doc) for doc in ["First test doc", "Second test doc"]]
-SUMMARIES = [{"summary_text": summary} for summary in ["First summary", "Second summary"]]
-SUMMARIZED_DOCS = [
-    Document(content=doc.content, meta={"summary": summary["summary_text"]}) for doc, summary in zip(DOCS, SUMMARIES)
-]
+SUMMARIES = ["First summary", "Second summary"]
+SUMMARIZED_DOCS = [Document(content=doc.content, meta={"summary": summary}) for doc, summary in zip(DOCS, SUMMARIES)]
 
 
 class MockHFPipeline:
@@ -18,9 +16,10 @@ class MockHFPipeline:
         pass
 
     def __call__(self, docs, *a, **k):
+        summaries = [{"summary_text": summary} for summary in SUMMARIES]
         if isinstance(docs, ListDataset):
-            return [SUMMARIES for _ in docs]
-        return SUMMARIES
+            return [summaries for _ in docs]
+        return summaries
 
     def tokenizer(self, *a, **k):
         return {"input_ids": []}
@@ -36,12 +35,14 @@ def summarizer(mock_models) -> TransformersSummarizer:
     return TransformersSummarizer(model_name_or_path="irrelevant/anyway", use_gpu=False)
 
 
+@pytest.mark.unit
 def test_summarization_one_doc(summarizer):
     summarized_docs = summarizer.predict(documents=[DOCS[0]])
     assert len(summarized_docs) == 1
     assert SUMMARIES[0] == summarized_docs[0].meta["summary"]
 
 
+@pytest.mark.unit
 def test_summarization_more_docs(summarizer):
     summarized_docs = summarizer.predict(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
@@ -49,6 +50,7 @@ def test_summarization_more_docs(summarizer):
         assert expected_summary == summary.meta["summary"]
 
 
+@pytest.mark.unit
 def test_summarization_batch_single_doc_list(summarizer):
     summarized_docs = summarizer.predict_batch(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
@@ -56,6 +58,7 @@ def test_summarization_batch_single_doc_list(summarizer):
         assert expected_summary == summary.meta["summary"]
 
 
+@pytest.mark.unit
 def test_summarization_batch_multiple_doc_lists(summarizer):
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
     assert len(summarized_docs) == 2  # Number of document lists
