@@ -285,7 +285,7 @@ class _TapasEncoder:
 
         # TODO Add test for answers being an empty list
         # Remove no_answers from the answers list
-        answers = [ans for ans in answers if not _is_no_answer(ans)]
+        answers = [ans for ans in answers if ans is not None]
 
         answers = sorted(answers, reverse=True)
         results = {"query": query, "answers": answers[:top_k]}
@@ -431,18 +431,8 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                     )
                     answers.append(answer)
                 else:
-                    answers.append(
-                        Answer(
-                            answer="",
-                            type="extractive",
-                            score=None,
-                            context=None,
-                            offsets_in_context=[Span(start=0, end=0)],
-                            offsets_in_document=[Span(start=0, end=0)],
-                            document_ids=None,
-                            meta=None,
-                        )
-                    )
+                    # If there is no answer then we use None to keep track of it.
+                    answers.append(None)
         else:
             raise NotImplementedError("Only TAPAS models are supported")
 
@@ -965,11 +955,3 @@ def _flatten_inputs(queries: List[str], documents: Union[List[Document], List[Li
             inputs["queries"].append(query)
             inputs["docs"].append(cur_docs)
     return inputs
-
-
-def _is_no_answer(answer: Answer):
-    """Used to check if an `answer` is a no answer"""
-    if answer.answer == "" and answer.offsets_in_document[0].start == 0 and answer.offsets_in_document[1].start:
-        return True
-    else:
-        return False
