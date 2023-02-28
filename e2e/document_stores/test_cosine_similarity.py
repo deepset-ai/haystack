@@ -6,7 +6,7 @@ import numpy as np
 
 from haystack.schema import Document
 
-from .conftest import document_store
+from ..conftest import document_store
 
 
 DOCUMENTS = [
