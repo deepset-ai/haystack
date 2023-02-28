@@ -132,7 +132,6 @@ class TableReader(BaseReader):
                 model_name_or_path=model_name_or_path,
                 model_version=model_version,
                 tokenizer=tokenizer,
-                return_no_answer=return_no_answer,
                 max_seq_len=max_seq_len,
                 batch_size=batch_size,
                 use_auth_token=use_auth_token,
@@ -239,7 +238,6 @@ class _TapasEncoder:
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
-        return_no_answer: bool = False,
         max_seq_len: int = 512,
         batch_size: int = 1,
         use_auth_token: Optional[Union[str, bool]] = None,
@@ -255,7 +253,6 @@ class _TapasEncoder:
             self.tokenizer = TapasTokenizer.from_pretrained(
                 tokenizer, use_auth_token=use_auth_token, model_max_length=max_seq_len
             )
-        self.return_no_answer = return_no_answer
         self.max_seq_len = max_seq_len
         self.device = device
         self.pipeline = _TableQuestionAnsweringPipeline(
@@ -275,20 +272,20 @@ class _TapasEncoder:
         pipeline_inputs = []
         for document in table_documents:
             table: pd.DataFrame = document.content
+            table = table.astype(str)
             pipeline_inputs.append(
                 {"query": query, "table": table, "sequential": False, "padding": True, "truncation": True}
             )
-        # TODO Turn pipeline_inputs into a HF Dataset so batching works as expected
+        # TODO Turn pipeline_inputs into a DataLoader so batching works as expected
         answers = self.pipeline(pipeline_inputs)
         if isinstance(answers[0], list):
             answers = list(itertools.chain.from_iterable(answers))
         for ans, doc in zip(answers, table_documents):
             ans.document_id = doc.id
 
-        # TODO Adding this could cause answers to be an empty list. Check what happens if this occurs.
-        # Optionally remove no answers
-        if self.return_no_answer is False:
-            answers = [ans for ans in answers if not _is_no_answer(ans)]
+        # TODO Add test for answers being an empty list
+        # Remove no_answers from the answers list
+        answers = [ans for ans in answers if not _is_no_answer(ans)]
 
         answers = sorted(answers, reverse=True)
         results = {"query": query, "answers": answers[:top_k]}
@@ -304,16 +301,10 @@ class _TapasEncoder:
 
 class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
     def _calculate_answer_score(
-        self,
-        logits: torch.Tensor,
-        inputs: Dict,
-        answer_coordinates: List[List[Tuple[int, int]]],
-        temperature: Optional[float] = None,
+        self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
     ) -> List[np.float64]:
-        if temperature is not None:
-            token_probabilities = torch.sigmoid(logits * temperature) * inputs["attention_mask"]
-        else:
-            token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
+        """Calculate the answer scores given the `logits`, `input`, and `answer_coordinates`."""
+        token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
 
         token_types = [
             "segment_ids",
@@ -330,11 +321,13 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
 
         answer_scores = []
         num_batch = logits.shape[0]
+        # TODO Remove once tested
         assert (
             num_batch == len(answer_coordinates) == inputs["input_ids"].shape[0]
         ), "Ensure all inputs have same batch dimension"
         for i in range(num_batch):
-            # TODO Add why this if check is necessary
+            # It is possible that a list within answer_coordinates is empty. This happens if no answer cells are found
+            # for a single table so we set the score to None.
             if len(answer_coordinates[i]) == 0:
                 answer_scores.append(None)
             else:
@@ -344,7 +337,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                     row_ids[i].tolist(),
                     column_ids[i].tolist(),
                 )
-                # _get_mean_cell_probs seems to index cells by (col, row). DataFrames are, however, indexed by (row, col).
+                # _get_mean_cell_probs indexes cells by (col, row). DataFrames are, however, indexed by (row, col).
                 all_cell_probabilities = {(row, col): prob for (col, row), prob in cell_coords_to_prob.items()}
                 answer_cell_probabilities = [all_cell_probabilities[coord] for coord in answer_coordinates[i]]
                 answer_scores.append(np.mean(answer_cell_probabilities))
@@ -390,9 +383,10 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         return f"{agg_operator} > {', '.join(answer_cells)}"
 
     def postprocess(self, model_outputs):
-        """Modified from HuggingFace"""
+        """Modified from TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects"""
         inputs = model_outputs["model_inputs"]
         table = model_outputs["table"]
+        string_table = table.astype(str)
         outputs = model_outputs["outputs"]
         if self.type == "tapas":
             if self.aggregate:
@@ -413,54 +407,45 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                 aggregators = {}
             answer_scores = self._calculate_answer_score(logits, inputs, answer_coordinates_batch)
             answers = []
-            for index, coordinates in enumerate(answer_coordinates_batch):
-                if len(coordinates) != 0:
-                    cells = [table.iat[coordinate] for coordinate in coordinates]
+            for index, ans_coordinates_per_table in enumerate(answer_coordinates_batch):
+                if len(ans_coordinates_per_table) > 0:
+                    cells = [table.iat[coordinate] for coordinate in ans_coordinates_per_table]
                     aggregator = aggregators.get(index, "")  # type: ignore
                     if aggregator == "NONE":
                         answer_str = ", ".join(cells)
                     else:
                         answer_str = self._aggregate_answers(aggregator, cells)
-                    answer_offsets = _calculate_answer_offsets(coordinates, table)
+                    answer_offsets = _calculate_answer_offsets(ans_coordinates_per_table, string_table)
                     current_score = answer_scores[index]
                     answer = Answer(
                         answer=answer_str,
                         type="extractive",
                         score=current_score,
-                        context=table,
+                        context=string_table,
                         offsets_in_document=answer_offsets,
                         offsets_in_context=answer_offsets,
                         meta={
                             "aggregation_operator": aggregator,
-                            "answer_cells": [table.iat[coordinate] for coordinate in coordinates],
+                            "answer_cells": [string_table.iat[coordinate] for coordinate in ans_coordinates_per_table],
                         },
                     )
                     answers.append(answer)
                 else:
-                    # TODO No answer score.
-                    #      1) First pass use 1 - (highest answer cell probability). This would only happen if
-                    #         highest answer cell probability is lower than 0.5. Has the possibility of returning
-                    #         multiple no answers.
-                    #      2) Do an aggregation across all documents to only return one no answer. Use logits from all
-                    #         documents to calculate the no answer score. Consider if positive answer scores should also
-                    #         be rescaled with logits from all documents.
                     answers.append(
                         Answer(
                             answer="",
                             type="extractive",
-                            score=0.0,
+                            score=None,
                             context=None,
                             offsets_in_context=[Span(start=0, end=0)],
                             offsets_in_document=[Span(start=0, end=0)],
-                            document_id=None,
+                            document_ids=None,
                             meta=None,
                         )
                     )
         else:
             raise NotImplementedError("Only TAPAS models are supported")
 
-        # TODO Consider returning logits in addition to answers.
-        #      Could maybe use logits to calculate no answer score.
         return answers
 
 
