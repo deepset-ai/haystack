@@ -44,12 +44,12 @@ def mock_models(monkeypatch):
 
 @pytest.fixture
 def en_to_de_translator(mock_models) -> TransformersTranslator:
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+    return TransformersTranslator(model_name_or_path="irrelevant/anyway")
 
 
 @pytest.fixture
 def de_to_en_translator(mock_models) -> TransformersTranslator:
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
+    return TransformersTranslator(model_name_or_path="irrelevant/anyway")
 
 
 @pytest.mark.unit
