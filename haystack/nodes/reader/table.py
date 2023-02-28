@@ -277,6 +277,7 @@ class _TapasEncoder:
                 {"query": query, "table": table, "sequential": False, "padding": True, "truncation": True}
             )
         # TODO Turn pipeline_inputs into a DataLoader so batching works as expected
+        self.pipeline.model.eval()
         answers = self.pipeline(pipeline_inputs)
         if isinstance(answers[0], list):
             answers = list(itertools.chain.from_iterable(answers))
