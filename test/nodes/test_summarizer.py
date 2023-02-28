@@ -36,6 +36,22 @@ def summarizer(mock_models) -> TransformersSummarizer:
 
 
 @pytest.mark.unit
+def test_summarization_no_docs(summarizer):
+    with pytest.raises(ValueError, match="at least one document"):
+        summarizer.predict(documents=[])
+    with pytest.raises(ValueError, match="at least one document"):
+        summarizer.predict_batch(documents=[])
+
+
+@pytest.mark.unit
+def test_summarization_no_docs(summarizer):
+    summarizer.min_length = 10
+    summarizer.max_length = 1
+    with pytest.raises(ValueError, match="min_length cannot be greater than max_length"):
+        summarizer.predict(documents=DOCS)
+
+
+@pytest.mark.unit
 def test_summarization_one_doc(summarizer):
     summarized_docs = summarizer.predict(documents=[DOCS[0]])
     assert len(summarized_docs) == 1
