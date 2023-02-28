@@ -1,16 +1,16 @@
 
     home page content
-    
+
       link to index
-      
+
       link to page 1
-    
-    
+
+
       const updateTimeout = setTimeout(myUpdateFunction, 150);
 
       function myUpdateFunction() {
         const remElem = document.querySelector('#a2');
-        if (remElem)        
+        if (remElem)
           remElem.parentNode.removeChild(remElem);
 
         if (!document.querySelector('#a4')) {
@@ -23,6 +23,7 @@
 
         clearTimeout(updateTimeout);
       }
-       
+
+
 
 link to page 2

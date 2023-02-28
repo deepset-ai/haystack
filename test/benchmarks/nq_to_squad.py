@@ -57,6 +57,10 @@ import logging
 import os
 import re
 
+
+logger = logging.getLogger(__name__)
+
+
 # Dropped samples
 n_yn = 0
 n_ms = 0
@@ -263,7 +267,7 @@ def main():
     nq_as_squad = {"version": args.version, "data": []}
 
     for file in sorted(glob.iglob(args.data_pattern)):
-        logging.info("opening %s", file)
+        logger.info("opening %s", file)
         with gzip.GzipFile(file, "r") as f:
             for line in f:
                 records += 1
@@ -277,7 +281,7 @@ def main():
                 if squad_record:
                     nq_as_squad["data"].append(squad_record)
                 if records % 100 == 0:
-                    logging.info("processed %s records", records)
+                    logger.info("processed %s records", records)
     print("Converted %s NQ records into %s SQuAD records." % (records, len(nq_as_squad["data"])))
     print(
         f"Removed samples: yes/no: {n_yn} multi_short: {n_ms} non_para {n_non_p} long_ans_only: {n_long_ans_only} errors: {n_error}"

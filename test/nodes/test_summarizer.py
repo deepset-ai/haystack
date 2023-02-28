@@ -8,6 +8,9 @@ from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, Transforme
 from haystack.nodes.other.document_merger import DocumentMerger
 
 
+pytestmark = pytest.mark.skip("Tests are too heavy for Github runners, skipping for now")
+
+
 DOCS = [
     Document(
         content="""PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by the shutoffs which were expected to last through at least midday tomorrow."""
@@ -84,20 +87,6 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
     answers = output["answers"]
     assert len(answers) == 1
     assert " The Eiffel Tower in Paris has officially opened its doors to the public." == answers[0]["answer"]
-
-
-haystack_version = tuple(int(num) for num in haystack.__version__.split(".")[:2])
-fail_in_v1_12 = pytest.mark.xfail(
-    haystack_version >= (1, 12),
-    reason="'generate_single_summary' should be removed in v1.12, as it was deprecated in v1.10",
-)
-
-
-@fail_in_v1_12
-def test_generate_single_summary_deprecated():
-    summarizer = TransformersSummarizer(model_name_or_path="hf-internal-testing/tiny-random-bart", use_gpu=False)
-    with pytest.raises(ValueError):
-        summarizer.predict([Document(content="irrelevant")], generate_single_summary=True)
 
 
 #

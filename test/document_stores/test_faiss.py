@@ -1,18 +1,11 @@
-import sys
-import os
-
-import yaml
 import faiss
 import pytest
 import numpy as np
 
-from haystack.schema import Document
 from haystack.document_stores.faiss import FAISSDocumentStore
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 from haystack.pipelines import Pipeline
-from haystack.nodes.retriever.dense import EmbeddingRetriever
 
 from ..conftest import MockDenseRetriever
 
@@ -133,6 +126,37 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         documents_indexed = document_store.get_all_documents()
         assert len(documents_indexed) == len(documents_with_embeddings)
         assert all(doc.embedding is not None for doc in documents_indexed)
+        # Check that get_embedding_count works as expected
+        assert document_store.get_embedding_count() == len(documents_with_embeddings)
+
+    @pytest.mark.integration
+    def test_train_index_from_docs(self, documents_with_embeddings, tmp_path):
+        document_store = FAISSDocumentStore(
+            sql_url=f"sqlite:///{tmp_path}/test_faiss_retrieving.db",
+            faiss_index_factory_str="IVF1,Flat",
+            isolation_level="AUTOCOMMIT",
+            return_embedding=True,
+        )
+        document_store.delete_all_documents(index=document_store.index)
+
+        assert not document_store.faiss_indexes[document_store.index].is_trained
+        document_store.train_index(documents_with_embeddings)
+        assert document_store.faiss_indexes[document_store.index].is_trained
+
+    @pytest.mark.integration
+    def test_train_index_from_embeddings(self, documents_with_embeddings, tmp_path):
+        document_store = FAISSDocumentStore(
+            sql_url=f"sqlite:///{tmp_path}/test_faiss_retrieving.db",
+            faiss_index_factory_str="IVF1,Flat",
+            isolation_level="AUTOCOMMIT",
+            return_embedding=True,
+        )
+        document_store.delete_all_documents(index=document_store.index)
+
+        embeddings = np.array([doc.embedding for doc in documents_with_embeddings])
+        assert not document_store.faiss_indexes[document_store.index].is_trained
+        document_store.train_index(embeddings=embeddings)
+        assert document_store.faiss_indexes[document_store.index].is_trained
 
     @pytest.mark.integration
     def test_write_docs_different_indexes(self, ds, documents_with_embeddings):
@@ -263,4 +287,14 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip(reason="labels metadata are not supported")
     @pytest.mark.integration
     def test_multilabel_meta_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="tested in test_write_index_docs")
+    @pytest.mark.integration
+    def test_get_embedding_count(self):
+        pass
+
+    @pytest.mark.skip(reason="can't store embeddings in SQL")
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
         pass

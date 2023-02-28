@@ -1,12 +1,13 @@
 import logging
 
+import pandas as pd
 import pytest
 from rank_bm25 import BM25
+import numpy as np
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
@@ -65,10 +66,19 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         assert set(ids) == result
 
     @pytest.mark.integration
-    def test_update_bm25(self, documents):
-        ds = InMemoryDocumentStore(use_bm25=False)
+    def test_update_bm25(self, ds, documents):
         ds.write_documents(documents)
-        ds.update_bm25()
+        bm25_representation = ds.bm25[ds.index]
+        assert isinstance(bm25_representation, BM25)
+        assert bm25_representation.corpus_size == ds.get_document_count()
+
+    @pytest.mark.integration
+    def test_update_bm25_table(self, ds):
+        table_doc = Document(
+            content=pd.DataFrame(columns=["id", "text"], data=[[0, "This is a test"], ["2", "This is another test"]]),
+            content_type="table",
+        )
+        ds.write_documents([table_doc])
         bm25_representation = ds.bm25[ds.index]
         assert isinstance(bm25_representation, BM25)
         assert bm25_representation.corpus_size == ds.get_document_count()
@@ -102,3 +112,15 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         for docs, query_emb in zip(docs_batch, query_embs):
             assert len(docs) == 5
             assert (docs[0].embedding == query_emb).all()
+
+    @pytest.mark.integration
+    def test_memory_query_by_embedding_docs_wo_embeddings(self, ds, caplog):
+        # write document but don't update embeddings
+        ds.write_documents([Document(content="test Document")])
+
+        query_embedding = np.random.rand(768).astype(np.float32)
+
+        with caplog.at_level(logging.WARNING):
+            docs = ds.query_by_embedding(query_emb=query_embedding, top_k=1)
+            assert "Skipping some of your documents that don't have embeddings" in caplog.text
+        assert len(docs) == 0

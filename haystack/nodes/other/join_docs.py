@@ -90,7 +90,7 @@ class JoinDocuments(JoinNode):
             top_k_join = len(sorted_docs)
 
         docs = []
-        for (id, score) in sorted_docs[:top_k_join]:
+        for id, score in sorted_docs[:top_k_join]:
             doc = document_map[id]
             doc.score = score
             docs.append(doc)

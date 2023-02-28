@@ -1,11 +1,11 @@
+import json
 import logging
 
 import pytest
 
-from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores.sql import LabelORM, SQLDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
@@ -88,6 +88,46 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
             ds.get_all_documents(filters={"year": {"$ne": "2020"}})
             assert "filters won't work on metadata fields" in caplog.text
 
+    @pytest.mark.integration
+    def test_get_all_labels_legacy_document_id(self, ds):
+        ds.session.add(
+            LabelORM(
+                id="123",
+                no_answer=False,
+                document=json.dumps(
+                    {
+                        "content": "Some content",
+                        "content_type": "text",
+                        "score": None,
+                        "id": "fc18c987a8312e72a47fb1524f230bb0",
+                        "meta": {},
+                        "embedding": [0.1, 0.2, 0.3],
+                    }
+                ),
+                origin="user-feedback",
+                query="Who made the PDF specification?",
+                is_correct_answer=True,
+                is_correct_document=True,
+                answer=json.dumps(
+                    {
+                        "answer": "Adobe Systems",
+                        "type": "extractive",
+                        "context": "Some content",
+                        "offsets_in_context": [{"start": 60, "end": 73}],
+                        "offsets_in_document": [{"start": 60, "end": 73}],
+                        # legacy document_id answer
+                        "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+                        "meta": {},
+                        "score": None,
+                    }
+                ),
+                pipeline_id="some-123",
+                index=ds.label_index,
+            )
+        )
+        labels = ds.get_all_labels()
+        assert labels[0].answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
     @pytest.mark.skip
     @pytest.mark.integration
     def test_nin_filters(self, ds, documents):
@@ -126,4 +166,14 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip(reason="labels metadata are not supported")
     @pytest.mark.integration
     def test_multilabel_meta_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="embeddings are not supported")
+    @pytest.mark.integration
+    def test_get_embedding_count(self):
+        pass
+
+    @pytest.mark.skip(reason="embeddings are not supported")
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
         pass

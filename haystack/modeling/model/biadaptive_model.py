@@ -42,8 +42,8 @@ class BiAdaptiveModel(nn.Module):
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
         device: torch.device = torch.device("cuda"),
-        lm1_output_types: Union[str, List[str]] = ["per_sequence"],
-        lm2_output_types: Union[str, List[str]] = ["per_sequence"],
+        lm1_output_types: Optional[Union[str, List[str]]] = None,
+        lm2_output_types: Optional[Union[str, List[str]]] = None,
         loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
@@ -54,12 +54,12 @@ class BiAdaptiveModel(nn.Module):
                                     language models will be zeroed.
         :param lm1_output_types: How to extract the embeddings from the final layer of the first language model. When set
                                  to "per_token", one embedding will be extracted per input token. If set to
-                                 "per_sequence", a single embedding will be extracted to represent the full
+                                 "per_sequence" (default), a single embedding will be extracted to represent the full
                                  input sequence. Can either be a single string, or a list of strings,
                                  one for each prediction head.
         :param lm2_output_types: How to extract the embeddings from the final layer of the second language model. When set
                                  to "per_token", one embedding will be extracted per input token. If set to
-                                 "per_sequence", a single embedding will be extracted to represent the full
+                                 "per_sequence" (default), a single embedding will be extracted to represent the full
                                  input sequence. Can either be a single string, or a list of strings,
                                  one for each prediction head.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
@@ -74,6 +74,10 @@ class BiAdaptiveModel(nn.Module):
                                     Note: The loss at this stage is per sample, i.e one tensor of
                                     shape (batchsize) per prediction head.
         """
+        if lm1_output_types is None:
+            lm1_output_types = ["per_sequence"]
+        if lm2_output_types is None:
+            lm2_output_types = ["per_sequence"]
         super(BiAdaptiveModel, self).__init__()
 
         self.device = device
@@ -92,19 +96,18 @@ class BiAdaptiveModel(nn.Module):
             loss_aggregation_fn = loss_per_head_sum
         self.loss_aggregation_fn = loss_aggregation_fn
 
-    def save(self, save_dir: Path, lm1_name: str = "lm1", lm2_name: str = "lm2"):
+    def save(self, save_dir: Union[str, Path], lm1_name: str = "lm1", lm2_name: str = "lm2"):
         """
         Saves the 2 language model weights and respective config_files in directories lm1 and lm2 within save_dir.
 
-        :param save_dir: Path to save the BiAdaptiveModel to.
+        :param save_dir: Path | str to save the BiAdaptiveModel to.
         """
         os.makedirs(save_dir, exist_ok=True)
-        if not os.path.exists(Path.joinpath(save_dir, Path(lm1_name))):
-            os.makedirs(Path.joinpath(save_dir, Path(lm1_name)))
-        if not os.path.exists(Path.joinpath(save_dir, Path(lm2_name))):
-            os.makedirs(Path.joinpath(save_dir, Path(lm2_name)))
-        self.language_model1.save(Path.joinpath(save_dir, Path(lm1_name)))
-        self.language_model2.save(Path.joinpath(save_dir, Path(lm2_name)))
+        for name, model in zip([lm1_name, lm2_name], [self.language_model1, self.language_model2]):
+            model_save_dir = Path.joinpath(Path(save_dir), Path(name))
+            os.makedirs(model_save_dir, exist_ok=True)
+            model.save(model_save_dir)
+
         for i, ph in enumerate(self.prediction_heads):
             logger.info("prediction_head saving")
             ph.save(save_dir, i)
@@ -347,7 +350,6 @@ class BiAdaptiveModel(nn.Module):
             pooled_output[0] = pooled_output1
 
         if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
-
             max_seq_len = passage_input_ids.shape[-1]
             passage_input_ids = passage_input_ids.view(-1, max_seq_len)
             passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
@@ -384,7 +386,7 @@ class BiAdaptiveModel(nn.Module):
         They could diverge in case of custom vocabulary added via tokenizer.add_tokens()
         """
 
-        model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. "
@@ -393,7 +395,7 @@ class BiAdaptiveModel(nn.Module):
         )
         assert vocab_size1 == model1_vocab_len, msg
 
-        model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+        model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings  # type: ignore [union-attr,operator]
 
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. "
@@ -418,7 +420,6 @@ class BiAdaptiveModel(nn.Module):
                 raise Exception(f"The task '{head.task_name}' is missing a valid set of labels")
             label_list = tasks[head.task_name]["label_list"]
             head.label_list = label_list
-            num_labels = len(label_list)
             head.metric = tasks[head.task_name]["metric"]
 
     def get_language(self):

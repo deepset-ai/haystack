@@ -28,6 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
+from haystack.telemetry_2 import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -68,8 +69,8 @@ class FARMReader(BaseReader):
         local_files_only=False,
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
+        max_query_length: int = 64,
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
@@ -128,6 +129,7 @@ class FARMReader(BaseReader):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param max_query_length: Maximum length of the question in number of tokens.
         """
         super().__init__()
 
@@ -149,8 +151,9 @@ class FARMReader(BaseReader):
             proxies=proxies,
             local_files_only=local_files_only,
             force_download=force_download,
-            devices=self.devices,
+            devices=self.devices,  # type: ignore [arg-type]
             use_auth_token=use_auth_token,
+            max_query_length=max_query_length,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -159,6 +162,8 @@ class FARMReader(BaseReader):
         self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
         self.inferencer.model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores
         self.max_seq_len = max_seq_len
+        self.doc_stride = doc_stride
+        self.max_query_length = max_query_length
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
         self.confidence_threshold = confidence_threshold
@@ -171,7 +176,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -181,7 +186,7 @@ class FARMReader(BaseReader):
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
@@ -196,7 +201,12 @@ class FARMReader(BaseReader):
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        distributed: bool = False,
+        doc_stride: Optional[int] = None,
+        max_query_length: Optional[int] = None,
     ):
+        if devices is None:
+            devices = []
         if dev_filename:
             dev_split = 0
 
@@ -211,8 +221,12 @@ class FARMReader(BaseReader):
             devices = self.devices
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
+        if doc_stride is None:
+            doc_stride = self.doc_stride
+        if max_query_length is None:
+            max_query_length = self.max_query_length
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)  # type: ignore [arg-type]
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -226,6 +240,8 @@ class FARMReader(BaseReader):
             processor = SquadProcessor(
                 tokenizer=self.inferencer.processor.tokenizer,
                 max_seq_len=max_seq_len,
+                max_query_length=max_query_length,
+                doc_stride=doc_stride,
                 label_list=label_list,
                 metric=metric,
                 train_filename=train_filename,
@@ -247,7 +263,7 @@ class FARMReader(BaseReader):
                 device=devices[0],
                 processor=processor,
                 batch_size=batch_size,
-                distributed=False,
+                distributed=distributed,
                 max_processes=num_processes,
                 caching=caching,
                 cache_path=cache_path,
@@ -256,7 +272,7 @@ class FARMReader(BaseReader):
             data_silo = DataSilo(
                 processor=processor,
                 batch_size=batch_size,
-                distributed=False,
+                distributed=distributed,
                 max_processes=num_processes,
                 caching=caching,
                 cache_path=cache_path,
@@ -265,14 +281,13 @@ class FARMReader(BaseReader):
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
             model=self.inferencer.model,
-            # model=self.inferencer.model,
             learning_rate=learning_rate,
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
             device=devices[0],
-            use_amp=use_amp,
             grad_acc_steps=grad_acc_steps,
+            distributed=distributed,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
@@ -350,7 +365,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -360,7 +375,7 @@ class FARMReader(BaseReader):
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
@@ -368,6 +383,7 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        max_query_length: Optional[int] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -404,14 +420,10 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-                        Available options:
-                        None (Don't use AMP)
-                        "O0" (Normal FP32 training)
-                        "O1" (Mixed Precision => Recommended)
-                        "O2" (Almost FP16)
-                        "O3" (Pure FP16).
-                        See details on: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: Save a train checkpoint after this many steps of training.
@@ -420,8 +432,10 @@ class FARMReader(BaseReader):
         :param cache_path: The Path to cache the preprocessed dataset.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
+        :param max_query_length: Maximum length of the question in number of tokens.
         :return: None
         """
+        send_event("FARMReader.train()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -446,6 +460,8 @@ class FARMReader(BaseReader):
             cache_path=cache_path,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            max_query_length=max_query_length,
+            distributed=False,
         )
 
     def distil_prediction_layer_from(
@@ -456,8 +472,8 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
-        student_batch_size: int = 10,
+        devices: Optional[List[torch.device]] = None,
+        batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
         learning_rate: float = 3e-5,
@@ -467,7 +483,7 @@ class FARMReader(BaseReader):
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
@@ -476,6 +492,7 @@ class FARMReader(BaseReader):
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
+        processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
     ):
@@ -509,8 +526,8 @@ class FARMReader(BaseReader):
                         A list containing torch device objects and/or strings is supported (For example
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
-        :param student_batch_size: Number of samples the student model receives in one batch for training
-        :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
+        :param batch_size: Number of samples the student model receives in one batch for training
+        :param teacher_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
         :param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
@@ -522,14 +539,10 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-                        Available options:
-                        None (Don't use AMP)
-                        "O0" (Normal FP32 training)
-                        "O1" (Mixed Precision => Recommended)
-                        "O2" (Almost FP16)
-                        "O3" (Pure FP16).
-                        See details on: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
@@ -539,15 +552,12 @@ class FARMReader(BaseReader):
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
-        :param tinybert_loss: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
-        :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
-        :param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
-        :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
+        send_event("FARMReader.distil_prediction_layer_from()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -555,7 +565,7 @@ class FARMReader(BaseReader):
             test_filename=test_filename,
             use_gpu=use_gpu,
             devices=devices,
-            batch_size=student_batch_size,
+            batch_size=batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
             max_seq_len=max_seq_len,
@@ -575,8 +585,10 @@ class FARMReader(BaseReader):
             distillation_loss_weight=distillation_loss_weight,
             distillation_loss=distillation_loss,
             temperature=temperature,
+            processor=processor,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            distributed=False,
         )
 
     def distil_intermediate_layers_from(
@@ -587,8 +599,9 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
+        devices: Optional[List[torch.device]] = None,
         batch_size: int = 10,
+        teacher_batch_size: Optional[int] = None,
         n_epochs: int = 5,
         learning_rate: float = 5e-5,
         max_seq_len: Optional[int] = None,
@@ -597,13 +610,14 @@ class FARMReader(BaseReader):
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
+        distillation_loss_weight: float = 0.5,
         temperature: float = 1.0,
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
@@ -635,8 +649,8 @@ class FARMReader(BaseReader):
                         A list containing torch device objects and/or strings is supported (For example
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
-        :param student_batch_size: Number of samples the student model receives in one batch for training
-        :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
+        :param batch_size: Number of samples the student model receives in one batch for training
+        :param teacher_batch_size: Number of samples the teacher model receives in one batch for distillation.
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
         :param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
@@ -648,28 +662,25 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-                        Available options:
-                        None (Don't use AMP)
-                        "O0" (Normal FP32 training)
-                        "O1" (Mixed Precision => Recommended)
-                        "O2" (Almost FP16)
-                        "O3" (Pure FP16).
-                        See details on: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :param caching: whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
-        :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
+        :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
+        send_event("FARMReader.distil_intermediate_layers_from()")
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -691,15 +702,17 @@ class FARMReader(BaseReader):
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
             teacher_model=teacher_model,
-            teacher_batch_size=batch_size,
+            teacher_batch_size=teacher_batch_size,
             caching=caching,
             cache_path=cache_path,
             distillation_loss=distillation_loss,
+            distillation_loss_weight=distillation_loss_weight,
             temperature=temperature,
             tinybert=True,
             processor=processor,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            distributed=False,
         )
 
     def update_parameters(
@@ -736,7 +749,7 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face."
+        self, repo_id: str, private: bool = False, commit_message: str = "Add new model to Hugging Face."
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -770,7 +783,7 @@ class FARMReader(BaseReader):
             transformer_models[0].save_pretrained(tmp_dir)
 
             large_files = []
-            for root, dirs, files in os.walk(tmp_dir):
+            for root, _, files in os.walk(tmp_dir):
                 for filename in files:
                     file_path = os.path.join(root, filename)
                     rel_path = os.path.relpath(file_path, tmp_dir)
@@ -779,7 +792,7 @@ class FARMReader(BaseReader):
                         large_files.append(rel_path)
 
             if len(large_files) > 0:
-                logger.info("Track files with git lfs: {}".format(", ".join(large_files)))
+                logger.info("Track files with git lfs: %s", ", ".join(large_files))
                 repo.lfs_track(large_files)
 
             logger.info("Push model to the hub. This might take a while")
@@ -832,7 +845,6 @@ class FARMReader(BaseReader):
         # Group predictions together
         grouped_predictions = []
         left_idx = 0
-        right_idx = 0
         for number in number_of_docs:
             right_idx = left_idx + number
             grouped_predictions.append(predictions[left_idx:right_idx])
@@ -930,7 +942,7 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-
+        send_event("FARMReader.eval_on_file()")
         if device is None:
             device = self.devices[0]
         else:
@@ -1008,7 +1020,7 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-
+        send_event("FARMReader.eval()")
         if device is None:
             device = self.devices[0]
         else:
@@ -1016,9 +1028,10 @@ class FARMReader(BaseReader):
 
         if self.top_k_per_candidate != 4:
             logger.info(
-                f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
-                f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
-                f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5"
+                "Performing Evaluation using top_k_per_candidate = %s \n"
+                "and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                "This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5",
+                self.top_k_per_candidate,
             )
 
         # extract all questions for evaluation
@@ -1055,7 +1068,7 @@ class FARMReader(BaseReader):
                         continue
                     if label.answer.offsets_in_document is None:
                         logger.error(
-                            f"Label.answer.offsets_in_document was None, but Span object was expected: {label} "
+                            "Label.answer.offsets_in_document was None, but Span object was expected: %s ", label
                         )
                         continue
                     # add to existing answers
@@ -1067,7 +1080,11 @@ class FARMReader(BaseReader):
                         # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                         if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
                             logger.warning(
-                                f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
+                                "Answers in this sample are being dropped because it has more than 6 answers. "
+                                "(doc_id: %s, question: %s, label_id: %s)",
+                                doc_id,
+                                label.query,
+                                label.id,
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(
@@ -1077,7 +1094,7 @@ class FARMReader(BaseReader):
                     # create new one
                     else:
                         # We don't need to create an answer dict if is_impossible / no_answer
-                        if label.no_answer == True:
+                        if label.no_answer is True:
                             aggregated_per_question[aggregation_key] = {
                                 "id": str(hash(str(doc_id) + label.query)),
                                 "question": label.query,
@@ -1107,9 +1124,7 @@ class FARMReader(BaseReader):
         # Create DataLoader that can be passed to the Evaluator
         tic = perf_counter()
         indices = range(len(farm_input))
-        dataset, tensor_names, problematic_ids = self.inferencer.processor.dataset_from_dicts(
-            farm_input, indices=indices
-        )
+        dataset, tensor_names, _ = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
@@ -1162,7 +1177,7 @@ class FARMReader(BaseReader):
                         type="extractive",
                         score=ans.confidence if self.use_confidence_scores else ans.score,
                         context=ans.context_window,
-                        document_id=pred.id,
+                        document_ids=[pred.id],
                         offsets_in_context=[
                             Span(
                                 start=ans.offset_answer_start - ans.offset_context_window_start,
@@ -1298,7 +1313,7 @@ class FARMReader(BaseReader):
          ```
 
         :param question: Question string
-        :param documents: List of documents as string type
+        :param texts: A list of Document texts as a string type
         :param top_k: The maximum number of answers to return
         :return: Dict containing question and answers
         """

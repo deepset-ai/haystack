@@ -2,9 +2,7 @@ import pytest
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
-
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 import uuid
 from unittest.mock import MagicMock
@@ -251,3 +249,12 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_cant_write_top_level_fields_in_meta(self, ds):
         with pytest.raises(ValueError, match='"meta" info contains duplicate key "content"'):
             ds.write_documents([Document(content="test", meta={"content": "test-id"})])
+
+    @pytest.mark.integration
+    def test_get_embedding_count(self, ds, documents):
+        """
+        We expect 9 docs with embeddings because all documents in the documents fixture for this class contain
+        embeddings.
+        """
+        ds.write_documents(documents)
+        assert ds.get_embedding_count() == 9

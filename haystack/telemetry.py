@@ -17,10 +17,12 @@ from pathlib import Path
 import yaml
 import posthog
 
-from haystack.environment import HAYSTACK_EXECUTION_CONTEXT, get_or_create_env_meta_data
+from haystack.environment import get_or_create_env_meta_data
 
 posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
 posthog.host = "https://tm.hs.deepset.ai"
+HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
+HAYSTACK_DOCKER_CONTAINER = "HAYSTACK_DOCKER_CONTAINER"
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED = "HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
@@ -31,8 +33,11 @@ user_id: Optional[str] = None
 logger = logging.getLogger(__name__)
 
 # disable posthog logging
-logging.getLogger("posthog").setLevel(CRITICAL)
-logging.getLogger("backoff").setLevel(CRITICAL)
+for module_name in ["posthog", "backoff"]:
+    logging.getLogger(module_name).setLevel(CRITICAL)
+    # Prevent module from sending errors to stderr when an exception is encountered during an emit() call
+    logging.getLogger(module_name).addHandler(logging.NullHandler())
+    logging.getLogger(module_name).propagate = False
 
 
 class TelemetryFileType(Enum):
@@ -130,7 +135,7 @@ def send_event(func):
     return wrapper
 
 
-def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
+def send_custom_event(event: str = "", payload: Optional[Dict[str, Any]] = None):
     """
     This method can be called directly from anywhere in Haystack to send an event.
     Enriches the given event with metadata and sends it to the posthog server if telemetry is enabled.
@@ -139,7 +144,11 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     :param event: Name of the event. Use a noun and a verb, e.g., "evaluation started", "component created"
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
+    if os.environ.get("HAYSTACK_TELEMETRY_VERSION", "2") != "1":
+        return
     global user_id  # pylint: disable=global-statement
+    if payload is None:
+        payload = {}
     try:
 
         def send_request(payload: Dict[str, Any]):
@@ -174,13 +183,13 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
             return
 
     except Exception as e:
+        print("Exception! ", e)
         logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 
 def send_tutorial_event(url: str):
     """
     Can be called when a tutorial dataset is downloaded so that the dataset URL is used to identify the tutorial and send an event.
-
     :param url: URL of the dataset that is loaded in the tutorial.
     """
     dataset_url_to_tutorial = {
@@ -206,6 +215,14 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
     }
     send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
+
+
+def tutorial_running(tutorial_id: int):
+    """
+    Can be called when a tutorial is executed so that the tutorial_id is used to identify the tutorial and send an event.
+    :param tutorial_id: ID number of the tutorial
+    """
+    send_custom_event(event=f"tutorial {tutorial_id} executed")
 
 
 def _get_or_create_user_id() -> Optional[str]:
@@ -250,7 +267,11 @@ def _write_telemetry_config():
         # show a log message if telemetry config is written for the first time
         if not CONFIG_PATH.is_file():
             logger.info(
-                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt-out at anytime by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page. More information at https://docs.haystack.deepset.ai/docs/telemetry"
+                "Haystack sends anonymous usage data to understand the actual usage and steer dev efforts "
+                "towards features that are most meaningful to users. You can opt-out at anytime by calling "
+                "disable_telemetry() or by manually setting the environment variable  "
+                "HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation "
+                "page. More information at https://docs.haystack.deepset.ai/docs/telemetry"
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()

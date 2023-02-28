@@ -86,8 +86,9 @@ class TransformersReader(BaseReader):
 
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.model = pipeline(
@@ -153,7 +154,7 @@ class TransformersReader(BaseReader):
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
         )
-        # Transformers gives different output dependiing on top_k_per_candidate and number of inputs
+        # Transformers gives different output depending on top_k_per_candidate and number of inputs
         if isinstance(predictions, dict):
             predictions = [[predictions]]
         elif len(inputs) == 1:
@@ -168,7 +169,7 @@ class TransformersReader(BaseReader):
                 pred["doc_id"] = cur_doc_id
         predictions = list(itertools.chain.from_iterable(predictions))
 
-        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, all_docs, top_k)
+        answers, _ = self._extract_answers_of_predictions(predictions, all_docs, top_k)
 
         results = {"query": query, "answers": answers}
         return results
@@ -224,7 +225,7 @@ class TransformersReader(BaseReader):
         # Transformers flattens lists of length 1. This restores the original list structure.
         if isinstance(predictions, dict):
             predictions = [[predictions]]
-        elif len(number_of_docs) == 1:
+        elif len(inputs) == 1:
             predictions = [predictions]
         else:
             predictions = [p if isinstance(p, list) else [p] for p in predictions]
@@ -233,7 +234,6 @@ class TransformersReader(BaseReader):
         grouped_predictions = []
         grouped_inputs = []
         left_idx = 0
-        right_idx = 0
         for number in number_of_docs:
             right_idx = left_idx + number
             grouped_predictions.append(predictions[left_idx:right_idx])
@@ -247,7 +247,9 @@ class TransformersReader(BaseReader):
                 for pred in preds_for_single_doc:
                     cur_doc_id = inp.doc_id
                     pred["doc_id"] = cur_doc_id
-            if isinstance(grouped_pred[0], list):
+            if len(grouped_pred) == 0:
+                group = []
+            elif isinstance(grouped_pred[0], list):
                 group = list(itertools.chain.from_iterable(grouped_pred))
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, all_docs, top_k)
             results["answers"].append(answers)
@@ -271,8 +273,9 @@ class TransformersReader(BaseReader):
         no_ans_gaps = []
         best_overall_score = 0
 
-        cur_doc_id = predictions[0]["doc_id"]
-        cur_doc = docs[cur_doc_id]
+        if len(predictions) > 0:
+            cur_doc_id = predictions[0]["doc_id"]
+            cur_doc = docs[cur_doc_id]
         no_ans_doc_score = 0
         best_doc_score = 0
 
@@ -301,7 +304,7 @@ class TransformersReader(BaseReader):
                         context=cur_doc.content[context_start:context_end],
                         offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
                         offsets_in_context=[Span(start=pred["start"] - context_start, end=pred["end"] - context_start)],
-                        document_id=cur_doc.id,
+                        document_ids=[cur_doc.id],
                         meta=cur_doc.meta,
                     )
                 )
@@ -313,7 +316,9 @@ class TransformersReader(BaseReader):
         # + add no_ans_gap for last Document
         if best_doc_score > best_overall_score:
             best_overall_score = best_doc_score
-        no_ans_gaps.append(no_ans_doc_score - best_doc_score)
+
+        if len(predictions) > 0:
+            no_ans_gaps.append(no_ans_doc_score - best_doc_score)
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_overall_score)

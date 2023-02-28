@@ -123,8 +123,9 @@ class EntityExtractor(BaseComponent):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
         self.batch_size = batch_size
         self.progress_bar = progress_bar
@@ -501,7 +502,6 @@ def simplify_ner_for_qa(output):
     """
     compact_output = []
     for answer in output["answers"]:
-
         entities = []
         for entity in answer.meta["entities"]:
             if (
@@ -633,7 +633,7 @@ class _EntityPostProcessor:
 
         entities = []
         for idx, entity in enumerate(word_entities):
-            word, (start, end) = word_offset_mapping[idx]
+            _, (start, end) = word_offset_mapping[idx]
             entity["start"] = start
             entity["end"] = end
             entities.append(entity)
@@ -829,7 +829,7 @@ class _EntityPostProcessor:
             # The split is meant to account for the "B" and "I" prefixes
             # Shouldn't merge if both entities are B-type
             bi, tag = self.get_tag(entity["entity"])
-            last_bi, last_tag = self.get_tag(entity_group_disagg[-1]["entity"])
+            _, last_tag = self.get_tag(entity_group_disagg[-1]["entity"])
 
             if tag == last_tag and bi != "B":
                 # Modify subword type to be previous_type

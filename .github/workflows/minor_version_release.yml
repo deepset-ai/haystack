@@ -7,7 +7,6 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout this repo
         uses: actions/checkout@v3
 
@@ -19,7 +18,7 @@ jobs:
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: |
-          echo "::set-output name=current_release_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+          echo "current_release_minor=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Create new version branch
         run: |
@@ -31,18 +30,15 @@ jobs:
       - name: Bump version on main
         shell: bash
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git checkout main
-          cat VERSION.txt | awk -F. '/[0-9]+\./{$2++;print}' OFS=. | tee VERSION.txt
+          NEW_VERSION=$(awk -F. '/[0-9]+\./{$2++;print}' OFS=. < VERSION.txt)
+          echo "$NEW_VERSION" > VERSION.txt
           cat VERSION.txt
-          pip install --upgrade pip
-          pip install .[all]
-          pip install ./rest_api
-          python .github/utils/generate_openapi_specs.py
           git checkout -b bump-version
           git add .
-          git commit -m "Update unstable version and openapi schema"
+          git commit -m "Update unstable version"
           git push -u origin bump-version
           gh pr create -B main -H bump-version --title 'Bump unstable version' --body 'Part of the release process' --label 'ignore-for-release-notes'
 

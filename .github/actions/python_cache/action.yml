@@ -6,13 +6,10 @@ inputs:
     description: 'prefix for the cache (to distinguish OS)'
     required: true
     default: 'linux'
-  pythonPath:
-    description: 'Python path to cache/restore'
-    required: true
   pythonVersion:
     description: 'Python version to use'
     required: true
-    default: "3.7"
+    default: "3.8"
 
 runs:
   using: "composite"
@@ -33,7 +30,7 @@ runs:
     with:
       python-version: ${{ inputs.pythonVersion }}
 
-  - name: Cache
+  - name: Cache Python path
     id: cache-python-env
     uses: actions/cache@v3
     with:
@@ -52,4 +49,3 @@ runs:
       python -m pip install --upgrade pip
       pip install .[all]
       pip install rest_api/
-      pip install ui/

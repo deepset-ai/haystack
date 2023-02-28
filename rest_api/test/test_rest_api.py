@@ -1,3 +1,5 @@
+# mypy: disable_error_code = "empty-body, override, union-attr"
+
 from typing import Dict, List, Optional, Union, Generator
 
 import os
@@ -5,23 +7,52 @@ from pathlib import Path
 from textwrap import dedent
 from unittest import mock
 from unittest.mock import MagicMock, Mock
-import functools
 import numpy as np
 import pandas as pd
 
 import pytest
 from fastapi.testclient import TestClient
-from haystack import Document, Answer
+from haystack import Document, Answer, Pipeline
 import haystack
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
+from haystack.errors import PipelineSchemaError
 from haystack.schema import Label, FilterType
 from haystack.nodes.file_converter import BaseConverter
 
+from rest_api.pipeline import _load_pipeline
 from rest_api.utils import get_app
 
 
 TEST_QUERY = "Who made the PDF specification?"
+
+
+def test_single_worker_warning_for_indexing_pipelines(caplog):
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, None)
+
+    assert isinstance(p, Pipeline)
+    assert "used with 1 worker" in caplog.text
+
+
+def test_check_error_for_pipeline_not_found():
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, "ThisPipelineDoesntExist")
+    assert p is None
+
+
+def test_overwrite_params_with_env_variables_when_no_params_in_pipeline_yaml(monkeypatch):
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.docstore-no-params-pipeline.yml"
+    monkeypatch.setenv("INMEMORYDOCUMENTSTORE_PARAMS_INDEX", "custom_index")
+    _, document_store = _load_pipeline(yaml_pipeline_path, None)
+    assert document_store.index == "custom_index"
+
+
+def test_bad_yaml_pipeline_configuration_error():
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.bogus_pipeline.yml"
+    with pytest.raises(PipelineSchemaError) as excinfo:
+        _load_pipeline(yaml_pipeline_path, None)
+    assert "MyOwnDocumentStore" in str(excinfo.value)
 
 
 class MockReader(BaseReader):
@@ -188,7 +219,7 @@ def feedback():
             "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
             "offsets_in_context": [{"start": 60, "end": 73}],
             "offsets_in_document": [{"start": 60, "end": 73}],
-            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "document_ids": ["fc18c987a8312e72a47fb1524f230bb0"],
             "meta": {},
             "score": None,
         },
@@ -327,19 +358,6 @@ def test_query_with_filter_list(client):
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
 
-def test_query_with_deprecated_filter_format(client):
-    request_params = {"TestRetriever": {"filters": {"test_key": "i_should_be_a_list"}}}
-    expected_params = {"TestRetriever": {"filters": {"test_key": ["i_should_be_a_list"]}}}
-    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
-        # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
-        response = client.post(url="/query", json={"query": TEST_QUERY, "params": request_params})
-        assert 200 == response.status_code
-        # Ensure `run` was called with the expected parameters. In this case,
-        # `_format_filters` will fix the `filters` format within the params
-        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=expected_params, debug=False)
-
-
 def test_query_with_no_documents_and_no_answers(client):
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
@@ -412,11 +430,36 @@ def test_query_with_dataframe(client):
         response = client.post(url="/query", json={"query": TEST_QUERY})
         assert 200 == response.status_code
         assert len(response.json()["documents"]) == 1
-        assert response.json()["documents"][0]["content"] == [
-            {"col1": "text_1", "col2": 1},
-            {"col1": "text_2", "col2": 2},
-        ]
+        assert response.json()["documents"][0]["content"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
         assert response.json()["documents"][0]["content_type"] == "table"
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
+
+
+def test_query_with_prompt_node(client):
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {
+            "query": TEST_QUERY,
+            "documents": [
+                Document(
+                    content="test",
+                    content_type="text",
+                    score=0.9,
+                    meta={"test_key": "test_value"},
+                    embedding=np.array([0.1, 0.2, 0.3]),
+                )
+            ],
+            "results": ["test"],
+        }
+        response = client.post(url="/query", json={"query": TEST_QUERY})
+        assert 200 == response.status_code
+        assert len(response.json()["documents"]) == 1
+        assert response.json()["documents"][0]["content"] == "test"
+        assert response.json()["documents"][0]["content_type"] == "text"
+        assert response.json()["documents"][0]["embedding"] == [0.1, 0.2, 0.3]
+        assert len(response.json()["results"]) == 1
+        assert response.json()["results"][0] == "test"
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
 

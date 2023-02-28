@@ -1,8 +1,13 @@
 import json
 import logging
-from abc import abstractmethod
+import os
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING, Any, Callable, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import numpy as np
 import requests
@@ -12,112 +17,38 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
-from haystack.document_stores.base import BaseDocumentStore
 
-from haystack.errors import OpenAIError, OpenAIRateLimitError, CohereError
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+)
+from haystack.errors import CohereError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
+from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.telemetry_2 import send_event
+
+from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
+
+COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
+COHERE_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
+
 logger = logging.getLogger(__name__)
-
-
-class _BaseEmbeddingEncoder:
-    @abstractmethod
-    def embed_queries(self, queries: List[str]) -> np.ndarray:
-        """
-        Create embeddings for a list of queries.
-
-        :param queries: List of queries to embed.
-        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
-        """
-        pass
-
-    @abstractmethod
-    def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        """
-        Create embeddings for a list of documents.
-
-        :param docs: List of documents to embed.
-        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
-        """
-        pass
-
-    def train(
-        self,
-        training_data: List[Dict[str, Any]],
-        learning_rate: float = 2e-5,
-        n_epochs: int = 1,
-        num_warmup_steps: Optional[int] = None,
-        batch_size: int = 16,
-    ):
-        """
-        Trains or adapts the underlying embedding model.
-
-        Each training data example is a dictionary with the following keys:
-
-        * question: The question string.
-        * pos_doc: Positive document string (the document containing the answer).
-        * neg_doc: Negative document string (the document that doesn't contain the answer).
-        * score: The score margin the answer must fall within.
-
-
-        :param training_data: The training data in a dictionary format. Required.
-        :type training_data: List[Dict[str, Any]]
-        :param learning_rate: The speed at which the model learns. Required. We recommend that you leave the default `2e-5` value.
-        :type learning_rate: float
-        :param n_epochs: The number of epochs (complete passes of the training data through the algorithm) that you want the model to go through. Required.
-        :type n_epochs: int
-        :param num_warmup_steps: The number of warmup steps for the model. Warmup steps are epochs when the learning rate is very low. You can use them at the beginning of the training to prevent early overfitting of your model. Required.
-        :type num_warmup_steps: int
-        :param batch_size: The batch size to use for the training. Optional. The default values is 16.
-        :type batch_size: int (optional)
-        """
-        pass
-
-    def save(self, save_dir: Union[Path, str]):
-        """
-        Save the model to the directory you specify.
-
-        :param save_dir: The directory where the model is saved. Required.
-        :type save_dir: Union[Path, str]
-        """
-        pass
-
-    def _check_docstore_similarity_function(self, document_store: BaseDocumentStore, model_name: str):
-        """
-        Check that document_store uses a similarity function
-        compatible with the embedding model
-        """
-        if "sentence-transformers" in model_name.lower():
-            model_similarity = None
-            if "-cos-" in model_name.lower():
-                model_similarity = "cosine"
-            elif "-dot-" in model_name.lower():
-                model_similarity = "dot_product"
-
-            if model_similarity is not None and document_store.similarity != model_similarity:
-                logger.warning(
-                    f"You seem to be using {model_name} model with the {document_store.similarity} function instead of the recommended {model_similarity}. "
-                    f"This can be set when initializing the DocumentStore"
-                )
-        elif "dpr" in model_name.lower() and document_store.similarity != "dot_product":
-            logger.warning(
-                f"You seem to be using a DPR model with the {document_store.similarity} function. "
-                f"We recommend using dot_product instead. "
-                f"This can be set when initializing the DocumentStore"
-            )
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-
         self.embedding_model = Inferencer.load(
             retriever.embedding_model,
             revision=retriever.model_version,
@@ -168,6 +99,10 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(
             "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
@@ -234,9 +169,38 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
-        batch_size: int = 16,
-        train_loss: str = "mnrl",
+        batch_size: Optional[int] = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
+        """
+        Trains the underlying Sentence Transformer model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The score margin the answer must fall within.
+
+        :param training_data: The training data in a dictionary format.
+        :param learning_rate: The learning rate of the optimizer.
+        :param n_epochs: The number of iterations on the whole training data set you want to train for.
+        :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
+            increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
+            decreased linearly back to zero.
+        :param batch_size: The batch size to use for the training. The default value is 16.
+        :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
+            "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
+        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param kwargs: Additional training keyword arguments to pass to the `SentenceTransformer.fit` function. Please
+            reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
+            for a full list of keyword arguments.
+        """
+        send_event("SentenceTransformersEmbeddingEncoder.train()")
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
@@ -261,7 +225,13 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 train_examples.append(InputExample(texts=texts))
 
         logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
-        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
+        train_dataloader = DataLoader(
+            train_examples,  # type: ignore [var-annotated, arg-type]
+            batch_size=batch_size,
+            drop_last=True,
+            shuffle=True,
+            num_workers=num_workers,
+        )
         train_loss = st_loss.loss(self.embedding_model)
 
         # Tune the model
@@ -270,6 +240,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             epochs=n_epochs,
             optimizer_params={"lr": learning_rate},
             warmup_steps=int(len(train_dataloader) * 0.1) if num_warmup_steps is None else num_warmup_steps,
+            use_amp=use_amp,
+            **kwargs,
         )
 
     def save(self, save_dir: Union[Path, str]):
@@ -278,7 +250,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
         self.max_length = retriever.max_seq_len
@@ -302,7 +273,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc="Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (
@@ -329,7 +300,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc="Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (
@@ -344,7 +315,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         return np.concatenate(embeddings)
 
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
-
         dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
@@ -377,6 +347,10 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(
             "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
@@ -388,106 +362,14 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
 
 
-class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever"):
-        # See https://beta.openai.com/docs/guides/embeddings for more details
-        # OpenAI has a max seq length of 2048 tokens and unknown max batch size
-        self.max_seq_len = min(2048, retriever.max_seq_len)
-        self.url = "https://api.openai.com/v1/embeddings"
-        self.api_key = retriever.api_key
-        self.batch_size = min(64, retriever.batch_size)
-        self.progress_bar = retriever.progress_bar
-        model_class: str = next(
-            (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
-        )
-        self._setup_encoding_models(model_class, retriever.embedding_model)
-
-        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
-
-    def _setup_encoding_models(self, model_class: str, model_name: str):
-        """
-        Setup the encoding models for the retriever.
-        """
-        # new generation of embedding models (December 2022), we need to specify the full name
-        if "text-embedding" in model_name:
-            self.query_encoder_model = model_name
-            self.doc_encoder_model = model_name
-        else:
-            self.query_encoder_model = f"text-search-{model_class}-query-001"
-            self.doc_encoder_model = f"text-search-{model_class}-doc-001"
-
-    def _ensure_text_limit(self, text: str) -> str:
-        """
-        Ensure that length of the text is within the maximum length of the model.
-        OpenAI embedding models have a limit of 2048 tokens
-        """
-        tokenized_payload = self.tokenizer(text)
-        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
-
-    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
-    def embed(self, model: str, text: List[str]) -> np.ndarray:
-        payload = {"model": model, "input": text}
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
-        res = json.loads(response.text)
-
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
-
-        unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
-        ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
-        generated_embeddings = [emb[1] for emb in ordered_embeddings]
-        return np.array(generated_embeddings)
-
-    def embed_batch(self, model: str, text: List[str]) -> np.ndarray:
-        all_embeddings = []
-        for i in tqdm(
-            range(0, len(text), self.batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
-        ):
-            batch = text[i : i + self.batch_size]
-            batch_limited = [self._ensure_text_limit(content) for content in batch]
-            generated_embeddings = self.embed(model, batch_limited)
-            all_embeddings.append(generated_embeddings)
-        return np.concatenate(all_embeddings)
-
-    def embed_queries(self, queries: List[str]) -> np.ndarray:
-        return self.embed_batch(self.query_encoder_model, queries)
-
-    def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        return self.embed_batch(self.doc_encoder_model, [d.content for d in docs])
-
-    def train(
-        self,
-        training_data: List[Dict[str, Any]],
-        learning_rate: float = 2e-5,
-        n_epochs: int = 1,
-        num_warmup_steps: Optional[int] = None,
-        batch_size: int = 16,
-    ):
-        raise NotImplementedError(f"Training is not implemented for {self.__class__}")
-
-    def save(self, save_dir: Union[Path, str]):
-        raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
-
-
 class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # See https://docs.cohere.ai/embed-reference/ for more details
-        # Cohere has a max seq length of 4096 tokens and a max batch size of 16
+        # Cohere has a max seq length of 4096 tokens and a max batch size of 96
         self.max_seq_len = min(4096, retriever.max_seq_len)
         self.url = "https://api.cohere.ai/embed"
         self.api_key = retriever.api_key
-        self.batch_size = min(16, retriever.batch_size)
+        self.batch_size = min(96, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         self.model: str = next(
             (
@@ -497,21 +379,14 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             ),
             "multilingual-22-12",
         )
-        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-    def _ensure_text_limit(self, text: str) -> str:
-        """
-        Ensure that length of the text is within the maximum length of the model.
-        Cohere embedding models have a limit of 4096 tokens
-        """
-        tokenized_payload = self.tokenizer(text)
-        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
-
-    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5, errors=(CohereError,))
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=COHERE_BACKOFF, max_retries=COHERE_MAX_RETRIES, errors=(CohereError,)
+    )
     def embed(self, model: str, text: List[str]) -> np.ndarray:
-        payload = {"model": model, "texts": text}
+        payload = {"model": model, "texts": text, "truncate": "END"}
         headers = {"Authorization": f"BEARER {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=COHERE_TIMEOUT)
         res = json.loads(response.text)
         if response.status_code != 200:
             raise CohereError(response.text, status_code=response.status_code)
@@ -524,8 +399,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             range(0, len(text), self.batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = text[i : i + self.batch_size]
-            batch_limited = [self._ensure_text_limit(content) for content in batch]
-            generated_embeddings = self.embed(self.model, batch_limited)
+            generated_embeddings = self.embed(self.model, batch)
             all_embeddings.append(generated_embeddings)
         return np.concatenate(all_embeddings)
 
@@ -542,6 +416,10 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError(f"Training is not implemented for {self.__class__}")
 

@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, fail_at_version
 
 LABELS = [
     Label(
@@ -12,7 +12,7 @@ LABELS = [
             answer="an answer",
             type="extractive",
             score=0.1,
-            document_id="123",
+            document_ids=["123"],
             offsets_in_document=[Span(start=1, end=3)],
         ),
         document=Document(content="some text", content_type="text"),
@@ -22,7 +22,7 @@ LABELS = [
     ),
     Label(
         query="some",
-        answer=Answer(answer="annother answer", type="extractive", score=0.1, document_id="123"),
+        answer=Answer(answer="annother answer", type="extractive", score=0.1, document_ids=["123"]),
         document=Document(content="some text", content_type="text"),
         is_correct_answer=True,
         is_correct_document=True,
@@ -34,7 +34,7 @@ LABELS = [
             answer="an answer",
             type="extractive",
             score=0.1,
-            document_id="123",
+            document_ids=["123"],
             offsets_in_document=[Span(start=1, end=3)],
         ),
         document=Document(content="some text", content_type="text"),
@@ -43,6 +43,13 @@ LABELS = [
         origin="user-feedback",
     ),
 ]
+
+
+def test_document_from_dict():
+    doc = Document(
+        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+    )
+    assert doc == Document.from_dict(doc.to_dict())
 
 
 def test_no_answer_label():
@@ -100,7 +107,7 @@ def test_answer_to_json():
         context="abc",
         offsets_in_document=[Span(start=1, end=10)],
         offsets_in_context=[Span(start=3, end=5)],
-        document_id="123",
+        document_ids=["123"],
     )
     j = a.to_json()
     assert type(j) == str
@@ -118,7 +125,7 @@ def test_answer_to_dict():
         context="abc",
         offsets_in_document=[Span(start=1, end=10)],
         offsets_in_context=[Span(start=3, end=5)],
-        document_id="123",
+        document_ids=["123"],
     )
     j = a.to_dict()
     assert type(j) == dict
@@ -152,6 +159,7 @@ def test_doc_to_json():
     d = Document(
         content="some text",
         content_type="text",
+        id_hash_keys=["meta"],
         score=0.99988,
         meta={"name": "doc1"},
         embedding=np.random.rand(768).astype(np.float32),
@@ -161,7 +169,14 @@ def test_doc_to_json():
     assert d == d_new
 
     # No embedding
-    d = Document(content="some text", content_type="text", score=0.99988, meta={"name": "doc1"}, embedding=None)
+    d = Document(
+        content="some text",
+        content_type="text",
+        score=0.99988,
+        meta={"name": "doc1"},
+        id_hash_keys=["meta"],
+        embedding=None,
+    )
     j0 = d.to_json()
     d_new = Document.from_json(j0)
     assert d == d_new
@@ -425,7 +440,7 @@ def test_multilabel_serialization():
             "context": "\n\n\n\n\nThe eighth and final season of the fantasy drama television series ''Game of Thrones'', produced by HBO, premiered on April 14, 2019, and concluded on May 19, 2019. Unlike the first six seasons, which consisted of ten episodes each, and the seventh season, which consisted of seven episodes, the eighth season consists of only six episodes.\n\nThe final season depicts the culmination of the series' two primary conflicts: the G",
             "offsets_in_document": [{"start": 124, "end": 132}],
             "offsets_in_context": None,
-            "document_id": None,
+            "document_ids": None,
             "meta": {},
         },
         "no_answer": False,
@@ -540,3 +555,75 @@ def test_id_hash_keys_not_ignored():
     doc3 = Document(content="hello world", meta={"doc_id": "3"})
     doc4 = Document(content="hello world", meta={"doc_id": "4"})
     assert doc3.id == doc4.id
+
+
+def test_legacy_answer_document_id():
+    legacy_label = {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "Some content",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": [0.1, 0.2, 0.3],
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "Some content",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            # legacy document_id answer
+            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
+
+    answer = Answer.from_dict(legacy_label["answer"])
+    assert answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+    label = Label.from_dict(legacy_label)
+    assert label.answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+
+def test_legacy_answer_document_id_is_none():
+    legacy_label = {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "Some content",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": [0.1, 0.2, 0.3],
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "Some content",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            # legacy document_id answer
+            "document_id": None,
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
+
+    answer = Answer.from_dict(legacy_label["answer"])
+    assert answer.document_ids is None
+
+    label = Label.from_dict(legacy_label)
+    assert label.answer.document_ids is None

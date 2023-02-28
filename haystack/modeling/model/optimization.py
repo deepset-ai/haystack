@@ -14,29 +14,6 @@ from haystack.utils.experiment_tracking import Tracker as tracker
 
 logger = logging.getLogger(__name__)
 
-try:
-    from apex import amp  # pylint: disable=import-error
-
-    logger.info("apex is available.")
-
-    try:
-        from apex.parallel import convert_syncbn_model  # pylint: disable=import-error
-
-        APEX_PARALLEL_AVAILABLE = True
-
-        logger.info("apex.parallel is available.")
-
-    except AttributeError:
-        APEX_PARALLEL_AVAILABLE = False
-        logger.debug("apex.parallel not found, won't use it. See https://nvidia.github.io/apex/parallel.html")
-
-    AMP_AVAILABLE = True
-
-except ImportError:
-    AMP_AVAILABLE = False
-    APEX_PARALLEL_AVAILABLE = False
-    logger.debug("apex not found, won't use it. See https://nvidia.github.io/apex/")
-
 
 class WrappedDataParallel(DataParallel):
     """
@@ -57,7 +34,8 @@ class WrappedDataParallel(DataParallel):
 class WrappedDDP(DistributedDataParallel):
     """
     A way of adapting attributes of underlying class to distributed mode. Same as in WrappedDataParallel above.
-    Even when using distributed on a single machine with multiple GPUs, apex can speed up training significantly.
+    Even when using distributed on a single computer with multiple GPUs, automatic mixed precision can speed up training
+    significantly.
     Distributed code must be launched with "python -m torch.distributed.launch --nproc_per_node=1 run_script.py"
     """
 
@@ -79,7 +57,7 @@ def initialize_optimizer(
     distributed: bool = False,
     grad_acc_steps: int = 1,
     local_rank: int = -1,
-    use_amp: Optional[str] = None,
+    use_amp: bool = False,
 ):
     """
     Initializes an optimizer, a learning rate scheduler and converts the model if needed (e.g for mixed precision).
@@ -91,15 +69,13 @@ def initialize_optimizer(
     :param n_epochs: number of epochs for training
     :param device: Which hardware will be used by the optimizer. Either torch.device("cpu") or torch.device("cuda").
     :param learning_rate: Learning rate
-    :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim, apex.optimizers or
+    :param optimizer_opts: Dictionary to customize the optimizer. Choose any optimizer available from torch.optim or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
                            Examples:
                            1) AdamW from Transformers (Default):
                            {"name": "AdamW", "correct_bias": False, "weight_decay": 0.01}
                            2) SGD from pytorch:
                            {"name": "SGD", "momentum": 0.0}
-                           3) FusedLAMB from apex:
-                           {"name": "FusedLAMB", "bias_correction": True}
     :param schedule_opts: Dict to customize the learning rate schedule.
                           Choose any Schedule from Pytorch or Huggingface's Transformers by supplying the class name
                           and the parameters needed by the constructor.
@@ -119,20 +95,17 @@ def initialize_optimizer(
     :param distributed: Whether training on distributed machines
     :param grad_acc_steps: Number of steps to accumulate gradients for. Helpful to mimic large batch_sizes on small machines.
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.
-                    Options:
-                    "O0" (Normal FP32 training)
-                    "O1" (Mixed Precision => Recommended)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    See details on: https://nvidia.github.io/apex/amp.html
+    :param use_amp: This option is deprecated. Haystack supports only PyTorch automatic mixed precision (AMP). We no longer support the Apex library. This means this function doesn't use `use_amp` any longer
+                    because it's not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
+
     :return: model, optimizer, scheduler
     """
-    if use_amp and not AMP_AVAILABLE:
-        raise ImportError(
-            f"Got use_amp = {use_amp}, but cannot find apex. "
-            "Please install Apex if you want to make use of automatic mixed precision. "
-            "https://github.com/NVIDIA/apex"
+    if isinstance(use_amp, str):
+        logger.warning(
+            "Haystack supports only PyTorch automatic mixed precision. We no longer support the Apex library.\n"
+            "This means that modeling.model.initialize_optimizer no longer uses use_amp since it is not needed\n"
+            "to initialize native PyTorch automatic mixed precision. For more information, see [Optimization](https://haystack.deepset.ai/guides/optimization).\n"
+            "In the future provide use_amp=True to use automatic mixed precision."
         )
 
     if (schedule_opts is not None) and (not isinstance(schedule_opts, dict)):
@@ -161,13 +134,13 @@ def initialize_optimizer(
         schedule_opts["num_training_steps"] = num_train_optimization_steps
 
     # Log params
-    tracker.track_params({"use_amp": use_amp, "num_train_optimization_steps": schedule_opts["num_training_steps"]})
+    tracker.track_params({"num_train_optimization_steps": schedule_opts["num_training_steps"]})
 
-    # Get optimizer from pytorch, transformers or apex
+    # Get optimizer from pytorch or transformers
     optimizer = _get_optim(model, optimizer_opts)
 
-    # Adjust for parallel training + amp
-    model, optimizer = optimize_model(model, device, local_rank, optimizer, distributed, use_amp)
+    # Adjust for parallel training
+    model, optimizer = optimize_model(model, device, local_rank, optimizer, distributed)
 
     # Get learning rate schedule - moved below to supress warning
     scheduler = get_scheduler(optimizer, schedule_opts)
@@ -219,7 +192,7 @@ def _get_optim(model, opts: Dict):
     if weight_decay is not None:
         optimizable_parameters[0]["weight_decay"] = weight_decay  # type: ignore
 
-    # Import optimizer by checking in order: torch, transformers, apex and local imports
+    # Import optimizer by checking in order: torch, transformers and local imports
     try:
         optim_constructor = getattr(import_module("torch.optim"), optimizer_name)
     except AttributeError:
@@ -227,17 +200,14 @@ def _get_optim(model, opts: Dict):
             optim_constructor = getattr(import_module("transformers.optimization"), optimizer_name)
         except AttributeError:
             try:
-                optim_constructor = getattr(import_module("apex.optimizers"), optimizer_name)
+                # Workaround to allow loading AdamW from transformers
+                # pytorch > 1.2 has now also a AdamW (but without the option to set bias_correction = False,
+                # which is done in the original BERT implementation)
+                optim_constructor = getattr(sys.modules[__name__], optimizer_name)
             except (AttributeError, ImportError):
-                try:
-                    # Workaround to allow loading AdamW from transformers
-                    # pytorch > 1.2 has now also a AdamW (but without the option to set bias_correction = False,
-                    # which is done in the original BERT implementation)
-                    optim_constructor = getattr(sys.modules[__name__], optimizer_name)
-                except (AttributeError, ImportError):
-                    raise AttributeError(
-                        f"Optimizer '{optimizer_name}' not found in 'torch', 'transformers', 'apex' or 'local imports"
-                    )
+                raise AttributeError(
+                    f"We couldn't find optimizer '{optimizer_name}' in 'torch', 'transformers' or 'local imports'."
+                )
 
     return optim_constructor(optimizable_parameters)
 
@@ -298,9 +268,9 @@ def optimize_model(
     model: "AdaptiveModel",
     device: torch.device,
     local_rank: int,
-    optimizer=None,
-    distributed: Optional[bool] = False,
-    use_amp: Optional[str] = None,
+    optimizer: Optional[torch.optim.Optimizer] = None,
+    distributed: bool = False,
+    use_amp: bool = False,
 ):
     """
     Wraps MultiGPU or distributed usage around a model
@@ -310,43 +280,29 @@ def optimize_model(
     :param device: either torch.device("cpu") or torch.device("cuda"). Get the device from `initialize_device_settings()`
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.
-                    Options:
-                    "O0" (Normal FP32 training)
-                    "O1" (Mixed Precision => Recommended)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    See details on: https://nvidia.github.io/apex/amp.html
+    :param optimizer: torch optimizer
+    :param use_amp: This option is deprecated. Haystack supports only PyTorch automatic mixed precision (AMP). We no longer support the Apex library. This means this function no longer uses `use_amp`
+                    because it's not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
+
     :return: model, optimizer
     """
-    model, optimizer = _init_amp(model, device, optimizer, use_amp)
+    if isinstance(use_amp, str):
+        logger.warning(
+            "Haystack supports only PyTorch automatic mixed precision. We no longer support the Apex library.\n"
+            "This means that modeling.model.initialize_optimizer no longer uses use_amp since it's not needed\n"
+            "to initialize native PyTorch automatic mixed precision. For more information, see [Optimization](https://haystack.deepset.ai/guides/optimization).\n"
+            "In the future, set `use_amp=True` to use automatic mixed precision."
+        )
+
+    model = model.to(device)
 
     if distributed:
-        if APEX_PARALLEL_AVAILABLE:
-            model = convert_syncbn_model(model)
-            logger.info("Multi-GPU Training via DistributedDataParallel and apex.parallel")
-        else:
-            logger.info("Multi-GPU Training via DistributedDataParallel")
-
         # for some models DistributedDataParallel might complain about parameters
         # not contributing to loss. find_used_parameters remedies that.
-        model = WrappedDDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+        model = WrappedDDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)  # type: ignore [assignment]
 
     elif torch.cuda.device_count() > 1 and device.type == "cuda":
-        model = WrappedDataParallel(model) if not isinstance(model, DataParallel) else WrappedDataParallel(model.module)
+        model = WrappedDataParallel(model) if not isinstance(model, DataParallel) else WrappedDataParallel(model.module)  # type: ignore [assignment]
         logger.info("Multi-GPU Training via DataParallel")
-
-    return model, optimizer
-
-
-def _init_amp(model, device, optimizer=None, use_amp=None):
-    model = model.to(device)
-    if use_amp and optimizer:
-        if AMP_AVAILABLE:
-            model, optimizer = amp.initialize(model, optimizer, opt_level=use_amp)
-        else:
-            logger.warning(
-                f"Can't find AMP although you specificed to use amp with level {use_amp}. Will continue without AMP ..."
-            )
 
     return model, optimizer

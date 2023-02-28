@@ -12,6 +12,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import WrappedDataParallel
 from haystack.utils.experiment_tracking import Tracker as tracker
+from haystack.telemetry_2 import send_event
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -57,6 +58,7 @@ class Evaluator:
         :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
+        send_event("Evaluator.eval()")
         model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
         model.prediction_heads[0].use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
         model.eval()
@@ -69,7 +71,7 @@ class Evaluator:
         passage_start_t_all: List = [[] for _ in model.prediction_heads]
         logits_all: List = [[] for _ in model.prediction_heads]
 
-        for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
+        for batch in tqdm(self.data_loader, desc="Evaluating", mininterval=10):
             batch = {key: batch[key].to(self.device) for key in batch}
 
             if isinstance(model, (DataParallel, WrappedDataParallel)):
@@ -87,7 +89,7 @@ class Evaluator:
                         output_attentions=batch.get("output_attentions", False),
                     )
                 elif isinstance(module, BiAdaptiveModel):
-                    logits = model.forward(
+                    logits = model.forward(  # type: ignore [call-arg]   # type: ignore [call-arg]
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
                         query_attention_mask=batch.get("query_attention_mask", None),
@@ -125,7 +127,8 @@ class Evaluator:
                 temperature_change = (abs(temperature_current - temperature_previous) / temperature_previous) * 100.0
                 if temperature_change > 50:
                     logger.warning(
-                        f"temperature used for calibration of confidence scores changed by more than {temperature_change} percent"
+                        "temperature used for calibration of confidence scores changed by more than %s percent",
+                        temperature_change,
                     )
             if hasattr(head, "aggregate_preds"):
                 # Needed to convert NQ ids from np arrays to strings
@@ -138,7 +141,7 @@ class Evaluator:
                     passage_start_t=passage_start_t_all[head_num],
                     ids=head_ids,
                 )
-            result = {"loss": loss_all[head_num] / len(self.data_loader.dataset), "task_name": head.task_name}
+            result = {"loss": loss_all[head_num] / len(self.data_loader.dataset), "task_name": head.task_name}  # type: ignore [arg-type]
             result.update(compute_metrics(metric=head.metric, preds=preds_all[head_num], labels=label_all[head_num]))
             # Select type of report depending on prediction head output type
             if self.report:
@@ -146,8 +149,11 @@ class Evaluator:
                     result["report"] = compute_report_metrics(head, preds_all[head_num], label_all[head_num])
                 except:
                     logger.error(
-                        f"Couldn't create eval report for head {head_num} with following preds and labels:"
-                        f"\n Preds: {preds_all[head_num]} \n Labels: {label_all[head_num]}"
+                        "Couldn't create eval report for head %s with following preds and labels:"
+                        "\n Preds: %s \n Labels: %s",
+                        head_num,
+                        preds_all[head_num],
+                        label_all[head_num],
                     )
                     result["report"] = "Error"
 
@@ -182,8 +188,8 @@ class Evaluator:
         header += BUSH_SEP + "\n"
         logger.info(header)
 
-        for head_num, head in enumerate(results):
-            logger.info("\n _________ {} _________".format(head["task_name"]))
+        for head in results:
+            logger.info("\n _________ %s _________", head["task_name"])
             for metric_name, metric_val in head.items():
                 # log with experiment tracking framework (e.g. Mlflow)
                 if logging:
@@ -197,10 +203,10 @@ class Evaluator:
                     if metric_name == "report":
                         if isinstance(metric_val, str) and len(metric_val) > 8000:
                             metric_val = metric_val[:7500] + "\n ............................. \n" + metric_val[-500:]
-                        logger.info("{}: \n {}".format(metric_name, metric_val))
+                        logger.info("%s: \n %s", metric_name, metric_val)
                     else:
                         if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
-                            logger.info("{}: {}".format(metric_name, metric_val))
+                            logger.info("%s: %s", metric_name, metric_val)
 
 
 def _to_numpy(container):

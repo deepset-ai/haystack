@@ -44,7 +44,7 @@ class MultiModalEmbedder:
         embedding_models: Dict[str, Union[Path, str]],  # replace str with ContentTypes starting from Python3.8
         feature_extractors_params: Optional[Dict[str, Dict[str, Any]]] = None,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name"],
+        embed_meta_fields: Optional[List[str]] = None,
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
@@ -67,6 +67,7 @@ class MultiModalEmbedder:
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default with "name" as embedding field is created.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU (or CPU) devices to limit inference to certain GPUs and not use all available ones.
@@ -78,6 +79,8 @@ class MultiModalEmbedder:
                                 the local token is used, which must be previously created using `transformer-cli login`.
                                 For more information, see [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained)
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name"]
         super().__init__()
 
         self.devices = get_devices(devices)
@@ -136,7 +139,7 @@ class MultiModalEmbedder:
         for batch_index in tqdm(
             iterable=range(0, len(documents), batch_size),
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=not self.progress_bar,
@@ -147,7 +150,6 @@ class MultiModalEmbedder:
             # Get output for each model
             outputs_by_type: Dict[str, torch.Tensor] = {}  # replace str with ContentTypes starting Python3.8
             for data_type, data in data_by_type.items():
-
                 model = self.models.get(data_type)
                 if not model:
                     raise ModelingError(

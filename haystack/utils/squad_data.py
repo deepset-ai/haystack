@@ -11,9 +11,8 @@ from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 
 tqdm.pandas()
 
@@ -57,7 +56,8 @@ class SquadData:
         """
         Create a SquadData object by providing the name of a JSON file in the SQuAD format.
         """
-        data = json.load(open(filename))
+        with open(filename) as f:
+            data = json.load(f)
         return cls(data)
 
     def save(self, filename: str):
@@ -167,7 +167,7 @@ class SquadData:
                             c += 1
                     # Count span answers
                     else:
-                        for answer in question["answers"]:
+                        for _ in question["answers"]:
                             if unit in ["answers", "span_answers"]:
                                 c += 1
         return c

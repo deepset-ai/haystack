@@ -1,5 +1,7 @@
 # pylint: disable=too-many-public-methods
 
+
+from copy import deepcopy
 from typing import List, Optional, Union, Dict, Any, Generator
 from abc import abstractmethod
 import json
@@ -64,7 +66,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         similarity: str = "dot_product",
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
-        index_type: str = "flat",
         scroll: str = "1d",
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
@@ -95,27 +96,34 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.label_index: str = label_index
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
+        self.duplicate_documents = duplicate_documents
+        self.refresh_type = refresh_type
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity: str = similarity
         else:
             raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity, choose between 'cosine', 'l2' and 'dot_product'"
             )
-        if index_type in ["flat", "hnsw"]:
-            self.index_type = index_type
-        else:
-            raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
 
+        self._init_indices(
+            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
+        )
+
+    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:
             self._delete_index(index)
             self._delete_index(label_index)
 
-        if create_index or recreate_index:
+        if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
-            self._create_label_index(label_index)
 
-        self.duplicate_documents = duplicate_documents
-        self.refresh_type = refresh_type
+        if self.custom_mapping:
+            logger.warning("Cannot validate index for custom mappings. Skipping index validation.")
+        else:
+            self._validate_and_adjust_document_index(index)
+
+        if not self._index_exists(label_index) and (create_index or recreate_index):
+            self._create_label_index(label_index)
 
     def _split_document_list(
         self, documents: Union[List[dict], List[Document]], number_of_lists: int
@@ -151,6 +159,17 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     @abstractmethod
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        pass
+
+    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        if logger.isEnabledFor(logging.DEBUG):
+            if self.client.indices.exists_alias(name=index_name):
+                logger.debug("Index name %s is an alias.", index_name)
+
+        return self.client.indices.exists(index_name, headers=headers)
+
+    @abstractmethod
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         pass
 
     @abstractmethod
@@ -192,7 +211,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
-                    f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Splitting the number of documents into two chunks with the same size and retrying in {_timeout} seconds."
+                    "Failed to insert a batch of '%s' documents because of a 'Too Many Requeset' response. "
+                    "Splitting the number of documents into two chunks with the same size and retrying in %s seconds.",
+                    len(documents),
+                    _timeout,
                 )
                 if len(documents) == 1:
                     logger.warning(
@@ -257,10 +279,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         for i in range(0, len(ids), batch_size):
             ids_for_batch = ids[i : i + batch_size]
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
+            if not self.return_embedding and self.embedding_field:
+                query["_source"] = {"excludes": [self.embedding_field]}
             result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
-            documents.extend(
-                [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
-            )
+            documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
     def get_metadata_values_by_key(
@@ -380,7 +402,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :return: None
         """
 
-        if index and not self.client.indices.exists(index=index, headers=headers):
+        if index and not self._index_exists(index, headers=headers):
             self._create_document_index(index, headers=headers)
 
         if index is None:
@@ -447,17 +469,18 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.label_index
-        if index and not self.client.indices.exists(index=index, headers=headers):
+        if index and not self._index_exists(index, headers=headers):
             self._create_label_index(index, headers=headers)
 
         label_list: List[Label] = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_list, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f" Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                " Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
         labels_to_index = []
         for label in label_list:
@@ -653,9 +676,15 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers)
+        excludes = None
+        if not return_embedding and self.embedding_field:
+            excludes = [self.embedding_field]
+
+        result = self._get_all_documents_in_index(
+            index=index, filters=filters, batch_size=batch_size, headers=headers, excludes=excludes
+        )
         for hit in result:
-            document = self._convert_es_hit_to_document(hit, return_embedding=return_embedding)
+            document = self._convert_es_hit_to_document(hit)
             yield document
 
     def get_all_labels(
@@ -677,7 +706,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except ValidationError as e:
             raise DocumentStoreError(
                 f"Failed to create labels from the content of index '{index}'. Are you sure this index contains labels?"
-            )
+            ) from e
         return labels
 
     def _get_all_documents_in_index(
@@ -687,6 +716,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
+        excludes: Optional[List[str]] = None,
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
@@ -698,6 +728,9 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         if only_documents_without_embedding:
             body["query"]["bool"]["must_not"] = [{"exists": {"field": self.embedding_field}}]
+
+        if excludes:
+            body["_source"] = {"excludes": excludes}
 
         result = self._do_scan(
             self.client, query=body, index=index, size=batch_size, scroll=self.scroll, headers=headers
@@ -877,10 +910,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
-        documents = [
-            self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
-            for hit in result
-        ]
+        documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
 
     def query_batch(
@@ -1014,10 +1044,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         cur_documents = []
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
-            cur_documents = [
-                self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
-                for hit in cur_result
-            ]
+            cur_documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in cur_result]
             all_documents.append(cur_documents)
 
         return all_documents
@@ -1030,7 +1057,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str],
         all_terms_must_match: bool,
     ) -> Dict[str, Any]:
-
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]
@@ -1042,7 +1068,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
             template = Template(custom_query)
             # replace all "${query}" placeholder(s) with query
-            substitutions = {"query": f'"{query}"'}
+            substitutions = {"query": json.dumps(query)}
             # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
             # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
             if filters:
@@ -1059,7 +1085,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not isinstance(query, str):
                 logger.warning(
                     "The query provided seems to be not a string, but an object "
-                    f"of type {type(query)}. This can cause the query to fail."
+                    "of type %s. This can cause the query to fail.",
+                    type(query),
                 )
             operator = "AND" if all_terms_must_match else "OR"
             body = {
@@ -1083,20 +1110,35 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if filters:
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        if self.excluded_meta_data:
-            body["_source"] = {"excludes": self.excluded_meta_data}
+        excluded_fields = self._get_excluded_fields(return_embedding=self.return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
 
         return body
 
+    def _get_excluded_fields(self, return_embedding: bool) -> Optional[List[str]]:
+        excluded_meta_data: Optional[list] = None
+
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
+        return excluded_meta_data
+
     def _convert_es_hit_to_document(
-        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
+        self, hit: dict, adapt_score_for_embedding: bool = False, scale_score: bool = True
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         try:
             meta_data = {
                 k: v
                 for k, v in hit["_source"].items()
-                if k not in (self.content_field, "content_type", self.embedding_field)
+                if k not in (self.content_field, "content_type", "id_hash_keys", self.embedding_field)
             }
             name = meta_data.pop(self.name_field, None)
             if name:
@@ -1117,15 +1159,15 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
             embedding = None
-            if return_embedding:
-                embedding_list = hit["_source"].get(self.embedding_field)
-                if embedding_list:
-                    embedding = np.asarray(embedding_list, dtype=np.float32)
+            embedding_list = hit["_source"].get(self.embedding_field)
+            if embedding_list:
+                embedding = np.asarray(embedding_list, dtype=np.float32)
 
             doc_dict = {
                 "id": hit["_id"],
                 "content": hit["_source"].get(self.content_field),
                 "content_type": hit["_source"].get("content_type", None),
+                "id_hash_keys": hit["_source"].get("id_hash_keys", None),
                 "meta": meta_data,
                 "score": score,
                 "embedding": embedding,
@@ -1133,7 +1175,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             document = Document.from_dict(doc_dict)
         except (KeyError, ValidationError) as e:
             raise DocumentStoreError(
-                f"Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
+                "Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
             ) from e
         return document
 
@@ -1262,9 +1304,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
             cur_documents = [
-                self._convert_es_hit_to_document(
-                    hit, adapt_score_for_embedding=True, return_embedding=self.return_embedding, scale_score=scale_score
-                )
+                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
                 for hit in cur_result
             ]
             all_documents.append(cur_documents)
@@ -1273,11 +1313,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     @abstractmethod
     def _construct_dense_query_body(
-        self,
-        query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
-        top_k: int = 10,
-        return_embedding: Optional[bool] = None,
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
         pass
 
@@ -1359,13 +1395,14 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             batch_size=batch_size,
             only_documents_without_embedding=not update_existing_embeddings,
             headers=headers,
+            excludes=[self.embedding_field],
         )
 
         logging.getLogger(__name__).setLevel(logging.CRITICAL)
 
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
-                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
+                document_batch = [self._convert_es_hit_to_document(hit) for hit in result_batch]
                 embeddings = self._embed_documents(document_batch, retriever)
 
                 doc_updates = []
@@ -1562,12 +1599,14 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         self._delete_index(index)
 
     def _delete_index(self, index: str):
-        if self.client.indices.exists(index):
+        if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info("Index '%s' deleted.", index)

@@ -90,9 +90,10 @@ class FeatureExtractor:
         config_file = Path(pretrained_model_name_or_path) / "tokenizer_config.json"
         if os.path.exists(config_file):
             # it's a local directory
-            config = json.load(open(config_file))
+            with open(config_file) as f:
+                config = json.load(f)
             feature_extractor_classname = config["tokenizer_class"]
-            logger.debug(f"⛏️ Selected feature extractor: {feature_extractor_classname} (from {config_file})")
+            logger.debug("⛏️ Selected feature extractor: %s (from %s)", feature_extractor_classname, config_file)
             # Use FastTokenizers as much as possible
             try:
                 feature_extractor_class = getattr(transformers, feature_extractor_classname + "Fast")
@@ -121,7 +122,7 @@ class FeatureExtractor:
                     f"\n- {f'{chr(10)}- '.join(FEATURE_EXTRACTORS.keys())}"
                 ) from e
             logger.debug(
-                f"⛏️ Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')"
+                "⛏️ Selected feature extractor: %s (for model type '%s')", feature_extractor_class.__name__, model_type
             )
 
         self.default_params = DEFAULT_EXTRACTION_PARAMS.get(feature_extractor_class, {})
@@ -179,7 +180,7 @@ def tokenize_batch_question_answering(
     tokenids_batch = tokenized_docs_batch["input_ids"]
     offsets_batch = []
     for o in tokenized_docs_batch["offset_mapping"]:
-        offsets_batch.append(np.asarray([x[0] for x in o], dtype="int16"))
+        offsets_batch.append(np.asarray([x[0] for x in o], dtype=np.int32))
     start_of_words_batch = []
     for e in tokenized_docs_batch.encodings:
         start_of_words_batch.append(_get_start_of_word_QA(e.word_ids))
@@ -221,7 +222,7 @@ def tokenize_batch_question_answering(
 
 
 def _get_start_of_word_QA(word_ids):
-    return [1] + list(np.ediff1d(np.asarray(word_ids, dtype="int16")))
+    return [1] + list(np.ediff1d(np.asarray(word_ids, dtype=np.int32)))
 
 
 def truncate_sequences(
@@ -330,7 +331,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
     words = text.split(" ")
     cumulated = 0
     for word in words:
-        word_offsets.append(cumulated)
+        word_offsets.append(cumulated)  # type: ignore [union-attr]
         cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
     # split "words" into "subword tokens"

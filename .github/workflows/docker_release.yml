@@ -6,14 +6,23 @@ on:
     branches:
       - main
     tags:
-      - 'v[0-9].[0-9]+.[0-9]+*'
+      - "v[0-9].[0-9]+.[0-9]+*"
 
 env:
   DOCKER_REPO_NAME: deepset/haystack
 
 jobs:
   build-and-push:
+    name: Build ${{ matrix.target }} image for ${{ matrix.platform }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - "cpu"
+          - "gpu"
+        platform:
+          - "linux/amd64"
+          - "linux/arm64"
 
     steps:
       - name: Checkout
@@ -37,33 +46,46 @@ jobs:
         with:
           images: $DOCKER_REPO_NAME
 
-      - name: Build base images
+      - name: Build base image
         uses: docker/bake-action@v2
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
         with:
           workdir: docker
-          targets: base
+          targets: base-${{ matrix.target }}
           push: true
 
-      - name: Build api images
+      - name: Test base image
+        run: |
+          EXPECTED_VERSION=$(cat VERSION.txt)
+          TAG="base-${{ matrix.target }}-${{ steps.meta.outputs.version }}"
+          PLATFORM="${{ matrix.platform }}"
+
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"import haystack; print(haystack.__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+          # Remove image after test to avoid filling the GitHub runner and prevent its failure
+          docker rmi "deepset/haystack:$TAG"
+
+      - name: Build api image
         uses: docker/bake-action@v2
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           BASE_IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
         with:
           workdir: docker
-          targets: api
+          targets: ${{ matrix.target }}
           push: true
+          set: "*.platform=${{ matrix.platform }}"
 
       - name: Get latest version of Haystack
         id: latest-version
-        uses: pozetroninc/github-action-get-latest-release@master
         if: startsWith(github.ref, 'refs/tags/')
-        with:
-          repository: ${{ github.repository }}
-          excludes: prerelease, draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(gh api repos/${{ github.repository }}/releases/latest --jq ".tag_name")
+          echo "release=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
@@ -87,5 +109,6 @@ jobs:
           BASE_IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
         with:
           workdir: docker
-          targets: api-latest
+          targets: ${{ matrix.target }}-latest
           push: true
+          set: "*.platform=${{ matrix.platform }}"

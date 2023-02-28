@@ -7,21 +7,24 @@ from pathlib import Path
 
 import numpy as np
 import torch
-
-try:
-    import soundfile as sf
-    from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
-except OSError as ose:
-    logging.exception(
-        "`libsndfile` not found, it's probably not installed. The node will most likely crash. "
-        "Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
-    )
 from pydub import AudioSegment
 
 from haystack.errors import AudioNodeError
 from haystack.modeling.utils import initialize_device_settings
 
+
 logger = logging.getLogger(__name__)
+
+
+try:
+    import soundfile as sf
+    from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
+
+except OSError as ose:
+    logger.exception(
+        "`libsndfile` not found, it's probably not installed. The node will most likely crash. "
+        "Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
+    )
 
 
 class TextToSpeech:
@@ -52,12 +55,13 @@ class TextToSpeech:
         resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(resolved_devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {resolved_devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                resolved_devices[0],
             )
 
         self.model = _Text2SpeechModel.from_pretrained(
-            model_name_or_path, device=resolved_devices[0].type, **(transformers_params or {})
+            str(model_name_or_path), device=resolved_devices[0].type, **(transformers_params or {})
         )
 
     def text_to_audio_file(
@@ -118,7 +122,7 @@ class TextToSpeech:
 
         return file_path
 
-    def text_to_audio_data(self, text: str, _models_output_key: str = "wav") -> np.array:
+    def text_to_audio_data(self, text: str, _models_output_key: str = "wav") -> np.array:  # type: ignore [valid-type]
         """
         Convert an input string into a numpy array representing the audio.
 
@@ -129,7 +133,7 @@ class TextToSpeech:
         prediction = self.model(text)
         if not prediction:
             raise AudioNodeError(
-                f"The model returned no predictions. Make sure you selected a valid text-to-speech model."
+                "The model returned no predictions. Make sure you selected a valid text-to-speech model."
             )
         output = prediction.get(_models_output_key, None)
         if output is None:
@@ -140,7 +144,7 @@ class TextToSpeech:
 
     def compress_audio(
         self,
-        data: np.array,
+        data: np.array,  # type: ignore [valid-type]
         path: Path,
         format: str,
         sample_rate: int,

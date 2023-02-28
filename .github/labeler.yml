@@ -1,2 +1,103 @@
-Proposal:
+# Proposals
+proposal:
 - proposals/text/*
+
+# Topics
+topic:tests:
+- test/**/*
+- test/*
+- conftest.py
+topic:docker:
+- docker/*
+- docker-compose.yml
+topic:CI:
+- .github/*
+- .github/**/*
+topic:DX:
+- CONTRIBUTING.md
+- .pre-commit-config.yaml
+- .gitignore
+topic:dependencies:
+- pyproject.toml
+topic:build/distribution:
+- pyproject.toml
+topic:modeling:
+- haystack/modeling/*
+- haystack/modeling/**/*
+- test/modeling/*
+topic:reader:
+- haystack/nodes/reader/*
+- test/nodes/test_reader.py
+topic:retriever:
+- haystack/nodes/retriever/*
+- test/nodes/test_retriever.py
+topic:agent:
+- haystack/agents/*
+- test/agents/*
+topic:pipeline:
+- haystack/pipelines/*
+- haystack/nodes/other/*
+- test/pipelines/*
+- test/nodes/test_other.py
+topic:rest_api:
+- rest_api/*
+- rest_api/**/*
+topic:LLM:
+- haystack/nodes/prompt/*
+- test/nodes/test_prompt_node.py
+topic:file_converter:
+- haystack/nodes/file_converter/*
+- test/nodes/test_file_converter.py
+topic:crawler:
+- haystack/nodes/connector/*
+- test/nodes/test_connector.py
+topic:preprocessing:
+- haystack/nodes/preprocessor/*
+- test/nodes/test_preprocessor.py
+topic:images:
+- haystack/nodes/image_to_text/*
+- test/nodes/test_image_to_text.py
+topic:audio:
+- haystack/nodes/audio/*
+- test/nodes/test_audio.py
+topic:security:
+- SECURITY.md
+topic:dc-api:
+- haystack/utils/deepsetcloud.py
+topic:document_store:
+- haystack/document_stores/*
+- test/document_stores/*
+topic:weaviate:
+- haystack/document_stores/weaviate.py
+- test/document_stores/test_weaviate.py
+topic:elasticsearch:
+- haystack/document_stores/search_engine.py
+- haystack/document_stores/elasticsearch.py
+- test/document_stores/test_elasticsearch.py
+topic:opensearch:
+- haystack/document_stores/search_engine.py
+- haystack/document_stores/opensearch.py
+- test/document_stores/test_opensearch.py
+topic:sql:
+- haystack/document_stores/sql.py
+- test/document_stores/test_sql.py
+- test/document_stores/test_sql_based.py
+topic:faiss:
+- haystack/document_stores/faiss.py
+- test/document_stores/test_faiss.py
+- test/document_stores/test_sql_based.py
+topic:pinecone:
+- haystack/document_stores/pinecone.py
+- test/document_stores/test_pinecone.py
+topic:knowledge_graph:
+- haystack/document_stores/memory_knowledgegraph.py
+- test/document_stores/test_knowledge_graph.py
+topic:milvus:
+- haystack/document_stores/milvus.py
+- test/document_stores/test_milvus.py
+topic:dc_document_store:
+- haystack/document_stores/deepsetcloud.py
+- test/document_stores/test_deepsetcloud.py
+topic:graphdb:
+- haystack/document_stores/graphdb.py
+- test/document_stores/test_knowledge_graph.py

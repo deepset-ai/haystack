@@ -1,13 +1,18 @@
 import math
 import os
 from pathlib import Path
+from shutil import rmtree
 
 import pytest
+
+from huggingface_hub import snapshot_download
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
-from haystack.schema import Document, Answer
+from haystack.schema import Document, Answer, Label, MultiLabel, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes import FARMReader, TransformersReader
+
+from ..conftest import SAMPLES_PATH
 
 
 # TODO Fix bug in test_no_answer_output when using
@@ -29,6 +34,7 @@ def no_answer_reader(request):
             tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
             top_k_per_candidate=5,
+            return_no_answers=True,
         )
 
 
@@ -104,6 +110,18 @@ def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
     assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
 
 
+def test_output_batch_single_query_single_nested_doc_list(reader, docs):
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs], top_k=5)
+    assert prediction is not None
+    assert prediction["queries"] == ["Who lives in Berlin?"]
+    # Expected output: List of lists answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 1  # Predictions for 1 collections of documents
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
+
+
 @pytest.mark.integration
 def test_no_answer_output(no_answer_reader, docs):
     no_answer_prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
@@ -116,7 +134,7 @@ def test_no_answer_output(no_answer_reader, docs):
     assert no_answer_prediction["answers"][0].score <= 1
     assert no_answer_prediction["answers"][0].score >= 0
     assert no_answer_prediction["answers"][0].context == None
-    assert no_answer_prediction["answers"][0].document_id == None
+    assert no_answer_prediction["answers"][0].document_ids == None
     answers = [x.answer for x in no_answer_prediction["answers"]]
     assert answers.count("") == 1
     assert len(no_answer_prediction["answers"]) == 5
@@ -160,7 +178,6 @@ def test_context_window_size(reader, docs, window_size):
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
 def test_top_k(reader, docs, top_k):
-
     assert isinstance(reader, FARMReader)
 
     old_top_k_per_candidate = reader.top_k_per_candidate
@@ -250,6 +267,44 @@ def test_farm_reader_update_params(docs):
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
 
 
+# There are 5 different ways to load a FARMReader model.
+# 1. HuggingFace Hub (online load)
+# 2. HuggingFace downloaded (local load)
+# 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+# 4. FARM Model converted to transformers (same as hf local model) (local load)
+# 5. ONNX Model load (covered by test_farm_reader_onnx_conversion_and_inference)
+@pytest.mark.integration
+def test_farm_reader_load_hf_online():
+    # Test Case: 1. HuggingFace Hub (online load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    _ = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
+
+
+@pytest.mark.integration
+def test_farm_reader_load_hf_local(tmp_path):
+    # Test Case: 2. HuggingFace downloaded (local load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    # TODO: change the /tmp to proper tmp_path and get rid of rmtree
+    # local_model_path = str(Path.joinpath(tmp_path, "locally_saved_hf"))
+    local_model_path = "/tmp/locally_saved_hf"
+    model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
+    _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
+    rmtree(local_model_path)
+
+
+@pytest.mark.integration
+def test_farm_reader_load_farm_local(tmp_path):
+    # Test Case: 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    local_model_path = f"{tmp_path}/locally_saved_farm"
+    reader = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
+    reader.save(Path(local_model_path))
+    _ = FARMReader(model_name_or_path=local_model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
+
+
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_farm_reader_uses_same_sorting_as_QAPredictionHead(use_confidence_scores):
     reader = FARMReader(
@@ -299,3 +354,93 @@ def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
     reader = FARMReader(str(Path(tmpdir, "onnx")))
     result = reader.predict(query="Where does Paul live?", documents=[docs[0]])
     assert result["answers"][0].answer == "New York"
+
+
+LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="Who lives in Berlin?",
+                answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                document=Document(
+                    id="a0747b83aea0b60c4b114b15476dd32d", content_type="text", content=""  # empty document
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+    MultiLabel(
+        labels=[
+            Label(
+                query="Who lives in Munich?",
+                answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                document=Document(
+                    id="something_else", content_type="text", content="My name is Carla and I live in Munich"
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+]
+
+
+def test_reader_skips_empty_documents(reader):
+    predictions, _ = reader.run(query=LABELS[0].labels[0].query, documents=[LABELS[0].labels[0].document])
+    assert predictions["answers"] == []  # no answer given for query as document is empty
+    predictions, _ = reader.run_batch(
+        queries=[l.labels[0].query for l in LABELS], documents=[[l.labels[0].document] for l in LABELS]
+    )
+    assert predictions["answers"][0] == []  # no answer given for 1st query as document is empty
+    assert predictions["answers"][1][0].answer == "Carla"  # answer given for 2nd query as usual
+
+
+@pytest.mark.parametrize("no_answer_reader", ["farm", "transformers"], indirect=True)
+def test_no_answer_reader_skips_empty_documents(no_answer_reader):
+    predictions, _ = no_answer_reader.run(query=LABELS[0].labels[0].query, documents=[LABELS[0].labels[0].document])
+    assert predictions["answers"][0].answer == ""  # Return no_answer as document is empty
+    predictions, _ = no_answer_reader.run_batch(
+        queries=[l.labels[0].query for l in LABELS], documents=[[l.labels[0].document] for l in LABELS]
+    )
+    assert predictions["answers"][0][0].answer == ""  # Return no_answer for 1st query as document is empty
+    assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
+
+
+def test_reader_training(tmp_path):
+    max_seq_len = 16
+    max_query_length = 8
+    reader = FARMReader(
+        model_name_or_path="deepset/tinyroberta-squad2",
+        use_gpu=False,
+        num_processes=0,
+        max_seq_len=max_seq_len,
+        doc_stride=2,
+        max_query_length=max_query_length,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    reader.train(
+        data_dir=str(SAMPLES_PATH / "squad"),
+        train_filename="tiny.json",
+        dev_filename="tiny.json",
+        test_filename="tiny.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        save_dir=save_dir,
+        evaluate_every=2,
+        max_seq_len=max_seq_len,
+        max_query_length=max_query_length,
+    )
+
+
+@pytest.mark.integration
+def test_reader_long_document(reader):
+    # Check that long documents with >2^16 characters do not result in negative offsets
+    docs = [Document(content=("abbreviation " * 2550) + "Christelle lives in Madrid.")]
+    res = reader.predict(query="Where does Christelle live?", documents=docs)
+    assert res["answers"][0].offsets_in_document[0].start >= 0
+    assert res["answers"][0].offsets_in_document[0].end >= 0

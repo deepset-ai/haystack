@@ -119,8 +119,9 @@ class TableReader(BaseReader):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
@@ -488,9 +489,11 @@ class _TapasScoredEncoder:
         self.return_no_answer = return_no_answer
 
     def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
-        table: pd.DataFrame = document.content
+        orig_table: pd.DataFrame = document.content
+        string_table = orig_table.astype(str)
 
         # Forward pass through model
+        self.model.eval()
         with torch.inference_mode():
             outputs = self.model.tapas(**inputs)
             table_score = self.model.classifier(outputs.pooler_output)
@@ -564,8 +567,8 @@ class _TapasScoredEncoder:
         answers = []
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
-            answer_str = table.iat[current_answer_span[:2]]
-            answer_offsets = _calculate_answer_offsets([current_answer_span[:2]], document.content)
+            answer_str = string_table.iat[current_answer_span[:2]]
+            answer_offsets = _calculate_answer_offsets([current_answer_span[:2]], string_table)
             # As the general table score is more important for the final score, it is double weighted.
             current_score = ((2 * table_relevancy_prob) + span_logits_softmax[0, answer_span_idx].item()) / 3
 
@@ -574,11 +577,11 @@ class _TapasScoredEncoder:
                     answer=answer_str,
                     type="extractive",
                     score=current_score,
-                    context=document.content,
+                    context=string_table,
                     offsets_in_document=answer_offsets,
                     offsets_in_context=answer_offsets,
-                    document_id=document.id,
-                    meta={"aggregation_operator": "NONE", "answer_cells": table.iat[current_answer_span[:2]]},
+                    document_ids=[document.id],
+                    meta={"aggregation_operator": "NONE", "answer_cells": string_table.iat[current_answer_span[:2]]},
                 )
             )
 
@@ -590,6 +593,7 @@ class _TapasScoredEncoder:
         table_documents = _check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
+            table = table.astype(str)
             model_inputs = self.tokenizer(
                 table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
             )
@@ -609,7 +613,7 @@ class _TapasScoredEncoder:
                     context=None,
                     offsets_in_context=[Span(start=0, end=0)],
                     offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
+                    document_ids=None,
                     meta=None,
                 )
             )
@@ -710,8 +714,9 @@ class RCIReader(BaseReader):
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.row_model = AutoModelForSequenceClassification.from_pretrained(
@@ -772,8 +777,8 @@ class RCIReader(BaseReader):
         for document in table_documents:
             # Create row and column representations
             table: pd.DataFrame = document.content
-            table = table.astype(str)
-            row_reps, column_reps = self._create_row_column_representations(table)
+            string_table = table.astype(str)
+            row_reps, column_reps = self._create_row_column_representations(string_table)
 
             # Get row logits
             row_inputs = self.row_tokenizer(
@@ -785,6 +790,7 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             row_inputs.to(self.devices[0])
+            self.row_model.eval()
             with torch.inference_mode():
                 row_outputs = self.row_model(**row_inputs)
             row_logits = row_outputs[0].detach().cpu().numpy()[:, 1]
@@ -799,6 +805,7 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             column_inputs.to(self.devices[0])
+            self.column_model.eval()
             with torch.inference_mode():
                 column_outputs = self.column_model(**column_inputs)
             column_logits = column_outputs[0].detach().cpu().numpy()[:, 1]
@@ -812,17 +819,17 @@ class RCIReader(BaseReader):
                     current_cell_score = float(row_score + col_score)
                     cell_scores_table[-1].append(current_cell_score)
 
-                    answer_str = table.iloc[row_idx, col_idx]
-                    answer_offsets = self._calculate_answer_offsets(row_idx, col_idx, table)
+                    answer_str = string_table.iloc[row_idx, col_idx]
+                    answer_offsets = self._calculate_answer_offsets(row_idx, col_idx, string_table)
                     current_answers.append(
                         Answer(
                             answer=answer_str,
                             type="extractive",
                             score=current_cell_score,
-                            context=table,
+                            context=string_table,
                             offsets_in_document=[answer_offsets],
                             offsets_in_context=[answer_offsets],
-                            document_id=document.id,
+                            document_ids=[document.id],
                         )
                     )
 
@@ -845,7 +852,7 @@ class RCIReader(BaseReader):
         column_reps = []
         columns = table.columns
 
-        for idx, row in table.iterrows():
+        for _, row in table.iterrows():
             current_row_rep = " * ".join([header + " : " + cell for header, cell in zip(columns, row)])
             row_reps.append(current_row_rep)
 
@@ -858,7 +865,7 @@ class RCIReader(BaseReader):
 
     @staticmethod
     def _calculate_answer_offsets(row_idx, column_index, table) -> Span:
-        n_rows, n_columns = table.shape
+        _, n_columns = table.shape
         answer_cell_offset = (row_idx * n_columns) + column_index
 
         return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
@@ -902,7 +909,7 @@ def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: 
     :param table: Table containing the answers in answer coordinates.
     """
     answer_offsets = []
-    n_rows, n_columns = table.shape
+    _, n_columns = table.shape
     for coord in answer_coordinates:
         answer_cell_offset = (coord[0] * n_columns) + coord[1]
         answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))

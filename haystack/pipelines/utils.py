@@ -178,7 +178,7 @@ def print_eval_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+    wrong_examples_fields: Optional[List[str]] = None,
     max_characters_per_field: int = 150,
 ):
     """
@@ -216,9 +216,11 @@ def print_eval_report(
         - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
         The default value is 'any'.
         In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-    :param wrong_examples_fields: A list of field names that should be included in the wrong examples.
+    :param wrong_examples_fields: A list of field names that should be included in the wrong examples. By default, "answer", "context", and "document_id" are used.
     :param max_characters_per_field: The maximum number of characters to show in the wrong examples report (per field).
     """
+    if wrong_examples_fields is None:
+        wrong_examples_fields = ["answer", "context", "document_id"]
     if any(degree > 1 for node, degree in graph.out_degree):
         logger.warning("Pipelines with junctions are currently not supported.")
         return
@@ -309,9 +311,11 @@ def _format_wrong_examples_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    fields: List[str] = ["answer", "context", "document_id"],
+    fields: Optional[List[str]] = None,
     max_chars: int = 150,
 ):
+    if fields is None:
+        fields = ["answer", "context", "document_id"]
     examples = {
         node: eval_result.wrong_examples(
             node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples

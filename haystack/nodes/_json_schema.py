@@ -261,10 +261,12 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
-def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
+def get_json_schema(filename: str, version: str, modules: Optional[List[str]] = None):
     """
     Generate JSON schema for Haystack pipelines.
     """
+    if modules is None:
+        modules = ["haystack.document_stores", "haystack.nodes"]
     schema_definitions = {}  # All the schemas for the node and accessory classes
     node_refs = []  # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
 
@@ -412,7 +414,7 @@ def load_schema():
     """
     schema_file_path = JSON_SCHEMAS_PATH / "haystack-pipeline-main.schema.json"
     if not os.path.exists(schema_file_path):
-        logging.info("Json schema not found, generating one at: %s", schema_file_path)
+        logger.info("Json schema not found, generating one at: %s", schema_file_path)
         try:
             update_json_schema(main_only=True)
         except Exception as e:
@@ -432,14 +434,13 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
     """
     # `main` schema is always updated and will contain the same data as the latest
     # commit from `main` or a release branch
-    filename = f"haystack-pipeline-main.schema.json"
+    filename = "haystack-pipeline-main.schema.json"
 
     os.makedirs(destination_path, exist_ok=True)
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
     if not main_only and "rc" not in haystack_version:
-
         # Create/update the specific version file too
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
         with open(destination_path / filename, "w") as json_file:

@@ -1,6 +1,4 @@
-# pylint: disable=missing-timeout
-
-from typing import Dict, Optional
+from typing import Dict, Optional, Union, Tuple
 
 from pathlib import Path
 
@@ -49,37 +47,57 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         self.password = password
         self.prefixes = prefixes
 
-    def create_index(self, config_path: Path, headers: Optional[Dict[str, str]] = None):
+    def create_index(
+        self,
+        config_path: Path,
+        headers: Optional[Dict[str, str]] = None,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
+    ):
         """
         Create a new index (also called repository) stored in the GraphDB instance
 
         :param config_path: path to a .ttl file with configuration settings, details:
         :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param timeout: How many seconds to wait for the server to send data before giving up,
+            as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+            Defaults to 10 seconds.
         https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
         """
         url = f"{self.url}/rest/repositories"
         files = {"config": open(config_path, "r", encoding="utf-8")}
-        response = requests.post(url, files=files, headers=headers)  # type: ignore
+        response = requests.post(url, files=files, headers=headers, timeout=timeout)
         if response.status_code > 299:
             raise Exception(response.text)
 
-    def delete_index(self, headers: Optional[Dict[str, str]] = None):
+    def delete_index(self, headers: Optional[Dict[str, str]] = None, timeout: Union[float, Tuple[float, float]] = 10.0):
         """
         Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes all data stored in the index.
         :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param timeout: How many seconds to wait for the server to send data before giving up,
+            as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+            Defaults to 10 seconds.
         """
         url = f"{self.url}/rest/repositories/{self.index}"
-        response = requests.delete(url, headers=headers)
+        response = requests.delete(url, headers=headers, timeout=timeout)
         if response.status_code > 299:
             raise Exception(response.text)
 
-    def import_from_ttl_file(self, index: str, path: Path, headers: Optional[Dict[str, str]] = None):
+    def import_from_ttl_file(
+        self,
+        index: str,
+        path: Path,
+        headers: Optional[Dict[str, str]] = None,
+        timeout: Union[float, Tuple[float, float]] = 10.0,
+    ):
         """
         Load an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file into an index of GraphDB
 
         :param index: name of the index (also called repository) in the GraphDB instance where the imported triples shall be stored
         :param path: path to a .ttl containing a knowledge graph
         :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param timeout: How many seconds to wait for the server to send data before giving up,
+            as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+            Defaults to 10 seconds.
         """
         url = f"{self.url}/repositories/{index}/statements"
         headers = (
@@ -92,6 +110,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
             headers=headers,
             data=open(path, "r", encoding="utf-8").read().encode("utf-8"),
             auth=HTTPBasicAuth(self.username, self.password),
+            timeout=timeout,
         )
         if response.status_code > 299:
             raise Exception(response.text)
@@ -174,7 +193,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         # Pylint raises unsupported-membership-test and unsubscriptable-object.
         # Silenced for now, keep in mind for future debugging.
         return (
-            results["results"]["bindings"]  # pylint: disable=unsubscriptable-object
-            if "results" in results  # pylint: disable=unsupported-membership-test
-            else results["boolean"]  # pylint: disable=unsubscriptable-object
+            results["results"]["bindings"]  # type: ignore  # pylint: disable=unsubscriptable-object
+            if "results" in results  # type: ignore  # pylint: disable=unsupported-membership-test
+            else results["boolean"]  # type: ignore  # pylint: disable=unsubscriptable-object
         )

@@ -40,23 +40,31 @@ class BaseReader(BaseComponent):
         # the most significant difference between scores.
         # Most significant difference: a model switching from predicting an answer to "no answer" (or vice versa).
         # No_ans_gap is a list of this most significant difference per document
-        no_ans_gap_array = np.array(no_ans_gaps)
-        max_no_ans_gap = np.max(no_ans_gap_array)
-        # case 1: all passages "no answer" as top score
-        # max_no_ans_gap is negative, so it increases best pos score
-        # case 2: at least one passage predicts an answer (positive no_ans_gap)
-        no_ans_score = best_score_answer - max_no_ans_gap
+
+        # If there is not even one predicted answer, we return a no_answer with score 1.0
+        if best_score_answer == 0 and len(no_ans_gaps) == 0:
+            no_ans_score = 1024.0
+            no_ans_score_scaled = 1.0
+            max_no_ans_gap = 1024.0
+        else:
+            no_ans_gap_array = np.array(no_ans_gaps)
+            max_no_ans_gap = np.max(no_ans_gap_array)
+            # case 1: all passages "no answer" as top score
+            # max_no_ans_gap is negative, so it increases best pos score
+            # case 2: at least one passage predicts an answer (positive no_ans_gap)
+            no_ans_score = best_score_answer - max_no_ans_gap
+            no_ans_score_scaled = float(expit(np.asarray(no_ans_score) / 8))
 
         no_ans_prediction = Answer(
             answer="",
             type="extractive",
-            score=float(expit(np.asarray(no_ans_score) / 8))
+            score=no_ans_score_scaled
             if use_confidence_scores
             else no_ans_score,  # just a pseudo prob for now or old score,
             context=None,
             offsets_in_context=[Span(start=0, end=0)],
             offsets_in_document=[Span(start=0, end=0)],
-            document_id=None,
+            document_ids=None,
             meta=None,
         )
 
@@ -69,10 +77,11 @@ class BaseReader(BaseComponent):
             answer.meta = {}
         # get meta from doc
         meta_from_doc = {}
-        for doc in documents:
-            if doc.id == answer.document_id:
-                meta_from_doc = deepcopy(doc.meta)
-                break
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids:
+                    meta_from_doc = deepcopy(doc.meta)
+                    break
         # append to "own" meta
         answer.meta.update(meta_from_doc)
         return answer
@@ -80,10 +89,27 @@ class BaseReader(BaseComponent):
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
         self.query_count += 1
         predict = self.timing(self.predict, "query_time")
+        # Remove empty text documents before making predictions
+        documents = [d for d in documents if not isinstance(d.content, str) or d.content.strip() != ""]
         if documents:
             results = predict(query=query, documents=documents, top_k=top_k)
         else:
-            results = {"answers": []}
+            if hasattr(self, "return_no_answers") and self.return_no_answers:
+                no_ans_prediction = Answer(
+                    answer="",
+                    type="extractive",
+                    score=1.0
+                    if hasattr(self, "use_confidence_scores") and self.use_confidence_scores
+                    else 1024.0,  # just a pseudo prob for now or old score,
+                    context=None,
+                    offsets_in_context=[Span(start=0, end=0)],
+                    offsets_in_document=[Span(start=0, end=0)],
+                    document_ids=None,
+                    meta=None,
+                )
+                results = {"answers": [no_ans_prediction]}
+            else:
+                results = {"answers": []}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         results["answers"] = [
@@ -92,7 +118,13 @@ class BaseReader(BaseComponent):
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
-            relevant_documents = {label.document.id: label.document for label in labels.labels}.values()
+            # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID and
+            # filters out empty documents
+            relevant_documents = list(
+                {
+                    label.document.id: label.document for label in labels.labels if label.document.content.strip() != ""
+                }.values()
+            )
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
@@ -113,6 +145,14 @@ class BaseReader(BaseComponent):
         add_isolated_node_eval: bool = False,
     ):
         self.query_count += len(queries)
+
+        # Remove empty documents before making predictions
+        if len(documents) > 0:
+            if isinstance(documents[0], Document):
+                documents = [d for d in documents if not isinstance(d.content, str) or d.content.strip() != ""]  # type: ignore[union-attr, assignment]
+            else:
+                documents = [[d for d in docs_per_query if not isinstance(d.content, str) or d.content.strip() != ""] for docs_per_query in documents]  # type: ignore[union-attr]
+
         if not documents:
             return {"answers": []}, "output_1"
 
@@ -138,7 +178,16 @@ class BaseReader(BaseComponent):
         if add_isolated_node_eval and labels is not None:
             relevant_documents = []
             for labelx in labels:
-                relevant_documents.append([label.document for label in labelx.labels])
+                # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID
+                # and filters out empty documents
+                relevant_docs_labelx = list(
+                    {
+                        label.document.id: label.document
+                        for label in labelx.labels
+                        if label.document.content.strip() != ""
+                    }.values()
+                )
+                relevant_documents.append(relevant_docs_labelx)
             results_label_input = predict_batch(queries=queries, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id

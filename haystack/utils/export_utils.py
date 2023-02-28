@@ -61,8 +61,8 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
         filtered_answers = answers
     else:
         valid_values = ", ".join(fields_to_keep_by_level.keys()) + " and 'all'"
-        logging.warn(f"print_answers received details='{details}', which was not understood. ")
-        logging.warn(f"Valid values are {valid_values}. Using 'all'.")
+        logging.warn("print_answers received details='%s', which was not understood. ", details)
+        logging.warn("Valid values are %s. Using 'all'.", valid_values)
         filtered_answers = answers
 
     # Shorten long text fields
@@ -123,7 +123,6 @@ def print_questions(results: dict):
         for query, answers in zip(results["queries"], results["answers"]):
             print(f" - Q: {query}")
             for answer in answers:
-
                 # Verify that the pairs contains Answers under the `answer` key
                 if not isinstance(answer, Answer):
                     raise ValueError(

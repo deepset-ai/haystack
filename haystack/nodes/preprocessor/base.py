@@ -21,7 +21,7 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: Optional[bool] = True,
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
-        remove_substrings: List[str] = [],
+        remove_substrings: Optional[List[str]] = None,
         split_by: Literal["word", "sentence", "passage", None] = "word",
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
@@ -41,7 +41,7 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        remove_substrings: List[str],
+        remove_substrings: Optional[List[str]],
     ) -> Document:
         raise NotImplementedError
 

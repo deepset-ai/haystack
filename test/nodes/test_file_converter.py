@@ -1,10 +1,16 @@
+from typing import List
+
 import os
 import sys
 from pathlib import Path
 import subprocess
+import csv
+import json
 
+import pandas as pd
 import pytest
 
+from haystack import Document
 from haystack.nodes import (
     MarkdownConverter,
     DocxToTextConverter,
@@ -14,6 +20,9 @@ from haystack.nodes import (
     AzureConverter,
     ParsrConverter,
     TextConverter,
+    CsvTextConverter,
+    JsonConverter,
+    PreProcessor,
 )
 
 from ..conftest import SAMPLES_PATH
@@ -106,6 +115,33 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_page_range(Converter):
+    converter = Converter()
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+    pages = document.content.split("\f")
+
+    assert (
+        len(pages) == 4
+    )  # the sample PDF file has four pages, we skipped first (but we wanna correct number of pages)
+    assert pages[0] == ""  # the page 1 was skipped.
+    assert pages[1] != ""  # the page 2 is not empty.
+    assert pages[2] == ""  # the page 3 is empty.
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_page_range_numbers(Converter):
+    converter = Converter()
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+
+    preprocessor = PreProcessor(
+        split_by="word", split_length=5, split_overlap=0, split_respect_sentence_boundary=False, add_page_number=True
+    )
+    documents = preprocessor.process([document])
+
+    assert documents[1].meta["page"] == 4
+
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
@@ -129,18 +165,22 @@ def test_language_validation(Converter, caplog):
     assert "sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
+@pytest.mark.unit
 def test_docx_converter():
     converter = DocxToTextConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "docx" / "sample_docx.docx")[0]
     assert document.content.startswith("Sample Docx File")
 
 
+@pytest.mark.unit
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
-    assert document.content.startswith("What to build with Haystack")
+    assert document.content.startswith("\nWhat to build with Haystack")
+    assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
+@pytest.mark.unit
 def test_markdown_converter_headline_extraction():
     expected_headlines = [
         ("What to build with Haystack", 1),
@@ -164,6 +204,21 @@ def test_markdown_converter_headline_extraction():
         start_idx = extracted_headline["start_idx"]
         hl_len = len(extracted_headline["headline"])
         assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
+
+
+@pytest.mark.unit
+def test_markdown_converter_frontmatter_to_meta():
+    converter = MarkdownConverter(add_frontmatter_to_meta=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.meta["type"] == "intro"
+    assert document.meta["date"] == "1.1.2023"
+
+
+@pytest.mark.unit
+def test_markdown_converter_remove_code_snippets():
+    converter = MarkdownConverter(remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    assert document.content.startswith("pip install farm-haystack")
 
 
 def test_azure_converter():
@@ -252,6 +307,7 @@ def test_parsr_converter_headline_extraction():
                 assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.unit
 def test_id_hash_keys_from_pipeline_params():
     doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
     meta_1 = {"key": "a"}
@@ -265,3 +321,254 @@ def test_id_hash_keys_from_pipeline_params():
 
     assert len(documents) == 2
     assert len(unique_ids) == 2
+
+
+@pytest.mark.unit
+def write_as_csv(data: List[List[str]], file_path: Path):
+    with open(file_path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(data)
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_headers.csv"
+    rows = [
+        ["question", "answer"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    output, edge = node.run(file_paths=csv_path)
+    assert edge == "output_1"
+    assert "documents" in output
+    assert len(output["documents"]) == 1
+
+    doc = output["documents"][0]
+    assert isinstance(doc, Document)
+    assert doc.content == "What is Haystack ?"
+    assert doc.meta["answer"] == "Haystack is an NLP Framework to use transformers in your Applications."
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "headers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["wrong", "answers"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["question", "wrong"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications."],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_one_column(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [["question"], ["What is Haystack ?"]]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.unit
+def test_csv_to_document_with_three_columns(tmp_path):
+    node = CsvTextConverter()
+    csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
+    rows = [
+        ["question", "answer", "notes"],
+        ["What is Haystack ?", "Haystack is an NLP Framework to use transformers in your Applications.", "verified"],
+    ]
+    write_as_csv(rows, csv_path)
+
+    with pytest.raises(ValueError, match="The CSV must contain two columns named 'question' and 'answer'"):
+        node.run(file_paths=csv_path)
+
+
+@pytest.mark.unit
+def test_csv_to_document_many_files(tmp_path):
+    csv_paths = []
+    for i in range(5):
+        node = CsvTextConverter()
+        csv_path = tmp_path / f"{i}_csv_qa_with_headers.csv"
+        csv_paths.append(csv_path)
+        rows = [
+            ["question", "answer"],
+            [
+                f"{i}. What is Haystack ?",
+                f"{i}. Haystack is an NLP Framework to use transformers in your Applications.",
+            ],
+        ]
+        write_as_csv(rows, csv_path)
+
+    output, edge = node.run(file_paths=csv_paths)
+    assert edge == "output_1"
+    assert "documents" in output
+    assert len(output["documents"]) == 5
+
+    for i in range(5):
+        doc = output["documents"][i]
+        assert isinstance(doc, Document)
+        assert doc.content == f"{i}. What is Haystack ?"
+        assert doc.meta["answer"] == f"{i}. Haystack is an NLP Framework to use transformers in your Applications."
+
+
+@pytest.mark.unit
+class TestJsonConverter:
+    JSON_FILE_NAME = "json_normal.json"
+    JSONL_FILE_NAME = "json_normal.jsonl"
+    JSON_SINGLE_LINE_FILE_NAME = "json_all_single.json"
+    JSONL_LIST_LINE_FILE_NAME = "json_list_line.jsonl"
+    JSON_INVALID = "json_invalid.json"
+
+    @classmethod
+    @pytest.fixture(autouse=True)
+    def setup_class(cls, tmp_path):
+        # Setup the documents
+        # Note: We are tying the behavior of `JsonConverter`
+        # to that of the `to_dict()` method on the `Document`
+        documents = [
+            Document(
+                content=pd.DataFrame(
+                    [["C", "Yes", "No"], ["Haskell", "No", "No"], ["Python", "Yes", "Yes"]],
+                    columns=["Language", "Imperative", "OO"],
+                ),
+                content_type="table",
+                meta={"context": "Programming Languages", "page": 2},
+            ),
+            Document(
+                content="Programming languages are used for controlling the behavior of a machine (often a computer).",
+                content_type="text",
+                meta={"context": "Programming Languages", "page": 1},
+            ),
+            Document(
+                content=pd.DataFrame(
+                    [["C", 1, 1], ["Python", 6, 6.5]], columns=["Language", "Statements ratio", "Line ratio"]
+                ),
+                content_type="table",
+                meta={"context": "Expressiveness", "page": 3},
+            ),
+        ]
+
+        doc_dicts_list = [d.to_dict() for d in documents]
+
+        json_path = tmp_path / TestJsonConverter.JSON_FILE_NAME
+        with open(json_path, "w") as f:
+            json.dump(doc_dicts_list, f)
+
+        jsonl_path = tmp_path / TestJsonConverter.JSONL_FILE_NAME
+        with open(jsonl_path, "w") as f:
+            for doc in doc_dicts_list:
+                f.write(json.dumps(doc) + "\n")
+
+        # json but everything written in a single line
+        json_single_path = tmp_path / TestJsonConverter.JSON_SINGLE_LINE_FILE_NAME
+        with open(json_single_path, "w") as f:
+            f.write(json.dumps(doc_dicts_list))
+
+        # Two lines (jsonl) but each line contains a list of dict instead of dict
+        jsonl_list_line_path = tmp_path / TestJsonConverter.JSONL_LIST_LINE_FILE_NAME
+        with open(jsonl_list_line_path, "w") as f:
+            for doc in [doc_dicts_list[:2], doc_dicts_list[2:3]]:
+                f.write(json.dumps(doc) + "\n")
+
+        json_invalid_path = tmp_path / TestJsonConverter.JSON_INVALID
+        with open(json_invalid_path, "w") as f:
+            f.write("{an invalid json string}")
+
+    def _assert_docs_okay(self, docs):
+        # Two table docs and one text doc
+        # [table, text, table]
+        assert len(docs) == 3
+        assert all(doc.meta["topic"] == "programming" for doc in docs)
+        # "context" in metadata should have been overwritten to be "PL" instead of "Programming Languages"
+        assert all(doc.meta["context"] == "PL" for doc in docs)
+        assert all(d.content_type == expected for d, expected in zip(docs, ("table", "text", "table")))
+
+        # Text doc test
+        assert (
+            docs[1].content
+            == "Programming languages are used for controlling the behavior of a machine (often a computer)."
+        )
+
+        # Table doc tests
+        assert isinstance(docs[0].content, pd.DataFrame)
+        assert docs[0].content.shape == (3, 3)
+
+        assert isinstance(docs[2].content, pd.DataFrame)
+        assert docs[2].content.shape == (2, 3)
+
+    def test_json_to_documents(self, tmp_path):
+        json_path = tmp_path / TestJsonConverter.JSON_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(json_path, meta={"topic": "programming", "context": "PL"})
+
+        self._assert_docs_okay(docs)
+
+    def test_json_to_documents_single_line(self, tmp_path):
+        json_path = tmp_path / TestJsonConverter.JSON_SINGLE_LINE_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(json_path, meta={"topic": "programming", "context": "PL"})
+
+        self._assert_docs_okay(docs)
+
+    def test_jsonl_to_documents(self, tmp_path):
+        jsonl_path = tmp_path / TestJsonConverter.JSONL_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(jsonl_path, meta={"topic": "programming", "context": "PL"})
+
+        self._assert_docs_okay(docs)
+
+    def test_jsonl_to_documents_list_line(self, tmp_path):
+        jsonl_path = tmp_path / TestJsonConverter.JSONL_LIST_LINE_FILE_NAME
+
+        converter = JsonConverter()
+        docs = converter.convert(jsonl_path, meta={"topic": "programming", "context": "PL"})
+
+        self._assert_docs_okay(docs)
+
+    def test_json_invalid(self, tmp_path):
+        json_path = tmp_path / TestJsonConverter.JSON_INVALID
+
+        converter = JsonConverter()
+        with pytest.raises(json.JSONDecodeError) as excinfo:
+            converter.convert(json_path)
+
+        # Assert filename is in the error message
+        assert TestJsonConverter.JSON_INVALID in str(excinfo.value)

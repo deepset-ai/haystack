@@ -1,9 +1,8 @@
-# pylint: disable=missing-timeout
-
 import time
 import logging
 import subprocess
 from pathlib import Path
+from typing import Union, Tuple
 
 import requests
 
@@ -24,7 +23,7 @@ def launch_es(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
+            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.17.6'
         ],
         shell=True,
     )
@@ -87,8 +86,9 @@ def stop_container(container_name, delete_container=False):
     status = subprocess.run([f"docker stop {container_name}"], shell=True)
     if status.returncode:
         logger.warning(
-            f"Tried to stop {container_name} but this failed. "
-            f"It is likely that there was no Docker container with the name {container_name}"
+            "Tried to stop %s but this failed. It is likely that there was no Docker container with the name %s",
+            container_name,
+            container_name,
         )
     if delete_container:
         status = subprocess.run([f"docker rm {container_name}"], shell=True)
@@ -118,9 +118,14 @@ def stop_service(document_store, delete_container=False):
         logger.warning("No support yet for auto stopping the service behind a %s", type(document_store))
 
 
-def launch_milvus(sleep=15, delete_existing=False):
-    """
-    Start a Milvus server via Docker
+def launch_milvus(sleep=15, delete_existing=False, timeout: Union[float, Tuple[float, float]] = 10.0):
+    """Start a Milvus server via Docker
+
+    :param sleep: How many seconds to wait after Milvus container is launched. Defaults to 15.
+    :param delete_existing: Unused. Defaults to False.
+    :param timeout: How many seconds to wait for the server to send data before giving up,
+        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+        Defaults to 10 seconds.
     """
     logger.debug("Starting Milvus ...")
 
@@ -128,12 +133,13 @@ def launch_milvus(sleep=15, delete_existing=False):
     milvus_dir.mkdir(exist_ok=True)
 
     request = requests.get(
-        "https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml"
+        "https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml",
+        timeout=timeout,
     )
     with open(milvus_dir / "docker-compose.yml", "wb") as f:
         f.write(request.content)
 
-    status = subprocess.run(["cd /home/$USER/milvus/ && docker-compose up -d"], shell=True)
+    status = subprocess.run([f"cd {milvus_dir} && docker-compose up -d"], shell=True)
 
     if status.returncode:
         logger.warning(

@@ -1,6 +1,8 @@
+import importlib
 import logging
 from random import random
 from typing import List
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -8,7 +10,10 @@ import pandas as pd
 import responses
 from responses import matchers
 
+import _pytest
+
 from haystack.errors import OpenAIRateLimitError
+from haystack.environment import set_pytorch_secure_model_loading
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.labels import aggregate_labels
@@ -17,9 +22,10 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
-from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture
+from .. import conftest
+from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture, fail_at_version
 
-TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
+TEST_CONTEXT = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
 moderne Bildungssysteme etablierte und die Industrialisierung vorantrieb.\n
 Beim Begriff der Aufklärung geht es auch um die Prozesse zwischen diesen frühneuzeitlichen Eckpunkten.
@@ -36,6 +42,125 @@ Beer is distributed in bottles and cans and is also commonly available on draugh
 Beer forms part of the culture of many nations and is associated with social traditions such as beer festivals, as well as a rich pub culture involving activities like pub crawling, pub quizzes and pub games.
 When beer is distilled, the resulting liquor is a form of whisky.[12]
 """
+
+
+# Util function for testing
+def noop():
+    return True
+
+
+def test_deprecation_previous_major_and_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v1.1"):
+            fail_at_version(1, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 1)(noop)()
+
+
+def test_deprecation_previous_major_same_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v1.2"):
+            fail_at_version(1, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 2)(noop)()
+
+
+def test_deprecation_previous_major_later_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v1.3"):
+            fail_at_version(1, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 3)(noop)()
+
+
+def test_deprecation_same_major_previous_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v2.1"):
+            fail_at_version(2, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 1)(noop)()
+
+
+def test_deprecation_same_major_same_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v2.2"):
+            fail_at_version(2, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 2)(noop)()
+
+
+def test_deprecation_same_major_later_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(2, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(2, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(2, 3)(noop)()
+
+
+def test_deprecation_later_major_previous_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(3, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(3, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(3, 1)(noop)()
+
+
+def test_deprecation_later_major_same_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(3, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(3, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(3, 2)(noop)()
+
+
+def test_deprecation_later_major_later_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(3, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(3, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(3, 3)(noop)()
 
 
 def test_convert_files_to_docs():
@@ -1169,6 +1294,17 @@ def test_exponential_backoff():
         return f"Hello {name}"
 
     assert greet2("John") == "Hello John"
+
+
+def test_secure_model_loading(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    monkeypatch.setenv("TORCH_FORCE_WEIGHTS_ONLY_LOAD", "0")
+
+    # now testing if just importing haystack is enough to enable secure loading of pytorch models
+    import haystack
+
+    importlib.reload(haystack)
+    assert "already set to" in caplog.text
 
 
 class TestAggregateLabels:

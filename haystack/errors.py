@@ -47,6 +47,15 @@ class ModelingError(HaystackError):
         super().__init__(message=message, docs_link=docs_link)
 
 
+class AgentError(HaystackError):
+    """Exception for issues raised within an agent"""
+
+    def __init__(
+        self, message: Optional[str] = None, docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/agents"
+    ):
+        super().__init__(message=message, docs_link=docs_link)
+
+
 class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 
@@ -147,3 +156,10 @@ class CohereError(NodeError):
     ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
+
+
+class ImageToTextError(NodeError):
+    """Exception for issues that occur in the ImageToText node"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)

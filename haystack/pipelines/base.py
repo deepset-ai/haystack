@@ -22,6 +22,7 @@ import tempfile
 from pathlib import Path
 
 import yaml
+import mmh3
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -31,7 +32,7 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import __version__
-from haystack.nodes.evaluator.evaluator import semantic_answer_similarity
+from haystack.modeling.evaluation.metrics import semantic_answer_similarity
 from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
 from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
 from haystack.pipelines.config import (
@@ -46,13 +47,14 @@ from haystack.pipelines.config import (
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
-from haystack.errors import HaystackError, PipelineError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
 from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event
+from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
+from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,7 @@ class Pipeline:
         self.last_window_run_total = 0
         self.run_total = 0
         self.sent_event_in_window = False
+        self.yaml_hash = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -293,10 +296,13 @@ class Pipeline:
         for document_store in document_stores:
             if document_store["type"] != "DeepsetCloudDocumentStore":
                 logger.info(
-                    f"In order to be used on Deepset Cloud, component '{document_store['name']}' of type '{document_store['type']}' "
-                    f"has been automatically converted to type DeepsetCloudDocumentStore. "
-                    f"Usually this replacement will result in equivalent pipeline quality. "
-                    f"However depending on chosen settings of '{document_store['name']}' differences might occur."
+                    "In order to be used on Deepset Cloud, component '%s' of type '%s' "
+                    "has been automatically converted to type DeepsetCloudDocumentStore. "
+                    "Usually this replacement will result in equivalent pipeline quality. "
+                    "However depending on chosen settings of '%s' differences might occur.",
+                    document_store["name"],
+                    document_store["type"],
+                    document_store["name"],
                 )
                 document_store["type"] = "DeepsetCloudDocumentStore"
                 document_store["params"] = {}
@@ -429,6 +435,14 @@ class Pipeline:
             node={"name": name, "inputs": inputs},
             instance=component,
         )
+        # TELEMETRY: Hash the config of the pipeline without node names
+        # to be able to cluster later by "pipeline type"
+        # (is any specific pipeline configuration very popular?)
+        fingerprint_config = copy.copy(self.get_config())
+        for comp in fingerprint_config["components"]:
+            del comp["name"]
+        fingerprint = json.dumps(fingerprint_config, default=str)
+        self.fingerprint = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -479,6 +493,18 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        send_pipeline_run_event(
+            pipeline=self,
+            event_name="Pipeline.run()",
+            query=query,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         # validate the node names
         self._validate_node_names_in_params(params=params)
 
@@ -615,6 +641,18 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        send_pipeline_run_event(
+            pipeline=self,
+            event_name="Pipeline.run_batch()",
+            queries=queries,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         if file_paths is not None or meta is not None:
             logger.info(
                 "It seems that an indexing Pipeline is run, so using the nodes' run method instead of run_batch."
@@ -742,12 +780,12 @@ class Pipeline:
         cls,
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
-        index_params: dict = {},
-        query_params: dict = {},
+        index_params: Optional[Dict] = None,
+        query_params: Optional[Dict] = None,
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
         num_documents: Optional[int] = None,
-        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        top_k_values: Optional[List[int]] = None,
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
         """
@@ -762,7 +800,7 @@ class Pipeline:
         :param dataset_dir: The directory to store the dataset to.
         :param num_documents: Maximum number of documents to load from given dataset. If set to None (default)
                              or to a value larger than the number of documents in the dataset, the full dataset is loaded.
-        :param top_k_values: The top_k values each metric will be calculated for.
+        :param top_k_values: The top_k values each metric will be calculated for. By default, the values are 1, 3, 5, 10, 100, and 1000.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
                            Defaults to False.
@@ -770,6 +808,23 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
+        send_event_2(
+            event_name="Pipeline.eval_beir()",
+            event_properties={
+                "dataset": dataset,
+                "index_pipeline": index_pipeline.yaml_hash,
+                "query_pipeline": query_pipeline.yaml_hash,
+                "num_documents": num_documents,
+                "top_k_values": top_k_values,
+            },
+        )
+
+        if index_params is None:
+            index_params = {}
+        if query_params is None:
+            query_params = {}
+        if top_k_values is None:
+            top_k_values = [1, 3, 5, 10, 100, 1000]
         try:
             from beir import util
             from beir.datasets.data_loader import GenericDataLoader
@@ -784,7 +839,7 @@ class Pipeline:
 
         # crop dataset if `dataset_size` is provided and is valid
         if num_documents is not None and 0 < num_documents < len(corpus):
-            logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
+            logger.info("Cropping dataset from %s to %s documents", len(corpus), num_documents)
             corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
             corpus_ids = set(list(corpus.keys()))
@@ -799,9 +854,10 @@ class Pipeline:
                     qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
             qrels = qrels_new
         elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
-            logging.warning(
-                f"'num_documents' variable should be lower than corpus length and have a positive value, but it's {num_documents}."
-                " Dataset size remains unchanged."
+            logger.warning(
+                "'num_documents' variable should be lower than corpus length and have a positive value, but it's %s."
+                " Dataset size remains unchanged.",
+                num_documents,
             )
 
         # check index before eval
@@ -851,11 +907,11 @@ class Pipeline:
         experiment_tracking_tool: Literal["mlflow", None] = None,
         experiment_tracking_uri: Optional[str] = None,
         corpus_file_metas: Optional[List[Dict[str, Any]]] = None,
-        corpus_meta: Dict[str, Any] = {},
-        evaluation_set_meta: Dict[str, Any] = {},
-        pipeline_meta: Dict[str, Any] = {},
-        index_params: dict = {},
-        query_params: dict = {},
+        corpus_meta: Optional[Dict[str, Any]] = None,
+        evaluation_set_meta: Optional[Dict[str, Any]] = None,
+        pipeline_meta: Optional[Dict[str, Any]] = None,
+        index_params: Optional[Dict] = None,
+        query_params: Optional[Dict] = None,
         sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
@@ -993,6 +1049,17 @@ class Pipeline:
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
         """
+        if corpus_meta is None:
+            corpus_meta = {}
+        if evaluation_set_meta is None:
+            evaluation_set_meta = {}
+        if pipeline_meta is None:
+            pipeline_meta = {}
+        if index_params is None:
+            index_params = {}
+        if query_params is None:
+            query_params = {}
+
         if experiment_tracking_tool is not None:
             tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
             if tracking_head_cls is None:
@@ -1000,7 +1067,7 @@ class Pipeline:
                     f"Please specify a valid experiment_tracking_tool. Possible values are: {TRACKING_TOOL_TO_HEAD.keys()}"
                 )
             if experiment_tracking_uri is None:
-                raise HaystackError(f"experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
+                raise HaystackError("experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
             tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
             tracker.set_tracking_head(tracking_head)
 
@@ -1033,7 +1100,7 @@ class Pipeline:
             # check index before eval
             document_store = index_pipeline.get_document_store()
             if document_store is None:
-                raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
+                raise HaystackError("Document store not found. Please provide pipelines with proper document store.")
             document_count = document_store.get_document_count()
 
             if document_count > 0:
@@ -1190,6 +1257,8 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        send_pipeline_event(pipeline=self, event_name="Pipeline.eval()")
+
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             params = {} if params is None else params.copy()
@@ -1307,6 +1376,8 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        send_pipeline_event(pipeline=self, event_name="Pipeline.eval_batch()")
+
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             params = {} if params is None else params.copy()
@@ -1409,7 +1480,7 @@ class Pipeline:
             "multilabel_id",  # generic
             "query",  # generic
             "filters",  # generic
-            "gold_answers",  # answer-specific
+            "gold_answers",  # generic
             "answer",  # answer-specific
             "context",  # generic
             "exact_match",  # answer-specific
@@ -1435,9 +1506,11 @@ class Pipeline:
             "gold_id_and_context_and_answer_match",  # doc-specific
             "context_and_answer_match",  # doc-specific
             "rank",  # generic
-            "document_id",  # generic
+            "document_id",  # document-specific
+            "document_ids",  # answer-specific
             "gold_document_ids",  # generic
-            "custom_document_id",  # generic
+            "custom_document_id",  # document-specific
+            "custom_document_ids",  # answer-specific
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
@@ -1490,7 +1563,6 @@ class Pipeline:
 
         partial_dfs = []
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
-
             if query_labels is None or query_labels.labels is None:
                 logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
@@ -1541,7 +1613,7 @@ class Pipeline:
                         ]
                     answer_cols_to_keep = [
                         "answer",
-                        "document_id",
+                        "document_ids",
                         "offsets_in_document",
                         "offsets_in_context",
                         "context",
@@ -1572,17 +1644,23 @@ class Pipeline:
                         ]
                     )
                     df_answers["gold_documents_id_match"] = df_answers.map_rows(
-                        lambda row: [1.0 if row["document_id"] == gold_id else 0.0 for gold_id in gold_document_ids]
+                        lambda row: [
+                            1.0 if gold_id in (row["document_ids"] or []) else 0.0 for gold_id in gold_document_ids
+                        ]
                     )
 
                     if custom_document_id_field is not None:
                         df_answers["gold_custom_document_ids"] = [gold_custom_document_ids] * len(df_answers)
-                        df_answers["custom_document_id"] = [
-                            answer.meta.get(custom_document_id_field, "") for answer in answers
+                        df_answers["custom_document_ids"] = [
+                            [
+                                meta.get(custom_document_id_field, "")
+                                for meta in answer.meta.get("doc_metas", [answer.meta])
+                            ]
+                            for answer in answers
                         ]
                         df_answers["gold_documents_id_match"] = df_answers.map_rows(
                             lambda row: [
-                                1.0 if row["custom_document_id"] == gold_custom_id else 0.0
+                                1.0 if gold_custom_id in row["custom_document_ids"] else 0.0
                                 for gold_custom_id in gold_custom_document_ids
                             ]
                         )
@@ -1686,6 +1764,7 @@ class Pipeline:
                     df_docs.map_rows = partial(df_docs.apply, axis=1)
                     df_docs.rename(columns={"id": "document_id", "content": "context"}, inplace=True)
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
+                    df_docs["gold_answers"] = [gold_answers] * len(df_docs)
                     df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)
                     df_docs["gold_contexts_similarity"] = df_docs.map_rows(
                         lambda row: [
@@ -1736,7 +1815,12 @@ class Pipeline:
 
                     # document_relevance_criterion: "document_id_and_answer",
                     df_docs["gold_id_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["answer_match"])
+                        lambda row: max(
+                            min(id_match, answer_match)
+                            for id_match, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_answers_match"] + [0.0]
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "context",
@@ -1753,17 +1837,36 @@ class Pipeline:
 
                     # document_relevance_criterion: "document_id_and_context",
                     df_docs["gold_id_and_context_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["context_match"])
+                        lambda row: max(
+                            min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0)
+                            for id_match, context_similarity in zip(
+                                row["gold_documents_id_match"] + [0.0], row["gold_contexts_similarity"] + [0.0]
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "document_id_and_context_and_answer",
                     df_docs["gold_id_and_context_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["gold_id_match"], row["context_match"], row["answer_match"])
+                        lambda row: max(
+                            min(id_match, 1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
+                            for id_match, context_similarity, answer_match in zip(
+                                row["gold_documents_id_match"] + [0.0],
+                                row["gold_contexts_similarity"] + [0.0],
+                                row["gold_answers_match"] + [0.0],
+                            )
+                        )
                     )
 
                     # document_relevance_criterion: "context_and_answer",
                     df_docs["context_and_answer_match"] = df_docs.map_rows(
-                        lambda row: min(row["context_match"], row["answer_match"])
+                        lambda row: max(
+                            min(1.0 if context_similarity > context_matching_threshold else 0.0, answer_match)
+                            for context_similarity, answer_match in zip(
+                                row["gold_contexts_similarity"], row["gold_answers_match"]
+                            )
+                        )
+                        if any(row["gold_answers_match"]) and any(row["gold_contexts_similarity"])
+                        else 0.0
                     )
 
                     df_docs["rank"] = np.arange(1, len(df_docs) + 1)
@@ -1842,9 +1945,9 @@ class Pipeline:
             import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
-                f"Could not import `pygraphviz`. Please install via: \n"
-                f"pip install pygraphviz\n"
-                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
+                "Could not import `pygraphviz`. Please install via: \n"
+                "pip install pygraphviz\n"
+                "(You might need to run this first: apt install libgraphviz-dev graphviz )"
             )
 
         graphviz = to_agraph(self.graph)
@@ -1903,14 +2006,15 @@ class Pipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
-
         config = read_pipeline_config_from_yaml(path)
-        return cls.load_from_config(
+        pipeline = cls.load_from_config(
             pipeline_config=config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
         )
+        pipeline.yaml_hash = "{:02x}".format(mmh3.hash128(str(path), signed=False))
+        return pipeline
 
     @classmethod
     def load_from_config(
@@ -1997,7 +2101,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
+            logger.debug("Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
@@ -2022,9 +2126,13 @@ class Pipeline:
                 f"Failed loading pipeline component '{name}': "
                 "seems like the component does not exist. Did you spell its name correctly?"
             ) from ke
+        except ConnectionError as ce:
+            raise DocumentStoreError(f"Failed loading pipeline component '{name}': '{ce}'") from ce
+        except DocumentStoreError as de:
+            raise de
         except Exception as e:
             raise PipelineConfigError(
-                f"Failed loading pipeline component '{name}'. " "See the stacktrace above for more informations."
+                f"Failed loading pipeline component '{name}'. See the stacktrace above for more information."
             ) from e
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
@@ -2147,12 +2255,11 @@ class Pipeline:
         """
         if params:
             if not all(node_id in self.graph.nodes for node_id in params.keys()):
-
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 # "debug" will be picked up by _dispatch_run, see its code
                 # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
-                valid_global_params = set(["debug", "add_isolated_node_eval"])
+                valid_global_params = {"debug", "add_isolated_node_eval"}
                 for node_id in self.graph.nodes:
                     run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
@@ -2180,7 +2287,7 @@ class Pipeline:
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+        wrong_examples_fields: Optional[List[str]] = None,
         max_characters_per_field: int = 150,
     ):
         """
@@ -2216,9 +2323,11 @@ class Pipeline:
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-         :param wrong_examples_fields: A list of fields to include in the worst samples.
+         :param wrong_examples_fields: A list of fields to include in the worst samples. By default, "answer", "context", and "document_id" are included.
          :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
         """
+        if wrong_examples_fields is None:
+            wrong_examples_fields = ["answer", "context", "document_id"]
         graph = DiGraph(self.graph.edges)
         print_eval_report(
             eval_result=eval_result,
@@ -2284,7 +2393,8 @@ class Pipeline:
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
     def send_pipeline_event(self, is_indexing: bool = False):
-        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
+        fingerprint = sha1(json_repr.encode()).hexdigest()
         send_custom_event(
             "pipeline",
             payload={
@@ -2300,18 +2410,21 @@ class Pipeline:
         self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
-        if should_send_event and not self.sent_event_in_window:
-            self.send_pipeline_event(is_indexing)
-            self.sent_event_in_window = True
-        elif self.has_event_time_interval_exceeded():
-            self.sent_event_in_window = False
+        if is_telemetry_enabled():
+            should_send_event = (
+                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
+            )
+            if should_send_event and not self.sent_event_in_window:
+                self.send_pipeline_event(is_indexing)
+                self.sent_event_in_window = True
+            elif self._has_event_time_interval_exceeded():
+                self.sent_event_in_window = False
 
-    def has_event_time_interval_exceeded(self):
+    def _has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         return now - self.time_of_last_sent_event > self.event_time_interval
 
-    def has_event_run_total_threshold_exceeded(self):
+    def _has_event_run_total_threshold_exceeded(self):
         return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 

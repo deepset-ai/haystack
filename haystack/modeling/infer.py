@@ -74,11 +74,12 @@ class Inferencer:
 
         """
         # Init device and distributed settings
-        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.processor = processor
@@ -97,12 +98,12 @@ class Inferencer:
                     "Since FARM 0.4.2, you set both when initializing the Inferencer and then call inferencer.inference_from_dicts() instead of inferencer.extract_vectors()"
                 )
             self.model.prediction_heads = torch.nn.ModuleList([])
-            self.model.language_model.extraction_layer = extraction_layer
-            self.model.language_model.extraction_strategy = extraction_strategy
+            self.model.language_model.extraction_layer = extraction_layer  # type: ignore [assignment]
+            self.model.language_model.extraction_strategy = extraction_strategy  # type: ignore [assignment]
 
         # TODO add support for multiple prediction heads
 
-        self.name = name if name != None else f"anonymous-{self.task_type}"
+        self.name = name if name is not None else f"anonymous-{self.task_type}"
         self.return_class_probs = return_class_probs
 
         model.connect_heads_with_processor(processor.tasks, require_labels=False)
@@ -130,6 +131,7 @@ class Inferencer:
         multithreading_rust: bool = True,
         use_auth_token: Optional[Union[bool, str]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        max_query_length: int = 64,
         **kwargs,
     ):
         """
@@ -178,28 +180,29 @@ class Inferencer:
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param max_query_length: Only QA: Maximum length of the question in number of tokens.
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
-        if len(devices) > 1:
-            logger.warning(
-                f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."
-            )
+        devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)  # type: ignore [assignment]
+        if devices and len(devices) > 1:
+            logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])  # type: ignore [index]
 
         name = os.path.basename(model_name_or_path)
 
-        # a) either from local dir
-        if os.path.exists(model_name_or_path):
-            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
+        # a) non-hf models (i.e. FARM, ONNX) from local dir
+        farm_model_bin = os.path.join(model_name_or_path, "language_model.bin")
+        onnx_model = os.path.join(model_name_or_path, "model.onnx")
+        if os.path.isfile(farm_model_bin) or os.path.isfile(onnx_model):
+            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)  # type: ignore [index]
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
                 processor = Processor.load_from_dir(model_name_or_path)
 
-        # b) or from remote transformers model hub
+        # b) transformers models from hub or from local
         else:
             if not task_type:
                 raise ValueError(
@@ -226,6 +229,7 @@ class Inferencer:
                 tokenizer_args=tokenizer_args,
                 use_fast=use_fast,
                 use_auth_token=use_auth_token,
+                max_query_length=max_query_length,
                 **kwargs,
             )
 
@@ -239,6 +243,8 @@ class Inferencer:
                 "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384) "
             )
             processor.doc_stride = doc_stride
+        if hasattr(processor, "max_query_length"):
+            processor.max_query_length = max_query_length
 
         return cls(
             model,
@@ -355,11 +361,11 @@ class Inferencer:
         samples = [s for b in baskets for s in b.samples]
 
         data_loader = NamedDataLoader(
-            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore
         preds_all = []
         for i, batch in enumerate(
-            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
+            tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
         ):
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
@@ -389,16 +395,13 @@ class Inferencer:
         :return: list of predictions
         """
         data_loader = NamedDataLoader(
-            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore
         # TODO Sometimes this is the preds of one head, sometimes of two. We need a more advanced stacking operation
         # TODO so that preds of the right shape are passed in to formatted_preds
         unaggregated_preds_all = []
 
-        for i, batch in enumerate(
-            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
-        ):
-
+        for batch in tqdm(data_loader, desc="Inferencing Samples", unit=" Batches", disable=self.disable_tqdm):
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
@@ -450,8 +453,8 @@ class Inferencer:
         """
         logger.warning("Deprecated! Please use Inferencer.inference_from_dicts() instead.")
         self.model.prediction_heads = torch.nn.ModuleList([])
-        self.model.language_model.extraction_layer = extraction_layer
-        self.model.language_model.extraction_strategy = extraction_strategy
+        self.model.language_model.extraction_layer = extraction_layer  # type: ignore [assignment]
+        self.model.language_model.extraction_strategy = extraction_strategy  # type: ignore [assignment]
 
         return self.inference_from_dicts(dicts)
 
@@ -506,6 +509,10 @@ class QAInferencer(Inferencer):
                                     This parameter has no effect; it will be removed as Inferencer multiprocessing
                                     has been deprecated.
         """
+        # Return no predictions if there are no inputs
+        if not objects:
+            return []
+
         dicts = [o.to_dict() for o in objects]
         # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects,
         # then we can and should use inference from (input) objects!

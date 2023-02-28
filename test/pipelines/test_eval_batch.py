@@ -1,10 +1,10 @@
 import logging
 import pytest
 import sys
+from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
-from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever
@@ -69,17 +69,17 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert len(eval_result) == 2
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 1.0
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
     assert metrics["Summarizer"]["mrr"] == 1.0
-    assert metrics["Summarizer"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Summarizer"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Summarizer"]["map"] == 1.0
+    assert metrics["Summarizer"]["recall_multi_hit"] == 1.0
     assert metrics["Summarizer"]["recall_single_hit"] == 1.0
     assert metrics["Summarizer"]["precision"] == 1.0
-    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Summarizer"]["ndcg"] == 1.0
 
 
 EVAL_LABELS = [
@@ -118,7 +118,7 @@ EVAL_LABELS = [
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
 def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     labels = EVAL_LABELS[:1]
 
@@ -285,9 +285,8 @@ def test_reader_eval_in_pipeline(reader):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
-    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+def test_extractive_qa_eval_document_scope(retriever_with_docs):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval_batch(
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}},
@@ -306,11 +305,11 @@ def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(document_scope="context")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 1.0
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
     metrics = eval_result.calculate_metrics(document_scope="document_id_and_context")
 
@@ -324,29 +323,29 @@ def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(document_scope="document_id_or_context")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
-    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 1.0
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
     metrics = eval_result.calculate_metrics(document_scope="answer")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
     metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -364,11 +363,11 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(answer_scope="any")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
     assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Reader"]["f1"] == 1.0
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
@@ -376,11 +375,11 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
     metrics = eval_result.calculate_metrics(answer_scope="context")
 
     assert metrics["Retriever"]["mrr"] == 1.0
-    assert metrics["Retriever"]["map"] == 0.75
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
-    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Retriever"]["ndcg"] == 1.0
     assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Reader"]["f1"] == 1.0
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
@@ -608,9 +607,14 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
+    labels = deepcopy(EVAL_LABELS)
+    # Copy one of the labels and change only the answer have a label with a different answer but same Document
+    label_copy = deepcopy(labels[0].labels[0])
+    label_copy.answer = Answer(answer="I", offsets_in_context=[Span(21, 22)])
+    labels[0].labels.append(label_copy)
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval_batch(
-        labels=EVAL_LABELS,
+        labels=labels,
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         add_isolated_node_eval=True,
     )
@@ -633,12 +637,17 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Reader"]["f1"] == 1.0
     assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
 
+    # Check if same Document in MultiLabel got deduplicated
+    assert labels[0].labels[0].id == labels[0].labels[1].id
+    reader_eval_df = eval_result.node_results["Reader"]
+    isolated_reader_eval_df = reader_eval_df[reader_eval_df["eval_mode"] == "isolated"]
+    assert len(isolated_reader_eval_df) == len(labels) * reader.top_k_per_candidate
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
-
     labels = [
         MultiLabel(
             labels=[
@@ -686,7 +695,6 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
-
     labels = [
         MultiLabel(
             labels=[

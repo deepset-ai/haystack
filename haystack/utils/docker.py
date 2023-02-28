@@ -1,5 +1,16 @@
 import logging
 from typing import List, Union, Optional
+from haystack.nodes._json_schema import load_schema
+
+
+logger = logging.getLogger(__name__)
+
+
+def cache_nltk_model(model: str = "punkt"):
+    logger.info("Caching %s model...", model)
+    import nltk
+
+    nltk.download(model)
 
 
 def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Union[str, bool]] = None):
@@ -18,16 +29,22 @@ def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Un
     if models is None:
         models = ["deepset/roberta-base-squad2"]
 
-    # download punkt tokenizer
-    logging.info("Caching punkt data")
-    import nltk
-
-    nltk.download("punkt")
-
     # Cache models
     import transformers
 
     for model_to_cache in models:
-        logging.info("Caching %s", model_to_cache)
+        logger.info("Caching %s", model_to_cache)
         transformers.AutoTokenizer.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
         transformers.AutoModel.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
+
+
+def cache_schema():
+    """
+    Generate and persist Haystack JSON schema.
+
+    The schema is lazily generated at first usage, but this might not work in Docker containers
+    when the user running Haystack doesn't have write permissions on the Python installation. By
+    calling this function at Docker image build time, the schema is generated once for all.
+    """
+    # Calling load_schema() will generate the schema as a side effect
+    load_schema()

@@ -131,8 +131,9 @@ class RAGenerator(BaseGenerator):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
@@ -167,7 +168,6 @@ class RAGenerator(BaseGenerator):
     def _get_contextualized_inputs(
         self, texts: List[str], query: str, titles: Optional[List[str]] = None, return_tensors: str = "pt"
     ):
-
         titles_list = titles if self.embed_title and titles is not None else [""] * len(texts)
         prefix = self.prefix if self.prefix is not None else self.model.config.generator.prefix
 
@@ -189,7 +189,6 @@ class RAGenerator(BaseGenerator):
         )
 
     def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> torch.Tensor:
-
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
 
@@ -389,8 +388,9 @@ class Seq2SeqGenerator(BaseGenerator):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
@@ -413,6 +413,11 @@ class Seq2SeqGenerator(BaseGenerator):
 
     @classmethod
     def _get_converter(cls, model_name_or_path: str) -> Optional[Callable]:
+        # using dictionary key based on model_name_or_path endswith
+        if model_name_or_path.endswith("bart_lfqa"):
+            model_name_or_path = "vblagoje/bart_lfqa"
+        elif model_name_or_path.endswith("bart_eli5"):
+            model_name_or_path = "yjernite/bart_eli5"
         return cls._model_input_converters.get(model_name_or_path)
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
@@ -447,7 +452,7 @@ class Seq2SeqGenerator(BaseGenerator):
             query_and_docs_encoded: BatchEncoding = converter(
                 tokenizer=self.tokenizer, query=query, documents=documents, top_k=top_k
             ).to(self.devices[0])
-        except TypeError as e:
+        except TypeError:
             raise TypeError(
                 f"Language model input converter {converter} provided in Seq2SeqGenerator.__init__() does "
                 f"not have a valid __call__ method signature. The required Callable __call__ signature is: "

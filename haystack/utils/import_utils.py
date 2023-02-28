@@ -1,6 +1,4 @@
-# pylint: disable=missing-timeout
-
-from typing import Optional
+from typing import Optional, Dict, Union, Tuple
 
 import io
 import gzip
@@ -13,6 +11,7 @@ from pathlib import Path
 import requests
 
 from haystack.telemetry import send_tutorial_event
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +30,8 @@ def safe_import(import_path: str, classname: str, dep_group: str):
     try:
         module = importlib.import_module(import_path)
         classs = vars(module).get(classname)
+        if classs is None:
+            raise ImportError(f"Failed to import '{classname}' from '{import_path}'")
     except ImportError as ie:
         classs = _missing_dependency_stub_factory(classname, dep_group, ie)
     return classs
@@ -62,13 +63,21 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
     ) from source_error
 
 
-def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:
+def fetch_archive_from_http(
+    url: str,
+    output_dir: str,
+    proxies: Optional[Dict[str, str]] = None,
+    timeout: Union[float, Tuple[float, float]] = 10.0,
+) -> bool:
     """
     Fetch an archive (zip, gz or tar.gz) from a url via http and extract content to an output directory.
 
     :param url: http address
     :param output_dir: local path
     :param proxies: proxies details as required by requests library
+    :param timeout: How many seconds to wait for the server to send data before giving up,
+        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
+        Defaults to 10 seconds.
     :return: if anything got fetched
     """
     # verify & prepare local directory
@@ -87,7 +96,7 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
         logger.info("Fetching from %s to '%s'", url, output_dir)
 
         _, _, archive_extension = url.rpartition(".")
-        request_data = requests.get(url, proxies=proxies)
+        request_data = requests.get(url, proxies=proxies, timeout=timeout)
 
         if archive_extension == "zip":
             zip_archive = zipfile.ZipFile(io.BytesIO(request_data.content))
@@ -103,8 +112,9 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
             tar_archive.extractall(output_dir)
         else:
             logger.warning(
-                "Skipped url {0} as file type is not supported here. "
-                "See haystack documentation for support of more file types".format(url)
+                "Skipped url %s as file type is not supported here. "
+                "See haystack documentation for support of more file types",
+                url,
             )
 
         return True

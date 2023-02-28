@@ -1,6 +1,7 @@
 import logging
 
 import pandas as pd
+import torch
 import pytest
 
 from haystack.schema import Document, Answer
@@ -11,8 +12,8 @@ from haystack.pipelines.base import Pipeline
 def table1():
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
-        "age": ["58", "47", "60"],
-        "number of movies": ["87", "53", "69"],
+        "age": [58, 47, 60],
+        "number of movies": [87, 53, 69],
         "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
     }
     return pd.DataFrame(data)
@@ -22,8 +23,8 @@ def table1():
 def table2():
     data = {
         "actors": ["chris pratt", "gal gadot", "oprah winfrey"],
-        "age": ["45", "36", "65"],
-        "number of movies": ["49", "34", "5"],
+        "age": [45, 36, 65],
+        "number of movies": [49, 34, 5],
         "date of birth": ["12 january 1975", "5 april 1980", "15 september 1960"],
     }
     return pd.DataFrame(data)
@@ -41,6 +42,7 @@ def table3():
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader(table_reader_and_param, table1, table2):
     table_reader, param = table_reader_and_param
+
     query = "When was Di Caprio born?"
     prediction = table_reader.predict(
         query=query,
@@ -70,6 +72,42 @@ def test_table_reader(table_reader_and_param, table1, table2):
     assert prediction["answers"][1].answer == reference2[param]["answer"]
     assert prediction["answers"][1].offsets_in_context[0].start == reference2[param]["start"]
     assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
+
+
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
+def test_table_reader_train_mode(table_reader_and_param, table1, table2):
+    table_reader, param = table_reader_and_param
+
+    # Set to deterministic seed
+    old_seed = torch.seed()
+    torch.manual_seed(0)
+
+    # Ensure that if model is put in train mode that predictions are not effected
+    if param != "rci":
+        table_reader.table_encoder.model.train()
+    elif param == "rci":
+        table_reader.row_model.train()
+        table_reader.column_model.train()
+
+    query = "When was Di Caprio born?"
+    prediction = table_reader.predict(
+        query=query,
+        documents=[Document(content=table1, content_type="table"), Document(content=table2, content_type="table")],
+    )
+
+    # Check the second answer in the list
+    reference2 = {
+        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314},
+        "rci": {"answer": "47", "start": 5, "end": 6, "score": -6.836},
+        "tapas_scored": {"answer": "brad pitt", "start": 0, "end": 1, "score": 0.49078},
+    }
+    assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
+    assert prediction["answers"][1].answer == reference2[param]["answer"]
+    assert prediction["answers"][1].offsets_in_context[0].start == reference2[param]["start"]
+    assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
+
+    # Set back to old_seed
+    torch.manual_seed(old_seed)
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)

@@ -2,7 +2,7 @@
 
 - Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
 - Structure your work via organizations, projects, users
-- Upload your documents or import labels from an existing SQuAD-style dataset
+- Upload your documents or import a predefined list of questions
 - Export your labels in SQuAD Format
 
 ![image](../docs/img/annotation_tool.png)

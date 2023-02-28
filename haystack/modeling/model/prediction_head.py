@@ -105,11 +105,12 @@ class PredictionHead(nn.Module):
         :return: PredictionHead
         :rtype: PredictionHead[T]
         """
-        config = json.load(open(config_file))
+        with open(config_file) as f:
+            config = json.load(f)
         prediction_head = cls.subclasses[config["name"]](**config)
         if load_weights:
             model_file = cls._get_model_file(config_file=config_file)
-            logger.info("Loading prediction head from {}".format(model_file))
+            logger.info("Loading prediction head from %s", model_file)
             prediction_head.load_state_dict(torch.load(model_file, map_location=torch.device("cpu")), strict=strict)
         return prediction_head
 
@@ -163,8 +164,11 @@ class PredictionHead(nn.Module):
                 return
             new_dims = [input_dim] + old_dims[1:]
             logger.info(
-                f"Resizing input dimensions of {type(self).__name__} ({self.task_name}) "
-                f"from {old_dims} to {new_dims} to match language model"
+                "Resizing input dimensions of %s (%s) from %s to %s to match language model",
+                type(self).__name__,
+                self.task_name,
+                old_dims,
+                new_dims,
             )
             self.feed_forward = FeedForwardBlock(new_dims)
             self.layer_dims[0] = input_dim
@@ -227,7 +231,7 @@ class QuestionAnsweringHead(PredictionHead):
 
     def __init__(
         self,
-        layer_dims: List[int] = [768, 2],
+        layer_dims: Optional[List[int]] = None,
         task_name: str = "question_answering",
         no_ans_boost: float = 0.0,
         context_window_size: int = 100,
@@ -240,7 +244,7 @@ class QuestionAnsweringHead(PredictionHead):
         **kwargs,
     ):
         """
-        :param layer_dims: dimensions of Feed Forward block, e.g. [768,2], for adjusting to BERT embedding. Output should be always 2
+        :param layer_dims: dimensions of Feed Forward block, e.g. [768,2] used by default, for adjusting to BERT embedding. Output should be always 2
         :param kwargs: placeholder for passing generic parameters
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
                              The higher the value, the more likely a "no answer possible given the input text" is returned by the model
@@ -256,11 +260,13 @@ class QuestionAnsweringHead(PredictionHead):
         :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
                                                 Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
+        if layer_dims is None:
+            layer_dims = [768, 2]
         super(QuestionAnsweringHead, self).__init__()
         if len(kwargs) > 0:
             logger.warning(
-                f"Some unused parameters are passed to the QuestionAnsweringHead. "
-                f"Might not be a problem. Params: {json.dumps(kwargs)}"
+                "Some unused parameters are passed to the QuestionAnsweringHead. Might not be a problem. Params: %s",
+                json.dumps(kwargs),
             )
         self.layer_dims = layer_dims
         assert self.layer_dims[-1] == 2
@@ -625,7 +631,6 @@ class QuestionAnsweringHead(PredictionHead):
 
         # Iterate over each set of document level prediction
         for pred_d, no_ans_gap, basket in zip(top_preds, no_ans_gaps, baskets):
-
             # Unpack document offsets, clear text and id
             token_offsets = basket.raw["document_offsets"]
             pred_id = basket.id_external if basket.id_external else basket.id_internal

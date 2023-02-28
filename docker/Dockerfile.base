@@ -1,38 +1,45 @@
 ARG build_image
-ARG base_immage
+ARG base_image
 
 FROM $build_image AS build-image
 
+ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
 ARG haystack_extras
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc git curl \
-    tesseract-ocr libtesseract-dev poppler-utils
-
-# Install PDF converter
-RUN curl -O https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && \
-    tar -xvf xpdf-tools-linux-4.04.tar.gz && \
-    cp xpdf-tools-linux-4.04/bin64/pdftotext /opt && \
-    rm -rf xpdf-tools-linux-4.04
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
 WORKDIR /opt/haystack
 
 # Use a virtualenv we can copy over the next build stage
-RUN python -m venv --system-site-packages /opt/venv
+RUN python3 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir .${haystack_extras} && \
     pip install --no-cache-dir ./rest_api
 
-FROM $base_immage AS final
+
+FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
-COPY --from=build-image /opt/pdftotext /usr/local/bin
+COPY --from=deepset/xpdf:latest /opt/pdftotext /usr/local/bin
+
 # pdftotext requires fontconfig runtime
 RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"
+
+# The JSON schema is lazily generated at first usage, but we do it explicitly here for two reasons:
+# - the schema will be already there when the container runs, saving the generation overhead when a container starts
+# - derived images don't need to write the schema and can run with lower user privileges
+RUN python3 -c "from haystack.utils.docker import cache_schema; cache_schema()"
+
+# Haystack Preprocessor uses NLTK punkt model to divide text into a list of sentences.
+# We cache these models for seemless user experience.
+RUN python3 -c "from haystack.utils.docker import cache_nltk_model; cache_nltk_model()"

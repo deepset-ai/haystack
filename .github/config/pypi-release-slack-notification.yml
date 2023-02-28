@@ -1,0 +1,32 @@
+pretext: Triggered via {{eventName}} of {{env.VERSION}} by {{actor}}
+title: "Haystack PyPi release"
+
+text: |
+  <https://pypi.org/project/farm-haystack/{{env.VERSION}}/|PyPi release {{env.VERSION}}>
+
+  {{#if (eq jobStatus "SUCCESS")}}
+    Haystack {{env.VERSION}} has been released on PyPi :rocket:
+  {{else if (eq jobStatus "FAILURE")}}
+    {{icon jobStatus}} Haystack {{env.VERSION}} PyPi release failed! {{icon jobStatus}}
+  {{else if (eq jobStatus "CANCELLED")}}
+    {{icon jobStatus}} Haystack {{env.VERSION}} PyPi release has been cancelled! {{icon jobStatus}}
+  {{/if}}
+
+fallback: |-
+  Haystack {{env.VERSION}} PyPi release status: {{jobStatus}}
+
+footer: >-
+  <{{repositoryUrl}}|{{repositoryName}}> <{{workflowRunUrl}}|{{workflow}} #{{runNumber}}>
+
+colors:
+  success: "#5DADE2"
+  failure: "#884EA0"
+  cancelled: "#A569BD"
+  default: "#7D3C98"
+
+icons:
+  success: ":white_check_mark:"
+  failure: ":x:"
+  cancelled: ":interrobang:"
+  skipped: ":interrobang:"
+  default: ":interrobang:"

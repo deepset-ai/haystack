@@ -1,0 +1,66 @@
+# If you change this name also do it in linting-skipper.yml
+name: Linting
+
+on:
+  pull_request:
+    paths:
+      - "**.py"
+      - "**/pyproject.toml"
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v34
+        with:
+          files: |
+            **/*.py
+          files_ignore: |
+            test/**
+            rest_api/test/**
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Mypy
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          mkdir .mypy_cache/
+          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v34
+        with:
+          files: |
+            **/*.py
+          files_ignore: |
+            test/**
+            rest_api/test/**
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Pylint
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}

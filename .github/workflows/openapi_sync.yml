@@ -1,0 +1,52 @@
+name: Sync OpenAPI Schema with Readme
+
+on:
+  push:
+    branches:
+      - main
+      # release branches have the form v1.9.x
+      - "v[0-9].*[0-9].x"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install dependencies
+        run: sudo apt update && sudo apt-get install libsndfile1 ffmpeg
+
+      - name: Install Haystack
+        run: |
+          pip install --upgrade pip
+          pip install -U -e .[all]
+          pip install -e ./rest_api
+
+      - name: Update OpenAPI specs
+        run: python .github/utils/generate_openapi_specs.py
+
+      - name: Get OpenAPI specs id
+        id: openapi-specs
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        run: |
+          VERSION="$(cut -d "." -f 1,2 < VERSION.txt)"
+          if [[ "$(cat VERSION.txt)" == *"rc0" ]]; then
+            VERSION="$VERSION-unstable"
+          fi
+          SPECS_ID=$(curl https://dash.readme.com/api/v1/api-specification \
+            -u "$README_API_KEY:" \
+            --header "x-readme-version: $VERSION" \
+            | jq -r ".[0].id")
+          echo "id=$SPECS_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Sync OpenAPI specs
+        uses: readmeio/rdme@8.3.1
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+          README_API_DEFINITION_ID: ${{ steps.openapi-specs.outputs.id }}
+        with:
+          rdme: openapi openapi.json --key="$README_API_KEY" --id="$README_API_DEFINITION_ID"

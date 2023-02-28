@@ -1,6 +1,5 @@
 from typing import Dict, Any
 
-from collections.abc import Mapping
 import logging
 import time
 import json
@@ -65,16 +64,6 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
     start_time = time.time()
 
     params = request.params or {}
-
-    # format global, top-level filters (e.g. "params": {"filters": {"name": ["some"]}})
-    if "filters" in params.keys():
-        params["filters"] = _format_filters(params["filters"])
-
-    # format targeted node filters (e.g. "params": {"Retriever": {"filters": {"value"}}})
-    for key in params.keys():
-        if isinstance(params[key], Mapping) and "filters" in params[key].keys():
-            params[key]["filters"] = _format_filters(params[key]["filters"])
-
     result = pipeline.run(query=request.query, params=params, debug=request.debug)
 
     # Ensure answers and documents exist, even if they're empty lists
@@ -87,34 +76,3 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
         json.dumps({"request": request, "response": result, "time": f"{(time.time() - start_time):.2f}"}, default=str)
     )
     return result
-
-
-def _format_filters(filters):
-    """
-    Adjust filters to compliant format:
-    Put filter values into a list and remove filters with null value.
-    """
-    new_filters = {}
-    if filters is None:
-        logger.warning(
-            f"Request with deprecated filter format ('\"filters\": null'). "
-            f"Remove empty filters from params to be compliant with future versions"
-        )
-    else:
-        for key, values in filters.items():
-            if values is None:
-                logger.warning(
-                    f"Request with deprecated filter format ('{key}: null'). "
-                    f"Remove null values from filters to be compliant with future versions"
-                )
-                continue
-
-            if not isinstance(values, list):
-                logger.warning(
-                    f"Request with deprecated filter format ('{key}': {values}). "
-                    f"Change to '{key}':[{values}]' to be compliant with future versions"
-                )
-                values = [values]
-
-            new_filters[key] = values
-    return new_filters
