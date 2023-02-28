@@ -1,4 +1,3 @@
-import pytest
 
 from haystack.nodes import TransformersTranslator, FARMReader, TfidfRetriever
 from haystack.pipelines import ExtractiveQAPipeline, TranslationWrapperPipeline
