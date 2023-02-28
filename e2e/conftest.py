@@ -1,10 +1,10 @@
 import os
 import uuid
 from contextlib import contextmanager
+import random
 
 import torch
 import numpy as np
-import random
 import pytest
 
 from haystack.schema import Document
