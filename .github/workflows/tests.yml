@@ -93,6 +93,7 @@ jobs:
           - document_stores
           - nodes
           - agents
+          - testing
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
