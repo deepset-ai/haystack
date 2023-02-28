@@ -1,14 +1,12 @@
 import pytest
 
 from haystack import Document
+from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipelines import SearchSummarizationPipeline
-from haystack.nodes import DenseRetriever
+from haystack.nodes import BM25Retriever, TransformersSummarizer
 
 
-@pytest.mark.parametrize(
-    "retriever,document_store", [("embedding", "memory"), ("bm25", "elasticsearch")], indirect=True
-)
-def test_summarization_pipeline(document_store, retriever, summarizer):
+def test_summarization_pipeline():
     docs = [
         Document(
             content="""
@@ -29,10 +27,11 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
     """
         ),
     ]
-    document_store.write_documents(docs)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
-    if isinstance(retriever, DenseRetriever):
-        document_store.update_embeddings(retriever=retriever)
+    ds = InMemoryDocumentStore(use_bm25=True)
+    retriever = BM25Retriever(document_store=ds)
+    ds.write_documents(docs)
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
