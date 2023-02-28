@@ -59,6 +59,7 @@ from haystack.nodes import (
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.prompt import PromptNode, PromptModel
+from haystack.nodes.sampler.top_p_sampler import TopPSampler
 from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -613,6 +614,11 @@ def ranker_two_logits():
 @pytest.fixture
 def ranker():
     return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+
+
+@pytest.fixture
+def top_p_sampler():
+    return TopPSampler()
 
 
 @pytest.fixture
