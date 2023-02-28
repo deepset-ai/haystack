@@ -704,7 +704,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "Use the following format:\n\n"
             "Question: the question to be answered\n"
             "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
-            "Tool: [$tool_names]\n"
+            "Tool: pick one of $tool_names \n"
             "Tool Input: the input for the tool\n"
             "Observation: the tool will respond with the result\n"
             "...\n"
