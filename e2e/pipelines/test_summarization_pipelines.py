@@ -71,7 +71,3 @@ def test_summarization_pipeline_one_summary():
     answers = output["answers"]
     assert len(answers) == 1
     assert answers[0]["answer"].strip() == "The Eiffel Tower was built in 1924 in Paris, France."
-
-
-if __name__ == "__main__":
-    test_summarization_pipeline()
