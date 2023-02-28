@@ -1620,14 +1620,14 @@ class EvaluationResult:
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
             # convert single document_id to list
             if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
-                df["document_ids"] = df["document_id"].apply(lambda x: [x], axis=1)
+                df["document_ids"] = df["document_id"].apply(lambda x: [x])
                 df.drop(columns=["document_id"], inplace=True)
             if (
                 "answer" in df.columns
                 and "custom_document_id" in df.columns
                 and not "custom_document_ids" in df.columns
             ):
-                df["custom_document_ids"] = df["custom_document_id"].apply(lambda x: [x], axis=1)
+                df["custom_document_ids"] = df["custom_document_id"].apply(lambda x: [x])
                 df.drop(columns=["custom_document_id"], inplace=True)
         result = cls(node_results)
         return result
