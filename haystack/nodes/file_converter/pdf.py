@@ -1,4 +1,5 @@
 import logging
+import warnings
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -59,6 +60,12 @@ class PDFToTextConverter(BaseConverter):
         self.keep_physical_layout = keep_physical_layout
         self.multiprocessing = multiprocessing
 
+        if encoding:
+            warnings.warn(
+                "The encoding parameter is being deprecated. It will be automatically detected by PyMuPDF.",
+                DeprecationWarning,
+            )
+
     def convert(
         self,
         file_path: Path,
@@ -112,6 +119,12 @@ class PDFToTextConverter(BaseConverter):
             keep_physical_layout = self.keep_physical_layout
         if multiprocessing is None:
             multiprocessing = self.multiprocessing
+
+        if encoding:
+            warnings.warn(
+                "The encoding parameter is being deprecated. It will be automatically detected by PyMuPDF.",
+                DeprecationWarning,
+            )
 
         pages = self._read_pdf(
             file_path,
