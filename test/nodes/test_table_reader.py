@@ -261,6 +261,7 @@ def test_table_reader_in_pipeline(table_reader_and_param, table1):
     assert prediction["answers"][0].answer == "11 november 1974"
     assert prediction["answers"][0].offsets_in_context[0].start == 7
     assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].document_ids is not None
 
 
 @pytest.mark.integration

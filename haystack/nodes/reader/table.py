@@ -279,10 +279,11 @@ class _TapasEncoder:
         # TODO Turn pipeline_inputs into a DataLoader so batching works as expected
         self.pipeline.model.eval()
         answers = self.pipeline(pipeline_inputs)
+        # Unpack batch if answers come back batched
         if isinstance(answers[0], list):
             answers = list(itertools.chain.from_iterable(answers))
         for ans, doc in zip(answers, table_documents):
-            ans.document_id = doc.id
+            ans.document_ids = [doc.id]
 
         # TODO Add test for answers being an empty list
         # Remove no_answers from the answers list
@@ -321,12 +322,10 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         column_ids = inputs["token_type_ids"][:, :, token_types.index("column_ids")]
 
         answer_scores = []
-        num_batch = logits.shape[0]
-        # TODO Remove once tested
-        assert (
-            num_batch == len(answer_coordinates) == inputs["input_ids"].shape[0]
-        ), "Ensure all inputs have same batch dimension"
-        for i in range(num_batch):
+        batch_size = logits.shape[0]
+        if batch_size != len(answer_coordinates):
+            raise ValueError("Incompatible shape between logits and answer_coordinates when calculating answer scores.")
+        for i in range(batch_size):
             # It is possible that a list within answer_coordinates is empty. This happens if no answer cells are found
             # for a single table so we set the score to None.
             if len(answer_coordinates[i]) == 0:
