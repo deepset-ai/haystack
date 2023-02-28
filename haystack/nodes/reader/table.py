@@ -304,7 +304,7 @@ class _TapasEncoder:
 class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
-    ) -> List[np.float64]:
+    ) -> List:
         """Calculate the answer scores given the `logits`, `input`, and `answer_coordinates`."""
         token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
 
@@ -321,10 +321,11 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         row_ids = inputs["token_type_ids"][:, :, token_types.index("row_ids")]
         column_ids = inputs["token_type_ids"][:, :, token_types.index("column_ids")]
 
-        answer_scores = []
         batch_size = logits.shape[0]
         if batch_size != len(answer_coordinates):
             raise ValueError("Incompatible shape between logits and answer_coordinates when calculating answer scores.")
+
+        answer_scores = []
         for i in range(batch_size):
             # It is possible that a list within answer_coordinates is empty. This happens if no answer cells are found
             # for a single table so we set the score to None.
@@ -340,7 +341,10 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                 # _get_mean_cell_probs indexes cells by (col, row). DataFrames are, however, indexed by (row, col).
                 all_cell_probabilities = {(row, col): prob for (col, row), prob in cell_coords_to_prob.items()}
                 answer_cell_probabilities = [all_cell_probabilities[coord] for coord in answer_coordinates[i]]
-                answer_scores.append(np.mean(answer_cell_probabilities))
+                if len(answer_cell_probabilities) == 0:
+                    answer_scores.append(None)
+                else:
+                    answer_scores.append(np.mean(answer_cell_probabilities))
 
         return answer_scores
 
