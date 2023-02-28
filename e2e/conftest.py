@@ -1,6 +1,7 @@
 import os
 import uuid
 from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,9 @@ from haystack.document_stores import (
     OpenSearchDocumentStore,
     FAISSDocumentStore,
 )
+
+
+SAMPLES_PATH = Path(__file__).parent.parent / "test" / "samples"
 
 
 @pytest.fixture

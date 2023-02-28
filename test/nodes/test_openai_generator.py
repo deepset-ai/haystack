@@ -36,12 +36,14 @@ def openai_generator(mock_requests):
     return OpenAIAnswerGenerator(api_key="irrelevant-anyway", top_k=1)
 
 
+@pytest.mark.unit
 def test_openai_answer_generator(openai_generator, docs):
     prediction = openai_generator.predict(query="Test query", documents=docs, top_k=1)
     assert len(prediction["answers"]) == 1
     assert "MOCK ANSWER" == prediction["answers"][0].answer
 
 
+@pytest.mark.unit
 def test_openai_answer_generator_server_error(monkeypatch, docs):
     monkeypatch.setattr(
         requests, "request", lambda *a, **k: MockResponse(text='{"error": "testing errors"}', status_code=500)
@@ -52,18 +54,19 @@ def test_openai_answer_generator_server_error(monkeypatch, docs):
         openai_generator.predict(query="Test query", documents=docs, top_k=1)
 
 
+@pytest.mark.unit
 def test_openai_answer_generator_rete_limit(monkeypatch, docs):
     monkeypatch.setattr(
         requests,
         "request",
         lambda *a, **k: MockResponse(text='{"error": "testing rate limit errors"}', status_code=429),
     )
-
     openai_generator = OpenAIAnswerGenerator(api_key="irrelevant-anyway", top_k=1)
     with pytest.raises(OpenAIError):
         openai_generator.predict(query="Test query", documents=docs, top_k=1)
 
 
+@pytest.mark.unit
 def test_openai_answer_generator_max_token(openai_generator, docs, caplog):
     openai_generator.MAX_TOKENS_LIMIT = 116
     with caplog.at_level(logging.INFO):
