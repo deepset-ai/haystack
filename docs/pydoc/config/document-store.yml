@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
-   category: 6310ca73c622850ddd3875a2
+   category: 63cffd5033018f0010bde74a
    title: Document Store API
    slug: document-store-api
    order: 30

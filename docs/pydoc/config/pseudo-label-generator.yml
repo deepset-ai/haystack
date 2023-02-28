@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Creates training data for dense retrievers without human annotation.
-   category: 6310ca73c622850ddd3875a2
+   category: 63cffd5033018f0010bde74a
    title: Pseudo Label Generator API
    slug: pseudo-label-generator-api
    order: 120

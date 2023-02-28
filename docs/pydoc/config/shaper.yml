@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/summarizer]
-    modules: ['base', 'transformers']
+    search_path: [../../../haystack/nodes/other/shaper]
+    modules: ['shaper']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -13,14 +13,14 @@ processors:
   - type: crossref
 renderer:
    type: renderers.ReadmeRenderer
-   excerpt: The Summarizer gives a short overview of a long Document.
+   excerpt: A helper node with a variety of functions.
    category: 63cffd5033018f0010bde74a
-   title: Summarizer API
-   slug: summarizer-api
-   order: 180
+   title: Shaper API
+   slug: shaper-api
+   order: 175
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: summarizer_api.md
+     filename: shaper_api.md
