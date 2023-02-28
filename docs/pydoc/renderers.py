@@ -68,8 +68,7 @@ class ReadmeRenderer(Renderer):
         """
         README_API_KEY = os.getenv("README_API_KEY")
         if not README_API_KEY:
-            print("README_API_KEY env var is not set")
-            sys.exit(1)
+            sys.exit("README_API_KEY env var is not set")
 
         token = base64.b64encode(f"{README_API_KEY}:".encode()).decode()
         headers = {"authorization": f"Basic {token}", "x-readme-version": version}
@@ -77,9 +76,7 @@ class ReadmeRenderer(Renderer):
         res = requests.get("https://dash.readme.com/api/v1/categories", headers=headers, timeout=60)
 
         if not res.ok:
-            print(f"Error requesting {version} categories")
-            print(res.json())
-            sys.exit(1)
+            sys.exit(f"Error requesting {version} categories")
 
         return {c["slug"]: c["id"] for c in res.json()}
 
