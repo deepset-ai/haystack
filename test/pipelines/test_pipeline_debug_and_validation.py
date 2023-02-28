@@ -111,7 +111,7 @@ def test_debug_attributes_for_join_nodes(document_store_with_docs, tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(component=bm25_retriever_1, name="BM25Retriever1", inputs=["Query"])
     pipeline.add_node(component=bm25_retriever_2, name="BM25Retriever2", inputs=["Query"])
-    pipeline.add_node(component=JoinDocuments(), name="JoinDocuments", inputs=["ESRetriever1", "ESRetriever2"])
+    pipeline.add_node(component=JoinDocuments(), name="JoinDocuments", inputs=["BM25Retriever1", "BM25Retriever2"])
 
     prediction = pipeline.run(query="Who lives in Berlin?", debug=True)
     assert "_debug" in prediction.keys()

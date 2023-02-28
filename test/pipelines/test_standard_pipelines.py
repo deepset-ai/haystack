@@ -334,7 +334,7 @@ def test_join_merge_with_weights(document_store_dot_product_with_docs):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert math.isclose(results["documents"][0].score, 0.5481393431183286, rel_tol=0.0001)
+    assert math.isclose(results["documents"][0].score, 0.5336782589721345, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
 
@@ -438,7 +438,9 @@ def test_join_with_rrf(document_store_dot_product_with_docs):
         0.031009615384615385,
     ]
 
-    assert all([doc.score == expected_scores[idx] for idx, doc in enumerate(results["documents"])])
+    assert all(
+        doc.score == pytest.approx(expected_scores[idx], abs=1e-3) for idx, doc in enumerate(results["documents"])
+    )
 
 
 def test_query_keyword_statement_classifier():

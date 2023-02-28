@@ -863,6 +863,7 @@ def get_document_store(
             index=index,
             similarity=similarity,
             use_bm25=True,
+            bm25_parameters={"k1": 1.2, "b": 0.75},  # parameters similar to those of Elasticsearch
         )
 
     elif document_store_type == "elasticsearch":
