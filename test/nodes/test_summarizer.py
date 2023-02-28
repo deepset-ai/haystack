@@ -1,4 +1,3 @@
-from ensurepip import version
 import pytest
 
 import haystack
@@ -6,9 +5,6 @@ from haystack.schema import Document
 from haystack.pipelines import SearchSummarizationPipeline
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, TransformersSummarizer
 from haystack.nodes.other.document_merger import DocumentMerger
-
-
-pytestmark = pytest.mark.skip("Tests are too heavy for Github runners, skipping for now")
 
 
 DOCS = [
@@ -33,6 +29,45 @@ SPLIT_DOCS = [
         content="""It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
     ),
 ]
+
+
+class MockTokenizer:
+    @classmethod
+    def from_pretrained(cls, *a, **k):
+        return cls()
+
+    def __call__(self, *a, **k):
+        return self
+
+    def to(self, *a, **k):
+        return {}
+
+    def batch_decode(self, *a, **k):
+        return [TRANSLATION]
+
+
+class MockModel:
+    @classmethod
+    def from_pretrained(cls, *a, **k):
+        return cls()
+
+    def generate(self, *a, **k):
+        return None
+
+    def to(self, *a, **k):
+        return None
+
+
+@pytest.fixture
+def mock_models(monkeypatch):
+    monkeypatch.setattr(haystack.nodes.summarizer.transformers, "AutoModelForSeq2SeqLM", MockModel)
+    monkeypatch.setattr(haystack.nodes.summarizer.transformers, "AutoTokenizer", MockTokenizer)
+
+
+@pytest.fixture
+def summarizer(mock_models) -> TransformersSummarizer:
+    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+
 
 # Documents order is very important to produce summary.
 # Different order of same documents produce different summary.

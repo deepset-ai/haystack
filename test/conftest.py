@@ -551,11 +551,6 @@ def lfqa_generator(request):
 
 
 @pytest.fixture
-def summarizer():
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
-
-@pytest.fixture
 def en_to_de_translator():
     return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
 
