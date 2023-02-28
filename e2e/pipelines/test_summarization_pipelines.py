@@ -39,3 +39,24 @@ def test_summarization_pipeline():
     answers = output["answers"]
     assert len(answers) == 1
     assert " The Eiffel Tower in Paris has officially opened its doors to the public." == answers[0]["answer"]
+
+
+@pytest.mark.integration
+@pytest.mark.summarizer
+@pytest.mark.parametrize(
+    "retriever,document_store", [("embedding", "memory"), ("bm25", "elasticsearch")], indirect=True
+)
+def test_summarization_pipeline_one_summary(document_store, retriever, summarizer):
+    document_store.write_documents(SPLIT_DOCS)
+
+    if isinstance(retriever, EmbeddingRetriever) or isinstance(retriever, DensePassageRetriever):
+        document_store.update_embeddings(retriever=retriever)
+
+    query = "Where is Eiffel Tower?"
+    pipeline = SearchSummarizationPipeline(
+        retriever=retriever, summarizer=summarizer, generate_single_summary=True, return_in_answer_format=True
+    )
+    output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}})
+    answers = output["answers"]
+    assert len(answers) == 1
+    assert answers[0]["answer"] in EXPECTED_ONE_SUMMARIES
