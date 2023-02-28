@@ -2,6 +2,9 @@ import os
 import uuid
 from contextlib import contextmanager
 
+import torch
+import numpy as np
+import random
 import pytest
 
 from haystack.schema import Document
@@ -14,7 +17,12 @@ from haystack.document_stores import (
     OpenSearchDocumentStore,
     FAISSDocumentStore,
 )
-from haystack.nodes import TransformersSummarizer
+
+
+# Fix all random seeds that come to mind
+torch.manual_seed(0)
+np.random.seed(0)
+random.seed(0)
 
 
 @pytest.fixture
@@ -158,11 +166,3 @@ def document_store(
     document_store.write_documents(docs)
     yield document_store
     document_store.delete_index(document_store.index)
-
-
-@pytest.fixture
-def summarizer() -> TransformersSummarizer:
-    """
-    Used in nodes inference tests plus some pipeline tests.
-    """
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)

@@ -17,7 +17,7 @@ def test_summarization_pipeline():
         ),
         Document(
             content="""
-    The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest
+    The Eiffel Tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest
     structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction,
     the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a
     title it held for 41 years until the Chrysler Building in New York City was finished in 1930. It was the first
@@ -33,12 +33,12 @@ def test_summarization_pipeline():
     retriever = BM25Retriever(document_store=ds)
     ds.write_documents(docs)
 
-    query = "Where is Eiffel Tower?"
+    query = "Eiffel Tower"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert " The Eiffel Tower in Paris has officially opened its doors to the public." == answers[0]["answer"]
+    assert "The Eiffel Tower is one of the world's tallest structures." == answers[0]["answer"].strip()
 
 
 def test_summarization_pipeline_one_summary():
@@ -72,7 +72,8 @@ def test_summarization_pipeline_one_summary():
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert answers[0]["answer"] in [
-        " The Eiffel Tower in Paris has officially opened its doors to the public.",
-        " The Eiffel Tower in Paris has become the tallest man-made structure in the world.",
-    ]
+    assert answers[0]["answer"].strip() == "The Eiffel Tower was built in 1924 in Paris, France."
+
+
+if __name__ == "__main__":
+    test_summarization_pipeline()

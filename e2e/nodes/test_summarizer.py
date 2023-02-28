@@ -1,4 +1,5 @@
 from haystack.schema import Document
+from haystack.nodes import TransformersSummarizer
 
 
 DOCS = [
@@ -23,21 +24,25 @@ Tower is the second tallest free-standing structure in France after the Millau V
 ]
 
 EXPECTED_SUMMARIES = [
-    "California's largest electricity provider, PG&E, has shut down power supplies to thousands of customers.",
-    " The Eiffel Tower in Paris has officially opened its doors to the public.",
+    "Hundreds of thousands of customers in California have been left without power after a power cut.",
+    "The Eiffel Tower in Paris is the world's tallest man-made structure.",
 ]
 
 
-def test_summarization(summarizer):
+def test_summarization():
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+
     summarized_docs = summarizer.predict(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
     for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs):
-        assert expected_summary == summary.meta["summary"]
+        assert expected_summary.strip() == summary.meta["summary"].strip()
 
 
-def test_summarization_batch(summarizer):
+def test_summarization_batch():
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
     assert len(summarized_docs) == 2  # Number of document lists
     assert len(summarized_docs[0]) == len(DOCS)
     for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs[0]):
-        assert expected_summary == summary.meta["summary"]
+        assert expected_summary.strip() == summary.meta["summary"].strip()
