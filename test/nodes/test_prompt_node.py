@@ -126,7 +126,7 @@ def test_create_prompt_node():
         PromptNode("some-random-model")
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_add_and_remove_template(prompt_node):
     num_default_tasks = len(prompt_node.get_prompt_template_names())
     custom_task = PromptTemplate(
