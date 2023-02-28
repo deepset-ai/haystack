@@ -20,7 +20,10 @@ def args_to_kwargs(args: Tuple, func: Callable) -> Dict[str, Any]:
 
 
 def retry_with_exponential_backoff(
-    backoff_in_seconds: float = 1, max_retries: int = 10, errors: tuple = (OpenAIRateLimitError,)
+    backoff_in_seconds: float = 1,
+    max_retries: int = 10,
+    errors: tuple = (OpenAIRateLimitError,),
+    error_to_raise=Exception,
 ):
     """
     Decorator to retry a function with exponential backoff.
@@ -43,7 +46,7 @@ def retry_with_exponential_backoff(
                 except errors as e:
                     # Check if max retries has been reached
                     if num_retries > max_retries:
-                        raise Exception(f"Maximum number of retries ({max_retries}) exceeded.")
+                        raise error_to_raise(f"Maximum number of retries ({max_retries}) exceeded.")
 
                     # Increment the delay
                     sleep_time = backoff_in_seconds * 2**num_retries + random()

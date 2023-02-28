@@ -531,16 +531,6 @@ def deepset_cloud_fixture():
 
 
 @pytest.fixture
-def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
-
-
-@pytest.fixture
-def openai_generator():
-    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
-
-
-@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
