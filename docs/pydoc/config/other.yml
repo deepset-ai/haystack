@@ -1,8 +1,16 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/other]
-    modules: ['docs2answers', 'join_docs', 'join_answers', 'route_documents', 'document_merger', 'shaper']
-    ignore_when_discovered: ['__init__']
+    modules:
+      [
+        "docs2answers",
+        "join_docs",
+        "join_answers",
+        "route_documents",
+        "document_merger",
+        "shaper",
+      ]
+    ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
     expression:
@@ -12,15 +20,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-   type: renderers.ReadmeRenderer
-   excerpt: The utility classes of Haystack.
-   category: 6310ca73c622850ddd3875a2
-   title: Other API
-   slug: other-api
-   order: 80
-   markdown:
-     descriptive_class_title: false
-     descriptive_module_title: true
-     add_method_class_prefix: true
-     add_member_class_prefix: false
-     filename: other_api.md
+  type: renderers.ReadmeRenderer
+  excerpt: The utility classes of Haystack.
+  category: 63f374c0c2ecdc004a43cd0a
+  title: Other API
+  slug: other-api
+  order: 80
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: other_api.md
