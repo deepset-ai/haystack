@@ -536,11 +536,6 @@ def question_generator():
 
 
 @pytest.fixture
-def lfqa_generator(request):
-    return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
-
-
-@pytest.fixture
 def summarizer():
     return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
