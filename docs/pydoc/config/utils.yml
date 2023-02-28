@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Utility functions for Haystack.
-   category: 63cffd5033018f0010bde74a
+   category: 63f374c0c2ecdc004a43cd0a
    title: Utils API
    slug: utils-api
    order: 200

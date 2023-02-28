@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Sweeps through a document store and returns a set of candidate documents that are relevant to the query.
-   category: 63cffd5033018f0010bde74a
+   category: 63f374c0c2ecdc004a43cd0a
    title: Retriever API
    slug: retriever-api
    order: 170

@@ -16,7 +16,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Uses Large Language Models directly in your pipelines.
-   category: 63cffd5033018f0010bde74a
+   category: 63f374c0c2ecdc004a43cd0a
    title: PromptNode API
    slug: prompt-node-api
    order: 115
