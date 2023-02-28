@@ -207,12 +207,14 @@ def test_language_validation(Converter, caplog):
     assert "sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
+@pytest.mark.unit
 def test_docx_converter():
     converter = DocxToTextConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "docx" / "sample_docx.docx")[0]
     assert document.content.startswith("Sample Docx File")
 
 
+@pytest.mark.unit
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
@@ -220,6 +222,7 @@ def test_markdown_converter():
     assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
+@pytest.mark.unit
 def test_markdown_converter_headline_extraction():
     expected_headlines = [
         ("What to build with Haystack", 1),
@@ -245,6 +248,7 @@ def test_markdown_converter_headline_extraction():
         assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.unit
 def test_markdown_converter_frontmatter_to_meta():
     converter = MarkdownConverter(add_frontmatter_to_meta=True)
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
@@ -252,6 +256,7 @@ def test_markdown_converter_frontmatter_to_meta():
     assert document.meta["date"] == "1.1.2023"
 
 
+@pytest.mark.unit
 def test_markdown_converter_remove_code_snippets():
     converter = MarkdownConverter(remove_code_snippets=False)
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
@@ -344,6 +349,7 @@ def test_parsr_converter_headline_extraction():
                 assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.unit
 def test_id_hash_keys_from_pipeline_params():
     doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
     meta_1 = {"key": "a"}
@@ -359,13 +365,14 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 2
 
 
+@pytest.mark.unit
 def write_as_csv(data: List[List[str]], file_path: Path):
     with open(file_path, "w") as f:
         writer = csv.writer(f)
         writer.writerows(data)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_headers.csv"
@@ -386,7 +393,7 @@ def test_csv_to_document_with_qa_headers(tmp_path):
     assert doc.meta["answer"] == "Haystack is an NLP Framework to use transformers in your Applications."
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -400,7 +407,7 @@ def test_csv_to_document_with_wrong_qa_headers(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -414,7 +421,7 @@ def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -428,7 +435,7 @@ def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_one_column(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -439,7 +446,7 @@ def test_csv_to_document_with_one_column(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_three_columns(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -453,7 +460,7 @@ def test_csv_to_document_with_three_columns(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_many_files(tmp_path):
     csv_paths = []
     for i in range(5):
@@ -481,7 +488,7 @@ def test_csv_to_document_many_files(tmp_path):
         assert doc.meta["answer"] == f"{i}. Haystack is an NLP Framework to use transformers in your Applications."
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestJsonConverter:
     JSON_FILE_NAME = "json_normal.json"
     JSONL_FILE_NAME = "json_normal.jsonl"
