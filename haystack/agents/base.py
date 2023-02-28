@@ -170,7 +170,7 @@ class Agent:
             tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=preds[0])
             if tool_name is None or tool_input is None:
                 raise AgentError(
-                    f"Could not identify the next tool from Agent's output. Try to adjusting the Agent's param 'tool_pattern' \n"
+                    f"Could not identify the next tool or input for that tool from Agent's output. Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
                     f"# Agent's output: {preds[0]} \n"
                     f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
                     f"# Transcript:\n{transcript}"
