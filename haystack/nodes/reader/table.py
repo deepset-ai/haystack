@@ -69,7 +69,6 @@ class TableReader(BaseReader):
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
         max_seq_len: int = 512,
-        batch_size: int = 1,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
@@ -100,7 +99,7 @@ class TableReader(BaseReader):
         :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
                                     the retriever.
         :param return_no_answer: Whether to include no_answer predictions in the results.
-                                 (Only applicable with nq-reader models.)
+                                 This option only has an effect when using the deepset/tapas-large-nq-hn-reader and deepset/tapas-large-nq-reader models.
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
@@ -133,7 +132,6 @@ class TableReader(BaseReader):
                 model_version=model_version,
                 tokenizer=tokenizer,
                 max_seq_len=max_seq_len,
-                batch_size=batch_size,
                 use_auth_token=use_auth_token,
             )
         elif config.architectures[0] == "TapasForScoredQA":
@@ -239,7 +237,6 @@ class _TapasEncoder:
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         max_seq_len: int = 512,
-        batch_size: int = 1,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         self.model = TapasForQuestionAnswering.from_pretrained(
@@ -260,7 +257,7 @@ class _TapasEncoder:
             model=self.model,
             tokenizer=self.tokenizer,
             framework="pt",
-            batch_size=batch_size,
+            batch_size=1,  # batch_size of 1 only works currently b/c of issue with HuggingFace pipeline logic and the return type of TableQuestionAnsweringPipeline._forward
             device=self.device,
         )
 
@@ -269,23 +266,22 @@ class _TapasEncoder:
         if len(table_documents) == 0:
             return {"query": query, "answers": []}
 
+        # Create list of all data points
         pipeline_inputs = []
         for document in table_documents:
             table: pd.DataFrame = document.content
-            table = table.astype(str)
-            pipeline_inputs.append(
-                {"query": query, "table": table, "sequential": False, "padding": True, "truncation": True}
-            )
-        # TODO Turn pipeline_inputs into a DataLoader so batching works as expected
+            pipeline_inputs.append({"query": query, "table": table.astype(str)})
+
+        # Run the pipeline
         self.pipeline.model.eval()
-        answers = self.pipeline(pipeline_inputs)
-        # Unpack batch if answers come back batched
+        answers = self.pipeline(pipeline_inputs, sequential=False, padding=True, truncation=True)
+
+        # Unpack batched answers
         if isinstance(answers[0], list):
             answers = list(itertools.chain.from_iterable(answers))
         for ans, doc in zip(answers, table_documents):
             ans.document_ids = [doc.id]
 
-        # TODO Add test for answers being an empty list
         # Remove no_answers from the answers list
         answers = [ans for ans in answers if ans is not None]
 
