@@ -1,4 +1,3 @@
-
 from haystack.nodes import TransformersTranslator, FARMReader, TfidfRetriever
 from haystack.pipelines import ExtractiveQAPipeline, TranslationWrapperPipeline
 from haystack.document_stores import InMemoryDocumentStore
