@@ -64,7 +64,7 @@ def test_translator_with_document(en_to_de_translator):
     assert en_to_de_translator.translate(documents=[Document(content=ORIGINAL)])[0].content == TRANSLATION
 
 
-def test_translator_with_document_preserves_ORIGINAL(en_to_de_translator):
+def test_translator_with_document_preserves_original(en_to_de_translator):
     original_document = Document(content=ORIGINAL)
     en_to_de_translator.translate(documents=[original_document])
     assert original_document.content == ORIGINAL
@@ -74,7 +74,7 @@ def test_translator_with_dictionary(en_to_de_translator):
     assert en_to_de_translator.translate(documents=[{"content": ORIGINAL}])[0]["content"] == TRANSLATION
 
 
-def test_translator_with_dictionary_preserves_ORIGINAL(en_to_de_translator):
+def test_translator_with_dictionary_preserves_original(en_to_de_translator):
     original_document = {"content": ORIGINAL}
     en_to_de_translator.translate(documents=[original_document])
     assert original_document["content"] == ORIGINAL
@@ -84,7 +84,7 @@ def test_translator_with_dictionary_with_dict_key(en_to_de_translator):
     assert en_to_de_translator.translate(documents=[{"key": ORIGINAL}], dict_key="key")[0]["key"] == TRANSLATION
 
 
-def test_translator_with_empty_ORIGINAL(en_to_de_translator):
+def test_translator_with_empty_original(en_to_de_translator):
     with pytest.raises(AttributeError):
         en_to_de_translator.translate()
 
