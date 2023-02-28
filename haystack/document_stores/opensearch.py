@@ -745,10 +745,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :return: None
         """
         # Check if index uses an IVF model and delete it
-        index_mapping = self.client.indices.get(index)[index]["mappings"]["properties"]
-        if self.embedding_field in index_mapping and "model_id" in index_mapping[self.embedding_field]:
-            model_id = index_mapping[self.embedding_field]["model_id"]
-            self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{model_id}")
+        if self._index_exists(index):
+            index_mapping = self.client.indices.get(index)[index]["mappings"]["properties"]
+            if self.embedding_field in index_mapping and "model_id" in index_mapping[self.embedding_field]:
+                model_id = index_mapping[self.embedding_field]["model_id"]
+                self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{model_id}")
 
         super().delete_index(index)
 
