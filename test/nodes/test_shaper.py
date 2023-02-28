@@ -22,12 +22,14 @@ def mock_function_two_outputs(monkeypatch):
     )
 
 
+@pytest.mark.unit
 def test_basic_invocation_only_inputs(mock_function):
     shaper = Shaper(func="test_function", inputs={"a": "query", "b": "documents"}, outputs=["c"])
     results, _ = shaper.run(query="test query", documents=["doesn't", "really", "matter"])
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
 
 
+@pytest.mark.unit
 def test_multiple_outputs(mock_function_two_outputs):
     shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c", "d"])
     results, _ = shaper.run(query="test")
@@ -35,6 +37,7 @@ def test_multiple_outputs(mock_function_two_outputs):
     assert results["invocation_context"]["d"] == 4
 
 
+@pytest.mark.unit
 def test_multiple_outputs_error(mock_function_two_outputs, caplog):
     shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c"])
     with caplog.at_level(logging.WARNING):
@@ -42,18 +45,21 @@ def test_multiple_outputs_error(mock_function_two_outputs, caplog):
         assert "Only 1 output(s) will be stored." in caplog.text
 
 
+@pytest.mark.unit
 def test_basic_invocation_only_params(mock_function):
     shaper = Shaper(func="test_function", params={"a": "A", "b": list(range(3))}, outputs=["c"])
     results, _ = shaper.run()
     assert results["invocation_context"]["c"] == ["A", "A", "A"]
 
 
+@pytest.mark.unit
 def test_basic_invocation_inputs_and_params(mock_function):
     shaper = Shaper(func="test_function", inputs={"a": "query"}, params={"b": list(range(2))}, outputs=["c"])
     results, _ = shaper.run(query="test query")
     assert results["invocation_context"]["c"] == ["test query", "test query"]
 
 
+@pytest.mark.unit
 def test_basic_invocation_inputs_and_params_colliding(mock_function):
     shaper = Shaper(
         func="test_function", inputs={"a": "query"}, params={"a": "default value", "b": list(range(2))}, outputs=["c"]
@@ -62,6 +68,7 @@ def test_basic_invocation_inputs_and_params_colliding(mock_function):
     assert results["invocation_context"]["c"] == ["test query", "test query"]
 
 
+@pytest.mark.unit
 def test_basic_invocation_inputs_and_params_using_params_as_defaults(mock_function):
     shaper = Shaper(
         func="test_function", inputs={"a": "query"}, params={"a": "default", "b": list(range(2))}, outputs=["c"]
@@ -70,12 +77,14 @@ def test_basic_invocation_inputs_and_params_using_params_as_defaults(mock_functi
     assert results["invocation_context"]["c"] == ["default", "default"]
 
 
+@pytest.mark.unit
 def test_missing_argument(mock_function):
     shaper = Shaper(func="test_function", inputs={"b": "documents"}, outputs=["c"])
     with pytest.raises(ValueError, match="Shaper couldn't apply the function to your inputs and parameters."):
         shaper.run(query="test query", documents=["doesn't", "really", "matter"])
 
 
+@pytest.mark.unit
 def test_excess_argument(mock_function):
     shaper = Shaper(
         func="test_function", inputs={"a": "query", "b": "documents", "something_extra": "query"}, outputs=["c"]
@@ -84,12 +93,14 @@ def test_excess_argument(mock_function):
         shaper.run(query="test query", documents=["doesn't", "really", "matter"])
 
 
+@pytest.mark.unit
 def test_value_not_in_invocation_context(mock_function):
     shaper = Shaper(func="test_function", inputs={"a": "query", "b": "something_that_does_not_exist"}, outputs=["c"])
     with pytest.raises(ValueError, match="Shaper couldn't apply the function to your inputs and parameters."):
         shaper.run(query="test query", documents=["doesn't", "really", "matter"])
 
 
+@pytest.mark.unit
 def test_value_only_in_invocation_context(mock_function):
     shaper = Shaper(func="test_function", inputs={"a": "query", "b": "invocation_context_specific"}, outputs=["c"])
     results, _s = shaper.run(
@@ -98,6 +109,7 @@ def test_value_only_in_invocation_context(mock_function):
     assert results["invocation_context"]["c"] == ["test query", "test query", "test query"]
 
 
+@pytest.mark.unit
 def test_yaml(mock_function, tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -136,12 +148,14 @@ def test_yaml(mock_function, tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_rename():
     shaper = Shaper(func="rename", inputs={"value": "query"}, outputs=["questions"])
     results, _ = shaper.run(query="test query")
     assert results["invocation_context"]["questions"] == "test query"
 
 
+@pytest.mark.unit
 def test_rename_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -175,12 +189,14 @@ def test_rename_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_value_to_list():
     shaper = Shaper(func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["questions"])
     results, _ = shaper.run(query="test query", documents=["doesn't", "really", "matter"])
     assert results["invocation_context"]["questions"] == ["test query", "test query", "test query"]
 
 
+@pytest.mark.unit
 def test_value_to_list_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -219,12 +235,14 @@ def test_value_to_list_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_join_lists():
     shaper = Shaper(func="join_lists", params={"lists": [[1, 2, 3], [4, 5]]}, outputs=["list"])
     results, _ = shaper.run()
     assert results["invocation_context"]["list"] == [1, 2, 3, 4, 5]
 
 
+@pytest.mark.unit
 def test_join_lists_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -259,6 +277,7 @@ def test_join_lists_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_join_strings():
     shaper = Shaper(
         func="join_strings", params={"strings": ["first", "second"], "delimiter": " | "}, outputs=["single_string"]
@@ -267,12 +286,14 @@ def test_join_strings():
     assert results["invocation_context"]["single_string"] == "first | second"
 
 
+@pytest.mark.unit
 def test_join_strings_default_delimiter():
     shaper = Shaper(func="join_strings", params={"strings": ["first", "second"]}, outputs=["single_string"])
     results, _ = shaper.run()
     assert results["invocation_context"]["single_string"] == "first second"
 
 
+@pytest.mark.unit
 def test_join_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -302,6 +323,7 @@ def test_join_strings_yaml(tmp_path):
     assert result["invocation_context"]["single_string"] == "first - second - third"
 
 
+@pytest.mark.unit
 def test_join_strings_default_delimiter_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -334,6 +356,7 @@ def test_join_strings_default_delimiter_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_join_documents():
     shaper = Shaper(
         func="join_documents", inputs={"documents": "documents"}, params={"delimiter": " | "}, outputs=["documents"]
@@ -375,6 +398,7 @@ def test_join_documents_with_publish_outputs_as_list():
     assert results["documents"] == [Document(content="first | second | third")]
 
 
+@pytest.mark.unit
 def test_join_documents_default_delimiter():
     shaper = Shaper(func="join_documents", inputs={"documents": "documents"}, outputs=["documents"])
     results, _ = shaper.run(
@@ -383,6 +407,7 @@ def test_join_documents_default_delimiter():
     assert results["invocation_context"]["documents"] == [Document(content="first second third")]
 
 
+@pytest.mark.unit
 def test_join_documents_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -417,6 +442,7 @@ def test_join_documents_yaml(tmp_path):
     assert result["documents"] == [Document(content="first - second - third")]
 
 
+@pytest.mark.unit
 def test_join_documents_default_delimiter_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -451,6 +477,7 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_strings_to_answers_no_meta_no_hashkeys():
     shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
     results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"]})
@@ -461,6 +488,7 @@ def test_strings_to_answers_no_meta_no_hashkeys():
     ]
 
 
+@pytest.mark.unit
 def test_strings_to_answers_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -502,12 +530,14 @@ def test_strings_to_answers_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_answers_to_strings():
     shaper = Shaper(func="answers_to_strings", inputs={"answers": "documents"}, outputs=["strings"])
     results, _ = shaper.run(documents=[Answer(answer="first"), Answer(answer="second"), Answer(answer="third")])
     assert results["invocation_context"]["strings"] == ["first", "second", "third"]
 
 
+@pytest.mark.unit
 def test_answers_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -540,6 +570,7 @@ def test_answers_to_strings_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_strings_to_documents_no_meta_no_hashkeys():
     shaper = Shaper(func="strings_to_documents", inputs={"strings": "responses"}, outputs=["documents"])
     results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"]})
@@ -550,6 +581,7 @@ def test_strings_to_documents_no_meta_no_hashkeys():
     ]
 
 
+@pytest.mark.unit
 def test_strings_to_documents_single_meta_no_hashkeys():
     shaper = Shaper(
         func="strings_to_documents", inputs={"strings": "responses"}, params={"meta": {"a": "A"}}, outputs=["documents"]
@@ -562,6 +594,7 @@ def test_strings_to_documents_single_meta_no_hashkeys():
     ]
 
 
+@pytest.mark.unit
 def test_strings_to_documents_wrong_number_of_meta():
     shaper = Shaper(
         func="strings_to_documents",
@@ -574,6 +607,7 @@ def test_strings_to_documents_wrong_number_of_meta():
         shaper.run(invocation_context={"responses": ["first", "second", "third"]})
 
 
+@pytest.mark.unit
 def test_strings_to_documents_many_meta_no_hashkeys():
     shaper = Shaper(
         func="strings_to_documents",
@@ -589,6 +623,7 @@ def test_strings_to_documents_many_meta_no_hashkeys():
     ]
 
 
+@pytest.mark.unit
 def test_strings_to_documents_single_meta_with_hashkeys():
     shaper = Shaper(
         func="strings_to_documents",
@@ -604,6 +639,7 @@ def test_strings_to_documents_single_meta_with_hashkeys():
     ]
 
 
+@pytest.mark.unit
 def test_strings_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -635,6 +671,7 @@ def test_strings_to_documents_no_meta_no_hashkeys_yaml(tmp_path):
     ]
 
 
+@pytest.mark.unit
 def test_strings_to_documents_meta_and_hashkeys_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -676,6 +713,7 @@ def test_strings_to_documents_meta_and_hashkeys_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_documents_to_strings():
     shaper = Shaper(func="documents_to_strings", inputs={"documents": "documents"}, outputs=["strings"])
     results, _ = shaper.run(
@@ -684,6 +722,7 @@ def test_documents_to_strings():
     assert results["invocation_context"]["strings"] == ["first", "second", "third"]
 
 
+@pytest.mark.unit
 def test_documents_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -716,6 +755,7 @@ def test_documents_to_strings_yaml(tmp_path):
 #
 
 
+@pytest.mark.unit
 def test_chain_shapers():
     shaper_1 = Shaper(
         func="join_documents", inputs={"documents": "documents"}, params={"delimiter": " - "}, outputs=["documents"]
@@ -736,6 +776,7 @@ def test_chain_shapers():
     assert results["invocation_context"]["questions"] == ["test query"]
 
 
+@pytest.mark.unit
 def test_chain_shapers_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -785,6 +826,7 @@ def test_chain_shapers_yaml(tmp_path):
     assert results["invocation_context"]["questions"] == ["test query"]
 
 
+@pytest.mark.unit
 def test_chain_shapers_yaml_2(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -871,6 +913,7 @@ def test_chain_shapers_yaml_2(tmp_path):
     assert results["invocation_context"]["documents_with_greetings"] == [Document(content="hello. hello. hello")]
 
 
+@pytest.mark.integration
 def test_with_prompt_node(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -920,6 +963,7 @@ def test_with_prompt_node(tmp_path):
     assert len(result["invocation_context"]["questions"]) == 2
 
 
+@pytest.mark.integration
 def test_with_multiple_prompt_nodes(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -997,6 +1041,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
     assert any([True for r in results if "Berlin" in r])
 
 
+@pytest.mark.unit
 def test_join_query_and_documents_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -1042,6 +1087,7 @@ def test_join_query_and_documents_yaml(tmp_path):
     assert result["query"] == ["first", "second", "third", "What is going on here?"]
 
 
+@pytest.mark.unit
 def test_join_query_and_documents_into_single_string_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -1098,6 +1144,7 @@ def test_join_query_and_documents_into_single_string_yaml(tmp_path):
     assert result["query"] == "first second third What is going on here?"
 
 
+@pytest.mark.unit
 def test_join_query_and_documents_convert_into_documents_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -1156,6 +1203,7 @@ def test_join_query_and_documents_convert_into_documents_yaml(tmp_path):
     assert isinstance(result["invocation_context"]["query_and_docs"][0], Document)
 
 
+@pytest.mark.unit
 def test_shaper_publishes_unknown_arg_does_not_break_pipeline():
     documents = [Document(content="test query")]
     shaper = Shaper(func="rename", inputs={"value": "query"}, outputs=["unknown_by_retriever"], publish_outputs=True)
