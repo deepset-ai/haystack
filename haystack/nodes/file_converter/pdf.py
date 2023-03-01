@@ -114,7 +114,7 @@ class PDFToTextConverter(BaseConverter):
         :param end_page: The page number where to end the conversion.
         :param multiprocessing: We use multiprocessing to speed up PyMuPDF conversion, you can disable it by setting it to False.
                                 If set to None (the default value), the value defined in the class initialization is used.
-                                If set to True (the default value), the total number of cores is used. To specify the number of cores to use, set it to an integer. 
+                                If set to True, the total number of cores is used. To specify the number of cores to use, set it to an integer. 
         """
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
@@ -208,7 +208,7 @@ class PDFToTextConverter(BaseConverter):
                          It will be automatically detected by PyMuPDF.
         :param multiprocessing: We use multiprocessing to speed up PyMuPDF conversion, you can disable it by setting it to False.
                                 If set to None (the default value), the value defined in the class initialization is used.
-                                If set to True (the default value), the total number of cores is used. To specify the number of cores to use, set it to an integer. 
+                                If set to True, the total number of cores is used. To specify the number of cores to use, set it to an integer. 
         """
         if start_page is None:
             start_page = 0
