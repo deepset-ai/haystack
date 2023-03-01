@@ -19,12 +19,20 @@ logger = logging.getLogger(__name__)
 # see https://github.com/huggingface/transformers/issues/21110
 SUPPORTED_MODELS_CLASSES = ["VisionEncoderDecoderModel"]
 
+UNSUPPORTED_MODEL_MESSAGE = (
+    f"The supported classes are: {SUPPORTED_MODELS_CLASSES}. \n"
+    f"To find the supported models: \n"
+    f"1) visit https://huggingface.co/models?pipeline_tag=image-to-text \n"
+    f'2) on the model page, go to the "Files and Versions" tab \n'
+    f"3) in the `config.json` file, the `architectures` field should contain one of the supported classes: {SUPPORTED_MODELS_CLASSES}."
+)
+
 
 class TransformersImageToText(BaseImageToText):
     """
     A transformer-based model to generate captions for images using the Hugging Face's transformers framework.
 
-    For an up-to-date list of available models, see [Hugging Face image to text models](https://huggingface.co/models?pipeline_tag=image-to-text)`__
+    Currently, this node supports `VisionEncoderDecoderModel` models.
 
     **Example**
 
@@ -65,11 +73,14 @@ class TransformersImageToText(BaseImageToText):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
-        Load an image-to-text model from transformers.
-        For an up-to-date list of available models, see [Hugging Face image-to-text models](https://huggingface.co/models?pipeline_tag=image-to-text).
+        Load a `VisionEncoderDecoderModel` model from transformers.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model.
-                                   For a full list of models, see [Hugging Face image-to-text models](https://huggingface.co/models?pipeline_tag=image-to-text).
+                                   Currently, only `VisionEncoderDecoderModel` models are supported.
+                                   To find these models:
+                                   1) visit [Hugging Face image to text models](https://huggingface.co/models?pipeline_tag=image-to-text)`
+                                   2) on the model page, go to the "Files and Versions" tab
+                                   3) in the `config.json` file, the `architectures` field should contain `VisionEncoderDecoderModel`
         :param model_version: The version of the model to use from the Hugging Face model hub. This can be the tag name, branch name, or commit hash.
         :param generation_kwargs: Dictionary containing arguments for the `generate()` method of the Hugging Face model.
                                 See [generate()](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate) in Hugging Face documentation.
@@ -95,20 +106,25 @@ class TransformersImageToText(BaseImageToText):
                 self.devices[0],
             )
 
-        self.model = pipeline(
-            task="image-to-text",
-            model=model_name_or_path,
-            revision=model_version,
-            device=self.devices[0],
-            use_auth_token=use_auth_token,
-        )
+        try:
+            self.model = pipeline(
+                task="image-to-text",
+                model=model_name_or_path,
+                revision=model_version,
+                device=self.devices[0],
+                use_auth_token=use_auth_token,
+            )
+        except KeyError as err:
+            raise ValueError(
+                f"The model '{model_name_or_path}' is not supported for ImageToText. " f"{UNSUPPORTED_MODEL_MESSAGE}"
+            ) from err
 
+        # for some unsupported models, initializing the HF pipeline doesn't raise errors but does not work
         model_class_name = self.model.model.__class__.__name__
         if model_class_name not in SUPPORTED_MODELS_CLASSES:
             raise ValueError(
-                f"The model of class '{model_class_name}' is not supported for ImageToText."
-                f"The supported classes are: {SUPPORTED_MODELS_CLASSES}."
-                f"You can find the availaible models here: https://huggingface.co/models?pipeline_tag=image-to-text."
+                f"The model '{model_name_or_path}' (class '{model_class_name}') is not supported for ImageToText. "
+                f"{UNSUPPORTED_MODEL_MESSAGE}"
             )
 
         self.generation_kwargs = generation_kwargs
