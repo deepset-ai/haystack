@@ -2,9 +2,11 @@ import os
 import uuid
 from contextlib import contextmanager
 import random
+from pathlib import Path
 
 import torch
 import numpy as np
+
 import pytest
 
 from haystack.schema import Document
@@ -17,6 +19,10 @@ from haystack.document_stores import (
     OpenSearchDocumentStore,
     FAISSDocumentStore,
 )
+
+
+SAMPLES_PATH = Path(__file__).parent.parent / "test" / "samples"
+
 
 
 # Fix all random seeds that come to mind
