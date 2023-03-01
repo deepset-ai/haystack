@@ -2,7 +2,6 @@ import re
 
 import pytest
 import numpy as np
-
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
 from haystack.modeling.model.feature_extraction import FeatureExtractor
