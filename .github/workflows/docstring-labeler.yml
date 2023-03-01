@@ -30,7 +30,7 @@ jobs:
       - name: Get docstrings
         id: base-docstrings
         run: |
-          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ env.GITHUB_WORKSPACE }}")
+          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Checkout HEAD commit
@@ -39,7 +39,7 @@ jobs:
       - name: Get docstrings
         id: head-docstrings
         run: |
-          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ env.GITHUB_WORKSPACE }}")
+          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Check if we should label
