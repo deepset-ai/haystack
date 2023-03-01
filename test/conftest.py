@@ -998,7 +998,7 @@ def haystack_azure_conf():
 def haystack_openai_config(request):
     if request.param == "openai":
         api_key = os.environ.get("OPENAI_API_KEY", None)
-        if api_key is None:
+        if not api_key:
             return {}
         else:
             return {"api_key": api_key}
