@@ -53,7 +53,7 @@ class WebSearch(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
-        return {"output": self.search_engine.search(query)}, "output_1"
+        return {"documents": self.search_engine.search(query)}, "output_1"
 
     def run_batch(
         self,

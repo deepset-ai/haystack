@@ -1,4 +1,10 @@
-from haystack.nodes import TopPSampler
+import os
+
+import pytest
+
+from haystack import Pipeline
+from haystack.nodes import TopPSampler, SentenceTransformersRanker
+from haystack.nodes.search_engine import WebSearch
 from haystack.schema import Document
 
 docs = [
@@ -50,3 +56,39 @@ def test_top_p_sampling_at_least_one_result(top_p_sampler):
     sampler = TopPSampler(strict=True)
     results = sampler.predict(query=query, documents=docs, top_p=0.9)
     assert len(results) == 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("SERPERDEV_API_KEY", None),
+    reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
+)
+def test_sampler_pipeline():
+    ws = WebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None))
+    sampler = TopPSampler()
+    pipe = Pipeline()
+    pipe.add_node(component=ws, name="ws", inputs=["Query"])
+    pipe.add_node(component=sampler, name="sampler", inputs=["ws"])
+    result = pipe.run(query="Who is the boyfriend of Olivia Wilde?")
+    assert "documents" in result
+    assert len(result["documents"]) > 0
+    assert isinstance(result["documents"][0], Document)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("SERPERDEV_API_KEY", None),
+    reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
+)
+def test_sampler_with_ranker_pipeline():
+    ws = WebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None))
+    sampler = TopPSampler()
+    ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
+    pipe = Pipeline()
+    pipe.add_node(component=ws, name="ws", inputs=["Query"])
+    pipe.add_node(component=sampler, name="sampler", inputs=["ws"])
+    pipe.add_node(component=ranker, name="ranker", inputs=["sampler"])
+    result = pipe.run(query="Who is the boyfriend of Olivia Wilde?")
+    assert "documents" in result
+    assert len(result["documents"]) == 2
+    assert isinstance(result["documents"][0], Document)
