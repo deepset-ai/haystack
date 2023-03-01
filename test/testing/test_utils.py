@@ -7,7 +7,7 @@ from haystack.testing.utils import skip_if_down
 
 
 @pytest.mark.unit
-def test_skip_is_down_dont_skip():
+def test_skip_if_down_dont_skip():
     with mock.patch("haystack.testing.utils.requests") as r:
         r.options.return_value.status_code = 200
 
