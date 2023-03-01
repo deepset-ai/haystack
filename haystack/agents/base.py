@@ -31,7 +31,7 @@ class Tool:
 
     :param name: The name of the tool. The Agent uses this name to refer to the tool in the text the Agent generates.
         The name should be short, ideally one token, and a good description of what the tool can do, for example:
-        "Calculator" or "Search".
+        "Calculator" or "Search". Use only letters (a-z, A-Z), digits (0-9) and underscores (_)."
     :param pipeline_or_node: The pipeline or node to run when the Agent invokes this tool.
     :param description: A description of what the tool is useful for. The Agent uses this description to decide
         when to use which tool. For example, you can describe a tool for calculations by "useful for when you need to
@@ -86,10 +86,10 @@ class Agent:
          Creates an Agent instance.
 
         :param prompt_node: The PromptNode that the Agent uses to decide which tool to use and what input to provide to it in each iteration.
-        :param prompt_template: The name of a PromptTemplate for the PromptNode. It's used for generating thoughts and running tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a new template in a similar format.
+        :param prompt_template: The name of a PromptTemplate for the PromptNode. It's used for generating thoughts and choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a new template in a similar format.
         :param tools: A list of tools the Agent can run. If you don't specify any tools here, you must add them with `add_tool()` before running the Agent.
         :param max_iterations: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
-            Set it to at least to 2, so that the Agent can run one a tool once and then infer it knows the final answer. The default is 5.
+            Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer. The default is 5.
         :param tool_pattern: A regular expression to extract the name of the tool and the corresponding input from the text the Agent generated.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
@@ -219,7 +219,7 @@ class Agent:
     ) -> Union[Tuple[Dict[str, Any], str], Dict[str, Any]]:
         if not self.has_tool(tool_name):
             raise AgentError(
-                f"The {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
+                f"The tool {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
                 "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
                 f"Transcript:\n{transcript}"
             )
