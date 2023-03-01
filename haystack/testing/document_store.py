@@ -479,6 +479,10 @@ class DocumentStoreBaseTestAbstract:
             ds.get_document_count(index="custom_index")
 
     @pytest.mark.integration
+    def test_delete_index_does_not_raise_if_not_exists(self, ds):
+        ds.delete_index(index="unknown_index")
+
+    @pytest.mark.integration
     def test_update_meta(self, ds, documents):
         ds.write_documents(documents)
         doc = documents[0]
