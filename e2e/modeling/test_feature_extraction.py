@@ -109,7 +109,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization_roberta_exception
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
     words = [x[0] for x in words_and_spans]
 
-    encoded = tokenizer(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
+    encoded = tokenizer.feature_extractor(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
     expected_tokenization = tokenizer.feature_extractor.tokenize(
         " ".join(edge_case.split())
     )  # remove multiple whitespaces
