@@ -548,7 +548,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
 
     This layer is used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIInvocationLayer
     with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
-    deployment and the azure_deployment_name is the name of the deployment.
+    endpoint and the azure_deployment_name is the name of the deployment.
     """
 
     def __init__(
@@ -624,10 +624,10 @@ class PromptModel(BaseComponent):
         :param devices: The devices to use where the model is loaded.
         :param model_kwargs: Additional keyword arguments passed to the underlying model.
 
-        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The base URL for the
-        Azure OpenAI API deployment) and azure_deployment_name (The name of the Azure OpenAI API deployment).
-        These parameters should be supplied in the `model_kwargs` dictionary.
-
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
+        Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
+        azure_deployment_name (The name of the Azure OpenAI API deployment). These parameters should be supplied
+        in the `model_kwargs` dictionary.
         """
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -841,8 +841,9 @@ class PromptNode(BaseComponent):
         :param stop_words: Stops text generation if any of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
 
-        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The base URL for the
-        Azure OpenAI API deployment) and azure_deployment_name (The name of the Azure OpenAI API deployment).
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
+        Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
+        azure_deployment_name (The name of the Azure OpenAI API deployment).
         These parameters should be supplied in the `model_kwargs` dictionary.
 
         """
