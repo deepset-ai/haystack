@@ -132,14 +132,16 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_tr
     assert "does not have a valid __call__ method signature" in str(exception_info.value)
 
 
-def test_openai_answer_generator(haystack_openai_conf, docs):
-    if not haystack_openai_conf:
+@pytest.mark.integration
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator(haystack_openai_config, docs):
+    if not haystack_openai_config:
         pytest.skip("No API key found, skipping test")
 
     openai_generator = OpenAIAnswerGenerator(
-        api_key=haystack_openai_conf["api_key"],
-        azure_base_url=haystack_openai_conf.get("azure_base_url", None),
-        azure_deployment_name=haystack_openai_conf.get("azure_deployment_name", None),
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
         model="text-babbage-001",
         top_k=1,
     )
@@ -148,8 +150,10 @@ def test_openai_answer_generator(haystack_openai_conf, docs):
     assert "Carla" in prediction["answers"][0].answer
 
 
-def test_openai_answer_generator_custom_template(haystack_openai_conf, docs):
-    if not haystack_openai_conf:
+@pytest.mark.integration
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
+    if not haystack_openai_config:
         pytest.skip("No API key found, skipping test")
 
     lfqa_prompt = PromptTemplate(
@@ -160,9 +164,9 @@ def test_openai_answer_generator_custom_template(haystack_openai_conf, docs):
         prompt_params=["context", "query"],
     )
     node = OpenAIAnswerGenerator(
-        api_key=haystack_openai_conf["api_key"],
-        azure_base_url=haystack_openai_conf.get("azure_base_url", None),
-        azure_deployment_name=haystack_openai_conf.get("azure_deployment_name", None),
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
         model="text-babbage-001",
         top_k=1,
         prompt_template=lfqa_prompt,
@@ -171,14 +175,16 @@ def test_openai_answer_generator_custom_template(haystack_openai_conf, docs):
     assert len(prediction["answers"]) == 1
 
 
-def test_openai_answer_generator_max_token(haystack_openai_conf, docs, caplog):
-    if not haystack_openai_conf:
+@pytest.mark.integration
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_max_token(haystack_openai_config, docs, caplog):
+    if not haystack_openai_config:
         pytest.skip("No API key found, skipping test")
 
     openai_generator = OpenAIAnswerGenerator(
-        api_key=haystack_openai_conf["api_key"],
-        azure_base_url=haystack_openai_conf.get("azure_base_url", None),
-        azure_deployment_name=haystack_openai_conf.get("azure_deployment_name", None),
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
         model="text-babbage-001",
         top_k=1,
     )

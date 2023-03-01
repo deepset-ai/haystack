@@ -995,21 +995,15 @@ def haystack_azure_conf():
 
 
 @pytest.fixture
-def haystack_openai_conf():
-    api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
-    if api_key is None or api_key == "":
-        api_key = "KEY_NOT_FOUND"
-
-    azure_api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
-    if azure_api_key is None or azure_api_key == "":
-        azure_api_key = "KEY_NOT_FOUND"
-
-    if azure_api_key != "KEY_NOT_FOUND":
+def haystack_openai_config(request):
+    if request.param == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY", None)
+        if api_key is None:
+            return {}
+        else:
+            return {"api_key": api_key}
+    elif request.param == "azure":
         return haystack_azure_conf()
-    elif api_key != "KEY_NOT_FOUND":
-        return {"api_key": api_key}
-    else:
-        return {}
 
 
 @pytest.fixture

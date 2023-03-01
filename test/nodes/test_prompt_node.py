@@ -16,21 +16,12 @@ def skip_test_for_invalid_key(prompt_model):
         pytest.skip("No API key found, skipping test")
 
 
-def get_either_openai_or_azure_openai_api_key():
-    openai_api_key = os.environ.get("OPENAI_API_KEY", None)
-    azure_openai_api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
-    if azure_openai_api_key:
-        return azure_openai_api_key
-    elif openai_api_key:
-        return openai_api_key
-    else:
-        return None
-
-
-either_openai_or_azure_openai_api_key_in_env = pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_API_KEY", None),
-    reason="Please export either AZURE_OPENAI_API_KEY or OPENAI_API_KEY containing the valid key to run this test.",
-)
+@pytest.fixture
+def get_api_key(request):
+    if request.param == "openai":
+        return os.environ.get("OPENAI_API_KEY", None)
+    elif request.param == "azure":
+        return os.environ.get("AZURE_OPENAI_API_KEY", None)
 
 
 @pytest.mark.unit
@@ -281,15 +272,12 @@ def test_open_ai_prompt_with_params(prompt_model):
 
 
 @pytest.mark.integration
-@either_openai_or_azure_openai_api_key_in_env
 def test_open_ai_prompt_with_default_params(azure_conf):
+    if not azure_conf:
+        pytest.skip("No Azure API key found, skipping test")
     model_kwargs = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
     model_kwargs.update(azure_conf)
-    pn = PromptNode(
-        model_name_or_path="text-davinci-003",
-        api_key=get_either_openai_or_azure_openai_api_key(),
-        model_kwargs=model_kwargs,
-    )
+    pn = PromptNode(model_name_or_path="text-davinci-003", api_key=azure_conf["api_key"], model_kwargs=model_kwargs)
     result = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."])
     assert len(result) == 1 and len(result[0]) > 0
 
@@ -702,17 +690,19 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
     assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
 
 
-@either_openai_or_azure_openai_api_key_in_env
-def test_complex_pipeline_with_all_features(tmp_path, azure_conf):
-    api_key = get_either_openai_or_azure_openai_api_key()
-    if not azure_conf:
-        azure_conf_yaml_snippet = ""
-    else:
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
+    if not haystack_openai_config:
+        pytest.skip("No API key found, skipping test")
+
+    if "azure_base_url" in haystack_openai_config:
         # don't change this indentation, it's important for the yaml to be valid
         azure_conf_yaml_snippet = f"""
-                  azure_base_url: {azure_conf['azure_base_url']}
-                  azure_deployment_name: {azure_conf['azure_deployment_name']}
+                  azure_base_url: {haystack_openai_config['azure_base_url']}
+                  azure_deployment_name: {haystack_openai_config['azure_deployment_name']}
         """
+    else:
+        azure_conf_yaml_snippet = ""
     with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -732,7 +722,7 @@ def test_complex_pipeline_with_all_features(tmp_path, azure_conf):
                   temperature: 0.9
                   max_tokens: 64
                   {azure_conf_yaml_snippet}
-                api_key: {api_key}
+                api_key: {haystack_openai_config["api_key"]}
             - name: question_generation_template
               type: PromptTemplate
               params:
