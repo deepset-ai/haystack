@@ -1,8 +1,8 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/translator]
-    modules: ['base', 'transformers']
-    ignore_when_discovered: ['__init__']
+    search_path: [../../../haystack/nodes/translator]
+    modules: ["base", "transformers"]
+    ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
     expression:
@@ -12,15 +12,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-   type: renderers.ReadmeRenderer
-   excerpt: Does what it says on the tin - it translates text from one language into another.
-   category: 63cffd5033018f0010bde74a
-   title: Translator API
-   slug: translator-api
-   order: 190
-   markdown:
-     descriptive_class_title: false
-     descriptive_module_title: true
-     add_method_class_prefix: true
-     add_member_class_prefix: false
-     filename: translator_api.md
+  type: renderers.ReadmeRenderer
+  excerpt: Does what it says on the tin - it translates text from one language into another.
+  category_slug: haystack-classes
+  title: Translator API
+  slug: translator-api
+  order: 190
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: translator_api.md

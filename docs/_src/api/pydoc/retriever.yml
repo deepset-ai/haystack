@@ -1,26 +1,26 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/retriever]
-    modules: ['base', 'sparse', 'dense', 'text2sparql', 'multimodal/retriever']
-    ignore_when_discovered: ['__init__']
+    search_path: [../../../haystack/nodes/retriever]
+    modules: ["base", "sparse", "dense", "text2sparql", "multimodal/retriever"]
+    ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
   - type: smart
   - type: crossref
 renderer:
-   type: renderers.ReadmeRenderer
-   excerpt: Sweeps through a document store and returns a set of candidate documents that are relevant to the query.
-   category: 63cffd5033018f0010bde74a
-   title: Retriever API
-   slug: retriever-api
-   order: 170
-   markdown:
-     descriptive_class_title: false
-     descriptive_module_title: true
-     add_method_class_prefix: true
-     add_member_class_prefix: false
-     filename: retriever_api.md
+  type: renderers.ReadmeRenderer
+  excerpt: Sweeps through a document store and returns a set of candidate documents that are relevant to the query.
+  category_slug: haystack-classes
+  title: Retriever API
+  slug: retriever-api
+  order: 170
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: retriever_api.md

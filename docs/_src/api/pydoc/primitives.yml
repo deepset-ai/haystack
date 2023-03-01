@@ -1,8 +1,8 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack]
-    modules: ['schema']
-    ignore_when_discovered: ['__init__']
+    search_path: [../../../haystack]
+    modules: ["schema"]
+    ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
     expression:
@@ -12,15 +12,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-   type: renderers.ReadmeRenderer
-   excerpt: These are the core classes that carry data through the system.
-   category: 63cffd5033018f0010bde74a
-   title: Primitives API
-   slug: primitives-api
-   order: 110
-   markdown:
-     descriptive_class_title: false
-     descriptive_module_title: true
-     add_method_class_prefix: true
-     add_member_class_prefix: false
-     filename: primitives_api.md
+  type: renderers.ReadmeRenderer
+  excerpt: These are the core classes that carry data through the system.
+  category_slug: haystack-classes
+  title: Primitives API
+  slug: primitives-api
+  order: 110
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: primitives_api.md
