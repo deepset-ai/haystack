@@ -1,0 +1,26 @@
+loaders:
+  - type: python
+    search_path: [../../../haystack/nodes/other/shaper]
+    modules: ['shaper']
+    ignore_when_discovered: ['__init__']
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+   type: renderers.ReadmeRenderer
+   excerpt: A helper node with a variety of functions.
+   category_slug: haystack-classes
+   title: Shaper API
+   slug: shaper-api
+   order: 175
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: shaper_api.md
