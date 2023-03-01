@@ -962,6 +962,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query: The query.
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         """
 
         if headers:
@@ -1018,6 +1019,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query: The query.
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         """
 
         if headers:
