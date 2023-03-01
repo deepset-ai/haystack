@@ -54,7 +54,6 @@ from haystack.nodes import (
     TableReader,
     RCIReader,
     TransformersSummarizer,
-    TransformersTranslator,
     QuestionGenerator,
     PromptTemplate,
 )
@@ -541,16 +540,6 @@ def summarizer():
 
 
 @pytest.fixture
-def en_to_de_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-
-
-@pytest.fixture
-def de_to_en_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
-
-
-@pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="deepset/bert-medium-squad2-distilled",
@@ -848,6 +837,7 @@ def get_document_store(
             index=index,
             similarity=similarity,
             use_bm25=True,
+            bm25_parameters={"k1": 1.2, "b": 0.75},  # parameters similar to those of Elasticsearch
         )
 
     elif document_store_type == "elasticsearch":
