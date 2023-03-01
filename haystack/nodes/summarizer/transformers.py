@@ -128,7 +128,7 @@ class TransformersSummarizer(BaseSummarizer):
         :return: List of Documents, where Document.meta["summary"] contains the summarization
         """
         if self.min_length > self.max_length:
-            raise AttributeError("min_length cannot be greater than max_length")
+            raise ValueError("min_length cannot be greater than max_length")
 
         if len(documents) == 0:
             raise ValueError("Summarizer needs at least one document to produce a summary.")
@@ -178,7 +178,7 @@ class TransformersSummarizer(BaseSummarizer):
         :param batch_size: Number of Documents to process at a time.
         """
         if self.min_length > self.max_length:
-            raise AttributeError("min_length cannot be greater than max_length")
+            raise ValueError("min_length cannot be greater than max_length")
 
         if len(documents) == 0 or (
             isinstance(documents[0], list) and all(len(docs) == 0 for docs in documents if isinstance(docs, list))

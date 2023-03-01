@@ -6,30 +6,10 @@ import pytest
 
 from haystack.schema import Document
 from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator
-from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
+from haystack.pipelines import GenerativeQAPipeline
 from haystack.nodes import PromptTemplate
 
 import logging
-
-
-# Keeping few (retriever,document_store) combination to reduce test time
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
-def test_generator_pipeline_with_translator(
-    document_store, retriever, rag_generator, en_to_de_translator, de_to_en_translator, docs_with_true_emb
-):
-    document_store.write_documents(docs_with_true_emb)
-    query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
-    base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
-    )
-    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
-    answers = output["answers"]
-    assert len(answers) == 2
-    assert "berlin" in answers[0].answer
 
 
 @pytest.mark.integration

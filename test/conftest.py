@@ -54,7 +54,6 @@ from haystack.nodes import (
     TableReader,
     RCIReader,
     TransformersSummarizer,
-    TransformersTranslator,
     QuestionGenerator,
     PromptTemplate,
 )
@@ -548,21 +547,6 @@ def question_generator():
 @pytest.fixture
 def lfqa_generator(request):
     return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
-
-
-@pytest.fixture
-def summarizer():
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
-
-@pytest.fixture
-def en_to_de_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-
-
-@pytest.fixture
-def de_to_en_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
 @pytest.fixture
