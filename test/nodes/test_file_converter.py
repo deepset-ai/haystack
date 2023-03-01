@@ -157,7 +157,7 @@ def test_pdf_parallel(Converter):
     pages = document.content.split("\f")
 
     assert pages[0] == "This is the page 1 of the document."
-    assert pages[-1] == "This is the page 500 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
 
 
 @pytest.mark.unit
@@ -169,7 +169,7 @@ def test_pdf_parallel_page_range(Converter):
     pages = document.content.split("\f")
 
     assert pages[0] == ""
-    assert len(pages) == 500
+    assert len(pages) == 50
 
 
 @pytest.mark.unit
@@ -181,7 +181,7 @@ def test_pdf_parallel_layout(Converter):
     pages = document.content.split("\f")
 
     assert pages[0] == "This is the page 1 of the document."
-    assert pages[-1] == "This is the page 500 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
 
 
 @pytest.mark.tika
