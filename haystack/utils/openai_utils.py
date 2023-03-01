@@ -125,7 +125,7 @@ def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
     number_of_truncated_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "length")
     if number_of_truncated_completions > 0:
         logger.warning(
-            "%s out of the %s completions have been truncated before reaching a natural stopping point."
+            "%s out of the %s completions have been truncated before reaching a natural stopping point. "
             "Increase the max_tokens parameter to allow for longer completions.",
             number_of_truncated_completions,
             payload["n"],

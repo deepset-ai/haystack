@@ -291,7 +291,7 @@ def test_open_ai_warn_if_max_tokens_is_too_short(caplog):
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
     with caplog.at_level(logging.WARNING):
         _ = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
-        assert "Consider increasing the max_tokens parameter to allow for longer completions." in caplog.text
+        assert "Increase the max_tokens parameter to allow for longer completions." in caplog.text
 
 
 @pytest.mark.integration
