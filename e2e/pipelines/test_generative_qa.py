@@ -1,6 +1,3 @@
-import numpy as np
-import pytest
-
 from haystack import Document
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 from haystack.document_stores import InMemoryDocumentStore
