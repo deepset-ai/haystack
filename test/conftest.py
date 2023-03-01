@@ -550,11 +550,6 @@ def lfqa_generator(request):
 
 
 @pytest.fixture
-def summarizer():
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
-
-@pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="deepset/bert-medium-squad2-distilled",
