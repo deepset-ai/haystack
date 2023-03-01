@@ -98,7 +98,9 @@ def test_dpr_modules():
         ],
     }
 
-    dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset, tensor_names, _ = processor.dataset_from_dicts(
+        dicts=[d], return_baskets=False
+    )  # pylint: disable=unbalanced-tuple-unpacking
     features = {key: val.unsqueeze(0).to(devices[0]) for key, val in zip(tensor_names, dataset[0])}
 
     # test features
@@ -377,7 +379,7 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
     )
 
     for i, d in enumerate(dict):
-        dataset, tensor_names, _, baskets = processor.dataset_from_dicts(dicts=[d], return_baskets=True)
+        __, ___, _, baskets = processor.dataset_from_dicts(dicts=[d], return_baskets=True)
         feat = baskets[0].samples[0].features
         assert torch.all(torch.eq(torch.tensor(feat[0]["query_input_ids"][:10]), query_input_ids[i]))
         assert len(torch.tensor(feat[0]["query_segment_ids"]).nonzero()) == 0
@@ -621,9 +623,9 @@ def test_dpr_processor_save_load(tmp_path):
     )
     save_dir = f"{tmp_path}/testsave/dpr_processor"
     processor.save(save_dir=save_dir)
-    dataset, __, _ = processor.dataset_from_dicts(
+    dataset, __, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
         dicts=[d], return_baskets=False
-    )  # pylint: disable=unbalanced-tuple-unpacking
+    )
     loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=save_dir)
     dataset2, __, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
@@ -764,12 +766,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     loaded_model.connect_heads_with_processor(loaded_processor.tasks, require_labels=False)
 
     # compare model loaded from model hub with model loaded from disk
-    dataset, tensor_names, _ = processor.dataset_from_dicts(
+    dataset, tensor_names, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
         dicts=[d], return_baskets=False
-    )  # pylint: disable=unbalanced-tuple-unpacking
-    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(
+    )
+    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
         dicts=[d], return_baskets=False
-    )  # pylint: disable=unbalanced-tuple-unpacking
+    )
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
     # generate embeddings with model loaded from model hub
@@ -891,12 +893,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     # compare a model loaded from disk that originated from the model hub and was then saved disk with
     # a model loaded from disk that also originated from a FARM style model that was saved to disk
-    dataset3, tensor_names3, _ = processor.dataset_from_dicts(
+    dataset3, tensor_names3, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
         dicts=[d], return_baskets=False
-    )  # pylint: disable=unbalanced-tuple-unpacking
-    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(
+    )
+    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
         dicts=[d], return_baskets=False
-    )  # pylint: disable=unbalanced-tuple-unpacking
+    )
     assert np.array_equal(dataset3.tensors[0], dataset2.tensors[0])
 
     # generate embeddings with model loaded from disk that originated from a FARM style model that was saved to disk earlier
