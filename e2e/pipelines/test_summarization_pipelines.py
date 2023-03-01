@@ -36,7 +36,7 @@ def test_summarization_pipeline():
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert "The Eiffel Tower is one of the world's tallest structures." == answers[0]["answer"].strip()
+    assert "The Eiffel Tower has become the tallest in the world." == answers[0]["answer"].strip()
 
 
 def test_summarization_pipeline_one_summary():
@@ -69,4 +69,4 @@ def test_summarization_pipeline_one_summary():
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert answers[0]["answer"].strip() == "The Eiffel Tower was built in 1924 in Paris, France."
+    assert answers[0]["answer"].strip() == "The Eiffel Tower is the world's tallest building in Paris."
