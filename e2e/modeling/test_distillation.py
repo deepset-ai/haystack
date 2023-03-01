@@ -1,4 +1,3 @@
-from pathlib import Path
 from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.processor import UnlabeledTextProcessor
 import torch
