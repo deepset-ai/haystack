@@ -184,6 +184,31 @@ def test_pdf_parallel_layout(Converter):
     assert pages[-1] == "This is the page 50 of the document."
 
 
+@fail_at_version(1, 17)
+def test_deprecated_encoding():
+	with pytest.warns(DeprecationWarning):
+		converter = PDFToTextConverter(encoding="utf-8")
+
+
+@fail_at_version(1, 17)
+def test_deprecated_encoding_in_convert_method():
+	converter = PDFToTextConverter()
+	with pytest.warns(DeprecationWarning):
+		converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
+
+
+@fail_at_version(1, 17)
+def test_deprecated_keep_physical_layout():
+	with pytest.warns(DeprecationWarning):
+		converter = PDFToTextConverter(keep_physical_layout=True)
+
+
+@fail_at_version(1, 17)
+def test_deprecated_keep_physical_layout_in_convert_method():
+	converter = PDFToTextConverter()
+	with pytest.warns(DeprecationWarning):
+		converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", keep_physical_layout=True)
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
