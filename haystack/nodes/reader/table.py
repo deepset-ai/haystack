@@ -302,7 +302,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
 
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
-    ) -> List:
+    ) -> List[Optional[np.float64]]:
         """Calculate the answer scores given the `logits`, `input`, and `answer_coordinates`."""
         token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
 
