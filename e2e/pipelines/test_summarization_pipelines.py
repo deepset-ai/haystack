@@ -25,7 +25,7 @@ def test_summarization_pipeline():
     """
         ),
     ]
-    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-1", use_gpu=False)
 
     ds = InMemoryDocumentStore(use_bm25=True)
     retriever = BM25Retriever(document_store=ds)
@@ -57,13 +57,12 @@ def test_summarization_pipeline_one_summary():
     """
         ),
     ]
-    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
     ds = InMemoryDocumentStore(use_bm25=True)
     retriever = BM25Retriever(document_store=ds)
     ds.write_documents(split_docs)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-1", use_gpu=False)
 
-    query = "Where is Eiffel Tower?"
+    query = "Eiffel Tower"
     pipeline = SearchSummarizationPipeline(
         retriever=retriever, summarizer=summarizer, generate_single_summary=True, return_in_answer_format=True
     )

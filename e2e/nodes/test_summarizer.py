@@ -30,7 +30,7 @@ EXPECTED_SUMMARIES = [
 
 
 def test_summarization():
-    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-1", use_gpu=False)
 
     summarized_docs = summarizer.predict(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
@@ -39,10 +39,12 @@ def test_summarization():
 
 
 def test_summarization_batch():
-    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-1", use_gpu=False)
 
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
     assert len(summarized_docs) == 2  # Number of document lists
     assert len(summarized_docs[0]) == len(DOCS)
-    for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs[0]):
-        assert expected_summary.strip() == summary.meta["summary"].strip()
+    assert len(summarized_docs[1]) == len(DOCS)
+    for expected_summary, summary_1, summary_2 in zip(EXPECTED_SUMMARIES, summarized_docs[0], summarized_docs[1]):
+        assert expected_summary.strip() == summary_1.meta["summary"].strip()
+        assert expected_summary.strip() == summary_2.meta["summary"].strip()
