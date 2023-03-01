@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Any
 from pathlib import Path
 
 import numpy as np
@@ -643,7 +643,7 @@ def test_dpr_processor_save_load(tmp_path):
         {"query": "facebook/dpr-question_encoder-single-nq-base", "passage": "facebook/dpr-ctx_encoder-single-nq-base"},
     ],
 )
-def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_passage_model: Tuple[str, str]):
+def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_passage_model: Dict[str, str]):
     """
     This test compares 1) a model that was loaded from model hub with
     2) a model from model hub that was saved to disk and then loaded from disk and
@@ -780,7 +780,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     data_loader = NamedDataLoader(
         dataset=dataset, sampler=SequentialSampler(dataset), batch_size=16, tensor_names=tensor_names
     )
-    all_embeddings = {"query": [], "passages": []}
+    all_embeddings: Dict[str, Any] = {"query": [], "passages": []}
     model.eval()
 
     for batch in tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True):
@@ -814,7 +814,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     data_loader = NamedDataLoader(
         dataset=dataset2, sampler=SequentialSampler(dataset2), batch_size=16, tensor_names=tensor_names2
     )
-    all_embeddings2 = {"query": [], "passages": []}
+    all_embeddings2: Dict[str, Any] = {"query": [], "passages": []}
     loaded_model.eval()
 
     for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
@@ -907,7 +907,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     data_loader = NamedDataLoader(
         dataset=dataset3, sampler=SequentialSampler(dataset3), batch_size=16, tensor_names=tensor_names3
     )
-    all_embeddings3 = {"query": [], "passages": []}
+    all_embeddings3: Dict[str, Any] = {"query": [], "passages": []}
     loaded_model.eval()
 
     for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
