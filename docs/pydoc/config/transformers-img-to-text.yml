@@ -1,8 +1,8 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/image_to_text]
-    modules: ['base', 'transformers']
-    ignore_when_discovered: ['__init__']
+    modules: ["base", "transformers"]
+    ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
     expression:
@@ -12,15 +12,16 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-   type: renderers.ReadmeRenderer
-   excerpt: Generates captions for images.
-   category: 63f374c0c2ecdc004a43cd0a
-   title: TransformersImageToText API
-   slug: transformers-image-to-text-api
-   order: 185
-   markdown:
-     descriptive_class_title: false
-     descriptive_module_title: true
-     add_method_class_prefix: true
-     add_member_class_prefix: false
-     filename: transformers-image-to-text.md
+  type: renderers.ReadmeRenderer
+  excerpt: Generates captions for images.
+  category_slug: haystack-classes
+  title: TransformersImageToText API
+  slug: transformers-image-to-text-api
+  order: 185
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: transformers-image-to-text.md
+

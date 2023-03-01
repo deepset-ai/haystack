@@ -1,8 +1,8 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/label_generator]
-    modules: ['pseudo_label_generator']
-    ignore_when_discovered: ['__init__']
+    modules: ["pseudo_label_generator"]
+    ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
     expression:
@@ -12,15 +12,16 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-   type: renderers.ReadmeRenderer
-   excerpt: Creates training data for dense retrievers without human annotation.
-   category: 63f374c0c2ecdc004a43cd0a
-   title: Pseudo Label Generator API
-   slug: pseudo-label-generator-api
-   order: 120
-   markdown:
-     descriptive_class_title: false
-     descriptive_module_title: true
-     add_method_class_prefix: true
-     add_member_class_prefix: false
-     filename: pseudo_label_generator_api.md
+  type: renderers.ReadmeRenderer
+  excerpt: Creates training data for dense retrievers without human annotation.
+  category_slug: haystack-classes
+  title: Pseudo Label Generator API
+  slug: pseudo-label-generator-api
+  order: 120
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: pseudo_label_generator_api.md
+
