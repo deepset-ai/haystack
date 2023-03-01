@@ -17,7 +17,7 @@ def test_skip_if_down_dont_skip():
 
 
 @pytest.mark.unit
-def test_skip_is_down_unauthorized():
+def test_skip_if_down_unauthorized():
     with mock.patch("haystack.testing.utils.requests") as r:
         r.options.return_value.raise_for_status.side_effect = HTTPError("Something went wrong")
 
