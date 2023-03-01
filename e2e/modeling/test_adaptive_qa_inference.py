@@ -34,6 +34,7 @@ def test_qa_format_and_results(multiprocessing_chunksize, num_processes):
     results = adaptive_model_qa.inference_from_dicts(
         dicts=qa_inputs_dicts, multiprocessing_chunksize=multiprocessing_chunksize
     )
+
     # sample results
     # [
     #     {
