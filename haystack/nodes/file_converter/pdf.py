@@ -138,7 +138,7 @@ class PDFToTextConverter(BaseConverter):
 
         pages = self._read_pdf(
             file_path,
-            layout=sort_by_position,
+            sort_by_position=sort_by_position,
             start_page=start_page,
             end_page=end_page,
             multiprocessing=multiprocessing,
@@ -177,21 +177,21 @@ class PDFToTextConverter(BaseConverter):
         return [document]
 
     def _get_text_parallel(self, page_mp):
-        idx, filename, parts, layout = page_mp
+        idx, filename, parts, sort_by_position = page_mp
 
         doc = fitz.open(filename)
 
         text = ""
         for i in parts[idx]:
             page = doc[i]
-            text += page.get_text("text", sort=layout) + "\f"
+            text += page.get_text("text", sort=sort_by_position) + "\f"
 
         return text
 
     def _read_pdf(
         self,
         file_path: Path,
-        layout: bool,
+        sort_by_position: bool = False,
         start_page: Optional[int] = None,
         end_page: Optional[int] = None,
         multiprocessing: Optional[Union[bool, int]] = None,
@@ -200,8 +200,9 @@ class PDFToTextConverter(BaseConverter):
         Extract pages from the pdf file at file_path.
 
         :param file_path: path of the pdf file
-        :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
-                       the content stream order.
+        :param sort_by_position: Specifies whether to sort the extracted text by positional coordinates or logical reading order.
+                        If set to True, the text is sorted first by vertical position, and then by horizontal position.
+                        If set to False (default), the logical reading order in the PDF is used.
         :param start_page: The page number where to start the conversion, starting from 1.
         :param end_page: The page number where to end the conversion.
         :param encoding: This parameter is being deprecated.
@@ -226,13 +227,13 @@ class PDFToTextConverter(BaseConverter):
         if not multiprocessing:
             for i in range(start_page, end_page):
                 page = doc[i]
-                document += page.get_text("text", sort=layout) + "\f"
+                document += page.get_text("text", sort=sort_by_position) + "\f"
         else:
             cpu = cpu_count() if isinstance(multiprocessing, bool) else multiprocessing
             page_list = [i for i in range(start_page, end_page)]
             cpu = cpu if len(page_list) > cpu else len(page_list)
             parts = divide(cpu, page_list)
-            pages_mp = [(i, file_path, parts, layout) for i in range(cpu)]
+            pages_mp = [(i, file_path, parts, sort_by_position) for i in range(cpu)]
 
             with ProcessPoolExecutor(max_workers=cpu) as pool:
                 results = pool.map(self._get_text_parallel, pages_mp)

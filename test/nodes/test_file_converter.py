@@ -90,7 +90,7 @@ def test_pdf_encoding(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_layout(Converter):
+def test_pdf_sort_by_position(Converter):
     converter = Converter(sort_by_position=True)
 
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
@@ -174,7 +174,7 @@ def test_pdf_parallel_page_range(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_parallel_layout(Converter):
+def test_pdf_parallel_sort_by_position(Converter):
     converter = Converter(multiprocessing=True, sort_by_position=True)
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
 
