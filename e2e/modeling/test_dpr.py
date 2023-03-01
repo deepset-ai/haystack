@@ -98,9 +98,9 @@ def test_dpr_modules():
         ],
     }
 
-    dataset, tensor_names, _ = processor.dataset_from_dicts(
+    dataset, tensor_names, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
         dicts=[d], return_baskets=False
-    )  # pylint: disable=unbalanced-tuple-unpacking
+    )
     features = {key: val.unsqueeze(0).to(devices[0]) for key, val in zip(tensor_names, dataset[0])}
 
     # test features
