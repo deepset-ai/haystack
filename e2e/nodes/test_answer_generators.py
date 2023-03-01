@@ -54,7 +54,11 @@ def test_openai_answer_generator_custom_template(docs):
         name="lfqa",
         prompt_text="""
         Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and the given question.
-        \n===\Paragraphs: $context\n===\n$query""",
+        ===
+        Paragraphs: $context
+        ===
+        $query
+        """,
         prompt_params=["context", "query"],
     )
     openai_generator = OpenAIAnswerGenerator(

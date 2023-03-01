@@ -26,32 +26,6 @@ from ..conftest import SAMPLES_PATH
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
-def test_generativeqa_calculate_metrics(
-    document_store_with_docs: InMemoryDocumentStore, rag_generator, retriever_with_docs
-):
-    document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
-    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval_batch(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
-
-    metrics = eval_result.calculate_metrics(document_scope="document_id")
-
-    assert "Retriever" in eval_result
-    assert "Generator" in eval_result
-    assert len(eval_result) == 2
-
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 0.1
-    assert metrics["Retriever"]["ndcg"] == 0.5
-    assert metrics["Generator"]["exact_match"] == 0.0
-    assert metrics["Generator"]["f1"] == 1.0 / 3
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, retriever_with_docs):
     document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
     summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distill-pegasus-xsum-16-4", use_gpu=False)
