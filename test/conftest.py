@@ -776,23 +776,6 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "pinecone", "weaviate"])
-def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
-    if request.param == "pinecone":
-        mock_pinecone(monkeypatch)
-
-    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(
-        document_store_type=request.param,
-        embedding_dim=embedding_dim.args[0],
-        similarity="dot_product",
-        tmp_path=tmp_path,
-    )
-    document_store.write_documents(docs)
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
 @pytest.fixture
 def sql_url(tmp_path):
     return get_sql_url(tmp_path)
