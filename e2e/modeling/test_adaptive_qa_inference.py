@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.parametrize("multiprocessing_chunksize", [None, 2])
-@pytest.mark.parametrize("num_processes", [2, 0, None], scope="module")
+@pytest.mark.parametrize("num_processes", [2, 0, None])
 def test_qa_format_and_results(adaptive_model_qa, multiprocessing_chunksize):
     qa_inputs_dicts = [
         {
@@ -69,7 +69,3 @@ def test_qa_format_and_results(adaptive_model_qa, multiprocessing_chunksize):
             "offset_context_end",
             "document_id",
         } == answer.keys()
-
-
-if __name__ == "__main__":
-    test_qa_format_and_results()
