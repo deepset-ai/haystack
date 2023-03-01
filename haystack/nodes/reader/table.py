@@ -68,7 +68,7 @@ class TableReader(BaseReader):
         top_k: int = 10,
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
-        max_seq_len: int = 512,
+        max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
@@ -236,7 +236,7 @@ class _TapasEncoder:
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
-        max_seq_len: int = 512,
+        max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         self.model = TapasForQuestionAnswering.from_pretrained(
@@ -298,6 +298,8 @@ class _TapasEncoder:
 
 
 class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
+    """Modified from transformers TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects."""
+
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
     ) -> List:
@@ -318,9 +320,6 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         column_ids = inputs["token_type_ids"][:, :, token_types.index("column_ids")]
 
         batch_size = logits.shape[0]
-        if batch_size != len(answer_coordinates):
-            raise ValueError("Incompatible shape between logits and answer_coordinates when calculating answer scores.")
-
         answer_scores = []
         for i in range(batch_size):
             # It is possible that a list within answer_coordinates is empty. This happens if no answer cells are found
@@ -383,7 +382,6 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         return f"{agg_operator} > {', '.join(answer_cells)}"
 
     def postprocess(self, model_outputs):
-        """Modified from TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects"""
         inputs = model_outputs["model_inputs"]
         table = model_outputs["table"]
         string_table = table.astype(str)
