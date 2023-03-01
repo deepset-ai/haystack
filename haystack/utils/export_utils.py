@@ -77,7 +77,8 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
                     ans.context = ans.context[:max_text_len] + "..."
 
         if len(queries) > 0:
-            print(f"\nQuery: {queries[query_idx]}\nAnswers:")
+            pp.pprint(f"Query: {queries[query_idx]}")
+        pp.pprint("Answers:")
         pp.pprint(filtered_answers)
 
 
