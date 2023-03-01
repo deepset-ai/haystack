@@ -63,17 +63,6 @@ def test_save_load(tmp_path, model_name: str):
     assert original_encoding == new_encoding
 
 
-def test_tokenize_custom_vocab_bert():
-    tokenizer = FeatureExtractor(pretrained_model_name_or_path=BERT, do_lower_case=False)
-    tokenizer.add_tokens(new_tokens=["neverseentokens"])
-    text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
-
-    tokenized = tokenizer.tokenize(text)
-    assert (
-        tokenized == f"Some Text with neverseentokens plus ! 215 ? # . and a combined - token _ with / ch ##ars".split()
-    )
-
-
 @pytest.mark.parametrize(
     "edge_case",
     [
@@ -241,7 +230,9 @@ def test_tokenize_custom_vocab_bert():
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
     tokenized = tokenizer.tokenize(text)
-
+    assert (
+        tokenized == "Some Text with neverseentokens plus ! 215 ? # . and a combined - token _ with / ch ##ars".split()
+    )
     encoded = tokenizer(text, add_special_tokens=False).encodings[0]
     offsets = [x[0] for x in encoded.offsets]
     start_of_word_single = [True] + list(np.ediff1d(encoded.words) > 0)
