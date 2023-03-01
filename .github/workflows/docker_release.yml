@@ -1,12 +1,13 @@
 name: Docker image release
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
-    tags:
-      - "v[0-9].[0-9]+.[0-9]+*"
+  workflow_run:
+    workflows: [Project release on PyPi]
+    types:
+      - completed
 
 env:
   DOCKER_REPO_NAME: deepset/haystack
@@ -14,6 +15,8 @@ env:
 jobs:
   build-and-push:
     name: Build ${{ matrix.target }} image for ${{ matrix.platform }}
+    # We need this to run only when we're merging in main or the PyPi release was successful
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

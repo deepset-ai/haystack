@@ -48,13 +48,3 @@ jobs:
         run: |
           git checkout main
           python ./.github/utils/release_docs.py --version v${{ steps.versions.outputs.current_release_minor }} --key ${{ secrets.README_API_KEY }}
-
-      - name: Edit category versions in API pydoc configs
-        run: |
-          git checkout v${{ steps.versions.outputs.current_release_minor }}.x
-          python ./.github/utils/change_api_category_id.py --version v${{ steps.versions.outputs.current_release_minor }} --key ${{ secrets.README_API_KEY }}
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
-          git push
