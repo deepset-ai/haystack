@@ -24,13 +24,13 @@ Tower is the second tallest free-standing structure in France after the Millau V
 ]
 
 EXPECTED_SUMMARIES = [
-    "power in Northern Ireland have been shut down.",
-    "The Eiffel Tower in Paris has become the tallest in the world.",
+    "Hundreds of thousands of customers in California have been left without power after a power cut.",
+    "The Eiffel Tower in Paris is the world's tallest man-made structure.",
 ]
 
 
 def test_summarization():
-    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-1", use_gpu=False)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
     summarized_docs = summarizer.predict(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
     for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs):
@@ -38,7 +38,7 @@ def test_summarization():
 
 
 def test_summarization_batch():
-    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-1", use_gpu=False)
+    summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
     assert len(summarized_docs) == 2  # Number of document lists
     assert len(summarized_docs[0]) == len(DOCS)
