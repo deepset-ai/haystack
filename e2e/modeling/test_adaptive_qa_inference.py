@@ -1,9 +1,11 @@
 import pytest
 
+from haystack.modeling.infer import Inferencer
+
 
 @pytest.mark.parametrize("multiprocessing_chunksize", [None, 2])
 @pytest.mark.parametrize("num_processes", [2, 0, None])
-def test_qa_format_and_results(adaptive_model_qa, multiprocessing_chunksize):
+def test_qa_format_and_results(multiprocessing_chunksize, num_processes):
     qa_inputs_dicts = [
         {
             "questions": ["In what country is Normandy"],
@@ -22,6 +24,13 @@ def test_qa_format_and_results(adaptive_model_qa, multiprocessing_chunksize):
     ]
     ground_truths = ["France", "GameTrailers"]
 
+    adaptive_model_qa = Inferencer.load(
+        "deepset/bert-medium-squad2-distilled",
+        task_type="question_answering",
+        batch_size=16,
+        num_processes=num_processes,
+        gpu=False,
+    )
     results = adaptive_model_qa.inference_from_dicts(
         dicts=qa_inputs_dicts, multiprocessing_chunksize=multiprocessing_chunksize
     )

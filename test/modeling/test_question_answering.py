@@ -15,10 +15,21 @@ version and scores of 95% and 96 for the GameCube version. GameTrailers in their
 it one of the greatest games ever created."""
 
 
+@pytest.fixture
+def bert_base_squad2(request):
+    model = QAInferencer.load(
+        "deepset/minilm-uncased-squad2",
+        task_type="question_answering",
+        batch_size=4,
+        num_processes=0,
+        multithreading_rust=False,
+        use_fast=True,  # TODO parametrize this to test slow as well
+    )
+    return model
+
+
 @pytest.fixture()
-def span_inference_result(bert_base_squad2, caplog=None):
-    if caplog:
-        caplog.set_level(logging.CRITICAL)
+def span_inference_result(bert_base_squad2):
     obj_input = [
         QAInput(
             doc_text=DOC_TEXT, questions=Question("Who counted the game among the best ever made?", uid="best_id_ever")
@@ -35,11 +46,11 @@ def no_answer_inference_result(bert_base_squad2, caplog=None):
     obj_input = [
         QAInput(
             doc_text="""\
-                The majority of the forest is contained within Brazil, with 60% of the rainforest, followed by 
-                Peru with 13%, Colombia with 10%, and with minor amounts in Venezuela, Ecuador, Bolivia, Guyana, 
-                Suriname and French Guiana. States or departments in four nations contain "Amazonas" in their names. 
-                The Amazon represents over half of the planet\'s remaining rainforests, and comprises the largest 
-                and most biodiverse tract of tropical rainforest in the world, with an estimated 390 billion individual 
+                The majority of the forest is contained within Brazil, with 60% of the rainforest, followed by
+                Peru with 13%, Colombia with 10%, and with minor amounts in Venezuela, Ecuador, Bolivia, Guyana,
+                Suriname and French Guiana. States or departments in four nations contain "Amazonas" in their names.
+                The Amazon represents over half of the planet\'s remaining rainforests, and comprises the largest
+                and most biodiverse tract of tropical rainforest in the world, with an estimated 390 billion individual
                 trees divided into 16,000 species.""",
             questions=Question(
                 "The Amazon represents less than half of the planets remaining what?", uid="best_id_ever"
@@ -199,8 +210,8 @@ def test_duplicate_answer_filtering(bert_base_squad2):
     qa_input = [
         {
             "questions": ["“In what country lies the Normandy?”"],
-            "text": """The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the people who in the 10th and 11th centuries gave their name to Normandy, a region in France. They were descended from Norse (\"Norman\" comes from \"Norseman\") 
-                raiders and pirates from Denmark, Iceland and Norway who, under their leader Rollo, agreed to swear fealty to King Charles III of West Francia. Through generations of assimilation and mixing with the native Frankish and Roman-Gaulish populations, their descendants would gradually merge with the Carolingian-based cultures of West Francia. 
+            "text": """The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the people who in the 10th and 11th centuries gave their name to Normandy, a region in France. They were descended from Norse (\"Norman\" comes from \"Norseman\")
+                raiders and pirates from Denmark, Iceland and Norway who, under their leader Rollo, agreed to swear fealty to King Charles III of West Francia. Through generations of assimilation and mixing with the native Frankish and Roman-Gaulish populations, their descendants would gradually merge with the Carolingian-based cultures of West Francia.
                 The distinct cultural and ethnic identity of the Normans emerged initially in the first half of the 10th century, and it continued to evolve over the succeeding centuries. Weird things happen in Normandy, France.""",
         }
     ]
@@ -224,8 +235,8 @@ def test_no_duplicate_answer_filtering(bert_base_squad2):
     qa_input = [
         {
             "questions": ["“In what country lies the Normandy?”"],
-            "text": """The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the people who in the 10th and 11th centuries gave their name to Normandy, a region in France. They were descended from Norse (\"Norman\" comes from \"Norseman\") 
-                    raiders and pirates from Denmark, Iceland and Norway who, under their leader Rollo, agreed to swear fealty to King Charles III of West Francia. Through generations of assimilation and mixing with the native Frankish and Roman-Gaulish populations, their descendants would gradually merge with the Carolingian-based cultures of West Francia. 
+            "text": """The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the people who in the 10th and 11th centuries gave their name to Normandy, a region in France. They were descended from Norse (\"Norman\" comes from \"Norseman\")
+                    raiders and pirates from Denmark, Iceland and Norway who, under their leader Rollo, agreed to swear fealty to King Charles III of West Francia. Through generations of assimilation and mixing with the native Frankish and Roman-Gaulish populations, their descendants would gradually merge with the Carolingian-based cultures of West Francia.
                     The distinct cultural and ethnic identity of the Normans emerged initially in the first half of the 10th century, and it continued to evolve over the succeeding centuries. Weird things happen in Normandy, France.""",
         }
     ]
@@ -250,8 +261,8 @@ def test_range_duplicate_answer_filtering(bert_base_squad2):
     qa_input = [
         {
             "questions": ["“In what country lies the Normandy?”"],
-            "text": """The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the people who in the 10th and 11th centuries gave their name to Normandy, a region in France. They were descended from Norse (\"Norman\" comes from \"Norseman\") 
-                    raiders and pirates from Denmark, Iceland and Norway who, under their leader Rollo, agreed to swear fealty to King Charles III of West Francia. Through generations of assimilation and mixing with the native Frankish and Roman-Gaulish populations, their descendants would gradually merge with the Carolingian-based cultures of West Francia. 
+            "text": """The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the people who in the 10th and 11th centuries gave their name to Normandy, a region in France. They were descended from Norse (\"Norman\" comes from \"Norseman\")
+                    raiders and pirates from Denmark, Iceland and Norway who, under their leader Rollo, agreed to swear fealty to King Charles III of West Francia. Through generations of assimilation and mixing with the native Frankish and Roman-Gaulish populations, their descendants would gradually merge with the Carolingian-based cultures of West Francia.
                     The distinct cultural and ethnic identity of the Normans emerged initially in the first half of the 10th century, and it continued to evolve over the succeeding centuries. Weird things happen in Normandy, France.""",
         }
     ]
@@ -296,12 +307,3 @@ def test_qa_confidence():
     result = inferencer.inference_from_dicts(dicts=QA_input, return_json=False)[0]
     assert np.isclose(result.prediction[0].confidence, 0.990427553653717)
     assert result.prediction[0].answer == "GameTrailers"
-
-
-if __name__ == "__main__":
-    test_inference_different_inputs()
-    test_inference_objs()
-    test_duplicate_answer_filtering()
-    test_no_duplicate_answer_filtering()
-    test_range_duplicate_answer_filtering()
-    test_qa_confidence()
