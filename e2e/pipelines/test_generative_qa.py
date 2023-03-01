@@ -1,27 +1,6 @@
-import numpy as np
-import pytest
-
-from haystack import Document
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.nodes import BM25Retriever, RAGenerator, TransformersTranslator
-
-
-from ..conftest import SAMPLES_PATH
-
-
-@pytest.fixture
-def docs_with_true_emb():
-    return [
-        Document(
-            content="The capital of Germany is the city state of Berlin.",
-            embedding=np.loadtxt(SAMPLES_PATH / "embeddings" / "embedding_1.txt"),
-        ),
-        Document(
-            content="Berlin is the capital and largest city of Germany by both area and population.",
-            embedding=np.loadtxt(SAMPLES_PATH / "embeddings" / "embedding_2.txt"),
-        ),
-    ]
 
 
 def test_generative_pipeline_with_translator():
