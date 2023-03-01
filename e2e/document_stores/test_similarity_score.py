@@ -3,7 +3,7 @@ import pytest
 from haystack.nodes import EmbeddingRetriever
 from haystack.pipelines import DocumentSearchPipeline
 
-from .conftest import document_store
+from ..conftest import document_store
 
 
 @pytest.mark.parametrize("name", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"])
