@@ -302,7 +302,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
 
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
-    ) -> List[Optional[np.float64]]:
+    ) -> List[Optional[np.ndarray]]:
         """Calculate the answer scores given the `logits`, `input`, and `answer_coordinates`."""
         token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
 
@@ -320,7 +320,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         column_ids = inputs["token_type_ids"][:, :, token_types.index("column_ids")]
 
         batch_size = logits.shape[0]
-        answer_scores = []
+        answer_scores: List[Optional[np.ndarray]] = []
         for i in range(batch_size):
             # It is possible that a list within answer_coordinates is empty. This happens if no answer cells are found
             # for a single table so we set the score to None.
