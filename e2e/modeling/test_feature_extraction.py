@@ -15,7 +15,6 @@ XLNET = "xlnet-base-cased"
 TOKENIZERS_TO_TEST = [BERT, ROBERTA, XLNET]
 TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER = [(BERT, "##"), (ROBERTA, "Ġ"), (XLNET, "▁")]
 
-
 REGULAR_SENTENCE = "This is a sentence"
 GERMAN_SENTENCE = "Der entscheidende Pass"
 OTHER_ALPHABETS = "力加勝北区ᴵᴺᵀᵃছজটডণত"
