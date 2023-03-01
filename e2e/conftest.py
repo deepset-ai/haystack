@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from haystack.schema import Document
+from haystack.modeling.utils import set_all_seeds
 from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
@@ -17,6 +18,7 @@ from haystack.document_stores import (
 )
 
 
+set_all_seeds(0)
 SAMPLES_PATH = Path(__file__).parent.parent / "test" / "samples"
 
 
