@@ -3,7 +3,7 @@ import logging
 import os
 import platform
 import sys
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Optional, Tuple, Union
 
 import requests
 
