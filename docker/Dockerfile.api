@@ -3,7 +3,7 @@ ARG base_image
 
 FROM ${base_image}:${base_image_tag}
 
-ENV SERVICE_NAME="gunicorn-service"
+ENV SERVICE_NAME="uvicorn-service"
 
 RUN addgroup --gid 1001 $SERVICE_NAME && \
     adduser --gid 1001 --uid 1001 --shell /bin/false --disabled-password $SERVICE_NAME && \
@@ -22,4 +22,4 @@ ENV TIKA_LOG_PATH="/var/log/$SERVICE_NAME/"
 EXPOSE 8000
 
 USER $SERVICE_NAME
-CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "1000"]
+CMD ["uvicorn", "rest_api.application:app",  "--host", "0.0.0.0"]
