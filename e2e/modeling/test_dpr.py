@@ -482,9 +482,7 @@ def test_dpr_problematic():
         shuffle_negatives=False,
     )
 
-    dataset, tensor_names, problematic_ids, baskets = processor.dataset_from_dicts(
-        dicts=erroneous_dicts, return_baskets=True
-    )
+    _, __, problematic_ids, ___ = processor.dataset_from_dicts(dicts=erroneous_dicts, return_baskets=True)
     assert problematic_ids == {0, 1}
 
 
@@ -513,9 +511,7 @@ def test_dpr_query_only():
         shuffle_negatives=False,
     )
 
-    dataset, tensor_names, problematic_ids, baskets = processor.dataset_from_dicts(
-        dicts=erroneous_dicts, return_baskets=True
-    )
+    _, tensor_names, problematic_ids, __ = processor.dataset_from_dicts(dicts=erroneous_dicts, return_baskets=True)
     assert len(problematic_ids) == 0
     assert tensor_names == ["query_input_ids", "query_segment_ids", "query_attention_mask"]
 
@@ -575,9 +571,7 @@ def test_dpr_context_only():
         shuffle_negatives=False,
     )
 
-    dataset, tensor_names, problematic_ids, baskets = processor.dataset_from_dicts(
-        dicts=erroneous_dicts, return_baskets=True
-    )
+    _, tensor_names, problematic_ids, __ = processor.dataset_from_dicts(dicts=erroneous_dicts, return_baskets=True)
     assert len(problematic_ids) == 0
     assert tensor_names == ["passage_input_ids", "passage_segment_ids", "passage_attention_mask", "label_ids"]
 
@@ -627,9 +621,11 @@ def test_dpr_processor_save_load(tmp_path):
     )
     save_dir = f"{tmp_path}/testsave/dpr_processor"
     processor.save(save_dir=save_dir)
-    dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset, __, _ = processor.dataset_from_dicts(
+        dicts=[d], return_baskets=False
+    )  # pylint: disable=unbalanced-tuple-unpacking
     loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=save_dir)
-    dataset2, tensor_names, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset2, __, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
 
@@ -768,12 +764,16 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     loaded_model.connect_heads_with_processor(loaded_processor.tasks, require_labels=False)
 
     # compare model loaded from model hub with model loaded from disk
-    dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset, tensor_names, _ = processor.dataset_from_dicts(
+        dicts=[d], return_baskets=False
+    )  # pylint: disable=unbalanced-tuple-unpacking
+    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(
+        dicts=[d], return_baskets=False
+    )  # pylint: disable=unbalanced-tuple-unpacking
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
     # generate embeddings with model loaded from model hub
-    dataset, tensor_names, _, baskets = processor.dataset_from_dicts(
+    dataset, tensor_names, _, __ = processor.dataset_from_dicts(
         dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
     )
 
@@ -783,7 +783,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     all_embeddings = {"query": [], "passages": []}
     model.eval()
 
-    for batch in tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True):
+    for batch in tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -807,7 +807,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         all_embeddings["query"] = np.concatenate(all_embeddings["query"])
 
     # generate embeddings with model loaded from disk
-    dataset2, tensor_names2, _, baskets2 = loaded_processor.dataset_from_dicts(
+    dataset2, tensor_names2, _, __ = loaded_processor.dataset_from_dicts(
         dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
     )
 
@@ -817,7 +817,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     all_embeddings2 = {"query": [], "passages": []}
     loaded_model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True)):
+    for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -891,12 +891,16 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     # compare a model loaded from disk that originated from the model hub and was then saved disk with
     # a model loaded from disk that also originated from a FARM style model that was saved to disk
-    dataset3, tensor_names3, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset3, tensor_names3, _ = processor.dataset_from_dicts(
+        dicts=[d], return_baskets=False
+    )  # pylint: disable=unbalanced-tuple-unpacking
+    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(
+        dicts=[d], return_baskets=False
+    )  # pylint: disable=unbalanced-tuple-unpacking
     assert np.array_equal(dataset3.tensors[0], dataset2.tensors[0])
 
     # generate embeddings with model loaded from disk that originated from a FARM style model that was saved to disk earlier
-    dataset3, tensor_names3, _, baskets3 = loaded_processor.dataset_from_dicts(
+    dataset3, tensor_names3, _, __ = loaded_processor.dataset_from_dicts(
         dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
     )
 
@@ -906,7 +910,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     all_embeddings3 = {"query": [], "passages": []}
     loaded_model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True)):
+    for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
