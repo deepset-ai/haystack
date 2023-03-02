@@ -23,7 +23,7 @@ from transformers import (
 from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.errors import HaystackError
-from haystack.schema import Document, Answer, Span
+from haystack.schema import Document, Answer, TableCell
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
 
@@ -289,7 +289,7 @@ class _TapasEncoder:
         else:
             answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
 
-        answer_offsets = _calculate_answer_offsets(current_answer_coordinates, string_table)
+        answer_offsets = _calculate_answer_offsets(current_answer_coordinates)
 
         answer = Answer(
             answer=answer_str,
@@ -501,7 +501,7 @@ class _TapasScoredEncoder:
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = string_table.iat[current_answer_span[:2]]
-            answer_offsets = _calculate_answer_offsets([current_answer_span[:2]], string_table)
+            answer_offsets = _calculate_answer_offsets([current_answer_span[:2]])
             # As the general table score is more important for the final score, it is double weighted.
             current_score = ((2 * table_relevancy_prob) + span_logits_softmax[0, answer_span_idx].item()) / 3
 
@@ -544,8 +544,9 @@ class _TapasScoredEncoder:
                     type="extractive",
                     score=no_answer_score,
                     context=None,
-                    offsets_in_context=[Span(start=0, end=0)],
-                    offsets_in_document=[Span(start=0, end=0)],
+                    # TODO Confirm that 0, 0 is a valid way to deduce no answer or if -1 will need to be used
+                    offsets_in_context=[TableCell(row=0, col=0)],
+                    offsets_in_document=[TableCell(row=0, col=0)],
                     document_ids=None,
                     meta=None,
                 )
@@ -753,7 +754,7 @@ class RCIReader(BaseReader):
                     cell_scores_table[-1].append(current_cell_score)
 
                     answer_str = string_table.iloc[row_idx, col_idx]
-                    answer_offsets = self._calculate_answer_offsets(row_idx, col_idx, string_table)
+                    answer_offsets = TableCell(row=row_idx, col=col_idx)
                     current_answers.append(
                         Answer(
                             answer=answer_str,
@@ -796,13 +797,6 @@ class RCIReader(BaseReader):
 
         return row_reps, column_reps
 
-    @staticmethod
-    def _calculate_answer_offsets(row_idx, column_index, table) -> Span:
-        _, n_columns = table.shape
-        answer_cell_offset = (row_idx * n_columns) + column_index
-
-        return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
-
     def predict_batch(
         self,
         queries: List[str],
@@ -834,18 +828,15 @@ class RCIReader(BaseReader):
         return results
 
 
-def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]]) -> List[TableCell]:
     """
     Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
 
     :param answer_coordinates: List of answer coordinates.
-    :param table: Table containing the answers in answer coordinates.
     """
     answer_offsets = []
-    _, n_columns = table.shape
     for coord in answer_coordinates:
-        answer_cell_offset = (coord[0] * n_columns) + coord[1]
-        answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
+        answer_offsets.append(TableCell(row=coord[0], col=coord[1]))
     return answer_offsets
 
 

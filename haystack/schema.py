@@ -329,10 +329,9 @@ class Span:
     """
     Defining a sequence of characters (Text span) or cells (Table span) via start and end index.
     For extractive QA: Character where answer starts/ends
-    For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
 
     :param start: Position where the span starts
-    :param end:  Position where the spand ends
+    :param end:  Position where the span ends
     """
 
     def __contains__(self, value):
@@ -378,13 +377,25 @@ class Span:
 
 
 @dataclass
+class TableCell:
+    row: int
+    col: int
+    """
+    Defining a table cell via the row and column index.
+
+    :param row: Row index of the cell
+    :param col: Column index of the cell
+    """
+
+
+@dataclass
 class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
     context: Optional[Union[str, pd.DataFrame]] = None
-    offsets_in_document: Optional[List[Span]] = None
-    offsets_in_context: Optional[List[Span]] = None
+    offsets_in_document: Optional[List[Span], List[TableCell]] = None
+    offsets_in_context: Optional[List[Span], List[TableCell]] = None
     document_ids: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
@@ -420,9 +431,28 @@ class Answer:
         # In case offsets are passed as dicts rather than Span objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
-            self.offsets_in_document = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_document]
+            offsets_in_document = []
+            for e in self.offsets_in_document:
+                if isinstance(e, dict):
+                    if "row" in e:  # is a TableCell
+                        offsets_in_document.append(TableCell(**e))
+                    else:
+                        offsets_in_document.append(Span(**e))
+                else:
+                    offsets_in_document.append(e)
+            self.offsets_in_document = offsets_in_document
+
         if self.offsets_in_context is not None:
-            self.offsets_in_context = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_context]
+            offsets_in_context = []
+            for e in self.offsets_in_context:
+                if isinstance(e, dict):
+                    if "row" in e:  # is a TableCell
+                        offsets_in_context.append(TableCell(**e))
+                    else:
+                        offsets_in_context.append(Span(**e))
+                else:
+                    offsets_in_context.append(e)
+            self.offsets_in_context = offsets_in_context
 
         if self.meta is None:
             self.meta = {}
@@ -721,6 +751,7 @@ class MultiLabel:
             self._offsets_in_documents = []
             self._offsets_in_contexts = []
             for answer in answered:
+                # TODO This assumes Span objects when aggregating offsets
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
                         self._offsets_in_documents.append({"start": span.start, "end": span.end})
