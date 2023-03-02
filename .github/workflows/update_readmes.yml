@@ -1,0 +1,46 @@
+name: Update Haystack version in social cards
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  update-gh-org-readme:
+    name: Update GitHub Organization Readme
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger update in GitHub Org Readme
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
+          GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          gh workflow run -R deepset-ai/.github update_haystack_version.yml -f "version=$VERSION"
+
+  update-hf-org-card:
+    name: Update Hugging Face Organization Card
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add Hugging Face credentials
+        env:
+          HUGGING_FACE_HUB_TOKEN: ${{ secrets.HUGGING_FACE_HUB_TOKEN }}
+          HUGGING_FACE_URL: https://huggingface.co
+        run: |
+          printf "url=%s\nusername=hf_user\npassword=%s\n\n" "$HUGGING_FACE_URL" "$HUGGING_FACE_HUB_TOKEN" \
+          | git credential approve
+
+      - name: Checkout README repository
+        run: |
+          GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/spaces/deepset/README .
+
+      - name: Update README.md
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          sed -i -r "s/Haystack is on v[0-9]+\.[0-9]+\.[0-9]+/Haystack is on $VERSION/g" profile/README.md
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --all -m "Update Haystack version"
+          git push
