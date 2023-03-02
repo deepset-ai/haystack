@@ -246,6 +246,9 @@ def test_eval_data_split_word(document_store):
     assert len(set(labels[0].document_ids)) == 2
 
 
+# TODO Add test for TableQA eval
+
+
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_eval_data_split_passage(document_store):
     # splitting by passage
