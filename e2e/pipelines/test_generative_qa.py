@@ -16,7 +16,12 @@ def docs():
 
 def test_rag_generator_pipeline(docs):
     document_store = InMemoryDocumentStore(use_bm25=True)
-    retriever = BM25Retriever(document_store=document_store)
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        embed_title=True,
+    )
     rag_generator = RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
     document_store.write_documents(docs)
 

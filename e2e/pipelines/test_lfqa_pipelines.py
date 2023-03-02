@@ -16,7 +16,7 @@ def docs():
 
 
 def test_lfqa_pipeline(docs):
-    document_store = InMemoryDocumentStore(use_bm25=True)
+    document_store = InMemoryDocumentStore(embedding_dim=128)
     retriever = DensePassageRetriever(
         document_store=document_store,
         query_embedding_model="vblagoje/dpr-question_encoder-single-lfqa-wiki",

@@ -25,14 +25,14 @@ def openai_generator(request):
                 model="text-babbage-001",
                 top_k=1,
             )
-        pytest.skip("No OpenAI API keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
+        pytest.skip("No Azure API keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
 
     elif request.param == "openai":
         if bool(os.environ.get("OPENAI_API_KEY", False)):
             return OpenAIAnswerGenerator(
                 api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1
             )
-        pytest.skip("No Azure keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
+        pytest.skip("No OpenAI API keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
 
     raise ValueError(f"Unknown provider: {request.param}")
 

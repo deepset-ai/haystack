@@ -1,6 +1,6 @@
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.pipelines import GenerativeQAPipeline
-from haystack.nodes import EmbeddingRetriever, RAGenerator
+from haystack.nodes import DensePassageRetriever, RAGenerator
 from haystack.schema import MultiLabel, Label, Answer, Document, Span
 
 
@@ -40,7 +40,12 @@ EVAL_LABELS = [
 
 def test_eval_generative_qa_rag_generator(docs):
     ds = InMemoryDocumentStore()
-    retriever = EmbeddingRetriever(document_store=ds, embedding_model="deepset/sentence_bert")
+    retriever = DensePassageRetriever(
+        document_store=ds,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        embed_title=True,
+    )
     ds.write_documents(docs)
     ds.update_embeddings(retriever=retriever)
     rag_generator = RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)

@@ -55,7 +55,7 @@ def test_openai_answer_generator_server_error(monkeypatch, docs):
 
 
 @pytest.mark.unit
-def test_openai_answer_generator_rete_limit(monkeypatch, docs):
+def test_openai_answer_generator_rate_limit(monkeypatch, docs):
     monkeypatch.setattr(
         requests,
         "request",
