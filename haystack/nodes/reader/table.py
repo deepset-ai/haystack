@@ -273,7 +273,6 @@ class _TapasEncoder:
             pipeline_inputs.append({"query": query, "table": table.astype(str)})
 
         # Run the pipeline
-        self.pipeline.model.eval()
         answers = self.pipeline(pipeline_inputs, sequential=False, padding=True, truncation=True)
 
         # Unpack batched answers
@@ -407,7 +406,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
             answers = []
             for index, ans_coordinates_per_table in enumerate(answer_coordinates_batch):
                 if len(ans_coordinates_per_table) > 0:
-                    cells = [table.iat[coordinate] for coordinate in ans_coordinates_per_table]
+                    cells = [string_table.iat[coordinate] for coordinate in ans_coordinates_per_table]
                     aggregator = aggregators.get(index, "")  # type: ignore
                     if aggregator == "NONE":
                         answer_str = ", ".join(cells)
@@ -422,10 +421,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                         context=string_table,
                         offsets_in_document=answer_offsets,
                         offsets_in_context=answer_offsets,
-                        meta={
-                            "aggregation_operator": aggregator,
-                            "answer_cells": [string_table.iat[coordinate] for coordinate in ans_coordinates_per_table],
-                        },
+                        meta={"aggregation_operator": aggregator, "answer_cells": cells},
                     )
                     answers.append(answer)
                 else:
@@ -466,7 +462,6 @@ class _TapasScoredEncoder:
         string_table = orig_table.astype(str)
 
         # Forward pass through model
-        self.model.eval()
         with torch.inference_mode():
             outputs = self.model.tapas(**inputs)
             table_score = self.model.classifier(outputs.pooler_output)
@@ -763,7 +758,6 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             row_inputs.to(self.devices[0])
-            self.row_model.eval()
             with torch.inference_mode():
                 row_outputs = self.row_model(**row_inputs)
             row_logits = row_outputs[0].detach().cpu().numpy()[:, 1]
@@ -778,7 +772,6 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             column_inputs.to(self.devices[0])
-            self.column_model.eval()
             with torch.inference_mode():
                 column_outputs = self.column_model(**column_inputs)
             column_logits = column_outputs[0].detach().cpu().numpy()[:, 1]

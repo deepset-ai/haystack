@@ -76,41 +76,6 @@ def test_table_reader(table_reader_and_param, table_doc1, table_doc2):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
-def test_table_reader_train_mode(table_reader_and_param, table_doc1, table_doc2):
-    table_reader, param = table_reader_and_param
-
-    # Set to deterministic seed
-    old_seed = torch.seed()
-    torch.manual_seed(0)
-
-    # Ensure that if model is put in train mode that predictions are not effected
-    if param != "rci":
-        table_reader.table_encoder.model.train()
-    elif param == "rci":
-        table_reader.row_model.train()
-        table_reader.column_model.train()
-
-    query = "When was Di Caprio born?"
-    prediction = table_reader.predict(query=query, documents=[table_doc1, table_doc2])
-
-    # Check the second answer in the list
-    reference2 = {
-        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314, "doc_id": ["doc2"]},
-        "rci": {"answer": "47", "start": 5, "end": 6, "score": -6.836, "doc_id": ["doc1"]},
-        "tapas_scored": {"answer": "brad pitt", "start": 0, "end": 1, "score": 0.49078, "doc_id": ["doc1"]},
-    }
-    assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
-    assert prediction["answers"][1].answer == reference2[param]["answer"]
-    assert prediction["answers"][1].offsets_in_context[0].start == reference2[param]["start"]
-    assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
-    assert prediction["answers"][1].document_ids == reference2[param]["doc_id"]
-
-    # Set back to old_seed
-    torch.manual_seed(old_seed)
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param, table_doc1, table_doc2):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
