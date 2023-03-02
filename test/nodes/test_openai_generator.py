@@ -24,7 +24,7 @@ def no_backoff(monkeypatch):
 def mock_requests(monkeypatch):
     monkeypatch.setattr(
         requests,
-        "request",
+        "post",
         lambda *a, **k: MockResponse(
             text='{"choices": [{"text": "MOCK ANSWER", "finish_reason": "not-length"}]}', status_code=200
         ),
