@@ -22,8 +22,9 @@ def test_rag_generator_pipeline(docs):
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         embed_title=True,
     )
-    rag_generator = RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
     document_store.write_documents(docs)
+    document_store.update_embeddings(retriever=retriever)
+    rag_generator = RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
     query = "What is capital of the Germany?"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
@@ -44,7 +45,6 @@ def test_rag_generator_pipeline_with_translator():
         document_store=ds,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-        use_gpu=False,
         embed_title=True,
     )
     ds.update_embeddings(retriever=retriever)
