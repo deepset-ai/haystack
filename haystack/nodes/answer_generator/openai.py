@@ -20,7 +20,7 @@ from haystack.nodes.prompt import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine()
+machine = platform.machine().lower()
 system = platform.system()
 
 USE_TIKTOKEN = False
@@ -53,8 +53,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def __init__(
         self,
         api_key: str,
+        azure_base_url: Optional[str] = None,
+        azure_deployment_name: Optional[str] = None,
         model: str = "text-davinci-003",
         max_tokens: int = 50,
+        api_version: str = "2022-12-01",
         top_k: int = 5,
         temperature: float = 0.2,
         presence_penalty: float = 0.1,
@@ -68,6 +71,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
+        :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
+                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
+
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
+                                     will not be used.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
@@ -75,6 +83,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param max_tokens: The maximum number of tokens reserved for the generated Answer.
                            A higher number allows for longer answers without exceeding the max prompt length of the OpenAI model.
                            A lower number allows longer prompts with more documents passed as context, but the generated answer might be cut after max_tokens.
+        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
@@ -138,7 +147,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             # Check for required prompts
             required_params = ["context", "query"]
-            if all(p in prompt_template.prompt_params for p in required_params):
+            if not all(p in prompt_template.prompt_params for p in required_params):
                 raise ValueError(
                     "The OpenAIAnswerGenerator requires a PromptTemplate that has `context` and "
                     "`query` in its `prompt_params`. Supply a different `prompt_template` or "
@@ -159,6 +168,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 )
 
         self.api_key = api_key
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
+        self.api_version = api_version
         self.model = model
         self.max_tokens = max_tokens
         self.top_k = top_k
@@ -179,6 +191,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
+        self.using_azure = self.azure_deployment_name is not None and self.azure_base_url is not None
+
         if USE_TIKTOKEN:
             logger.debug("Using tiktoken %s tokenizer", tokenizer)
             self._tk_tokenizer: tiktoken.Encoding = tiktoken.get_encoding(tokenizer)
@@ -186,7 +200,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             logger.debug("Using GPT2TokenizerFast")
             self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
 
-    @retry_with_exponential_backoff(backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES)
+    @retry_with_exponential_backoff(
+        backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
+    )
     def predict(
         self,
         query: str,
@@ -227,9 +243,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         prompt, input_docs = self._build_prompt_within_max_length(query=query, documents=documents)
         logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
 
-        # get answers from OpenAI API
-        url = "https://api.openai.com/v1/completions"
-
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -240,9 +253,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
         }
+        url = "https://api.openai.com/v1/completions"
+        if self.using_azure:
+            url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
 
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
+        headers = {"Content-Type": "application/json"}
+        if self.using_azure:
+            headers = {"api-key": self.api_key, **headers}
+        else:
+            headers = {"Authorization": f"Bearer {self.api_key}", **headers}
+
+        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:

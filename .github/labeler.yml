@@ -31,6 +31,9 @@ topic:reader:
 topic:retriever:
 - haystack/nodes/retriever/*
 - test/nodes/test_retriever.py
+topic:agent:
+- haystack/agents/*
+- test/agents/*
 topic:pipeline:
 - haystack/pipelines/*
 - haystack/nodes/other/*
@@ -51,8 +54,6 @@ topic:crawler:
 topic:preprocessing:
 - haystack/nodes/preprocessor/*
 - test/nodes/test_preprocessor.py
-topic:eval:
-- haystack/nodes/evaluator/*
 topic:images:
 - haystack/nodes/image_to_text/*
 - test/nodes/test_image_to_text.py

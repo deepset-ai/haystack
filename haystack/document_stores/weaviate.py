@@ -357,7 +357,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         try:
             result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-            logging.debug("Weaviate could not get the document requested: %s", usce)
+            logger.debug("Weaviate could not get the document requested: %s", usce)
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
@@ -384,7 +384,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             try:
                 result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-                logging.debug("Weaviate could not get the document requested: %s", usce)
+                logger.debug("Weaviate could not get the document requested: %s", usce)
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)

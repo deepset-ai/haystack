@@ -1,0 +1,2 @@
+pydoc-markdown==4.6.4
+requests==2.28.2

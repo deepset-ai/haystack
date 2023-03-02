@@ -1,13 +1,10 @@
 name: Add label on docstrings edit
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - "haystack/**/*.py"
       - "rest_api/**/*.py"
-
-permissions:
-  pull-requests: write
 
 jobs:
   label:
@@ -19,6 +16,12 @@ jobs:
         with:
           ref: ${{ github.base_ref }}
 
+      - name: Copy file
+        # We copy our script after base ref checkout so we keep executing
+        # the same version even after checking out the HEAD ref.
+        # This is done to prevent executing malicious code in forks' PRs.
+        run: cp .github/utils/docstrings_checksum.py "${{ runner.temp }}/docstrings_checksum.py"
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -27,7 +30,7 @@ jobs:
       - name: Get docstrings
         id: base-docstrings
         run: |
-          CHECKSUM=$(python .github/utils/docstrings_checksum.py)
+          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Checkout HEAD commit
@@ -36,7 +39,7 @@ jobs:
       - name: Get docstrings
         id: head-docstrings
         run: |
-          CHECKSUM=$(python .github/utils/docstrings_checksum.py)
+          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Check if we should label
