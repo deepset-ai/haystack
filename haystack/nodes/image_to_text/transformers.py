@@ -22,9 +22,10 @@ SUPPORTED_MODELS_CLASSES = ["VisionEncoderDecoderModel"]
 UNSUPPORTED_MODEL_MESSAGE = (
     f"The supported classes are: {SUPPORTED_MODELS_CLASSES}. \n"
     f"To find the supported models: \n"
-    f"1) visit https://huggingface.co/models?pipeline_tag=image-to-text \n"
-    f'2) on the model page, go to the "Files and Versions" tab \n'
-    f"3) in the `config.json` file, the `architectures` field should contain one of the supported classes: {SUPPORTED_MODELS_CLASSES}."
+    f"1. Visit [image-to-text models on Hugging Face](https://huggingface.co/models?pipeline_tag=image-to-text). \n"
+    f"2. Open a model you want to check.  \n"
+    f"3. On the model page, go to the "Files and Versions" tab \n"
+    f"4. Open the `config.json` file, and make sure the `architectures` field contains one of the supported classes: {SUPPORTED_MODELS_CLASSES}."
 )
 
 
@@ -78,9 +79,10 @@ class TransformersImageToText(BaseImageToText):
         :param model_name_or_path: Directory of a saved model or the name of a public model.
                                    Currently, only `VisionEncoderDecoderModel` models are supported.
                                    To find these models:
-                                   1) visit [Hugging Face image to text models](https://huggingface.co/models?pipeline_tag=image-to-text)`
-                                   2) on the model page, go to the "Files and Versions" tab
-                                   3) in the `config.json` file, the `architectures` field should contain `VisionEncoderDecoderModel`
+                                   1. Visit [Hugging Face image to text models](https://huggingface.co/models?pipeline_tag=image-to-text).`
+                                   2. Open the model you want to check.
+                                   3. On the model page, go to the "Files and Versions" tab.
+                                   4. Open the `config.json` file and make sure the `architectures` field contains `VisionEncoderDecoderModel`.
         :param model_version: The version of the model to use from the Hugging Face model hub. This can be the tag name, branch name, or commit hash.
         :param generation_kwargs: Dictionary containing arguments for the `generate()` method of the Hugging Face model.
                                 See [generate()](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationMixin.generate) in Hugging Face documentation.
