@@ -45,7 +45,7 @@ target "base-cpu" {
     build_image = "python:3.10-slim"
     base_image = "python:3.10-slim"
     haystack_version = "${HAYSTACK_VERSION}"
-    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores,crawler,preprocessing,ocr,onnx,beir]"
+    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores,crawler,preprocessing,pdf,ocr,onnx,beir]"
   }
   platforms = ["linux/amd64", "linux/arm64"]
 }
@@ -59,7 +59,7 @@ target "base-gpu" {
     build_image = "pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime"
     base_image = "pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime"
     haystack_version = "${HAYSTACK_VERSION}"
-    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu]"
+    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,pdf,ocr,onnx-gpu]"
   }
   platforms = ["linux/amd64", "linux/arm64"]
 }

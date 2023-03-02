@@ -113,22 +113,29 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_tr
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_openai_answer_generator(openai_generator, docs):
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator(haystack_openai_config, docs):
+    if not haystack_openai_config:
+        pytest.skip("No API key found, skipping test")
+
+    openai_generator = OpenAIAnswerGenerator(
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
+        model="text-babbage-001",
+        top_k=1,
+    )
     prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
     assert len(prediction["answers"]) == 1
     assert "Carla" in prediction["answers"][0].answer
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_openai_answer_generator_custom_template(docs):
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
+    if not haystack_openai_config:
+        pytest.skip("No API key found, skipping test")
+
     lfqa_prompt = PromptTemplate(
         name="lfqa",
         prompt_text="""
@@ -137,20 +144,29 @@ def test_openai_answer_generator_custom_template(docs):
         prompt_params=["context", "query"],
     )
     node = OpenAIAnswerGenerator(
-        api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1, prompt_template=lfqa_prompt
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
+        model="text-babbage-001",
+        top_k=1,
+        prompt_template=lfqa_prompt,
     )
     prediction = node.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
     assert len(prediction["answers"]) == 1
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_openai_answer_generator_max_token(docs, caplog):
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_max_token(haystack_openai_config, docs, caplog):
+    if not haystack_openai_config:
+        pytest.skip("No API key found, skipping test")
+
     openai_generator = OpenAIAnswerGenerator(
-        api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
+        model="text-babbage-001",
+        top_k=1,
     )
     openai_generator.MAX_TOKENS_LIMIT = 116
     with caplog.at_level(logging.INFO):
