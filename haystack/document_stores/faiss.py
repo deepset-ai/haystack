@@ -282,6 +282,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                         if self.similarity == "cosine":
                             self.normalize_embedding(embeddings_to_index)
 
+                        if not self.faiss_indexes[index].is_trained:
+                            self.faiss_indexes[index].train(embeddings_to_index)
+
                         self.faiss_indexes[index].add(embeddings_to_index)
 
                     docs_to_write_in_sql = []
@@ -366,6 +369,9 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 if self.similarity == "cosine":
                     self.normalize_embedding(embeddings)
+
+                if not self.faiss_indexes[index].is_trained:
+                    self.faiss_indexes[index].train(embeddings)
 
                 self.faiss_indexes[index].add(embeddings.astype(np.float32))
 
