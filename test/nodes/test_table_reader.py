@@ -59,19 +59,19 @@ def test_table_reader(table_reader_and_param, table1, table2):
     reference1 = {"tapas_small": {"score": 1.0}, "rci": {"score": -6.5301}, "tapas_scored": {"score": 0.50568}}
     assert prediction["answers"][0].score == pytest.approx(reference1[param]["score"], rel=1e-3)
     assert prediction["answers"][0].answer == "11 november 1974"
-    assert prediction["answers"][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].offsets_in_context[0].row == 1
+    assert prediction["answers"][0].offsets_in_context[0].col == 3
 
     # Check the second answer in the list
     reference2 = {
-        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314},
-        "rci": {"answer": "47", "start": 5, "end": 6, "score": -6.836},
-        "tapas_scored": {"answer": "brad pitt", "start": 0, "end": 1, "score": 0.49078},
+        "tapas_small": {"answer": "5 april 1980", "row": 7, "col": 8, "score": 0.86314},
+        "rci": {"answer": "47", "row": 5, "col": 6, "score": -6.836},
+        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 1, "score": 0.49078},
     }
     assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
     assert prediction["answers"][1].answer == reference2[param]["answer"]
-    assert prediction["answers"][1].offsets_in_context[0].start == reference2[param]["start"]
-    assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
+    assert prediction["answers"][1].offsets_in_context[0].row == reference2[param]["row"]
+    assert prediction["answers"][1].offsets_in_context[0].col == reference2[param]["col"]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
@@ -97,14 +97,14 @@ def test_table_reader_train_mode(table_reader_and_param, table1, table2):
 
     # Check the second answer in the list
     reference2 = {
-        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314},
-        "rci": {"answer": "47", "start": 5, "end": 6, "score": -6.836},
-        "tapas_scored": {"answer": "brad pitt", "start": 0, "end": 1, "score": 0.49078},
+        "tapas_small": {"answer": "5 april 1980", "row": 7, "col": 8, "score": 0.86314},
+        "rci": {"answer": "47", "row": 5, "col": 6, "score": -6.836},
+        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 1, "score": 0.49078},
     }
     assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
     assert prediction["answers"][1].answer == reference2[param]["answer"]
-    assert prediction["answers"][1].offsets_in_context[0].start == reference2[param]["start"]
-    assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
+    assert prediction["answers"][1].offsets_in_context[0].row == reference2[param]["row"]
+    assert prediction["answers"][1].offsets_in_context[0].col == reference2[param]["col"]
 
     # Set back to old_seed
     torch.manual_seed(old_seed)
@@ -138,19 +138,19 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     score_reference = {"tapas_small": {"score": 1.0}, "rci": {"score": -6.5301}, "tapas_scored": {"score": 0.50568}}
     assert prediction["answers"][0][0].score == pytest.approx(score_reference[param]["score"], rel=1e-3)
     assert prediction["answers"][0][0].answer == "11 november 1974"
-    assert prediction["answers"][0][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0][0].offsets_in_context[0].row == 1
+    assert prediction["answers"][0][0].offsets_in_context[0].col == 3
 
     # Check first answer from the 2ND Document
     ans_reference = {
-        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314},
-        "rci": {"answer": "15 september 1960", "start": 11, "end": 12, "score": -7.9429},
-        "tapas_scored": {"answer": "5", "start": 10, "end": 11, "score": 0.11485},
+        "tapas_small": {"answer": "5 april 1980", "row": 7, "col": 8, "score": 0.86314},
+        "rci": {"answer": "15 september 1960", "row": 11, "col": 12, "score": -7.9429},
+        "tapas_scored": {"answer": "5", "row": 10, "col": 11, "score": 0.11485},
     }
     assert prediction["answers"][1][0].score == pytest.approx(ans_reference[param]["score"], rel=1e-3)
     assert prediction["answers"][1][0].answer == ans_reference[param]["answer"]
-    assert prediction["answers"][1][0].offsets_in_context[0].start == ans_reference[param]["start"]
-    assert prediction["answers"][1][0].offsets_in_context[0].end == ans_reference[param]["end"]
+    assert prediction["answers"][1][0].offsets_in_context[0].row == ans_reference[param]["row"]
+    assert prediction["answers"][1][0].offsets_in_context[0].col == ans_reference[param]["col"]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
@@ -252,8 +252,8 @@ def test_table_reader_in_pipeline(table_reader_and_param, table1):
 
     prediction = pipeline.run(query=query, documents=[Document(content=table1, content_type="table")])
     assert prediction["answers"][0].answer == "11 november 1974"
-    assert prediction["answers"][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].offsets_in_context[0].row == 1
+    assert prediction["answers"][0].offsets_in_context[0].col == 3
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_base"], indirect=True)

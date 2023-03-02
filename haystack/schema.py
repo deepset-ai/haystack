@@ -394,8 +394,8 @@ class Answer:
     type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
     context: Optional[Union[str, pd.DataFrame]] = None
-    offsets_in_document: Optional[List[Span], List[TableCell]] = None
-    offsets_in_context: Optional[List[Span], List[TableCell]] = None
+    offsets_in_document: Optional[Union[List[Span], List[TableCell]]] = None
+    offsets_in_context: Optional[Union[List[Span], List[TableCell]]] = None
     document_ids: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
