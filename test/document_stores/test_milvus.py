@@ -3,8 +3,7 @@ import numpy as np
 
 from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 
 class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
@@ -113,4 +112,9 @@ class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip(reason="labels metadata are not supported")
     @pytest.mark.integration
     def test_multilabel_meta_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="embeddings can't be stored in the SQL database")
+    @pytest.mark.integration
+    def test_custom_embedding_field(self, ds):
         pass
