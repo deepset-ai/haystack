@@ -11,7 +11,11 @@
 
 # Summary
 
-By allowing shapers to be used in prompt templates, we can make prompt templates more flexible and powerful while making PromptNode as easy to use as any other node in Haystack. With shapers prompt templates will be able to define, and at the same time abstract away from PromptNode, everything that is necessary to create a Haystack node that is specialiced for a certain use-case (e.g. generative QA). Additionally, PromptTemplates will be fully serializable, enabling everyone to share their prompt templates with the community.
+In order to make prompt templates more flexible and powerful while at the same time making PromptNode as easy to use as any other node in Haystack, we want to introduce two modifications to PromptTemplate:
+- output: support Shapers in PromptTemplates to enable the user to define how the output to the prompt template should be shaped
+- input: extend the prompt syntax to support the usage of functions that can be applied to input variables
+
+With these modifications prompt templates will be able to define, and abstract away from PromptNode, everything that is necessary to create a Haystack node that is specialiced for a certain use-case (e.g. generative QA). Additionally, PromptTemplates will be fully serializable, enabling everyone to share their prompt templates with the community.
 
 # Basic example
 
@@ -41,15 +45,15 @@ As a result we get a pipeline that uses PromptNode as a drop-in replacement for 
 
     ```python
     {'answers': [<Answer {'answer': 'Potable water is the most popular drink, followed by tea and beer as stated in Document[5].', 'type': 'generative', 'score': None, 'context': None, 'offsets_in_document': None, 'offsets_in_context': None, 'document_ids': ['fcd62336fb380a69c2d655f8cd072995'], 'meta': {}}>],
- 'invocation_context': {'query': 'What is the most popular drink?',
-  'documents': [<Document: {'content': 'Beer is the oldest[1][2][3] and most widely consumed[4] type of alcoholic drink in the world, and the third most popular drink overall after potable water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]', 'content_type': 'text', 'score': None, 'meta': {}, 'id_hash_keys': ['content'], 'embedding': None, 'id': 'fcd62336fb380a69c2d655f8cd072995'}>],
-  'answers': [<Answer {'answer': 'Potable water is the most popular drink, followed by tea and beer as stated in Document[5].', 'type': 'generative', 'score': None, 'context': None, 'offsets_in_document': None, 'offsets_in_context': None, 'document_ids': ['fcd62336fb380a69c2d655f8cd072995'], 'meta': {}}>]},
- '_debug': {'PromptNode': {'runtime': {'prompts_used': ['Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. You must only use information from the given documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\nDocument[1]: Beer is the oldest(1)(2)(3) and most widely consumed(4) type of alcoholic drink in the world, and the third most popular drink overall after potable water and tea.(5) It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.(6) Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.(7); \n Question: What is the most popular drink?; Answer: ']}}},
- 'root_node': 'Query',
- 'params': {},
- 'query': 'What is the most popular drink?',
- 'documents': [<Document: {'content': 'Beer is the oldest[1][2][3] and most widely consumed[4] type of alcoholic drink in the world, and the third most popular drink overall after potable water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]', 'content_type': 'text', 'score': None, 'meta': {}, 'id_hash_keys': ['content'], 'embedding': None, 'id': 'fcd62336fb380a69c2d655f8cd072995'}>],
- 'node_id': 'PromptNode'}
+    'invocation_context': {'query': 'What is the most popular drink?',
+    'documents': [<Document: {'content': 'Beer is the oldest[1][2][3] and most widely consumed[4] type of alcoholic drink in the world, and the third most popular drink overall after potable water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]', 'content_type': 'text', 'score': None, 'meta': {}, 'id_hash_keys': ['content'], 'embedding': None, 'id': 'fcd62336fb380a69c2d655f8cd072995'}>],
+    'answers': [<Answer {'answer': 'Potable water is the most popular drink, followed by tea and beer as stated in Document[5].', 'type': 'generative', 'score': None, 'context': None, 'offsets_in_document': None, 'offsets_in_context': None, 'document_ids': ['fcd62336fb380a69c2d655f8cd072995'], 'meta': {}}>]},
+     '_debug': {'PromptNode': {'runtime': {'prompts_used': ['Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. You must only use information from the given documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\nDocument[1]: Beer is the oldest(1)(2)(3) and most widely consumed(4) type of alcoholic drink in the world, and the third most popular drink overall after potable water and tea.(5) It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.(6) Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.(7); \n Question: What is the most popular drink?; Answer: ']}}},
+     'root_node': 'Query',
+     'params': {},
+     'query': 'What is the most popular drink?',
+     'documents': [<Document: {'content': 'Beer is the oldest[1][2][3] and most widely consumed[4] type of alcoholic drink in the world, and the third most popular drink overall after potable water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]', 'content_type': 'text', 'score': None, 'meta': {}, 'id_hash_keys': ['content'], 'embedding': None, 'id': 'fcd62336fb380a69c2d655f8cd072995'}>],
+     'node_id': 'PromptNode'}
     ```
 
 The corresponding prompt template would look like this (provided `value_to_list` and `join_documents` Shaper functions are extended a bit):
@@ -62,25 +66,7 @@ The corresponding prompt template would look like this (provided `value_to_list`
             "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
             "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. "
             "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
-            "$documents \n Question: $query; Answer: ",
-            input_shapers=[
-                Shaper(
-                    func="join_documents",
-                    inputs={
-                        "documents": "documents",
-                        "delimiter": "delimiter",
-                        "pattern": "pattern",
-                        "str_replace": "str_replace",
-                    },
-                    outputs=["documents"],
-                    params={
-                        "delimiter": "\n",
-                        "pattern": "\nDocument[$idx]: $content",
-                        "str_replace": {"\n": " ", "[": "(", "]": ")"},
-                    },
-                ),
-                Shaper(func="value_to_list", inputs={"value": "query", "target_list": "documents"}, outputs=["query"]),
-            ],
+            "{join(documents, '\n', '\nDocument[$idx]: $content', {'\n': ' ', '[': '(', ']': ')'})} \n Question: {query}; Answer: ",
             output_shapers=[
                 Shaper(
                     func="strings_to_answers",
@@ -92,13 +78,13 @@ The corresponding prompt template would look like this (provided `value_to_list`
         )
     ```
 
-As it's crucial to iterate quickly on prompts, shaper params can be overridden by PromptNode like this:
-
+We make sure that we have proper default values for the input shaping function and it is easy to understand. `{join(documents)}` should be usable in most cases. When you want to have more control about document rendering something like `join(documents, DELIMITER, PATTERN, CHAR_REPLACEMENT)` with 
     ```python
-    pn = PromptNode(default_prompt_template="question-answering-with-references", shaper_params={"delimiter": "MY_NEW_DELIMITER"})
+    DELIMITER = "\n"
+    PATTERN = "$content" # parseable by StringTemplate using data from document.content, document.meta and the index of the document
+    CHAR_REPLACEMENT = {"[": "(", "}": ")"} # just an example what could be passed here
     ```
-
-This would set the default delimiter `\n` as defined in the template to `MY_NEW_DELIMITER` for this specific PromptNode.
+would do. 
 
 # Motivation
 
@@ -110,8 +96,9 @@ Currently using PromptNode is a bit cumbersome as:
 
 # Detailed design
 
-PromptTemplate gets two new attributes: `input_shapers` and `output_shapers`. These are lists of Shaper objects that are applied to the input and output of the prompt respectively. The `input_shapers` are applied to the input of the prompt, the `output_shapers` are applied to the output of the prompt:
-PromptNode calls `PromptTemplate.prepare` before exectuting the prompt. `PromptTemplate.prepare` makes all `input_shapers` run on the `invocation_context`.
+For outputs:
+PromptTemplate gets one new attributes: `output_shapers`. These are lists of Shaper objects that are applied to the output of the prompt. 
+PromptNode calls `PromptTemplate.prepare` before executing the prompt. `PromptTemplate.prepare` applies the shaping functions (if present) to the arguments of the `invocation_context`.
 PromptNode invokes the prompt on the prepared `invocation_context`.
 PromptNode calls `PromptTemplate.post_process` after executing the prompt. `PromptTemplate.post_process` makes all `output_shapers` run on the `invocation_context`.
 
@@ -129,7 +116,7 @@ Look at the feature from the other side: what are the reasons why we should _not
 
 It also fosters a bit the nesting of components in Haystack. Although the whole PromptNode ecosystem already does this (e.g. via PromptModel, PromptTemplate being used by PromptNode), it's still a bit of a new concept. However, I think it's a good one and it's not too hard to understand.
 
-We still don't have access to PromptNode, PromptModel or the invocation layer inside of PromptTemplates. If we want Shapers to access fundamental parts of them (e.g. the tokenizer), we would need to pass them to the Shapers. This would make the whole system more complex, but it would be possible.
+We still don't have access to PromptNode, PromptModel or the invocation layer inside of PromptTemplates. If we want PromptTemplate to access fundamental parts of them (e.g. the tokenizer), we would need to pass them to the PromptTemplate. This would make the whole system more complex, but it would be possible.
 
 # Alternatives
 
@@ -137,6 +124,7 @@ Subclassing specialiced PromptNodes like QuestionAnsweringPromptNode, which woul
 
 The same is true for subclassing PromptTemplate like QuestionAnsweringPromptTemplate. This would make it easier to use, but it would be harder to iterate quickly on prompts, be less flexible and sharing is difficult.
 
+Having `input_shapers` in the same way as `output_shapers` in the PromptTemplate. This would make it harder for users to get started as they would need to understand Shapers and which functions are relevant for input shaping.
 # Adoption strategy
 
 No need for migration, just adjusting the docs and the promptnode tutorial (if it exists already).
@@ -150,5 +138,6 @@ We should show how:
 
 # Unresolved questions
 
-Optional, but suggested for first drafts. What parts of the design are still
-TBD?
+How does `OpenAIAnswerGenerator` make use of input shaping functions and output shapers?
+- output shapers: it doesn't use them
+- input shaping functions: it uses them if they are present. If not it uses its own default functions. 
