@@ -217,17 +217,18 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
         }
-        url = "https://api.openai.com/v1/completions"
         if self.using_azure:
             url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
+        else:
+            url = "https://api.openai.com/v1/completions"
 
         headers = {"Content-Type": "application/json"}
         if self.using_azure:
-            headers = {"api-key": self.api_key, **headers}
+            headers["api-key"] = self.api_key
         else:
-            headers = {"Authorization": f"Bearer {self.api_key}", **headers}
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
-        res = openai_request(url=url, api_key=self.api_key, payload=payload, timeout=timeout)
+        res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
         _check_openai_text_completion_answers(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)

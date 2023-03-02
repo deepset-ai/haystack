@@ -542,7 +542,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "best_of": kwargs_with_defaults.get("best_of", 1),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
-        res = openai_request(url=self.url, api_key=self.api_key, payload=payload)
+        res = openai_request(url=self.url, headers=self.headers, payload=payload)
         _check_openai_text_completion_answers(result=res, payload=payload)
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
