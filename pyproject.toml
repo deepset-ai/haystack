@@ -69,6 +69,10 @@ dependencies = [
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
 
+  # Web Retriever
+  "trafilatura",
+  "courlan",
+
   # Preprocessing
   "more_itertools",  # for windowing
   "python-docx",
