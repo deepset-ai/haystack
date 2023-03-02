@@ -24,8 +24,8 @@ class MockedAutoConfig:
         return cls()
 
 
-@pytest.fixture(autouse=True)
-def mock_autotokenizer(request, monkeypatch):
+@pytest.fixture()
+def mock_autotokenizer(monkeypatch):
     monkeypatch.setattr(
         haystack.modeling.model.feature_extraction, "FEATURE_EXTRACTORS", {"mocked": MockedAutoTokenizer}
     )
@@ -34,7 +34,7 @@ def mock_autotokenizer(request, monkeypatch):
 
 
 @pytest.mark.unit
-def test_get_tokenizer_str():
+def test_get_tokenizer_str(mock_autotokenizer):
     tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
@@ -42,7 +42,7 @@ def test_get_tokenizer_str():
 
 
 @pytest.mark.unit
-def test_get_tokenizer_path(tmp_path):
+def test_get_tokenizer_path(mock_autotokenizer, tmp_path):
     tokenizer = FeatureExtractor(pretrained_model_name_or_path=tmp_path / "test-path")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path=str(tmp_path / "test-path"), revision=None, use_fast=True, use_auth_token=None
@@ -50,7 +50,7 @@ def test_get_tokenizer_path(tmp_path):
 
 
 @pytest.mark.unit
-def test_get_tokenizer_keep_accents():
+def test_get_tokenizer_keep_accents(mock_autotokenizer):
     tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name-albert")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path="test-model-name-albert",
@@ -62,7 +62,7 @@ def test_get_tokenizer_keep_accents():
 
 
 @pytest.mark.unit
-def test_get_tokenizer_mlm_warning(caplog):
+def test_get_tokenizer_mlm_warning(mock_autotokenizer, caplog):
     tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name-mlm")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path="test-model-name-mlm", revision=None, use_fast=True, use_auth_token=None
