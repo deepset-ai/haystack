@@ -453,10 +453,6 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
       run: |
@@ -500,12 +496,6 @@ jobs:
       uses: ./.github/actions/python_cache/
       with:
         prefix: windows
-
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
 
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
@@ -585,9 +575,6 @@ jobs:
     - name: Run Parsr
       run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
 
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
     - name: Install tesseract
       run: |
         sudo apt update
@@ -639,7 +626,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        choco install --no-progress xpdf-utils
         choco install --no-progress tesseract
         choco install --no-progress openjdk --version=11.0.2.01
         refreshenv
