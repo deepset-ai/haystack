@@ -154,7 +154,6 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         document_store.train_index(documents_with_embeddings)
         assert document_store.faiss_indexes[document_store.index].is_trained
 
-
     @pytest.mark.integration
     def test_train_index_from_embeddings(self, documents_with_embeddings, tmp_path):
         document_store = FAISSDocumentStore(
