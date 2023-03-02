@@ -535,11 +535,6 @@ def question_generator():
 
 
 @pytest.fixture
-def summarizer():
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
-
-@pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="deepset/bert-medium-squad2-distilled",
@@ -948,6 +943,28 @@ def prompt_node():
     return PromptNode("google/flan-t5-small", devices=["cpu"])
 
 
+def haystack_azure_conf():
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
+    azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    azure_deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
+    if api_key and azure_base_url and azure_deployment_name:
+        return {"api_key": api_key, "azure_base_url": azure_base_url, "azure_deployment_name": azure_deployment_name}
+    else:
+        return {}
+
+
+@pytest.fixture
+def haystack_openai_config(request):
+    if request.param == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY", None)
+        if not api_key:
+            return {}
+        else:
+            return {"api_key": api_key}
+    elif request.param == "azure":
+        return haystack_azure_conf()
+
+
 @pytest.fixture
 def prompt_model(request):
     if request.param == "openai":
@@ -955,5 +972,15 @@ def prompt_model(request):
         if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
         return PromptModel("text-davinci-003", api_key=api_key)
+    elif request.param == "azure":
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
+        if api_key is None or api_key == "":
+            api_key = "KEY_NOT_FOUND"
+        return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
+
+
+@pytest.fixture
+def azure_conf():
+    return haystack_azure_conf()

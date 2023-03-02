@@ -9,7 +9,7 @@ from haystack.nodes.file_converter.tika import TikaConverter, TikaXHTMLParser
 from haystack.nodes.file_converter.txt import TextConverter
 from haystack.nodes.file_converter.azure import AzureConverter
 from haystack.nodes.file_converter.parsr import ParsrConverter
-from haystack.nodes.file_converter.pdf import PDFToTextConverter
+
 
 MarkdownConverter = safe_import(
     "haystack.nodes.file_converter.markdown", "MarkdownConverter", "preprocessing"
@@ -19,4 +19,7 @@ ImageToTextConverter = safe_import(
 )  # Has optional dependencies
 PDFToTextOCRConverter = safe_import(
     "haystack.nodes.file_converter.pdf_ocr", "PDFToTextOCRConverter", "ocr"
+)  # Has optional dependencies
+PDFToTextConverter = safe_import(
+    "haystack.nodes.file_converter.pdf", "PDFToTextConverter", "pdf"
 )  # Has optional dependencies

@@ -11,8 +11,28 @@ from haystack.nodes import PromptTemplate, RAGenerator
 from ..conftest import SAMPLES_PATH
 
 
-NO_KEY = not bool(os.environ.get("OPENAI_API_KEY", False))
-NO_KEY_MSG = "No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test."
+@pytest.fixture
+def openai_generator(request):
+    if request.param == "azure":
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
+        azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
+        azure_deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
+        if api_key and azure_base_url and azure_deployment_name:
+            return OpenAIAnswerGenerator(
+                api_key=api_key,
+                azure_base_url=azure_base_url,
+                azure_deployment_name=azure_deployment_name,
+                model="text-babbage-001",
+                top_k=1,
+            )
+        pytest.skip("No OpenAI API keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
+
+    elif request.param == "openai":
+        if bool(os.environ.get("OPENAI_API_KEY", False)):
+            return OpenAIAnswerGenerator(
+                api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1
+            )
+        pytest.skip("No Azure keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
 
 
 @pytest.fixture
@@ -38,18 +58,15 @@ def test_rag_token_generator(docs_with_true_emb):
     assert "berlin" in answers[0].answer
 
 
-@pytest.mark.skipif(NO_KEY, reason=NO_KEY_MSG)
+@pytest.mark.parametrize("openai_generator", ["openai", "azure"], indirect=True)
 def test_openai_answer_generator(openai_generator, docs):
-    openai_generator = OpenAIAnswerGenerator(
-        api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1
-    )
     prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
     assert len(prediction["answers"]) == 1
     assert "Carla" in prediction["answers"][0].answer
 
 
-@pytest.mark.skipif(NO_KEY, reason=NO_KEY_MSG)
-def test_openai_answer_generator_custom_template(docs):
+@pytest.mark.parametrize("openai_generator", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_custom_template(openai_generator, docs):
     lfqa_prompt = PromptTemplate(
         name="lfqa",
         prompt_text="""
@@ -61,8 +78,5 @@ def test_openai_answer_generator_custom_template(docs):
         """,
         prompt_params=["context", "query"],
     )
-    openai_generator = OpenAIAnswerGenerator(
-        api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1, prompt_template=lfqa_prompt
-    )
-    prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
+    prediction = openai_generator.predict(query=lfqa_prompt, documents=docs, top_k=1)
     assert len(prediction["answers"]) == 1
