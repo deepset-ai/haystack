@@ -64,9 +64,9 @@ def test_table_reader(table_reader_and_param, table1, table2):
 
     # Check the second answer in the list
     reference2 = {
-        "tapas_small": {"answer": "5 april 1980", "row": 7, "col": 8, "score": 0.86314},
-        "rci": {"answer": "47", "row": 5, "col": 6, "score": -6.836},
-        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 1, "score": 0.49078},
+        "tapas_small": {"answer": "5 april 1980", "row": 1, "col": 3, "score": 0.86314},
+        "rci": {"answer": "47", "row": 1, "col": 1, "score": -6.836},
+        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 0, "score": 0.49078},
     }
     assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
     assert prediction["answers"][1].answer == reference2[param]["answer"]
@@ -97,9 +97,9 @@ def test_table_reader_train_mode(table_reader_and_param, table1, table2):
 
     # Check the second answer in the list
     reference2 = {
-        "tapas_small": {"answer": "5 april 1980", "row": 7, "col": 8, "score": 0.86314},
-        "rci": {"answer": "47", "row": 5, "col": 6, "score": -6.836},
-        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 1, "score": 0.49078},
+        "tapas_small": {"answer": "5 april 1980", "row": 1, "col": 3, "score": 0.86314},
+        "rci": {"answer": "47", "row": 1, "col": 1, "score": -6.836},
+        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 0, "score": 0.49078},
     }
     assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
     assert prediction["answers"][1].answer == reference2[param]["answer"]
@@ -143,9 +143,9 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
 
     # Check first answer from the 2ND Document
     ans_reference = {
-        "tapas_small": {"answer": "5 april 1980", "row": 7, "col": 8, "score": 0.86314},
-        "rci": {"answer": "15 september 1960", "row": 11, "col": 12, "score": -7.9429},
-        "tapas_scored": {"answer": "5", "row": 10, "col": 11, "score": 0.11485},
+        "tapas_small": {"answer": "5 april 1980", "row": 1, "col": 3, "score": 0.86314},
+        "rci": {"answer": "15 september 1960", "row": 2, "col": 3, "score": -7.9429},
+        "tapas_scored": {"answer": "5", "row": 2, "col": 2, "score": 0.11485},
     }
     assert prediction["answers"][1][0].score == pytest.approx(ans_reference[param]["score"], rel=1e-3)
     assert prediction["answers"][1][0].answer == ans_reference[param]["answer"]
