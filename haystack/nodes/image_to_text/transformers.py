@@ -24,7 +24,7 @@ UNSUPPORTED_MODEL_MESSAGE = (
     f"To find the supported models: \n"
     f"1. Visit [image-to-text models on Hugging Face](https://huggingface.co/models?pipeline_tag=image-to-text). \n"
     f"2. Open a model you want to check.  \n"
-    f"3. On the model page, go to the "Files and Versions" tab \n"
+    f'3. On the model page, go to the "Files and Versions" tab \n'
     f"4. Open the `config.json` file, and make sure the `architectures` field contains one of the supported classes: {SUPPORTED_MODELS_CLASSES}."
 )
 
