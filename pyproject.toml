@@ -68,6 +68,10 @@ dependencies = [
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
 
+  # Web Retriever
+  "trafilatura",
+  "courlan",
+
   # Preprocessing
   "more_itertools",  # for windowing
   "python-docx",

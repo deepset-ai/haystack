@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional, Union, Tuple, Type, Callable
 from haystack import BaseComponent, MultiLabel, Document
 from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.search_engine.base import SearchEngine
+from haystack.nodes.search_engine.utils import SearchEngineSampler
 
 
 class WebSearch(BaseComponent):
@@ -41,6 +42,9 @@ class WebSearch(BaseComponent):
                 "search_engine_provider must be either a string (SearchEngine class name) or a SearchEngine instance"
             )
 
+        if "top_p" in kwargs or "top_k" in kwargs:
+            self.search_engine = SearchEngineSampler(self.search_engine, **kwargs)
+
     def run(
         self,
         query: Optional[str] = None,
@@ -49,7 +53,7 @@ class WebSearch(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
-        return {"documents": self.search_engine.search(query)}, "output_1"
+        return {"output": self.search_engine.search(query)}, "output_1"
 
     def run_batch(
         self,
@@ -104,10 +108,13 @@ class NeuralWebSearch(BaseComponent):
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
         result, _ = self.websearch.run(query=query)
+
         doc_hits: List[Document] = result["output"]
         prompt_kwargs = self.prepare_template_params_fn(doc_hits, {"query": query, "documents": documents})
+
         response = self.prompt_node.prompt(self.prompt_template, **prompt_kwargs)
         final_answer = self.extract_final_answer_fn(next(iter(response)))
+
         return {"output": final_answer}, "output_1"
 
     def run_batch(
