@@ -25,7 +25,7 @@ from haystack.nodes import (
     PreProcessor,
 )
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, fail_at_version
 
 
 @pytest.mark.tika
@@ -65,6 +65,7 @@ def test_pdftoppm_command_format():
     ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_command_whitespaces(Converter):
     converter = Converter()
@@ -75,25 +76,28 @@ def test_pdf_command_whitespaces(Converter):
     assert "ɪ" in document.content
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
 
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_5.pdf")[0]["documents"][0]
+    assert "Ж" in document.content
+
     document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
     assert "ɪ" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", encoding="Latin1")[0]["documents"][0]
-    assert "ɪ" not in document.content
 
-
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_layout(Converter):
-    converter = Converter(keep_physical_layout=True)
+def test_pdf_sort_by_position(Converter):
+    converter = Converter(sort_by_position=True)
 
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
     assert str(document.content).startswith("This is the second test sentence.")
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
@@ -115,8 +119,9 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_page_range(Converter):
+def test_pdf_page_range(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
     pages = document.content.split("\f")
@@ -129,8 +134,9 @@ def test_page_range(Converter):
     assert pages[2] == ""  # the page 3 is empty.
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_page_range_numbers(Converter):
+def test_pdf_page_range_numbers(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
 
@@ -140,6 +146,68 @@ def test_page_range_numbers(Converter):
     documents = preprocessor.process([document])
 
     assert documents[1].meta["page"] == 4
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel(Converter):
+    converter = Converter(multiprocessing=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_page_range(Converter):
+    converter = Converter(multiprocessing=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf", start_page=2)[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == ""
+    assert len(pages) == 50
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_sort_by_position(Converter):
+    converter = Converter(multiprocessing=True, sort_by_position=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
+
+
+@fail_at_version(1, 17)
+def test_deprecated_encoding():
+    with pytest.warns(DeprecationWarning):
+        converter = PDFToTextConverter(encoding="utf-8")
+
+
+@fail_at_version(1, 17)
+def test_deprecated_encoding_in_convert_method():
+    converter = PDFToTextConverter()
+    with pytest.warns(DeprecationWarning):
+        converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
+
+
+@fail_at_version(1, 17)
+def test_deprecated_keep_physical_layout():
+    with pytest.warns(DeprecationWarning):
+        converter = PDFToTextConverter(keep_physical_layout=True)
+
+
+@fail_at_version(1, 17)
+def test_deprecated_keep_physical_layout_in_convert_method():
+    converter = PDFToTextConverter()
+    with pytest.warns(DeprecationWarning):
+        converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", keep_physical_layout=True)
 
 
 @pytest.mark.tika
