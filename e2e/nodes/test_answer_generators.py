@@ -34,6 +34,8 @@ def openai_generator(request):
             )
         pytest.skip("No Azure keys provided. Check 'e2e/nodes/test_answer_generators.py' to see what's required.")
 
+    raise ValueError(f"Unknown provider: {request.param}")
+
 
 @pytest.fixture
 def docs_with_true_emb():
