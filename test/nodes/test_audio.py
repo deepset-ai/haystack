@@ -45,7 +45,8 @@ def whisper_helper():
     return WhisperHelper("openai/whisper-medium")
 
 
-@pytest.mark.skipif(soundfile_not_found, reason="soundfile/ffmpeg not found")
+# @pytest.mark.skipif(soundfile_not_found, reason="soundfile/ffmpeg not found")
+@pytest.mark.skip(reason="Segfaulting in CI")
 class TestTextToSpeech:
     def test_text_to_speech_audio_data(self, tmp_path, whisper_helper: WhisperHelper):
         text2speech = TextToSpeech(
