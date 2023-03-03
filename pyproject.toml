@@ -216,7 +216,7 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
-  "requests-cache",
+  "requests-cache<1.0.0",
 ]
 
 formatting = [
