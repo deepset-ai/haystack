@@ -99,7 +99,7 @@ Currently using PromptNode is a bit cumbersome as:
 # Detailed design
 
 For outputs:
-PromptTemplate gets one new attributes: `output_shapers`. These are lists of Shaper objects that are applied to the output of the prompt. 
+PromptTemplate gets one new attribute: `output_shapers`. These are lists of Shaper objects that are applied to the output of the prompt. 
 PromptNode calls `PromptTemplate.prepare` before executing the prompt. `PromptTemplate.prepare` applies the shaping functions (if present) to the arguments of the `invocation_context`.
 PromptNode invokes the prompt on the prepared `invocation_context`.
 PromptNode calls `PromptTemplate.post_process` after executing the prompt. `PromptTemplate.post_process` makes all `output_shapers` run on the `invocation_context`.
