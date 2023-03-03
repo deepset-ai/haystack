@@ -13,6 +13,7 @@ from trafilatura.downloads import fetch_url
 
 from haystack import Document
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.nodes import TopPSampler
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.search_engine.web import WebSearch
@@ -24,8 +25,8 @@ logger = logging.getLogger(__name__)
 class WebRetriever(BaseRetriever):
     def __init__(
         self,
-        search_tool: WebSearch,
-        top_k: Optional[int] = None,
+        web_search: WebSearch,
+        top_p: Optional[int] = 0.95,
         preprocessor: Optional[PreProcessor] = None,
         document_store: Optional[BaseDocumentStore] = None,
         document_index: Optional[str] = None,
@@ -39,8 +40,7 @@ class WebRetriever(BaseRetriever):
         Collect complete documents from the web using the links provided by a WebSearch node
         """
         super().__init__()
-        self.engine = search_tool
-        self.top_k = top_k
+        self.web_search = web_search
         self.preprocessor = preprocessor
         self.document_store = document_store
         self.document_index = document_index
@@ -49,6 +49,8 @@ class WebRetriever(BaseRetriever):
         self.cache_index = cache_index
         self.cache_headers = cache_headers
         self.cache_time = cache_time
+        if top_p is not None:
+            self.sampler = TopPSampler(top_p=top_p, top_score_name="score")
 
     def _normalize_query(self, query: str) -> str:
         return "".join([c for c in normalize("NFKD", query.lower()) if not combining(c)])
@@ -161,7 +163,7 @@ class WebRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        top_k: Optional[int] = None,
+        top_p: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
         document_store: Optional[BaseDocumentStore] = None,
         document_index: Optional[str] = None,
@@ -176,14 +178,12 @@ class WebRetriever(BaseRetriever):
         The documents can then stored in a DocumentStore for later use. The documents can be cached in a DocumentStore to improve
         retrieval time.
         :param query: The query string.
-        :top_k: The maximum number of documents to return.
+        :top_p: The top-p sampling parameter. If None, the default value is used.
         :index_name: The index name to save the documents to.
         :duplicate_documents: If "skip", documents with the same ID are skipped. If "overwrite", documents with the same ID are overwritten. If "fail", an exception is raised.
         use_cache: If True, the results are cached in the DocumentStore.
         cache_time: The time limit (seconds) to check the cache. Default is 24 hours.
         """
-        if top_k is None:
-            top_k = self.top_k
         if preprocessor is None:
             preprocessor = self.preprocessor
         if document_store is None:
@@ -209,7 +209,10 @@ class WebRetriever(BaseRetriever):
             if documents and len(documents) > 0:
                 return documents
 
-        search_results: dict = self.engine.run(query=query)[0]["output"]
+        search_results, _ = self.web_search.run(query=query)
+        if self.sampler and search_results["documents"]:
+            search_results, _ = self.sampler.run(query, search_results["documents"], top_p=top_p)
+        search_results = search_results["documents"]
 
         links: List[Tuple[str, Union[str, None], Union[str, None]]] = [
             (
@@ -352,7 +355,7 @@ class WebRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        top_k: Optional[int] = None,
+        top_p: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
         document_store: Optional[BaseDocumentStore] = None,
         document_index: Optional[str] = None,
@@ -369,7 +372,7 @@ class WebRetriever(BaseRetriever):
             documents.extend(
                 self.retrieve(
                     q,
-                    top_k=top_k,
+                    top_p=top_p,
                     preprocessor=preprocessor,
                     document_store=document_store,
                     document_index=document_index,

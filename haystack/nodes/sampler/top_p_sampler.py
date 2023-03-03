@@ -14,27 +14,63 @@ logger = logging.getLogger(__name__)
 
 
 class TopPSampler(BaseSampler):
+    """
+    Filters documents based on the cumulative probability of the similarity scores between the
+    query and the documents using the top p sampling.
+
+    Top p sampling selects a subset of the most relevant data points from a larger set of data. The technique
+    involves calculating the cumulative probability of the scores of each data point, and then
+    selecting the top p percent of data points with the highest cumulative probability.
+
+    In the context of TopPSampler, the run method takes in a query and a set of documents,
+    calculates the similarity scores between the query and the documents, and then filters
+    the documents based on the cumulative probability of these scores. The TopPSampler provides a
+    way to efficiently select the most relevant documents based on their similarity to a given query.
+
+    Usage example:
+
+    ```python
+    search = WebSearch(api_key="<your_api_key_here>")
+    sampler = TopPSampler(top_p=0.95)
+
+    p = Pipeline()
+    p.add_node(component=search, name="Search", inputs=["Query"])
+    p.add_node(component=sampler, name="Sampler", inputs=["Search"])
+    print(p.run(query="What's the secret of the Universe?"))
+    ```
+    """
+
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         model_version: Optional[str] = None,
         top_p: Optional[float] = 0.999,
         strict: Optional[bool] = False,
-        top_score_name: Optional[str] = "score",
+        top_score_name: Optional[str] = None,
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        batch_size: Optional[int] = 16,
-        progress_bar: Optional[bool] = True,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
+        """
+        Initialize a TopPSampler.
+
+        :param model_name_or_path: Path to a pretrained sentence-transformers model
+        :param model_version: The version of the model to use. Can be a tag name, branch name, or commit hash.
+        :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99)
+        :param strict: if strict is set to False, and low top_p resulted in no documents being selected, then return at
+        least one document
+        :param top_score_name: Name of the score that should be used to insert the scores into the meta field of the Document
+        :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of torch devices (e.g. cuda:0, cpu, mps) to limit inference to specific devices.
+        :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
+
+        """
         super().__init__()
 
         self.top_p = top_p
         self.top_score_name = top_score_name
         self.strict = strict
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
-        self.progress_bar = progress_bar
-        self.batch_size = batch_size
         self.cross_encoder = CrossEncoder(model_name_or_path, device=str(self.devices[0]))
 
     def predict(self, query: str, documents: List[Document], top_p: Optional[float] = None) -> List[Document]:
@@ -82,8 +118,9 @@ class TopPSampler(BaseSampler):
             selected_docs = [documents[highest_prob_indices[0]]]
 
         # include prob scores in the results
-        for idx, doc in enumerate(selected_docs):
-            doc.meta[self.top_score_name] = "{:.2f}".format(sorted_probs[idx])
+        if self.top_score_name:
+            for idx, doc in enumerate(selected_docs):
+                doc.meta[self.top_score_name] = "{:.2f}".format(sorted_probs[idx])
         return selected_docs
 
     def predict_batch(
