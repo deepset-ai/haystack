@@ -98,12 +98,16 @@ Currently using PromptNode is a bit cumbersome as:
 
 # Detailed design
 
-For outputs:
+## General changes
 PromptTemplate gets one new attribute: `output_shapers`. These are lists of Shaper objects that are applied to the output of the prompt. 
+PromptTemplate's syntax is extended to allow for the usage of shaping functions on input variables. These shaping functions are predefined.
+
+## Basic flow:
 PromptNode calls `PromptTemplate.prepare` before executing the prompt. `PromptTemplate.prepare` applies the shaping functions (if present) to the arguments of the `invocation_context`.
 PromptNode invokes the prompt on the prepared `invocation_context`.
 PromptNode calls `PromptTemplate.post_process` after executing the prompt. `PromptTemplate.post_process` makes all `output_shapers` run on the `invocation_context`.
 
+## Shaping functions
 The PromptTemplate syntax is extended to allow for the usage of shaping functions on input variables. These shaping functions should be easy to understand and use.
 We only support positional args for shaping functions. This is because we want to keep the syntax simple and we don't want to overcomplicate the parsing logic. As args any python primitive is allowed (e.g. strings, ints, floats, lists, dicts, None).
 Parsing is done by using regular expressions. If we however notice that this is not enough, we can switch to a more complex parsing library like `jinja2`.
@@ -133,6 +137,10 @@ Here is a basic (and incomplete) example how the parsing logic could look like:
         # >>> Found single variable: query
     ```
 
+## Prompt engineering with Haystack Pipelines
+Additionally we want to support changing the prompt via param of `Pipeline.run`. This is useful for example if you want to finetune your prompt and iterate quickly on it without having to change the pipeline. The `prompt` param is a string in PromptTemplate syntax which will be delegated to the `PromptTemplate` and then used by `PromptNode`. This is similar to how `Pipeline.run` works with `query` param. Note that the `prompt` param does not affect `output_shapers`.
+
+## Misc
 Note, that `Shapers` are still usable in Pipelines as before.
 
 # Drawbacks
