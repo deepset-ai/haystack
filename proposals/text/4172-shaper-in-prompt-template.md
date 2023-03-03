@@ -88,7 +88,7 @@ We make sure that we have proper default values for the input shaping function a
 
 would do. 
 
-Note that the number of how many prompts are created depends on which shaping functions are used. If you use `join` on the `documents` list you will have only one prompt. If you omit `join` and use `to_list` on `query` instead, you will have multiple prompts (one prompt per document).
+Note that the number of how many prompts are created depends on which shaping functions are used. If you use `join(documents)` you will have only one prompt. If you omit the `join` and use `to_list(query)` instead, you will have multiple prompts (one prompt per document).
 
 # Motivation
 
