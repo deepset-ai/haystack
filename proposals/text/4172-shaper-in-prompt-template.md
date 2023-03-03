@@ -104,6 +104,35 @@ PromptNode calls `PromptTemplate.prepare` before executing the prompt. `PromptTe
 PromptNode invokes the prompt on the prepared `invocation_context`.
 PromptNode calls `PromptTemplate.post_process` after executing the prompt. `PromptTemplate.post_process` makes all `output_shapers` run on the `invocation_context`.
 
+The PromptTemplate syntax is extended to allow for the usage of shaping functions on input variables. These shaping functions should be easy to understand and use.
+We only support positional args for shaping functions. This is because we want to keep the syntax simple and we don't want to overcomplicate the parsing logic. As args any python primitive is allowed (e.g. strings, ints, floats, lists, dicts, None).
+Parsing is done by using regular expressions. If we however notice that this is not enough, we can switch to a more complex parsing library like `jinja2`.
+Here is a basic (and incomplete) example how the parsing logic could look like:
+    ```python
+
+        # template allowing basic list comprehensions to create the wanted string
+        template = """
+        Create a concise and informative answer (no more than 50 words) for a given question
+        based solely on the given documents. You must only use information from the given documents.
+        Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation.
+        If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’.
+        If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.
+        {join(documents, new_line)} \n Question: {query}; Answer: 
+        """
+
+        for group in re.findall(r'\{(.*?)\}', template):
+            if "(" in group and ")" in group:
+                function_to_call = group[:group.index("(")].strip()
+                variables_for_function = [var.strip() for var in group[group.index("(")+1:group.index(")")].split(",")]
+                print(f"Found function '{function_to_call}' with vars '{variables_for_function}'")
+            else:
+                print("Found single variable:", group)
+
+        # Returns
+        # >>> Found function 'join' with vars '['documents', 'new_line']'
+        # >>> Found single variable: query
+    ```
+
 Note, that `Shapers` are still usable in Pipelines as before.
 
 # Drawbacks
