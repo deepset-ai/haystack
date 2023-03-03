@@ -212,11 +212,13 @@ class PromptModelInvocationLayer:
         pass
 
     @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
         Checks if the given model is supported by this invocation layer.
 
         :param model_name_or_path: The name or path of the model.
+        :param kwargs: additional keyword arguments passed to the underlying model which might be used to determine
+        if the model is supported.
         :return: True if this invocation layer supports the model, False otherwise.
         """
         return False
@@ -371,7 +373,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         return generated_texts
 
     @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         try:
             config = AutoConfig.from_pretrained(model_name_or_path)
         except OSError:
@@ -422,7 +424,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
-        self.url = "https://api.openai.com/v1/completions"
 
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
@@ -445,6 +446,14 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             ]
             if key in kwargs
         }
+
+    @property
+    def url(self) -> str:
+        return "https://api.openai.com/v1/completions"
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     @retry_with_exponential_backoff(
         backoff_in_seconds=float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
@@ -494,11 +503,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "best_of": kwargs_with_defaults.get("best_of", 1),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request(
-            "POST",
+        response = requests.post(
             self.url,
-            headers=headers,
+            headers=self.headers,
             data=json.dumps(payload),
             timeout=float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30)),
         )
@@ -530,15 +537,62 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         return responses
 
     @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
-        return any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        return valid_model and kwargs.get("azure_base_url") is None
+
+
+class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
+    """
+    Azure OpenAI Invocation Layer
+
+    This layer is used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIInvocationLayer
+    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
+    endpoint and the azure_deployment_name is the name of the deployment.
+    """
+
+    def __init__(
+        self,
+        azure_base_url: str,
+        azure_deployment_name: str,
+        api_key: str,
+        api_version: str = "2022-12-01",
+        model_name_or_path: str = "text-davinci-003",
+        max_length: Optional[int] = 100,
+        **kwargs,
+    ):
+        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
+        self.api_version = api_version
+
+    @property
+    def url(self) -> str:
+        return f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {"api-key": self.api_key, "Content-Type": "application/json"}
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        """
+        Ensures Azure OpenAI Invocation Layer is selected when azure_base_url and azure_deployment_name are provided in
+        addition to a list of supported models.
+        """
+        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        return (
+            valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
+        )
 
 
 class PromptModel(BaseComponent):
     """
     The PromptModel class is a component that uses a pre-trained model to perform tasks based on a prompt. Out of
-    the box, it supports two model invocation layers: Hugging Face transformers and OpenAI, with the ability to
-    register additional custom invocation layers.
+    the box, it supports model invocation layers for:
+    - Hugging Face transformers (all text2text-generation models)
+    - OpenAI InstructGPT models
+    - Azure OpenAI InstructGPT models
 
     Although it is possible to use PromptModel to make prompt invocations on the underlying model, use
     PromptNode to interact with the model. PromptModel instances are a way for multiple
@@ -569,6 +623,11 @@ class PromptModel(BaseComponent):
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use where the model is loaded.
         :param model_kwargs: Additional keyword arguments passed to the underlying model.
+
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
+        Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
+        azure_deployment_name (The name of the Azure OpenAI API deployment). These parameters should be supplied
+        in the `model_kwargs` dictionary.
         """
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -584,6 +643,7 @@ class PromptModel(BaseComponent):
 
         self.register(HFLocalInvocationLayer)  # pylint: disable=W0108
         self.register(OpenAIInvocationLayer)  # pylint: disable=W0108
+        self.register(AzureOpenAIInvocationLayer)  # pylint: disable=W0108
 
         self.model_invocation_layer = self.create_invocation_layer()
 
@@ -597,7 +657,7 @@ class PromptModel(BaseComponent):
         all_kwargs = {**self.model_kwargs, **kwargs}
 
         for invocation_layer in self.invocation_layers:
-            if invocation_layer.supports(self.model_name_or_path):
+            if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
                 )
@@ -646,6 +706,9 @@ class PromptModel(BaseComponent):
         debug: Optional[bool] = None,
     ):
         raise NotImplementedError("This method should never be implemented in the derived class")
+
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, self.__dict__)
 
 
 def get_predefined_prompt_templates() -> List[PromptTemplate]:
@@ -721,7 +784,8 @@ class PromptNode(BaseComponent):
     """
     The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode
     supports multiple NLP tasks out of the box. You can use it to perform tasks, such as
-    summarization, question answering, question generation, and more, using a single, unified model within the Haystack framework.
+    summarization, question answering, question generation, and more, using a single, unified model within the Haystack
+    framework.
 
     One of the benefits of PromptNode is that you can use it to define and add additional prompt templates
      the model supports. Defining additional prompt templates makes it possible to extend the model's capabilities
@@ -732,9 +796,13 @@ class PromptNode(BaseComponent):
     Using an instance of the PromptModel class, you can create multiple PromptNodes that share the same model, saving
     the memory and time required to load the model multiple times.
 
-    PromptNode also supports multiple model invocation layers: Hugging Face transformers and OpenAI with an
-    ability to register additional custom invocation layers. However, we currently support only
-    T5 Flan and OpenAI InstructGPT models.
+    PromptNode also supports multiple model invocation layers:
+    - Hugging Face transformers (all text2text-generation models)
+    - OpenAI InstructGPT models
+    - Azure OpenAI InstructGPT models
+
+    However, users are not limited to above-mentioned models only as there is a built-in ability to register
+    additional custom model invocation layers.
 
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
@@ -772,6 +840,12 @@ class PromptNode(BaseComponent):
         :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model's going to generate three answers to the query.
         :param stop_words: Stops text generation if any of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
+
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
+        Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
+        azure_deployment_name (The name of the Azure OpenAI API deployment).
+        These parameters should be supplied in the `model_kwargs` dictionary.
+
         """
         send_event("PromptNode initialized")
         super().__init__()
