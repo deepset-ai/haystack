@@ -285,10 +285,11 @@ class ReadByTransformers:
         except Exception as e:
             raise ImportError("Can't import 'transformers': this node won't work.") from e
 
-        self.model = pipeline(
-            "question-answering",
-            model=self.model_name_or_path,
-        )
+        if not self.model:
+            self.model = pipeline(
+                "question-answering",
+                model=self.model_name_or_path,
+            )
 
     def run(
         self,
@@ -442,10 +443,9 @@ Therefore, the revised Pipeline object has the following API:
     - `get_node(name)`: returns the node's information stored in the graph
     - `connect(nodes)`: chains a series of nodes together. It will fail if the nodes inputs and outputs do not match: see the Nodes' contract to understand how Nodes can declare their I/O.
 - Docstore management:
-    - `connect_store(name, store)`: adds a DocumentStore to the stores that are passed down to the nodes through the `stores` variable.
+    - `add_store(name, store)`: adds a DocumentStore to the stores that are passed down to the nodes through the `stores` variable.
     - `list_stores()`: returns all connected stores.
     - `get_store(name)`: returns a specific document store by name.
-    - `disconnect_store(name, store)`: removes a store from the registry.
 - Serialization and validation:
     - `__init__(path=None)`: if a path is given, loads the pipeline from the YAML found at that path. Note that at this stage `Pipeline` will collect nodes from all imported modules (see the implementation - the search can be scoped down to selected modules) and **all nodes' `__init__` method is called**. Therefore, `__init__` must be lightweight. See the Node's contract to understand how heavy nodes should design their initialization.
     - `save(path)`: serializes and saves the pipeline as a YAML at the given path.
@@ -539,10 +539,10 @@ class MyNode:
         """
         Haystack nodes should have an `__init__` method where they define:
 
-        - `self.inputs = [<expected_input_edge_name(s)>]`:
+        - `self.inputs = [<input_name(s)>]`:
             A list with all the edges they can possibly receive input from
 
-        - `self.outputs = [<expected_output_edge_name(s)>]`:
+        - `self.outputs = [<output_name(s)>]`:
             A list with the edges they might possibly produce as output
 
         - `self.init_parameters = {<init parameters>}`:
@@ -563,8 +563,8 @@ class MyNode:
 
         # Contract - all three are mandatory.
         self.init_parameters = {"model_name": model_name}
-        self.inputs = ["expected_input_edge_name"]
-        self.outputs = ["expected_output_edge_name"]
+        self.inputs = ["input_name"]
+        self.outputs = ["output_name"]
 
     def warm_up(self):
         """
@@ -636,7 +636,7 @@ class MyNode:
         value = data[0][1]
         print(f"Hello I'm {name}! This instance have been called {self.how_many_times_have_I_been_called} times and this is the value I received: {value}")
 
-        return {"expected_output_edge_name": value}
+        return {"output_name": value}
 ```
 
 This contract is stored in the docstring of `@haystack_node` and acts as the single source of truth.
