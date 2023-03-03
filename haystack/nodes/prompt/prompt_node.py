@@ -186,7 +186,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        invocation_layer_class: Optional[Union[str, Type[PromptModelInvocationLayer]]] = None,
+        invocation_layer_class: Optional[str] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -233,8 +233,6 @@ class PromptModel(BaseComponent):
                         f"Could not locate PromptModelInvocationLayer class with name {invocation_layer_class}. "
                         f"Make sure to pass the full path to the class."
                     )
-            elif issubclass(invocation_layer_class, PromptModelInvocationLayer):
-                klass = invocation_layer_class
 
             if not issubclass(klass, PromptModelInvocationLayer):
                 raise ValueError(f"Class {invocation_layer_class} is not a subclass of PromptModelInvocationLayer.")
