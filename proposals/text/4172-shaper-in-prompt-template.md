@@ -112,6 +112,7 @@ The PromptTemplate syntax is extended to allow for the usage of shaping function
 We only support positional args for shaping functions. This is because we want to keep the syntax simple and we don't want to overcomplicate the parsing logic. As args any python primitive is allowed (e.g. strings, ints, floats, lists, dicts, None).
 Parsing is done by using regular expressions. If we however notice that this is not enough, we can switch to a more complex parsing library like `jinja2`.
 Here is a basic (and incomplete) example how the parsing logic could look like:
+    
     ```python
 
         # template allowing basic list comprehensions to create the wanted string
