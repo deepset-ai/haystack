@@ -79,14 +79,16 @@ The corresponding prompt template would look like this (provided `value_to_list`
     ```
 
 We make sure that we have proper default values for the input shaping function and it is easy to understand. `{join(documents)}` should be usable in most cases. When you want to have more control about document rendering something like `join(documents, DELIMITER, PATTERN, CHAR_REPLACEMENT)` with 
+    
     ```python
     DELIMITER = "\n"
     PATTERN = "$content" # parseable by StringTemplate using data from document.content, document.meta and the index of the document
     CHAR_REPLACEMENT = {"[": "(", "}": ")"} # just an example what could be passed here
     ```
+
 would do. 
 
-Note that how many prompts are created depends on which shaping functions are used. If you use `join` on the `documents` list you will have only one prompt. If you omit `join` and use `to_list` on `query` instead, you will have multiple prompts (one prompt per document).
+Note that the number of how many prompts are created depends on which shaping functions are used. If you use `join` on the `documents` list you will have only one prompt. If you omit `join` and use `to_list` on `query` instead, you will have multiple prompts (one prompt per document).
 
 # Motivation
 
