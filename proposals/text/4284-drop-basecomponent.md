@@ -713,7 +713,7 @@ pipeline.connect(['node_b', 'node_a'])
 
 This type of error reporting was found especially useful for nodes that declare a variable number and name of inputs and outputs depending on their initialization parameters (think of language classifiers, for example).
 
-One shortcoming is that currently Pipeline "trusts" the nodes to respect their own declarations. So if a node states that it will output `intermediate_value`, but outputs something else once run, the Pipeline will fail. We accept this failure as a "contract breach", so the Node should fix its behavior.
+One shortcoming is that currently Pipeline "trusts" the nodes to respect their own declarations. So if a node states that it will output `intermediate_value`, but outputs something else once run, `Pipeline` will fail. We accept this failure as a "contract breach": the node should fix its behavior and `Pipeline` should not try to prevent such scenarios.
 
 Note: the draft implementation does not validate the type of the values, but only their names. So two nodes might agree to pass a variable called `documents` to each other, but one might output a `Set` when the receiver expects a `List`, and that will cause a crash. However, such check can be added, so we can assume types are going to be validated too.
 
