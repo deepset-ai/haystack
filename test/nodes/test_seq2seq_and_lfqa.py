@@ -6,9 +6,8 @@ from haystack.nodes.answer_generator import Seq2SeqGenerator
 @pytest.mark.unit
 def test_seq2seq_unknown_converter():
     seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random")
-    with pytest.raises(Exception) as exception_info:
+    with pytest.raises(Exception, match="doesn't have input converter registered for patrickvonplaten/t5-tiny-random"):
         seq2seq.predict(query="irrelevant")
-    assert "doesn't have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value)
 
 
 @pytest.mark.unit
@@ -20,6 +19,5 @@ def test_seq2seq_invalid_converter():
     seq2seq = Seq2SeqGenerator(
         model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter()
     )
-    with pytest.raises(Exception) as exception_info:
+    with pytest.raises(Exception, match="does not have a valid __call__ method signature"):
         seq2seq.predict(query="irrelevant")
-    assert "does not have a valid __call__ method signature" in str(exception_info.value)

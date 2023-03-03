@@ -3,7 +3,7 @@ import pytest
 from haystack.schema import Document
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipelines import GenerativeQAPipeline, TranslationWrapperPipeline
-from haystack.nodes import BM25Retriever, RAGenerator, DensePassageRetriever, TransformersTranslator
+from haystack.nodes import RAGenerator, DensePassageRetriever, TransformersTranslator
 
 
 @pytest.fixture
