@@ -71,12 +71,12 @@ This is a very simplified example that performs some mathematical operations. Se
 
 ```python
 from typing import Dict, Any, List, Tuple
-from new_haystack.pipeline import Pipeline
-from new_haystack.nodes import haystack_node
+from haystack.pipeline import Pipeline
+from haystack.nodes import node
 
 # A Haystack Node. See below for details about this contract.
-# Crucial components are the @haystack_node decorator and the `run()` method
-@haystack_node
+# Crucial components are the @node decorator and the `run()` method
+@node
 class AddValue:
     def __init__(self, add: int = 1, input_name: str = "value", output_name: str = "value"):
         self.add = add
@@ -100,7 +100,7 @@ class AddValue:
         return {"value": value}
 
 
-@haystack_node
+@node
 class Double:
     def __init__(self, input_edge: str = "value"):
         self.init_parameters = {"input_edge": input_edge}
@@ -164,11 +164,11 @@ from typing import Dict, Any, List, Tuple
 
 import logging
 
-from new_haystack.data import TextQuery
-from new_haystack.nodes import haystack_node
+from haystack.data import TextQuery
+from haystack.nodes import node
 
 
-@haystack_node
+@node
 class RetrieveByBM25:
     """
     Simple dummy BM25 Retriever that works with MemoryStore.
@@ -234,12 +234,11 @@ class RetrieveByBM25:
 ```python
 from typing import Dict, Any, List, Tuple
 
-from new_haystack.data import TextAnswer, Span
-from new_haystack.nodes import haystack_node
+from haystack.data import TextAnswer, Span
+from haystack import node
 
 
-
-@haystack_node
+@node
 class ReadByTransformers:
     """
     Simple dummy Transformers Reader.
@@ -366,10 +365,10 @@ class ReadByTransformers:
 import json
 from pathlib import Path
 
-from new_haystack.pipeline import Pipeline
-from new_haystack.stores import MemoryDocumentStore
-from new_haystack.data import TextQuery, TextDocument
-from new_haystack.nodes import RetrieveByBM25, ReadByTransformers
+from haystack.pipeline import Pipeline
+from haystack.stores import MemoryDocumentStore
+from haystack.data import TextQuery, TextDocument
+from haystack.nodes import RetrieveByBM25, ReadByTransformers
 
 import logging
 
@@ -436,7 +435,7 @@ These are the core features that drove the design of the revised Pipeline API:
 Therefore, the revised Pipeline object has the following API:
 
 - Core functions:
-    - `run(data, parameters)`: the core of the class. Relies on `networkx` for most of the heavy-lifting. Check out the implementation (https://github.com/ZanSara/haystack-2.0-draft/blob/main/new-haystack/new_haystack/pipeline/pipeline.py) for details: the code is heavily commented on the main loop and on the handling of non-trivial execution paths like branch selection, parallel branch execution, loops handling, multiple input/output and so on.
+    - `run(data, parameters)`: the core of the class. Relies on `networkx` for most of the heavy-lifting. Check out the implementation (https://github.com/ZanSara/haystack-2.0-draft/blob/main/new-haystack/haystack/pipeline/pipeline.py) for details: the code is heavily commented on the main loop and on the handling of non-trivial execution paths like branch selection, parallel branch execution, loops handling, multiple input/output and so on.
     - `draw(path)`: as in the old Pipeline object. Based on `pygraphviz` (which requires `graphviz`), but we might need to look for pure Python alternatives based on Matplotlib to reduce our dependencies.
 - Graph building:
     - `add_node(name, node, parameters)`: adds a disconnected node to the graph. It expects Haystack nodes in the `node` parameter and will fail if they aren't respecting the contract. See below for a more detailed discussion of the Nodes' contract.
@@ -532,7 +531,7 @@ A Haystack node is any class that abides the following contract:
 ```python
 # This decorator does very little, but is necessary for Pipelines to recognize
 # this class as a Haystack node. Check its implementation for details.
-@haystack_node
+@node
 class MyNode:
 
     def __init__(self, model_name: str: "deepset-ai/a-model-name"):
@@ -639,11 +638,11 @@ class MyNode:
         return {"output_name": value}
 ```
 
-This contract is stored in the docstring of `@haystack_node` and acts as the single source of truth.
+This contract is stored in the docstring of `@node` and acts as the single source of truth.
 
 ### Nodes discovery logic
 
-When pipelines are loaded from YAML, Pipeline needs to find the classes definition somewhere in the imported modules. Currently, at initialization `Pipeline` looks for classes which is decorated with the `@haystack_node` decorator under `haystack`, however such search can be extended (or narrowed) by setting the `search_nodes_in` init parameter of `Pipeline`. Note that it will try to import any module that is not imported yet.
+When pipelines are loaded from YAML, Pipeline needs to find the classes definition somewhere in the imported modules. Currently, at initialization `Pipeline` looks for classes which is decorated with the `@node` decorator under `haystack`, however such search can be extended (or narrowed) by setting the `search_nodes_in` init parameter of `Pipeline`. Note that it will try to import any module that is not imported yet.
 
 Search might fail in narrow corner cases: for example, inner classes are not discovered (often the case in tests). For these scenarios, `Pipeline` also accepts an `extra_nodes` init parameter that allows users to explicitly provide a dictionary of nodes to merge with the other discovered nodes.
 
@@ -658,7 +657,7 @@ Nodes are required, by contract, to explicitly define their inputs and outputs, 
 For example, let's imagine we have two nodes with the following I/O declared:
 
 ```python
-@haystack_node
+@node
 class NodeA:
 
     def __init__(self):
@@ -668,8 +667,7 @@ class NodeA:
     def run(self):
         pass
 
-
-@haystack_node
+@node
 class NodeB:
 
     def __init__(self):
@@ -690,9 +688,9 @@ pipeline.connect(['node_a', 'node_a'])
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
 #     pipeline.connect(['node_a', 'node_a'])
-#   File "/home/sara/work/haystack-2/new-haystack/new_haystack/pipeline/pipeline.py", line 224, in connect
+#   File "/home/sara/work/haystack-2/new-haystack/haystack/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
-# new_haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_a' with 'node_a' with an edge named 'intermediate_value': their declared inputs and outputs do not match.
+# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_a' with 'node_a' with an edge named 'intermediate_value': their declared inputs and outputs do not match.
 # Upstream node 'node_a' declared these outputs:
 #  - intermediate_value (free)
 # Downstream node 'node_a' declared these inputs:
@@ -702,9 +700,9 @@ pipeline.connect(['node_b', 'node_a'])
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
 #     pipeline.connect(['node_b', 'node_a'])
-#   File "/home/sara/work/haystack-2/new-haystack/new_haystack/pipeline/pipeline.py", line 224, in connect
+#   File "/home/sara/work/haystack-2/new-haystack/haystack/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
-# new_haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_b' with 'node_a' with an edge named 'output': their declared inputs and outputs do not match.
+# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_b' with 'node_a' with an edge named 'output': their declared inputs and outputs do not match.
 # Upstream node 'node_b' declared these outputs:
 #  - output (free)
 # Downstream node 'node_a' declared these inputs:
