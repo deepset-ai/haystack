@@ -3,7 +3,7 @@ from typing import List
 from unittest.mock import patch
 
 import pytest
-
+from haystack import Pipeline
 from haystack.schema import Document
 from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator
 from haystack.pipelines import GenerativeQAPipeline
@@ -197,3 +197,45 @@ def test_build_prompt_within_max_length():
 
         assert len(prompt_docs) == 1
         assert prompt_docs[0] == documents[0]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_max_tokens(haystack_openai_config):
+    if not haystack_openai_config:
+        pytest.skip("No API key found, skipping test")
+
+    nyc_docs = [Document(content="New York is a cool and amazing city to live in the United States of America.")]
+    openai_generator = OpenAIAnswerGenerator(
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
+        model="text-babbage-001",
+        top_k=1,
+    )
+    prediction = openai_generator.predict(query="What is New York City like?", documents=nyc_docs, max_tokens=3)
+    assert len(prediction["answers"]) == 1
+    token_count = prediction["answers"][0].answer.split()
+    assert 1 < len(token_count) <= 3
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
+def test_openai_answer_generator_pipeline_max_tokens(haystack_openai_config):
+    if not haystack_openai_config:
+        pytest.skip("No API key found, skipping test")
+
+    nyc_docs = [Document(content="New York is a cool and amazing city to live in the United States of America.")]
+    openai_generator = OpenAIAnswerGenerator(
+        api_key=haystack_openai_config["api_key"],
+        azure_base_url=haystack_openai_config.get("azure_base_url", None),
+        azure_deployment_name=haystack_openai_config.get("azure_deployment_name", None),
+        model="text-babbage-001",
+        top_k=1,
+    )
+    pipeline = Pipeline()
+    pipeline.add_node(component=openai_generator, name="generator", inputs=["Query"])
+    results = pipeline.run(query="What is New York City like?", documents=nyc_docs, params={"max_tokens": 3})
+    assert len(results["answers"]) == 1
+    token_count = results["answers"][0].answer.split()
+    assert 1 < len(token_count) <= 3
