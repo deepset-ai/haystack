@@ -169,7 +169,9 @@ The same is true for subclassing PromptTemplate like QuestionAnsweringPromptTemp
 Having `input_shapers` in the same way as `output_shapers` in the PromptTemplate. This would make it harder for users to get started as they would need to understand Shapers and which functions are relevant for input shaping.
 # Adoption strategy
 
-No need for migration, just adjusting the docs and the promptnode tutorial (if it exists already).
+As the syntax for input variables in `PromptTemplate` changes we can do the following:
+- raise an error if the old syntax is used and tell the user to use the new syntax
+- support the old syntax for a while and raise a deprecation warning
 
 # How we teach this
 
