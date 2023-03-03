@@ -101,11 +101,15 @@ class Document:
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
         if id_hash_keys is not None:
-            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):
+            if not all(
+                True if key in allowed_hash_key_attributes or key.startswith("meta.") else False for key in id_hash_keys
+            ):
                 raise ValueError(
                     f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
-                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}). "
-                    "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
+                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
+                    f"a key of meta with a maximum depth of 1 (like meta.url). "
+                    "See https://github.com/deepset-ai/haystack/pull/1910 and "
+                    "https://github.com/deepset-ai/haystack/issues/4317 for details"
                 )
         # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
         self.id_hash_keys = id_hash_keys or ["content"]
@@ -133,7 +137,12 @@ class Document:
 
         final_hash_key = ""
         for attr in id_hash_keys:
-            final_hash_key += ":" + str(getattr(self, attr))
+            if attr.startswith("meta."):
+                meta_key = attr.split(".", maxsplit=1)[1]
+                if meta_key in self.meta:
+                    final_hash_key += ":" + str(self.meta[meta_key])
+            else:
+                final_hash_key += ":" + str(getattr(self, attr))
 
         if final_hash_key == "":
             raise ValueError(
