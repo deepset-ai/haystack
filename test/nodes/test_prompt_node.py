@@ -8,12 +8,28 @@ import torch
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
-from haystack.nodes.prompt.prompt_node import HFLocalInvocationLayer
+from haystack.nodes.prompt import PromptModelInvocationLayer
+from haystack.nodes.prompt.providers import HFLocalInvocationLayer
 
 
 def skip_test_for_invalid_key(prompt_model):
     if prompt_model.api_key is not None and prompt_model.api_key == "KEY_NOT_FOUND":
         pytest.skip("No API key found, skipping test")
+
+
+class CustomInvocationLayer(PromptModelInvocationLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def invoke(self, *args, **kwargs):
+        return ["fake_response"]
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        return prompt
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        return model_name_or_path == "fake_model"
 
 
 @pytest.fixture
@@ -69,6 +85,24 @@ def test_prompt_template_repr():
     desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable $baz, prompt_params=['baz'])"
     assert repr(p) == desired_repr
     assert str(p) == desired_repr
+
+
+@pytest.mark.unit
+def test_prompt_node_with_custom_invocation_layer():
+    model = PromptModel("fake_model", invocation_layer_class=CustomInvocationLayer)
+    pn = PromptNode(model_name_or_path=model)
+    output = pn("Some fake invocation")
+
+    assert output == ["fake_response"]
+
+
+@pytest.mark.unit
+def test_prompt_node_with_custom_invocation_layer_from_string():
+    model = PromptModel("fake_model", invocation_layer_class="test.nodes.test_prompt_node.CustomInvocationLayer")
+    pn = PromptNode(model_name_or_path=model)
+    output = pn("Some fake invocation")
+
+    assert output == ["fake_response"]
 
 
 @pytest.mark.integration
@@ -897,7 +931,7 @@ class TestRunBatch:
         assert isinstance(result["results"][0][0], str)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_HFLocalInvocationLayer_supports():
     assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
     assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
