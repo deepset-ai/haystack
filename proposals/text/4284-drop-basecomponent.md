@@ -81,8 +81,8 @@ class AddValue:
     def __init__(self, add: int = 1, input_name: str = "value", output_name: str = "value"):
         self.add = add
         self.init_parameters = {"add": add}
-        self.expected_inputs = [input_name]
-        self.expected_outputs = [output_name]
+        self.inputs = [input_name]
+        self.outputs = [output_name]
 
     def run(
         self,
@@ -104,8 +104,8 @@ class AddValue:
 class Double:
     def __init__(self, input_edge: str = "value"):
         self.init_parameters = {"input_edge": input_edge}
-        self.expected_inputs = [input_edge]
-        self.expected_outputs = [input_edge]
+        self.inputs = [input_edge]
+        self.outputs = [input_edge]
 
     def run(
         self,
@@ -117,7 +117,7 @@ class Double:
         for _, value in data:
             value *= 2
 
-        return {self.expected_outputs[0]: value}
+        return {self.outputs[0]: value}
 
 
 pipeline = Pipeline()
@@ -151,9 +151,9 @@ The result of `Pipeline.draw()`:
 ![image](images/4284-drop-basecomponent/pipeline.png)
 
 
-## Realistic Query Pipeline
+## Query Pipeline
 
-This pipeline includes real Reader and Retriever nodes. A new set of primitives and a new DocumentStore has been used for this example: please refer to the draft implementation for details on those.
+This query pipeline includes real Reader and Retriever nodes. A new set of primitives and a new DocumentStore has been used for this example: please refer to the draft implementation for details on those: https://github.com/ZanSara/haystack-2.0-draft
 
 
 <details>
@@ -190,8 +190,8 @@ class RetrieveByBM25:
             "default_store": default_store,
             "default_top_k": default_top_k
         }
-        self.expected_inputs = [input_name]
-        self.expected_outputs = [output_name]
+        self.inputs = [input_name]
+        self.outputs = [output_name]
 
     def run(
         self,
@@ -222,7 +222,7 @@ class RetrieveByBM25:
 
         results = stores[store_name].get_relevant_documents(queries=queries, top_k=top_k)
 
-        return {self.expected_outputs[0]: results}
+        return {self.outputs[0]: results}
 ```
 
 </details>
@@ -276,8 +276,8 @@ class ReadByTransformers:
             "default_batch_size": default_batch_size,
             "default_context_window_size": default_context_window_size,
         }
-        self.expected_inputs = [input_name]
-        self.expected_outputs = [output_name]
+        self.inputs = [input_name]
+        self.outputs = [output_name]
 
     def warm_up(self):
         try:
@@ -356,7 +356,7 @@ class ReadByTransformers:
                         )
                     )
             answers_for_queries[query] = sorted(answers_for_queries[query], reverse=True)[:top_k]
-        return {self.expected_outputs[0]: answers_for_queries}
+        return {self.outputs[0]: answers_for_queries}
 ```
 
 </details>
@@ -413,11 +413,11 @@ Output:
 }
 ```
 
-## Realistic Indexing Pipeline
+## Indexing Pipeline
 
 **TODO**
 
-## Realistic Agent Pipeline
+## Agent Pipeline
 
 **TODO**
 
@@ -539,10 +539,10 @@ class MyNode:
         """
         Haystack nodes should have an `__init__` method where they define:
 
-        - `self.expected_inputs = [<expected_input_edge_name(s)>]`:
+        - `self.inputs = [<expected_input_edge_name(s)>]`:
             A list with all the edges they can possibly receive input from
 
-        - `self.expected_outputs = [<expected_output_edge_name(s)>]`:
+        - `self.outputs = [<expected_output_edge_name(s)>]`:
             A list with the edges they might possibly produce as output
 
         - `self.init_parameters = {<init parameters>}`:
@@ -563,8 +563,8 @@ class MyNode:
 
         # Contract - all three are mandatory.
         self.init_parameters = {"model_name": model_name}
-        self.expected_inputs = ["expected_input_edge_name"]
-        self.expected_outputs = ["expected_output_edge_name"]
+        self.inputs = ["expected_input_edge_name"]
+        self.outputs = ["expected_output_edge_name"]
 
     def warm_up(self):
         """
@@ -593,12 +593,12 @@ class MyNode:
         - `name: str`: the name of the node. Allows the node to find its own parameters in the `parameters` dictionary (see below).
 
         - `data: List[Tuple[str, Any]]`: the input data.
-            Pipeline guarantees that the following assert always passes: `assert self.expected_inputs == [name for name, value in data]`,
+            Pipeline guarantees that the following assert always passes: `assert self.inputs == [name for name, value in data]`,
             which means that:
-            - `data` is of the same length as `self.expected_inputs`.
-            - `data` contains one tuple for each string stored in `self.expected_inputs`.
+            - `data` is of the same length as `self.inputs`.
+            - `data` contains one tuple for each string stored in `self.inputs`.
             - no guarantee is given on the values of these tuples: notably, if there was a decision node upstream, some values might be `None`.
-            For example, if a node declares `self.expected_inputs = ["value", "value"]` (think of a Sum node), `data` might look like:
+            For example, if a node declares `self.inputs = ["value", "value"]` (think of a Sum node), `data` might look like:
             - `[("value", 1), ("value", 10)]`
             - `[("value", None), ("value", 10)]`
             - `[("value", None), ("value", None)]`, or even
@@ -624,7 +624,7 @@ class MyNode:
         Which means that:
         - Nodes are not forced to produce output on all the expected outputs: for example nodes taking a decision, like classifiers,
             can produce output on a subset of the expected output edges and Pipeline will figure out the rest.
-        - Nodes must not add any key in the data dictionary that is not present in `self.expected_outputs`,
+        - Nodes must not add any key in the data dictionary that is not present in `self.outputs`,
 
         Nodes may also want to return a tuple when they altered the content of `parameters` and want their changes to propagate
         downstream. In that case, the format is `(data, parameters)` where `data` follows the contract above and `parameters` should
@@ -648,6 +648,74 @@ When pipelines are loaded from YAML, Pipeline needs to find the classes definiti
 Search might fail in narrow corner cases: for example, inner classes are not discovered (often the case in tests). For these scenarios, `Pipeline` also accepts an `extra_nodes` init parameter that allows users to explicitly provide a dictionary of nodes to merge with the other discovered nodes.
 
 Name collisions are handled by prefixing the node name with the name of the module it was imported from.
+
+## Validation
+
+Pipeline performs validation on the edge name level: when calling `Pipeline.connect()`, it uses the values of the nodes' `self.inputs` and `self.outputs` to make sure that the connection is possible.
+
+Nodes are required, by contract, to explicitly define their inputs and outputs, and these values are used by the `connect` method to validate the connection, and by the `run` method to route values.
+
+For example, let's imagine we have two nodes with the following I/O declared:
+
+```python
+@haystack_node
+class NodeA:
+
+    def __init__(self):
+        self.inputs = ["input"]
+        self.outputs = ["internediate_value"]
+
+    def run(self):
+        pass
+
+
+@haystack_node
+class NodeB:
+
+    def __init__(self):
+        self.inputs = ["intermediate_value"]
+        self.outputs = ["output"]
+
+    def run(self):
+        pass
+```
+
+This is the behavior of `Pipeline.connect()`:
+
+```python
+pipeline.connect(['node_a', 'node_b'])
+# Succeeds: no output
+
+pipeline.connect(['node_a', 'node_a'])
+# Traceback (most recent call last):
+#   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
+#     pipeline.connect(['node_a', 'node_a'])
+#   File "/home/sara/work/haystack-2/new-haystack/new_haystack/pipeline/pipeline.py", line 224, in connect
+#     raise PipelineConnectError(
+# new_haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_a' with 'node_a' with an edge named 'intermediate_value': their declared inputs and outputs do not match.
+# Upstream node 'node_a' declared these outputs:
+#  - intermediate_value (free)
+# Downstream node 'node_a' declared these inputs:
+#  - input (free)
+
+pipeline.connect(['node_b', 'node_a'])
+# Traceback (most recent call last):
+#   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
+#     pipeline.connect(['node_b', 'node_a'])
+#   File "/home/sara/work/haystack-2/new-haystack/new_haystack/pipeline/pipeline.py", line 224, in connect
+#     raise PipelineConnectError(
+# new_haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_b' with 'node_a' with an edge named 'output': their declared inputs and outputs do not match.
+# Upstream node 'node_b' declared these outputs:
+#  - output (free)
+# Downstream node 'node_a' declared these inputs:
+#  - input (free)
+```
+
+This type of error reporting was found especially useful for nodes that declare a variable number and name of inputs and outputs depending on their initialization parameters (think of language classifiers, for example).
+
+One shortcoming is that currently Pipeline "trusts" the nodes to respect their own declarations. So if a node states that it will output `intermediate_value`, but outputs something else once run, the Pipeline will fail. We accept this failure as a "contract breach", so the Node should fix its behavior.
+
+Note: the draft implementation does not validate the type of the values, but only their names. So two nodes might agree to pass a variable called `documents` to each other, but one might output a `Set` when the receiver expects a `List`, and that will cause a crash. However, such check can be added, so we can assume types are going to be validated too.
 
 ## Pipeline TOML representation
 
@@ -697,8 +765,8 @@ top_k = 5
 
 [nodes.my_ranker]
 class_name = "Ranker"
-expected_inputs = ["documents", "documents"]
-expected_outputs = ["documents"]
+inputs = ["documents", "documents"]
+outputs = ["documents"]
 
 [nodes.my_reader]
 class_name = "Reader"
@@ -778,8 +846,8 @@ top_k = 5
 
 [nodes.my_ranker]
 class_name = "Ranker"
-expected_inputs = ["documents", "documents"]
-expected_outputs = ["documents"]
+inputs = ["documents", "documents"]
+outputs = ["documents"]
 
 [nodes.my_reader]
 class_name = "Reader"
