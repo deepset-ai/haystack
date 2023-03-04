@@ -93,6 +93,16 @@ jobs:
           - document_stores
           - nodes
           - agents
+        include:
+          - os: ubuntu-latest
+            topic: nodes
+            tesspath: /usr/share/tesseract-ocr/4.00/tessdata
+          - os: windows-latest
+            topic: nodes
+            tesspath: C:\Program Files\Tesseract-OCR\tessdata
+          - os: macos-latest
+            topic: nodes
+            tesspath: /usr/local/Cellar/tesseract/4.1.1/share/tessdata
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -105,6 +115,9 @@ jobs:
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
+        if: ${{ matrix.tesspath }}
+        env:
+          TESSDATA_PREFIX: ${{ matrix.tesspath }}
 
       - uses: act10ns/slack@v2
         with:
