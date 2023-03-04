@@ -667,7 +667,7 @@ jobs:
 
     - name: Add Tesseract to PATH
       run: |
-        echo "C:\Program Files\Tesseract-OCR\" >> $GITHUB_PATH
+        setx PATH "%PATH%;C:\Program Files\Tesseract-OCR\"
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
