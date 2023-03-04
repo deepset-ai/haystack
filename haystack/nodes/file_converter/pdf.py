@@ -1,4 +1,5 @@
 import logging
+import os
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import cpu_count
@@ -70,6 +71,9 @@ class PDFToTextConverter(BaseConverter):
         self.multiprocessing = multiprocessing
         self.ocr = ocr
         self.ocr_language = ocr_language
+
+        if ocr is not None:
+            self._check_tessdata()
 
         if encoding:
             warnings.warn(
@@ -156,6 +160,9 @@ class PDFToTextConverter(BaseConverter):
         if keep_physical_layout:
             warnings.warn("The keep_physical_layout parameter is being deprecated.", DeprecationWarning)
 
+        if ocr is not None:
+            self._check_tessdata()
+
         pages = self._read_pdf(
             file_path,
             sort_by_position=sort_by_position,
@@ -197,6 +204,18 @@ class PDFToTextConverter(BaseConverter):
         text = "\f".join(cleaned_pages)
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
+
+    def _check_tessdata(self):
+        if os.getenv("TESSDATA_PREFIX") is None:
+            logger.error(
+                """
+                To enable OCR support via PDFToTextConverter, you need to set the environment variable TESSDATA_PREFIX to the path
+                of your Tesseract data directory. Typically this is:
+                    - Windows: C:\\Program Files\\Tesseract-OCR\\tessdata
+                    - Linux: /usr/share/tesseract-ocr/4.00/tessdata
+                    - Mac: /usr/local/Cellar/tesseract/4.1.1/share/tessdata
+                """
+            )
 
     def _get_text_parallel(self, page_mp):
         idx, filename, parts, sort_by_position, ocr, ocr_language = page_mp
