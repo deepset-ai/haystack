@@ -102,7 +102,7 @@ jobs:
             tesspath: C:\Program Files\Tesseract-OCR\tessdata
           - os: macos-latest
             topic: nodes
-            tesspath:  /usr/local/Cellar/tesseract/5.3.0_1/tessdata
+            tesspath:  /usr/local/Cellar/tesseract/5.3.0_1/share/tessdata/
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -668,6 +668,11 @@ jobs:
     - name: Add Tesseract to PATH
       run: |
         setx PATH "%PATH%;C:\Program Files\Tesseract-OCR\"
+
+    - name: Add Tesseract to system PATH
+      shell: pwsh
+      run: |
+        echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
