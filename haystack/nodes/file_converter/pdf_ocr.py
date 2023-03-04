@@ -105,7 +105,7 @@ class PDFToTextOCRConverter(BaseConverter):
 
         pages = []
         try:
-            images = convert_from_path(file_path, first_page=start_page, last_page=end_page)
+            images = convert_from_path(file_path, first_page=start_page, last_page=end_page)  # type: ignore
             for image in images:
                 temp_img = tempfile.NamedTemporaryFile(suffix=".jpeg")
                 image.save(temp_img.name)
