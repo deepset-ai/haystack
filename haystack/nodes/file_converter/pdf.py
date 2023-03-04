@@ -210,11 +210,15 @@ class PDFToTextConverter(BaseConverter):
         if os.getenv("TESSDATA_PREFIX") is None:
             logger.error(
                 """
-                To enable OCR support via PDFToTextConverter, you need to set the environment variable TESSDATA_PREFIX to the path
+                To enable OCR support via PDFToTextConverter, you need to install Tesseract:
+                    - Windows: choco install tesseract-ocr
+                    - Linux (Ubuntu): sudo apt-get install tesseract-ocr
+                    - Mac: brew install tesseract@5.3.0
+                After that, you need to set the environment variable TESSDATA_PREFIX to the path
                 of your Tesseract data directory. Typically this is:
                     - Windows: C:\\Program Files\\Tesseract-OCR\\tessdata
-                    - Linux: /usr/share/tesseract-ocr/4.00/tessdata
-                    - Mac: /usr/local/Cellar/tesseract/4.1.1/share/tessdata
+                    - Linux (Ubuntu): /usr/share/tesseract-ocr/4.00/tessdata
+                    - Mac: /opt/homebrew/Cellar/tesseract/5.3.0_1/share/tessdata
                 """
             )
 
