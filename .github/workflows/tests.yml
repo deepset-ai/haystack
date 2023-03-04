@@ -102,7 +102,7 @@ jobs:
             tesspath: C:\Program Files\Tesseract-OCR\tessdata
           - os: macos-latest
             topic: nodes
-            tesspath: /opt/homebrew/Cellar/tesseract/5.3.0_1/share/tessdata
+            tesspath:  /usr/local/Cellar/tesseract/5.3.0_1
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
