@@ -184,6 +184,24 @@ def test_pdf_parallel_sort_by_position(Converter):
     assert pages[-1] == "This is the page 50 of the document."
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_ocr(Converter):
+    converter = Converter(multiprocessing=True, sort_by_position=True, ocr="full", ocr_language="eng")
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
+
+
+@fail_at_version(1, 17)
+def test_deprecated_ocr_node():
+    with pytest.warns(DeprecationWarning):
+        converter = PDFToTextOCRConverter()
+
+
 @fail_at_version(1, 17)
 def test_deprecated_encoding():
     with pytest.warns(DeprecationWarning):
