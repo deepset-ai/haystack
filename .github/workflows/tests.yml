@@ -665,10 +665,6 @@ jobs:
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
-    - name: Add Tesseract to PATH
-      run: |
-        setx PATH "%PATH%;C:\Program Files\Tesseract-OCR\"
-
     - name: Add Tesseract to system PATH
       shell: pwsh
       run: |

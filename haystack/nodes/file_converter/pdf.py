@@ -218,7 +218,7 @@ class PDFToTextConverter(BaseConverter):
                 of your Tesseract data directory. Typically this is:
                     - Windows: C:\\Program Files\\Tesseract-OCR\\tessdata
                     - Linux (Ubuntu): /usr/share/tesseract-ocr/4.00/tessdata
-                    - Mac:  /usr/local/Cellar/tesseract/5.3.0_1
+                    - Mac:  /usr/local/Cellar/tesseract/5.3.0_1/share/tessdata
                 """
             )
 
