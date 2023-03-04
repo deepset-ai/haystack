@@ -591,6 +591,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # we add "and not document_store" to exclude the tests that were ported to the new strategy
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not document_store" test/${{ matrix.folder }}
@@ -644,6 +645,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
