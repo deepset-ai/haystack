@@ -124,7 +124,7 @@ jobs:
       - name: Install Tesseract (Mac)
         if: ${{ matrix.os == 'macos-latest'  && matrix.topic == 'nodes' }}
         run: |
-          brew install tesseract@5.3.0
+          brew install tesseract
 
       - name: Install Haystack
         run: pip install .[all]
