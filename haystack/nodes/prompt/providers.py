@@ -6,15 +6,8 @@ from typing import Dict, List, Optional, Union, Type, cast
 
 import sseclient
 import torch
-from transformers import (
-    pipeline,
-    AutoConfig,
-    StoppingCriteriaList,
-    StoppingCriteria,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
-from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
+from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers.pipelines import get_task
 
 from haystack.errors import OpenAIError
 from haystack.modeling.utils import initialize_device_settings
@@ -225,7 +218,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
 
         self.pipe = pipeline(
-            "text2text-generation",
             model=model_name_or_path,
             device=self.devices[0] if "device_map" not in model_input_kwargs else None,
             use_auth_token=self.use_auth_token,
@@ -304,22 +296,21 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        task_name: Optional[str] = None
         try:
-            config = AutoConfig.from_pretrained(model_name_or_path)
-        except OSError:
+            task_name = get_task(model_name_or_path)
+        except RuntimeError:
             # This is needed so OpenAI models are skipped over
             return False
 
-        if not all(m in model_name_or_path for m in ["flan", "t5"]):
+        if not any(m in model_name_or_path for m in ["flan", "mt0", "bloomz"]):
             logger.warning(
                 "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
                 "Many of the default prompts and PromptTemplates will likely not work as intended. "
                 "Use custom prompts and PromptTemplates specific to the %s model",
                 model_name_or_path,
             )
-
-        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
-        return config.architectures[0] in supported_models
+        return task_name in ["text2text-generation", "text-generation"]
 
 
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
