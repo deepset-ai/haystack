@@ -129,6 +129,7 @@ class PDFToTextConverter(BaseConverter):
         :param end_page: The page number where to end the conversion.
         :param ocr: Specifies whether to use OCR to extract text from images in the PDF. If set to "auto", OCR is used only to extract text
                     from images and integrate into the existing text. If set to "full", OCR is used to extract text from the entire PDF.
+                    To use this feature you must install Tesseract-OCR. For more information, see https://github.com/tesseract-ocr/tesseract#installing-tesseract.
         :param ocr_language: Specifies the language to use for OCR. The default language is English, which language code is `eng`.
                 For a list of supported languages and the respective codes access https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html.
                 You can combine multiple languages by passing a string with the language codes separated by `+`. For example, to use English and German, pass `eng+deu`.
