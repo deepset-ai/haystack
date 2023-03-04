@@ -102,13 +102,29 @@ jobs:
             tesspath: C:\Program Files\Tesseract-OCR\tessdata
           - os: macos-latest
             topic: nodes
-            tesspath: /usr/local/Cellar/tesseract/4.1.1/share/tessdata
+            tesspath: /opt/homebrew/Cellar/tesseract/tessdata
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
       - name: Setup Python
         uses: ./.github/actions/python_cache/
+
+      - name: Install Tesseract (Ubuntu)
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.topic == 'nodes' }}
+        run: |
+          sudo apt update
+          sudo apt-get install tesseract-ocr libtesseract-dev
+
+      - name: Install Tesseract (Windows)
+        if: ${{ matrix.os == 'windows-latest'  && matrix.topic == 'nodes' }}
+        run: |
+          choco install --no-progress tesseract-ocr -y
+
+      - name: Install Tesseract (Mac)
+        if: ${{ matrix.os == 'macos-latest'  && matrix.topic == 'nodes' }}
+        run: |
+          brew install tesseract
 
       - name: Install Haystack
         run: pip install .[all]
