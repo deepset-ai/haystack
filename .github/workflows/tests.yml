@@ -102,7 +102,7 @@ jobs:
             tesspath: C:\Program Files\Tesseract-OCR\tessdata
           - os: macos-latest
             topic: nodes
-            tesspath: /opt/homebrew/Cellar/tesseract/tessdata
+            tesspath: /opt/homebrew/Cellar/tesseract/5.3.0_1/share/tessdata
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -124,7 +124,7 @@ jobs:
       - name: Install Tesseract (Mac)
         if: ${{ matrix.os == 'macos-latest'  && matrix.topic == 'nodes' }}
         run: |
-          brew install tesseract
+          brew install tesseract@5.3.0
 
       - name: Install Haystack
         run: pip install .[all]
