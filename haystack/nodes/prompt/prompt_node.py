@@ -198,8 +198,8 @@ class PromptModel(BaseComponent):
         :param use_auth_token: The Hugging Face token to use.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use where the model is loaded.
-        :param invocation_layer_class: The custom invocation layer class to use. If None, known
-        invocation layers are used.
+        :param invocation_layer_class: The custom invocation layer class to use. Use a dotted notation indicating the
+        path from a module’s global scope to the class. If None, known invocation layers are used.
         :param model_kwargs: Additional keyword arguments passed to the underlying model.
 
         Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
@@ -236,6 +236,7 @@ class PromptModel(BaseComponent):
 
             if not issubclass(klass, PromptModelInvocationLayer):
                 raise ValueError(f"Class {invocation_layer_class} is not a subclass of PromptModelInvocationLayer.")
+
             logger.info("Registering custom invocation layer class %s", klass)
             self.register(klass)
 
@@ -250,6 +251,8 @@ class PromptModel(BaseComponent):
         }
         all_kwargs = {**self.model_kwargs, **kwargs}
 
+        # search all invocation layer classes and find the first one that supports the model,
+        # then create an instance of that invocation layer
         for invocation_layer in self.invocation_layer_classes:
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
