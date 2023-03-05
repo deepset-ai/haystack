@@ -449,7 +449,7 @@ def test_basic_azure_embedding(document_store, retriever, docs_with_ids):
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
     not os.environ.get("COHERE_API_KEY", None),
-    reason="Please export an env var called COHERE_API_KEY containing " "the Cohere API key to run this test.",
+    reason="Please export an env var called COHERE_API_KEY containing the Cohere API key to run this test.",
 )
 def test_retriever_basic_cohere_search(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
@@ -468,7 +468,7 @@ def test_retriever_basic_cohere_search(document_store, retriever, docs_with_ids)
 @pytest.mark.embedding_dim(1536)
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export env called OPENAI_API_KEY containing " "the OpenAI API key to run this test.",
+    reason="Please export env called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_retriever_basic_openai_search(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
