@@ -208,7 +208,7 @@ class PDFToTextConverter(BaseConverter):
 
     def _check_tessdata(self):
         if os.getenv("TESSDATA_PREFIX") is None:
-            logger.error(
+            raise EnvironmentError(
                 """
                 To enable OCR support via PDFToTextConverter, you need to install Tesseract:
                     - Windows: choco install tesseract-ocr
@@ -218,7 +218,8 @@ class PDFToTextConverter(BaseConverter):
                 of your Tesseract data directory. Typically this is:
                     - Windows: C:\\Program Files\\Tesseract-OCR\\tessdata
                     - Linux (Ubuntu): /usr/share/tesseract-ocr/4.00/tessdata
-                    - Mac:  /usr/local/Cellar/tesseract/5.3.0_1/share/tessdata
+                    - Mac (Intel):  /usr/local/Cellar/tesseract/5.3.0_1/share/tessdata
+                    - Mac (M1/M2): /opt/homebrew/Cellar/tesseract/5.3.0_1/share/tessdata
                 """
             )
 
