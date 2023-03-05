@@ -22,7 +22,17 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # See https://beta.openai.com/docs/guides/embeddings for more details
-        self.url = "https://api.openai.com/v1/embeddings"
+        self.using_azure = (
+            retriever.azure_deployment_name is not None
+            and retriever.azure_base_url is not None
+            and retriever.api_version is not None
+        )
+
+        if self.using_azure:
+            self.url = f"{retriever.azure_base_url}/openai/deployments/{retriever.azure_deployment_name}/embeddings?api-version={retriever.api_version}"
+        else:
+            self.url = "https://api.openai.com/v1/embeddings"
+
         self.api_key = retriever.api_key
         self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
@@ -82,7 +92,13 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "input": text}
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+
+        headers = {"Content-Type": "application/json"}
+        if self.using_azure:
+            headers["api-key"] = self.api_key
+        else:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
 
         unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
