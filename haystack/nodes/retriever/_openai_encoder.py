@@ -98,7 +98,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"{'Azure ' if self.using_azure else ''}OpenAI API key is not set. You can set it via the `api_key` parameter of the EmbeddingRetriever."
             )
 
-        generated_embeddings = []
+        generated_embeddings: List[Any] = []
 
         headers: Dict[str, str] = {"Content-Type": "application/json"}
 
