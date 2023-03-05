@@ -98,17 +98,17 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         generated_embeddings = []
 
-        headers = {"Content-Type": "application/json"}
+        headers: Dict[str, str] = {"Content-Type": "application/json"}
 
         if self.using_azure:
             headers["api-key"] = self.api_key
 
             for input in text:
-                payload = {"input": input}
-                res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
+                azure_payload: Dict[str, str] = {"input": input}
+                res = openai_request(url=self.url, headers=headers, payload=azure_payload, timeout=OPENAI_TIMEOUT)
                 generated_embeddings.append(res["data"][0]["embedding"])
         else:
-            payload = {"model": model, "input": text}
+            payload: Dict[str, Union[List[str], str]] = {"model": model, "input": text}
             headers["Authorization"] = f"Bearer {self.api_key}"
 
             res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
