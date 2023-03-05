@@ -91,6 +91,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         return decoded_string
 
     def embed(self, model: str, text: List[str]) -> np.ndarray:
+        if self.api_key is None:
+            raise ValueError(
+                f"{'Azure ' if self.using_azure else ''}OpenAI API key is not set. You can set it via the `api_key` parameter of the EmbeddingRetriever."
+            )
+
         generated_embeddings = []
 
         headers = {"Content-Type": "application/json"}
