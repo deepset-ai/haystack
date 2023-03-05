@@ -16,6 +16,7 @@ import torch
 from tqdm.auto import tqdm
 import rank_bm25
 import pandas as pd
+from scipy.special import expit
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
@@ -953,7 +954,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
-        scale_score: bool = False,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -961,6 +962,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query: The query.
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         """
 
         if headers:
@@ -972,10 +974,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         if filters:
             logger.warning(
                 "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
-            )
-        if scale_score is True:
-            logger.warning(
-                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
             )
 
         index = index or self.index
@@ -989,6 +987,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         tokenized_query = self.bm25_tokenization_regex(query.lower())
         docs_scores = self.bm25[index].get_scores(tokenized_query)
+        if scale_score is True:
+            # scaling probability from BM25
+            docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
         textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
@@ -1009,7 +1010,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
-        scale_score: bool = False,
+        scale_score: bool = True,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1018,6 +1019,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query: The query.
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         """
 
         if headers:
@@ -1030,10 +1032,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             logger.warning(
                 "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
             )
-        if scale_score is True:
-            logger.warning(
-                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
-            )
 
         index = index or self.index
         if index not in self.bm25:
@@ -1043,6 +1041,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         result_documents = []
         for query in queries:
-            result_documents.append(self.query(query=query, top_k=top_k, index=index))
+            result_documents.append(self.query(query=query, top_k=top_k, index=index, scale_score=scale_score))
 
         return result_documents
