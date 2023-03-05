@@ -91,19 +91,28 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         return decoded_string
 
     def embed(self, model: str, text: List[str]) -> np.ndarray:
-        payload = {"model": model, "input": text}
+        generated_embeddings = []
 
         headers = {"Content-Type": "application/json"}
+
         if self.using_azure:
             headers["api-key"] = self.api_key
+
+            for input in text:
+                payload = {"input": input}
+                res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
+                generated_embeddings.append(res["data"][0]["embedding"])
         else:
+            payload = {"model": model, "input": text}
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
+            res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
 
-        unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
-        ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
-        generated_embeddings = [emb[1] for emb in ordered_embeddings]
+            unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
+            ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
+
+            generated_embeddings = [emb[1] for emb in ordered_embeddings]
+
         return np.array(generated_embeddings)
 
     def embed_batch(self, model: str, text: List[str]) -> np.ndarray:

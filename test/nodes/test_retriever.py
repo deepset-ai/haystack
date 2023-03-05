@@ -378,14 +378,13 @@ def test_openai_embedding_retriever_selection():
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.parametrize("retriever", ["cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
-    "the OpenAI/Cohere API key to run this test.",
+    not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called COHERE_API_KEY containing " "the Cohere API key to run this test.",
 )
-def test_basic_embedding(document_store, retriever, docs_with_ids):
+def test_basic_cohere_embedding(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -395,6 +394,53 @@ def test_basic_embedding(document_store, retriever, docs_with_ids):
 
     for doc in docs:
         assert len(doc.embedding) == 1024
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason=("Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test."),
+)
+def test_basic_openai_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1536
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["azure"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("AZURE_OPENAI_API_KEY", None)
+    and not os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    and not os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None),
+    reason=(
+        "Please export env variables called AZURE_OPENAI_API_KEY containing "
+        "the Azure OpenAI key, AZURE_OPENAI_BASE_URL containing "
+        "the Azure OpenAI base URL, and AZURE_OPENAI_DEPLOYMENT_NAME containing "
+        "the Azure OpenAI deployment name to run this test."
+    ),
+)
+def test_basic_azure_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1536
 
 
 @pytest.mark.integration
