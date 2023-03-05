@@ -706,7 +706,7 @@ def get_retriever(retriever_type, document_store):
             use_gpu=False,
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             azure_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
-            azure_deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            azure_deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED"),
         )
     elif retriever_type == "cohere":
         retriever = EmbeddingRetriever(

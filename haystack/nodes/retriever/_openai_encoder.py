@@ -1,7 +1,9 @@
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import cpu_count
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -9,7 +11,7 @@ from tqdm.auto import tqdm
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.openai_utils import USE_TIKTOKEN, load_openai_tokenizer, openai_request, count_openai_tokens
+from haystack.utils.openai_utils import USE_TIKTOKEN, count_openai_tokens, load_openai_tokenizer, openai_request
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -100,13 +102,17 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         headers: Dict[str, str] = {"Content-Type": "application/json"}
 
-        if self.using_azure:
-            headers["api-key"] = self.api_key
+        def azure_get_embedding(input: str):
+            headers["api-key"] = str(self.api_key)
+            azure_payload: Dict[str, str] = {"input": input}
+            res = openai_request(url=self.url, headers=headers, payload=azure_payload, timeout=OPENAI_TIMEOUT)
+            return res["data"][0]["embedding"]
 
-            for input in text:
-                azure_payload: Dict[str, str] = {"input": input}
-                res = openai_request(url=self.url, headers=headers, payload=azure_payload, timeout=OPENAI_TIMEOUT)
-                generated_embeddings.append(res["data"][0]["embedding"])
+        if self.using_azure:
+            thread_count = cpu_count() if len(text) > cpu_count() else len(text)
+            with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                results: Iterator[Dict[str, Any]] = executor.map(azure_get_embedding, text)
+                generated_embeddings.extend(results)
         else:
             payload: Dict[str, Union[List[str], str]] = {"model": model, "input": text}
             headers["Authorization"] = f"Bearer {self.api_key}"
