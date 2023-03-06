@@ -89,7 +89,7 @@ def test_prompt_template_repr():
 
 @pytest.mark.unit
 def test_prompt_node_with_custom_invocation_layer_from_string():
-    model = PromptModel("fake_model", invocation_layer_class="test.nodes.test_prompt_node.CustomInvocationLayer")
+    model = PromptModel("fake_model", invocation_layer_class=CustomInvocationLayer)
     pn = PromptNode(model_name_or_path=model)
     output = pn("Some fake invocation")
 

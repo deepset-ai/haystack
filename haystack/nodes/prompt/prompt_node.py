@@ -186,7 +186,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        invocation_layer_class: Optional[str] = None,
+        invocation_layer_class: Optional[PromptModelInvocationLayer] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -198,8 +198,7 @@ class PromptModel(BaseComponent):
         :param use_auth_token: The Hugging Face token to use.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use where the model is loaded.
-        :param invocation_layer_class: The custom invocation layer class to use. Use a dotted notation indicating the
-        path from a module’s global scope to the class. If None, known invocation layers are used.
+        :param invocation_layer_class: The custom invocation layer class to use. If None, known invocation layers are used.
         :param model_kwargs: Additional keyword arguments passed to the underlying model.
 
         Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
@@ -216,9 +215,11 @@ class PromptModel(BaseComponent):
         self.devices = devices
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
-        self.model_invocation_layer = self.create_invocation_layer()
+        self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
 
-    def create_invocation_layer(self) -> PromptModelInvocationLayer:
+    def create_invocation_layer(
+        self, invocation_layer_class: Optional[PromptModelInvocationLayer]
+    ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
             "use_auth_token": self.use_auth_token,
@@ -227,6 +228,10 @@ class PromptModel(BaseComponent):
         }
         all_kwargs = {**self.model_kwargs, **kwargs}
 
+        if invocation_layer_class:
+            return invocation_layer_class(
+                model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
+            )
         # search all invocation layer classes and find the first one that supports the model,
         # then create an instance of that invocation layer
         for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
@@ -236,8 +241,9 @@ class PromptModel(BaseComponent):
                 )
         raise ValueError(
             f"Model {self.model_name_or_path} is not supported - no matching invocation layer found."
-            f" Currently supported invocation layers are: {self.invocation_layer_classes}"
-            f" You can implement and provide custom invocation layer for {self.model_name_or_path} via PromptModel init."
+            f" Currently supported invocation layers are: {PromptModelInvocationLayer.invocation_layer_providers}"
+            f" You can implement and provide custom invocation layer for {self.model_name_or_path} by subclassing "
+            "PromptModelInvocationLayer."
         )
 
     def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
