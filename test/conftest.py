@@ -695,9 +695,18 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "openai":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="ada",
+            embedding_model="text-embedding-ada-002",
             use_gpu=False,
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+    elif retriever_type == "azure":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="text-embedding-ada-002",
+            use_gpu=False,
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
+            azure_deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED"),
         )
     elif retriever_type == "cohere":
         retriever = EmbeddingRetriever(
@@ -985,9 +994,11 @@ def haystack_openai_config(request):
         if not api_key:
             return {}
         else:
-            return {"api_key": api_key}
+            return {"api_key": api_key, "embedding_model": "text-embedding-ada-002"}
     elif request.param == "azure":
         return haystack_azure_conf()
+
+    return {}
 
 
 @pytest.fixture
