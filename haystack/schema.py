@@ -89,11 +89,10 @@ class Document:
                              If you specify a custom ID for the `id` parameter, the `id_hash_keys` parameter is
                              ignored and the custom ID is used.
 
-                             Note that one can use even nested fields of the "meta" as id_hash_keys. For example, if you
-                             have a key in meta called "url" and you want to use it as part of the id, you can pass
-                             this parameter as ["meta.url"]. This will use the value of the "url" key in the "meta" dict.
-                             A maximum depth of 1 is supported. For example, if "meta.url.path" is used, it will look for
-                             the "url.path" key in the "meta" dict, e.g. "meta['url.path']".
+                             Note that you can use even nested fields of the `meta` as id_hash_keys. For example, if you
+                             have a key in `meta` called `url` and you want to use it as part of the id, you can pass
+                             this parameter as `["meta.url"]`. Haystack supports a maximum depth of 1. For example, if you
+                             use `meta.url.path`, it looks for the `url.path` key in the  `meta` dict, for example `meta['url.path']`.
 
 
         """
@@ -114,8 +113,8 @@ class Document:
                     f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
                     f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
                     f"a key of meta with a maximum depth of 1 (like meta.url). "
-                    "See https://github.com/deepset-ai/haystack/pull/1910 and "
-                    "https://github.com/deepset-ai/haystack/issues/4317 for details"
+                    "See [Custom id hashing on documentstore level](https://github.com/deepset-ai/haystack/pull/1910) and "
+                    "[Allow more flexible Document id hashing](https://github.com/deepset-ai/haystack/issues/4317) for details"
                 )
         # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
         self.id_hash_keys = id_hash_keys or ["content"]
