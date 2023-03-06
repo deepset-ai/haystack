@@ -88,7 +88,7 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
     return ([Document(content=delimiter.join([d.content for d in documents]))],)
 
 
-def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
+def strings_to_answers(strings: List[str], prompts_used: Optional[List[Optional[str]]] = None) -> Tuple[List[Answer]]:
     """
     Transforms a list of strings into a list of Answers.
 
@@ -102,7 +102,23 @@ def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
         ], )
     ```
     """
-    return ([Answer(answer=string, type="generative") for string in strings],)
+    if prompts_used:
+        if len(prompts_used) > 1:
+            if len(prompts_used) != len(strings):
+                raise ValueError(
+                    f"Not enough prompts. strings_to_answers received {len(strings)} and {len(prompts_used)} prompts."
+                )
+        else:
+            prompts_used = prompts_used * len(strings)
+    else:
+        prompts_used = [None] * len(strings)
+
+    return (
+        [
+            Answer(answer=string, type="generative", meta={"prompt": prompt})
+            for string, prompt in zip(strings, prompts_used)
+        ],
+    )
 
 
 def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
