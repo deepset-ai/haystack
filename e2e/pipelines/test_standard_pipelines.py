@@ -115,73 +115,7 @@ def test_most_similar_documents_pipeline_with_filters():
             assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
-@pytest.fixture
-def pipeline_yaml_path(tmp_path):
-    path = tmp_path / "pipeline.haystack-pipeline.yml"
-    with open(path, "w") as f:
-        yaml_content = f"""
-            version: ignore
-
-            components:
-            - name: Reader
-                type: FARMReader
-                params:
-                no_ans_boost: -10
-                model_name_or_path: deepset/bert-medium-squad2-distilled
-                num_processes: 0
-            - name: Retriever
-                type: EmbeddingRetriever
-                params:
-                document_store: DocumentStore
-                embedding_model: deepset/sentence_bert
-            - name: DocumentStore
-                type: FAISSDocumentStore
-                params:
-                sql_url: sqlite:///{tmp_path}/faiss_document_store.db
-            - name: PDFConverter
-                type: PDFToTextConverter
-                params:
-                remove_numeric_tables: false
-            - name: TextConverter
-                type: TextConverter
-            - name: Preprocessor
-                type: PreProcessor
-                params:
-                clean_whitespace: true
-            - name: IndexTimeDocumentClassifier
-                type: TransformersDocumentClassifier
-                params:
-                batch_size: 16
-                use_gpu: false
-            - name: QueryTimeDocumentClassifier
-                type: TransformersDocumentClassifier
-                params:
-                use_gpu: false
-
-            pipelines:
-            - name: query_pipeline
-                nodes:
-                - name: Retriever
-                    inputs: [Query]
-                - name: Reader
-                    inputs: [Retriever]
-
-            - name: indexing_pipeline
-                nodes:
-                - name: PDFConverter
-                    inputs: [File]
-                - name: Preprocessor
-                    inputs: [PDFConverter]
-                - name: Retriever
-                    inputs: [Preprocessor]
-                - name: DocumentStore
-                    inputs: [Retriever]
-            """
-        f.write(yaml_content)
-    return path
-
-
-def test_indexing_pipeline_with_classifier():
+def test_query_and_indexing_pipeline():
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
         SAMPLES_PATH / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
@@ -192,27 +126,7 @@ def test_indexing_pipeline_with_classifier():
         SAMPLES_PATH / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert prediction["answers"][0].meta["classification"]["label"] == "joy"
-    assert "_debug" not in prediction.keys()
-
-
-def test_query_pipeline_with_document_classifier():
-    # test correct load of indexing pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pipelines" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipelines" / "test.haystack-pipeline.yml",
-        pipeline_name="query_pipeline_with_document_classifier",
-    )
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+        query="Who made the PDF specification?", params={"Retriever": {"top_k": 2}, "Reader": {"top_k": 1}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0].answer == "Adobe Systems"

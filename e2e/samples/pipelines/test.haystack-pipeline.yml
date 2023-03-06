@@ -9,6 +9,8 @@ components:
       num_processes: 0
   - name: Retriever
     type: BM25Retriever
+    params:
+      top_k: 2
   - name: DocumentStore
     type: ElasticsearchDocumentStore
   - name: PDFConverter
