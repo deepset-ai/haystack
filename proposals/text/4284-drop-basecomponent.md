@@ -413,14 +413,6 @@ Output:
 }
 ```
 
-## Indexing Pipeline
-
-**TODO**
-
-## Agent Pipeline
-
-**TODO**
-
 # Detailed design
 
 This section focuses on the concept rather than the implementation strategy. For a discussion on the implementation, see the draft here: https://github.com/ZanSara/haystack-2.0-draft
@@ -446,7 +438,7 @@ Therefore, the revised Pipeline object has the following API:
     - `list_stores()`: returns all connected stores.
     - `get_store(name)`: returns a specific document store by name.
 - Serialization and validation:
-    - `__init__(path=None)`: if a path is given, loads the pipeline from the YAML found at that path. Note that at this stage `Pipeline` will collect nodes from all imported modules (see the implementation - the search can be scoped down to selected modules) and **all nodes' `__init__` method is called**. Therefore, `__init__` must be lightweight. See the Node's contract to understand how heavy nodes should design their initialization.
+    - `__init__(path=None, metadata=None)`: if a path is given, loads the pipeline from the YAML found at that path. Note that at this stage `Pipeline` will collect nodes from all imported modules (see the implementation - the search can be scoped down to selected modules) and **all nodes' `__init__` method is called**. Therefore, `__init__` must be lightweight. See the Node's contract to understand how heavy nodes should design their initialization. Note the `metadata` field, which can be used to carry metadata info. Such meta might come useful in Projects (see below) to distinguish Pipelines, tag them, describe them, etc.
     - `save(path)`: serializes and saves the pipeline as a YAML at the given path.
 
 Example pipeline topologies supported by the new implementation (images taken from the test suite):
@@ -640,6 +632,17 @@ class MyNode:
 
 This contract is stored in the docstring of `@node` and acts as the single source of truth.
 
+Note how there are a few fundamental shifts from the old concept of pipelines and nodes:
+
+- There's no base class for nodes anymore. A node is whatever object is decorated with `@node`.
+
+- Pipelines can now be validated by instantiating them, and instantiation is going to be very fast, because the nodes are supposed to defer heavy operations to the `warm_up()` method. This does not prevent us from having shallow validation with a schema, but gives us more room for other validation strategies too.
+
+- Edges are designed to carry one value, be it a primitive like an `int` or a complex dictionary or an object. We have no more "fat edges" by default that carry complex output: we can now safely output several values on several edges and, if need be, connect multiple edges between the same two nodes.
+    - For example, if `node_a` outputs `value_1` and `value_2`, both these edges can be given to a `sum` node.
+
+- There's no more naming ambiguity between nodes and components.
+
 ### Nodes discovery logic
 
 When pipelines are loaded from YAML, Pipeline needs to find the classes definition somewhere in the imported modules. Currently, at initialization `Pipeline` looks for classes which is decorated with the `@node` decorator under `haystack`, however such search can be extended (or narrowed) by setting the `search_nodes_in` init parameter of `Pipeline`. Note that it will try to import any module that is not imported yet.
@@ -714,6 +717,32 @@ This type of error reporting was found especially useful for nodes that declare 
 One shortcoming is that currently Pipeline "trusts" the nodes to respect their own declarations. So if a node states that it will output `intermediate_value`, but outputs something else once run, `Pipeline` will fail. We accept this failure as a "contract breach": the node should fix its behavior and `Pipeline` should not try to prevent such scenarios.
 
 Note: the draft implementation does not validate the type of the values, but only their names. So two nodes might agree to pass a variable called `documents` to each other, but one might output a `Set` when the receiver expects a `List`, and that will cause a crash. However, such check can be added, so we can assume types are going to be validated too.
+
+### Parameters hierarchy
+
+Parameters can be passed to nodes at several stages, and they have different priorities. Here they're listed from least priority to top priority.
+
+1. **Node's default `__init__` parameters**: nodes's `__init__` can provide defaults. Those are used only if no other parameters are passed at any stage.
+2. **Node's `__init__` parameters**: at initialization, nodes might be given values for their parameters. These are stored within the node instance and, if the instance is reused in the pipeline several times, they will be the same on all of them
+3. **Pipeline's `add_node()`**: When added to the pipeline, users can specify some parameters that have to be given only to that node specifically. They will override the node instance's parameters, but they will be applied only in that specific location of the pipeline and not be applied to other instances of the same node anywhere else in the graph.
+4. **Pipeline's `run()`**: `run()` also accepts a dictionary of parameters that will override all conflicting parameters set at any level below, quite like Pipeline does today.
+
+Example:
+
+```python
+
+class Node:
+    def __init__(self, value_1: int = 1, value_2: int = 1, value_3: int = 1, value_4: int = 1):
+        ...
+
+node = Node(value_2=2, value_3=2, value_4=2)
+pipeline = Pipeline()
+pipeline.add_node("node", node, parameters={"value_3": 3, "value_4": 3})
+...
+pipeline.run(data={...}, parameters={"node": {"value_4": 4}})
+
+# Node will receive {"value_1": 1, "value_2": 2, "value_3": 3,"value_4": 4}
+```
 
 ## Pipeline TOML representation
 
@@ -860,18 +889,33 @@ edges = [
     ("ranker", "reader"),
 ]
 max_allowed_loops = 10
+metadata = {
+    "type": "question_answering",
+    "description": "A test pipeline to evaluate Hybrid QA."
+    "author": "ZanSara"
+}
 
 [pipeline.sparse_search]
 edges = [
     ("my_sparse_retriever", "reader"),
 ]
 max_allowed_loops = 10
+metadata = {
+    "type": "question_answering",
+    "description": "A test pipeline to evaluate Sparse QA."
+    "author": "an_intern"
+}
 
 [pipeline.dense_search]
 edges = [
     ("my_dense_retriever", "reader"),
 ]
 max_allowed_loops = 10
+metadata = {
+    "type": "question_answering",
+    "description": "A test pipeline to evaluate Dense QA."
+    "author": "the_boss"
+}
 
 ```
 
@@ -907,10 +951,15 @@ There are a number of drawbacks about the proposed approach:
 
 # Adoption strategy
 
-Old and new `Pipeline` and nodes are going to be fully incompatible.
+Old and new `Pipeline` and nodes are going to be fully incompatible. We must provide a migration script that can convert their existing pipeline YAMLs into the new ones.
 
-We must provide a migration script that can convert their existing pipeline YAMLs into the new ones.
+This proposal is best thought as part of the design of Haystack 2.0.
 
-This proposal is best thought as part of the design of Haystack 2.0, where we can afford drastic API changes such as this.
+## Rollout process
 
-Adoption for dC: still an open question.
+These changes are going to be release with Haystack 1.x in a hidden internal package called `haystack.v2.pipelines`, and won't be advertized straight away. 
+
+We will progressively add nodes to this `haystack.v2` package and build a folder structure under it (`haystack.v2.nodes`, `haystack.v2.stores`, ...) version after version, until we believe the content of the package is usable. Documentation will be built in parallel and we will progressively start pushing users towards the 2.0 API.
+Power users like dC and other Haystack experts will be able to test out these changes from the start and provide feedback while still in Haystack 1.x. 
+
+Once we're confident that the v2 version covers all of Haystack v1.x usecases, Haystack 2.0 will be released and the packages are going to be switched: the content of `haystack` will be moved into `haystack.v1` and deprecated, and the content of `haystack.v2` will me moved under `haystack`. A few 2.x versions later, `haystack.v1` will then be dropped.
