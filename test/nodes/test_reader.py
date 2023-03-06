@@ -435,3 +435,12 @@ def test_reader_training(tmp_path):
         max_seq_len=max_seq_len,
         max_query_length=max_query_length,
     )
+
+
+@pytest.mark.integration
+def test_reader_long_document(reader):
+    # Check that long documents with >2^16 characters do not result in negative offsets
+    docs = [Document(content=("abbreviation " * 2550) + "Christelle lives in Madrid.")]
+    res = reader.predict(query="Where does Christelle live?", documents=docs)
+    assert res["answers"][0].offsets_in_document[0].start >= 0
+    assert res["answers"][0].offsets_in_document[0].end >= 0

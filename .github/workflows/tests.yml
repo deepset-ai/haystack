@@ -1,3 +1,4 @@
+# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
 name: Tests
 
 on:
@@ -20,6 +21,7 @@ on:
       - "!rest_api/**/*.py"
 
 env:
+  HAYSTACK_TELEMETRY_VERSION: "0"  # Disables telemetry
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   SUITES_EXCLUDED_FROM_WINDOWS:
@@ -90,6 +92,8 @@ jobs:
           - macos-latest
         topic:
           - document_stores
+          - nodes
+          - agents
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -397,9 +401,37 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-agents:
+    name: Integration / Agents / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/agents
+
+      - uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
 
 #
-# TODO: the following steps need to be revisited
+# IMPORTANT: the following steps need to be revisited PLEASE DO NOT ADD ANYTHING TO THE JOBS BELOW!
 #
 
 
@@ -422,10 +454,6 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
       run: |
@@ -438,8 +466,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -456,7 +485,6 @@ jobs:
           - "nodes"
           - "pipelines"
           - "modeling"
-          #- "others"
 
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
@@ -470,12 +498,6 @@ jobs:
       with:
         prefix: windows
 
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
@@ -484,8 +506,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+      # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v2
       with:
@@ -553,9 +576,6 @@ jobs:
     - name: Run Parsr
       run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
 
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
     - name: Install tesseract
       run: |
         sudo apt update
@@ -607,7 +627,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        choco install --no-progress xpdf-utils
         choco install --no-progress tesseract
         choco install --no-progress openjdk --version=11.0.2.01
         refreshenv
@@ -635,3 +654,27 @@ jobs:
         status: ${{ job.status }}
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  catch-all:
+    name: Catch-all check
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - integration-tests-elasticsearch
+      - integration-tests-sql
+      - integration-tests-opensearch
+      - integration-tests-dc
+      - integration-tests-faiss
+      - integration-tests-weaviate
+      - integration-tests-pinecone
+      - integration-tests-milvus
+      - integration-tests-memory
+      - integration-tests-linux
+      - integration-tests-windows
+
+    steps:
+      - name: Finisher
+        run: echo "Finish him!"

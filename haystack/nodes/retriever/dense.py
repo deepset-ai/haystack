@@ -43,6 +43,7 @@ from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
 from haystack.modeling.utils import initialize_device_settings
+from haystack.telemetry_2 import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -654,6 +655,7 @@ class DensePassageRetriever(DenseRetriever):
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
         """
+        send_event("DensePassageRetriever.train()")
         self.processor.embed_title = embed_title
         self.processor.data_dir = Path(data_dir)
         self.processor.train_filename = train_filename
@@ -1305,6 +1307,7 @@ class TableTextRetriever(DenseRetriever):
         :param checkpoints_to_keep: The maximum number of train checkpoints to save.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
+        send_event("TableTextRetriever.train()")
         if embed_meta_fields is None:
             embed_meta_fields = ["page_title", "section_title", "caption"]
 
@@ -1462,6 +1465,9 @@ class EmbeddingRetriever(DenseRetriever):
         scale_score: bool = True,
         embed_meta_fields: Optional[List[str]] = None,
         api_key: Optional[str] = None,
+        azure_api_version: str = "2022-12-01",
+        azure_base_url: Optional[str] = None,
+        azure_deployment_name: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1516,7 +1522,11 @@ class EmbeddingRetriever(DenseRetriever):
                                   If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
-
+        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
+        :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
+                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
+                                     will not be used.
         """
         if embed_meta_fields is None:
             embed_meta_fields = []
@@ -1540,6 +1550,9 @@ class EmbeddingRetriever(DenseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.api_key = api_key
+        self.api_version = azure_api_version
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None
@@ -1910,6 +1923,7 @@ class EmbeddingRetriever(DenseRetriever):
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
+        send_event("EmbeddingRetriever.train()")
         self.embedding_encoder.train(
             training_data,
             learning_rate=learning_rate,

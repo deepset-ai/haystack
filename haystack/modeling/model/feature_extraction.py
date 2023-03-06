@@ -180,7 +180,7 @@ def tokenize_batch_question_answering(
     tokenids_batch = tokenized_docs_batch["input_ids"]
     offsets_batch = []
     for o in tokenized_docs_batch["offset_mapping"]:
-        offsets_batch.append(np.asarray([x[0] for x in o], dtype="int16"))
+        offsets_batch.append(np.asarray([x[0] for x in o], dtype=np.int32))
     start_of_words_batch = []
     for e in tokenized_docs_batch.encodings:
         start_of_words_batch.append(_get_start_of_word_QA(e.word_ids))
@@ -222,7 +222,7 @@ def tokenize_batch_question_answering(
 
 
 def _get_start_of_word_QA(word_ids):
-    return [1] + list(np.ediff1d(np.asarray(word_ids, dtype="int16")))
+    return [1] + list(np.ediff1d(np.asarray(word_ids, dtype=np.int32)))
 
 
 def truncate_sequences(

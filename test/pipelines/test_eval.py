@@ -5,7 +5,6 @@ from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
-from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever
@@ -162,6 +161,7 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
         assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
+# using ElasticsearchDocumentStore, since InMemoryDocumentStore doesn't return meaningful BM25 scores when there are very few documents
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
@@ -185,9 +185,7 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever):
         assert results["map"] == 1.0
 
 
-# TODO simplify with a mock retriever and make it independent of elasticsearch documentstore
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
 def test_eval_pipeline(document_store, reader, retriever):
@@ -197,30 +195,30 @@ def test_eval_pipeline(document_store, reader, retriever):
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
+    assert document_store.get_document_count() == 2
+
+    p = Pipeline()
+    p.add_node(component=retriever, name="Retriever", inputs=["Query"])
+    p.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
     labels = document_store.get_all_labels_aggregated(drop_negative_labels=True, drop_no_answers=False)
 
-    eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-MiniLM-L3-v2", debug=True)
-    eval_reader_cross = EvalAnswers(sas_model="cross-encoder/stsb-TinyBERT-L-4", debug=True)
-    eval_reader_vanila = EvalAnswers()
+    metrics_vanilla = p.eval(labels=labels, params={"Retriever": {"top_k": 5}}).calculate_metrics()
+    metrics_sas_sentence_transformers = p.eval(
+        labels=labels,
+        params={"Retriever": {"top_k": 5}},
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
+    ).calculate_metrics()
+    metrics_sas_cross_encoder = p.eval(
+        labels=labels, params={"Retriever": {"top_k": 5}}, sas_model_name_or_path="cross-encoder/stsb-TinyBERT-L-4"
+    ).calculate_metrics()
 
-    assert document_store.get_document_count() == 2
-    p = Pipeline()
-    p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
-    p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
-    p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
-    p.add_node(component=eval_reader_cross, name="EvalAnswers_cross", inputs=["QAReader"])
-    p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
-    for l in labels:
-        res = p.run(query=l.query, labels=l)
-    assert eval_retriever.recall == 1.0
-    assert eval_reader.top_k_f1 == pytest.approx(0.75)
-    assert eval_reader.top_k_em == 0.5
-    assert eval_reader.top_k_sas == pytest.approx(0.87586, 1e-4)
-    assert eval_reader_cross.top_k_sas == pytest.approx(0.71063, 1e-4)
-    assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
+    assert metrics_vanilla["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics_sas_sentence_transformers["Reader"]["f1"] == pytest.approx(0.75)
+    assert metrics_sas_sentence_transformers["Reader"]["exact_match"] == 0.5
+    assert metrics_sas_sentence_transformers["Reader"]["sas"] == pytest.approx(0.87586, 1e-4)
+    assert metrics_sas_sentence_transformers["Reader"]["exact_match"] == metrics_vanilla["Reader"]["exact_match"]
+    assert metrics_sas_cross_encoder["Reader"]["sas"] == pytest.approx(0.71063, 1e-4)
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
