@@ -3,7 +3,7 @@ import logging
 import re
 from abc import ABC
 from string import Template
-from typing import Dict, List, Optional, Tuple, Union, Any, Iterator
+from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
 
 import torch
 
@@ -185,7 +185,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        invocation_layer_class: Optional[PromptModelInvocationLayer] = None,
+        invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -217,7 +217,7 @@ class PromptModel(BaseComponent):
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
 
     def create_invocation_layer(
-        self, invocation_layer_class: Optional[PromptModelInvocationLayer]
+        self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]
     ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
