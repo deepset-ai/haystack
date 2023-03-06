@@ -163,6 +163,7 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
         assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
+# using ElasticsearchDocumentStore, since InMemoryDocumentStore doesn't return meaningful BM25 scores when there are very few documents
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])

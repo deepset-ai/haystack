@@ -1,4 +1,4 @@
-# If you change this name also do it in linting-skipper.yml
+# If you change this name also do it in linting-skipper.yml and ci_metrics.yml
 name: Linting
 
 on:
