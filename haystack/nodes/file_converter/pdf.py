@@ -73,6 +73,8 @@ class PDFToTextConverter(BaseConverter):
         self.ocr_language = ocr_language
 
         if ocr is not None:
+            if ocr not in ["auto", "full"]:
+                raise ValueError("The ocr parameter must be either 'auto' or 'full'.")
             self._check_tessdata()
 
         if encoding:
@@ -162,6 +164,8 @@ class PDFToTextConverter(BaseConverter):
             warnings.warn("The keep_physical_layout parameter is being deprecated.", DeprecationWarning)
 
         if ocr is not None:
+            if ocr not in ["auto", "full"]:
+                raise ValueError("The ocr parameter must be either 'auto' or 'full'.")
             self._check_tessdata()
 
         pages = self._read_pdf(
@@ -234,9 +238,7 @@ class PDFToTextConverter(BaseConverter):
             partial_tp = None
             if ocr is not None:
                 full = ocr == "full"
-                partial_tp = page.get_textpage_ocr(
-                    flags=0, full=full, dpi=300, language=ocr_language
-                )
+                partial_tp = page.get_textpage_ocr(flags=0, full=full, dpi=300, language=ocr_language)
             text += page.get_text("text", textpage=partial_tp, sort=sort_by_position) + "\f"
 
         return text
