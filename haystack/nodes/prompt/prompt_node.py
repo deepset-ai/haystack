@@ -10,7 +10,7 @@ import torch
 
 from haystack import MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.prompt.providers import PromptModelInvocationLayer, known_providers
+from haystack.nodes.prompt.providers import PromptModelInvocationLayer
 from haystack.schema import Document
 from haystack.telemetry_2 import send_event
 
@@ -216,30 +216,6 @@ class PromptModel(BaseComponent):
         self.devices = devices
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
-
-        self.invocation_layer_classes: List[Type[PromptModelInvocationLayer]] = known_providers()
-        if invocation_layer_class:
-            klass: Optional[Type[PromptModelInvocationLayer]] = None
-            if isinstance(invocation_layer_class, str):
-                # try to find the invocation_layer_class provider class
-                search_path: List[str] = [
-                    f"haystack.nodes.prompt.providers.{invocation_layer_class}",
-                    invocation_layer_class,
-                ]
-                klass = next((pydoc.locate(path) for path in search_path if pydoc.locate(path)), None)  # type: ignore
-
-                if not klass:
-                    raise ValueError(
-                        f"Could not locate PromptModelInvocationLayer class with name {invocation_layer_class}. "
-                        f"Make sure to pass the full path to the class."
-                    )
-
-            if not issubclass(klass, PromptModelInvocationLayer):
-                raise ValueError(f"Class {invocation_layer_class} is not a subclass of PromptModelInvocationLayer.")
-
-            logger.info("Registering custom invocation layer class %s", klass)
-            self.register(klass)
-
         self.model_invocation_layer = self.create_invocation_layer()
 
     def create_invocation_layer(self) -> PromptModelInvocationLayer:
@@ -253,7 +229,7 @@ class PromptModel(BaseComponent):
 
         # search all invocation layer classes and find the first one that supports the model,
         # then create an instance of that invocation layer
-        for invocation_layer in self.invocation_layer_classes:
+        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
@@ -263,13 +239,6 @@ class PromptModel(BaseComponent):
             f" Currently supported invocation layers are: {self.invocation_layer_classes}"
             f" You can implement and provide custom invocation layer for {self.model_name_or_path} via PromptModel init."
         )
-
-    def register(self, invocation_layer: Type[PromptModelInvocationLayer]):
-        """
-        Registers additional prompt model invocation layer. It takes a function that returns a boolean as a
-        matching condition on `model_name_or_path` and a class that implements `PromptModelInvocationLayer` interface.
-        """
-        self.invocation_layer_classes.append(invocation_layer)
 
     def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
         """
