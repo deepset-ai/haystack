@@ -1,6 +1,6 @@
 import logging
 from abc import abstractmethod
-from typing import Dict, List, Optional, Union, Type
+from typing import Dict, List, Optional, Union
 
 import torch
 from transformers import (

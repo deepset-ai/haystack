@@ -1,10 +1,9 @@
 import copy
 import logging
-import pydoc
 import re
 from abc import ABC
 from string import Template
-from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
+from typing import Dict, List, Optional, Tuple, Union, Any, Iterator
 
 import torch
 
