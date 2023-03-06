@@ -233,8 +233,9 @@ class PDFToTextConverter(BaseConverter):
             page = doc[i]
             partial_tp = None
             if ocr is not None:
+                full = ocr == "full"
                 partial_tp = page.get_textpage_ocr(
-                    flags=0, full=True if ocr == "full" else False, dpi=300, language=ocr_language
+                    flags=0, full=full, dpi=300, language=ocr_language
                 )
             text += page.get_text("text", textpage=partial_tp, sort=sort_by_position) + "\f"
 
