@@ -60,22 +60,3 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     prediction = pipeline.run(query=query, params={"Retriever": {"top_k": 1}, "Reader": {"top_k": 1}})
     assert prediction is not None
     assert len(prediction["answers"]) == 1
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):
-    base_pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
-    )
-
-    prediction = pipeline.run(query="Wer lebt in Berlin?", params={"Reader": {"top_k": 3}})
-    assert prediction is not None
-    assert prediction["query"] == "Wer lebt in Berlin?"
-    assert "Carla" in prediction["answers"][0].answer
-    assert prediction["answers"][0].score <= 1
-    assert prediction["answers"][0].score >= 0
-    assert prediction["answers"][0].meta["meta_field"] == "test1"
-    assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"

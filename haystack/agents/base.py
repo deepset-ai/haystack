@@ -30,7 +30,7 @@ class Tool:
 
     :param name: The name of the tool. The Agent uses this name to refer to the tool in the text the Agent generates.
         The name should be short, ideally one token, and a good description of what the tool can do, for example
-        "Calculator" or "Search".
+        "Calculator" or "Search". Use only letters (a-z, A-Z), digits (0-9) and underscores (_).".
     :param pipeline_or_node: The pipeline or node to run when this tool is invoked by an Agent.
     :param description: A description of what the tool is useful for. An Agent can use this description for the decision
         when to use which tool. For example, a tool for calculations can be described by "useful for when you need to
@@ -53,6 +53,10 @@ class Tool:
         ],
         description: str,
     ):
+        if re.search(r"\W", name):
+            raise ValueError(
+                f"Invalid name supplied for tool: '{name}'. Use only letters (a-z, A-Z), digits (0-9) and underscores (_)."
+            )
         self.name = name
         self.pipeline_or_node = pipeline_or_node
         self.description = description
@@ -165,7 +169,12 @@ class Agent:
                 return self._format_answer(query=query, transcript=transcript, answer=final_answer)
             tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=preds[0])
             if tool_name is None or tool_input is None:
-                raise AgentError(f"Wrong output format. Transcript:\n{transcript}")
+                raise AgentError(
+                    f"Could not identify the next tool or input for that tool from Agent's output. Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
+                    f"# Agent's output: {preds[0]} \n"
+                    f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
+                    f"# Transcript:\n{transcript}"
+                )
 
             result = self._run_tool(tool_name=tool_name, tool_input=tool_input, transcript=transcript, params=params)
             observation = self._extract_observation(result)

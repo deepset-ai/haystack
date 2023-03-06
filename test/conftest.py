@@ -1,3 +1,4 @@
+import warnings
 from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
@@ -53,7 +54,6 @@ from haystack.nodes import (
     TableReader,
     RCIReader,
     TransformersSummarizer,
-    TransformersTranslator,
     QuestionGenerator,
     PromptTemplate,
 )
@@ -101,9 +101,20 @@ posthog.disabled = True
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
-def fail_at_version(version_major, version_minor):
+def fail_at_version(target_major, target_minor):
     """
     Reminder to remove deprecated features.
+    If you're using this fixture please open an issue in the repo to keep track
+    of the deprecated feature that must be removed.
+    After opening the issue assign it to the target version milestone, if the
+    milestone doesn't exist either create it or notify someone that has permissions
+    to do so.
+    This way will be assured that the feature is actually removed for that release.
+    This will fail tests if the current major and/or minor version is equal or greater
+    of target_major and/or target_minor.
+    If the current version has `rc0` set the test won't fail but only issue a warning, this
+    is done because we use `rc0` to mark the development version in `main`. If we wouldn't
+    do this tests would continuosly fail in main.
 
     ```python
     from ..conftest import fail_at_version
@@ -115,14 +126,17 @@ def fail_at_version(version_major, version_minor):
     """
 
     def decorator(function):
-        current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
+        (current_major, current_minor) = [int(num) for num in haystack_version.split(".")[:2]]
+        current_rc = int(haystack_version.split("rc")[1]) if "rc" in haystack_version else -1
 
         @wraps(function)
         def wrapper(*args, **kwargs):
-            if current_version[0] > version_major or (
-                current_version[0] == version_major and current_version[1] >= version_minor
-            ):
-                pytest.fail(reason=f"This feature is marked for removal in v{version_major}.{version_minor}")
+            if current_major > target_major or (current_major == target_major and current_minor >= target_minor):
+                message = f"This feature is marked for removal in v{target_major}.{target_minor}"
+                if current_rc == 0:
+                    warnings.warn(message)
+                else:
+                    pytest.fail(reason=message)
             return_value = function(*args, **kwargs)
             return return_value
 
@@ -522,7 +536,17 @@ def rag_generator():
 
 @pytest.fixture
 def openai_generator():
-    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
+    azure_conf = haystack_azure_conf()
+    if azure_conf:
+        return OpenAIAnswerGenerator(
+            api_key=azure_conf["api_key"],
+            azure_base_url=azure_conf["azure_base_url"],
+            azure_deployment_name=azure_conf["azure_deployment_name"],
+            model="text-babbage-001",
+            top_k=1,
+        )
+    else:
+        return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
 
 
 @pytest.fixture
@@ -533,21 +557,6 @@ def question_generator():
 @pytest.fixture
 def lfqa_generator(request):
     return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
-
-
-@pytest.fixture
-def summarizer():
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
-
-@pytest.fixture
-def en_to_de_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-
-
-@pytest.fixture
-def de_to_en_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
 @pytest.fixture
@@ -686,9 +695,18 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "openai":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="ada",
+            embedding_model="text-embedding-ada-002",
             use_gpu=False,
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+    elif retriever_type == "azure":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="text-embedding-ada-002",
+            use_gpu=False,
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
+            azure_deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED"),
         )
     elif retriever_type == "cohere":
         retriever = EmbeddingRetriever(
@@ -848,6 +866,7 @@ def get_document_store(
             index=index,
             similarity=similarity,
             use_bm25=True,
+            bm25_parameters={"k1": 1.2, "b": 0.75},  # parameters similar to those of Elasticsearch
         )
 
     elif document_store_type == "elasticsearch":
@@ -958,6 +977,30 @@ def prompt_node():
     return PromptNode("google/flan-t5-small", devices=["cpu"])
 
 
+def haystack_azure_conf():
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
+    azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    azure_deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
+    if api_key and azure_base_url and azure_deployment_name:
+        return {"api_key": api_key, "azure_base_url": azure_base_url, "azure_deployment_name": azure_deployment_name}
+    else:
+        return {}
+
+
+@pytest.fixture
+def haystack_openai_config(request):
+    if request.param == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY", None)
+        if not api_key:
+            return {}
+        else:
+            return {"api_key": api_key, "embedding_model": "text-embedding-ada-002"}
+    elif request.param == "azure":
+        return haystack_azure_conf()
+
+    return {}
+
+
 @pytest.fixture
 def prompt_model(request):
     if request.param == "openai":
@@ -965,5 +1008,15 @@ def prompt_model(request):
         if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
         return PromptModel("text-davinci-003", api_key=api_key)
+    elif request.param == "azure":
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
+        if api_key is None or api_key == "":
+            api_key = "KEY_NOT_FOUND"
+        return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
+
+
+@pytest.fixture
+def azure_conf():
+    return haystack_azure_conf()
