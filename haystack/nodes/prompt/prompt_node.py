@@ -1,13 +1,10 @@
 import copy
-import json
 import logging
-import os
 import re
 from abc import ABC, abstractmethod
 from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
 
-import requests
 import torch
 from transformers import (
     pipeline,
@@ -20,16 +17,18 @@ from transformers import (
 from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-)
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.errors import OpenAIError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.utils.reflection import retry_with_exponential_backoff
+from haystack.utils.openai_utils import (
+    USE_TIKTOKEN,
+    openai_request,
+    _openai_text_completion_tokenization_details,
+    load_openai_tokenizer,
+    _check_openai_text_completion_answers,
+    count_openai_tokens,
+)
 from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
@@ -187,21 +186,17 @@ class PromptModelInvocationLayer:
     could be even remote, for example, a call to a remote API endpoint.
     """
 
-    def __init__(self, model_name_or_path: str, max_length: Optional[int] = 100, **kwargs):
+    def __init__(self, model_name_or_path: str, **kwargs):
         """
         Creates a new PromptModelInvocationLayer instance.
 
-
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of output text.
         :param kwargs: Additional keyword arguments passed to the underlying model.
-
         """
         if model_name_or_path is None or len(model_name_or_path) == 0:
             raise ValueError("model_name_or_path cannot be None or empty string")
 
         self.model_name_or_path = model_name_or_path
-        self.max_length: Optional[int] = max_length
 
     @abstractmethod
     def invoke(self, *args, **kwargs):
@@ -222,6 +217,14 @@ class PromptModelInvocationLayer:
         :return: True if this invocation layer supports the model, False otherwise.
         """
         return False
+
+    @abstractmethod
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        pass
 
 
 class StopWordsCriteria(StoppingCriteria):
@@ -270,7 +273,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         For more details about these kwargs, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
         """
-        super().__init__(model_name_or_path, max_length)
+        super().__init__(model_name_or_path)
         self.use_auth_token = use_auth_token
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
@@ -332,6 +335,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             use_auth_token=self.use_auth_token,
             model_kwargs=model_input_kwargs,
         )
+        # This is how the default max_length is determined for Text2TextGenerationPipeline shown here
+        # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
+        # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
+        self.max_length = max_length or self.pipe.model.config.max_length
 
     def invoke(self, *args, **kwargs):
         """
@@ -371,6 +378,33 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 for stop_word in stop_words:
                     generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
         return generated_texts
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
+            return prompt
+
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "Shorten the prompt to prevent it from being cut off",
+            n_prompt_tokens,
+            self.pipe.tokenizer.model_max_length - n_answer_tokens,
+            n_answer_tokens,
+            self.pipe.tokenizer.model_max_length,
+        )
+
+        tokenized_payload = self.pipe.tokenizer.tokenize(prompt)
+        decoded_string = self.pipe.tokenizer.convert_tokens_to_string(
+            tokenized_payload[: self.pipe.tokenizer.model_max_length - n_answer_tokens]
+        )
+        return decoded_string
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
@@ -416,14 +450,18 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
-
         """
-        super().__init__(model_name_or_path, max_length)
+        super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
+
+        # 16 is the default length for answers from OpenAI shown in the docs
+        # here, https://platform.openai.com/docs/api-reference/completions/create.
+        # max_length must be set otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
+        self.max_length = max_length or 16
 
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
@@ -447,6 +485,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
+        tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(
+            model_name=self.model_name_or_path
+        )
+        self.max_tokens_limit = max_tokens_limit
+        self._tokenizer = load_openai_tokenizer(tokenizer_name=tokenizer_name)
+
     @property
     def url(self) -> str:
         return "https://api.openai.com/v1/completions"
@@ -455,11 +499,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     def headers(self) -> Dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
-    @retry_with_exponential_backoff(
-        backoff_in_seconds=float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
-        max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
-        errors=(OpenAIRateLimitError, OpenAIError),
-    )
     def invoke(self, *args, **kwargs):
         """
         Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
@@ -503,38 +542,41 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "best_of": kwargs_with_defaults.get("best_of", 1),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
-        response = requests.post(
-            self.url,
-            headers=self.headers,
-            data=json.dumps(payload),
-            timeout=float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30)),
-        )
-        res = json.loads(response.text)
-
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
-
-        number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_completions > 0:
-            logger.warning(
-                "%s out of the %s completions have been truncated before reaching a natural stopping point."
-                "Consider increasing the max_tokens parameter to allow for longer completions.",
-                number_of_truncated_completions,
-                payload["n"],
-            )
-
+        res = openai_request(url=self.url, headers=self.headers, payload=payload)
+        _check_openai_text_completion_answers(result=res, payload=payload)
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer)
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+            return prompt
+
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "Reduce the length of the prompt to prevent it from being cut off.",
+            n_prompt_tokens,
+            self.max_tokens_limit - n_answer_tokens,
+            n_answer_tokens,
+            self.max_tokens_limit,
+        )
+
+        if USE_TIKTOKEN:
+            tokenized_payload = self._tokenizer.encode(prompt)
+            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
+        else:
+            tokenized_payload = self._tokenizer.tokenize(prompt)
+            decoded_string = self._tokenizer.convert_tokens_to_string(
+                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
+            )
+        return decoded_string
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
@@ -598,7 +640,7 @@ class PromptModel(BaseComponent):
     PromptNode to interact with the model. PromptModel instances are a way for multiple
     PromptNode instances to use a single PromptNode, and thus save computational resources.
 
-    For more details, refer to [Promptnode](https://docs.haystack.deepset.ai/docs/prompt_node).
+    For more details, refer to [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     outgoing_edges = 1
@@ -684,6 +726,13 @@ class PromptModel(BaseComponent):
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        return self.model_invocation_layer._ensure_token_limit(prompt=prompt)
 
     def run(
         self,
@@ -931,6 +980,7 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
+                prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
@@ -939,6 +989,7 @@ class PromptNode(BaseComponent):
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
