@@ -208,4 +208,5 @@ Here's a list of organizations that use Haystack. Don't hesitate to send a PR to
 - [Etalab](https://www.etalab.gouv.fr/)
 - [Infineon](https://www.infineon.com/)
 - [Intelijus](https://www.intelijus.ai/)
+- [LEGO](https://www.lego.com/)
 - [Sooth.ai](https://sooth.ai/)
