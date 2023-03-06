@@ -12,6 +12,11 @@ from haystack.utils.openai_utils import (
     count_openai_tokens,
     _openai_text_completion_tokenization_details,
     _check_openai_text_completion_answers,
+    retry_with_exponential_backoff,
+    OPENAI_BACKOFF,
+    OPENAI_MAX_RETRIES,
+    OpenAIError,
+    OpenAIRateLimitError,
 )
 
 logger = logging.getLogger(__name__)
