@@ -13,7 +13,9 @@ def test_faq_pipeline_batch():
         {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
     ]
     document_store = InMemoryDocumentStore()
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
     document_store.write_documents(documents)
     document_store.update_embeddings(retriever)
 
@@ -35,7 +37,9 @@ def test_document_search_pipeline_batch():
         {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
     document_store = InMemoryDocumentStore()
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
     document_store.write_documents(documents)
     document_store.update_embeddings(retriever)
 
@@ -54,7 +58,9 @@ def test_most_similar_documents_pipeline_batch():
         {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
     document_store = InMemoryDocumentStore()
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
     document_store.write_documents(documents)
     document_store.update_embeddings(retriever)
 
@@ -83,7 +89,9 @@ def test_most_similar_documents_pipeline_with_filters_batch():
         {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
     document_store = InMemoryDocumentStore()
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
     document_store = InMemoryDocumentStore()
     document_store.write_documents(documents)
     document_store.update_embeddings(retriever)
