@@ -101,9 +101,7 @@ class Document:
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
         if id_hash_keys is not None:
-            if not all(
-                True if key in allowed_hash_key_attributes or key.startswith("meta.") else False for key in id_hash_keys
-            ):
+            if not all(key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys):
                 raise ValueError(
                     f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
                     f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
