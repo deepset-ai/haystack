@@ -184,7 +184,7 @@ def test_pdf_parallel_sort_by_position(Converter):
     assert pages[-1] == "This is the page 50 of the document."
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_parallel_ocr(Converter):
     converter = Converter(multiprocessing=True, sort_by_position=True, ocr="full", ocr_language="eng")

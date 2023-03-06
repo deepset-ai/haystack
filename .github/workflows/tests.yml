@@ -94,16 +94,6 @@ jobs:
           - document_stores
           - nodes
           - agents
-        include:
-          - os: ubuntu-latest
-            topic: nodes
-            tesspath: /usr/share/tesseract-ocr/4.00/tessdata
-          - os: windows-latest
-            topic: nodes
-            tesspath: C:\Program Files\Tesseract-OCR\tessdata
-          - os: macos-latest
-            topic: nodes
-            tesspath:  /usr/local/Cellar/tesseract/5.3.0_1/share/tessdata/
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -111,30 +101,11 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/python_cache/
 
-      - name: Install Tesseract (Ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.topic == 'nodes' }}
-        run: |
-          sudo apt update
-          sudo apt-get install tesseract-ocr libtesseract-dev
-
-      - name: Install Tesseract (Windows)
-        if: ${{ matrix.os == 'windows-latest'  && matrix.topic == 'nodes' }}
-        run: |
-          choco install --no-progress tesseract-ocr -y
-
-      - name: Install Tesseract (Mac)
-        if: ${{ matrix.os == 'macos-latest'  && matrix.topic == 'nodes' }}
-        run: |
-          brew install tesseract
-
       - name: Install Haystack
         run: pip install .[all]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
-        if: ${{ matrix.tesspath }}
-        env:
-          TESSDATA_PREFIX: ${{ matrix.tesspath }}
 
       - uses: act10ns/slack@v2
         with:
