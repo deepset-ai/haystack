@@ -1610,6 +1610,7 @@ class EvaluationResult:
             "offsets_in_document",
             "document_ids",
             "custom_document_ids",
+            "gold_document_contents",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
@@ -1620,7 +1621,7 @@ class EvaluationResult:
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
             # convert single document_id to list
             if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
-                df["document_ids"] = df["document_id"].apply(lambda x: [x] if x is not None and x != "None" else [])
+                df["document_ids"] = df["document_id"].apply(lambda x: [x] if x not in [None, "None"] else [])
                 df.drop(columns=["document_id"], inplace=True)
             if (
                 "answer" in df.columns
@@ -1628,7 +1629,7 @@ class EvaluationResult:
                 and not "custom_document_ids" in df.columns
             ):
                 df["custom_document_ids"] = df["custom_document_id"].apply(
-                    lambda x: [x] if x is not None and x != "None" else []
+                    lambda x: [x] if x not in [None, "None"] else []
                 )
                 df.drop(columns=["custom_document_id"], inplace=True)
         result = cls(node_results)
