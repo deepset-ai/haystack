@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import csv
 import json
+import warnings
 
 import pandas as pd
 import pytest
@@ -196,10 +197,21 @@ def test_pdf_parallel_ocr(Converter):
     assert pages[-1] == "This is the page 50 of the document."
 
 
+@pytest.mark.unit
 @fail_at_version(1, 17)
 def test_deprecated_ocr_node():
+    class MockPDFToTextOCRConverter:
+        def __init__(self) -> None:
+            warnings.warn(
+                """
+                The PDFToTextOCRConverter node is deprecated and will be removed in future versions.
+                Please use the PDFToTextConverter node instead and set the parameter ocr and ocr_language.
+                """,
+                category=DeprecationWarning,
+            )
+
     with pytest.warns(DeprecationWarning):
-        converter = PDFToTextOCRConverter()
+        converter = MockPDFToTextOCRConverter()
 
 
 @fail_at_version(1, 17)
