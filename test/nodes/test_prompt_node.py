@@ -176,13 +176,13 @@ def test_add_template_and_invoke(prompt_node):
 
 @pytest.mark.integration
 def test_on_the_fly_prompt(prompt_node):
-    tt = PromptTemplate(
+    prompt_template = PromptTemplate(
         name="sentiment-analysis-temp",
         prompt_text="Please give a sentiment for this context. Answer with positive, "
         "negative or neutral. Context: $documents; Answer:",
         prompt_params=["documents"],
     )
-    r = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+    r = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
     assert r[0].casefold() == "positive"
 
 
@@ -290,7 +290,7 @@ def test_open_ai_warn_if_max_tokens_is_too_short(prompt_model, caplog):
     optional_davinci_params = {"temperature": 0.5, "max_tokens": 2, "top_p": 1, "frequency_penalty": 0.5}
     with caplog.at_level(logging.WARNING):
         _ = pn.prompt("question-generation", documents=["Berlin is the capital of Germany."], **optional_davinci_params)
-        assert "Consider increasing the max_tokens parameter to allow for longer completions." in caplog.text
+        assert "Increase the max_tokens parameter to allow for longer completions." in caplog.text
 
 
 @pytest.mark.integration
@@ -798,6 +798,37 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
     assert pipeline is not None
 
 
+class TestTokenLimit:
+    @pytest.mark.integration
+    def test_hf_token_limit_warning(self, prompt_node, caplog):
+        prompt_template = PromptTemplate(
+            name="too-long-temp",
+            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
+            prompt_params=["documents"],
+        )
+        with caplog.at_level(logging.WARNING):
+            _ = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
+            assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
+            assert "and answer length (100 tokens) fits within the max token limit (512 tokens)." in caplog.text
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    def test_openai_token_limit_warning(self, caplog):
+        tt = PromptTemplate(
+            name="too-long-temp",
+            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
+            prompt_params=["documents"],
+        )
+        prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
+        with caplog.at_level(logging.WARNING):
+            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+            assert "The prompt has been truncated from" in caplog.text
+            assert "and answer length (2000 tokens) fits within the max token limit (2048 tokens)." in caplog.text
+
+
 class TestRunBatch:
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
@@ -864,7 +895,6 @@ class TestRunBatch:
         assert isinstance(result["results"], list)
         assert isinstance(result["results"][0], list)
         assert isinstance(result["results"][0][0], str)
-        # TODO Finish
 
 
 @pytest.mark.integration
