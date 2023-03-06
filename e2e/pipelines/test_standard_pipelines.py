@@ -1,5 +1,3 @@
-import pytest
-
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipelines import Pipeline, FAQPipeline, DocumentSearchPipeline, MostSimilarDocumentsPipeline
 from haystack.nodes import EmbeddingRetriever
