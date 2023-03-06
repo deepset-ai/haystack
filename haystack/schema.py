@@ -92,7 +92,8 @@ class Document:
                              Note that one can use even nested fields of the "meta" as id_hash_keys. For example, if you
                              have a key in meta called "url" and you want to use it as part of the id, you can pass
                              this parameter as ["meta.url"]. This will use the value of the "url" key in the "meta" dict.
-                             A maximum depth of 1 is supported. For example, "meta.url.path" is not supported.
+                             A maximum depth of 1 is supported. For example, if "meta.url.path" is used, it will look for
+                             the "url.path" key in the "meta" dict, e.g. "meta['url.path']".
 
 
         """
