@@ -438,7 +438,7 @@ Therefore, the revised Pipeline object has the following API:
     - `list_stores()`: returns all connected stores.
     - `get_store(name)`: returns a specific document store by name.
 - Serialization and validation:
-    - `__init__(path=None, metadata=None)`: if a path is given, loads the pipeline from the YAML found at that path. Note that at this stage `Pipeline` will collect nodes from all imported modules (see the implementation - the search can be scoped down to selected modules) and **all nodes' `__init__` method is called**. Therefore, `__init__` must be lightweight. See the Node's contract to understand how heavy nodes should design their initialization. Note the `metadata` field, which can be used to carry metadata info. Such meta might come useful in Projects (see below) to distinguish Pipelines, tag them, describe them, etc.
+    - `__init__(path=None, metadata=None)`: if a path is given, loads the pipeline from the YAML found at that path. Note that at this stage `Pipeline` will collect nodes from all imported modules (see the implementation - the search can be scoped down to selected modules) and **all nodes' `__init__` method is called**. Therefore, `__init__` must be lightweight. See the Node's contract to understand how heavy nodes should design their initialization. Note the `metadata` field, which can be used to carry metadata info. Such meta might come useful in Applications (see below) to distinguish Pipelines, tag them, describe them, etc.
     - `save(path)`: serializes and saves the pipeline as a YAML at the given path.
 
 Example pipeline topologies supported by the new implementation (images taken from the test suite):
@@ -815,19 +815,19 @@ max_allowed_loops = 10
 
 Note that: **1 TOML = 1 Pipeline**
 
-## Haystack Pipeline vs Haystack Project
+## Haystack Pipeline vs Haystack Applications
 
 _(Disclaimer: no draft implementation available yet)_
 
-Haystack Projects are wrappers on top of a set of pipelines. Their advantage is that they can contain nodes and stores that are shared across different pipelines.
+Haystack Applications are wrappers on top of a set of pipelines. Their advantage is that they can contain nodes and stores that are shared across different pipelines.
 
 In code, they look like this:
 
 ```python
-class Project:
+class Application:
 
     def __init__(self, path):
-        ... loads the Project TOML ...
+        ... loads the Application TOML ...
 
     def list_pipelines(self):
         return self.pipelines
@@ -844,7 +844,7 @@ class Project:
         ... serializes down to TOML ...
 ```
 
-A Project's TOML looks very similar to the Pipeline's, with the difference that each Pipeline is named.
+An Application's TOML looks very similar to the Pipeline's, with the difference that each Pipeline is named.
 
 ```toml
 dependencies = [
@@ -925,13 +925,10 @@ metadata = {
 
 I choose TOML because it looks declarative and quite readable while not suffering from typical YAML issues like sensitivity to whitespace and indentation. However there are many pros and cons of TOML, not least the fact that it needs an external package for serialization, unlike YAML.
 
-### Naming of "Haystack Project"
-
-Better naming is welcome.
 
 ### At which level to serialize?
 
-Pipeline and Project's TOML definitions are extremely similar. We might want to keep both, or we might want to take a radical stance and decide that **Pipelines cannot be serialized: only Projects can**.
+Pipeline and Application's TOML definitions are extremely similar. We might want to keep both, or we might want to take a radical stance and decide that **Pipelines cannot be serialized: only Applications can**.
 
 There are clearly pros and cons and the point surely needs further discussion.
 
