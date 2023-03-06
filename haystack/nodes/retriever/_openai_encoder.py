@@ -1,7 +1,9 @@
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import cpu_count
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -9,7 +11,7 @@ from tqdm.auto import tqdm
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.openai_utils import USE_TIKTOKEN, load_openai_tokenizer, openai_request, count_openai_tokens
+from haystack.utils.openai_utils import USE_TIKTOKEN, count_openai_tokens, load_openai_tokenizer, openai_request
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -21,8 +23,19 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-        # See https://beta.openai.com/docs/guides/embeddings for more details
-        self.url = "https://api.openai.com/v1/embeddings"
+        # See https://platform.openai.com/docs/guides/embeddings and
+        # https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/embeddings?tabs=console for more details
+        self.using_azure = (
+            retriever.azure_deployment_name is not None
+            and retriever.azure_base_url is not None
+            and retriever.api_version is not None
+        )
+
+        if self.using_azure:
+            self.url = f"{retriever.azure_base_url}/openai/deployments/{retriever.azure_deployment_name}/embeddings?api-version={retriever.api_version}"
+        else:
+            self.url = "https://api.openai.com/v1/embeddings"
+
         self.api_key = retriever.api_key
         self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
@@ -81,13 +94,37 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         return decoded_string
 
     def embed(self, model: str, text: List[str]) -> np.ndarray:
-        payload = {"model": model, "input": text}
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
+        if self.api_key is None:
+            raise ValueError(
+                f"{'Azure ' if self.using_azure else ''}OpenAI API key is not set. You can set it via the `api_key` parameter of the EmbeddingRetriever."
+            )
 
-        unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
-        ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
-        generated_embeddings = [emb[1] for emb in ordered_embeddings]
+        generated_embeddings: List[Any] = []
+
+        headers: Dict[str, str] = {"Content-Type": "application/json"}
+
+        def azure_get_embedding(input: str):
+            headers["api-key"] = str(self.api_key)
+            azure_payload: Dict[str, str] = {"input": input}
+            res = openai_request(url=self.url, headers=headers, payload=azure_payload, timeout=OPENAI_TIMEOUT)
+            return res["data"][0]["embedding"]
+
+        if self.using_azure:
+            thread_count = cpu_count() if len(text) > cpu_count() else len(text)
+            with ThreadPoolExecutor(max_workers=thread_count) as executor:
+                results: Iterator[Dict[str, Any]] = executor.map(azure_get_embedding, text)
+                generated_embeddings.extend(results)
+        else:
+            payload: Dict[str, Union[List[str], str]] = {"model": model, "input": text}
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+            res = openai_request(url=self.url, headers=headers, payload=payload, timeout=OPENAI_TIMEOUT)
+
+            unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
+            ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
+
+            generated_embeddings = [emb[1] for emb in ordered_embeddings]
+
         return np.array(generated_embeddings)
 
     def embed_batch(self, model: str, text: List[str]) -> np.ndarray:
