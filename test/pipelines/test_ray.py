@@ -83,6 +83,7 @@ async def test_load_advanced_pipeline_async(document_store_with_docs):
     prediction = await pipeline.run_async(
         query="Who lives in Berlin?",
         params={"ESRetriever1": {"top_k": 1}, "ESRetriever2": {"top_k": 2}, "Reader": {"top_k": 3}},
+        debug=True,
     )
 
     assert pipeline._serve_controller_client._detached is True
@@ -96,3 +97,5 @@ async def test_load_advanced_pipeline_async(document_store_with_docs):
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
     assert len(prediction["answers"]) > 1
+    assert "exec_time_ms" in prediction["_debug"]["ESRetriever1"].keys()
+    assert prediction["_debug"]["ESRetriever1"]["exec_time_ms"]
