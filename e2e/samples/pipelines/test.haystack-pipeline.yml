@@ -1,0 +1,42 @@
+version: ignore
+
+components:
+  - name: Reader
+    type: FARMReader
+    params:
+      no_ans_boost: -10
+      model_name_or_path: deepset/bert-medium-squad2-distilled
+      num_processes: 0
+  - name: Retriever
+    type: BM25Retriever
+    params:
+      top_k: 2
+  - name: DocumentStore
+    type: ElasticsearchDocumentStore
+  - name: PDFConverter
+    type: PDFToTextConverter
+    params:
+      remove_numeric_tables: false
+  - name: Preprocessor
+    type: PreProcessor
+    params:
+      clean_whitespace: true
+
+pipelines:
+  - name: query_pipeline
+    nodes:
+      - name: Retriever
+        inputs: [Query]
+      - name: Reader
+        inputs: [Retriever]
+
+  - name: indexing_pipeline
+    nodes:
+      - name: PDFConverter
+        inputs: [File]
+      - name: Preprocessor
+        inputs: [PDFConverter]
+      - name: Retriever
+        inputs: [Preprocessor]
+      - name: DocumentStore
+        inputs: [Retriever]
