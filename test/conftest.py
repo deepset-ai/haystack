@@ -982,12 +982,7 @@ def haystack_azure_conf():
     azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
     azure_deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
     if api_key and azure_base_url and azure_deployment_name:
-        return {
-            "api_key": api_key,
-            "embedding_model": "text-embedding-ada-002",
-            "azure_base_url": azure_base_url,
-            "azure_deployment_name": azure_deployment_name,
-        }
+        return {"api_key": api_key, "azure_base_url": azure_base_url, "azure_deployment_name": azure_deployment_name}
     else:
         return {}
 
