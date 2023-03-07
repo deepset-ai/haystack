@@ -15,7 +15,7 @@ In order to make prompt templates more flexible and powerful while at the same t
 - output: support Shapers in PromptTemplates to enable the user to define how the output to the prompt template should be shaped
 - input: extend the prompt syntax to support the usage of functions that can be applied to input variables
 
-With these modifications prompt templates will be able to define, and abstract away from PromptNode, everything that is necessary to create a Haystack node that is specialiced for a certain use-case (e.g. generative QA). Additionally, PromptTemplates will be fully serializable, enabling everyone to share their prompt templates with the community.
+With these modifications prompt templates will be able to define, and abstract away from PromptNode, everything that is necessary to create a Haystack node that is specialized for a certain use-case (e.g. generative QA). Additionally, PromptTemplates will be fully serializable, enabling everyone to share their prompt templates with the community.
 
 # Basic example
 
@@ -56,7 +56,7 @@ As a result we get a pipeline that uses PromptNode as a drop-in replacement for 
      'node_id': 'PromptNode'}
     ```
 
-The corresponding prompt template would look like this (provided `value_to_list` and `join_documents` Shaper functions are extended a bit):
+The corresponding prompt template would look like this (provided `join_documents` and `strings_to_answers` Shaper functions are extended a bit):
 
     ```python
     PromptTemplate(
@@ -78,15 +78,15 @@ The corresponding prompt template would look like this (provided `value_to_list`
         )
     ```
 
-We make sure that we have proper default values for the input shaping function and it is easy to understand. `{join(documents)}` should be usable in most cases. When you want to have more control about document rendering something like `join(documents, DELIMITER, PATTERN, CHAR_REPLACEMENT)` with 
-    
+We make sure that we have proper default values for the input shaping function and it is easy to understand. `{join(documents)}` should be usable in most cases. When you want to have more control over document rendering something like `join(documents, DELIMITER, PATTERN, CHAR_REPLACEMENT)` with
+
     ```python
     DELIMITER = "\n"
-    PATTERN = "$content" # parseable by StringTemplate using data from document.content, document.meta and the index of the document
+    PATTERN = "$content" # parsable by StringTemplate using data from document.content, document.meta and the index of the document
     CHAR_REPLACEMENT = {"[": "(", "}": ")"} # just an example what could be passed here
     ```
 
-would do. 
+would do.
 
 Note that the number of how many prompts are created depends on which shaping functions are used. If you use `join(documents)` you will have only one prompt. If you omit the `join` and use `to_list(query)` instead, you will have multiple prompts (one prompt per document).
 
@@ -95,13 +95,13 @@ Note that the number of how many prompts are created depends on which shaping fu
 Currently using PromptNode is a bit cumbersome as:
 - for using it in popular use-cases like question-answering, it requires to add the Shapers to the pipeline manually which creates a lot of boilerplate code and is not very intuitive
 - to customize a prompt within a pipeline, you may need to change four different things: the prompt node, the prompt template, the input shapers and the output shapers. This is not ideal as it requires to write a lot of boilerplate code and makes it hard to iterate quickly on prompts.
-- if you wanted to share your prompt template with the community, you would need to share the whole pipeline (as you do need shapers), which is not ideal as it may contain other nodes that are not relevant to the prompt template.
+- if you wanted to share your prompt template with the community, you would need to share the whole pipeline (as you do need shapers), which is not ideal as it may contain other nodes that are not relevant.
 
 
 # Detailed design
 
 ## General changes
-PromptTemplate gets one new attribute: `output_shapers`. These are lists of Shaper objects that are applied to the output of the prompt. 
+PromptTemplate gets one new attribute: `output_shapers`. These are lists of Shaper objects that are applied to the output of the prompt.
 PromptTemplate's syntax is extended to allow for the usage of shaping functions on input variables. These shaping functions are predefined.
 
 ## Basic flow:
@@ -114,7 +114,7 @@ The PromptTemplate syntax is extended to allow for the usage of shaping function
 We only support positional args for shaping functions. This is because we want to keep the syntax simple and we don't want to overcomplicate the parsing logic. As args any python primitive is allowed (e.g. strings, ints, floats, lists, dicts, None).
 Parsing is done by using regular expressions. If we however notice that this is not enough, we can switch to a more complex parsing library like `jinja2`.
 Here is a basic (and incomplete) example how the parsing logic could look like:
-    
+
     ```python
 
         # template allowing basic list comprehensions to create the wanted string
@@ -124,7 +124,7 @@ Here is a basic (and incomplete) example how the parsing logic could look like:
         Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation.
         If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’.
         If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.
-        {join(documents, new_line)} \n Question: {query}; Answer: 
+        {join(documents, new_line)} \n Question: {query}; Answer:
         """
 
         for group in re.findall(r'\{(.*?)\}', template):
@@ -141,7 +141,7 @@ Here is a basic (and incomplete) example how the parsing logic could look like:
     ```
 
 ## Prompt engineering with Haystack Pipelines
-Additionally we want to support changing the prompt via param of `Pipeline.run`. This is useful for example if you want to finetune your prompt and iterate quickly on it without having to change the pipeline. The `prompt` param is a string in PromptTemplate syntax which will be delegated to the `PromptTemplate` and then used by `PromptNode`. This is similar to how `Pipeline.run` works with `query` param. Note that the `prompt` param does not affect `output_shapers`.
+Additionally we want to support changing the prompt via a param of `Pipeline.run`. This is useful for example if you want to fine-tune your prompt and iterate quickly on it without having to change the pipeline. The `prompt` param is a string in `Pipeline.run` which will be delegated to the `PromptNode` and then used by `PromptTemplate`. This is similar to how `Pipeline.run` works with the `query` param. Note that the `prompt` param does not affect `output_shapers`.
 
 ## Misc
 Note, that `Shapers` are still usable in Pipelines as before.
@@ -162,9 +162,7 @@ We still don't have access to PromptNode, PromptModel or the invocation layer in
 
 # Alternatives
 
-Subclassing specialiced PromptNodes like QuestionAnsweringPromptNode, which would have the shapers already defined. This would make it easier to use, but it would be harder to iterate quickly on prompts, be less flexible and sharing is difficult. Also we get
-
-The same is true for subclassing PromptTemplate like QuestionAnsweringPromptTemplate. This would make it easier to use, but it would be harder to iterate quickly on prompts, be less flexible and sharing is difficult.
+Sub-classing specialized PromptNodes like QuestionAnsweringPromptNode, which would have the shapers already defined. This would make it easier to use, but it would be harder to iterate quickly on prompts, be less flexible and sharing is difficult. The same is true for sub-classing PromptTemplate like QuestionAnsweringPromptTemplate. Both sub-classing approaches would make it easier to use, but it would be harder to iterate quickly on prompts, be less flexible and sharing is difficult.
 
 Having `input_shapers` in the same way as `output_shapers` in the PromptTemplate. This would make it harder for users to get started as they would need to understand Shapers and which functions are relevant for input shaping.
 # Adoption strategy
@@ -184,4 +182,4 @@ We should show how:
 
 How does `OpenAIAnswerGenerator` make use of input shaping functions and output shapers?
 - output shapers: it doesn't use them
-- input shaping functions: it uses them if they are present. If not it uses its own default functions. 
+- input shaping functions: it uses them if they are present. If not it uses its own default functions.
