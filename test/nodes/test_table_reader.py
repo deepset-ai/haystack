@@ -76,7 +76,7 @@ def test_table_reader(table_reader_and_param, table_doc1, table_doc2):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
-def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param, table1, table2):
+def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param, table_doc1, table_doc2):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
     prediction = table_reader.predict_batch(queries=[query], documents=[table_doc1, table_doc2])
