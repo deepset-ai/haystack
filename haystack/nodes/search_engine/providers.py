@@ -77,4 +77,10 @@ class SerperDev(SearchEngine):
             raise Exception(f"Error while querying {self.__class__.__name__}: {response.text}")
 
         json_result = json.loads(response.text)
-        return [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"]]
+        organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"]]
+        people_also_ask = []
+        if "peopleAlsoAsk" in json_result:
+            people_also_ask = [
+                Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["peopleAlsoAsk"]
+            ]
+        return organic + people_also_ask
