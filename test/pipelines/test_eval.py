@@ -417,8 +417,14 @@ EVAL_TABLE_LABELS = [
                 document=Document(
                     id="a044cf3fb8aade03a12399c7a2fe9a6b",
                     content_type="table",
-                    content=pd.DataFrame(columns=["Actors","Age","Number of movies"],
-                                         data=[["Brad Pitt","56","87"],["Leonardo Di Caprio","45","53"],["George Clooney","59","69"]]),
+                    content=pd.DataFrame(
+                        columns=["Actors", "Age", "Number of movies"],
+                        data=[
+                            ["Brad Pitt", "56", "87"],
+                            ["Leonardo Di Caprio", "45", "53"],
+                            ["George Clooney", "59", "69"],
+                        ],
+                    ),
                 ),
                 is_correct_answer=True,
                 is_correct_document=True,
@@ -432,8 +438,18 @@ EVAL_TABLE_LABELS = [
                 query="To which state does Spikeroog belong?",
                 answer=Answer(answer="Lower Saxony", offsets_in_context=[]),
                 document=Document(
-                    id="b044cf3fb8aade03a12399c7a2fe9a6c", content_type="table", content=pd.DataFrame(columns=["0","1"],
-                                                                                   data=[["Area","18.25 km2 (7.05 sq mi)"],["Population","794"],["Country","Germany"],["State","Lower Saxony"],["District","Wittmund"]])
+                    id="b044cf3fb8aade03a12399c7a2fe9a6c",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["0", "1"],
+                        data=[
+                            ["Area", "18.25 km2 (7.05 sq mi)"],
+                            ["Population", "794"],
+                            ["Country", "Germany"],
+                            ["State", "Lower Saxony"],
+                            ["District", "Wittmund"],
+                        ],
+                    ),
                 ),
                 is_correct_answer=True,
                 is_correct_document=True,
@@ -464,6 +480,7 @@ def test_table_qa_eval(table_reader_and_param):
     for node_metrics in metrics.values():
         for value in node_metrics.values():
             assert isinstance(value, float)
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
