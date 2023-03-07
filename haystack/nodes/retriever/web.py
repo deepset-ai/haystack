@@ -2,7 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Literal
 from unicodedata import combining, normalize
 
 import mmh3
@@ -26,7 +26,8 @@ class WebRetriever(BaseRetriever):
     def __init__(
         self,
         web_search: WebSearch,
-        top_p: Optional[int] = 0.95,
+        top_p: Optional[float] = 0.95,
+        mode: Literal["snippet", "document"] = "document",
         preprocessor: Optional[PreProcessor] = None,
         document_store: Optional[BaseDocumentStore] = None,
         document_index: Optional[str] = None,
@@ -41,6 +42,7 @@ class WebRetriever(BaseRetriever):
         """
         super().__init__()
         self.web_search = web_search
+        self.mode = mode
         self.preprocessor = preprocessor
         self.document_store = document_store
         self.document_index = document_index
@@ -213,6 +215,8 @@ class WebRetriever(BaseRetriever):
         if self.sampler and search_results["documents"]:
             search_results, _ = self.sampler.run(query, search_results["documents"], top_p=top_p)
         search_results = search_results["documents"]
+        if self.mode == "snippet":
+            return search_results
 
         links: List[Tuple[str, Union[str, None], Union[str, None]]] = [
             (
