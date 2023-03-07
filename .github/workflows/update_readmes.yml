@@ -1,6 +1,9 @@
 name: Update Haystack version in social cards
 
 on:
+  push:
+    branches:
+      - readmes-updater
   release:
     types: [released]
 
@@ -11,7 +14,7 @@ jobs:
     steps:
       - name: Trigger update in GitHub Org Readme
         env:
-          VERSION: ${{ github.event.release.tag_name }}
+          VERSION: "test-version"
           GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
           gh workflow run -R deepset-ai/.github update_haystack_version.yml -f "version=$VERSION"
@@ -34,7 +37,7 @@ jobs:
 
       - name: Update README.md
         env:
-          VERSION: ${{ github.event.release.tag_name }}
+          VERSION: "test-version"
         run: |
           sed -i -r "s/Haystack is on v[0-9]+\.[0-9]+\.[0-9]+/Haystack is on $VERSION/g" profile/README.md
 
