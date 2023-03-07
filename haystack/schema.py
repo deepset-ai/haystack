@@ -770,7 +770,7 @@ class MultiLabel:
             self._offsets_in_documents = []
             self._offsets_in_contexts = []
             for answer in answered:
-                # TODO This assumes Span objects when aggregating offsets
+                # TODO This assumes Span objects when aggregating offsets. Update to use TableCell when appropriate
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
                         self._offsets_in_documents.append({"start": span.start, "end": span.end})
@@ -786,8 +786,8 @@ class MultiLabel:
         # as separate no_answer labels, and thus with document.id but without answer.document_id.
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
-        self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
-        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
+        self._document_ids = [l.document.to_dict()["id"] for l in self._labels if not l.no_answer]
+        self._contexts = [l.document.to_dict()["content"] for l in self._labels if not l.no_answer]
 
     @property
     def labels(self):

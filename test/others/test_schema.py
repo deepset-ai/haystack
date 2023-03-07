@@ -443,16 +443,21 @@ def test_multilabel_id():
 
 # TODO Expand test to check TableCell
 def test_multilabel_with_doc_containing_dataframes():
+    table = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
+    table_doc = Document(content=table, content_type="table", id="table1")
     label = Label(
         query="A question",
-        document=Document(content=pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})),
+        document=table_doc,
         is_correct_answer=True,
         is_correct_document=True,
         origin="gold-label",
-        answer=Answer(answer="answer 1"),
+        answer=Answer(
+            answer="1", context=table, offsets_in_document=None, offsets_in_context=None, document_ids=[table_doc.id]
+        ),
     )
-    assert len(MultiLabel(labels=[label]).contexts) == 1
-    assert type(MultiLabel(labels=[label]).contexts[0]) is str
+    multilabel = MultiLabel(labels=[label])
+    assert len(multilabel.contexts) == 1
+    assert isinstance(multilabel.contexts[0], list)
 
 
 def test_multilabel_serialization():
