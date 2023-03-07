@@ -574,17 +574,7 @@ class _TapasScoredEncoder:
 
         if self.return_no_answer:
             answers.append(
-                Answer(
-                    answer="",
-                    type="extractive",
-                    score=no_answer_score,
-                    context=None,
-                    # TODO Confirm that 0, 0 is a valid way to deduce no answer or if -1 will need to be used
-                    offsets_in_context=[TableCell(row=0, col=0)],
-                    offsets_in_document=[TableCell(row=0, col=0)],
-                    document_ids=None,
-                    meta=None,
-                )
+                Answer(answer="", type="extractive", score=no_answer_score, context=None, document_ids=None, meta=None)
             )
 
         answers = sorted(answers, reverse=True)
