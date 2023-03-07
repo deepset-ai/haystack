@@ -14,7 +14,7 @@ processors:
 renderer:
   type: renderers.ReadmeRenderer
   excerpt: A helper node with a variety of functions.
-  category_slug: haystack-classes
+  category: 63cffd5033018f0010bde74a
   title: Shaper API
   slug: shaper-api
   order: 175

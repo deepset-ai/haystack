@@ -14,7 +14,7 @@ processors:
 renderer:
   type: renderers.ReadmeRenderer
   excerpt: Does what it says on the tin - it translates text from one language into another.
-  category_slug: haystack-classes
+  category: 63cffd5033018f0010bde74a
   title: Translator API
   slug: translator-api
   order: 190

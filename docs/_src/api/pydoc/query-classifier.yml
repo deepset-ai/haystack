@@ -14,7 +14,7 @@ processors:
 renderer:
   type: renderers.ReadmeRenderer
   excerpt: Distinguishes between keyword, question and statements queries.
-  category_slug: haystack-classes
+  category: 63cffd5033018f0010bde74a
   title: Query Classifier API
   slug: query-classifier-api
   order: 130

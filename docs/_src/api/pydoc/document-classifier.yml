@@ -14,7 +14,7 @@ processors:
 renderer:
   type: renderers.ReadmeRenderer
   excerpt: Used to create predictions that are attached to documents as metadata.
-  category_slug: haystack-classes
+  category: 63cffd5033018f0010bde74a
   title: Document Classifier API
   slug: document-classifier-api
   order: 20

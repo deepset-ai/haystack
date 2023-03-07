@@ -16,7 +16,7 @@ processors:
 renderer:
   type: renderers.ReadmeRenderer
   excerpt: Extracts predefined entities out of a piece of text.
-  category_slug: haystack-classes
+  category: 63cffd5033018f0010bde74a
   title: Entity Extractor API
   slug: entity-extractor-api
   order: 50

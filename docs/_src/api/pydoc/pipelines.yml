@@ -14,7 +14,7 @@ processors:
 renderer:
   type: renderers.ReadmeRenderer
   excerpt: Arranges nodes in a predefined flow.
-  category_slug: haystack-classes
+  category: 63cffd5033018f0010bde74a
   title: Pipelines API
   slug: pipelines-api
   order: 90
