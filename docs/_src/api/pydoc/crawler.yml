@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/connector]
+    search_path: [../../../../haystack/nodes/connector]
     modules: ["crawler"]
     ignore_when_discovered: ["__init__"]
 processors:

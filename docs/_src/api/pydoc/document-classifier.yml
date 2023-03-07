@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/document_classifier]
+    search_path: [../../../../haystack/nodes/document_classifier]
     modules: ["base", "transformers"]
     ignore_when_discovered: ["__init__"]
 processors:

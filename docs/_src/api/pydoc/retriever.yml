@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/retriever]
+    search_path: [../../../../haystack/nodes/retriever]
     modules: ["base", "sparse", "dense", "text2sparql", "multimodal/retriever"]
     ignore_when_discovered: ["__init__"]
 processors:

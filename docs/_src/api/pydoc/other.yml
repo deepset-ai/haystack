@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/other]
+    search_path: [../../../../haystack/nodes/other]
     modules:
       [
         "docs2answers",

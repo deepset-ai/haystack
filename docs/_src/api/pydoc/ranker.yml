@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/ranker]
+    search_path: [../../../../haystack/nodes/ranker]
     modules: ["base", "sentence_transformers"]
     ignore_when_discovered: ["__init__"]
 processors:

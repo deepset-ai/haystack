@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/query_classifier]
+    search_path: [../../../../haystack/nodes/query_classifier]
     modules: ["base", "sklearn", "transformers"]
     ignore_when_discovered: ["__init__"]
 processors:

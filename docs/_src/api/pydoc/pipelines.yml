@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/pipelines]
+    search_path: [../../../../haystack/pipelines]
     modules: ["base", "ray", "standard_pipelines"]
     ignore_when_discovered: ["__init__"]
 processors:

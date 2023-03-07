@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/reader]
+    search_path: [../../../../haystack/nodes/reader]
     modules: ["base", "farm", "transformers", "table"]
     ignore_when_discovered: ["__init__"]
 processors:

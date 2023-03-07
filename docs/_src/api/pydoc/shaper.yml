@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/other/shaper]
+    search_path: [../../../../haystack/nodes/other]
     modules: ["shaper"]
     ignore_when_discovered: ["__init__"]
 processors:

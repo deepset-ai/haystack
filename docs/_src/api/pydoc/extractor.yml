@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/extractor]
+    search_path: [../../../../haystack/nodes/extractor]
     modules: ["entity"]
     ignore_when_discovered: ["__init__"]
 processors:

@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack]
+    search_path: [../../../../haystack]
     modules: ["schema"]
     ignore_when_discovered: ["__init__"]
 processors:

@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/question_generator]
+    search_path: [../../../../haystack/nodes/question_generator]
     modules: ["question_generator"]
     ignore_when_discovered: ["__init__"]
 processors:

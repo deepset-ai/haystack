@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/nodes/file_converter]
+    search_path: [../../../../haystack/nodes/file_converter]
     modules:
       [
         "base",
