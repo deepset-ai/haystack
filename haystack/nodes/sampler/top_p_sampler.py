@@ -46,7 +46,7 @@ class TopPSampler(BaseSampler):
         model_version: Optional[str] = None,
         top_p: Optional[float] = 0.999,
         strict: Optional[bool] = False,
-        top_score_name: Optional[str] = None,
+        top_score_name: Optional[str] = "score",
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,

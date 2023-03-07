@@ -2,7 +2,7 @@ import pydoc
 from typing import List, Dict, Any, Optional, Union, Tuple, Type, Callable
 
 from haystack import BaseComponent, MultiLabel, Document
-from haystack.nodes import PromptNode, PromptTemplate
+from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
 from haystack.nodes.search_engine.base import SearchEngine
 
 
@@ -79,6 +79,7 @@ class NeuralWebSearch(BaseComponent):
         prompt_template: PromptTemplate,
         prepare_template_params_fn: Callable[[List[Document], Dict[str, Any]], Dict[str, str]],
         extract_final_answer_fn: Callable[[str], str],
+        top_p: float = 0.98,
         **kwargs,
     ):
         """
@@ -90,6 +91,7 @@ class NeuralWebSearch(BaseComponent):
         """
         super().__init__()
         self.websearch = websearch
+        self.sampler = TopPSampler(top_p=top_p)
         self.prompt_node = prompt_node
         self.prompt_template = prompt_template
         self.prepare_template_params_fn = prepare_template_params_fn
@@ -105,7 +107,9 @@ class NeuralWebSearch(BaseComponent):
     ) -> Tuple[Dict, str]:
         result, _ = self.websearch.run(query=query)
 
-        doc_hits: List[Document] = result["output"]
+        doc_hits: List[Document] = result["documents"]
+        doc_hits = self.sampler.predict(query=query, documents=doc_hits)
+
         prompt_kwargs = self.prepare_template_params_fn(doc_hits, {"query": query, "documents": documents})
 
         response = self.prompt_node.prompt(self.prompt_template, **prompt_kwargs)
