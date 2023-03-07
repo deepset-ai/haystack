@@ -39,7 +39,7 @@ jobs:
         env:
           VERSION: "test-version"
         run: |
-          sed -i -r "s/Haystack is on v[0-9]+\.[0-9]+\.[0-9]+/Haystack is on $VERSION/g" profile/README.md
+          sed -i -r "s/Haystack is on v[0-9]+\.[0-9]+\.[0-9]+/Haystack is on $VERSION/g" README.md
 
       - name: Commit and push
         run: |
