@@ -9,7 +9,8 @@ import torch
 
 from haystack import MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.prompt.providers import PromptModelInvocationLayer
+from haystack.nodes.prompt.providers import PromptModelInvocationLayer, instruction_following_models
+
 from haystack.schema import Document
 from haystack.telemetry_2 import send_event
 
@@ -215,6 +216,14 @@ class PromptModel(BaseComponent):
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
+        is_instruction_following: bool = any(m in model_name_or_path for m in instruction_following_models())
+        if not is_instruction_following:
+            logger.warning(
+                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
+                "Many of the default prompts and PromptTemplates will likely not work as intended. "
+                "Use custom prompts and PromptTemplates specific to the %s model",
+                model_name_or_path,
+            )
 
     def create_invocation_layer(
         self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]

@@ -116,6 +116,10 @@ class PromptModelInvocationLayer:
         pass
 
 
+def instruction_following_models() -> List[str]:
+    return ["flan", "mt0", "bloomz", "davinci"]
+
+
 class StopWordsCriteria(StoppingCriteria):
     """
     Stops text generation if any one of the stop words is generated.
@@ -300,16 +304,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         try:
             task_name = get_task(model_name_or_path)
         except RuntimeError:
-            # This is needed so OpenAI models are skipped over
+            # This will fail for all non-HF models
             return False
 
-        if not any(m in model_name_or_path for m in ["flan", "mt0", "bloomz"]):
-            logger.warning(
-                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
-                "Many of the default prompts and PromptTemplates will likely not work as intended. "
-                "Use custom prompts and PromptTemplates specific to the %s model",
-                model_name_or_path,
-            )
         return task_name in ["text2text-generation", "text-generation"]
 
 
