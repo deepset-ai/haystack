@@ -749,50 +749,50 @@ This implies that nodes don't have any **standardized** way to tell whether they
 
 We took this decision to encourage nodes to implement the same behavior regardless of debug mode, and to incentivize the use of machine-readable logs.
 
-### Pipeline Serialization
-
-We decide to remove the possibility of serializing single `Pipeline`s and to defer such task to Haystack `Application`s. See the dedicated paragraph.
-
-This decision was made to remove the current ambiguity of `Pipeline` YAMLs being able to store several `Pipeline`s, while `Pipeline.save_to_yaml()` can only save one.
-
 ### Evaluation
 
 Evaluation of Pipelines is a topic too wide for the scope of this proposal, so it has been left out on purpose. We will open a separate proposal after this one has been approved.
 
-## Haystack Applications
+### Pipeline Serialization
 
 _(Disclaimer: no draft implementation available yet)_
 
-Haystack `Application`s are wrappers on top of a set of pipelines. Their advantage is that they can contain nodes and stores that are shared across different pipelines.
+We decide to remove the possibility of serializing single `Pipeline`s and to defer such task to a dedicated marshalling utility. This decision was made to remove the current ambiguity of `Pipeline` YAMLs being able to store several `Pipeline`s, while `Pipeline.save_to_yaml()` can only save one.
 
-In code, they look like this:
+In code, saving and loading pipelines will look like this:
 
 ```python
-class Application:
+from haystack.pipelines import Pipeline, save_pipelines, load_pipelines
 
-    def __init__(self, path):
-        ... loads a serialized Application or creates an empty one ...
+query_pipeline = Pipeline()
+indexing_pipeline = Pipeline()
+# .. assemble the pipelines ...
 
-    def list_pipelines(self):
-        return self.pipelines
+# Save the pipelines
+save_pipelines(
+    pipelines={
+        "query": query_pipeline,
+        "indexing": indexing_pipeline,
+    },
+    path="my_pipelines.json",
+    writer=json.dumps
+)
 
-    def list_nodes(self):
-        return self.nodes
+# Load the pipelines
+new_pipelines = load_pipelines(
+    path="my_pipelines.json",
+    reader=json.loads
+)
 
-    def list_stores(self):
-        return self.stores
-
-    ... CRUD operations for Pipelines, Nodes and Stores ...
-
-    def save(self, path):
-        ... serializes down to a file ...
+assert new_pipelines["query"] == query_pipeline
+assert new_pipelines["indexing"] == indexing_pipeline
 ```
 
-A serialized `Application` looks very similar to a current Pipeline YAML, with some key differences which are highlighted.
+Note how the save/load functions accept a writer/reader function: this choice frees us from committing strongly to a specific template language, and although a default will be set (be it YAML, TOML, HCL or anything else) the decision can be overridden by passing another explicit reader/writer function to the `save_pipelines`/`load_pipelines` functions.
 
-In this proposal we decide to not address the choice of which specific template language to use to represent serialized Applications, but rather focus on the concept of serialization itself, stopping at the "serialized to dictionary" level.
+This is how the resulting file will look like, assuming a JSON writer was chosen.
 
-This allows us to implement several backends for serialization and support multiple formats very easily, without locking ourselves into a specific language. In addition, we want to ease the transition of dC: their tooling is mostly oriented towards YAML, so sopporting also YAML can be beneficial to them during the transition even if we eventually settle for another format.
+`my_pipeline.json`
 
 ```json
 {
