@@ -680,10 +680,10 @@ class NodeB:
 This is the behavior of `Pipeline.connect()`:
 
 ```python
-pipeline.connect(['node_a', 'node_b'])
+pipeline.connect('node_a', ['node_b'])
 # Succeeds: no output
 
-pipeline.connect(['node_a', 'node_a'])
+pipeline.connect('node_a', ['node_a'])
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
 #     pipeline.connect(['node_a', 'node_a'])
@@ -695,7 +695,7 @@ pipeline.connect(['node_a', 'node_a'])
 # Downstream node 'node_a' declared these inputs:
 #  - input (free)
 
-pipeline.connect(['node_b', 'node_a'])
+pipeline.connect('node_b', ['node_a'])
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
 #     pipeline.connect(['node_b', 'node_a'])
@@ -753,15 +753,19 @@ We took this decision to encourage nodes to implement the same behavior regardle
 
 ### Pipeline Serialization
 
-We decide to remove the possibility of serializing single Pipelines and to defer such task to Haystack Applications. See the dedicated paragraph.
+We decide to remove the possibility of serializing single `Pipeline`s and to defer such task to Haystack `Application`s. See the dedicated paragraph.
 
-This decision was made to remove the current ambiguity of Pipeline YAMLs being able to store several Pipelines, while `Pipeline.save_to_yaml()` can only save one.
+This decision was made to remove the current ambiguity of `Pipeline` YAMLs being able to store several `Pipeline`s, while `Pipeline.save_to_yaml()` can only save one.
+
+### Evaluation
+
+Evaluation of Pipelines is a topic too wide for the scope of this proposal, so it has been left out on purpose. We will open a separate proposal after this one has been approved.
 
 ## Haystack Applications
 
 _(Disclaimer: no draft implementation available yet)_
 
-Haystack Applications are wrappers on top of a set of pipelines. Their advantage is that they can contain nodes and stores that are shared across different pipelines.
+Haystack `Application`s are wrappers on top of a set of pipelines. Their advantage is that they can contain nodes and stores that are shared across different pipelines.
 
 In code, they look like this:
 
@@ -786,7 +790,7 @@ class Application:
         ... serializes down to a file ...
 ```
 
-A serialized Application looks very similar to a current Pipeline YAML, with some key differences which are highlighted.
+A serialized `Application` looks very similar to a current Pipeline YAML, with some key differences which are highlighted.
 
 In this proposal we decide to not address the choice of which specific template language to use to represent serialized Applications, but rather focus on the concept of serialization itself, stopping at the "serialized to dictionary" level.
 
@@ -900,36 +904,7 @@ This allows us to implement several backends for serialization and support multi
 
 # Open questions
 
-### Evaluation
-
-In Haystack we have two main modes of evaluating Pipelines: "full pipeline" (integrated mode) and "each node separately" (isolated mode). We will support both usecases in Pipeline v2.
-
-For integrated mode, we envision a dedicated `Evaluator` class that takes a pipeline as input and defines an `integrated_eval()` method, which runs the pipeline and then performs the evaluation on its output.
-
-For isolated mode, we suppose the same `Evaluator` could define a `isolated_eval()` mode that instead evaluates each node in isolation.
-
-Note that the `Evaluator` class, having access to the Pipeline, would not need to re-instantiate the nodes: it can be attached to an existing pipeline and can work smoothly with it.
-
-In the future, if the need arises, we could also support a hybrid "partially isolated" evaluation where a single branch of the pipeline is evaluated. This could work as well through `Evaluator`: the object would clone the pipeline graph (note: not the instances, only references to them), prune and cut it as needed to extract only the relevant branch, and then run an integrated evaluation on that branch only, as if it were a full `Pipeline`.
-
-The topic surely needs further discussion and a dedicated Proposal to flesh out the details. In this paragraph we only aim to clarify that such scenarios are supported by the current architecture and no show-stoppers have been identified.
-
-Possible API for `Evaluator`:
-
-```python
-class Evaluator:
-
-    def __init__(self, pipeline: Pipeline):
-        self.pipeline = pipeline
-
-    def integrated_eval(self, inputs, expected_outputs):
-        results = self.pipeline.run(inputs)
-        ... evaluation code ...
-
-    def isolated_eval(self, node_name, inputs, expected_outputs)
-        results = self.pipeline.get_node(node_name).run(...)
-        ... evaluation code ...
-```
+None left.
 
 # Drawbacks
 
