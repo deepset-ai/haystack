@@ -25,10 +25,12 @@ repos:
   hooks:
   - id: mypy
 
-- repo: local
-  hooks:
-  - id: pylint
-    name: pylint
-    entry: pylint
-    language: system
-    types: [python]
+# TODO: Soon
+# - repo: local
+#   hooks:
+#   - id: pylint
+#     name: pylint
+#     entry: pylint
+#     language: system
+#     types: [python]
+#     args: [./canals]

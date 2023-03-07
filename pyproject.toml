@@ -77,3 +77,12 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.black]
+line-length = 120
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length=120
+disable = [
+  "line-too-long",  # Black's job
+]
