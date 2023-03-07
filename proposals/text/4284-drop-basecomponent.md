@@ -132,8 +132,8 @@ pipeline.add_node("second_addition", addition)  # Note that instances can be reu
 pipeline.add_node("double", Double())
 
 # Nodes are the connected as input node: [list of output nodes]
-pipeline.connect("first_addition", ["double"])
-pipeline.connect("double", ["second_addition"])
+pipeline.connect("first_addition", "double")
+pipeline.connect("double", "second_addition")
 
 pipeline.draw("pipeline.png")
 
@@ -388,7 +388,7 @@ def test_pipeline():
     pipeline.add_node("retriever", RetrieveByBM25(default_store="my_documents"))
     pipeline.add_node("reader", ReadByTransformers(model_name_or_path="distilbert-base-uncased-distilled-squad"))
 
-    pipeline.connect("retriever", ["reader"])
+    pipeline.connect("retriever", "reader")
     pipeline.draw("query_pipeline.png")
 
     results = pipeline.run({"query": TextQuery(content="Who lives in Berlin?")})
@@ -434,7 +434,7 @@ Therefore, the revised Pipeline object has the following API:
 - Graph building:
     - `add_node(name, node, parameters)`: adds a disconnected node to the graph. It expects Haystack nodes in the `node` parameter and will fail if they aren't respecting the contract. See below for a more detailed discussion of the Nodes' contract.
     - `get_node(name)`: returns the node's information stored in the graph
-    - `connect(input_node, output_nodes)`: connects nodes together. It will fail if the nodes inputs and outputs do not match: see the Nodes' contract to understand how Nodes can declare their I/O.
+    - `connect(input_node, output_node)`: connects nodes together. It will fail if the nodes inputs and outputs do not match: see the Nodes' contract to understand how Nodes can declare their I/O.
 - Docstore management:
     - `add_store(name, store)`: adds a DocumentStore to the stores that are passed down to the nodes through the `stores` variable.
     - `list_stores()`: returns all connected stores.
@@ -678,13 +678,13 @@ class NodeB:
 This is the behavior of `Pipeline.connect()`:
 
 ```python
-pipeline.connect('node_a', ['node_b'])
+pipeline.connect('node_a', 'node_b')
 # Succeeds: no output
 
-pipeline.connect('node_a', ['node_a'])
+pipeline.connect('node_a', 'node_a')
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
-#     pipeline.connect('node_a', ['node_a'])
+#     pipeline.connect('node_a', 'node_a')
 #   File "/home/sara/work/haystack-2/new-haystack/haystack/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
 # haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_a' with 'node_a' with an edge named 'intermediate_value': their declared inputs and outputs do not match.
@@ -693,10 +693,10 @@ pipeline.connect('node_a', ['node_a'])
 # Downstream node 'node_a' declared these inputs:
 #  - input (free)
 
-pipeline.connect('node_b', ['node_a'])
+pipeline.connect('node_b', 'node_a')
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
-#     pipeline.connect('node_b', ['node_a'])
+#     pipeline.connect('node_b', 'node_a')
 #   File "/home/sara/work/haystack-2/new-haystack/haystack/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
 # haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_b' with 'node_a' with an edge named 'output': their declared inputs and outputs do not match.
