@@ -412,7 +412,7 @@ class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
-    context: Optional[Union[str, pd.DataFrame]] = None
+    context: Optional[Union[str, pd.DataFrame, List[List]]] = None
     offsets_in_document: Optional[Union[List[Span], List[TableCell]]] = None
     offsets_in_context: Optional[Union[List[Span], List[TableCell]]] = None
     document_ids: Optional[List[str]] = None
@@ -770,13 +770,18 @@ class MultiLabel:
             self._offsets_in_documents = []
             self._offsets_in_contexts = []
             for answer in answered:
-                # TODO This assumes Span objects when aggregating offsets. Update to use TableCell when appropriate
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self._offsets_in_documents.append({"start": span.start, "end": span.end})
+                        if isinstance(span, TableCell):
+                            self._offsets_in_documents.append({"row": span.row, "col": span.col})
+                        else:
+                            self._offsets_in_documents.append({"start": span.start, "end": span.end})
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self._offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        if isinstance(span, TableCell):
+                            self._offsets_in_contexts.append({"row": span.row, "col": span.col})
+                        else:
+                            self._offsets_in_contexts.append({"start": span.start, "end": span.end})
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.

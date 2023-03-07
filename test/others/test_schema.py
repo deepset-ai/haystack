@@ -1,4 +1,4 @@
-from haystack.schema import Document, Label, Answer, Span, MultiLabel, SpeechDocument, SpeechAnswer
+from haystack.schema import Document, Label, Answer, Span, MultiLabel, SpeechDocument, SpeechAnswer, TableCell
 import pytest
 import numpy as np
 import pandas as pd
@@ -441,7 +441,6 @@ def test_multilabel_id():
     assert MultiLabel(labels=[label3]).id == "531445fa3bdf98b8598a3bea032bd605"
 
 
-# TODO Expand test to check TableCell
 def test_multilabel_with_doc_containing_dataframes():
     table = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
     table_doc = Document(content=table, content_type="table", id="table1")
@@ -452,12 +451,18 @@ def test_multilabel_with_doc_containing_dataframes():
         is_correct_document=True,
         origin="gold-label",
         answer=Answer(
-            answer="1", context=table, offsets_in_document=None, offsets_in_context=None, document_ids=[table_doc.id]
+            answer="1",
+            context=table,
+            offsets_in_document=[TableCell(0, 0)],
+            offsets_in_context=[TableCell(0, 0)],
+            document_ids=[table_doc.id],
         ),
     )
     multilabel = MultiLabel(labels=[label])
     assert len(multilabel.contexts) == 1
     assert isinstance(multilabel.contexts[0], list)
+    assert multilabel.offsets_in_documents[0] == {"row": 0, "col": 0}
+    assert multilabel.offsets_in_contexts[0] == {"row": 0, "col": 0}
 
 
 def test_multilabel_serialization():
@@ -494,6 +499,51 @@ def test_multilabel_serialization():
     }
 
     label = Label.from_dict(label_dict)
+    original_multilabel = MultiLabel([label])
+
+    deserialized_multilabel = MultiLabel.from_dict(original_multilabel.to_dict())
+    assert deserialized_multilabel == original_multilabel
+    assert deserialized_multilabel.labels[0] == label
+
+    json_deserialized_multilabel = MultiLabel.from_json(original_multilabel.to_json())
+    assert json_deserialized_multilabel == original_multilabel
+    assert json_deserialized_multilabel.labels[0] == label
+
+
+def test_table_multilabel_serialization():
+    tabel_label_dict = {
+        "id": "011079cf-c93f-49e6-83bb-42cd850dce12",
+        "query": "What is the first number?",
+        "document": {
+            "content": [["col1", "col2"], [1, 3], [2, 4]],
+            "content_type": "table",
+            "id": "table1",
+            "meta": {},
+            "score": None,
+            "embedding": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "answer": {
+            "answer": "1",
+            "type": "extractive",
+            "score": None,
+            "context": [["col1", "col2"], [1, 3], [2, 4]],
+            "offsets_in_document": [{"row": 0, "col": 0}],
+            "offsets_in_context": [{"row": 0, "col": 0}],
+            "document_ids": ["table1"],
+            "meta": {},
+        },
+        "no_answer": False,
+        "pipeline_id": None,
+        "created_at": "2022-07-22T13:29:33.699781+00:00",
+        "updated_at": "2022-07-22T13:29:33.784895+00:00",
+        "meta": {"answer_id": "374394", "document_id": "604995", "question_id": "345530"},
+        "filters": None,
+    }
+
+    label = Label.from_dict(tabel_label_dict)
     original_multilabel = MultiLabel([label])
 
     deserialized_multilabel = MultiLabel.from_dict(original_multilabel.to_dict())
