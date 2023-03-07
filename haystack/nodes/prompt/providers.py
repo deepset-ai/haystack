@@ -1,6 +1,6 @@
 import logging
 from abc import abstractmethod
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Type
 
 import torch
 from transformers import (
@@ -35,7 +35,7 @@ class PromptModelInvocationLayer:
     could be even remote, for example, a call to a remote API endpoint.
     """
 
-    invocation_layer_providers: List["PromptModelInvocationLayer"] = []
+    invocation_layer_providers: List[Type["PromptModelInvocationLayer"]] = []
 
     def __init__(self, model_name_or_path: str, **kwargs):
         """
