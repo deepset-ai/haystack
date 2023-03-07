@@ -52,6 +52,19 @@ def test_document_from_dict():
     assert doc == Document.from_dict(doc.to_dict())
 
 
+def test_table_document_from_dict():
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": [58, 47, 60],
+        "number of movies": [87, 53, 69],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    doc = Document(
+        content=pd.DataFrame(data), meta={"some": "meta"}, id_hash_keys=["content", "meta"], content_type="table"
+    )
+    assert doc == Document.from_dict(doc.to_dict())
+
+
 def test_no_answer_label():
     labels = [
         Label(
@@ -428,6 +441,7 @@ def test_multilabel_id():
     assert MultiLabel(labels=[label3]).id == "531445fa3bdf98b8598a3bea032bd605"
 
 
+# TODO Expand test to check TableCell
 def test_multilabel_with_doc_containing_dataframes():
     label = Label(
         query="A question",

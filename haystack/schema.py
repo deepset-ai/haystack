@@ -250,9 +250,14 @@ class Document:
         return cls.from_dict(dictionary, field_map=field_map)
 
     def __eq__(self, other):
+        content = getattr(other, "content", None)
+        if isinstance(content, pd.DataFrame):
+            is_content_equal = content.equals(self.content)
+        else:
+            is_content_equal = content == self.content
         return (
             isinstance(other, self.__class__)
-            and getattr(other, "content", None) == self.content
+            and is_content_equal
             and getattr(other, "content_type", None) == self.content_type
             and getattr(other, "id", None) == self.id
             and getattr(other, "id_hash_keys", None) == self.id_hash_keys
