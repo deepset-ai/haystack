@@ -1,6 +1,7 @@
 import logging
 import pytest
 import sys
+import pandas as pd
 from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -407,6 +408,62 @@ FILE_SEARCH_EVAL_LABELS = [
     ),
 ]
 
+EVAL_TABLE_LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="How old is Brad Pitt?",
+                answer=Answer(answer="56", offsets_in_context=[]),
+                document=Document(
+                    id="a044cf3fb8aade03a12399c7a2fe9a6b",
+                    content_type="table",
+                    content=pd.DataFrame(columns=["Actors","Age","Number of movies"],
+                                         data=[["Brad Pitt","56","87"],["Leonardo Di Caprio","45","53"],["George Clooney","59","69"]]),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+    MultiLabel(
+        labels=[
+            Label(
+                query="To which state does Spikeroog belong?",
+                answer=Answer(answer="Lower Saxony", offsets_in_context=[]),
+                document=Document(
+                    id="b044cf3fb8aade03a12399c7a2fe9a6c", content_type="table", content=pd.DataFrame(columns=["0","1"],
+                                                                                   data=[["Area","18.25 km2 (7.05 sq mi)"],["Population","794"],["Country","Germany"],["State","Lower Saxony"],["District","Wittmund"]])
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+]
+
+
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small"], indirect=True)
+def test_table_qa_eval(table_reader_and_param):
+    table_reader, param = table_reader_and_param
+    docs = [l[0].document for l in [label.labels for label in EVAL_TABLE_LABELS]]
+
+    assert len(docs) == 2
+
+    p = Pipeline()
+    p.add_node(component=table_reader, name="TableReader", inputs=["Query"])
+
+    eval_result = p.eval(labels=EVAL_TABLE_LABELS, documents=[docs])
+    metrics = eval_result.calculate_metrics()
+
+    assert metrics["TableReader"]["exact_match"] == 1
+    assert metrics["TableReader"]["f1"] == 1
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
