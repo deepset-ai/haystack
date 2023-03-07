@@ -14,6 +14,8 @@ authors = [
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "License :: Freely Distributable",
+  "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
@@ -22,8 +24,25 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
 dynamic = ["version"]
+dependencies = [
+  "networkx",  # Pipeline graphs
+]
+
+[project.optional-dependencies]
+draw = [
+  "pygraphviz", # Draw pipelines (requires the 'graphviz' system library)
+]
+dev = [
+  "pre-commit",
+  "mypy",
+  "pylint==2.15.10",
+  "black[jupyter]==22.6.0",
+  "pytest",
+  "coverage",
+]
+all = ["canals[draw,dev]"]
+
 
 [project.urls]
 Documentation = "https://github.com/deepset-ai/canals#readme"
