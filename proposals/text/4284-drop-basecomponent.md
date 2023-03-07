@@ -376,7 +376,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
-def test_pipeline(tmp_path):
+def test_pipeline():
     document_store = MemoryDocumentStore()
     document_store.write_documents([
         TextDocument(content="My name is Anna and I live in Paris."),
@@ -389,7 +389,7 @@ def test_pipeline(tmp_path):
     pipeline.add_node("reader", ReadByTransformers(model_name_or_path="distilbert-base-uncased-distilled-squad"))
 
     pipeline.connect("retriever", ["reader"])
-    pipeline.draw(tmp_path / "query_pipeline.png")
+    pipeline.draw("query_pipeline.png")
 
     results = pipeline.run({"query": TextQuery(content="Who lives in Berlin?")})
 
@@ -397,7 +397,7 @@ def test_pipeline(tmp_path):
 
 
 if __name__ == "__main__":
-    test_pipeline(Path(__file__).parent)
+    test_pipeline()
 ```
 Pipeline diagram:
 
@@ -428,6 +428,7 @@ These are the core features that drove the design of the revised Pipeline API:
 Therefore, the revised Pipeline object has the following API:
 
 - Core functions:
+    - `__init__(metadata=None)`: Creates an empty Pipeline. Note the `metadata` field, which can be used to carry metadata info. Such metadata might come useful in `Application`s (see below) to distinguish `Pipeline`s, tag them, describe them, etc.
     - `run(data, parameters, debug)`: the core of the class. Relies on `networkx` for most of the heavy-lifting. Check out the implementation (https://github.com/ZanSara/haystack-2.0-draft/blob/main/new-haystack/haystack/pipeline/pipeline.py) for details: the code is heavily commented on the main loop and on the handling of non-trivial execution paths like branch selection, parallel branch execution, loops handling, multiple input/output and so on. For the effects of `debug`, see the dedicated section below.
     - `draw(path)`: as in the old Pipeline object. Based on `pygraphviz` (which requires `graphviz`), but we might need to look for pure Python alternatives based on Matplotlib to reduce our dependencies.
 - Graph building:
@@ -438,9 +439,6 @@ Therefore, the revised Pipeline object has the following API:
     - `add_store(name, store)`: adds a DocumentStore to the stores that are passed down to the nodes through the `stores` variable.
     - `list_stores()`: returns all connected stores.
     - `get_store(name)`: returns a specific document store by name.
-- Serialization and validation:
-    - `__init__(path=None, metadata=None)`: if a path is given, loads the pipeline from the YAML found at that path. Note that at this stage `Pipeline` will collect nodes from all imported modules (see the implementation - the search can be scoped down to selected modules) and **all nodes' `__init__` method is called**. Therefore, `__init__` must be lightweight. See the Node's contract to understand how heavy nodes should design their initialization. Note the `metadata` field, which can be used to carry metadata info. Such meta might come useful in Applications (see below) to distinguish Pipelines, tag them, describe them, etc.
-    - `save(path)`: serializes and saves the pipeline as a YAML at the given path.
 
 Example pipeline topologies supported by the new implementation (images taken from the test suite):
 
@@ -510,8 +508,8 @@ This is an example of how complex Pipelines the new objects can support. This pi
 - Multiple outputs
 - Decision nodes and branches skipped due to a selection
 - Distribution nodes and branches executed in parallel
-- Merge nodes where it's unclear how many edges will actually carry output
-- Merge nodes with repeated inputs ('sum' takes three `value` edges) or distinct inputs ('diff' takes `value` and `sum`)
+- Merge nodes where it's unclear how many edges will actually carry values
+- Merge nodes with repeated inputs (`sum` takes three `value` edges) or distinct inputs (`diff` takes `value` and `sum`)
 - Loops along a branch
 </details>
 
@@ -623,7 +621,7 @@ class MyNode:
         value = data[0][1]
         print(f"Hello I'm {name}! This instance have been called {self.how_many_times_have_I_been_called} times and this is the value I received: {value}")
 
-        return ({"output_name": value}, )
+        return ({"output_name": value}, parameters)
 ```
 
 This contract is stored in the docstring of `@node` and acts as the single source of truth.
@@ -686,7 +684,7 @@ pipeline.connect('node_a', ['node_b'])
 pipeline.connect('node_a', ['node_a'])
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
-#     pipeline.connect(['node_a', 'node_a'])
+#     pipeline.connect('node_a', ['node_a'])
 #   File "/home/sara/work/haystack-2/new-haystack/haystack/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
 # haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_a' with 'node_a' with an edge named 'intermediate_value': their declared inputs and outputs do not match.
@@ -698,7 +696,7 @@ pipeline.connect('node_a', ['node_a'])
 pipeline.connect('node_b', ['node_a'])
 # Traceback (most recent call last):
 #   File "/home/sara/work/haystack-2/example.py", line 29, in <module>
-#     pipeline.connect(['node_b', 'node_a'])
+#     pipeline.connect('node_b', ['node_a'])
 #   File "/home/sara/work/haystack-2/new-haystack/haystack/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
 # haystack.pipeline._utils.PipelineConnectError: Cannot connect 'node_b' with 'node_a' with an edge named 'output': their declared inputs and outputs do not match.
@@ -932,7 +930,7 @@ This proposal is best thought as part of the design of Haystack 2.0.
 
 ## Rollout process
 
-These changes are going to be release with Haystack 1.x in a hidden internal package called `haystack.v2.pipelines`, and won't be advertized straight away.
+These changes are going to be release with Haystack 1.x in a hidden internal package called `haystack.v2.pipelines`, and won't be promoted straight away.
 
 We will progressively add nodes to this `haystack.v2` package and build a folder structure under it (`haystack.v2.nodes`, `haystack.v2.stores`, ...) version after version, until we believe the content of the package is usable. Documentation will be built in parallel and we will progressively start pushing users towards the 2.0 API.
 Power users like dC and other Haystack experts will be able to test out these changes from the start and provide feedback while still in Haystack 1.x.
