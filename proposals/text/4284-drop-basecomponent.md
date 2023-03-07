@@ -97,7 +97,7 @@ class AddValue:
         for _, value in data:
             value += add
 
-        return {"value": value}
+        return ({"value": value}, parameters)
 
 
 @node
@@ -117,7 +117,7 @@ class Double:
         for _, value in data:
             value *= 2
 
-        return {self.outputs[0]: value}
+        return ({self.outputs[0]: value}, parameters)
 
 
 pipeline = Pipeline()
@@ -131,8 +131,9 @@ pipeline.add_node("first_addition", addition, parameters={"add": 3})  # Nodes ca
 pipeline.add_node("second_addition", addition)  # Note that instances can be reused
 pipeline.add_node("double", Double())
 
-# Nodes are the connected in a chain with a separate call to Pipeline.connect()
-pipeline.connect(["first_addition", "double", "second_addition"])
+# Nodes are the connected as input node: [list of output nodes]
+pipeline.connect("first_addition", ["double"])
+pipeline.connect("double", ["second_addition"])
 
 pipeline.draw("pipeline.png")
 
@@ -201,8 +202,8 @@ class RetrieveByBM25:
         stores: Dict[str, Any],
     ):
         my_parameters = parameters.get(name, {})
-        store_name = my_parameters.pop("store", self.default_store)
-        top_k = my_parameters.pop("top_k", self.default_top_k)
+        store_name = my_parameters.get("store", self.default_store)
+        top_k = my_parameters.get("top_k", self.default_top_k)
 
         # This can be done safely, because Nodes expect the Pipeline to respect their contract.
         # Errors here are Pipeline's responsibility, so Nodes should not care.
@@ -222,7 +223,7 @@ class RetrieveByBM25:
 
         results = stores[store_name].get_relevant_documents(queries=queries, top_k=top_k)
 
-        return {self.outputs[0]: results}
+        return ({self.outputs[0]: results}, parameters)
 ```
 
 </details>
@@ -298,12 +299,12 @@ class ReadByTransformers:
         stores: Dict[str, Any],
     ):
         my_parameters = parameters.get(name, {})
-        top_k = my_parameters.pop("top_k", self.default_top_k)
-        no_answer = my_parameters.pop("no_answer", self.default_no_answer)
-        max_seq_len = my_parameters.pop("max_seq_len", self.default_max_seq_len)
-        doc_stride = my_parameters.pop("doc_stride", self.default_doc_stride)
-        batch_size = my_parameters.pop("batch_size", self.default_batch_size)
-        context_window_size = my_parameters.pop("context_window_size", self.default_context_window_size)
+        top_k = my_parameters.get("top_k", self.default_top_k)
+        no_answer = my_parameters.get("no_answer", self.default_no_answer)
+        max_seq_len = my_parameters.get("max_seq_len", self.default_max_seq_len)
+        doc_stride = my_parameters.get("doc_stride", self.default_doc_stride)
+        batch_size = my_parameters.get("batch_size", self.default_batch_size)
+        context_window_size = my_parameters.get("context_window_size", self.default_context_window_size)
 
         documents_for_queries = data[0][1]
 
@@ -356,7 +357,7 @@ class ReadByTransformers:
                         )
                     )
             answers_for_queries[query] = sorted(answers_for_queries[query], reverse=True)[:top_k]
-        return {self.outputs[0]: answers_for_queries}
+        return ({self.outputs[0]: answers_for_queries}, parameters)
 ```
 
 </details>
@@ -387,7 +388,7 @@ def test_pipeline(tmp_path):
     pipeline.add_node("retriever", RetrieveByBM25(default_store="my_documents"))
     pipeline.add_node("reader", ReadByTransformers(model_name_or_path="distilbert-base-uncased-distilled-squad"))
 
-    pipeline.connect(["retriever", "reader"])
+    pipeline.connect("retriever", ["reader"])
     pipeline.draw(tmp_path / "query_pipeline.png")
 
     results = pipeline.run({"query": TextQuery(content="Who lives in Berlin?")})
@@ -427,12 +428,12 @@ These are the core features that drove the design of the revised Pipeline API:
 Therefore, the revised Pipeline object has the following API:
 
 - Core functions:
-    - `run(data, parameters)`: the core of the class. Relies on `networkx` for most of the heavy-lifting. Check out the implementation (https://github.com/ZanSara/haystack-2.0-draft/blob/main/new-haystack/haystack/pipeline/pipeline.py) for details: the code is heavily commented on the main loop and on the handling of non-trivial execution paths like branch selection, parallel branch execution, loops handling, multiple input/output and so on.
+    - `run(data, parameters, debug)`: the core of the class. Relies on `networkx` for most of the heavy-lifting. Check out the implementation (https://github.com/ZanSara/haystack-2.0-draft/blob/main/new-haystack/haystack/pipeline/pipeline.py) for details: the code is heavily commented on the main loop and on the handling of non-trivial execution paths like branch selection, parallel branch execution, loops handling, multiple input/output and so on. For the effects of `debug`, see the dedicated section below.
     - `draw(path)`: as in the old Pipeline object. Based on `pygraphviz` (which requires `graphviz`), but we might need to look for pure Python alternatives based on Matplotlib to reduce our dependencies.
 - Graph building:
     - `add_node(name, node, parameters)`: adds a disconnected node to the graph. It expects Haystack nodes in the `node` parameter and will fail if they aren't respecting the contract. See below for a more detailed discussion of the Nodes' contract.
     - `get_node(name)`: returns the node's information stored in the graph
-    - `connect(nodes)`: chains a series of nodes together. It will fail if the nodes inputs and outputs do not match: see the Nodes' contract to understand how Nodes can declare their I/O.
+    - `connect(input_node, output_nodes)`: connects nodes together. It will fail if the nodes inputs and outputs do not match: see the Nodes' contract to understand how Nodes can declare their I/O.
 - Docstore management:
     - `add_store(name, store)`: adds a DocumentStore to the stores that are passed down to the nodes through the `stores` variable.
     - `list_stores()`: returns all connected stores.
@@ -607,27 +608,22 @@ class MyNode:
 
         - `stores`: a dictionary of all the (Document)Stores connected to this pipeline.
 
-        Pipeline expect the output of this function to be either a dictionary or a tuple.
-        If it's a dictionary, it should always abide to the following format:
+        Pipeline expect the output of this function to be a tuple in the following format:
 
-        `{output_name: output_value for output_name in <subset of self.expected_output>}`
+        `( {edge: value for edge in <subset of self.outputs>}, {the parameters dictionary})
 
         Which means that:
         - Nodes are not forced to produce output on all the expected outputs: for example nodes taking a decision, like classifiers,
             can produce output on a subset of the expected output edges and Pipeline will figure out the rest.
         - Nodes must not add any key in the data dictionary that is not present in `self.outputs`,
-
-        Nodes may also want to return a tuple when they altered the content of `parameters` and want their changes to propagate
-        downstream. In that case, the format is `(data, parameters)` where `data` follows the contract above and `parameters` should
-        match the same format as it had in input, so `{"node_name": {"parameter_name": parameter_value, ...}, ...}`
-
+        - Nodes can alter the content of `parameters` and their changes will be propagated downstream.
         """
         self.how_many_times_have_I_been_called += 1
 
         value = data[0][1]
         print(f"Hello I'm {name}! This instance have been called {self.how_many_times_have_I_been_called} times and this is the value I received: {value}")
 
-        return {"output_name": value}
+        return ({"output_name": value}, )
 ```
 
 This contract is stored in the docstring of `@node` and acts as the single source of truth.
@@ -716,7 +712,7 @@ This type of error reporting was found especially useful for nodes that declare 
 
 One shortcoming is that currently Pipeline "trusts" the nodes to respect their own declarations. So if a node states that it will output `intermediate_value`, but outputs something else once run, `Pipeline` will fail. We accept this failure as a "contract breach": the node should fix its behavior and `Pipeline` should not try to prevent such scenarios.
 
-Note: the draft implementation does not validate the type of the values, but only their names. So two nodes might agree to pass a variable called `documents` to each other, but one might output a `Set` when the receiver expects a `List`, and that will cause a crash. However, such check can be added, so we can assume types are going to be validated too.
+Note: the draft implementation does not validate the type of the values, but only their names. So two nodes might agree to pass a variable called `documents` to each other, but one might output a `Set` when the receiver expects a `List`, and that will cause a crash. However, such check will be added.
 
 ### Parameters hierarchy
 
@@ -744,78 +740,24 @@ pipeline.run(data={...}, parameters={"node": {"value_4": 4}})
 # Node will receive {"value_1": 1, "value_2": 2, "value_3": 3,"value_4": 4}
 ```
 
-## Pipeline TOML representation
+### Debug mode
 
-_(Disclaimer: no draft implementation available yet)_
+The strategy towards debugging:
 
-Instead of YAML, which is prone to indentation issues, we select TOML as the pipeline serialization format.
+- Pipelines are aware of debug mode, Nodes aren't.
+- Pipeline will produce debug output entirely through machine-readable logs.
 
-Pipeline TOMLs have the following layout:
+This implies that nodes don't have any **standardized** way to tell whether they're being debugged (while nothing prevents them from accepting a `debug` parameter if need be), and that they don't have any **standardized** way to output debug info except from logs (while nothing prevents them from supporting a `debug` edge if need be).
 
-```toml
-# A list of "dependencies" for the pipeline.
-# Used to ensure all external nodes are present when loading.
-dependencies = [
-    "haystack == 2.0.0",
-    "my_custom_node_module == 0.0.1",
-]
+We took this decision to encourage nodes to implement the same behavior regardless of debug mode, and to incentivize the use of machine-readable logs.
 
-# Stores are defined each in a `[stores.<store_name>]` block.
-# Nodes will be able to access them by the name defined here,
-# in this case `my_first_store` (see the retrievers below).
-[stores.my_first_store]
-# class_name is mandatory
-class_name = "InMemoryDocumentStore"
-# Then come all the additional parameters for the store
-use_bm25 = True
+### Pipeline Serialization
 
-[stores.my_second_store]
-class_name = "InMemoryDocumentStore"
-use_bm25 = False
+We decide to remove the possibility of serializing single Pipelines and to defer such task to Haystack Applications. See the dedicated paragraph.
 
-# Nodes are defined each in a `[node.<node_name>]` block.
-# In order to reuse an instance across multiple nodes, instead
-# of a `class_name` there should be a pointer to another node.
-# TODO: check if TOML has pointer syntax.
-[nodes.my_sparse_retriever]
-# class_name is mandatory, unless there is a pointer to another node.
-class_name = "BM25Retriever"
-# Then come all the additional init parameters for the node
-store_name = "my_first_store"
-top_k = 5
+This decision was made to remove the current ambiguity of Pipeline YAMLs being able to store several Pipelines, while `Pipeline.save_to_yaml()` can only save one.
 
-[nodes.my_dense_retriever]
-class_name = "EmbeddingRetriever"
-model_name = 'deepset-ai/a-model-name'
-store_name = "my_second_store"
-top_k = 5
-
-[nodes.my_ranker]
-class_name = "Ranker"
-inputs = ["documents", "documents"]
-outputs = ["documents"]
-
-[nodes.my_reader]
-class_name = "Reader"
-model_name = 'deepset-ai/a-model-name'
-top_k = 10
-
-# All the Pipeline parameters, notably:
-# - the list of edges is defined here
-# - Other init parameters like `max_allowed_loops`, etc..
-[pipeline]
-edges = [
-    ("my_sparse_retriever", "ranker"),
-    ("my_dense_retriever", "ranker"),
-    ("ranker", "reader"),
-]
-max_allowed_loops = 10
-
-```
-
-Note that: **1 TOML = 1 Pipeline**
-
-## Haystack Pipeline vs Haystack Applications
+## Haystack Applications
 
 _(Disclaimer: no draft implementation available yet)_
 
@@ -827,7 +769,7 @@ In code, they look like this:
 class Application:
 
     def __init__(self, path):
-        ... loads the Application TOML ...
+        ... loads a serialized Application or creates an empty one ...
 
     def list_pipelines(self):
         return self.pipelines
@@ -841,96 +783,153 @@ class Application:
     ... CRUD operations for Pipelines, Nodes and Stores ...
 
     def save(self, path):
-        ... serializes down to TOML ...
+        ... serializes down to a file ...
 ```
 
-An Application's TOML looks very similar to the Pipeline's, with the difference that each Pipeline is named.
+A serialized Application looks very similar to a current Pipeline YAML, with some key differences which are highlighted.
 
-```toml
-dependencies = [
-    "haystack == 2.0.0",
-    "my_custom_node_module == 0.0.1",
-]
+In this proposal we decide to not address the choice of which specific template language to use to represent serialized Applications, but rather focus on the concept of serialization itself, stopping at the "serialized to dictionary" level.
 
-[stores.my_first_store]
-class_name = "InMemoryDocumentStore"
-use_bm25 = True
+This allows us to implement several backends for serialization and support multiple formats very easily, without locking ourselves into a specific language. In addition, we want to ease the transition of dC: their tooling is mostly oriented towards YAML, so sopporting also YAML can be beneficial to them during the transition even if we eventually settle for another format.
 
-[stores.my_second_store]
-class_name = "InMemoryDocumentStore"
-use_bm25 = False
+```json
+{
+    # A list of "dependencies" for the application.
+    # Used to ensure all external nodes are present when loading.
+    "dependencies" : [
+        "haystack == 2.0.0",
+        "my_custom_node_module == 0.0.1",
+    ],
 
-[nodes.my_sparse_retriever]
-class_name = "BM25Retriever"
-store_name = "my_first_store"
-top_k = 5
+    # Stores are defined here, outside single pipeline graphs.
+    # All pipelines have access to all these docstores.
+    "stores": {
+        # Nodes will be able to access them by the name defined here,
+        # in this case `my_first_store` (see the retrievers below).
+        "my_first_store": {
+            # class_name is mandatory
+            "class_name": "InMemoryDocumentStore",
+            # Then come all the additional parameters for the store
+            "use_bm25": true
+        },
+        "my_second_store": {
+            "class_name": "InMemoryDocumentStore",
+            "use_bm25": false
+        }
+    },
 
-[nodes.my_dense_retriever]
-class_name = "EmbeddingRetriever"
-model_name = 'deepset-ai/a-model-name'
-store_name = "my_second_store"
-top_k = 5
+    # Nodes are defined here, outside single pipeline graphs as well.
+    # All pipelines can use these nodes. Instances are re-used across
+    # Pipelines if they happen to share a node.
+    "nodes": {
+        # In order to reuse an instance across multiple nodes, instead
+        # of a `class_name` there should be a pointer to another node.
+        "my_sparse_retriever": {
+            # class_name is mandatory, unless it's a pointer to another node.
+            "class_name": "BM25Retriever",
+            # Then come all the additional init parameters for the node
+            "store_name": "my_first_store",
+            "top_k": 5
+        },
+        "my_dense_retriever": {
+            "class_name": "EmbeddingRetriever",
+            "model_name": "deepset-ai/a-model-name",
+            "store_name": "my_second_store",
+            "top_k": 5
+        },
+        "my_ranker": {
+            "class_name": "Ranker",
+            "inputs": ["documents", "documents"],
+            "outputs": ["documents"],
+        },
+        "my_reader": {
+            "class_name": "Reader",
+            "model_name": "deepset-ai/another-model-name",
+            "top_k": 3
+        }
+    },
 
-[nodes.my_ranker]
-class_name = "Ranker"
-inputs = ["documents", "documents"]
-outputs = ["documents"]
-
-[nodes.my_reader]
-class_name = "Reader"
-model_name = 'deepset-ai/a-model-name'
-top_k = 10
-
-# Note how this Pipeline is named, unlike in Pipeline's TOMLs
-[pipeline.hybrid_question_answering]
-edges = [
-    ("my_sparse_retriever", "ranker"),
-    ("my_dense_retriever", "ranker"),
-    ("ranker", "reader"),
-]
-max_allowed_loops = 10
-metadata = {
-    "type": "question_answering",
-    "description": "A test pipeline to evaluate Hybrid QA."
-    "author": "ZanSara"
+    # Pipelines are defined here. They can reference all nodes above.
+    # All pipelines will get access to all docstores
+    "pipelines": {
+        "sparse_question_answering": {
+            # Mandatory list of edges. Same syntax as for `Pipeline.connect()`
+            "edges": [
+                ("my_sparse_retriever", ["reader"])
+            ],
+            # To pass some parameters at the `Pipeline.add_node()` stage, add them here.
+            "parameters": {
+                "my_sparse_retriever": {
+                    "top_k": 10
+                }
+            },
+            # Metadata can be very valuable for dC and to organize larger Applications
+            "metadata": {
+                "type": "question_answering",
+                "description": "A test pipeline to evaluate Sparse QA.",
+                "author": "ZanSara"
+            },
+            # Other `Pipeline.__init__()` parameters
+            "max_allowed_loops": 10,
+        },
+        "dense_question_answering": {
+            "edges": [
+                ("my_dense_retriever", ["reader"])
+            ],
+            "metadata": {
+                "type": "question_answering",
+                "description": "A test pipeline to evaluate Sparse QA.",
+                "author": "an_intern"
+            }
+        },
+        "hybrid_question_answering": {
+            "edges": [
+                ("my_sparse_retriever", ["ranker"]),
+                ("my_dense_retriever", ["ranker"]),
+                ("ranker", ["reader"]),
+            ],
+            "metadata": {
+                "type": "question_answering",
+                "description": "A test pipeline to evaluate Hybrid QA.",
+                "author": "the_boss"
+            }
+        }
+    }
 }
-
-[pipeline.sparse_search]
-edges = [
-    ("my_sparse_retriever", "reader"),
-]
-max_allowed_loops = 10
-metadata = {
-    "type": "question_answering",
-    "description": "A test pipeline to evaluate Sparse QA."
-    "author": "an_intern"
-}
-
-[pipeline.dense_search]
-edges = [
-    ("my_dense_retriever", "reader"),
-]
-max_allowed_loops = 10
-metadata = {
-    "type": "question_answering",
-    "description": "A test pipeline to evaluate Dense QA."
-    "author": "the_boss"
-}
-
 ```
 
 # Open questions
 
-### Choice of TOML vs YAML or HCL
+### Evaluation
 
-I choose TOML because it looks declarative and quite readable while not suffering from typical YAML issues like sensitivity to whitespace and indentation. However there are many pros and cons of TOML, not least the fact that it needs an external package for serialization, unlike YAML.
+In Haystack we have two main modes of evaluating Pipelines: "full pipeline" (integrated mode) and "each node separately" (isolated mode). We will support both usecases in Pipeline v2.
 
+For integrated mode, we envision a dedicated `Evaluator` class that takes a pipeline as input and defines an `integrated_eval()` method, which runs the pipeline and then performs the evaluation on its output.
 
-### At which level to serialize?
+For isolated mode, we suppose the same `Evaluator` could define a `isolated_eval()` mode that instead evaluates each node in isolation.
 
-Pipeline and Application's TOML definitions are extremely similar. We might want to keep both, or we might want to take a radical stance and decide that **Pipelines cannot be serialized: only Applications can**.
+Note that the `Evaluator` class, having access to the Pipeline, would not need to re-instantiate the nodes: it can be attached to an existing pipeline and can work smoothly with it.
 
-There are clearly pros and cons and the point surely needs further discussion.
+In the future, if the need arises, we could also support a hybrid "partially isolated" evaluation where a single branch of the pipeline is evaluated. This could work as well through `Evaluator`: the object would clone the pipeline graph (note: not the instances, only references to them), prune and cut it as needed to extract only the relevant branch, and then run an integrated evaluation on that branch only, as if it were a full `Pipeline`.
+
+The topic surely needs further discussion and a dedicated Proposal to flesh out the details. In this paragraph we only aim to clarify that such scenarios are supported by the current architecture and no show-stoppers have been identified.
+
+Possible API for `Evaluator`:
+
+```python
+class Evaluator:
+
+    def __init__(self, pipeline: Pipeline):
+        self.pipeline = pipeline
+
+    def integrated_eval(self, inputs, expected_outputs):
+        results = self.pipeline.run(inputs)
+        ... evaluation code ...
+
+    def isolated_eval(self, node_name, inputs, expected_outputs)
+        results = self.pipeline.get_node(node_name).run(...)
+        ... evaluation code ...
+```
 
 # Drawbacks
 
@@ -944,7 +943,11 @@ There are a number of drawbacks about the proposed approach:
 
 - Nodes might break more easily while running due to unexpected inputs. While well designed nodes should internally check and deal with such situations, we might face larger amount of bugs due to our failure at noticing the lack of checks at review time.
 
-- The entire system work on the assumption that nodes are well behaving and "polite" to other nodes, for example not touching their parameters unless necessary, etc. Malicious or otherwise "rude" nodes can wreak havoc in `Pipeline`s very easily by messing with other node's parameters and inputs.
+- The entire system work on the assumption that nodes are well behaving and "polite" to other nodes, for example not touching their parameters unless necessary, etc. Malicious or otherwise "rude" nodes can wreak havoc in `Pipeline`s by messing with other node's parameters.
+
+## Known limitations
+
+- **Reusability of nodes across Pipelines in REST API.** Currently, REST API are designed in such a way that a separate worker is spawned for each pipeline deployed. That makes sharing node instances across them a non-starter. However, we believe this specific limitation can be adressed by a different approach to the problem, like splitting pipelines in a way that shared nodes are stored in a dedicated sub-pipeline and so on. We postpone addressing this problem when it arises, as we don't consider it blocking and workarounds can be found.
 
 # Adoption strategy
 
@@ -954,9 +957,9 @@ This proposal is best thought as part of the design of Haystack 2.0.
 
 ## Rollout process
 
-These changes are going to be release with Haystack 1.x in a hidden internal package called `haystack.v2.pipelines`, and won't be advertized straight away. 
+These changes are going to be release with Haystack 1.x in a hidden internal package called `haystack.v2.pipelines`, and won't be advertized straight away.
 
 We will progressively add nodes to this `haystack.v2` package and build a folder structure under it (`haystack.v2.nodes`, `haystack.v2.stores`, ...) version after version, until we believe the content of the package is usable. Documentation will be built in parallel and we will progressively start pushing users towards the 2.0 API.
-Power users like dC and other Haystack experts will be able to test out these changes from the start and provide feedback while still in Haystack 1.x. 
+Power users like dC and other Haystack experts will be able to test out these changes from the start and provide feedback while still in Haystack 1.x.
 
 Once we're confident that the v2 version covers all of Haystack v1.x usecases, Haystack 2.0 will be released and the packages are going to be switched: the content of `haystack` will be moved into `haystack.v1` and deprecated, and the content of `haystack.v2` will me moved under `haystack`. A few 2.x versions later, `haystack.v1` will then be dropped.
