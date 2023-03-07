@@ -1,44 +1,22 @@
-import json
 import logging
 import os
-import platform
-import sys
 from typing import List, Optional, Tuple, Union
 
-import requests
-
 from haystack import Document
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-)
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.answer_generator import BaseGenerator
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.nodes.prompt import PromptTemplate
+from haystack.utils.openai_utils import (
+    load_openai_tokenizer,
+    openai_request,
+    count_openai_tokens,
+    _openai_text_completion_tokenization_details,
+    _check_openai_text_completion_answers,
+)
 
 logger = logging.getLogger(__name__)
 
-machine = platform.machine().lower()
-system = platform.system()
-
-USE_TIKTOKEN = False
-if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
-    USE_TIKTOKEN = True
-
-if USE_TIKTOKEN:
-    import tiktoken  # pylint: disable=import-error
-else:
-    logger.warning(
-        "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
-    )
-    from transformers import GPT2TokenizerFast, PreTrainedTokenizerFast
-
-
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
-OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 class OpenAIAnswerGenerator(BaseGenerator):
@@ -182,27 +160,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.stop_words = stop_words
         self.prompt_template = prompt_template
         self.context_join_str = context_join_str
-
-        tokenizer = "gpt2"
-        if "davinci" in self.model:
-            self.MAX_TOKENS_LIMIT = 4000
-            if self.model.endswith("-003") and USE_TIKTOKEN:
-                tokenizer = "cl100k_base"
-        else:
-            self.MAX_TOKENS_LIMIT = 2048
-
         self.using_azure = self.azure_deployment_name is not None and self.azure_base_url is not None
 
-        if USE_TIKTOKEN:
-            logger.debug("Using tiktoken %s tokenizer", tokenizer)
-            self._tk_tokenizer: tiktoken.Encoding = tiktoken.get_encoding(tokenizer)
-        else:
-            logger.debug("Using GPT2TokenizerFast")
-            self._hf_tokenizer: PreTrainedTokenizerFast = GPT2TokenizerFast.from_pretrained(tokenizer)
+        tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name=self.model)
 
-    @retry_with_exponential_backoff(
-        backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
-    )
+        self.MAX_TOKENS_LIMIT = max_tokens_limit
+        self._tokenizer = load_openai_tokenizer(tokenizer_name=tokenizer_name)
+
     def predict(
         self,
         query: str,
@@ -253,41 +217,19 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
         }
-        url = "https://api.openai.com/v1/completions"
         if self.using_azure:
             url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
+        else:
+            url = "https://api.openai.com/v1/completions"
 
         headers = {"Content-Type": "application/json"}
         if self.using_azure:
-            headers = {"api-key": self.api_key, **headers}
+            headers["api-key"] = self.api_key
         else:
-            headers = {"Authorization": f"Bearer {self.api_key}", **headers}
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
-        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
-        res = json.loads(response.text)
-
-        if response.status_code != 200 or "choices" not in res:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
-
-        number_of_truncated_answers = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_answers > 0:
-            logger.warning(
-                "%s out of the %s answers have been truncated before reaching a natural stopping point."
-                "Consider increasing the max_tokens parameter to allow for longer answers.",
-                number_of_truncated_answers,
-                top_k,
-            )
-
+        res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
+        _check_openai_text_completion_answers(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
         result = {"query": query, "answers": answers}
@@ -323,7 +265,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         construct the context) are thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
         """
         full_prompt = self._fill_prompt(query, documents)
-        n_full_prompt_tokens = self._count_tokens(full_prompt)
+        n_full_prompt_tokens = count_openai_tokens(text=full_prompt, tokenizer=self._tokenizer)
 
         # for length restrictions of prompt see: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
@@ -333,7 +275,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         skipped_docs = 0
         # If leftover_token_len is negative we have gone past the MAX_TOKENS_LIMIT and the prompt must be trimmed
         if leftover_token_len < 0:
-            n_docs_tokens = [self._count_tokens(doc.content) for doc in documents]
+            n_docs_tokens = [count_openai_tokens(text=doc.content, tokenizer=self._tokenizer) for doc in documents]
             logger.debug("Number of tokens in documents: %s", n_docs_tokens)
 
             # Reversing the order of documents b/c we want to throw away less relevant docs first
@@ -349,7 +291,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             # Throw away least relevant docs
             input_docs = documents[:-skipped_docs]
             full_prompt = self._fill_prompt(query, input_docs)
-            n_full_prompt_tokens = self._count_tokens(full_prompt)
+            n_full_prompt_tokens = count_openai_tokens(text=full_prompt, tokenizer=self._tokenizer)
 
             if len(input_docs) == 0:
                 logger.warning(
@@ -367,9 +309,3 @@ class OpenAIAnswerGenerator(BaseGenerator):
         logger.debug("Number of tokens in full prompt: %s", n_full_prompt_tokens)
         logger.debug("Full prompt: %s", full_prompt)
         return full_prompt, input_docs
-
-    def _count_tokens(self, text: str) -> int:
-        if USE_TIKTOKEN:
-            return len(self._tk_tokenizer.encode(text))
-        else:
-            return len(self._hf_tokenizer.tokenize(text))

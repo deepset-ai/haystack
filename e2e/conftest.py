@@ -21,7 +21,7 @@ from haystack.document_stores import (
 )
 
 
-SAMPLES_PATH = Path(__file__).parent.parent / "test" / "samples"
+SAMPLES_PATH = Path(__file__).parent / "samples"
 
 
 # Fix all random seeds that come to mind
