@@ -408,6 +408,12 @@ def test_streaming_prompt_node():
     assert ttsh.stream_handler_invoked, "Stream handler should have been invoked"
 
 
+def test_prompt_node_with_text_generation_model():
+    node = PromptNode("bigscience/bigscience-small-testing")
+    r = node("Hello big science!")
+    assert len(r[0]) > 0
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_simple_pipeline(prompt_model):
