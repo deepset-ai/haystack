@@ -19,20 +19,20 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
 
-      - name: Install system deps (Linux)
-        if: matrix.os == "ubuntu-latest"
-        run: sudo apt install graphviz graphviz-dev
+      # - name: Install system deps (Linux)
+      #   if: matrix.os == "ubuntu-latest"
+      #   run: sudo apt install graphviz graphviz-dev
 
-      - name: Install system deps (MacOS)
-        if: matrix.os == "macos-latest"
-        run: brew install graphviz
+      # - name: Install system deps (MacOS)
+      #   if: matrix.os == "macos-latest"
+      #   run: brew install graphviz
 
-      - name: Install system deps (Windows)
-        if: matrix.os == "windows-latest"
-        run: choco install graphviz
+      # - name: Install system deps (Windows)
+      #   if: matrix.os == "windows-latest"
+      #   run: choco install graphviz
 
       - name: Install Canals
-        run: pip install .[all]
+        run: pip install .[dev]
 
       - name: Mypy
         run: |
@@ -48,20 +48,20 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
 
-      - name: Install system deps (Linux)
-        if: matrix.os == "ubuntu-latest"
-        run: sudo apt install graphviz graphviz-dev
+      # - name: Install system deps (Linux)
+      #   if: matrix.os == "ubuntu-latest"
+      #   run: sudo apt install graphviz graphviz-dev
 
-      - name: Install system deps (MacOS)
-        if: matrix.os == "macos-latest"
-        run: brew install graphviz
+      # - name: Install system deps (MacOS)
+      #   if: matrix.os == "macos-latest"
+      #   run: brew install graphviz
 
-      - name: Install system deps (Windows)
-        if: matrix.os == "windows-latest"
-        run: choco install graphviz
+      # - name: Install system deps (Windows)
+      #   if: matrix.os == "windows-latest"
+      #   run: choco install graphviz
 
       - name: Install Canals
-        run: pip install .[all]
+        run: pip install .[dev]
 
       - name: Pylint
         run: pylint -ry -j 0 canals/
@@ -75,20 +75,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
 
-      - name: Install system deps (Linux)
-        if: matrix.os == "ubuntu-latest"
-        run: sudo apt install graphviz graphviz-dev
-
-      - name: Install system deps (MacOS)
-        if: matrix.os == "macos-latest"
-        run: brew install graphviz
-
-      - name: Install system deps (Windows)
-        if: matrix.os == "windows-latest"
-        run: choco install graphviz
-
       - name: Install Canals
-        run: pip install .[all]
+        run: pip install .[dev]
 
       - name: Check status
         run: |
@@ -133,20 +121,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
 
-      - name: Install system deps (Linux)
-        if: matrix.os == "ubuntu-latest"
-        run: sudo apt install graphviz graphviz-dev
-
-      - name: Install system deps (MacOS)
-        if: matrix.os == "macos-latest"
-        run: brew install graphviz
-
-      - name: Install system deps (Windows)
-        if: matrix.os == "windows-latest"
-        run: choco install graphviz
-
       - name: Install Canals
-        run: pip install .[all]
+        run: pip install .[dev]
 
       - name: Run
         run: pytest tests/
