@@ -8,10 +8,6 @@ class NodeError(Exception):
     pass
 
 
-class NodeValidationError(NodeError):
-    pass
-
-
 def node(class_):
     '''
     Marks a class as a node. Any class decorated with `@node`

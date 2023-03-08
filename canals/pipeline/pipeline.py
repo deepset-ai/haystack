@@ -14,8 +14,6 @@ from canals.pipeline._utils import (
     PipelineValidationError,
     NoSuchStoreError,
     PipelineMaxLoops,
-    find_nodes,
-    validate_graph as validate_graph,
     locate_pipeline_input_nodes,
     locate_pipeline_output_nodes,
 )
