@@ -469,8 +469,8 @@ class Pipeline:
             raise PipelineMaxLoops(f"Maximum loops count ({self.max_loops_allowed}) exceeded for node '{node_name}'.")
 
     def _ready_to_run(
-        self, node_name: str, node_inputs: Dict[str, Any], inputs_buffer: OrderedDict[str, Any]
-    ) -> Tuple[bool, OrderedDict[str, Any]]:
+        self, node_name: str, node_inputs: Dict[str, Any], inputs_buffer: OrderedDict
+    ) -> Tuple[bool, OrderedDict]:
         """
         Verify whether a node is ready to run.
 
@@ -579,8 +579,8 @@ class Pipeline:
         self,
         node_name: str,
         node_results: Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]],
-        inputs_buffer: OrderedDict[str, Any],
-    ) -> OrderedDict[str, Any]:
+        inputs_buffer: OrderedDict,
+    ) -> OrderedDict:
         """
         Distrubute the outputs of the node into the input buffer of downstream nodes.
 
