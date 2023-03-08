@@ -4,6 +4,9 @@ from abc import abstractmethod, ABC
 from typing import Dict, List, Optional, Union, Type
 
 import sseclient
+
+import requests
+
 import torch
 from transformers import (
     pipeline,
@@ -545,3 +548,102 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         return (
             valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
         )
+
+
+class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
+    """
+    A PromptModelInvocationLayer that uses a Hugging Face Inference Endpoint to prompt the model. For more details see
+    Hugging Face Inference Endpoints [documentation](https://huggingface.co/inference-endpoints)
+    """
+
+    def __init__(self, api_key: str, model_name_or_path: str = None, max_length: Optional[int] = 100, **kwargs):
+        """
+         Creates an instance of HFInferenceEndpointInvocationLayer
+
+        :param model_name_or_path: The Hugging Face model endpoint URL to use. An endpoint is usually in the following
+        format e.g. https://<your-unique-deployment-id>.us-east-1.aws.endpoints.huggingface.cloud
+        :param max_length: The maximum length of the output text.
+        :param api_key: The Hugging Face Inference Endpoint API token. You’ll need to provide your user token which can
+        be found in your Hugging Face account [settings](https://huggingface.co/settings/tokens)
+        """
+        super().__init__(model_name_or_path)
+        if not isinstance(api_key, str) or len(api_key) == 0:
+            raise RuntimeError(
+                f"api_key {api_key} must be a valid Hugging Face token. "
+                f"Your token is available in your Hugging Face settings page."
+            )
+        if not isinstance(model_name_or_path, str) or len(model_name_or_path) == 0:
+            raise RuntimeError(
+                f"model_name_or_path {model_name_or_path} must be a valid Hugging Face inference endpoint URL."
+            )
+        self.api_key = api_key
+        self.max_length = max_length or 16
+
+        # See https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
+        # for a list of supported parameters
+        self.model_input_kwargs = {
+            key: kwargs[key]
+            for key in [
+                "top_k",
+                "top_p",
+                "temperature",
+                "repetition_penalty",
+                "max_new_tokens",
+                "max_time",
+                "return_full_text",
+                "num_return_sequences",
+                "do_sample",
+            ]
+            if key in kwargs
+        }
+
+    @property
+    def url(self) -> str:
+        return self.model_name_or_path
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+
+    def invoke(self, *args, **kwargs):
+        """
+        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
+
+        :return: The responses are being returned.
+        """
+        prompt = kwargs.get("prompt")
+        if not prompt:
+            raise ValueError(
+                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"Make sure to provide prompt in kwargs."
+            )
+
+        kwargs_with_defaults = self.model_input_kwargs
+        if kwargs:
+            if "top_k" in kwargs:
+                top_k = kwargs.pop("top_k")
+                kwargs["num_return_sequences"] = top_k
+            kwargs_with_defaults.update(kwargs)
+        params = {
+            "temperature": kwargs_with_defaults.get("temperature", 0.7),
+            "top_p": kwargs_with_defaults.get("top_p", 0.99),
+            "do_sample": kwargs_with_defaults.get("do_sample", True),
+            "num_return_sequences": kwargs_with_defaults.get("top_k", 1),
+        }
+        json_data = {"inputs": prompt, "parameters": params}
+        response = requests.post(self.url, headers=self.headers, json=json_data)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Error while HF inference endpoint {self.model_name_or_path} with prompt {prompt}. "
+                f"Status code {response.status_code}. Response: {response.text}"
+            )
+        output = json.loads(response.text)
+        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        return generated_texts
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        return prompt
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        return model_name_or_path and model_name_or_path.startswith("https://")
