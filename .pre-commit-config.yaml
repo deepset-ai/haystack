@@ -31,5 +31,5 @@ repos:
   - id: pylint
     exclude: ^tests/
     args: [
-      "--disable=unused-argument,import-error"  # FIXME
+      "--disable=import-error"  # FIXME
     ]

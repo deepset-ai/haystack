@@ -86,7 +86,7 @@ max-line-length=120
 good-names="e"
 max-args=10
 disable = [
-  "unused_argument", # REMOVE ME
+  "unused-argument", # REMOVE ME
 
   "fixme",
 

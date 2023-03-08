@@ -35,23 +35,23 @@ class MemoryStore:
         """
         self.storage = {}
 
-    def has_item(self, obj_id: str) -> bool:
+    def has_item(self, object_id: str) -> bool:
         """
         Checks if this ID exists in the store.
 
-        :param obj_id: the obj_id to find in the store.
+        :param object_id: the object_id to find in the store.
         """
-        return obj_id in self.storage.keys()
+        return object_id in self.storage.keys()
 
-    def get_item(self, obj_id: str) -> Dict[str, Any]:
+    def get_item(self, object_id: str) -> Dict[str, Any]:
         """
         Finds a item by ID in the store. Fails if the item is not present.
 
-        :param obj_id: the obj_id of the item to get.
+        :param object_id: the object_id of the item to get.
         """
-        if not self.has_item(obj_id=obj_id):
-            raise MissingItemError(f"ID {obj_id} not found.")
-        return self.storage[obj_id]
+        if not self.has_item(object_id=object_id):
+            raise MissingItemError(f"ID {object_id} not found.")
+        return self.storage[object_id]
 
     def count_items(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """
@@ -63,9 +63,9 @@ class MemoryStore:
         # TODO apply filters
         return len(self.storage.keys())
 
-    def get_obj_ids(self, filters: Optional[Dict[str, Any]] = None) -> List[str]:
+    def get_ids(self, filters: Optional[Dict[str, Any]] = None) -> List[str]:
         """
-        Returns only the IDs of the items that match the filters provobj_ided.
+        Returns only the IDs of the items that match the filters provobject_ided.
 
         :param filters: the filters to apply to the item list.
         """
@@ -74,12 +74,12 @@ class MemoryStore:
 
     def get_items(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
-        Returns the items that match the filters provobj_ided.
+        Returns the items that match the filters provobject_ided.
 
         :param filters: the filters to apply to the item list.
         """
         # TODO apply filters
-        return [self.storage[obj_id] for obj_id in self.get_obj_ids(filters=filters)]
+        return [self.storage[object_id] for object_id in self.get_ids(filters=filters)]
 
     def write_items(self, items: List[Dict[str, Any]], duplicates: DuplicatePolicy = "fail") -> None:
         """
@@ -95,7 +95,7 @@ class MemoryStore:
         :return: None
         """
         if not isinstance(items, list):
-            raise ValueError("Please provobj_ide a list of dictionaries.")
+            raise ValueError("Please provobject_ide a list of dictionaries.")
         for item in items:
             if not "id" in item.keys():
                 raise ValueError("Objects must have an 'id' field.")
@@ -107,17 +107,17 @@ class MemoryStore:
                     logger.warning("ID '%s' already exists", item["id"])
             self.storage[item["id"]] = item
 
-    def delete_items(self, obj_ids: List[str], fail_on_missing_item: bool = False) -> None:
+    def delete_items(self, object_ids: List[str], fail_on_missing_item: bool = False) -> None:
         """
-        Deletes all obj_ids from the given pool.
+        Deletes all object_ids from the given pool.
 
-        :param obj_ids: the obj_ids to delete
-        :param fail_on_missing_item: fail if the obj_id is not found, log ignore otherwise
+        :param object_ids: the object_ids to delete
+        :param fail_on_missing_item: fail if the object_id is not found, log ignore otherwise
         """
-        for obj_id in obj_ids:
-            if not self.has_item(obj_id=obj_id):
+        for object_id in object_ids:
+            if not self.has_item(object_id=object_id):
                 if fail_on_missing_item:
-                    raise MissingItemError(f"ID {obj_id} not found, cannot delete it.")
-                logger.info("ID %s not found, cannot delete it.", obj_id)
+                    raise MissingItemError(f"ID {object_id} not found, cannot delete it.")
+                logger.info("ID %s not found, cannot delete it.", object_id)
                 return
-            del self.storage[obj_id]
+            del self.storage[object_id]
