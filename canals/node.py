@@ -14,11 +14,11 @@ class NodeValidationError(NodeError):
 
 def node(class_):
     '''
-    Marks a class as a Canals node. Any class decorated with `@canals.node`
+    Marks a class as a node. Any class decorated with `@node`
     can be picked up by a Pipeline, serialized, deserialized, etc.
 
     All nodes MUST follow the contract below.
-    This docstring is the source of truth for Canals nodes contract.
+    This docstring is the source of truth for nodes contract.
 
     ```python
     node
@@ -26,7 +26,7 @@ def node(class_):
 
         def __init__(self, model_name: str: "deepset-ai/a-model-name"):
             """
-            Canals nodes should have an `__init__` method where they define:
+            Nodes should have an `__init__` method where they define:
 
             - `self.inputs = [<expected_input_edge_name(s)>]`:
                 A list with all the edges they can possibly receive input from
@@ -130,7 +130,7 @@ def node(class_):
     '''
     logger.debug("Registering %s as a node", class_)
 
-    # '__canals_node__' is used to distinguish Canals nodes from regular classes.
+    # '__canals_node__' is used to distinguish nodes from regular classes.
     # Its value is set to the desired node name: normally it is the class name, but it can technically be customized.
     class_.__canals_node__ = class_.__name__
 
