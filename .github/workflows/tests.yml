@@ -28,7 +28,7 @@ jobs:
       - name: Mypy
         run: |
           mkdir .mypy_cache/
-          mypy --install-types --non-interactive canals/
+          mypy --install-types --non-interactive --ignore-missing-imports canals/
 
   pylint:
     runs-on: ubuntu-latest

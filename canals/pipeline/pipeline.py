@@ -22,6 +22,19 @@ from canals.pipeline._utils import (
 logger = logging.getLogger(__name__)
 
 
+PYGRAPHVIZ_IMPORTED = False
+try:
+    import pygraphviz  # pylint: disable=unused-import
+
+    PYGRAPHVIZ_IMPORTED = True
+except ImportError:
+    logger.info(
+        "Could not import `pygraphviz`. Please install via: \n"
+        "pip install pygraphviz\n"
+        "(You might need to run this first: apt install libgraphviz-dev graphviz )"
+    )
+
+
 class Pipeline:
     """
     Nodes orchestration engine.
@@ -238,9 +251,7 @@ class Pipeline:
 
         :param path: where to save the drawing.
         """
-        try:
-            import pygraphviz
-        except ImportError:
+        if not PYGRAPHVIZ_IMPORTED:
             raise ImportError(
                 "Could not import `pygraphviz`. Please install via: \n"
                 "pip install pygraphviz\n"
@@ -266,7 +277,18 @@ class Pipeline:
         graphviz = to_agraph(graph)
         graphviz.layout("dot")
         graphviz.draw(path)
-        logger.debug(f"Pipeline diagram saved at {path}")
+        logger.debug("Pipeline diagram saved at %s", path)
+
+    def warm_up(self):
+        """
+        Make sure all nodes are warm.
+
+        It's the node's responsibility to make sure this method can be called at every `Pipeline.run()`
+        without re-initializing everything.
+        """
+        for node in self.graph.nodes:
+            if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
+                self.graph.nodes[node]["instance"].warm_up()
 
     def run(
         self,
@@ -282,34 +304,10 @@ class Pipeline:
         :param debug: whether to collect and return debug information.
         :returns: a dictionary with the outputs of the output nodes of the Pipeline.
         """
-        #
-        # Idea for the future
-        #
-        # Right now, pipelines allow for loops. Loops make sense if any of the involved nodes
-        # is stateful, or if it loops over the same values in the pipeline context (like adding 1
-        # to a value until it passes over a threshold). However, if the work is stateless, we should
-        # add the possibility to unwrap these loops and transforms them into a arbitrary number of replicas
-        # of the same function. For example, loops consuming a queue would be spread over N nodes, one for each
-        # item of the queue.
-        #
-        if not parameters:
-            parameters = {}
+        parameters = self._validate_parameters(parameters=parameters)
+        self.warm_up()
+        self._validate_pipeline()
 
-        # Validate the parameters
-        if any(node not in self.graph.nodes for node in parameters.keys()):
-            logging.warning(
-                "You passed parameters for one or more node(s) that do not exist in the pipeline: %s",
-                [node for node in parameters.keys() if node not in self.graph.nodes],
-            )
-
-        # Make sure all nodes are warm.
-        # It's the node's responsibility to make sure this method can be called at every Pipeline.run()
-        # without re-initializing everything.
-        for node in self.graph.nodes:
-            if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
-                self.graph.nodes[node]["instance"].warm_up()
-
-        #
         # **** The Pipeline.run() algorithm ****
         #
         # Nodes are run as soon as an input for them appears in the inputs buffer.
@@ -338,20 +336,11 @@ class Pipeline:
         logger.info("Pipeline execution started.")
         inputs_buffer: OrderedDict = OrderedDict()
 
-        # Collect the nodes taking no input edges: these are the entry points.
-        # They receive directly the pipeline inputs.
-        #
-        # TODO: allow different input for different input nodes.
-        #
-        input_nodes = locate_pipeline_input_nodes(self.graph)
-        if not input_nodes:
-            raise ValueError("This pipeline has no input nodes!")
-
-        for node_name in input_nodes:
+        for node_name in locate_pipeline_input_nodes(self.graph):
             # NOTE: We allow users to pass dictionaries just for convenience.
             # The real input format is List[Tuple[str, Any]], to allow several input edges to have the same name.
             if isinstance(data, dict):
-                data = [(key, value) for key, value in data.items()]
+                data = list(data.items())
             inputs_buffer[node_name] = {"data": data, "parameters": parameters}
 
         # *** PIPELINE EXECUTION LOOP ***
@@ -364,112 +353,13 @@ class Pipeline:
             node_name, node_inputs = inputs_buffer.popitem(last=False)  # FIFO
 
             # Check if we looped over this node too many times
-            if self.graph.nodes[node_name]["visits"] > self.max_loops_allowed:
-                raise PipelineMaxLoops(
-                    f"Maximum loops count ({self.max_loops_allowed}) exceeded for node '{node_name}'."
-                )
+            self._check_max_loops(node_name)
 
-            # *** IS IT MY TURN? ***
-            # Let's verify that everything is set for this node to run.
-            #
-            # List all the inputs the current node should be waiting for.
-            inputs_received = [i[0] for i in node_inputs["data"]]
-
-            # We should be wait on all edges except for the downstream ones, to support loops.
-            # This downstream check is enabled only for nodes taking more than one input
-            # (the "entrance" of the loop).
-            is_merge_node = len(self.graph.in_edges(node_name)) != 1
-            data_to_wait_for = [
-                (e[0], e[2]["label"])  # the node and the edge label
-                for e in self.graph.in_edges(node_name, data=True)  # for all input edges
-                # if there's a path in the graph leading back from the current node to the
-                # input node, in case of multiple input nodes.
-                if not is_merge_node or not nx.has_path(self.graph, node_name, e[0])
-            ]
-
-            if not data_to_wait_for:
-                # This is an input node, so it's ready to run.
-                logger.debug("'%s' is an input node and it's ready to run.")
-
-            else:
-                nodes_to_wait_for, inputs_to_wait_for = zip(*data_to_wait_for)
-
-                # Do we have all the inputs we expect?
-                if sorted(inputs_to_wait_for) != sorted(inputs_received):
-                    # This node is missing some inputs.
-                    #
-                    # Did all the upstream nodes run?
-                    if not all(
-                        self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in nodes_to_wait_for
-                    ):
-                        # Some node upstream didn't run yet, so we should wait for them.
-                        logger.debug(
-                            "Putting '%s' back in the queue, some inputs are missing "
-                            "(inputs to wait for: %s, inputs_received: %s)",
-                            node_name,
-                            inputs_to_wait_for,
-                            inputs_received,
-                        )
-                        # Put back the node in the inputs buffer at the back...
-                        inputs_buffer[node_name] = node_inputs
-                        # ... and do not run this node (yet)
-                        continue
-                    else:
-                        # All upstream nodes run, so it **must** be our turn.
-                        #
-                        # Are we missing ALL inputs or just a few?
-                        if not inputs_received:
-                            # ALL upstream nodes have been skipped.
-                            #
-                            # Let's skip this node and add all downstream nodes to the queue.
-                            self.graph.nodes[node_name]["visits"] += 1
-                            logger.debug(
-                                "Skipping '%s', all input nodes were skipped and no inputs were received "
-                                "(skipped nodes: %s, inputs: %s)",
-                                node_name,
-                                nodes_to_wait_for,
-                                inputs_to_wait_for,
-                            )
-                            # Put all downstream nodes in the inputs buffer...
-                            downstream_nodes = [e[1] for e in self.graph.out_edges(node_name)]
-                            for downstream_node in downstream_nodes:
-                                if not downstream_node in inputs_buffer:
-                                    inputs_buffer[downstream_node] = {
-                                        "data": [],
-                                        "parameters": parameters,
-                                    }
-                            # ... and never run this node
-                            continue
-
-                        else:
-                            # If all nodes upstream have run and we received SOME input,
-                            # this is a merge node that was waiting on a node that has been skipped, so it's ready to run.
-                            # Let's pass None on the missing edges and go ahead.
-                            #
-                            # Example:
-                            #
-                            # --------------- value ----+
-                            #                           |
-                            #        +---X--- even ---+ |
-                            #        |                | |
-                            # -- parity_check         sum --
-                            #        |                 |
-                            #        +------ odd ------+
-                            #
-                            # If 'parity_check' produces output only on 'odd', 'sum' should run
-                            # with 'value' and 'odd' only, because 'even' will never arrive.
-                            #
-                            inputs_to_wait_for = list(inputs_to_wait_for)
-                            for input_expected in inputs_to_wait_for:
-                                if input_expected in inputs_received:
-                                    inputs_to_wait_for.pop(inputs_to_wait_for.index(input_expected))
-                            logger.debug(
-                                "Some nodes upstream of '%s' were skipped, so some inputs will be None (missing inputs: %s)",
-                                node_name,
-                                inputs_to_wait_for,
-                            )
-                            for missing_input in inputs_to_wait_for:
-                                node_inputs["data"].append((missing_input, None))
+            ready_to_run, inputs_buffer = self._ready_to_run(
+                node_name=node_name, node_inputs=node_inputs, inputs_buffer=inputs_buffer
+            )
+            if not ready_to_run:
+                continue
 
             # **** RUN THE NODE ****
             # It is our turn! The node is ready to run and all inputs are ready
@@ -498,7 +388,7 @@ class Pipeline:
                     self.graph.nodes[node_name]["visits"],
                 )
                 logger.debug("   '%s' inputs: %s", node_name, node_inputs)
-                node_results: Tuple[Dict[str, Any], Optional[Dict[str, Dict[str, Any]]]]
+                node_results: Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]
                 node_results = node_node.run(
                     name=node_name,
                     data=node_inputs["data"],
@@ -515,21 +405,19 @@ class Pipeline:
             # **** PROCESS THE OUTPUT ****
             # The node run successfully. Let's store or distribute the output it produced, if it's valid.
             #
-            # Type-check and standardize the output
-            if not isinstance(node_results, tuple):
-                node_results = (node_results, node_inputs["parameters"])
-            elif len(node_results) != 2:
+            # Type-check the output
+            if (
+                len(node_results) != 2
+                or not isinstance(node_results[0], dict)
+                or not isinstance(node_results[1], dict)
+                or not all(isinstance(params, dict) for params in node_results[1])
+            ):
                 raise PipelineRuntimeError(
-                    f"The node '{node_name}' returned a tuple of size {len(node_results)}, while the expected lenght is 2. Check out the '@node' docstring."
-                )
-            if not isinstance(node_results[0], dict):
-                raise PipelineRuntimeError(
-                    f"The node '{node_name}' did not return neither a dictionary not a tuple. Check out the '@node' docstring."
+                    f"The node '{node_name}' did not return proper output. Check out the '@node' docstring."
                 )
 
             # Process the output of the node
             if not self.graph.out_edges(node_name):
-
                 # If there are no output edges, the output of this node is the output of the pipeline:
                 # store it in pipeline_results.
                 if not node_name in pipeline_results.keys():
@@ -538,46 +426,204 @@ class Pipeline:
                 # (for example, it can happen if there's a loop upstream). The list gets unwrapped before
                 # returning it if there's only one output.
                 pipeline_results[node_name].append(node_results[0])
-
             else:
-                # This is not a terminal node: find out where the output goes, to which nodes and along which edge
-                is_decision_node_for_loop = (
-                    any(nx.has_path(self.graph, edge[1], node_name) for edge in self.graph.out_edges(node_name))
-                    and len(self.graph.out_edges(node_name)) > 1
+                inputs_buffer = self._route_output(
+                    node_results=node_results, node_name=node_name, inputs_buffer=inputs_buffer
                 )
-                for edge_data in self.graph.out_edges(node_name, data=True):
-                    edge = edge_data[2]["label"]
-                    target_node = edge_data[1]
-
-                    # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
-                    # that received their expected output and we leave the others out of the queue.
-                    if is_decision_node_for_loop and not edge in node_results[0].keys():
-                        if nx.has_path(self.graph, target_node, node_name):
-                            # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
-                            logger.debug(
-                                "Not adding '%s' to the inputs buffer: we're leaving the loop.",
-                                target_node,
-                            )
-                        else:
-                            # In case we're choosing to stay in a loop, do not put the external node in the buffer.
-                            logger.debug(
-                                "Not adding '%s' to the inputs buffer: we're staying in the loop.",
-                                target_node,
-                            )
-                    else:
-                        # In all other cases, populate the inputs buffer for all downstream nodes, setting None to any
-                        # edge that did not receive input.
-                        if not target_node in inputs_buffer:
-                            inputs_buffer[target_node] = {
-                                "data": []
-                            }  # Create the buffer for the downstream node if it's not there yet
-                        if edge in node_results[0].keys():
-                            inputs_buffer[target_node]["data"].append((edge, node_results[0][edge]))
-                        inputs_buffer[target_node]["parameters"] = node_results[1]
 
         logger.info("Pipeline executed successfully.")
 
         # Simplify output for single edge, single output pipelines
+        pipeline_results = self._unwrap_results(pipeline_results)
+        return pipeline_results
+
+    def _validate_parameters(self, parameters: Optional[Dict[str, Dict[str, Any]]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Validate the input parameters.
+        """
+        if not parameters:
+            return {}
+
+        if any(node not in self.graph.nodes for node in parameters.keys()):
+            logging.warning(
+                "You passed parameters for one or more node(s) that do not exist in the pipeline: %s",
+                [node for node in parameters.keys() if node not in self.graph.nodes],
+            )
+        return parameters
+
+    def _validate_pipeline(self):
+        """
+        Make sure the pipeline has at least one input node and one output node.
+        """
+        if not locate_pipeline_input_nodes(self.graph):
+            raise ValueError("This pipeline has no input nodes!")
+
+        if not locate_pipeline_output_nodes(self.graph):
+            raise ValueError("This pipeline has no output nodes!")
+
+    def _check_max_loops(self, node_name: str):
+        """
+        Verify whether this node run too many times.
+        """
+        if self.graph.nodes[node_name]["visits"] > self.max_loops_allowed:
+            raise PipelineMaxLoops(f"Maximum loops count ({self.max_loops_allowed}) exceeded for node '{node_name}'.")
+
+    def _ready_to_run(
+        self, node_name: str, node_inputs: Dict[str, Any], inputs_buffer: OrderedDict[str, Any]
+    ) -> Tuple[bool, OrderedDict[str, Any]]:
+        """
+        Verify whether a node is ready to run.
+
+        Returns true if the node should run, false otherwise, and the updated inputs buffer.
+        """
+        # List all the inputs the current node should be waiting for.
+        inputs_received = [i[0] for i in node_inputs["data"]]
+
+        # We should be wait on all edges except for the downstream ones, to support loops.
+        # This downstream check is enabled only for nodes taking more than one input
+        # (the "entrance" of the loop).
+        is_merge_node = len(self.graph.in_edges(node_name)) != 1
+        data_to_wait_for = [
+            (e[0], e[2]["label"])  # the node and the edge label
+            for e in self.graph.in_edges(node_name, data=True)  # for all input edges
+            # if there's a path in the graph leading back from the current node to the
+            # input node, in case of multiple input nodes.
+            if not is_merge_node or not nx.has_path(self.graph, node_name, e[0])
+        ]
+
+        if not data_to_wait_for:
+            # This is an input node, so it's ready to run.
+            logger.debug("'%s' is an input node and it's ready to run.")
+            return (True, inputs_buffer)
+
+        # Do we have all the inputs we expect?
+        nodes_to_wait_for, inputs_to_wait_for = zip(*data_to_wait_for)
+        if sorted(inputs_to_wait_for) == sorted(inputs_received):
+            return (True, inputs_buffer)
+
+        # This node is missing some inputs.
+        #
+        # Did all the upstream nodes run?
+        if not all(self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in nodes_to_wait_for):
+            # Some node upstream didn't run yet, so we should wait for them.
+            logger.debug(
+                "Putting '%s' back in the queue, some inputs are missing "
+                "(inputs to wait for: %s, inputs_received: %s)",
+                node_name,
+                inputs_to_wait_for,
+                inputs_received,
+            )
+            # Put back the node in the inputs buffer at the back...
+            inputs_buffer[node_name] = node_inputs
+            # ... and do not run this node (yet)
+            return (False, inputs_buffer)
+
+        # All upstream nodes run, so it **must** be our turn.
+        #
+        # Are we missing ALL inputs or just a few?
+        if not inputs_received:
+            # ALL upstream nodes have been skipped.
+            #
+            # Let's skip this node and add all downstream nodes to the queue.
+            self.graph.nodes[node_name]["visits"] += 1
+            logger.debug(
+                "Skipping '%s', all input nodes were skipped and no inputs were received "
+                "(skipped nodes: %s, inputs: %s)",
+                node_name,
+                nodes_to_wait_for,
+                inputs_to_wait_for,
+            )
+            # Put all downstream nodes in the inputs buffer...
+            downstream_nodes = [e[1] for e in self.graph.out_edges(node_name)]
+            for downstream_node in downstream_nodes:
+                if not downstream_node in inputs_buffer:
+                    inputs_buffer[downstream_node] = {
+                        "data": [],
+                        "parameters": {},
+                    }
+            # ... and never run this node
+            return (False, inputs_buffer)
+
+        # If all nodes upstream have run and we received SOME input,
+        # this is a merge node that was waiting on a node that has been skipped, so it's ready to run.
+        # Let's pass None on the missing edges and go ahead.
+        #
+        # Example:
+        #
+        # --------------- value ----+
+        #                           |
+        #        +---X--- even ---+ |
+        #        |                | |
+        # -- parity_check         sum --
+        #        |                 |
+        #        +------ odd ------+
+        #
+        # If 'parity_check' produces output only on 'odd', 'sum' should run
+        # with 'value' and 'odd' only, because 'even' will never arrive.
+        #
+        inputs_to_wait_for = list(inputs_to_wait_for)
+        for input_expected in inputs_to_wait_for:
+            if input_expected in inputs_received:
+                inputs_to_wait_for.pop(inputs_to_wait_for.index(input_expected))
+        logger.debug(
+            "Some nodes upstream of '%s' were skipped, so some inputs will be None (missing inputs: %s)",
+            node_name,
+            inputs_to_wait_for,
+        )
+        for missing_input in inputs_to_wait_for:
+            node_inputs["data"].append((missing_input, None))
+
+        return (True, inputs_buffer)
+
+    def _route_output(
+        self,
+        node_name: str,
+        node_results: Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]],
+        inputs_buffer: OrderedDict[str, Any],
+    ) -> OrderedDict[str, Any]:
+        """
+        Distrubute the outputs of the node into the input buffer of downstream nodes.
+
+        Returns the updated inputs buffer.
+        """
+        # This is not a terminal node: find out where the output goes, to which nodes and along which edge
+        is_decision_node_for_loop = (
+            any(nx.has_path(self.graph, edge[1], node_name) for edge in self.graph.out_edges(node_name))
+            and len(self.graph.out_edges(node_name)) > 1
+        )
+        for edge_data in self.graph.out_edges(node_name, data=True):
+            edge = edge_data[2]["label"]
+            target_node = edge_data[1]
+
+            # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
+            # that received their expected output and we leave the others out of the queue.
+            if is_decision_node_for_loop and not edge in node_results[0].keys():
+                if nx.has_path(self.graph, target_node, node_name):
+                    # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
+                    logger.debug(
+                        "Not adding '%s' to the inputs buffer: we're leaving the loop.",
+                        target_node,
+                    )
+                else:
+                    # In case we're choosing to stay in a loop, do not put the external node in the buffer.
+                    logger.debug(
+                        "Not adding '%s' to the inputs buffer: we're staying in the loop.",
+                        target_node,
+                    )
+            else:
+                # In all other cases, populate the inputs buffer for all downstream nodes, setting None to any
+                # edge that did not receive input.
+                if not target_node in inputs_buffer:
+                    inputs_buffer[target_node] = {
+                        "data": []
+                    }  # Create the buffer for the downstream node if it's not there yet
+                if edge in node_results[0].keys():
+                    inputs_buffer[target_node]["data"].append((edge, node_results[0][edge]))
+                inputs_buffer[target_node]["parameters"] = node_results[1]
+
+        return inputs_buffer
+
+    def _unwrap_results(self, pipeline_results):
         if len(pipeline_results.keys()) == 1:
             pipeline_results = pipeline_results[list(pipeline_results.keys())[0]]  # type: ignore
 

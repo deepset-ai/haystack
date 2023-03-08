@@ -83,6 +83,15 @@ line-length = 120
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
+good-names="e"
+max-args=10
 disable = [
-  "line-too-long",  # Black's job
+  "unused_argument", # REMOVE ME
+
+  "fixme",
+
+  "line-too-long",
+  "missing-class-docstring",
+  "missing-module-docstring",
+  "consider-iterating-dictionary",  # horrible style imho :)
 ]

@@ -1,10 +1,11 @@
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
 
 import json
 import logging
 from pathlib import Path
 
-from canals import Pipeline
+if TYPE_CHECKING:
+    from canals import Pipeline
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ def locate_pipeline_output_nodes(graph):
     return [node for node in graph.nodes if not graph.out_edges(node) or graph.nodes[node]["output_node"]]
 
 
-def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer=json.dump) -> None:
+def save_pipelines(pipelines: Dict[str, "Pipeline"], path: Path, _writer=json.dump) -> None:
     """
     Converts a dictionary of named Pipelines into a Python dictionary that can be
     written to a JSON file.
@@ -58,10 +59,10 @@ def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer=json.dump
     :param _writer: which function to use to write the dictionary to a file.
         Use this parameter to dump to a different format like YAML, TOML, HCL, etc.
     """
-    pass
+    return
 
 
-def load_pipelines(path: Path, _reader=json.load) -> Dict[str, Pipeline]:
+def load_pipelines(path: Path, _reader=json.load) -> Dict[str, "Pipeline"]:
     """
     Reads the given file and returns a dictionary of named Pipelines ready to use.
 
