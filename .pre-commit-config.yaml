@@ -25,12 +25,11 @@ repos:
   hooks:
   - id: mypy
 
-# TODO: Soon
-# - repo: local
-#   hooks:
-#   - id: pylint
-#     name: pylint
-#     entry: pylint
-#     language: system
-#     types: [python]
-#     args: [./canals]
+- repo: https://github.com/pycqa/pylint
+  rev: 'v2.17.0'
+  hooks:
+  - id: pylint
+    exclude: ^tests/
+    args: [
+      "--disable=unused-argument,import-error"  # FIXME
+    ]
