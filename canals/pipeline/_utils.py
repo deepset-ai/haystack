@@ -53,6 +53,7 @@ def find_nodes(modules_to_search: List[str]) -> Dict[str, Callable[..., Any]]:
     Returns a dictionary with the node name and the node itself.
     """
     nodes: Dict[str, Any] = {}
+    duplicate_names = []
     for search_module in modules_to_search:
         logger.debug("Searching for nodes under %s...", search_module)
 
@@ -60,7 +61,6 @@ def find_nodes(modules_to_search: List[str]) -> Dict[str, Callable[..., Any]]:
             logger.info("Importing %s to search for nodes...")
             import_module(search_module)
 
-        duplicate_names = []
         for _, entity in getmembers(sys.modules[search_module], isclass):
             if hasattr(entity, "__canals_node__"):
                 # It's a node

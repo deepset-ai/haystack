@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class Pipeline:
     def __init__(
         self,
-        nodes_modules: List[str],
+        nodes_modules: List[str] = [],
         extra_nodes: Optional[Dict[str, Any]] = None,
         max_loops_allowed: int = 100,
     ):
@@ -104,7 +104,7 @@ class Pipeline:
             output_node=output_node,
         )
 
-    def connect(self, node: str, connect_to: str) -> None:
+    def connect(self, connect_from: str, connect_to: str) -> None:
         """
         Connect nodes together. All nodes to connect must exist in the pipeline,
         while new edges are created on the fly.
@@ -114,19 +114,19 @@ class Pipeline:
 
         If connecting to an node that has several output edges, specify its name with 'node_name.edge_name'.
         """
-        upstream_node_name = node
+        upstream_node_name = connect_from
         downstream_node_name = connect_to
 
         # Find out the name of the edge
         edge_name = None
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         # Specify the edge name for the upstream node only.
-        if "." in node:
+        if "." in upstream_node_name:
             upstream_node_name, edge_name = upstream_node_name.split(".", maxsplit=1)
             upstream_node = self.graph.nodes[upstream_node_name]["instance"]
         else:
             # If the edge had no explicit name and the upstream node has multiple outputs, raise an exception
-            upstream_node = self.graph.nodes[node]["instance"]
+            upstream_node = self.graph.nodes[upstream_node_name]["instance"]
             if len(upstream_node.outputs) != 1:
                 raise PipelineConnectError(
                     f"Please specify which output of '{upstream_node_name}' "
@@ -314,6 +314,9 @@ class Pipeline:
         # TODO: allow different input for different input nodes.
         #
         input_nodes = locate_pipeline_input_nodes(self.graph)
+        if not input_nodes:
+            raise ValueError("This pipeline has no input nodes!")
+
         for node_name in input_nodes:
             # NOTE: We allow users to pass dictionaries just for convenience.
             # The real input format is List[Tuple[str, Any]], to allow several input edges to have the same name.
@@ -338,28 +341,28 @@ class Pipeline:
 
             # *** IS IT MY TURN? ***
             # Let's verify that everything is set for this node to run.
+            #
+            # List all the inputs the current node should be waiting for.
+            inputs_received = [i[0] for i in node_inputs["data"]]
 
-            # If this is an input node, it is by definition ready to run.
-            if node_name in input_nodes:
-                logger.debug("'%s' is an input node.", node_name)
+            # We should be wait on all edges except for the downstream ones, to support loops.
+            # This downstream check is enabled only for nodes taking more than one input
+            # (the "entrance" of the loop).
+            is_merge_node = len(self.graph.in_edges(node_name)) != 1
+            data_to_wait_for = [
+                (e[0], e[2]["label"])  # the node and the edge label
+                for e in self.graph.in_edges(node_name, data=True)  # for all input edges
+                # if there's a path in the graph leading back from the current node to the
+                # input node, in case of multiple input nodes.
+                if not is_merge_node or not nx.has_path(self.graph, node_name, e[0])
+            ]
+
+            if not data_to_wait_for:
+                # This is an input node, so it's ready to run.
+                logger.debug("'%s' is an input node and it's ready to run.")
 
             else:
-                # Let's first list all the inputs the current node should be waiting for.
-                inputs_received = [i[0] for i in node_inputs["data"]]
-
-                # We should be wait on all edges except for the downstream ones, to support loops.
-                # This downstream check is enabled only for nodes taking more than one input
-                # (the "entrance" of the loop).
-                is_merge_node = len(self.graph.in_edges(node_name)) != 1
-                nodes_to_wait_for, inputs_to_wait_for = zip(
-                    *[
-                        (e[0], e[2]["label"])  # the node and the edge label
-                        for e in self.graph.in_edges(node_name, data=True)  # for all input edges
-                        # if there's a path in the graph leading back from the current node to the
-                        # input node, in case of multiple input nodes.
-                        if not is_merge_node or not nx.has_path(self.graph, node_name, e[0])
-                    ]
-                )
+                nodes_to_wait_for, inputs_to_wait_for = zip(*data_to_wait_for)
 
                 # Do we have all the inputs we expect?
                 if sorted(inputs_to_wait_for) != sorted(inputs_received):
@@ -544,11 +547,11 @@ class Pipeline:
 
         logger.info("Pipeline executed successfully.")
 
-        # # Simplify output for single edge, single output pipelines
-        # if len(pipeline_results.keys()) == 1:
-        #     pipeline_results = pipeline_results[list(pipeline_results.keys())[0]]
+        # Simplify output for single edge, single output pipelines
+        if len(pipeline_results.keys()) == 1:
+            pipeline_results = pipeline_results[list(pipeline_results.keys())[0]]  # type: ignore
 
-        #     if len(pipeline_results) == 1:
-        #         pipeline_results = pipeline_results[0]
+            if len(pipeline_results) == 1:
+                pipeline_results = pipeline_results[0]  # type: ignore
 
         return pipeline_results
