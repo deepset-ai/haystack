@@ -16,7 +16,7 @@ jobs:
       - name: Install Hatch
         run: pip install hatch
 
-      - name: Build Haystack
+      - name: Build
         run: hatch build
 
       - name: Publish on PyPi
