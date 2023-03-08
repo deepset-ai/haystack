@@ -1,0 +1,104 @@
+# If you change this name also do it in linting-skipper.yml and ci_metrics.yml
+name: Linting
+
+on:
+  pull_request:
+    paths:
+      - "**.py"
+      - "**/pyproject.toml"
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Install Canals
+        run: pip install .[all]
+
+      - name: Mypy
+        run: mypy canals/
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Install Canals
+        run: pip install .[all]
+
+      - name: Pylint
+        run: pylint -ry -j 0 canals/
+
+  black:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Install Canals
+        run: pip install .[all]
+
+      - name: Check status
+        run: |
+          if ! black . --check; then
+            git status
+            echo "###################################################################################################"
+            echo "# "
+            echo "# CHECK FAILED! Black found issues with your code formatting."
+            echo "# "
+            echo "# Either:"
+            echo "# 1. Run Black locally before committing:"
+            echo "# "
+            echo "#     pip install .[dev]"
+            echo "#     black ."
+            echo "# "
+            echo "# 2. Install the pre-commit hook:"
+            echo "# "
+            echo "#     pre-commit install --hook-type pre-push"
+            echo "# "
+            echo "# 3. See https://github.com/deepset-ai/canals/blob/main/CONTRIBUTING.md for help."
+            echo "# "
+            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/canals/issues"
+            echo "# "
+            echo "##################################################################################################"
+            exit 1
+          fi
+
+  tests:
+    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
+    needs:
+      - black
+      - mypy
+      - pylint
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Install Canals
+        run: pip install .[all]
+
+      - name: Run
+        run: pytest tests/
