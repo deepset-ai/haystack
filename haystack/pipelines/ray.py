@@ -1,6 +1,7 @@
 from __future__ import annotations
 import inspect
 import logging
+from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
 import networkx as nx
@@ -355,7 +356,10 @@ class RayPipeline(Pipeline):
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug("Running node '%s` with input: %s", node_id, node_input)
+                    start = time()
                     node_output, stream_id = await self._run_node_async(node_id, node_input)
+                    if "_debug" in node_output and node_id in node_output["_debug"]:
+                        node_output["_debug"][node_id]["exec_time_ms"] = round((time() - start) * 1000, 2)
                 except Exception as e:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
