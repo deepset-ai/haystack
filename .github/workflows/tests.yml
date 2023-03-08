@@ -19,6 +19,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
 
+      - name: Install system deps
+        run: sudo apt install graphviz graphviz-dev
+
       - name: Install Canals
         run: pip install .[all]
 
@@ -34,6 +37,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
 
+      - name: Install system deps
+        run: sudo apt install graphviz graphviz-dev
+
       - name: Install Canals
         run: pip install .[all]
 
@@ -48,6 +54,9 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v4
+
+      - name: Install system deps
+        run: sudo apt install graphviz graphviz-dev
 
       - name: Install Canals
         run: pip install .[all]
@@ -98,6 +107,9 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v4
+
+      - name: Install system deps
+        run: sudo apt install graphviz graphviz-dev
 
       - name: Install Canals
         run: pip install .[all]
