@@ -26,7 +26,9 @@ jobs:
         run: pip install .[all]
 
       - name: Mypy
-        run: mypy canals/
+        run: |
+          mkdir .mypy_cache/
+          mypy --install-types --non-interactive canals/
 
   pylint:
     runs-on: ubuntu-latest
@@ -63,7 +65,7 @@ jobs:
 
       - name: Check status
         run: |
-          if ! black . --check; then
+          if ! black canals/ --check; then
             git status
             echo "###################################################################################################"
             echo "# "
@@ -88,11 +90,7 @@ jobs:
           fi
 
   tests:
-    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
-    needs:
-      - black
-      - mypy
-      - pylint
+    name: Unit / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
