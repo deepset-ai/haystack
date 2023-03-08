@@ -556,7 +556,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
     Hugging Face Inference Endpoints [documentation](https://huggingface.co/inference-endpoints)
     """
 
-    def __init__(self, api_key: str, model_name_or_path: str = None, max_length: Optional[int] = 100, **kwargs):
+    def __init__(self, api_key: str, model_name_or_path: str, max_length: Optional[int] = 500, **kwargs):
         """
          Creates an instance of HFInferenceEndpointInvocationLayer
 
@@ -631,7 +631,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             "num_return_sequences": kwargs_with_defaults.get("top_k", 1),
         }
         json_data = {"inputs": prompt, "parameters": params}
-        response = requests.post(self.url, headers=self.headers, json=json_data)
+        response = requests.post(self.url, headers=self.headers, json=json_data, timeout=60)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Error while HF inference endpoint {self.model_name_or_path} with prompt {prompt}. "
@@ -646,4 +646,4 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        return model_name_or_path and model_name_or_path.startswith("https://")
+        return model_name_or_path is not None and model_name_or_path.startswith("https://")
