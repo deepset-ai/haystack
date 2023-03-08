@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Any, Dict, List, Iterable, Union, Tuple
+from typing import Optional, Any, Dict, List, Iterable, Union, Tuple
 
 from pathlib import Path
 import logging
@@ -25,40 +25,50 @@ logger = logging.getLogger(__name__)
 
 
 class Pipeline:
+    """
+    Nodes orchestration engine.
+
+    Builds a graph of nodes and orchestrates their execution according to the execution graph.
+    """
+
     def __init__(
         self,
-        nodes_modules: List[str] = [],
-        extra_nodes: Optional[Dict[str, Any]] = None,
         max_loops_allowed: int = 100,
     ):
+        """
+        Creates the Pipeline.
+
+        :param max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
+        """
         self.stores: Dict[str, object] = {}
         self.max_loops_allowed = max_loops_allowed
-        self.extra_nodes = extra_nodes or {}
-        self.available_nodes = extra_nodes or {}
-        self.nodes_modules = nodes_modules
         self.graph = nx.DiGraph()
 
-    @property
-    def nodes_modules(self):
-        return self._nodes_modules
-
-    @nodes_modules.setter
-    def nodes_modules(self, nodes_modules):
-        """
-        Assigning a value to this attribute triggers a `find_nodes` call,
-        which will import any path in the `self._nodes_modules` attribute,
-        and overwrite the content of `self.available_nodes`.
-        """
-        self._nodes_modules = nodes_modules
-        self.available_nodes = {**find_nodes(self._nodes_modules), **self.extra_nodes}
-
     def add_store(self, name: str, store: object) -> None:
+        """
+        Make a store available to all nodes of this pipeline.
+
+        :param name: the name of the store.
+        :param store: the store object.
+        :returns: None
+        """
         self.stores[name] = store
 
     def list_stores(self) -> Iterable[str]:
+        """
+        Returns a dictionary with all the stores that are attached to this Pipeline.
+
+        :returns: a dictionary with all the stores attached to this Pipeline.
+        """
         return self.stores.keys()
 
     def get_store(self, name: str) -> object:
+        """
+        Returns the store associated with the given name.
+
+        :param name: the name of the store
+        :returns: the store
+        """
         try:
             return self.stores[name]
         except KeyError as e:
@@ -77,17 +87,27 @@ class Pipeline:
         use `Pipeline.connect()` to connect nodes together.
 
         Node names must be unique, but node instances can be reused if needed.
+
+        :param name: the name of the node.
+        :param instance: the node instance.
+        :param parameters: default parameters to pass to this node's instance only then this
+            specific node is executed. These parameters are NOT shared across nodes that use
+            the same instance.
+        :param input_node: whether this node should receive the input data given to
+            `Pipeline.run()` directly, regardless of its location in the Pipeline.
+        :param output_node: whether the output of this node should be returned as output,
+            regardless of its location in the Pipeline.
+        :returns: None
         """
         # Node names are unique
         if name in self.graph.nodes:
             raise ValueError(f"Node named '{name}' already exists: choose another name.")
 
         # Node instances must be nodes
-        if not type(instance) in self.available_nodes.values():
-            if not hasattr(instance, "__canals_node__"):
-                raise PipelineValidationError(
-                    f"'{type(instance)}' doesn't seem to be a node. Is this class decorated with @node?"
-                )
+        if not hasattr(instance, "__canals_node__"):
+            raise PipelineValidationError(
+                f"'{type(instance)}' doesn't seem to be a node. Is this class decorated with @node?"
+            )
 
         # Params must be a dict
         if parameters and not isinstance(parameters, dict):
@@ -106,13 +126,13 @@ class Pipeline:
 
     def connect(self, connect_from: str, connect_to: str) -> None:
         """
-        Connect nodes together. All nodes to connect must exist in the pipeline,
-        while new edges are created on the fly.
-
-        For example, `pipeline.connect("node_1.output_1", "node_2")`
-        generates a directional edge across these nodes.
-
+        Connect nodes together. All nodes to connect must exist in the pipeline.
         If connecting to an node that has several output edges, specify its name with 'node_name.edge_name'.
+
+        :param connect_from: the node that deliver the values. This can be either a single node name or
+            can be in the format `node_name.edge_name` if the node has multiple outputs.
+        :param connect_to: the node that receives the values. This is always just the node name.
+        :returns: None
         """
         upstream_node_name = connect_from
         downstream_node_name = connect_to
@@ -204,6 +224,9 @@ class Pipeline:
     def get_node(self, name: str) -> Dict[str, Any]:
         """
         Returns all the data associated with a node.
+
+        :param name: the name of the node
+        :returns: a dictionary containing all data that was given to `add_node()`
         """
         candidates = [node for node in self.graph.nodes if node == name]
         if not candidates:
@@ -212,7 +235,10 @@ class Pipeline:
 
     def draw(self, path: Path) -> None:
         """
-        Draws the pipeline.
+        Draws the pipeline. Requires `pygraphviz`.
+        Run `pip install canals[draw]` to install missing dependencies.
+
+        :param path: where to save the drawing.
         """
         try:
             import pygraphviz
@@ -248,9 +274,15 @@ class Pipeline:
         self,
         data: Union[Dict[str, Any], List[Tuple[str, Any]]],
         parameters: Optional[Dict[str, Dict[str, Any]]] = None,
+        debug: bool = False,
     ) -> Dict[str, Any]:
         """
-        Runs the pipeline
+        Runs the pipeline.
+
+        :param data: the inputs to give to the input nodes of the Pipeline.
+        :param parameters: a dictionary with all the parameters of all the nodes, namespaced by node.
+        :param debug: whether to collect and return debug information.
+        :returns: a dictionary with the outputs of the output nodes of the Pipeline.
         """
         #
         # Idea for the future
