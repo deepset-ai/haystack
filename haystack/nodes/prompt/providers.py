@@ -1,3 +1,4 @@
+import json
 import logging
 from abc import abstractmethod
 from typing import Dict, List, Optional, Union, Type
@@ -486,3 +487,71 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         return (
             valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
         )
+
+
+class ChatGPTInvocationLayer(OpenAIInvocationLayer):
+    """
+    ChatGPT Invocation Layer
+
+    This layer is used to invoke the ChatGPT API
+    """
+
+    def __init__(
+        self, api_key: str, model_name_or_path: str = "gpt-3.5-turbo", max_length: Optional[int] = 500, **kwargs
+    ):
+        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+
+    def invoke(self, *args, **kwargs):
+        prompt = kwargs.get("prompt", None)
+        messages: List[Dict[str, str]] = kwargs.get("messages", None)
+        if not prompt and not messages:
+            raise ValueError(
+                f"No prompt or message provided. Model {self.model_name_or_path} requires either prompt or messages"
+                f"Make sure to provide prompt or messages in kwargs."
+            )
+        if prompt and not messages:
+            messages = [{"role": "user", "content": prompt}]
+        if messages and not prompt:
+            if not isinstance(messages, list) and not isinstance(messages[0], dict):
+                raise ValueError(
+                    f"Invalid messages provided. Model {self.model_name_or_path} requires messages."
+                    f"Make sure to provide messages in kwargs using ChatML format "
+                    f"See https://github.com/openai/openai-python/blob/main/chatml.md for more details"
+                )
+
+        kwargs_with_defaults = self.model_input_kwargs
+        if kwargs:
+            # we use keyword stop_words but OpenAI uses stop
+            if "stop_words" in kwargs:
+                kwargs["stop"] = kwargs.pop("stop_words")
+            if "top_k" in kwargs:
+                top_k = kwargs.pop("top_k")
+                kwargs["n"] = top_k
+                kwargs["best_of"] = top_k
+            kwargs_with_defaults.update(kwargs)
+        payload = {
+            "model": self.model_name_or_path,
+            "messages": messages,
+            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
+            "temperature": kwargs_with_defaults.get("temperature", 0.7),
+            "top_p": kwargs_with_defaults.get("top_p", 1),
+            "n": kwargs_with_defaults.get("n", 1),
+            "stream": False,  # no support for streaming
+            "stop": kwargs_with_defaults.get("stop", None),
+            "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
+            "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
+            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
+        }
+        response = openai_request(url=self.url, headers=self.headers, payload=payload)
+        response = json.loads(response.text)
+        assistant_response = [choice["message"] for choice in response["choices"]]
+        return assistant_response
+
+    @property
+    def url(self) -> str:
+        return "https://api.openai.com/v1/chat/completions"
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        valid_model = any(m for m in ["gpt-3.5-turbo"] if m in model_name_or_path)
+        return valid_model
