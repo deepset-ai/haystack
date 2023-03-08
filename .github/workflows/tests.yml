@@ -18,18 +18,8 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v4
-
-      # - name: Install system deps (Linux)
-      #   if: matrix.os == "ubuntu-latest"
-      #   run: sudo apt install graphviz graphviz-dev
-
-      # - name: Install system deps (MacOS)
-      #   if: matrix.os == "macos-latest"
-      #   run: brew install graphviz
-
-      # - name: Install system deps (Windows)
-      #   if: matrix.os == "windows-latest"
-      #   run: choco install graphviz
+        with:
+          python-version: '3.8'
 
       - name: Install Canals
         run: pip install .[dev]
@@ -47,18 +37,8 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v4
-
-      # - name: Install system deps (Linux)
-      #   if: matrix.os == "ubuntu-latest"
-      #   run: sudo apt install graphviz graphviz-dev
-
-      # - name: Install system deps (MacOS)
-      #   if: matrix.os == "macos-latest"
-      #   run: brew install graphviz
-
-      # - name: Install system deps (Windows)
-      #   if: matrix.os == "windows-latest"
-      #   run: choco install graphviz
+        with:
+          python-version: '3.8'
 
       - name: Install Canals
         run: pip install .[dev]
@@ -74,6 +54,8 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
 
       - name: Install Canals
         run: pip install .[dev]
@@ -120,6 +102,8 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
 
       - name: Install Canals
         run: pip install .[dev]
