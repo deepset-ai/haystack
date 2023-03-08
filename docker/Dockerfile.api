@@ -3,8 +3,10 @@ ARG base_image
 
 FROM ${base_image}:${base_image_tag}
 
-ENV SERVICE_NAME="uvicorn-service"
+ENV SERVICE_NAME="haystackd"
 
+# Ensuring that Haystack pipelines run with a specific user "haystackd".
+# This makes the process & log management neat.
 RUN addgroup --gid 1001 $SERVICE_NAME && \
     adduser --gid 1001 --uid 1001 --shell /bin/false --disabled-password $SERVICE_NAME && \
     mkdir -p /var/log/$SERVICE_NAME && \
@@ -19,6 +21,7 @@ ENV FILE_UPLOAD_PATH="/opt/file-upload"
 
 ENV TIKA_LOG_PATH="/var/log/$SERVICE_NAME/"
 
+# uvicorn server runs on port 8000, which needs to be accessible from outside the container.
 EXPOSE 8000
 
 USER $SERVICE_NAME
