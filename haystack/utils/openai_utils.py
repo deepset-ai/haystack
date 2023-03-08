@@ -87,7 +87,9 @@ def _openai_text_completion_tokenization_details(model_name: str):
 @retry_with_exponential_backoff(
     backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
 )
-def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT):
+def openai_request(
+    url: str, headers: Dict, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT
+) -> Dict:
     """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
 
     :param url: The URL of the OpenAI API.

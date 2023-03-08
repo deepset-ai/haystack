@@ -493,7 +493,11 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     """
     ChatGPT Invocation Layer
 
-    This layer is used to invoke the ChatGPT API
+    PromptModelInvocationLayer implementation for OpenAI's GPT-3 ChatGPT API. Invocations are made using REST API.
+    See [OpenAI ChatGPT API](https://platform.openai.com/docs/guides/chat) for more details.
+
+    Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
+    as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
     """
 
     def __init__(
@@ -502,22 +506,34 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         super().__init__(api_key, model_name_or_path, max_length, **kwargs)
 
     def invoke(self, *args, **kwargs):
+        """
+        It takes in either a prompt or a list of messages and returns a list of responses, using a REST invocation.
+
+        :return: A list of generated responses.
+
+        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
+        For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat)
+        """
         prompt = kwargs.get("prompt", None)
         messages: List[Dict[str, str]] = kwargs.get("messages", None)
         if not prompt and not messages:
             raise ValueError(
-                f"No prompt or messages provided. Model {self.model_name_or_path} requires either prompt or messages"
-                f"Make sure to provide prompt or messages in kwargs."
+                f"No prompt or messages provided. Model {self.model_name_or_path} requires either prompt or messages."
+                f"Make sure to provide either prompt or messages in kwargs."
             )
-        if prompt and not messages:
+        if prompt and messages:
+            raise ValueError(
+                f"Both prompt and messages provided. Model {self.model_name_or_path} requires either prompt or messages."
+                f"Make sure to provide either prompt or messages in kwargs."
+            )
+        if prompt:
             messages = [{"role": "user", "content": prompt}]
-        if messages and not prompt:
-            if not isinstance(messages, list) and not isinstance(messages[0], dict):
-                raise ValueError(
-                    f"Invalid messages provided. Model {self.model_name_or_path} requires messages."
-                    f"Make sure to provide messages in kwargs using ChatML format "
-                    f"See https://github.com/openai/openai-python/blob/main/chatml.md for more details"
-                )
+        elif messages and (not isinstance(messages, list) or not isinstance(messages[0], dict)):
+            raise ValueError(
+                f"Invalid messages provided. Model {self.model_name_or_path} requires either prompt or messages."
+                f"Make sure to provide messages in kwargs using ChatML format "
+                f"See https://github.com/openai/openai-python/blob/main/chatml.md for more details"
+            )
 
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
@@ -543,8 +559,8 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         response = openai_request(url=self.url, headers=self.headers, payload=payload)
-        response = json.loads(response.text)
-        assistant_response = [choice["message"] for choice in response["choices"]]
+        _check_openai_text_completion_answers(result=response, payload=payload)
+        assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
         return assistant_response
 
     @property
