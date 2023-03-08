@@ -26,7 +26,10 @@ def test_pipeline(tmp_path):
     pipeline.connect("accumulator", "merge")
     pipeline.connect("below_10.above", "add_two")
 
-    pipeline.draw(tmp_path / "looping_pipeline.png")
+    try:
+        pipeline.draw(tmp_path / "looping_pipeline.png")
+    except ImportError:
+        logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
     results = pipeline.run(
         {"value": 3},

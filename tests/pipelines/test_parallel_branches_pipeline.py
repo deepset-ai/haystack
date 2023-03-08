@@ -26,7 +26,10 @@ def test_pipeline(tmp_path):
     pipeline.connect("enumerate.2", "add_three")
     pipeline.connect("add_three", "add_one_again")
 
-    pipeline.draw(tmp_path / "parallel_branches_pipeline.png")
+    try:
+        pipeline.draw(tmp_path / "parallel_branches_pipeline.png")
+    except ImportError:
+        logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
     results = pipeline.run({"value": 1})
     pprint(results)

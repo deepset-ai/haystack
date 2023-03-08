@@ -29,7 +29,10 @@ def test_pipeline(tmp_path):
     pipeline.connect("add_three", "add_one_again")
     pipeline.connect("add_one_again", "sum")
 
-    pipeline.draw(tmp_path / "decision_and_merge_pipeline.png")
+    try:
+        pipeline.draw(tmp_path / "decision_and_merge_pipeline.png")
+    except ImportError:
+        logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
     results = pipeline.run({"value": 1})
     pprint(results)
