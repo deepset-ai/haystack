@@ -7,6 +7,7 @@ import itertools
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
+from time import time
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -550,7 +551,10 @@ class Pipeline:
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug("Running node '%s` with input: %s", node_id, node_input)
+                    start = time()
                     node_output, stream_id = self._run_node(node_id, node_input)
+                    if "_debug" in node_output and node_id in node_output["_debug"]:
+                        node_output["_debug"][node_id]["exec_time_ms"] = round((time() - start) * 1000, 2)
                 except Exception as e:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
