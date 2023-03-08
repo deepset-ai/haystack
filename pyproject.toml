@@ -34,6 +34,7 @@ draw = [
   "pygraphviz", # Draw pipelines (requires the 'graphviz' system library)
 ]
 dev = [
+  "hatch",
   "pre-commit",
   "mypy",
   "pylint==2.15.10",
@@ -87,9 +88,7 @@ good-names="e"
 max-args=10
 disable = [
   "unused-argument", # REMOVE ME
-
   "fixme",
-
   "line-too-long",
   "missing-class-docstring",
   "missing-module-docstring",

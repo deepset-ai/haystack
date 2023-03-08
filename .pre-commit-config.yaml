@@ -29,7 +29,7 @@ repos:
   rev: 'v2.17.0'
   hooks:
   - id: pylint
-    exclude: ^tests/
+    exclude: ^test/
     args: [
       "--disable=import-error"  # FIXME
     ]

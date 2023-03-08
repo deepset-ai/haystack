@@ -3,7 +3,7 @@ from pprint import pprint
 import logging
 
 from canals.pipeline import Pipeline
-from tests.nodes import Accumulate, AddValue, Greet, Remainder, Rename, Merge, Below, Double, Sum, Repeat, Subtract
+from test.nodes import Accumulate, AddValue, Greet, Remainder, Rename, Merge, Below, Double, Sum, Repeat, Subtract
 
 logging.basicConfig(level=logging.DEBUG)
 

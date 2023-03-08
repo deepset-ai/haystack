@@ -93,12 +93,12 @@ def test_accumulate_callable():
     results = node.run(name="test_node", data=[("test", 10)], parameters={}, stores={})
     assert results == ({"test": 10}, {})
     assert node.state == -10
-    assert node.init_parameters == {"edge": "test", "function": "tests.nodes.test_accumulate.my_subtract"}
+    assert node.init_parameters == {"edge": "test", "function": "test.nodes.test_accumulate.my_subtract"}
 
 
 def test_accumulate_string():
-    node = Accumulate(edge="test", function="tests.nodes.test_accumulate.my_subtract")
+    node = Accumulate(edge="test", function="test.nodes.test_accumulate.my_subtract")
     results = node.run(name="test_node", data=[("test", 10)], parameters={}, stores={})
     assert results == ({"test": 10}, {})
     assert node.state == -10
-    assert node.init_parameters == {"edge": "test", "function": "tests.nodes.test_accumulate.my_subtract"}
+    assert node.init_parameters == {"edge": "test", "function": "test.nodes.test_accumulate.my_subtract"}

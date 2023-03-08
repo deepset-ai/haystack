@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from tests.nodes import AddValue, Remainder, Double, Sum
+from test.nodes import AddValue, Remainder, Double, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 

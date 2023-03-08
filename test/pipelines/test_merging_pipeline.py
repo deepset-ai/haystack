@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from tests.nodes import AddValue, Sum
+from test.nodes import AddValue, Sum
 
 import logging
 
