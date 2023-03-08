@@ -109,4 +109,4 @@ jobs:
         run: pip install .[dev]
 
       - name: Run
-        run: pytest tests/
+        run: hatch run cov
