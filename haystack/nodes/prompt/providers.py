@@ -506,7 +506,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         messages: List[Dict[str, str]] = kwargs.get("messages", None)
         if not prompt and not messages:
             raise ValueError(
-                f"No prompt or message provided. Model {self.model_name_or_path} requires either prompt or messages"
+                f"No prompt or messages provided. Model {self.model_name_or_path} requires either prompt or messages"
                 f"Make sure to provide prompt or messages in kwargs."
             )
         if prompt and not messages:
