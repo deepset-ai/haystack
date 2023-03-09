@@ -174,6 +174,7 @@ class WebRetriever(BaseRetriever):
         cache_index: Optional[str] = None,
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: Optional[int] = None,
+        **kwargs,
     ) -> List[Document]:
         """
         Retrieve documents based on a WebSearchEngine list of URLs. The documents are scraped from the web at real-time.
@@ -339,6 +340,10 @@ class WebRetriever(BaseRetriever):
             processed_docs = extracted_docs
 
         logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
+
+        if self.sampler:
+            processed_docs, _ = self.sampler.run(query, processed_docs)
+            processed_docs = processed_docs["documents"]
 
         if cache_document_store is not None:
             cached = self._save_cache(query_norm, processed_docs, cache_index=cache_index, cache_headers=cache_headers)

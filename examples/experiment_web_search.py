@@ -11,7 +11,7 @@ search_key = os.environ.get("SERPERDEV_API_KEY")
 if not search_key:
     raise ValueError("Please set the SERPERDEV_API_KEY environment variable")
 
-ws = WebSearch(api_key=search_key, top_p=0.95, top_k=5, strict_top_k=False)
+ws = WebSearch(api_key=search_key)
 
 pn = PromptNode("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
 
