@@ -132,8 +132,8 @@ pipeline.add_node("second_addition", addition)  # Note that instances can be reu
 pipeline.add_node("double", Double())
 
 # Nodes are the connected as input node: [list of output nodes]
-pipeline.connect("first_addition", "double")
-pipeline.connect("double", "second_addition")
+pipeline.connect(connect_from="first_addition", connect_to="double")
+pipeline.connect(connect_from="double", connect_to="second_addition")
 
 pipeline.draw("pipeline.png")
 
@@ -388,7 +388,7 @@ def test_pipeline():
     pipeline.add_node("retriever", RetrieveByBM25(default_store="my_documents"))
     pipeline.add_node("reader", ReadByTransformers(model_name_or_path="distilbert-base-uncased-distilled-squad"))
 
-    pipeline.connect("retriever", "reader")
+    pipeline.connect(connect_from="retriever", connect_to="reader")
     pipeline.draw("query_pipeline.png")
 
     results = pipeline.run({"query": TextQuery(content="Who lives in Berlin?")})
