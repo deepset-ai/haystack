@@ -907,6 +907,8 @@ class FARMReader(BaseReader):
         predictions = self.inferencer.inference_from_objects(
             objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
+        # Deduplicate same answers resulting from Document split overlap
+        predictions = self._deduplicate_predictions(predictions, documents)
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
         # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
@@ -1250,6 +1252,73 @@ class FARMReader(BaseReader):
                     inputs.append(cur)
 
         return inputs, number_of_docs, single_doc_list
+
+    @staticmethod
+    def _deduplicate_predictions(predictions: List[QAPred], documents: List[Document]) -> List[QAPred]:
+        # Identify overlapping Documents
+        docs_by_ids = {doc.id: doc for doc in documents}
+        overlapping_docs = {}
+        for doc in documents:
+            if "_split_overlap" not in doc.meta:
+                continue
+            current_overlaps = [overlap for overlap in doc.meta["_split_overlap"] if overlap["doc_id"] in docs_by_ids]
+            if current_overlaps:
+                overlapping_docs[doc.id] = current_overlaps
+
+        if not overlapping_docs:
+            return predictions
+
+        preds_per_doc = {pred.id: pred for pred in predictions}
+        for pred in predictions:
+            # Check if current Document overlaps with Documents of other preds and continue if not
+            if pred.id not in overlapping_docs:
+                continue
+
+            relevant_overlaps = overlapping_docs[pred.id]
+            for ans_idx in reversed(range(len(pred.prediction))):
+                ans = pred.prediction[ans_idx]
+                if ans.answer_type != "span":
+                    continue
+
+                for overlap in relevant_overlaps:
+                    # Check if answer offsets are within the overlap
+                    if ans.offset_answer_start < overlap["range"][0] or ans.offset_answer_end > overlap["range"][1]:
+                        continue
+
+                    # Get offsets inside of overlap
+                    answer_start_in_overlap = ans.offset_answer_start - overlap["range"][0]
+                    answer_end_in_overlap = ans.offset_answer_end - overlap["range"][0]
+
+                    # Check if predictions from overlapping Document are within the overlap
+                    overlapping_doc_pred = preds_per_doc.get(overlap["doc_id"])
+                    cur_doc_overlap = [ol for ol in overlapping_docs[overlap["doc_id"]] if ol["doc_id"] == pred.id][0]
+                    for pot_dupl_ans_idx in reversed(range(len(overlapping_doc_pred.prediction))):
+                        pot_duplicate_ans = overlapping_doc_pred.prediction[pot_dupl_ans_idx]
+                        if pot_duplicate_ans.answer_type != "span":
+                            continue
+                        if (
+                            pot_duplicate_ans.offset_answer_start < cur_doc_overlap["range"][0]
+                            or pot_duplicate_ans.offset_answer_end > cur_doc_overlap["range"][1]
+                        ):
+                            continue
+
+                        # Get offsets inside of overlap
+                        cur_answer_start_in_overlap = (
+                            pot_duplicate_ans.offset_answer_start - cur_doc_overlap["range"][0]
+                        )
+                        cur_answer_end_in_overlap = pot_duplicate_ans.offset_answer_end - cur_doc_overlap["range"][0]
+
+                        # If offsets are the same, discard the duplicate with lower score
+                        if (
+                            answer_start_in_overlap == cur_answer_start_in_overlap
+                            and answer_end_in_overlap == cur_answer_end_in_overlap
+                        ):
+                            if ans.confidence < pot_duplicate_ans.confidence:
+                                pred.prediction.pop(ans_idx)
+                            else:
+                                overlapping_doc_pred.prediction.pop(pot_dupl_ans_idx)
+
+        return predictions
 
     def calibrate_confidence_scores(
         self,
