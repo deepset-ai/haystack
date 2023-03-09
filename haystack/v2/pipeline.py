@@ -32,7 +32,7 @@ class Pipeline(CanalsPipeline):
 
         :returns: a dictionary with all the stores attached to this Pipeline.
         """
-        return self.stores.keys()
+        return list(self.stores.keys())
 
     def get_store(self, name: str) -> object:
         """
