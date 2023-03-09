@@ -8,7 +8,7 @@ from collections import defaultdict
 import pandas as pd
 
 from haystack.schema import Document, Answer, SpeechAnswer
-from haystack.document_stores.sql import DocumentORM
+from haystack.document_stores.sql import DocumentORM  #  type: ignore[attr-defined]
 
 
 logger = logging.getLogger(__name__)
