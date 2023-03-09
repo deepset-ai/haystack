@@ -624,6 +624,18 @@ class Pipeline:
         return inputs_buffer
 
     def _unwrap_results(self, pipeline_results):
+        """
+        Simplifies the output of simple Pipelines:
+
+        - if the resuklt contains output of a single node, unwraps the dictionary to return the list only
+        - if the resulting list is only composed of one dictionary, returns the internal dictionary only.
+
+        So the output of `Pipeline.run()` might look like:
+
+        - Multi-node output: `{node: [{key: value, ... }, ... ], ... }`
+        - Single-node, repeated output: `[{key: value, ... }, ... ]`
+        - Single-node, single output: `{key: value, ... }`
+        """
         if len(pipeline_results.keys()) == 1:
             pipeline_results = pipeline_results[list(pipeline_results.keys())[0]]  # type: ignore
 
