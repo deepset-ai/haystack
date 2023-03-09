@@ -3,4 +3,4 @@
 # SPDX-License-Identifier: MIT
 from canals.pipeline import Pipeline
 from canals.node import node
-from canals.store import MemoryStore
+from canals.store import StoreInMemory

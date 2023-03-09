@@ -21,7 +21,7 @@ class MissingItemError(StoreError):
 DuplicatePolicy = Literal["skip", "overwrite", "fail"]
 
 
-class MemoryStore:
+class StoreInMemory:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
@@ -83,7 +83,7 @@ class MemoryStore:
 
     def write_items(self, items: List[Dict[str, Any]], duplicates: DuplicatePolicy = "fail") -> None:
         """
-        Writes items into the store.
+        Writes (or overwrites) items into the store.
 
         :param items: a list of dictionaries.
         :param duplicates: items with the same ID count as duplicates. When duplicates are met,
