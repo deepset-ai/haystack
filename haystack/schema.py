@@ -1628,7 +1628,13 @@ class EvaluationResult:
             "custom_document_ids",
             "gold_document_contents",
         ]
-        converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
+
+        def safe_literal_eval(x: str) -> Any:
+            if x == "":
+                return None
+            return ast.literal_eval(x)
+
+        converters = dict.fromkeys(cols_to_convert, safe_literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
         read_csv_kwargs = {**default_read_csv_kwargs, **read_csv_kwargs}
         node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}

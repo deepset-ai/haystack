@@ -1745,7 +1745,11 @@ class Pipeline:
                 df_answers["node"] = node_name
                 df_answers["multilabel_id"] = query_labels.id
                 df_answers["query"] = query
-                df_answers["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
+                df_answers["filters"] = (
+                    json.dumps(query_labels.filters, sort_keys=True).encode()
+                    if query_labels.filters is not None
+                    else None
+                )
                 df_answers["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
                 partial_dfs.append(df_answers)
 
