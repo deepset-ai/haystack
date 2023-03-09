@@ -71,11 +71,15 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
         else:
             result = self.pipeline_or_node.run(query=tool_input)
+        return self._process_result(result)
 
+    def _process_result(self, result: Union[Tuple, Dict]) -> str:
+        # Process the result returned by the tool. The result can be a tuple or dict, however we
+        # have to dig into the result to get the actual str output of the tool.
         # if result was returned by a node it is of type tuple. We use only the output but not the name of the output.
         # if result was returned by a pipeline it is of type dict that we can use directly.
         if isinstance(result, tuple):
-            result = result[0]
+            result = result[0] if result else []
         if isinstance(result, dict):
             if result and self.output_variable not in result:
                 raise ValueError(
