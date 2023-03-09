@@ -15,6 +15,10 @@ from haystack.nodes import FARMReader, TransformersReader
 from ..conftest import SAMPLES_PATH
 
 
+def _joinpath(rootdir, targetdir):
+    return os.path.join(os.sep, rootdir + os.sep, targetdir)
+
+
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
 @pytest.fixture(params=["farm"])
@@ -286,9 +290,12 @@ def test_farm_reader_load_hf_local(tmp_path):
     # Test Case: 2. HuggingFace downloaded (local load)
 
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    local_model_path = "locally_saved_hf"
+    cwd_path = os.getcwd()
+    local_model_path = _joinpath(cwd_path, local_model_path)
+
     # TODO: change the /tmp to proper tmp_path and get rid of rmtree
-    # local_model_path = str(Path.joinpath(tmp_path, "locally_saved_hf"))
-    local_model_path = "/tmp/locally_saved_hf"
+    # local_model_path = str(Path.joinpath(tmp_path, local_model_path))
     model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
     _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
     rmtree(local_model_path)
