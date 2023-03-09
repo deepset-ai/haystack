@@ -14,7 +14,7 @@ class Accumulate:
     Example of how to deal with serialization when some of the parameters
     are not directly serializable.
 
-    Stateful, single input, single output node. Does not use stores.
+    Stateful, single input, single output node.
 
     :param edge: the edge to read the value from.
     :param function: the function to use to accumulate the values.
@@ -64,13 +64,7 @@ class Accumulate:
             return function.__name__
         return f"{module.__name__}.{function.__name__}"
 
-    def run(
-        self,
-        name: str,
-        data: List[Tuple[str, Any]],
-        parameters: Dict[str, Any],
-        stores: Dict[str, Any],
-    ):
+    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
         function = parameters.get(name, {}).get("function", self.function)
         self.state = function(self.state, data[0][1])
         return ({data[0][0]: data[0][1]}, parameters)
@@ -78,7 +72,7 @@ class Accumulate:
 
 def test_accumulate_default():
     node = Accumulate(edge="test")
-    results = node.run(name="test_node", data=[("test", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
     assert node.state == 10
     assert node.init_parameters == {"edge": "test", "function": None}
@@ -90,7 +84,7 @@ def my_subtract(first, second):
 
 def test_accumulate_callable():
     node = Accumulate(edge="test", function=my_subtract)
-    results = node.run(name="test_node", data=[("test", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
     assert node.state == -10
     assert node.init_parameters == {"edge": "test", "function": "test.nodes.test_accumulate.my_subtract"}
@@ -98,7 +92,7 @@ def test_accumulate_callable():
 
 def test_accumulate_string():
     node = Accumulate(edge="test", function="test.nodes.test_accumulate.my_subtract")
-    results = node.run(name="test_node", data=[("test", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
     assert node.state == -10
     assert node.init_parameters == {"edge": "test", "function": "test.nodes.test_accumulate.my_subtract"}

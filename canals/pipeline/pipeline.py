@@ -1,4 +1,4 @@
-from typing import Optional, Any, Dict, List, Iterable, Union, Tuple
+from typing import Optional, Any, Dict, List, Union, Tuple
 
 from pathlib import Path
 import logging
@@ -12,7 +12,6 @@ from canals.pipeline._utils import (
     PipelineRuntimeError,
     PipelineConnectError,
     PipelineValidationError,
-    NoSuchStoreError,
     PipelineMaxLoops,
     locate_pipeline_input_nodes,
     locate_pipeline_output_nodes,
@@ -51,39 +50,8 @@ class Pipeline:
 
         :param max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
         """
-        self.stores: Dict[str, object] = {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.DiGraph()
-
-    def add_store(self, name: str, store: object) -> None:
-        """
-        Make a store available to all nodes of this pipeline.
-
-        :param name: the name of the store.
-        :param store: the store object.
-        :returns: None
-        """
-        self.stores[name] = store
-
-    def list_stores(self) -> Iterable[str]:
-        """
-        Returns a dictionary with all the stores that are attached to this Pipeline.
-
-        :returns: a dictionary with all the stores attached to this Pipeline.
-        """
-        return self.stores.keys()
-
-    def get_store(self, name: str) -> object:
-        """
-        Returns the store associated with the given name.
-
-        :param name: the name of the store
-        :returns: the store
-        """
-        try:
-            return self.stores[name]
-        except KeyError as e:
-            raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
     def add_node(
         self,
@@ -390,10 +358,7 @@ class Pipeline:
                 logger.debug("   '%s' inputs: %s", node_name, node_inputs)
                 node_results: Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]
                 node_results = node_node.run(
-                    name=node_name,
-                    data=node_inputs["data"],
-                    parameters=node_inputs["parameters"],
-                    stores=self.stores,
+                    name=node_name, data=node_inputs["data"], parameters=node_inputs["parameters"]
                 )
                 logger.debug("   '%s' outputs: %s\n", node_name, node_results)
             except Exception as e:

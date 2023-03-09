@@ -2,5 +2,11 @@
 #
 # SPDX-License-Identifier: MIT
 from canals.pipeline import Pipeline
+from canals.pipeline._utils import (
+    PipelineError,
+    PipelineConnectError,
+    PipelineMaxLoops,
+    PipelineRuntimeError,
+    PipelineValidationError,
+)
 from canals.node import node
-from canals.store import StoreInMemory

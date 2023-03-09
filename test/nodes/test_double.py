@@ -9,7 +9,7 @@ class Double:
         """
         Doubles the value in input.
 
-        Single input single output node. Doesn't take parameters. Doesn't use stores.
+        Single input single output node. Doesn't take parameters.
 
         :param input: the name of the input.
         :param output: the name of the output.
@@ -18,13 +18,7 @@ class Double:
         self.inputs = [input]
         self.outputs = [output]
 
-    def run(
-        self,
-        name: str,
-        data: List[Tuple[str, Any]],
-        parameters: Dict[str, Any],
-        stores: Dict[str, Any],
-    ):
+    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
         for _, value in data:
             value *= 2
 
@@ -33,13 +27,13 @@ class Double:
 
 def test_double_default():
     node = Double()
-    results = node.run(name="test_node", data=[("value", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("value", 10)], parameters={})
     assert results == ({"value": 20}, {})
     assert node.init_parameters == {"input": "value", "output": "value"}
 
 
 def test_double_init_params():
     node = Double(input="test_in", output="test_out")
-    results = node.run(name="test_node", data=[("test_in", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("test_in", 10)], parameters={})
     assert results == ({"test_out": 20}, {})
     assert node.init_parameters == {"input": "test_in", "output": "test_out"}

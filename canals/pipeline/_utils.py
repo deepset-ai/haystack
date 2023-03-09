@@ -15,10 +15,6 @@ class PipelineError(Exception):
     pass
 
 
-class NoSuchStoreError(PipelineError):
-    pass
-
-
 class PipelineRuntimeError(Exception):
     pass
 

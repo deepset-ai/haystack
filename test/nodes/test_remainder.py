@@ -14,7 +14,7 @@ class Remainder:
 
     Single input, multi output decision node. Order of output edges is critical.
     Doesn't accept parameters (divisor is tied to the number of output edges).
-    Doesn't use stores.
+
 
     :param divisor: the number to divide the input value for.
     :param input: the name of the input edge.
@@ -34,33 +34,27 @@ class Remainder:
         self.inputs = [input]
         self.outputs = outputs
 
-    def run(
-        self,
-        name: str,
-        data: List[Tuple[str, Any]],
-        parameters: Dict[str, Any],
-        stores: Dict[str, Any],
-    ):
+    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
         remainder = data[0][1] % self.divisor
         return ({self.outputs[remainder]: data[0][1]}, parameters)
 
 
 def test_remainder_default():
     node = Remainder()
-    results = node.run(name="test_node", data=[("value", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("value", 10)], parameters={})
     assert results == ({"0": 10}, {})
 
-    results = node.run(name="test_node", data=[("value", 11)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("value", 11)], parameters={})
     assert results == ({"1": 11}, {})
     assert node.init_parameters == {"divisor": 2, "input": "value", "outputs": ["0", "1"]}
 
 
 def test_remainder_default_output_for_divisor():
     node = Remainder(divisor=5)
-    results = node.run(name="test_node", data=[("value", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("value", 10)], parameters={})
     assert results == ({"0": 10}, {})
 
-    results = node.run(name="test_node", data=[("value", 13)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("value", 13)], parameters={})
     assert results == ({"3": 13}, {})
     assert node.init_parameters == {"divisor": 5, "input": "value", "outputs": ["0", "1", "2", "3", "4"]}
 
@@ -73,6 +67,6 @@ def test_remainder_init_params():
         node = Remainder(divisor=3, input="test", outputs=["zero", "one", "two", "three"])
 
     node = Remainder(divisor=3, input="test", outputs=["zero", "one", "two"])
-    results = node.run(name="test_node", data=[("value", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("value", 10)], parameters={})
     assert results == ({"one": 10}, {})
     assert node.init_parameters == {"divisor": 3, "input": "test", "outputs": ["zero", "one", "two"]}

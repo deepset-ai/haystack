@@ -67,7 +67,6 @@ def node(class_):
             name: str,
             data: List[Tuple[str, Any]],
             parameters: Dict[str, Any],
-            stores: Dict[str, Any],
         ):
             """
             Mandatory method.
@@ -98,8 +97,6 @@ def node(class_):
                 want to influence the behavior of nodes downstream.
                 Nodes can access their own parameters using `name`, but they must not assume their name is present in the dictionary.
                 Therefore the best way to get the parameters is with `my_parameters = parameters.get(name, {})`
-
-            - `stores`: a dictionary of all the (Document)Stores connected to this pipeline.
 
             Pipeline expect the output of this function to be either a dictionary or a tuple.
             If it's a dictionary, it should always abide to the following format:

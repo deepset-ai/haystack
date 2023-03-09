@@ -10,7 +10,7 @@ class Subtract:
         Subtracts the second edge's value from the first.
 
         Double input, single output node. Order of input edges is critical.
-        Doesn't have parameters. Doesn't use stores.
+        Doesn't have parameters.
 
         :param first_input: name of the edge carrying the value to subtract from.
         :param second_input: name of the edge carrying the value to subtract.
@@ -20,13 +20,7 @@ class Subtract:
         self.inputs = [first_input, second_input]
         self.outputs = [output]
 
-    def run(
-        self,
-        name: str,
-        data: List[Tuple[str, Any]],
-        parameters: Dict[str, Any],
-        stores: Dict[str, Any],
-    ):
+    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
         first_value = [value for name, value in data if name == self.inputs[0]][0]
         second_value = [value for name, value in data if name == self.inputs[1]][0]
 
@@ -35,6 +29,6 @@ class Subtract:
 
 def test_subtract():
     node = Subtract(first_input="first", second_input="second", output="diff")
-    results = node.run(name="test_node", data=[("second", 7), ("first", 10)], parameters={}, stores={})
+    results = node.run(name="test_node", data=[("second", 7), ("first", 10)], parameters={})
     assert results == ({"diff": 3}, {})
     assert node.init_parameters == {"first_input": "first", "second_input": "second", "output": "diff"}
