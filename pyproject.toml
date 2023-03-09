@@ -195,7 +195,7 @@ colab = [
   "pillow<=9.0.0",
 ]
 version2 = [
-  "canals",
+  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settle, remove 'allow-direct-references = true' below
 ]
 dev = [
   "pre-commit",
@@ -246,6 +246,9 @@ Homepage = "https://github.com/deepset-ai/haystack"
 [tool.hatch.version]
 path = "VERSION.txt"
 pattern = "(?P<version>.+)"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
 include = [
