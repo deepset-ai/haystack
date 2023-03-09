@@ -194,6 +194,9 @@ ray = [
 colab = [
   "pillow<=9.0.0",
 ]
+version2 = [
+  "canals",
+]
 dev = [
   "pre-commit",
   # Type check
