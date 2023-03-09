@@ -87,6 +87,8 @@ class Tool:
                     f"output variable '{self.output_variable}' not found in."
                 )
             result = result.get(self.output_variable)
+        # we keep these if statements (in this order and without else) as the result can be a list, str, Answer
+        # or Document; we want to return the result as str in all cases.
         if isinstance(result, list):
             result = result[0] if result else []
         if isinstance(result, Answer):
