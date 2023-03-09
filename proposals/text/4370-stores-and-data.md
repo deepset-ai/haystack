@@ -1,7 +1,7 @@
 - Title: Stores and Data
 - Decision driver: @ZanSara
-- Start Date: (today's date, in format YYYY-MM-DD)
-- Proposal PR: (fill in after opening the PR)
+- Start Date: 2023-03-09
+- Proposal PR: 4370
 - Github Issue or Discussion: (only if available, link the original request for this change)
 
 # Summary
