@@ -375,8 +375,9 @@ class Pipeline:
                 len(node_results) != 2
                 or not isinstance(node_results[0], dict)
                 or not isinstance(node_results[1], dict)
-                or not all(isinstance(params, dict) for params in node_results[1])
+                or not all(isinstance(params, dict) for params in node_results[1].values())
             ):
+                logger.debug("Node output is malformed!\n%s", node_results)
                 raise PipelineRuntimeError(
                     f"The node '{node_name}' did not return proper output. Check out the '@node' docstring."
                 )
