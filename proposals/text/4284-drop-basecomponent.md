@@ -414,6 +414,14 @@ Output:
 }
 ```
 
+**IMPORTANT NOTE:** This is an example meant to showcase the concept. However, it has a major flaw: it is coupling queries and documents tightly.
+
+This does not surface as an issue in this simple example, but it limits severely the reusability of Retrievers and Readers because they do not simply output documents anymore, they output a complex structure that is only accessible by them. We should do our best to decouple values as much as possible, so that other nodes can access only the specific output required for them to operate.
+
+In this specific example, we might imagine a multi-modal Retriever connected to several single-modality Readers. To make that work, we would need a DocumentClassifier, an intermediate node to route the documents by type to each Reader: in the current design, that won't be easy. If instead queries and documents were send out in two separate lists, the task for DocumentClassifier would be far easier.
+
+This is a bright example of how good and careful design of nodes is going to be vital for the health of the framework, and will force us to be way more strict around best practices and standards.
+
 # Detailed design
 
 This section focuses on the concept rather than the implementation strategy. For a discussion on the implementation, see the draft here: https://github.com/ZanSara/haystack-2.0-draft
@@ -659,7 +667,7 @@ class NodeA:
 
     def __init__(self):
         self.inputs = ["input"]
-        self.outputs = ["internediate_value"]
+        self.outputs = ["intermediate_value"]
 
     def run(self):
         pass
@@ -711,6 +719,10 @@ This type of error reporting was found especially useful for nodes that declare 
 One shortcoming is that currently Pipeline "trusts" the nodes to respect their own declarations. So if a node states that it will output `intermediate_value`, but outputs something else once run, `Pipeline` will fail. We accept this failure as a "contract breach": the node should fix its behavior and `Pipeline` should not try to prevent such scenarios.
 
 Note: the draft implementation does not validate the type of the values, but only their names. So two nodes might agree to pass a variable called `documents` to each other, but one might output a `Set` when the receiver expects a `List`, and that will cause a crash. However, such check will be added.
+
+Other features planned for addition are:
+- automatically connect nodes if matching edges are found, even if the match is partial
+- double check for unconnected nodes and edges
 
 ### Parameters hierarchy
 
