@@ -97,7 +97,7 @@ class AddValue:
         for _, value in data:
             value += add
 
-        return ({"value": value}, parameters)
+        return ({self.outputs[0]: value}, parameters)
 
 
 @node
@@ -621,7 +621,7 @@ class MyNode:
         value = data[0][1]
         print(f"Hello I'm {name}! This instance have been called {self.how_many_times_have_I_been_called} times and this is the value I received: {value}")
 
-        return ({"output_name": value}, parameters)
+        return ({self.outputs[0]: value}, parameters)
 ```
 
 This contract is stored in the docstring of `@node` and acts as the single source of truth.
