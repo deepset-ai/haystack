@@ -80,6 +80,7 @@ def test_max_iterations(caplog, monkeypatch):
             name="Retriever",
             pipeline_or_node=retriever,
             description="useful for when you need to retrieve documents from your index",
+            output_variable="documents",
         )
     )
 
@@ -111,24 +112,11 @@ def test_run_tool():
             name="Retriever",
             pipeline_or_node=retriever,
             description="useful for when you need to retrieve documents from your index",
+            output_variable="documents",
         )
     )
     result = agent._run_tool(tool_name="Retriever", tool_input="", transcript="")
-    assert result[0]["documents"] == []
-
-
-@pytest.mark.unit
-def test_extract_observation():
-    agent = Agent(prompt_node=MockPromptNode())
-    observation = agent._extract_observation(
-        result={
-            "answers": [
-                Answer(answer="first answer", type="generative"),
-                Answer(answer="second answer", type="generative"),
-            ]
-        }
-    )
-    assert observation == "first answer"
+    assert result == []
 
 
 @pytest.mark.unit
@@ -190,6 +178,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
             description="useful for when you need to answer "
             "questions about where people live. You "
             "should ask targeted questions",
+            output_variable="answers",
         )
     )
     agent.add_tool(
@@ -240,6 +229,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
             description="useful for when you need to answer "
             "questions about where people live. You "
             "should ask targeted questions",
+            output_variable="answers",
         )
     )
     agent.add_tool(
