@@ -116,9 +116,9 @@ def openai_request(
     return res
 
 
-def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
-    """Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`,
-    log a warning to the user.
+def _check_openai_finish_reason(result: Dict, payload: Dict) -> None:
+    """Check the `finish_reason` the answers returned by OpenAI completions endpoint.
+    If the `finish_reason` is `length` or `content_filter`, log a warning to the user.
 
     :param result: The result returned from the OpenAI API.
     :param payload: The payload sent to the OpenAI API.
@@ -128,6 +128,16 @@ def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
         logger.warning(
             "%s out of the %s completions have been truncated before reaching a natural stopping point. "
             "Increase the max_tokens parameter to allow for longer completions.",
+            number_of_truncated_completions,
+            payload["n"],
+        )
+
+    number_of_content_filtered_completions = sum(
+        1 for ans in result["choices"] if ans["finish_reason"] == "content_filter"
+    )
+    if number_of_content_filtered_completions > 0:
+        logger.warning(
+            "%s out of the %s completions have omitted content due to a flag from OpenAI content filters.",
             number_of_truncated_completions,
             payload["n"],
         )

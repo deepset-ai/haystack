@@ -20,7 +20,7 @@ from haystack.utils.openai_utils import (
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
-    _check_openai_text_completion_answers,
+    _check_openai_finish_reason,
     count_openai_tokens,
 )
 
@@ -403,7 +403,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         res = openai_request(url=self.url, headers=self.headers, payload=payload)
-        _check_openai_text_completion_answers(result=res, payload=payload)
+        _check_openai_finish_reason(result=res, payload=payload)
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
 
@@ -558,7 +558,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
         response = openai_request(url=self.url, headers=self.headers, payload=payload)
-        _check_openai_text_completion_answers(result=response, payload=payload)
+        _check_openai_finish_reason(result=response, payload=payload)
         assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
         return assistant_response
 
