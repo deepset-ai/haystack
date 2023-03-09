@@ -7,19 +7,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
 ARG haystack_extras
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc git curl cmake \
-    tesseract-ocr libtesseract-dev poppler-utils
-
-# Install PDF converter
-RUN curl -O https://dl.xpdfreader.com/xpdf-4.04.tar.gz && \
-    tar -xvf xpdf-4.04.tar.gz && \
-    cd xpdf-4.04 && \
-    cmake . && \
-    make && \
-    cp xpdf/pdftotext /opt && \
-    cd .. && \
-    rm -rf xpdf-4.04
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
@@ -37,9 +28,6 @@ RUN pip install --upgrade pip && \
 FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
-COPY --from=build-image /opt/pdftotext /usr/local/bin
-# pdftotext requires fontconfig runtime
-RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"
 

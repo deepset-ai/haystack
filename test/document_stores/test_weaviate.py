@@ -2,9 +2,7 @@ import pytest
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
-
-from .test_base import DocumentStoreBaseTestAbstract
-
+from haystack.testing import DocumentStoreBaseTestAbstract
 
 import uuid
 from unittest.mock import MagicMock

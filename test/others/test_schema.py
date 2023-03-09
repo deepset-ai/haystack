@@ -52,19 +52,6 @@ def test_document_from_dict():
     assert doc == Document.from_dict(doc.to_dict())
 
 
-@fail_at_version(1, 15)
-def test_deprecated_id_hash_keys_in_document_from_dict():
-    doc = Document(
-        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
-    )
-    # id_hash_keys in Document.from_dict() is deprecated and should be removed.
-    with pytest.warns(DeprecationWarning):
-        assert doc == Document.from_dict(
-            {"content": "this is the content of the document", "meta": {"some": "meta"}},
-            id_hash_keys=["content", "meta"],
-        )
-
-
 def test_no_answer_label():
     labels = [
         Label(
@@ -230,6 +217,29 @@ def test_generate_doc_id_using_custom_list():
 
     with pytest.raises(ValueError):
         _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content", "non_existing_field"])
+
+
+def test_generate_doc_id_custom_list_meta():
+    text1 = "text1"
+    text2 = "text2"
+
+    doc1_text1 = Document(
+        content=text1, meta={"name": "doc1", "url": "https://deepset.ai"}, id_hash_keys=["content", "meta.url"]
+    )
+    doc2_text1 = Document(
+        content=text1, meta={"name": "doc2", "url": "https://deepset.ai"}, id_hash_keys=["content", "meta.url"]
+    )
+    assert doc1_text1.id == doc2_text1.id
+
+    doc1_text1 = Document(content=text1, meta={"name": "doc1", "url": "https://deepset.ai"}, id_hash_keys=["meta.url"])
+    doc2_text2 = Document(content=text2, meta={"name": "doc2", "url": "https://deepset.ai"}, id_hash_keys=["meta.url"])
+    assert doc1_text1.id == doc2_text2.id
+
+    doc1_text1 = Document(content=text1, meta={"name": "doc1", "url": "https://deepset.ai"}, id_hash_keys=["meta.url"])
+    doc2_text2 = Document(
+        content=text2, meta={"name": "doc2", "url": "https://deepset.ai"}, id_hash_keys=["meta.url", "meta.name"]
+    )
+    assert doc1_text1.id != doc2_text2.id
 
 
 def test_aggregate_labels_with_labels():
