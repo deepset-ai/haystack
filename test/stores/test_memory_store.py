@@ -1,9 +1,9 @@
 import pytest
-from canals.store import MemoryStore, MissingItemError
+from canals.store import StoreInMemory, MissingItemError
 
 
 def test_store():
-    store = MemoryStore()
+    store = StoreInMemory()
 
     assert not store.has_item("0")
     with pytest.raises(MissingItemError):
