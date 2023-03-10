@@ -246,9 +246,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        if not isinstance(prompt, str):
+        if isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
             raise ValueError(
-                "Provided prompt is not a string. Model {self.model_name_or_path} prompt should be a string."
+                f"Model {self.model_name_or_path} does not accept messages in prompt."
+                f"This model expects a string or a list of string in prompt."
             )
 
         n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
@@ -419,9 +420,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        if not isinstance(prompt, str):
+        if isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
             raise ValueError(
-                "Provided prompt is not a string. Model {self.model_name_or_path} prompt should be a string."
+                f"Model {self.model_name_or_path} does not accept messages in prompt."
+                f"This model expects a string or a list of string in prompt."
             )
 
         n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer)
