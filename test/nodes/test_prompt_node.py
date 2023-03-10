@@ -926,3 +926,11 @@ class TestRunBatch:
 def test_HFLocalInvocationLayer_supports():
     assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
     assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
+
+
+@pytest.mark.integration
+def test_chat_gpt_prompt_node(chat_gpt_prompt_model):
+    skip_test_for_invalid_key(chat_gpt_prompt_model)
+    pn = PromptNode(chat_gpt_prompt_model)
+    result = pn("Hey, I need some Python help. When should I use list comprehension?")
+    assert len(result) == 1 and all(w in result[0] for w in ["comprehension", "list"])
