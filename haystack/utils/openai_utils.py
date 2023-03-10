@@ -4,7 +4,7 @@ import logging
 import platform
 import sys
 import json
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, List
 import requests
 
 from transformers import GPT2TokenizerFast
@@ -69,7 +69,7 @@ def count_openai_tokens(text: str, tokenizer) -> int:
         return len(tokenizer.tokenize(text))
 
 
-def count_openai_tokens_messages(messages: list[Dict[str, str]], tokenizer) -> int:
+def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> int:
     """Count the number of tokens in `messages` based on the provided OpenAI `tokenizer`.
 
     :param messages: messages to be tokenized.
