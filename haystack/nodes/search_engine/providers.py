@@ -155,5 +155,5 @@ class BingAPI(SearchEngine):
                         )
                     )
 
-        logger.debug(f"Bing API found {len(documents)} documents for query '{query}'")
+        logger.debug("Bing API found %s documents for the query '%s'", len(documents), query)
         return documents
