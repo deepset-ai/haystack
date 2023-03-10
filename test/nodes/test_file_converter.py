@@ -1,29 +1,29 @@
-from typing import List
-
-import os
-import sys
-from pathlib import Path
-import subprocess
 import csv
 import json
+import os
+import subprocess
+import sys
 import warnings
+from pathlib import Path
+from typing import List
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from haystack import Document
 from haystack.nodes import (
-    MarkdownConverter,
+    AzureConverter,
+    CsvTextConverter,
     DocxToTextConverter,
+    JsonConverter,
+    MarkdownConverter,
+    ParsrConverter,
     PDFToTextConverter,
     PDFToTextOCRConverter,
-    TikaConverter,
-    AzureConverter,
-    ParsrConverter,
-    TextConverter,
-    CsvTextConverter,
-    JsonConverter,
     PreProcessor,
+    TextConverter,
+    TikaConverter,
 )
 
 from ..conftest import SAMPLES_PATH, fail_at_version
