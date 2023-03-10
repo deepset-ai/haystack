@@ -287,9 +287,7 @@ class PDFToTextConverter(BaseConverter):
                 partial_tp = None
                 if ocr is not None:
                     full = ocr == "full"
-                    partial_tp = page.get_textpage_ocr(
-                        flags=0, full=full, dpi=300, language=ocr_language
-                    )
+                    partial_tp = page.get_textpage_ocr(flags=0, full=full, dpi=300, language=ocr_language)
                 document += page.get_text("text", textpage=partial_tp, sort=sort_by_position) + "\f"
         else:
             cpu = cpu_count() if isinstance(multiprocessing, bool) else multiprocessing
