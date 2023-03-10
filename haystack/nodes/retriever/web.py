@@ -123,7 +123,7 @@ class WebRetriever(BaseRetriever):
 
         return False
 
-    def retrieve(
+    def retrieve(  # type: ignore[override]
         self,
         query: str,
         top_p: Optional[int] = None,
@@ -166,7 +166,7 @@ class WebRetriever(BaseRetriever):
                 search_results, _ = self.sampler.run(query, search_results["documents"], top_p=top_p)
             search_results = search_results["documents"]
             if self.mode == "snippet":
-                return search_results
+                return search_results  # type: ignore
 
             links: List[SearchResult] = [
                 SearchResult(r.meta["link"], r.meta.get("score", None), r.meta.get("position", None))
@@ -284,7 +284,7 @@ class WebRetriever(BaseRetriever):
 
         return processed_docs if processed_docs else []
 
-    def retrieve_batch(
+    def retrieve_batch(  # type: ignore[override]
         self,
         queries: List[str],
         top_p: Optional[int] = None,
