@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import List, Optional, Union, Dict, Tuple
+from typing import List, Optional, Union, Dict, Tuple, Any
 
 from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.errors import AgentError
@@ -73,7 +73,7 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
 
-    def _process_result(self, result: Union[Tuple, Dict]) -> str:
+    def _process_result(self, result: Any) -> str:
         # Base case: string or an empty container
         if not result or isinstance(result, str):
             return str(result)
