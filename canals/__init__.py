@@ -8,5 +8,7 @@ from canals.pipeline._utils import (
     PipelineMaxLoops,
     PipelineRuntimeError,
     PipelineValidationError,
+    save_pipelines,
+    load_pipelines,
 )
 from canals.node import node

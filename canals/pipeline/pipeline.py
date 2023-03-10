@@ -43,13 +43,18 @@ class Pipeline:
 
     def __init__(
         self,
+        metadata: Optional[Dict[str, Any]] = None,
         max_loops_allowed: int = 100,
     ):
         """
         Creates the Pipeline.
 
+        :param metadata: arbitrary dictionary to store metadata about this pipeline. Make sure
+            all the values contained in this dictionary can be serialized and deserialized if you wish to save this
+            pipeline to file with `save_pipelines()/load_pipelines()`.
         :param max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
         """
+        self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.DiGraph()
 
@@ -300,7 +305,6 @@ class Pipeline:
         # - Input nodes            # [e[0] for e in self.graph.in_edges(node)]
         # - Output nodes           # [e[1] for e in self.graph.out_edges(node)]
         # - Output edges           # [e[2]["label"] for e in self.graph.out_edges(node, data=True)]
-
         logger.info("Pipeline execution started.")
         inputs_buffer: OrderedDict = OrderedDict()
 
