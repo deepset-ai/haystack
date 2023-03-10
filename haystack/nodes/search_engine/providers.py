@@ -48,7 +48,39 @@ class SerpAPI(SearchEngine):
             raise Exception(f"Error while querying {self.__class__.__name__}: {response.text}")
 
         json_result = json.loads(response.text)
-        return [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic_results"]]
+
+        organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic_results"]]
+
+        people_also_search = []
+        if "people_also_search_for" in json_result:
+            for result in json_result["people_also_search_for"]:
+                people_also_search.append(
+                    Document.from_dict(
+                        {
+                            "title": result["title"],
+                            "content": result["snippet"] if result.get("snippet") else result["title"],
+                            "link": result["link"],
+                        }
+                    )
+                )
+
+        related_questions = []
+        if "related_questions" in json_result:
+            for result in json_result["related_questions"]:
+                related_questions.append(
+                    Document.from_dict(
+                        {
+                            "title": result["title"],
+                            "content": result["snippet"] if result.get("snippet") else result["title"],
+                            "link": result["link"],
+                        }
+                    )
+                )
+
+        documents = organic + people_also_search + related_questions
+
+        logger.debug("SerpAPI returned %s documents for the query '%s'", len(documents), query)
+        return documents
 
 
 class SerperDev(SearchEngine):
@@ -86,10 +118,21 @@ class SerperDev(SearchEngine):
         organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"]]
         people_also_ask = []
         if "peopleAlsoAsk" in json_result:
-            people_also_ask = [
-                Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["peopleAlsoAsk"]
-            ]
-        return organic + people_also_ask
+            for result in json_result["peopleAlsoAsk"]:
+                people_also_ask.append(
+                    Document.from_dict(
+                        {
+                            "title": result["title"],
+                            "content": result["snippet"] if result.get("snippet") else result["title"],
+                            "link": result["link"],
+                        }
+                    )
+                )
+
+        documents = organic + people_also_ask
+
+        logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
+        return documents
 
 
 class BingAPI(SearchEngine):
@@ -120,7 +163,7 @@ class BingAPI(SearchEngine):
         kwargs = {**self.kwargs, **kwargs}
         url = "https://api.bing.microsoft.com/v7.0/search"
 
-        params = {"q": query, "count": 20, **kwargs}
+        params = {"q": query, "count": 50, **kwargs}
 
         headers = {"Ocp-Apim-Subscription-Key": self.api_key}
 
@@ -155,5 +198,5 @@ class BingAPI(SearchEngine):
                         )
                     )
 
-        logger.debug("Bing API found %s documents for the query '%s'", len(documents), query)
+        logger.debug("Bing API returned %s documents for the query '%s'", len(documents), query)
         return documents
