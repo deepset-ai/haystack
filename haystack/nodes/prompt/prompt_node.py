@@ -62,13 +62,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
     [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
-    def __init__(
-        self,
-        name: str,
-        prompt_text: str,
-        prompt_params: Optional[List[str]] = None,
-        output_shapers: Optional[List[Shaper]] = None,
-    ):
+    def __init__(self, name: str, prompt_text: str, output_shapers: Optional[List[Shaper]] = None):
         """
          Creates a PromptTemplate instance.
 
@@ -78,9 +72,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
         """
         super().__init__()
         if not prompt_params:
-            # Define the regex pattern to match the strings after the $ character
-            pattern = r"\$([a-zA-Z0-9_]+)"
+            # Define the regex pattern to match the strings after the {} groups
+            pattern = r"(?<!\{)\{([^{][^}]+?)\}(?!\})"
             prompt_params = re.findall(pattern, prompt_text)
+            # shaping_pattern = r"^([a-zA-z0-9_]+)((\([a-zA-z0-9_\"'\[\]:.]+(,([-a-zA-z0-9_\"'\[\]:.]|\{\{|\}\})+)*)\))?$"
 
         if prompt_text.count("$") != len(prompt_params):
             raise ValueError(
