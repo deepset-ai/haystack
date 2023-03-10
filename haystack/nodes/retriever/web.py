@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Literal
+from typing import Any, Dict, Iterator, List, Optional, Literal
 from unicodedata import combining, normalize
 
 from courlan.clean import clean_url
@@ -272,9 +272,7 @@ class WebRetriever(BaseRetriever):
                 )
 
         processed_docs = (
-            [t for d in extracted_docs for t in preprocessor.process([d])]
-            if preprocessor is not None
-            else extracted_docs
+            [t for d in extracted_docs for t in preprocessor.process([d])] if preprocessor else extracted_docs
         )
 
         logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
