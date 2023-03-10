@@ -63,7 +63,7 @@ class Tool:
         self.description = description
         self.output_variable = output_variable
 
-    def run(self, tool_input: str, params: Optional[dict] = None) -> Union[Tuple[Dict[str, Any], str], Dict[str, Any]]:
+    def run(self, tool_input: str, params: Optional[dict] = None) -> str:
         # We can only pass params to pipelines but not to nodes
         if isinstance(self.pipeline_or_node, (Pipeline, BaseStandardPipeline)):
             result = self.pipeline_or_node.run(query=tool_input, params=params)
@@ -71,25 +71,29 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
         else:
             result = self.pipeline_or_node.run(query=tool_input)
+        return self._process_result(result)
 
-        # if result was returned by a node it is of type tuple. We use only the output but not the name of the output.
-        # if result was returned by a pipeline it is of type dict that we can use directly.
-        if isinstance(result, tuple):
-            result = result[0]
-        if isinstance(result, dict):
-            if result and self.output_variable not in result:
-                raise ValueError(
-                    f"Tool {self.name} returned result {result} but "
-                    f"output variable '{self.output_variable}' not found in."
-                )
-            result = result.get(self.output_variable)
-        if isinstance(result, list):
-            result = result[0] if result else []
-        if isinstance(result, Answer):
-            result = result.answer
-        if isinstance(result, Document):
-            result = result.content
-        return result
+    def _process_result(self, result: Any) -> str:
+        # Base case: string or an empty container
+        if not result or isinstance(result, str):
+            return str(result)
+        # Recursive case: process the result based on its type and return the result
+        else:
+            if isinstance(result, (tuple, list)):
+                return self._process_result(result[0] if result else [])
+            elif isinstance(result, dict):
+                if self.output_variable not in result:
+                    raise ValueError(
+                        f"Tool {self.name} returned result {result} but "
+                        f"output variable '{self.output_variable}' not found."
+                    )
+                return self._process_result(result[self.output_variable])
+            elif isinstance(result, Answer):
+                return self._process_result(result.answer)
+            elif isinstance(result, Document):
+                return self._process_result(result.content)
+            else:
+                return str(result)
 
 
 class Agent:
@@ -233,7 +237,9 @@ class Agent:
 
         return results
 
-    def _run_tool(self, tool_name: str, tool_input: str, transcript: str, params: Optional[dict] = None):
+    def _run_tool(
+        self, tool_name: Optional[str], tool_input: Optional[str], transcript: str, params: Optional[dict] = None
+    ) -> str:
         if tool_name is None or tool_input is None:
             raise AgentError(
                 f"Could not identify the next tool or input for that tool from Agent's output. "

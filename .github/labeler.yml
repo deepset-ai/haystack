@@ -45,6 +45,9 @@ topic:rest_api:
 topic:LLM:
 - haystack/nodes/prompt/*
 - test/nodes/test_prompt_node.py
+topic:promptnode:
+- haystack/nodes/prompt/*
+- test/nodes/test_prompt_node.py
 topic:file_converter:
 - haystack/nodes/file_converter/*
 - test/nodes/test_file_converter.py

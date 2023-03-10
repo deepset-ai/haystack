@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 
-from haystack import BaseComponent, Answer
+from haystack import BaseComponent, Answer, Document
 from haystack.agents import Agent
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
@@ -116,7 +116,7 @@ def test_run_tool():
         )
     )
     result = agent._run_tool(tool_name="Retriever", tool_input="", transcript="")
-    assert result == []
+    assert result == "[]"  # empty list of documents
 
 
 @pytest.mark.unit
@@ -144,6 +144,47 @@ def test_format_answer():
     assert formatted_answer["query"] == "query"
     assert formatted_answer["answers"] == [Answer(answer="answer", type="generative")]
     assert formatted_answer["transcript"] == "transcript"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("retriever_with_docs, document_store_with_docs", [("bm25", "memory")], indirect=True)
+def test_tool_result_extraction(reader, retriever_with_docs):
+    # Test that the result of a Tool is correctly extracted as a string
+
+    # Pipeline as a Tool
+    search = ExtractiveQAPipeline(reader, retriever_with_docs)
+    t = Tool(
+        name="Search",
+        pipeline_or_node=search,
+        description="useful for when you need to answer "
+        "questions about where people live. You "
+        "should ask targeted questions",
+        output_variable="answers",
+    )
+    result = t.run("Where does Christelle live?")
+    assert isinstance(result, str)
+    assert result == "Paris" or result == "Madrid"
+
+    # PromptNode as a Tool
+    pt = PromptTemplate("test", "Here is a question: $query, Answer:")
+    pn = PromptNode(default_prompt_template=pt)
+
+    t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
+    result = t.run(tool_input="What is the capital of Germany?")
+    assert isinstance(result, str)
+    assert "berlin" in result.lower()
+
+    # Retriever as a Tool
+    t = Tool(
+        name="Retriever",
+        pipeline_or_node=retriever_with_docs,
+        description="useful for when you need to retrieve documents from your index",
+        output_variable="documents",
+    )
+    result = t.run(tool_input="Where does Christelle live?")
+    assert isinstance(result, str)
+    assert "Christelle" in result
 
 
 @pytest.mark.integration

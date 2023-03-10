@@ -35,6 +35,8 @@ class PromptModelInvocationLayer:
     could be even remote, for example, a call to a remote API endpoint.
     """
 
+    invocation_layer_providers: List[Type["PromptModelInvocationLayer"]] = []
+
     def __init__(self, model_name_or_path: str, **kwargs):
         """
         Creates a new PromptModelInvocationLayer instance.
@@ -46,6 +48,15 @@ class PromptModelInvocationLayer:
             raise ValueError("model_name_or_path cannot be None or empty string")
 
         self.model_name_or_path = model_name_or_path
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Used to register user-defined invocation layers.
+
+        Called when a subclass of PromptModelInvocationLayer is imported.
+        """
+        super().__init_subclass__(**kwargs)
+        cls.invocation_layer_providers.append(cls)
 
     @abstractmethod
     def invoke(self, *args, **kwargs):
@@ -74,10 +85,6 @@ class PromptModelInvocationLayer:
         :param prompt: Prompt text to be sent to the generative model.
         """
         pass
-
-
-def known_providers() -> List[Type[PromptModelInvocationLayer]]:
-    return [HFLocalInvocationLayer, OpenAIInvocationLayer, AzureOpenAIInvocationLayer]
 
 
 class StopWordsCriteria(StoppingCriteria):
