@@ -105,6 +105,9 @@ class NeuralWebSearch(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
+        if not query:
+            raise ValueError("Query parameter is required for NeuralWebSearch")
+
         result, _ = self.websearch.run(query=query)
 
         doc_hits: List[Document] = result["documents"]

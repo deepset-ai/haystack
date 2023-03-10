@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List
+from typing import Dict, List, Union
 
 import requests
 
@@ -23,7 +23,7 @@ class SerpAPI(SearchEngine):
         :param kwargs: Additional parameters passed to the SerperDev API.
         """
         super().__init__()
-        self.params_dict = {}
+        self.params_dict: Dict[str, Union[str, int, float]] = {}
         self.api_key = api_key
         self.kwargs = kwargs
         self.engine = engine
@@ -163,7 +163,7 @@ class BingAPI(SearchEngine):
         kwargs = {**self.kwargs, **kwargs}
         url = "https://api.bing.microsoft.com/v7.0/search"
 
-        params = {"q": query, "count": 50, **kwargs}
+        params: Dict[str, Union[str, int, float]] = {"q": query, "count": 50, **kwargs}
 
         headers = {"Ocp-Apim-Subscription-Key": self.api_key}
 
