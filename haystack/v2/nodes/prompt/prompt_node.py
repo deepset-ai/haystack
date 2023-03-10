@@ -1,11 +1,14 @@
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Literal
 
 from haystack.v2 import node
-from haystack.v2.models import ModelProviders, models_manager
+from haystack.v2.models import models_manager
 
 
 logger = logging.getLogger(__name__)
+
+
+ModelProviders = Literal["openai", "azure", "huggingface", "filesystem"]
 
 
 PREDEFINED_TEMPLATES = {
@@ -96,11 +99,24 @@ class PromptNode:
         self.outputs = outputs
         # TODO make a real prompt library system out of this.
         self.template = PREDEFINED_TEMPLATES[template] if template in PREDEFINED_TEMPLATES.keys() else template
-        self.model_name = models_manager.get_model(name=model_name, provider=model_provider, model_kwargs=model_kwargs)
-        self.init_parameters = {"inputs": inputs, "outputs": outputs, "template": template, **self.model.save()}
+        self.model = None
+        self.model_name = model_name
+        self.model_provider = model_provider
+        self.model_kwargs = model_kwargs
+        self.init_parameters = {
+            "inputs": inputs,
+            "outputs": outputs,
+            "template": template,
+            "model_name": model_name,
+            "model_kwargs": model_kwargs,
+            "mode_provider": model_provider,
+        }
 
     def warm_up(self):
-        self.model.warm_up()
+        if not self.model:
+            self.model = models_manager.get_model(
+                name=self.model_name, provider=self.model_provider, model_kwargs=self.model_kwargs
+            )
 
     def run(
         self, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]
