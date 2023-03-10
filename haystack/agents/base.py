@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import List, Optional, Union, Dict, Tuple
+from collections.abc import Container
 
 from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.errors import AgentError
@@ -74,28 +75,24 @@ class Tool:
         return self._process_result(result)
 
     def _process_result(self, result: Union[Tuple, Dict]) -> str:
-        # Process the result returned by the tool. The result can be a tuple or dict, however we
-        # have to dig into the result to get the actual str output of the tool.
-        # if result was returned by a node it is of type tuple. We use only the output but not the name of the output.
-        # if result was returned by a pipeline it is of type dict that we can use directly.
-        if isinstance(result, tuple):
-            result = result[0] if result else []
-        if isinstance(result, dict):
-            if result and self.output_variable not in result:
-                raise ValueError(
-                    f"Tool {self.name} returned result {result} but "
-                    f"output variable '{self.output_variable}' not found in."
-                )
-            result = result.get(self.output_variable)
-        # we keep these if statements (in this order and without else) as the result can be a list, str, Answer
-        # or Document; we want to return the result as str in all cases.
-        if isinstance(result, list):
-            result = result[0] if result else []
-        if isinstance(result, Answer):
-            result = result.answer
-        if isinstance(result, Document):
-            result = result.content
-        return result
+        # Base case: string or an empty container
+        if not result or isinstance(result, str):
+            return result
+        # Recursive case: process the result based on its type and return the result
+        else:
+            if isinstance(result, (tuple, list)):
+                return self._process_result(result[0] if result else [])
+            elif isinstance(result, dict):
+                if self.output_variable not in result:
+                    raise ValueError(
+                        f"Tool {self.name} returned result {result} but "
+                        f"output variable '{self.output_variable}' not found."
+                    )
+                return self._process_result(result[self.output_variable])
+            elif isinstance(result, Answer):
+                return self._process_result(result.answer)
+            elif isinstance(result, Document):
+                return self._process_result(result.content)
 
 
 class Agent:
