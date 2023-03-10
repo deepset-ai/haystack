@@ -1,5 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Literal
@@ -21,6 +22,13 @@ from haystack.schema import FilterType
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class SearchResult:
+    url: str
+    score: Optional[str]
+    position: Optional[str]
+
+
 class WebRetriever(BaseRetriever):
     def __init__(
         self,
@@ -32,6 +40,7 @@ class WebRetriever(BaseRetriever):
         cache_index: Optional[str] = None,
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: int = 2 * 24 * 60 * 60,
+        apply_sampler_to_processed_docs: Optional[bool] = True,
     ):
         """
         Collect complete documents from the web using the links provided by a WebSearch node
@@ -44,6 +53,7 @@ class WebRetriever(BaseRetriever):
         self.cache_index = cache_index
         self.cache_headers = cache_headers
         self.cache_time = cache_time
+        self.apply_sampler_to_processed_docs = apply_sampler_to_processed_docs
         if top_p is not None:
             self.sampler = TopPSampler(top_p=top_p, top_score_name="score")
 
@@ -135,28 +145,21 @@ class WebRetriever(BaseRetriever):
         use_cache: If True, the results are cached in the DocumentStore.
         cache_time: The time limit (seconds) to check the cache. Default is 24 hours.
         """
-        if preprocessor is None:
-            preprocessor = self.preprocessor
-        if cache_document_store is None:
-            cache_document_store = self.cache_document_store
-        if cache_index is None:
-            cache_index = self.cache_index
-        if cache_headers is None:
-            cache_headers = self.cache_headers
-        if cache_time is None:
-            cache_time = self.cache_time
+
+        preprocessor = preprocessor or self.preprocessor
+        cache_document_store = cache_document_store or self.cache_document_store
+        cache_index = cache_index or self.cache_index
+        cache_headers = cache_headers or self.cache_headers
+        cache_time = cache_time or self.cache_time
 
         query_norm = self._normalize_query(query)
 
-        extracted_docs = []
-        if cache_document_store:
-            documents = self._check_cache(
-                query_norm, cache_index=cache_index, cache_headers=cache_headers, cache_time=cache_time
-            )
-            if documents and len(documents) > 0:
-                extracted_docs = documents
+        extracted_docs = self._check_cache(
+            query_norm, cache_index=cache_index, cache_headers=cache_headers, cache_time=cache_time
+        )
 
-        if len(extracted_docs) == 0:
+        # cache miss
+        if not extracted_docs:
             search_results, _ = self.web_search.run(query=query)
 
             if self.sampler and search_results["documents"]:
@@ -165,24 +168,19 @@ class WebRetriever(BaseRetriever):
             if self.mode == "snippet":
                 return search_results
 
-            links: List[Tuple[str, Union[str, None], Union[str, None]]] = [
-                (
-                    r.meta["link"],
-                    r.meta["score"] if r.meta.get("score") else None,
-                    r.meta["position"] if r.meta.get("position") else None,
-                )
+            links: List[SearchResult] = [
+                SearchResult(r.meta["link"], r.meta.get("score", None), r.meta.get("position", None))
                 for r in search_results
                 if r.meta.get("link")
             ]
-            extracted_docs = []
 
-            def scrape_direct(link) -> Dict[str, Any]:
+            def scrape_direct(link: SearchResult) -> Dict[str, Any]:
                 try:
-                    response = fetch_url(link[0])
+                    response = fetch_url(link.url)
 
                     if response is None:
-                        logger.debug("No response from URL %s, trying Google Cache", link[0])
-                        response = fetch_url(f"https://webcache.googleusercontent.com/search?q=cache:{link[0]}")
+                        logger.debug("No response from URL %s, trying Google Cache", link.url)
+                        response = fetch_url(f"https://webcache.googleusercontent.com/search?q=cache:{link.url}")
 
                     if response is not None:
                         extracted = bare_extraction(
@@ -198,10 +196,10 @@ class WebRetriever(BaseRetriever):
                             },
                         )
 
-                        if extracted is not None and isinstance(extracted, dict):
-                            extracted["url"] = clean_url(link[0])
-                            extracted["search.score"] = link[1]
-                            extracted["search.position"] = link[2]
+                        if isinstance(extracted, dict):
+                            extracted["url"] = clean_url(link.url)
+                            extracted["search.score"] = link.score
+                            extracted["search.position"] = link.position
 
                             return {
                                 k: v
@@ -212,7 +210,7 @@ class WebRetriever(BaseRetriever):
                     return {}
 
                 except Exception as e:
-                    logger.error("Error retrieving URL %s: %s", link[0], e)
+                    logger.error("Error retrieving URL %s: %s", link.url, e)
                     return {}
 
             thread_count = cpu_count() if len(links) > cpu_count() else len(links)
@@ -221,50 +219,42 @@ class WebRetriever(BaseRetriever):
 
                 failed = 0
                 extracted_docs = []
-                for r, s in zip(results, search_results):
-                    if r is not None and "text" in r:
+                for r, doc in zip(results, search_results):
+                    if r and "text" in r:
                         r["id_hash_keys"] = ["meta.url", "meta.search.query"]
                         r["search.query"] = query_norm
 
-                        if "description" in r:
-                            del r["description"]
-
+                        r.pop("description", None)
                         document = Document.from_dict(r, field_map={"text": "content"})
 
                         document.meta["timestamp"] = int(datetime.utcnow().timestamp())
-                        document.meta["search.position"] = s.meta.get("position")
-                        document.meta["search.score"] = s.meta.get("score")
+                        document.meta["search.position"] = doc.meta.get("position")
+                        document.meta["search.score"] = doc.meta.get("score")
 
                         extracted_docs.append(document)
                     else:
-                        logger.warning("Could not extract text from URL %s. Using search snippet.", s.meta["link"])
+                        logger.warning("Could not extract text from URL %s. Using search snippet.", doc.meta["link"])
 
-                        if "date" in s.meta:
-                            s.meta["date"] = find_date(s.meta["date"], extensive_search=True, outputformat="%Y-%m-%d")
+                        if "date" in doc.meta:
+                            doc.meta["date"] = find_date(
+                                doc.meta["date"], extensive_search=True, outputformat="%Y-%m-%d"
+                            )
 
-                        if "link" in s.meta:
-                            s.meta["url"] = clean_url(s.meta["link"])
-                            del s.meta["link"]
+                        if "link" in doc.meta:
+                            doc.meta["url"] = clean_url(doc.meta["link"])
+                            del doc.meta["link"]
 
-                        score = s.meta.get("score")
-                        if score is not None:
-                            del s.meta["score"]
+                        doc.meta["id_hash_keys"] = ["meta.url", "meta.search.query"]
+                        doc.meta["search.query"] = query_norm
 
-                        position = s.meta.get("position")
-                        if position is not None:
-                            del s.meta["position"]
+                        doc._get_id(id_hash_keys=doc.meta["id_hash_keys"])
 
-                        s.meta["id_hash_keys"] = ["meta.url", "meta.search.query"]
-                        s.meta["search.query"] = query_norm
+                        doc.meta["search.position"] = doc.meta.pop("position", None)
+                        doc.meta["search.score"] = doc.meta.pop("score", None)
+                        doc.meta["search.snippet"] = 1
+                        doc.meta["timestamp"] = int(datetime.utcnow().timestamp())
 
-                        s._get_id(id_hash_keys=s.meta["id_hash_keys"])
-
-                        s.meta["search.position"] = position
-                        s.meta["search.score"] = score
-                        s.meta["search.snippet"] = 1
-                        s.meta["timestamp"] = int(datetime.utcnow().timestamp())
-
-                        extracted_docs.append(s)
+                        extracted_docs.append(doc)
                         failed += 1
 
                 logger.debug(
@@ -281,32 +271,15 @@ class WebRetriever(BaseRetriever):
                     "Could not save documents to cache document store. Please check your document store configuration."
                 )
 
-        processed_docs = []
-
-        if preprocessor is not None:
-            processed_docs.extend(
-                [
-                    t
-                    for d in extracted_docs
-                    for t in preprocessor.process(
-                        [d],
-                        clean_whitespace=True,
-                        clean_empty_lines=True,
-                        split_by=preprocessor.split_by if preprocessor.split_by is not None else "words",  # type: ignore
-                        split_length=preprocessor.split_length if preprocessor.split_length is not None else 180,
-                        split_overlap=preprocessor.split_overlap if preprocessor.split_overlap is not None else 20,
-                        split_respect_sentence_boundary=preprocessor.split_respect_sentence_boundary
-                        if preprocessor.split_respect_sentence_boundary is not None
-                        else False,
-                    )
-                ]
-            )
-        else:
-            processed_docs = extracted_docs
+        processed_docs = (
+            [t for d in extracted_docs for t in preprocessor.process([d])]
+            if preprocessor is not None
+            else extracted_docs
+        )
 
         logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
 
-        if self.sampler:
+        if self.sampler and self.apply_sampler_to_processed_docs:
             processed_docs, _ = self.sampler.run(query, processed_docs)
             processed_docs = processed_docs["documents"]
 
