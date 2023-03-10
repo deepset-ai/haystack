@@ -69,6 +69,28 @@ def count_openai_tokens(text: str, tokenizer) -> int:
         return len(tokenizer.tokenize(text))
 
 
+def count_openai_tokens_messages(messages: list[Dict[str, str]], tokenizer) -> int:
+    """Count the number of tokens in `messages` based on the provided OpenAI `tokenizer`.
+
+    :param messages: messages to be tokenized.
+    :param tokenizer: An OpenAI tokenizer.
+    """
+    # adapted from https://platform.openai.com/docs/guides/chat/introduction
+    # should be kept up to date
+    num_tokens = 0
+    for message in messages:
+        num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
+        for key, value in message.items():
+            if USE_TIKTOKEN:
+                num_tokens += len(tokenizer.encode(value))
+            else:
+                num_tokens += len(tokenizer.tokenize(value))
+            if key == "name":  # if there's a name, the role is omitted
+                num_tokens += -1  # role is always required and always 1 token
+    num_tokens += 2  # every reply is primed with <im_start>assistant
+    return num_tokens
+
+
 def _openai_text_completion_tokenization_details(model_name: str):
     """Return the tokenizer name and max tokens limit for a given OpenAI `model_name`.
 
@@ -79,6 +101,10 @@ def _openai_text_completion_tokenization_details(model_name: str):
         max_tokens_limit = 4000
         if USE_TIKTOKEN:
             tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
+    elif "gpt-3.5-turbo" in model_name:
+        max_tokens_limit = 4096
+        if USE_TIKTOKEN:
+            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "cl100k_base")
     else:
         max_tokens_limit = 2048
     return tokenizer_name, max_tokens_limit

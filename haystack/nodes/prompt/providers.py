@@ -22,6 +22,7 @@ from haystack.utils.openai_utils import (
     load_openai_tokenizer,
     _check_openai_finish_reason,
     count_openai_tokens,
+    count_openai_tokens_messages,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class PromptModelInvocationLayer:
         return False
 
     @abstractmethod
-    def _ensure_token_limit(self, prompt: str) -> str:
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
 
         :param prompt: Prompt text to be sent to the generative model.
@@ -239,12 +240,17 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
         return generated_texts
 
-    def _ensure_token_limit(self, prompt: str) -> str:
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
 
         :param prompt: Prompt text to be sent to the generative model.
         """
+        if not isinstance(prompt, str):
+            raise ValueError(
+                "Provided prompt is not a string. Model {self.model_name_or_path} prompt should be a string."
+            )
+
         n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
@@ -407,12 +413,17 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
 
-    def _ensure_token_limit(self, prompt: str) -> str:
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
 
         :param prompt: Prompt text to be sent to the generative model.
         """
+        if not isinstance(prompt, str):
+            raise ValueError(
+                "Provided prompt is not a string. Model {self.model_name_or_path} prompt should be a string."
+            )
+
         n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer)
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
@@ -553,6 +564,29 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         _check_openai_finish_reason(result=response, payload=payload)
         assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
         return assistant_response
+
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        if isinstance(prompt, str):
+            messages = [{"role": "user", "content": prompt}]
+        elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
+            messages = prompt
+
+        n_prompt_tokens = count_openai_tokens_messages(messages, self._tokenizer)
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+            return prompt
+
+        # TODO: support truncation as in _ensure_token_limit methods for other invocation layers
+        raise ValueError(
+            f"Prompt/messages are too long ({n_prompt_tokens} tokens). "
+            f"The prompt/messages length and the answer length ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} tokens). "
+            f"Reduce the length of the prompt/messages."
+        )
 
     @property
     def url(self) -> str:

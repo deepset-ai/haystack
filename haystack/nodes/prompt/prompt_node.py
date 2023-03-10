@@ -245,7 +245,7 @@ class PromptModel(BaseComponent):
             "PromptModelInvocationLayer."
         )
 
-    def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
+    def invoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
         """
         It takes in a prompt, and returns a list of responses using the underlying invocation layer.
 
@@ -256,7 +256,7 @@ class PromptModel(BaseComponent):
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
 
-    def _ensure_token_limit(self, prompt: str) -> str:
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
 
         :param prompt: Prompt text to be sent to the generative model.
@@ -487,7 +487,7 @@ class PromptNode(BaseComponent):
         send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
-        prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
+        prompt_collector: List[Union[str, List[Dict[str, str]]]] = kwargs.pop("prompt_collector", [])
         if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
             raise ValueError(
                 f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} "
@@ -509,19 +509,19 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
-                prompt = self.prompt_model._ensure_token_limit(prompt)
-                prompt_collector.append(prompt)
-                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
-                output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                limited_prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(limited_prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", limited_prompt, kwargs_copy)
+                output = self.prompt_model.invoke(limited_prompt, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
-                prompt = self.prompt_model._ensure_token_limit(prompt)
-                prompt_collector.append(prompt)
-                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
-                output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                limited_prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(limited_prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", limited_prompt, kwargs_copy)
+                output = self.prompt_model.invoke(limited_prompt, **kwargs_copy)
                 results.extend(output)
         return results
 
