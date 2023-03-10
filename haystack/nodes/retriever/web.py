@@ -123,7 +123,7 @@ class WebRetriever(BaseRetriever):
 
         return False
 
-    def retrieve(
+    def retrieve(  # type: ignore[override]
         self,
         query: str,
         top_p: Optional[int] = None,
@@ -283,7 +283,7 @@ class WebRetriever(BaseRetriever):
 
         return processed_docs if processed_docs else []
 
-    def retrieve_batch(
+    def retrieve_batch(  # type: ignore[override]
         self,
         queries: List[str],
         top_p: Optional[int] = None,
