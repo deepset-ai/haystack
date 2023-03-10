@@ -116,7 +116,7 @@ def test_run_tool():
         )
     )
     result = agent._run_tool(tool_name="Retriever", tool_input="", transcript="")
-    assert result == []
+    assert result == "[]"  # empty list of documents
 
 
 @pytest.mark.unit

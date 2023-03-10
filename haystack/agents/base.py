@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import re
 from typing import List, Optional, Union, Dict, Tuple
-from collections.abc import Container
 
 from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.errors import AgentError
@@ -77,7 +76,7 @@ class Tool:
     def _process_result(self, result: Union[Tuple, Dict]) -> str:
         # Base case: string or an empty container
         if not result or isinstance(result, str):
-            return result
+            return str(result)
         # Recursive case: process the result based on its type and return the result
         else:
             if isinstance(result, (tuple, list)):
@@ -93,6 +92,8 @@ class Tool:
                 return self._process_result(result.answer)
             elif isinstance(result, Document):
                 return self._process_result(result.content)
+            else:
+                return str(result)
 
 
 class Agent:
