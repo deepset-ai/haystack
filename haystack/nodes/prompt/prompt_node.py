@@ -9,6 +9,7 @@ import torch
 
 from haystack import MultiLabel
 from haystack.nodes.base import BaseComponent
+from haystack.nodes.other.shaper import Shaper
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer
 from haystack.schema import Document
 from haystack.telemetry_2 import send_event
@@ -61,7 +62,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
     [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
-    def __init__(self, name: str, prompt_text: str, prompt_params: Optional[List[str]] = None):
+    def __init__(
+        self,
+        name: str,
+        prompt_text: str,
+        prompt_params: Optional[List[str]] = None,
+        output_shapers: Optional[List[Shaper]] = None,
+    ):
         """
          Creates a PromptTemplate instance.
 
@@ -96,6 +103,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
         self.name = name
         self.prompt_text = prompt_text
         self.prompt_params = prompt_params
+        self.output_shapers = output_shapers or []
+        if last_shaper := self.output_shapers[-1]:
+            if len(last_shaper.outputs) != 1:
+                raise ValueError(
+                    f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
+                )
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -122,6 +135,14 @@ class PromptTemplate(BasePromptTemplate, ABC):
         if kwargs:
             for param in self.prompt_params:
                 if param in kwargs:
+                    # TODO: apply shaping functions here
+                    if param == "documents":
+                        for doc in kwargs.get("documents", []):
+                            if not isinstance(doc, str) and not isinstance(doc.content, str):
+                                raise ValueError("PromptNode only accepts text documents.")
+                        kwargs["documents"] = [
+                            doc.content if isinstance(doc, Document) else doc for doc in kwargs.get("documents", [])
+                        ]
                     template_dict[param] = kwargs[param]
 
         if set(template_dict.keys()) != set(self.prompt_params):
@@ -129,6 +150,22 @@ class PromptTemplate(BasePromptTemplate, ABC):
             raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
 
         return template_dict
+
+    def post_process(self, prompt_output: List[str], **kwargs) -> List[Any]:
+        """
+        Post-processes the output of the prompt template.
+        :param args: Non-keyword arguments to use for post-processing the prompt output.
+        :param kwargs: Keyword arguments to use for post-processing the prompt output.
+        :return: A dictionary with the post-processed output.
+        """
+        if self.output_shapers:
+            invocation_context = kwargs
+            invocation_context["results"] = prompt_output
+            for shaper in self.output_shapers:
+                shaper.run(invocation_context=invocation_context)
+            return invocation_context[shaper.outputs[0]]
+        else:
+            return prompt_output
 
     def fill(self, *args, **kwargs) -> Iterator[str]:
         """
@@ -458,7 +495,7 @@ class PromptNode(BaseComponent):
         else:
             raise ValueError("model_name_or_path must be either a string or a PromptModel object")
 
-    def __call__(self, *args, **kwargs) -> List[str]:
+    def __call__(self, *args, **kwargs) -> List[Any]:
         """
         This method is invoked when the component is called directly, for example:
         ```python
@@ -474,7 +511,7 @@ class PromptNode(BaseComponent):
         else:
             return self.prompt(self.default_prompt_template, *args, **kwargs)
 
-    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
+    def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[Any]:
         """
         Prompts the model and represents the central API for the PromptNode. It takes a prompt template,
         a list of non-keyword and keyword arguments, and returns a list of strings - the responses from the underlying model.
@@ -513,6 +550,7 @@ class PromptNode(BaseComponent):
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                output = template_to_fill.post_process(output, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
@@ -652,19 +690,21 @@ class PromptNode(BaseComponent):
         if meta and "meta" not in invocation_context.keys():
             invocation_context["meta"] = meta
 
-        if "documents" in invocation_context.keys():
-            for doc in invocation_context.get("documents", []):
-                if not isinstance(doc, str) and not isinstance(doc.content, str):
-                    raise ValueError("PromptNode only accepts text documents.")
-            invocation_context["documents"] = [
-                doc.content if isinstance(doc, Document) else doc for doc in invocation_context.get("documents", [])
-            ]
-
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
-        invocation_context[self.output_variable] = results
+        if isinstance(self.default_prompt_template, PromptTemplate):
+            prompt_template = self.default_prompt_template
+        else:
+            prompt_template = self.get_prompt_template(self.default_prompt_template)
+
+        output_variable = self.output_variable
+        last_shaper = prompt_template.output_shapers[-1]
+        if last_shaper:
+            output_variable = last_shaper.outputs[0]
+
+        invocation_context[output_variable] = results
         final_result: Dict[str, Any] = {
-            self.output_variable: results,
+            output_variable: results,
             "invocation_context": invocation_context,
             "_debug": {"prompts_used": prompt_collector},
         }
