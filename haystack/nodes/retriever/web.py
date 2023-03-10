@@ -278,8 +278,9 @@ class WebRetriever(BaseRetriever):
         logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
 
         if self.sampler and self.apply_sampler_to_processed_docs:
-            processed_docs, _ = self.sampler.run(query, processed_docs)
-            processed_docs = processed_docs["documents"]
+            sampled_docs, _ = self.sampler.run(query, processed_docs)
+            if sampled_docs is not None:
+                processed_docs = sampled_docs["documents"]
 
         return processed_docs if processed_docs else []
 
@@ -309,4 +310,4 @@ class WebRetriever(BaseRetriever):
                 )
             )
 
-        return documents
+        return [documents]
