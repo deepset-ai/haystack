@@ -34,10 +34,11 @@ class SerpAPI(SearchEngine):
         :param kwargs: Additional parameters passed to the SerpAPI.
         :return: List[Document]
         """
+        kwargs = {**self.kwargs, **kwargs}
+
         url = "https://serpapi.com/search"
 
-        params = {"source": "python", "serp_api_key": self.api_key, "q": query}
-        params.update(kwargs)
+        params = {"source": "python", "serp_api_key": self.api_key, "q": query, **kwargs}
 
         if self.engine:
             params["engine"] = self.engine
@@ -70,16 +71,18 @@ class SerperDev(SearchEngine):
         :param kwargs: Additional parameters passed to the SerperDev API.
         :return: List[Document]
         """
+        kwargs = {**self.kwargs, **kwargs}
+
         url = "https://google.serper.dev/search"
 
-        payload = json.dumps({"q": query, "gl": "us", "hl": "en", "autocorrect": True})
+        payload = json.dumps({"q": query, "gl": "us", "hl": "en", "autocorrect": True, **kwargs})
         headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
-        response = requests.request("POST", url, headers=headers, data=payload)
+        response = requests.request("POST", url, headers=headers, data=payload, timeout=10)
         if response.status_code != 200:
             raise Exception(f"Error while querying {self.__class__.__name__}: {response.text}")
 
-        json_result = json.loads(response.text)
+        json_result = response.json()
         organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"]]
         people_also_ask = []
         if "peopleAlsoAsk" in json_result:
@@ -114,11 +117,10 @@ class BingAPI(SearchEngine):
                        You can find the full list of parameters here: https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#query-parameters
         :return: List[Document]
         """
+        kwargs = {**self.kwargs, **kwargs}
         url = "https://api.bing.microsoft.com/v7.0/search"
 
-        params = {"q": query, "count": 20}
-
-        params.update(kwargs)
+        params = {"q": query, "count": 20, **kwargs}
 
         headers = {"Ocp-Apim-Subscription-Key": self.api_key}
 
