@@ -84,10 +84,7 @@ class WebRetriever(BaseRetriever):
                 logger.debug("Cache filter: %s", cache_filter)
 
             documents = cache_document_store.get_all_documents(
-                filters=cache_filter,
-                index=cache_index,
-                headers=cache_headers,
-                return_embedding=False,
+                filters=cache_filter, index=cache_index, headers=cache_headers, return_embedding=False
             )
 
         logger.debug("Found %d documents in cache", len(documents))
@@ -106,10 +103,7 @@ class WebRetriever(BaseRetriever):
 
         if cache_document_store is not None:
             cache_document_store.write_documents(
-                documents=documents,
-                index=cache_index,
-                headers=cache_headers,
-                duplicate_documents="overwrite",
+                documents=documents, index=cache_index, headers=cache_headers, duplicate_documents="overwrite"
             )
 
             logger.debug("Saved %d documents in the cache", len(documents))
@@ -121,9 +115,7 @@ class WebRetriever(BaseRetriever):
                     "$lt": int((datetime.utcnow() - timedelta(seconds=cache_time)).timestamp())
                 }
 
-                cache_document_store.delete_documents(
-                    index=cache_index, headers=cache_headers, filters=cache_filter
-                )
+                cache_document_store.delete_documents(index=cache_index, headers=cache_headers, filters=cache_filter)
 
                 logger.debug("Deleted documents in the cache using filter: %s", cache_filter)
 
@@ -171,17 +163,13 @@ class WebRetriever(BaseRetriever):
             search_results, _ = self.web_search.run(query=query)
 
             if self.sampler and search_results["documents"]:
-                search_results, _ = self.sampler.run(
-                    query, search_results["documents"], top_p=top_p
-                )
+                search_results, _ = self.sampler.run(query, search_results["documents"], top_p=top_p)
             search_results = search_results["documents"]
             if self.mode == "snippet":
                 return search_results
 
             links: List[SearchResult] = [
-                SearchResult(
-                    r.meta["link"], r.meta.get("score", None), r.meta.get("position", None)
-                )
+                SearchResult(r.meta["link"], r.meta.get("score", None), r.meta.get("position", None))
                 for r in search_results
                 if r.meta.get("link")
             ]
@@ -192,9 +180,7 @@ class WebRetriever(BaseRetriever):
 
                     if response is None:
                         logger.debug("No response from URL %s, trying Google Cache", link.url)
-                        response = fetch_url(
-                            f"https://webcache.googleusercontent.com/search?q=cache:{link.url}"
-                        )
+                        response = fetch_url(f"https://webcache.googleusercontent.com/search?q=cache:{link.url}")
 
                     if response is not None:
                         extracted = bare_extraction(
@@ -218,15 +204,7 @@ class WebRetriever(BaseRetriever):
                             return {
                                 k: v
                                 for k, v in extracted.items()
-                                if k
-                                not in [
-                                    "fingerprint",
-                                    "license",
-                                    "body",
-                                    "comments",
-                                    "raw_text",
-                                    "commentsbody",
-                                ]
+                                if k not in ["fingerprint", "license", "body", "comments", "raw_text", "commentsbody"]
                             }
 
                     return {}
@@ -255,10 +233,7 @@ class WebRetriever(BaseRetriever):
 
                         extracted_docs.append(document)
                     else:
-                        logger.warning(
-                            "Could not extract text from URL %s. Using search snippet.",
-                            doc.meta["link"],
-                        )
+                        logger.warning("Could not extract text from URL %s. Using search snippet.", doc.meta["link"])
 
                         if "date" in doc.meta:
                             doc.meta["date"] = find_date(
@@ -290,25 +265,17 @@ class WebRetriever(BaseRetriever):
                 )
 
         if cache_document_store:
-            cached = self._save_cache(
-                query_norm, extracted_docs, cache_index=cache_index, cache_headers=cache_headers
-            )
+            cached = self._save_cache(query_norm, extracted_docs, cache_index=cache_index, cache_headers=cache_headers)
             if not cached:
                 logger.warning(
                     "Could not save documents to cache document store. Please check your document store configuration."
                 )
 
         processed_docs = (
-            [t for d in extracted_docs for t in preprocessor.process([d])]
-            if preprocessor
-            else extracted_docs
+            [t for d in extracted_docs for t in preprocessor.process([d])] if preprocessor else extracted_docs
         )
 
-        logger.debug(
-            "Processed %d documents resulting in %s documents",
-            len(extracted_docs),
-            len(processed_docs),
-        )
+        logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
 
         if self.sampler and self.apply_sampler_to_processed_docs:
             processed_docs, _ = self.sampler.run(query, processed_docs)
