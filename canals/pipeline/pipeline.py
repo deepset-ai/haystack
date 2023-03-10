@@ -8,15 +8,6 @@ from collections import OrderedDict
 import networkx as nx
 from networkx.drawing.nx_agraph import to_agraph
 
-from canals.pipeline._utils import (
-    PipelineRuntimeError,
-    PipelineConnectError,
-    PipelineValidationError,
-    PipelineMaxLoops,
-    locate_pipeline_input_nodes,
-    locate_pipeline_output_nodes,
-)
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +23,40 @@ except ImportError:
         "pip install pygraphviz\n"
         "(You might need to run this first: apt install libgraphviz-dev graphviz )"
     )
+
+
+class PipelineError(Exception):
+    pass
+
+
+class PipelineRuntimeError(Exception):
+    pass
+
+
+class PipelineConnectError(PipelineError):
+    pass
+
+
+class PipelineValidationError(PipelineError):
+    pass
+
+
+class PipelineMaxLoops(PipelineError):
+    pass
+
+
+def locate_pipeline_input_nodes(graph) -> List[str]:
+    """
+    Collect the nodes with no input edges: they receive directly the pipeline inputs.
+    """
+    return [node for node in graph.nodes if not graph.in_edges(node) or graph.nodes[node]["input_node"]]
+
+
+def locate_pipeline_output_nodes(graph) -> List[str]:
+    """
+    Collect the nodes with no output edges: these define the output of the pipeline.
+    """
+    return [node for node in graph.nodes if not graph.out_edges(node) or graph.nodes[node]["output_node"]]
 
 
 class Pipeline:
@@ -57,6 +82,18 @@ class Pipeline:
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.DiGraph()
+
+    def __eq__(self, other) -> bool:
+        """
+        Equal pipelines share all nodes and metadata instances.
+        """
+        if not isinstance(other, type(self)):
+            return False
+        return (
+            self.metadata == other.metadata
+            and self.max_loops_allowed == other.max_loops_allowed
+            and self.graph == other.graph
+        )
 
     def add_node(
         self,
@@ -210,7 +247,7 @@ class Pipeline:
         Returns all the data associated with a node.
 
         :param name: the name of the node
-        :returns: a dictionary containing all data that was given to `add_node()`
+        :returns: a dictionary containing all data that was given to `add_node()` (except for `name`)
         """
         candidates = [node for node in self.graph.nodes if node == name]
         if not candidates:
