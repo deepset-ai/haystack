@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple, Dict
 
 import logging
 from abc import abstractmethod
@@ -19,7 +19,7 @@ class BaseSampler(BaseComponent):
     query_time = 0
 
     @abstractmethod
-    def predict(self, query: str, documents: List[Document], top_p: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_p: Optional[int] = None) -> List[Document]:
         pass
 
     @abstractmethod
@@ -32,7 +32,9 @@ class BaseSampler(BaseComponent):
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 
-    def run(self, query: str, documents: List[Document], top_p: Optional[int] = None):  # type: ignore
+    def run(  # type: ignore
+        self, query: str, documents: List[Document], top_p: Optional[int] = None
+    ) -> Tuple[Dict[str, List[Document]], str]:
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -40,8 +42,10 @@ class BaseSampler(BaseComponent):
         else:
             results = []
 
-        document_ids = [doc.id for doc in results]
-        logger.debug("Retrieved documents with IDs: %s", document_ids)
+        if results:
+            document_ids = [doc.id for doc in results]
+            logger.debug("Retrieved documents with IDs: %s", document_ids)
+
         output = {"documents": results}
 
         return output, "output_1"
