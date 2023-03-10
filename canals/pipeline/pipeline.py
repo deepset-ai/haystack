@@ -8,15 +8,6 @@ from collections import OrderedDict
 import networkx as nx
 from networkx.drawing.nx_agraph import to_agraph
 
-from canals.pipeline._utils import (
-    PipelineRuntimeError,
-    PipelineConnectError,
-    PipelineValidationError,
-    PipelineMaxLoops,
-    locate_pipeline_input_nodes,
-    locate_pipeline_output_nodes,
-)
-
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +25,40 @@ except ImportError:
     )
 
 
+class PipelineError(Exception):
+    pass
+
+
+class PipelineRuntimeError(Exception):
+    pass
+
+
+class PipelineConnectError(PipelineError):
+    pass
+
+
+class PipelineValidationError(PipelineError):
+    pass
+
+
+class PipelineMaxLoops(PipelineError):
+    pass
+
+
+def locate_pipeline_input_nodes(graph) -> List[str]:
+    """
+    Collect the nodes with no input edges: they receive directly the pipeline inputs.
+    """
+    return [node for node in graph.nodes if not graph.in_edges(node) or graph.nodes[node]["input_node"]]
+
+
+def locate_pipeline_output_nodes(graph) -> List[str]:
+    """
+    Collect the nodes with no output edges: these define the output of the pipeline.
+    """
+    return [node for node in graph.nodes if not graph.out_edges(node) or graph.nodes[node]["output_node"]]
+
+
 class Pipeline:
     """
     Nodes orchestration engine.
@@ -43,15 +68,32 @@ class Pipeline:
 
     def __init__(
         self,
+        metadata: Optional[Dict[str, Any]] = None,
         max_loops_allowed: int = 100,
     ):
         """
         Creates the Pipeline.
 
+        :param metadata: arbitrary dictionary to store metadata about this pipeline. Make sure
+            all the values contained in this dictionary can be serialized and deserialized if you wish to save this
+            pipeline to file with `save_pipelines()/load_pipelines()`.
         :param max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
         """
+        self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.DiGraph()
+
+    def __eq__(self, other) -> bool:
+        """
+        Equal pipelines share all nodes and metadata instances.
+        """
+        if not isinstance(other, type(self)):
+            return False
+        return (
+            self.metadata == other.metadata
+            and self.max_loops_allowed == other.max_loops_allowed
+            and self.graph == other.graph
+        )
 
     def add_node(
         self,
@@ -205,7 +247,7 @@ class Pipeline:
         Returns all the data associated with a node.
 
         :param name: the name of the node
-        :returns: a dictionary containing all data that was given to `add_node()`
+        :returns: a dictionary containing all data that was given to `add_node()` (except for `name`)
         """
         candidates = [node for node in self.graph.nodes if node == name]
         if not candidates:
@@ -300,7 +342,6 @@ class Pipeline:
         # - Input nodes            # [e[0] for e in self.graph.in_edges(node)]
         # - Output nodes           # [e[1] for e in self.graph.out_edges(node)]
         # - Output edges           # [e[2]["label"] for e in self.graph.out_edges(node, data=True)]
-
         logger.info("Pipeline execution started.")
         inputs_buffer: OrderedDict = OrderedDict()
 
