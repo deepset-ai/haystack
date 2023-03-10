@@ -5,7 +5,6 @@ from multiprocessing import cpu_count
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Literal
 from unicodedata import combining, normalize
 
-import mmh3
 from courlan.clean import clean_url
 from htmldate.core import find_date
 from trafilatura import bare_extraction
@@ -58,8 +57,13 @@ class WebRetriever(BaseRetriever):
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: Optional[int] = None,
     ) -> List[Document]:
+        """Check documents retrieved based on the query in the cache."""
+
+        cache_document_store = self.cache_document_store
+
         documents = []
-        if self.cache_document_store is not None:
+
+        if cache_document_store is not None:
             query_norm = self._normalize_query(query)
             cache_filter: FilterType = {"$and": {"search.query": query_norm}}
 
@@ -69,7 +73,7 @@ class WebRetriever(BaseRetriever):
                 }
                 logger.debug("Cache filter: %s", cache_filter)
 
-            documents = self.cache_document_store.get_all_documents(
+            documents = cache_document_store.get_all_documents(
                 filters=cache_filter, index=cache_index, headers=cache_headers, return_embedding=False
             )
 
@@ -94,7 +98,7 @@ class WebRetriever(BaseRetriever):
 
             logger.debug("Saved %d documents in the cache", len(documents))
 
-            cache_filter: FilterType = {"$and": {"query": query}}
+            cache_filter: FilterType = {"$and": {"search.query": query}}
 
             if cache_time is not None and cache_time > 0:
                 cache_filter["timestamp"] = {
@@ -221,6 +225,9 @@ class WebRetriever(BaseRetriever):
                     if r is not None and "text" in r:
                         r["id_hash_keys"] = ["meta.url", "meta.search.query"]
                         r["search.query"] = query_norm
+
+                        if "description" in r:
+                            del r["description"]
 
                         document = Document.from_dict(r, field_map={"text": "content"})
 
