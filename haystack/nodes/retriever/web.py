@@ -310,4 +310,4 @@ class WebRetriever(BaseRetriever):
                 )
             )
 
-        return documents
+        return [documents]
