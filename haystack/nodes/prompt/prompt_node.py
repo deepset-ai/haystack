@@ -694,8 +694,10 @@ class PromptNode(BaseComponent):
 
         if isinstance(self.default_prompt_template, PromptTemplate):
             prompt_template = self.default_prompt_template
-        else:
+        elif isinstance(self.default_prompt_template, str):
             prompt_template = self.get_prompt_template(self.default_prompt_template)
+        else:
+            raise ValueError(f"Invalid default prompt template: {self.default_prompt_template}")
 
         output_variable = self.output_variable
         last_shaper = prompt_template.output_shapers[-1]
