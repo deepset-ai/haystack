@@ -1,6 +1,13 @@
-from typing import List, Dict, Union, Any, Tuple, Optional
+from typing import List, Dict, Union, Any, Tuple, Optional, Callable
 
-from canals import Pipeline as CanalsPipeline, PipelineError
+from pathlib import Path
+
+from canals import (
+    Pipeline as CanalsPipeline,
+    PipelineError,
+    load_pipelines as load_canals_pipelines,
+    save_pipelines as save_canals_pipelines,
+)
 
 
 class NoSuchStoreError(PipelineError):
@@ -65,3 +72,11 @@ class Pipeline(CanalsPipeline):
                 parameters[node] = {"stores": self.stores, **parameters[node]}
 
         super().run(data=data, parameters=parameters, debug=debug)
+
+
+def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
+    return load_canals_pipelines(path=path, _reader=_reader)
+
+
+def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer: Optional[Callable[..., Any]] = None):
+    save_canals_pipelines(pipelines=pipelines, path=path, _writer=_writer)
