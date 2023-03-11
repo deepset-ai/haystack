@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "canals"
-description = '🌊 Carrying data from one place to another 🌊'
+description = 'A node orchestration engine for Haystack'
 readme = "README.md"
 requires-python = ">=3.8"
 license = "Apache-2.0"
