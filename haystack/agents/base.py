@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import List, Optional, Union, Dict, Tuple, Any
+from typing import List, Optional, Union, Dict, Any
 
 from haystack import Pipeline, BaseComponent, Answer, Document
+from haystack.agents.schema import AgentStep
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
@@ -117,7 +118,7 @@ class Agent:
         prompt_node: PromptNode,
         prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
         tools: Optional[List[Tool]] = None,
-        max_iterations: int = 5,
+        max_iterations: int = 8,
         tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
         final_answer_pattern: str = r"Final Answer:\s*(\w+)\s*",
     ):
@@ -200,30 +201,35 @@ class Agent:
                 f"max_iterations must be at least 2 to let the Agent use a tool once and then infer it knows the final answer. It was set to {max_iterations}."
             )
 
+        agent_step = self._create_first_step(query, max_iterations)
+        while not agent_step.is_terminal():
+            agent_step = self._step(agent_step, params)
+
+        return agent_step.final_answer(query=query)
+
+    def _create_first_step(self, query: str, max_iterations: int = 10):
         transcript = self._get_initial_transcript(query=query)
-        # Generate a thought with a plan what to do, choose a tool, generate input for it, and run it.
-        # Repeat this until the final answer is found or the maximum number of iterations is reached.
-        for _ in range(max_iterations):
-            preds = self.prompt_node(transcript)
-            if not preds:
-                raise AgentError(f"The Agent generated no output. Transcript:\n{transcript}")
-
-            # Try to extract final answer or tool name and input from the generated text and update the transcript
-            final_answer = self._extract_final_answer(pred=preds[0])
-            if final_answer is not None:
-                transcript += preds[0]
-                return self._format_answer(query=query, transcript=transcript, answer=final_answer)
-            tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=preds[0])
-            observation = self._run_tool(tool_name, tool_input, transcript + preds[0], params)
-            transcript += f"{preds[0]}\nObservation: {observation}\nThought:"
-
-        logger.warning(
-            "The Agent reached the maximum number of iterations (%s) for query (%s). Increase the max_iterations parameter "
-            "or the Agent won't be able to provide an answer to this query.",
-            max_iterations,
-            query,
+        return AgentStep(
+            current_step=1,
+            max_steps=max_iterations,
+            final_answer_pattern=self.final_answer_pattern,
+            prompt_node_response="",  # no LLM response for the first step
+            transcript=transcript,
         )
-        return self._format_answer(query=query, transcript=transcript, answer="")
+
+    def _step(self, current_step: AgentStep, params: Optional[dict] = None):
+        # plan next step using the LLM
+        llm_response = self.prompt_node(current_step.prepare_prompt())
+
+        # from the LLM response, create the next step
+        next_step = current_step.create_next_step(llm_response)
+
+        # run the tool selected by the LLM
+        observation = self._run_tool(next_step, params) if not next_step.is_terminal() else None
+
+        # update the next step with the observation
+        next_step.completed(observation)
+        return next_step
 
     def run_batch(
         self, queries: List[str], max_iterations: Optional[int] = None, params: Optional[dict] = None
@@ -249,59 +255,22 @@ class Agent:
 
         return results
 
-    def _run_tool(
-        self, tool_name: Optional[str], tool_input: Optional[str], transcript: str, params: Optional[dict] = None
-    ) -> str:
+    def _run_tool(self, next_step: AgentStep, params: Optional[Dict[str, Any]] = None) -> str:
+        tool_name, tool_input = next_step.extract_tool_name_and_tool_input(self.tool_pattern)
         if tool_name is None or tool_input is None:
             raise AgentError(
                 f"Could not identify the next tool or input for that tool from Agent's output. "
                 f"Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
                 f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
-                f"# Transcript:\n{transcript}"
+                f"# Agent Step:\n{next_step}"
             )
         if not self.has_tool(tool_name):
             raise AgentError(
                 f"The tool {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
                 "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
-                f"Transcript:\n{transcript}"
+                f"Agent Step::\n{next_step}"
             )
         return self.tools[tool_name].run(tool_input, params)
-
-    def _extract_tool_name_and_tool_input(self, pred: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Parse the tool name and the tool input from the prediction output of the Agent's PromptNode.
-
-        :param pred: Prediction output of the Agent's PromptNode from which to parse the tool and tool input.
-        """
-        tool_match = re.search(self.tool_pattern, pred)
-        if tool_match:
-            tool_name = tool_match.group(1)
-            tool_input = tool_match.group(3)
-            return tool_name.strip('" []').strip(), tool_input.strip('" ')
-        return None, None
-
-    def _extract_final_answer(self, pred: str) -> Optional[str]:
-        """
-        Parse the final answer from the prediction output of the Agent's PromptNode.
-
-        :param pred: Prediction output of the Agent's PromptNode from which to parse the final answer.
-        """
-        final_answer_match = re.search(self.final_answer_pattern, pred)
-        if final_answer_match:
-            final_answer = final_answer_match.group(1)
-            return final_answer.strip('" ')
-        return None
-
-    def _format_answer(self, query: str, answer: str, transcript: str) -> Dict[str, Union[str, List[Answer]]]:
-        """
-        Formats an answer as a dict containing `query` and `answers`, similar to the output of a Pipeline.
-        The full transcript based on the Agent's initial prompt template and the text it generated during execution.
-
-        :param query: The search query.
-        :param answer: The final answer the Agent returned. An empty string corresponds to no answer.
-        :param transcript: The text the Agent generated and the initial, filled template for debug purposes.
-        """
-        return {"query": query, "answers": [Answer(answer=answer, type="generative")], "transcript": transcript}
 
     def _get_initial_transcript(self, query: str):
         """
