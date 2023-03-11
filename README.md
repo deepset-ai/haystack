@@ -1,4 +1,4 @@
-# Canals
+# 🌊 Canals 🌊
 
 <p align="center" float="left">
   <img alt="" src="https://raw.githubusercontent.com/deepset-ai/.github/main/deepset-logo-colored.png" width="30%"/>

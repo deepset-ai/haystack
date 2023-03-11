@@ -37,7 +37,7 @@ def load_pipelines(path: Path, _reader=json.load) -> Dict[str, Pipeline]:
     :param _reader: which function to use to read the dictionary to a file.
         Use this parameter to load from a different format like YAML, TOML, HCL, etc.
     """
-    with open(path, "w", encoding="utf-8") as handle:
+    with open(path, "r", encoding="utf-8") as handle:
         schema = _reader(handle)
     return unmarshal_pipelines(schema=schema)
 
