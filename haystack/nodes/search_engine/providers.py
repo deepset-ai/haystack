@@ -137,7 +137,7 @@ class SerperDev(SearchEngine):
 
 class BingAPI(SearchEngine):
     """
-    Search engine using SerperDev API. See https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview for more details.
+    Search engine using Bing API. See https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview for more details.
     """
 
     def __init__(self, api_key: str, **kwargs):
