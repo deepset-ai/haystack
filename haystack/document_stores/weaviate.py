@@ -999,29 +999,16 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         # Default Retrieval via BM25 using the user's query on `self.content_field`
         else:
-            logger.warning(
-                "As of v1.14.1 Weaviate's BM25 retrieval is still in experimental phase, "
-                "so use it with care! To turn on the BM25 experimental feature in Weaviate "
-                "you need to start it with the `ENABLE_EXPERIMENTAL_BM25='true'` "
-                "environmental variable."
-            )
-
             # Retrieval with BM25 AND filtering
-            if filters:  # pylint: disable=no-else-raise
-                raise NotImplementedError(
-                    "Weaviate currently does not support filters WITH inverted index text query (eg BM25)!"
+            if filters:
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                gql_query = (
+                    gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
+                    .with_limit(top_k)
+                    .with_bm25({"query": query, "properties": self.content_field})
+                    .with_where(filter_dict)
+                    .build()
                 )
-                # # Once Weaviate starts supporting filters with BM25:
-                # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-                # gql_query = (
-                #     weaviate.gql.get.GetBuilder(
-                #         class_name=index, properties=properties, connection=self.weaviate_client
-                #     )
-                #     .with_near_vector({"vector": [0, 0]})
-                #     .with_where(filter_dict)
-                #     .with_limit(top_k)
-                #     .build()
-                # )
             else:
                 # BM25 retrieval without filtering
                 gql_query = (

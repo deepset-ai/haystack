@@ -83,8 +83,7 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
         ("embedding", "elasticsearch"),
         ("embedding", "memory"),
         ("bm25", "elasticsearch"),
-        # TODO - add once Weaviate starts supporting filters with BM25 in Weaviate v1.18+
-        # ("bm25", "weaviate"),
+        ("bm25", "weaviate"),
         ("es_filter_only", "elasticsearch"),
     ],
     indirect=True,
