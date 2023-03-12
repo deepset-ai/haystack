@@ -1001,7 +1001,7 @@ def prompt_model(request):
 
 
 @pytest.fixture
-def chat_gpt_prompt_model():
+def chatgpt_prompt_model():
     api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
     if api_key is None or api_key == "":
         api_key = "KEY_NOT_FOUND"

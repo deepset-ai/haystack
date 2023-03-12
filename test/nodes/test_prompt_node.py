@@ -929,8 +929,24 @@ def test_HFLocalInvocationLayer_supports():
 
 
 @pytest.mark.integration
-def test_chat_gpt_prompt_node(chat_gpt_prompt_model):
-    skip_test_for_invalid_key(chat_gpt_prompt_model)
-    pn = PromptNode(chat_gpt_prompt_model)
+def test_chatgpt_direct_prompting(chatgpt_prompt_model):
+    skip_test_for_invalid_key(chatgpt_prompt_model)
+    pn = PromptNode(chatgpt_prompt_model)
     result = pn("Hey, I need some Python help. When should I use list comprehension?")
     assert len(result) == 1 and all(w in result[0] for w in ["comprehension", "list"])
+
+
+@pytest.mark.integration
+def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
+    skip_test_for_invalid_key(chatgpt_prompt_model)
+    pn = PromptNode(chatgpt_prompt_model)
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Who won the world series in 2020?"},
+        {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+        {"role": "user", "content": "Where was it played?"},
+    ]
+
+    result = pn(messages)
+    assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])

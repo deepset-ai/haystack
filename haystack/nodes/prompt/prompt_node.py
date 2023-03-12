@@ -3,7 +3,7 @@ import logging
 import re
 from abc import ABC
 from string import Template
-from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
+from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type, overload
 
 import torch
 
@@ -255,6 +255,14 @@ class PromptModel(BaseComponent):
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
+
+    @overload
+    def _ensure_token_limit(self, prompt: str) -> str:
+        ...
+
+    @overload
+    def _ensure_token_limit(self, prompt: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        ...
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
@@ -509,19 +517,19 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
-                limited_prompt = self.prompt_model._ensure_token_limit(prompt)
-                prompt_collector.append(limited_prompt)
-                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", limited_prompt, kwargs_copy)
-                output = self.prompt_model.invoke(limited_prompt, **kwargs_copy)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
-                limited_prompt = self.prompt_model._ensure_token_limit(prompt)
-                prompt_collector.append(limited_prompt)
-                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", limited_prompt, kwargs_copy)
-                output = self.prompt_model.invoke(limited_prompt, **kwargs_copy)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
         return results
 

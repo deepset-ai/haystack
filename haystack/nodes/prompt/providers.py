@@ -1,6 +1,6 @@
 import logging
 from abc import abstractmethod
-from typing import Dict, List, Optional, Union, Type
+from typing import Dict, List, Optional, Union, Type, cast
 
 import torch
 from transformers import (
@@ -246,12 +246,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        if isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
-            raise ValueError(
-                f"Model {self.model_name_or_path} does not accept messages in prompt."
-                f"This model expects a string or a list of string in prompt."
-            )
-
         n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
@@ -420,13 +414,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        if not isinstance(prompt, str):
-            raise ValueError(
-                "Provided prompt is not a string. Model {self.model_name_or_path} prompt should be a string."
-            )
-        # print(f"{prompt=}")
-        # return
-        n_prompt_tokens = count_openai_tokens(prompt, self._tokenizer)
+        n_prompt_tokens = count_openai_tokens(cast(str, prompt), self._tokenizer)
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
@@ -565,6 +553,15 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         response = openai_request(url=self.url, headers=self.headers, payload=payload)
         _check_openai_finish_reason(result=response, payload=payload)
         assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
+
+        # Although ChatGPT generates text until stop words are encountered, unfortunately it includes the stop word
+        # We want to exclude it to be consistent with other invocation layers
+        if "stop" in kwargs_with_defaults and kwargs_with_defaults["stop"] is not None:
+            stop_words = kwargs_with_defaults["stop"]
+            for idx, _ in enumerate(assistant_response):
+                for stop_word in stop_words:
+                    assistant_response[idx] = assistant_response[idx].replace(stop_word, "").strip()
+
         return assistant_response
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
