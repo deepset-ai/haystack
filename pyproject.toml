@@ -195,7 +195,12 @@ colab = [
   "pillow<=9.0.0",
 ]
 version2 = [
-  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settle, remove 'allow-direct-references = true' below
+  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settles, remove 'allow-direct-references = true' below
+]
+version2-rest-api = [
+  "uvicorn",
+  "fastapi",
+  "python-multipart"  # To allow file upload
 ]
 dev = [
   "pre-commit",

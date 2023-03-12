@@ -1,0 +1,40 @@
+{
+    "pipelines": {
+        "haystack_pipeline_1": {
+            "metadata": {"type": "test pipeline", "author": "me"},
+            "max_loops_allowed": 100,
+            "nodes": {
+                "first_addition": {
+                    "type": "AddValue",
+                    "init_parameters": {"add": 1, "input": "value", "output": "value"},
+                    "run_parameters": {"add": 6}
+                },
+                "double": {"type": "Double", "init_parameters": {"input": "value", "output": "value"}},
+                "second_addition": {
+                    "type": "AddValue",
+                    "init_parameters": {"add": 1, "input": "value", "output": "value"}
+                },
+                "third_addition": {"refer_to": "haystack_pipeline_1.first_addition"}
+            },
+            "edges": [
+                ["first_addition", "double"],
+                ["double", "second_addition"],
+                ["second_addition", "third_addition"]
+            ]
+        },
+        "haystack_pipeline_2": {
+            "metadata": {"type": "another test pipeline", "author": "you"},
+            "max_loops_allowed": 100,
+            "nodes": {
+                "first_addition": {"refer_to": "haystack_pipeline_1.first_addition", "run_parameters": {"add": 4}},
+                "double": {"type": "Double", "init_parameters": {"input": "value", "output": "value"}},
+                "second_addition": {"refer_to": "haystack_pipeline_1.second_addition"}
+            },
+            "edges": [
+                ["first_addition", "double"],
+                ["double", "second_addition"]
+            ]
+        }
+    },
+    "dependencies": ["haystack.v2.rest_api", "canals"]
+}
