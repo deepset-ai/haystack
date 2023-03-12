@@ -23,7 +23,7 @@ from haystack.environment import (
     HAYSTACK_REMOTE_API_MAX_RETRIES,
     HAYSTACK_REMOTE_API_TIMEOUT_SEC,
 )
-from haystack.errors import CohereError
+from haystack.errors import CohereError, CohereUnauthorizedError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
@@ -389,6 +389,8 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=COHERE_TIMEOUT)
         res = json.loads(response.text)
         if response.status_code != 200:
+            if response.status_code == 401:
+                raise CohereUnauthorizedError(f"Invalid Cohere API key. {response.text}")
             raise CohereError(response.text, status_code=response.status_code)
         generated_embeddings = [e for e in res["embeddings"]]
         return np.array(generated_embeddings)
