@@ -194,10 +194,11 @@ ray = [
 colab = [
   "pillow<=9.0.0",
 ]
-version2 = [
+# Haystack v2, codename "Alfalfa 🌿"
+alfalfa = [
   "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settles, remove 'allow-direct-references = true' below
 ]
-version2-rest-api = [
+alfalfa-rest-api = [
   "uvicorn",
   "fastapi",
   "python-multipart"  # To allow file upload
