@@ -194,7 +194,8 @@ ray = [
 colab = [
   "pillow<=9.0.0",
 ]
-version2 = [
+# Haystack v2, codename "Alfalfa 🌿"
+alfalfa = [
   "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settle, remove 'allow-direct-references = true' below
 ]
 dev = [
