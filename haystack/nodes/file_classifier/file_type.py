@@ -91,12 +91,12 @@ class FileTypeClassifier(BaseComponent):
         """
         extension = file_paths[0].suffix.lower().lstrip(".")
 
-        if extension == "" or extension in MEDIA_TYPES:
+        if extension == "" or (self._default_types and extension in MEDIA_TYPES):
             extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
             path_suffix = path.suffix.lower().lstrip(".")
-            if path_suffix == "" or path_suffix in MEDIA_TYPES:
+            if path_suffix == "" or (self._default_types and path_suffix in MEDIA_TYPES):
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
                 raise ValueError("Multiple non-default file types are not allowed at once.")
