@@ -37,8 +37,10 @@ class FileTypeClassifier(BaseComponent):
         Node that sends out files on a different output edge depending on their extension.
 
         :param supported_types: The file types that this node can distinguish between.
-              If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
-             Lists with duplicate elements are not allowed.
+            If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
+            Lists with duplicate elements are not allowed.
+        :param full_analysis: If True, the whole file is analyzed to determine the file type.
+            If False, only the first 2049 bytes are analyzed.
         """
         self.full_analysis = full_analysis
         self._default_types = False
