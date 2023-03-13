@@ -1465,6 +1465,9 @@ class EmbeddingRetriever(DenseRetriever):
         scale_score: bool = True,
         embed_meta_fields: Optional[List[str]] = None,
         api_key: Optional[str] = None,
+        azure_api_version: str = "2022-12-01",
+        azure_base_url: Optional[str] = None,
+        azure_deployment_name: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1519,7 +1522,11 @@ class EmbeddingRetriever(DenseRetriever):
                                   If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
-
+        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
+        :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
+                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
+                                     will not be used.
         """
         if embed_meta_fields is None:
             embed_meta_fields = []
@@ -1543,6 +1550,9 @@ class EmbeddingRetriever(DenseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.api_key = api_key
+        self.api_version = azure_api_version
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None

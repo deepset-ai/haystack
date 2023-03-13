@@ -89,7 +89,7 @@ dependencies = [
   "elasticsearch>=7.7,<8",
 
   # OpenAI tokenizer
-  "tiktoken>=0.1.2; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.2.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
@@ -156,6 +156,7 @@ audio = [
   "protobuf<=3.20.1",
   "soundfile< 0.12.0",
   "numpy<1.24",  # Keep compatibility with latest numba
+  "openai-whisper"
 ]
 beir = [
   "beir; platform_system != 'Windows'",
@@ -170,6 +171,9 @@ preprocessing = [
   "python-frontmatter",
   "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
+]
+pdf = [
+  "PyMuPDF>=1.18.16" ,  # PDF text extraction alternative to xpdf; please check AGPLv3 license
 ]
 ocr = [
   "pytesseract>0.3.7",
@@ -213,7 +217,7 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
-  "requests-cache",
+  "requests-cache<1.0.0",
 ]
 
 formatting = [
@@ -223,11 +227,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx,beir]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx-gpu]",
 ]
 
 [project.urls]
