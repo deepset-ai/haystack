@@ -1,8 +1,8 @@
 import importlib
 import logging
-import os
 from random import random
 from typing import List
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -11,11 +11,11 @@ import responses
 from responses import matchers
 
 import _pytest
-from ..conftest import fail_at_version, haystack_version
 
 from haystack.errors import OpenAIRateLimitError
 from haystack.environment import set_pytorch_secure_model_loading
 from haystack.schema import Answer, Document, Span, Label
+from haystack.utils import print_answers
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
@@ -23,17 +23,10 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
-from ..conftest import (
-    DC_API_ENDPOINT,
-    DC_API_KEY,
-    MOCK_DC,
-    SAMPLES_PATH,
-    deepset_cloud_fixture,
-    fail_at_version,
-    haystack_version,
-)
+from .. import conftest
+from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture, fail_at_version
 
-TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
+TEST_CONTEXT = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
 moderne Bildungssysteme etablierte und die Industrialisierung vorantrieb.\n
 Beim Begriff der Aufklärung geht es auch um die Prozesse zwischen diesen frühneuzeitlichen Eckpunkten.
@@ -52,67 +45,123 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
 """
 
 
-def test_deprecation_fixture():
-    current_major, current_minor = tuple(int(num) for num in haystack_version.split(".")[:2])
+# Util function for testing
+def noop():
+    return True
 
-    @fail_at_version(0, 1)
-    def test_previous_major_and_minor():
-        assert True
 
-    with pytest.raises(_pytest.outcomes.Failed):
-        test_previous_major_and_minor()
+def test_deprecation_previous_major_and_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v1.1"):
+            fail_at_version(1, 1)(noop)()
 
-    @fail_at_version(0, current_minor)
-    def test_previous_major_and_same_minor():
-        assert True
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 1)(noop)()
 
-    with pytest.raises(_pytest.outcomes.Failed):
-        test_previous_major_and_same_minor()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 1)(noop)()
 
-    @fail_at_version(0, 1000)
-    def test_previous_major_and_later_minor():
-        assert True
 
-    with pytest.raises(_pytest.outcomes.Failed):
-        test_previous_major_and_later_minor()
+def test_deprecation_previous_major_same_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v1.2"):
+            fail_at_version(1, 2)(noop)()
 
-    @fail_at_version(current_major, 1)
-    def test_same_major_and_previous_minor():
-        assert True
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 2)(noop)()
 
-    with pytest.raises(_pytest.outcomes.Failed):
-        test_same_major_and_previous_minor()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 2)(noop)()
 
-    @fail_at_version(current_major, current_minor)
-    def test_same_version():
-        assert True
 
-    with pytest.raises(_pytest.outcomes.Failed):
-        test_same_version()
+def test_deprecation_previous_major_later_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v1.3"):
+            fail_at_version(1, 3)(noop)()
 
-    @fail_at_version(current_major, 1000)
-    def test_same_major_and_later_minor():
-        assert True
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 3)(noop)()
 
-    test_same_major_and_later_minor()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(1, 3)(noop)()
 
-    @fail_at_version(1000, 1)
-    def test_later_major_and_previous_minor():
-        assert True
 
-    test_later_major_and_previous_minor()
+def test_deprecation_same_major_previous_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v2.1"):
+            fail_at_version(2, 1)(noop)()
 
-    @fail_at_version(1000, current_minor)
-    def test_later_major_and_same_minor():
-        assert True
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 1)(noop)()
 
-    test_later_major_and_previous_minor()
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 1)(noop)()
 
-    @fail_at_version(1000, 1000)
-    def test_later_major_and_later_minor():
-        assert True
 
-    test_later_major_and_later_minor()
+def test_deprecation_same_major_same_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        with pytest.warns(match="This feature is marked for removal in v2.2"):
+            fail_at_version(2, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        with pytest.raises(_pytest.outcomes.Failed):
+            fail_at_version(2, 2)(noop)()
+
+
+def test_deprecation_same_major_later_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(2, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(2, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(2, 3)(noop)()
+
+
+def test_deprecation_later_major_previous_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(3, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(3, 1)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(3, 1)(noop)()
+
+
+def test_deprecation_later_major_same_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(3, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(3, 2)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(3, 2)(noop)()
+
+
+def test_deprecation_later_major_later_minor():
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+        assert fail_at_version(3, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
+        assert fail_at_version(3, 3)(noop)()
+
+    with mock.patch.object(conftest, "haystack_version", "2.2.2"):
+        assert fail_at_version(3, 3)(noop)()
 
 
 def test_convert_files_to_docs():
@@ -1530,3 +1579,45 @@ class TestAggregateLabels:
                 assert l.filters["from_meta"] == l.meta["from_meta"]
                 assert "_id" in l.filters
                 assert multi_label.filters == l.filters
+
+
+def test_print_answers_run():
+    with mock.patch("pprint.PrettyPrinter.pprint") as pprint:
+        query_string = "Who is the father of Arya Stark?"
+        run_result = {
+            "query": query_string,
+            "answers": [Answer(answer="Eddard", context="Eddard"), Answer(answer="Ned", context="Eddard")],
+        }
+
+        print_answers(run_result, details="minimum")
+
+        expected_pprint_string = f"Query: {query_string}"
+        pprint.assert_any_call(expected_pprint_string)
+
+        expected_pprint_answers = [
+            {"answer": answer.answer, "context": answer.context}  # filtered fields for minimum
+            for answer in run_result["answers"]
+        ]
+        pprint.assert_any_call(expected_pprint_answers)
+
+
+def test_print_answers_run_batch():
+    with mock.patch("pprint.PrettyPrinter.pprint") as pprint:
+        queries = ["Who is the father of Arya Stark?", "Who is the sister of Arya Stark?"]
+        answers = [
+            [Answer(answer="Eddard", context="Eddard"), Answer(answer="Ned", context="Eddard")],
+            [Answer(answer="Sansa", context="Sansa")],
+        ]
+        run_batch_result = {"queries": queries, "answers": answers}
+
+        print_answers(run_batch_result, details="minimum")
+
+        for query in queries:
+            expected_pprint_string = f"Query: {query}"
+            pprint.assert_any_call(expected_pprint_string)
+        for answer_list in answers:
+            expected_pprint_answers = [
+                {"answer": answer.answer, "context": answer.context}  # filtered fields for minimum
+                for answer in answer_list
+            ]
+            pprint.assert_any_call(expected_pprint_answers)

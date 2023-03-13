@@ -25,7 +25,7 @@ from haystack.nodes import (
     PreProcessor,
 )
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, fail_at_version
 
 
 @pytest.mark.tika
@@ -65,6 +65,7 @@ def test_pdftoppm_command_format():
     ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_command_whitespaces(Converter):
     converter = Converter()
@@ -75,25 +76,28 @@ def test_pdf_command_whitespaces(Converter):
     assert "ɪ" in document.content
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
 
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_5.pdf")[0]["documents"][0]
+    assert "Ж" in document.content
+
     document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
     assert "ɪ" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", encoding="Latin1")[0]["documents"][0]
-    assert "ɪ" not in document.content
 
-
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_layout(Converter):
-    converter = Converter(keep_physical_layout=True)
+def test_pdf_sort_by_position(Converter):
+    converter = Converter(sort_by_position=True)
 
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
     assert str(document.content).startswith("This is the second test sentence.")
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
@@ -115,8 +119,9 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_page_range(Converter):
+def test_pdf_page_range(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
     pages = document.content.split("\f")
@@ -129,8 +134,9 @@ def test_page_range(Converter):
     assert pages[2] == ""  # the page 3 is empty.
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_page_range_numbers(Converter):
+def test_pdf_page_range_numbers(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
 
@@ -140,6 +146,68 @@ def test_page_range_numbers(Converter):
     documents = preprocessor.process([document])
 
     assert documents[1].meta["page"] == 4
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel(Converter):
+    converter = Converter(multiprocessing=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_page_range(Converter):
+    converter = Converter(multiprocessing=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf", start_page=2)[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == ""
+    assert len(pages) == 50
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_sort_by_position(Converter):
+    converter = Converter(multiprocessing=True, sort_by_position=True)
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
+
+
+@fail_at_version(1, 17)
+def test_deprecated_encoding():
+    with pytest.warns(DeprecationWarning):
+        converter = PDFToTextConverter(encoding="utf-8")
+
+
+@fail_at_version(1, 17)
+def test_deprecated_encoding_in_convert_method():
+    converter = PDFToTextConverter()
+    with pytest.warns(DeprecationWarning):
+        converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
+
+
+@fail_at_version(1, 17)
+def test_deprecated_keep_physical_layout():
+    with pytest.warns(DeprecationWarning):
+        converter = PDFToTextConverter(keep_physical_layout=True)
+
+
+@fail_at_version(1, 17)
+def test_deprecated_keep_physical_layout_in_convert_method():
+    converter = PDFToTextConverter()
+    with pytest.warns(DeprecationWarning):
+        converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", keep_physical_layout=True)
 
 
 @pytest.mark.tika
@@ -165,12 +233,14 @@ def test_language_validation(Converter, caplog):
     assert "sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
+@pytest.mark.unit
 def test_docx_converter():
     converter = DocxToTextConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "docx" / "sample_docx.docx")[0]
     assert document.content.startswith("Sample Docx File")
 
 
+@pytest.mark.unit
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
@@ -178,6 +248,7 @@ def test_markdown_converter():
     assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
+@pytest.mark.unit
 def test_markdown_converter_headline_extraction():
     expected_headlines = [
         ("What to build with Haystack", 1),
@@ -203,6 +274,7 @@ def test_markdown_converter_headline_extraction():
         assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.unit
 def test_markdown_converter_frontmatter_to_meta():
     converter = MarkdownConverter(add_frontmatter_to_meta=True)
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
@@ -210,6 +282,7 @@ def test_markdown_converter_frontmatter_to_meta():
     assert document.meta["date"] == "1.1.2023"
 
 
+@pytest.mark.unit
 def test_markdown_converter_remove_code_snippets():
     converter = MarkdownConverter(remove_code_snippets=False)
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
@@ -302,6 +375,7 @@ def test_parsr_converter_headline_extraction():
                 assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.unit
 def test_id_hash_keys_from_pipeline_params():
     doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
     meta_1 = {"key": "a"}
@@ -317,13 +391,14 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 2
 
 
+@pytest.mark.unit
 def write_as_csv(data: List[List[str]], file_path: Path):
     with open(file_path, "w") as f:
         writer = csv.writer(f)
         writer.writerows(data)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_headers.csv"
@@ -344,7 +419,7 @@ def test_csv_to_document_with_qa_headers(tmp_path):
     assert doc.meta["answer"] == "Haystack is an NLP Framework to use transformers in your Applications."
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -358,7 +433,7 @@ def test_csv_to_document_with_wrong_qa_headers(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -372,7 +447,7 @@ def test_csv_to_document_with_one_wrong_qa_headers(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -386,7 +461,7 @@ def test_csv_to_document_with_another_wrong_qa_headers(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_one_column(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -397,7 +472,7 @@ def test_csv_to_document_with_one_column(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_with_three_columns(tmp_path):
     node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_wrong_headers.csv"
@@ -411,7 +486,7 @@ def test_csv_to_document_with_three_columns(tmp_path):
         node.run(file_paths=csv_path)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_csv_to_document_many_files(tmp_path):
     csv_paths = []
     for i in range(5):
@@ -439,7 +514,7 @@ def test_csv_to_document_many_files(tmp_path):
         assert doc.meta["answer"] == f"{i}. Haystack is an NLP Framework to use transformers in your Applications."
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestJsonConverter:
     JSON_FILE_NAME = "json_normal.json"
     JSONL_FILE_NAME = "json_normal.jsonl"

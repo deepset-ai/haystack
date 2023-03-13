@@ -7,6 +7,7 @@ import itertools
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
+from time import time
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -32,7 +33,7 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import __version__
-from haystack.nodes.evaluator.evaluator import semantic_answer_similarity
+from haystack.modeling.evaluation.metrics import semantic_answer_similarity
 from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
 from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
 from haystack.pipelines.config import (
@@ -550,7 +551,10 @@ class Pipeline:
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug("Running node '%s` with input: %s", node_id, node_input)
+                    start = time()
                     node_output, stream_id = self._run_node(node_id, node_input)
+                    if "_debug" in node_output and node_id in node_output["_debug"]:
+                        node_output["_debug"][node_id]["exec_time_ms"] = round((time() - start) * 1000, 2)
                 except Exception as e:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
@@ -854,7 +858,7 @@ class Pipeline:
                     qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
             qrels = qrels_new
         elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
-            logging.warning(
+            logger.warning(
                 "'num_documents' variable should be lower than corpus length and have a positive value, but it's %s."
                 " Dataset size remains unchanged.",
                 num_documents,

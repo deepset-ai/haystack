@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 
-from haystack import BaseComponent, Answer
+from haystack import BaseComponent, Answer, Document
 from haystack.agents import Agent
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
@@ -13,6 +13,7 @@ from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, Bas
 from test.conftest import MockRetriever, MockPromptNode
 
 
+@pytest.mark.unit
 def test_add_and_overwrite_tool():
     # Add a Node as a Tool to an Agent
     agent = Agent(prompt_node=MockPromptNode())
@@ -52,6 +53,7 @@ def test_add_and_overwrite_tool():
     assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
 
 
+@pytest.mark.unit
 def test_agent_chooses_no_action():
     agent = Agent(prompt_node=MockPromptNode())
     retriever = MockRetriever()
@@ -62,10 +64,13 @@ def test_agent_chooses_no_action():
             description="useful for when you need to retrieve documents from your index",
         )
     )
-    with pytest.raises(AgentError, match=r"Wrong output format.*"):
+    with pytest.raises(
+        AgentError, match=r"Could not identify the next tool or input for that tool from Agent's output.*"
+    ):
         agent.run("How many letters does the name of the town where Christelle lives have?")
 
 
+@pytest.mark.unit
 def test_max_iterations(caplog, monkeypatch):
     # Run an Agent and stop because max_iterations is reached
     agent = Agent(prompt_node=MockPromptNode(), max_iterations=3)
@@ -75,6 +80,7 @@ def test_max_iterations(caplog, monkeypatch):
             name="Retriever",
             pipeline_or_node=retriever,
             description="useful for when you need to retrieve documents from your index",
+            output_variable="documents",
         )
     )
 
@@ -97,6 +103,7 @@ def test_max_iterations(caplog, monkeypatch):
     assert "Maximum number of iterations (2) reached" in caplog.text
 
 
+@pytest.mark.unit
 def test_run_tool():
     agent = Agent(prompt_node=MockPromptNode())
     retriever = MockRetriever()
@@ -105,25 +112,14 @@ def test_run_tool():
             name="Retriever",
             pipeline_or_node=retriever,
             description="useful for when you need to retrieve documents from your index",
+            output_variable="documents",
         )
     )
     result = agent._run_tool(tool_name="Retriever", tool_input="", transcript="")
-    assert result[0]["documents"] == []
+    assert result == "[]"  # empty list of documents
 
 
-def test_extract_observation():
-    agent = Agent(prompt_node=MockPromptNode())
-    observation = agent._extract_observation(
-        result={
-            "answers": [
-                Answer(answer="first answer", type="generative"),
-                Answer(answer="second answer", type="generative"),
-            ]
-        }
-    )
-    assert observation == "first answer"
-
-
+@pytest.mark.unit
 def test_extract_tool_name_and_tool_input():
     agent = Agent(prompt_node=MockPromptNode())
 
@@ -132,6 +128,7 @@ def test_extract_tool_name_and_tool_input():
     assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
 
 
+@pytest.mark.unit
 def test_extract_final_answer():
     agent = Agent(prompt_node=MockPromptNode())
 
@@ -140,12 +137,54 @@ def test_extract_final_answer():
     assert final_answer == "Florida"
 
 
+@pytest.mark.unit
 def test_format_answer():
     agent = Agent(prompt_node=MockPromptNode())
     formatted_answer = agent._format_answer(query="query", answer="answer", transcript="transcript")
     assert formatted_answer["query"] == "query"
     assert formatted_answer["answers"] == [Answer(answer="answer", type="generative")]
     assert formatted_answer["transcript"] == "transcript"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("retriever_with_docs, document_store_with_docs", [("bm25", "memory")], indirect=True)
+def test_tool_result_extraction(reader, retriever_with_docs):
+    # Test that the result of a Tool is correctly extracted as a string
+
+    # Pipeline as a Tool
+    search = ExtractiveQAPipeline(reader, retriever_with_docs)
+    t = Tool(
+        name="Search",
+        pipeline_or_node=search,
+        description="useful for when you need to answer "
+        "questions about where people live. You "
+        "should ask targeted questions",
+        output_variable="answers",
+    )
+    result = t.run("Where does Christelle live?")
+    assert isinstance(result, str)
+    assert result == "Paris" or result == "Madrid"
+
+    # PromptNode as a Tool
+    pt = PromptTemplate("test", "Here is a question: $query, Answer:")
+    pn = PromptNode(default_prompt_template=pt)
+
+    t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
+    result = t.run(tool_input="What is the capital of Germany?")
+    assert isinstance(result, str)
+    assert "berlin" in result.lower()
+
+    # Retriever as a Tool
+    t = Tool(
+        name="Retriever",
+        pipeline_or_node=retriever_with_docs,
+        description="useful for when you need to retrieve documents from your index",
+        output_variable="documents",
+    )
+    result = t.run(tool_input="Where does Christelle live?")
+    assert isinstance(result, str)
+    assert "Christelle" in result
 
 
 @pytest.mark.integration
@@ -180,6 +219,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
             description="useful for when you need to answer "
             "questions about where people live. You "
             "should ask targeted questions",
+            output_variable="answers",
         )
     )
     agent.add_tool(
@@ -230,6 +270,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
             description="useful for when you need to answer "
             "questions about where people live. You "
             "should ask targeted questions",
+            output_variable="answers",
         )
     )
     agent.add_tool(

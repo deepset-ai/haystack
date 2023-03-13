@@ -11,9 +11,8 @@ from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 
 tqdm.pandas()
 
