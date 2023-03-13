@@ -105,7 +105,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
                 "You need to import it before loading the pipelines."
             )
 
-    node_classes = _find_node_classes(modules_to_search=schema["dependencies"])
+    node_classes = _find_decorated_classes(modules_to_search=schema["dependencies"])
     pipelines = {}
     node_instances: Dict[str, object] = {}
     for pipeline_name, pipeline_schema in schema["pipelines"].items():
@@ -150,59 +150,61 @@ def _discover_dependencies(nodes: List[object]) -> List[str]:
     return list({module.__name__.split(".")[0] for module in module_names if module is not None}) + ["canals"]
 
 
-def _find_node_classes(modules_to_search: List[str]) -> Dict[str, type]:
+def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__canals_node__") -> Dict[str, type]:
     """
     Finds all classes decorated with `@node` in all the modules listed in `modules_to_search`.
-
     Returns a dictionary with the node class name and the node classes.
+
+    Note: can be used for other decorators as well by setting the `decorator` parameter.
     """
     node_classes: Dict[str, type] = {}
 
     # Collect all modules
     for module in modules_to_search:
-        for name, entity in getmembers(sys.modules.get(module, None), ismodule):
-            if not name.startswith("@") and f"{module}.{name}" in sys.modules.keys():
-                modules_to_search.append(f"{module}.{name}")
-
-        logger.debug("Searching for nodes under %s...", module)
 
         if not module in sys.modules.keys():
             raise ValueError(f"{module} is not imported.")
 
+        for name, entity in getmembers(sys.modules.get(module, None), ismodule):
+            if f"{module}.{name}" in sys.modules.keys():
+                modules_to_search.append(f"{module}.{name}")
+
+        logger.debug("Searching under %s...", module)
+
         duplicate_names = []
         for _, entity in getmembers(sys.modules[module], isclass):
-            if hasattr(entity, "__canals_node__"):
+            if hasattr(entity, decorator):
                 # It's a node
-                if entity.__canals_node__ in node_classes:
-                    if node_classes[entity.__canals_node__] == entity:
-                        logger.debug("'%s' was imported more than once", entity.__canals_node__)
+                if getattr(entity, decorator) in node_classes:
+                    if node_classes[getattr(entity, decorator)] == entity:
+                        logger.debug("'%s' was imported more than once", getattr(entity, decorator))
                         continue
 
                     # Two nodes were discovered with the same name - namespace them
-                    other_entity = node_classes[entity.__canals_node__]
-                    other_source_module = other_entity.__module__
+                    other_entity = node_classes[getattr(entity, decorator)]
+                    other_source_module = getattr(other_entity, decorator)
                     logger.info(
-                        "An node with the same name was found in two separate modules!\n"
-                        " - Node name: %s\n - Found in modules: '%s' and '%s'\n"
+                        "An class with the same name was found in two separate modules!\n"
+                        " - Class name: %s\n - Found in modules: '%s' and '%s'\n"
                         "They both are going to be loaded, but you will need to use a namespace "
-                        "path (%s.%s and %s.%s respectively) in saved Pipelines.",
-                        entity.__canals_node__,
+                        "path (%s.%s and %s.%s respectively) to identify them.",
+                        getattr(entity, decorator),
                         other_source_module,
                         module,
                         other_source_module,
-                        entity.__canals_node__,
+                        getattr(entity, decorator),
                         module,
-                        entity.__canals_node__,
+                        getattr(entity, decorator),
                     )
                     # Add both nodes as namespaced
-                    node_classes[f"{other_source_module}.{entity.__canals_node__}"] = other_entity
-                    node_classes[f"{module}.{entity.__canals_node__}"] = entity
+                    node_classes[f"{other_source_module}.{getattr(entity, decorator)}"] = other_entity
+                    node_classes[f"{module}.{getattr(entity, decorator)}"] = entity
                     # Do not remove the non-namespaced one, so in the case of a third collision
                     # it gets detected properly
-                    duplicate_names.append(entity.__canals_node__)
+                    duplicate_names.append(getattr(entity, decorator))
 
-                node_classes[entity.__canals_node__] = entity
-                logger.debug(" * Found node: %s", entity)
+                node_classes[getattr(entity, decorator)] = entity
+                logger.debug(" * Found class: %s", entity)
 
     # Now delete all remaining duplicates
     for duplicate in duplicate_names:
