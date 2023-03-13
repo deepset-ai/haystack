@@ -1,14 +1,11 @@
 import logging
-from typing import Dict, List, Optional, Tuple, Any, Literal
+from typing import Dict, List, Optional, Tuple, Any
 
 from haystack.v2 import node
-from haystack.v2.models import models_manager
+from haystack.v2.nodes.prompt.providers import get_model
 
 
 logger = logging.getLogger(__name__)
-
-
-ModelProviders = Literal["openai", "azure", "huggingface", "filesystem"]
 
 
 PREDEFINED_TEMPLATES = {
@@ -80,7 +77,7 @@ class PromptNode:
         outputs: List[str],
         template: str,
         model_name: str = "google/flan-t5-base",
-        model_provider: Optional[ModelProviders] = None,
+        model_provider: Optional[str] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -114,9 +111,7 @@ class PromptNode:
 
     def warm_up(self):
         if not self.model:
-            self.model = models_manager.get_model(
-                name=self.model_name, provider=self.model_provider, model_kwargs=self.model_kwargs
-            )
+            self.model = get_model(name=self.model_name, provider=self.model_provider, model_kwargs=self.model_kwargs)
 
     def run(
         self, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]
@@ -129,9 +124,19 @@ class PromptNode:
         :return: A list of model generated responses for the prompt or prompts.
         """
         data = {key: value for key, value in data}
-        prompt = self._render_prompt(**data, **parameters)
-        output = self.model.invoke(prompt=prompt)
+        output = self.prompt(**data, **parameters)
         return ({self.outputs[0]: output}, parameters)
+
+    def prompt(self, **kwargs):
+        """
+        It takes in a prompt, and returns a list of responses using the underlying invocation layer.
+
+        :param prompt: The prompt to use for the invocation. It can be a single prompt or a list of prompts.
+        :param kwargs: Additional keyword arguments to pass to the invocation layer.
+        :return: A list of model generated responses for the prompt or prompts.
+        """
+        prompt = self._render_prompt(**kwargs)
+        return self.model.invoke(prompt=prompt)
 
     def _render_prompt(self, **kwargs) -> str:
         """

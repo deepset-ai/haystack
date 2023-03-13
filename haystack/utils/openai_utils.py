@@ -29,6 +29,7 @@ OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
+# Seems to be fixed by https://github.com/openai/tiktoken/issues/23
 USE_TIKTOKEN = False
 if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
     USE_TIKTOKEN = True
