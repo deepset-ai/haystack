@@ -27,12 +27,18 @@ from rest_api.utils import get_app
 TEST_QUERY = "Who made the PDF specification?"
 
 
-def test_single_worker_warning_for_indexing_pipelines(caplog):
+def test_doc_store_error_for_indexing_pipelines(caplog):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
-    p, _ = _load_pipeline(yaml_pipeline_path, None)
+    p, _ = _load_pipeline(yaml_pipeline_path, "indexing")
 
+    assert p is None
+    assert "are not supported by the REST API" in caplog.text
+
+
+def test_single_worker_doc_store_success_for_query_pipelines():
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, "query")
     assert isinstance(p, Pipeline)
-    assert "used with 1 worker" in caplog.text
 
 
 def test_check_error_for_pipeline_not_found():

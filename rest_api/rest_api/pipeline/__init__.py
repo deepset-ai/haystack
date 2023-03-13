@@ -19,25 +19,25 @@ logger = logging.getLogger(__name__)
 SINGLE_PROCESS_DOC_STORES = (FAISSDocumentStore, InMemoryDocumentStore)
 
 
-def _load_pipeline(pipeline_yaml_path, indexing_pipeline_name):
+def _load_pipeline(pipeline_yaml_path, pipeline_name):
     # Load pipeline (if available)
     try:
-        pipeline = Pipeline.load_from_yaml(Path(pipeline_yaml_path), pipeline_name=indexing_pipeline_name)
+        pipeline = Pipeline.load_from_yaml(Path(pipeline_yaml_path), pipeline_name=pipeline_name)
         logger.info("Loaded pipeline nodes: %s", pipeline.graph.nodes.keys())
-        document_store = _get_pipeline_doc_store(pipeline)
+        document_store = _get_pipeline_doc_store(pipeline, pipeline_name)
     except PipelineConfigError as e:
         pipeline, document_store = None, None
-        logger.error(
-            "Error loading %s pipeline from %s. \n %s\n", indexing_pipeline_name, pipeline_yaml_path, e.message
-        )
+        logger.error("Error loading %s pipeline from %s. \n %s\n", pipeline_name, pipeline_yaml_path, e.message)
     return pipeline, document_store
 
 
-def _get_pipeline_doc_store(pipeline):
+def _get_pipeline_doc_store(pipeline, pipeline_name):
     document_store = pipeline.get_document_store()
-    logger.info("Loaded docstore: %s", document_store)
-    if isinstance(document_store, SINGLE_PROCESS_DOC_STORES):
-        logger.warning("FAISSDocumentStore or InMemoryDocumentStore should only be used with 1 worker.")
+    logger.info("Loading docstore: %s", document_store)
+    if pipeline_name and "index" in pipeline_name and isinstance(document_store, SINGLE_PROCESS_DOC_STORES):
+        raise PipelineConfigError(
+            "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore " "are not supported by the REST APIs."
+        )
     return document_store
 
 
