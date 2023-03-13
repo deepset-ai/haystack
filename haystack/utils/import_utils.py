@@ -6,6 +6,7 @@ import tarfile
 import zipfile
 import logging
 import importlib
+import importlib.util
 from pathlib import Path
 
 import requests
@@ -118,3 +119,7 @@ def fetch_archive_from_http(
             )
 
         return True
+
+
+def is_whisper_available():
+    return importlib.util.find_spec("whisper") is not None
