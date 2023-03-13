@@ -459,7 +459,7 @@ jobs:
     - name: Install audio libraries
       run: |
         sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
+        sudo apt-get install ffmpeg
 
     - name: Install Haystack
       run: pip install .[audio]
