@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Union, List, Dict, Any, Tuple
+from typing import Optional, Set, Union, List, Dict, Any, Tuple
 
 import pytest
 import torch
@@ -926,3 +926,82 @@ class TestRunBatch:
 def test_HFLocalInvocationLayer_supports():
     assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
     assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
+
+
+class TestPromptTemplateSyntax:
+    @pytest.mark.parametrize(
+        "prompt_text, expected_prompt_params, expected_used_functions",
+        [
+            ("{documents}", {"documents"}, set()),
+            ("Please answer the question: {documents} Question: how?", {"documents"}, set()),
+            ("Please answer the question: {documents} Question: {query}", {"documents", "query"}, set()),
+            ("Please answer the question: {documents} {{Question}}: {query}", {"documents", "query"}, set()),
+            (
+                "Please answer the question: {join(documents)} Question: {to_list(query)}",
+                {"documents", "query"},
+                {"join", "to_list"},
+            ),
+            (
+                "Please answer the question: {join(documents, 'delim', {'{': '('})} Question: {to_list(query)}",
+                {"documents", "query"},
+                {"join", "to_list"},
+            ),
+            (
+                'Please answer the question: {join(documents, "delim", {"{": "("})} Question: {to_list(query)}',
+                {"documents", "query"},
+                {"join", "to_list"},
+            ),
+            (
+                "Please answer the question: {join(documents, 'delim', {'a': {'b': 'c'}})} Question: {to_list(query)}",
+                {"documents", "query"},
+                {"join", "to_list"},
+            ),
+            (
+                "Please answer the question: {join(document=documents, delimiter='delim', replace_chars={'{': '('})} Question: {to_list(query)}",
+                {"documents", "query"},
+                {"join", "to_list"},
+            ),
+        ],
+    )
+    def test_prompt_template_syntax_parser(
+        self, prompt_text: str, expected_prompt_params: Set[str], expected_used_functions: Set[str]
+    ):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        assert set(prompt_template.prompt_params) == expected_prompt_params
+        assert set(prompt_template._used_functions) == expected_used_functions
+
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, expected_prompts",
+        [
+            ("{documents}", [Document("doc1"), Document("doc2")], None, ["doc1", "doc2"]),
+            (
+                "context: {documents} question: how?",
+                [Document("doc1"), Document("doc2")],
+                None,
+                ["context: doc1 question: how?", "context: doc2 question: how?"],
+            ),
+            (
+                "context: {documents} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 question: how?", "context: doc2 question: how?"],
+            ),
+            (
+                "context: {documents} {{question}}: {query}",
+                [Document("doc1")],
+                "how?",
+                ["context: doc1 {question}: how?"],
+            ),
+            # ("context: {join(documents)} question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
+            # ("Please answer the question: {join(documents, 'delim', {'{': '('})} Question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
+            # ('Please answer the question: {join(documents, "delim", {"{": "("})} Question: {to_list(query)}', {"documents", "query"}, {"join", "to_list"}),
+            # ("Please answer the question: {join(documents, 'delim', {'a': {'b': 'c'}})} Question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
+            # ("Please answer the question: {join(document=documents, delimiter='delim', replace_chars={'{': '('})} Question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
+        ],
+    )
+    def test_prompt_template_syntax_fill(
+        self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
+    ):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        assert prompts == expected_prompts

@@ -1,8 +1,8 @@
+import ast
 import copy
 import logging
 import re
 from abc import ABC
-from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
 
 import torch
@@ -43,6 +43,9 @@ class BasePromptTemplate(BaseComponent):
         raise NotImplementedError("This method should never be implemented in the derived class")
 
 
+PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "to_list"]
+
+
 class PromptTemplate(BasePromptTemplate, ABC):
     """
     PromptTemplate is a template for a prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what such prompt template may look like:
@@ -71,39 +74,33 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param prompt_params: Optional parameters that need to be filled in the prompt text. If you don't specify them, they're inferred from the prompt text. Any variable in prompt text in the format `$variablename` is interpreted as a prompt parameter.
         """
         super().__init__()
-        if not prompt_params:
-            # Define the regex pattern to match the strings after the {} groups
-            pattern = r"(?<!\{)\{([^{][^}]+?)\}(?!\})"
-            prompt_params = re.findall(pattern, prompt_text)
-            # shaping_pattern = r"^([a-zA-z0-9_]+)((\([a-zA-z0-9_\"'\[\]:.]+(,([-a-zA-z0-9_\"'\[\]:.]|\{\{|\}\})+)*)\))?$"
-
-        if prompt_text.count("$") != len(prompt_params):
-            raise ValueError(
-                f"The number of parameters in prompt text {prompt_text} for prompt template {name} "
-                f"does not match the number of specified parameters {prompt_params}."
-            )
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
-        prompt_text = prompt_text.strip("'").strip('"')
+        prompt_text = prompt_text.strip("'").strip('"').replace('"', "'")
 
-        t = Template(prompt_text)
-        try:
-            t.substitute(**{param: "" for param in prompt_params})
-        except KeyError as e:
-            raise ValueError(
-                f"Invalid parameter {e} in prompt text "
-                f"{prompt_text} for prompt template {name}, specified parameters are {prompt_params}"
-            )
+        self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
+        self._used_functions = []
+        used_names = []
+        for node in ast.walk(self._ast_expression):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name) and node.func.id in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
+                    self._used_functions.append(node.func.id)
+                else:
+                    raise ValueError(
+                        f"Invalid function in prompt text for prompt template {name}. "
+                        f"Allowed functions are {PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}."
+                    )
+            elif isinstance(node, ast.Name):
+                used_names.append(node.id)
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = prompt_params
+        self.prompt_params = list(set(used_names) - set(self._used_functions))
         self.output_shapers = output_shapers or []
-        if last_shaper := self.output_shapers[-1]:
-            if len(last_shaper.outputs) != 1:
-                raise ValueError(
-                    f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
-                )
+        if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
+            raise ValueError(
+                f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
+            )
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -180,12 +177,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :return: An iterator of prompt texts.
         """
         template_dict = self.prepare(*args, **kwargs)
-        template = Template(self.prompt_text)
+
         # the prompt context values should all be lists, as they will be split as one
         prompt_context_copy = {k: v if isinstance(v, list) else [v] for k, v in template_dict.items()}
         for prompt_context_values in zip(*prompt_context_copy.values()):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
-            prompt_prepared: str = template.substitute(template_input)
+            # add prompt params to locals for eval()
+            for key, value in template_input.items():
+                locals()[key] = value
+            prompt_prepared: str = eval(
+                compile(self._ast_expression, filename="<string>", mode="eval")
+            )  # pylint: disable=eval-used
             yield prompt_prepared
 
     def __repr__(self):
