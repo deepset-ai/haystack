@@ -130,15 +130,15 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         assert document_store.get_embedding_count() == len(documents_with_embeddings)
 
     @pytest.mark.integration
-    def test_write_docs_no_training(self, documents_with_embeddings, tmp_path):
+    def test_write_docs_no_training(self, documents_with_embeddings, tmp_path, caplog):
         document_store = FAISSDocumentStore(
             sql_url=f"sqlite:///{tmp_path}/test_write_docs_no_training.db",
             faiss_index_factory_str="IVF1,Flat",
             isolation_level="AUTOCOMMIT",
             return_embedding=True,
         )
-        document_store.write_documents(documents_with_embeddings)
-        assert document_store.faiss_indexes[document_store.index].is_trained
+        with pytest.raises(ValueError, match="must be trained before adding vectors"):
+            document_store.write_documents(documents_with_embeddings)
 
     @pytest.mark.integration
     def test_train_index_from_docs(self, documents_with_embeddings, tmp_path):

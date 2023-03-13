@@ -276,14 +276,19 @@ class FAISSDocumentStore(SQLDocumentStore):
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     if add_vectors:
+                        if not self.faiss_indexes[index].is_trained:
+                            raise ValueError(
+                                "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
+                                "method before adding the vectors. For details, refer to the documentation: "
+                                "https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_"
+                                "".format(self.faiss_index_factory_str)
+                            )
+
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
                         if self.similarity == "cosine":
                             self.normalize_embedding(embeddings_to_index)
-
-                        if not self.faiss_indexes[index].is_trained:
-                            self.faiss_indexes[index].train(embeddings_to_index)
 
                         self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -342,6 +347,14 @@ class FAISSDocumentStore(SQLDocumentStore):
         if not self.faiss_indexes.get(index):
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
 
+        if not self.faiss_indexes[index].is_trained:
+            raise ValueError(
+                "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
+                "method before adding the vectors. For details, refer to the documentation: "
+                "https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_"
+                "".format(self.faiss_index_factory_str)
+            )
+
         document_count = self.get_document_count(index=index)
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
@@ -369,9 +382,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 if self.similarity == "cosine":
                     self.normalize_embedding(embeddings)
-
-                if not self.faiss_indexes[index].is_trained:
-                    self.faiss_indexes[index].train(embeddings)
 
                 self.faiss_indexes[index].add(embeddings.astype(np.float32))
 
