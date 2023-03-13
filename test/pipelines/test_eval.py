@@ -1,4 +1,6 @@
+from csv import DictWriter
 import logging
+from pathlib import Path
 import pytest
 import sys
 from copy import deepcopy
@@ -1739,3 +1741,34 @@ def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
         .iloc[0]
         == ""
     )
+
+
+def test_load_legacy_evaluation_result(tmp_path):
+    legacy_csv = Path(tmp_path) / "legacy.csv"
+    with open(legacy_csv, "w") as legacy_csv:
+        columns = ["answer", "document_id", "custom_document_id", "gold_document_contents", "content"]
+        writer = DictWriter(legacy_csv, fieldnames=columns)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "answer": "answer",
+                "document_id": Document("test").id,
+                "custom_document_id": "custom_id",
+                "gold_document_contents": ["gold", "document", "contents"],
+                "content": "content",
+            }
+        )
+
+    eval_result = EvaluationResult.load(tmp_path)
+    assert "legacy" in eval_result
+    assert len(eval_result["legacy"]) == 1
+    assert eval_result["legacy"]["answer"].iloc[0] == "answer"
+    assert eval_result["legacy"]["document_ids"].iloc[0] == [Document("test").id]
+    assert eval_result["legacy"]["custom_document_ids"].iloc[0] == ["custom_id"]
+    assert eval_result["legacy"]["gold_contexts"].iloc[0] == ["gold", "document", "contents"]
+    assert eval_result["legacy"]["context"].iloc[0] == "content"
+
+    assert "document_id" not in eval_result["legacy"]
+    assert "custom_document_id" not in eval_result["legacy"]
+    assert "gold_document_contents" not in eval_result["legacy"]
+    assert "content" not in eval_result["legacy"]

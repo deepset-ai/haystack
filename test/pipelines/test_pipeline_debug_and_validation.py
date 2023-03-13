@@ -68,12 +68,16 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
     assert "Reader" in prediction["_debug"].keys()
     assert "input" in prediction["_debug"]["BM25Retriever"].keys()
     assert "output" in prediction["_debug"]["BM25Retriever"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["BM25Retriever"].keys()
     assert "input" in prediction["_debug"]["Reader"].keys()
     assert "output" in prediction["_debug"]["Reader"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["Reader"].keys()
     assert prediction["_debug"]["BM25Retriever"]["input"]
     assert prediction["_debug"]["BM25Retriever"]["output"]
+    assert prediction["_debug"]["BM25Retriever"]["exec_time_ms"] is not None
     assert prediction["_debug"]["Reader"]["input"]
     assert prediction["_debug"]["Reader"]["output"]
+    assert prediction["_debug"]["Reader"]["exec_time_ms"] is not None
 
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)

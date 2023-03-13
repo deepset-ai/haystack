@@ -670,9 +670,18 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "openai":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="ada",
+            embedding_model="text-embedding-ada-002",
             use_gpu=False,
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+    elif retriever_type == "azure":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="text-embedding-ada-002",
+            use_gpu=False,
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
+            azure_deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED"),
         )
     elif retriever_type == "cohere":
         retriever = EmbeddingRetriever(
@@ -757,23 +766,6 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
         similarity="dot_product",
         tmp_path=tmp_path,
     )
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "pinecone", "weaviate"])
-def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
-    if request.param == "pinecone":
-        mock_pinecone(monkeypatch)
-
-    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(
-        document_store_type=request.param,
-        embedding_dim=embedding_dim.args[0],
-        similarity="dot_product",
-        tmp_path=tmp_path,
-    )
-    document_store.write_documents(docs)
     yield document_store
     document_store.delete_index(document_store.index)
 
@@ -960,9 +952,11 @@ def haystack_openai_config(request):
         if not api_key:
             return {}
         else:
-            return {"api_key": api_key}
+            return {"api_key": api_key, "embedding_model": "text-embedding-ada-002"}
     elif request.param == "azure":
         return haystack_azure_conf()
+
+    return {}
 
 
 @pytest.fixture
