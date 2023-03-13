@@ -20,7 +20,9 @@ except ImportError as ie:
     )
 
 
-DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
+DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "media"]
+
+MEDIA_TYPES = ["mp3", "mp4", "mpeg", "m4a", "wav", "webm"]
 
 
 class FileTypeClassifier(BaseComponent):
@@ -63,7 +65,10 @@ class FileTypeClassifier(BaseComponent):
         """
         try:
             extension = magic.from_file(str(file_path), mime=True)
-            return mimetypes.guess_extension(extension) or ""
+            real_extension = mimetypes.guess_extension(extension)
+            if real_extension in MEDIA_TYPES:
+                return "media"
+            return real_extension or ""
         except NameError:
             logger.error(
                 "The type of '%s' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
