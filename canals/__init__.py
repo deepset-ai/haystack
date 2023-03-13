@@ -10,6 +10,7 @@ from canals.pipeline import (
     load_pipelines,
     marshal_pipelines,
     unmarshal_pipelines,
+    _find_decorated_classes,
 )
 from canals.node import node
 from canals.__about__ import __version__
