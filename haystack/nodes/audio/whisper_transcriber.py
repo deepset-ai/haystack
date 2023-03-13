@@ -15,6 +15,21 @@ WhisperModel = Literal["tiny", "small", "medium", "large", "large-v2"]
 
 
 class WhisperTranscriber(BaseComponent):
+    """
+    Transcribes audio files using OpenAI's Whisper. This class supports two underlying implementations:
+
+    - API (default): Uses the OpenAI API and requires an API key. See blog
+    [post](https://beta.openai.com/docs/api-reference/whisper for more details.) for more details.
+    - Local (requires installation of whisper): Uses the local installation
+    of [whisper](https://github.com/openai/whisper).
+
+    If you are using local installation of whisper, install whisper following the instructions available on
+    the Whisper [github repo](https://github.com/openai/whisper) and omit the api_key parameter.
+
+    If you are using the API implementation, you need to provide an api_key. You can get one by signing up
+    for an OpenAI account [here](https://beta.openai.com/).
+    """
+
     # If it's not a decision component, there is only one outgoing edge
     outgoing_edges = 1
 
@@ -22,12 +37,20 @@ class WhisperTranscriber(BaseComponent):
         self,
         api_key: Optional[str] = None,
         model_name_or_path: WhisperModel = "medium",
-        language: Optional[str] = None,
         device: Optional[Union[str, torch.device]] = None,
     ) -> None:
+        """
+        Creates a WhisperTranscriber instance.
+
+        :param api_key: OpenAI API key. If None, local installation of whisper is used.
+        :param model_name_or_path: Name of the model to use. If using local installation of whisper, this
+        value has to be one of the following: "tiny", "small", "medium", "large", "large-v2". If using
+        the API, this value has to be "whisper-1" (default).
+        :param device: Device to use for inference. This parameter is only used if you are using local
+        installation of whisper. If None, the device is automatically selected.
+        """
         super().__init__()
         self.api_key = api_key
-        self._language = language
 
         self.use_local_whisper = is_whisper_available() and self.api_key is None
 
@@ -50,10 +73,18 @@ class WhisperTranscriber(BaseComponent):
         translate: bool = False,
         **kwargs,
     ) -> Dict[str, Any]:
+        """
+        Transcribe audio file.
+
+        :param audio_file: Path to audio file or a binary file-like object.
+        :param language: Language of the audio file. If None, the language is automatically detected.
+        :param return_segments: If True, returns the transcription for each segment of the audio file.
+        :param translate: If True, translates the transcription to English.
+
+        """
         transcript: Dict[str, Any] = {}
 
         new_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        language = language or self._language
         if language is not None:
             new_kwargs["language"] = language
 
@@ -118,17 +149,33 @@ class WhisperTranscriber(BaseComponent):
 
             return transcription
 
-    def run(self, audio_file: Union[str, BinaryIO], source_language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
-        document = self.transcribe(audio_file, source_language, return_segments, translate)
+    def run(self, audio_file: Union[str, BinaryIO], language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
+        """
+        Transcribe audio file.
+
+        :param audio_file: Path to audio file or a binary file-like object.
+        :param language: Language of the audio file. If None, the language is automatically detected.
+        :param return_segments: If True, returns the transcription for each segment of the audio file.
+        :param translate: If True, translates the transcription to English.
+        """
+        document = self.transcribe(audio_file, language, return_segments, translate)
 
         output = {"documents": [document]}
 
         return output, "output_1"
 
-    def run_batch(self, audio_files: List[Union[str, BinaryIO]], source_language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
+    def run_batch(self, audio_files: List[Union[str, BinaryIO]], language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
+        """
+        Transcribe audio files.
+
+        :param audio_files: List of paths to audio files or binary file-like objects.
+        :param language: Language of the audio files. If None, the language is automatically detected.
+        :param return_segments: If True, returns the transcription for each segment of the audio files.
+        :param translate: If True, translates the transcription to English.
+        """
         documents = []
         for audio in audio_files:
-            document = self.transcribe(audio, source_language, return_segments, translate)
+            document = self.transcribe(audio, language, return_segments, translate)
             documents.append(document)
 
         output = {"documents": documents}
