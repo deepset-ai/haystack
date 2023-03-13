@@ -36,7 +36,7 @@ def _get_pipeline_doc_store(pipeline, pipeline_name):
     logger.info("Loading docstore: %s", document_store)
     if pipeline_name and "index" in pipeline_name and isinstance(document_store, SINGLE_PROCESS_DOC_STORES):
         raise PipelineConfigError(
-            "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore " "are not supported by the REST APIs."
+            "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore are not supported by the REST APIs."
         )
     return document_store
 
