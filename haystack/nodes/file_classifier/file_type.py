@@ -66,12 +66,14 @@ class FileTypeClassifier(BaseComponent):
         :param file_path: the path to extract the extension from
         """
         try:
-            extension = magic.from_file(str(file_path), mime=True)
-            real_extension = mimetypes.guess_extension(extension) or ""
-            real_extension = real_extension.lstrip(".")
-            if self._default_types and real_extension in MEDIA_TYPES:
-                return "media"
-            return real_extension or ""
+            with open(file_path, "rb") as f:
+                buffer = f.read(2049)
+                extension = magic.from_buffer(buffer, mime=True)
+                real_extension = mimetypes.guess_extension(extension) or ""
+                real_extension = real_extension.lstrip(".")
+                if self._default_types and real_extension in MEDIA_TYPES:
+                    return "media"
+                return real_extension or ""
         except NameError:
             logger.error(
                 "The type of '%s' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
