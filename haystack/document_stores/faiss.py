@@ -11,10 +11,9 @@ import numpy as np
 from tqdm.auto import tqdm
 
 try:
+    # These deps are optional, but get installed with the `faiss` extra
     import faiss
-    from haystack.document_stores.sql import (
-        SQLDocumentStore,
-    )  # its deps are optional, but get installed with the `faiss` extra
+    from haystack.document_stores.sql import SQLDocumentStore  # type: ignore
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
