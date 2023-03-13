@@ -103,7 +103,7 @@ jobs:
         uses: ./.github/actions/python_cache/
 
       - name: Install Haystack
-        run: pip install .[all,version2]
+        run: pip install .[all,alfalfa]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
