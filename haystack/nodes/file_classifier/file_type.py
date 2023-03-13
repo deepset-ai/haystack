@@ -32,7 +32,7 @@ class FileTypeClassifier(BaseComponent):
 
     outgoing_edges = len(DEFAULT_TYPES)
 
-    def __init__(self, supported_types: Optional[List[str]] = None):
+    def __init__(self, supported_types: Optional[List[str]] = None, full_analysis: bool = False):
         """
         Node that sends out files on a different output edge depending on their extension.
 
@@ -40,6 +40,7 @@ class FileTypeClassifier(BaseComponent):
               If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
              Lists with duplicate elements are not allowed.
         """
+        self.full_analysis = full_analysis
         self._default_types = False
         if supported_types is None:
             self._default_types = True
@@ -67,7 +68,10 @@ class FileTypeClassifier(BaseComponent):
         """
         try:
             with open(file_path, "rb") as f:
-                buffer = f.read(2049)
+                if self.full_analysis:
+                    buffer = f.read()
+                else:
+                    buffer = f.read(2049)
                 extension = magic.from_buffer(buffer, mime=True)
                 real_extension = mimetypes.guess_extension(extension) or ""
                 real_extension = real_extension.lstrip(".")
