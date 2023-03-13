@@ -22,7 +22,7 @@ except ImportError as ie:
 
 DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "media"]
 
-MEDIA_TYPES = ["mp3", "mp4", "mpeg", "m4a", "wav", "webm"]
+DEFAULT_MEDIA_TYPES = ["mp3", "mp4", "mpeg", "m4a", "wav", "webm"]
 
 
 class FileTypeClassifier(BaseComponent):
@@ -77,7 +77,7 @@ class FileTypeClassifier(BaseComponent):
                 extension = magic.from_buffer(buffer, mime=True)
                 real_extension = mimetypes.guess_extension(extension) or ""
                 real_extension = real_extension.lstrip(".")
-                if self._default_types and real_extension in MEDIA_TYPES:
+                if self._default_types and real_extension in DEFAULT_MEDIA_TYPES:
                     return "media"
                 return real_extension or ""
         except NameError:
@@ -99,12 +99,12 @@ class FileTypeClassifier(BaseComponent):
         """
         extension = file_paths[0].suffix.lower().lstrip(".")
 
-        if extension == "" or (self._default_types and extension in MEDIA_TYPES):
+        if extension == "" or (self._default_types and extension in DEFAULT_MEDIA_TYPES):
             extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
             path_suffix = path.suffix.lower().lstrip(".")
-            if path_suffix == "" or (self._default_types and path_suffix in MEDIA_TYPES):
+            if path_suffix == "" or (self._default_types and path_suffix in DEFAULT_MEDIA_TYPES):
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
                 raise ValueError("Multiple non-default file types are not allowed at once.")
