@@ -28,6 +28,10 @@ class WhisperTranscriber(BaseComponent):
 
     If you are using the API implementation, you need to provide an api_key. You can get one by signing up
     for an OpenAI account [here](https://beta.openai.com/).
+
+    For the supported audio formats, languages and other parameters, see the Whisper API
+    [documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
+    [github repo](https://github.com/openai/whisper).
     """
 
     # If it's not a decision component, there is only one outgoing edge
