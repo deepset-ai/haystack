@@ -68,7 +68,8 @@ class FileTypeClassifier(BaseComponent):
         try:
             extension = magic.from_file(str(file_path), mime=True)
             real_extension = mimetypes.guess_extension(extension) or ""
-            if self._default_types and real_extension.lstrip(".") in MEDIA_TYPES:
+            real_extension = real_extension.lstrip(".")
+            if self._default_types and real_extension in MEDIA_TYPES:
                 return "media"
             return real_extension or ""
         except NameError:
@@ -88,9 +89,9 @@ class FileTypeClassifier(BaseComponent):
         :param file_paths: the paths to extract the extension from
         :return: a set of strings with all the extensions (without duplicates), the extension will be guessed if the file has none
         """
-        extension = file_paths[0].suffix.lower()
+        extension = file_paths[0].suffix.lower().lstrip(".")
 
-        if extension == "" or extension.lstrip(".") in MEDIA_TYPES:
+        if extension == "" or extension in MEDIA_TYPES:
             extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
@@ -98,9 +99,9 @@ class FileTypeClassifier(BaseComponent):
             if path_suffix == "" or path_suffix in MEDIA_TYPES:
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
-                raise ValueError("Multiple file types are not allowed at once.")
+                raise ValueError("Multiple non-default file types are not allowed at once.")
 
-        return extension.lstrip(".")
+        return extension
 
     def run(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
         """
