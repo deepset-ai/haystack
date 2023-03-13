@@ -1,5 +1,4 @@
 import json
-import tempfile
 
 from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal
 
@@ -45,7 +44,7 @@ class WhisperTranscriber(BaseComponent):
 
     def transcribe(
         self,
-        audio: BinaryIO,
+        audio_file: Union[str, BinaryIO],
         language: Optional[str] = None,
         return_segments: bool = False,
         translate: bool = False,
@@ -60,72 +59,76 @@ class WhisperTranscriber(BaseComponent):
 
         if self.use_local_whisper:
             new_kwargs["return_segments"] = return_segments
-            transcript = self._invoke_local(audio, translate, **new_kwargs)
+            transcript = self._invoke_local(audio_file, translate, **new_kwargs)
         elif self.api_key:
-            transcript = self._invoke_api(audio, translate, **new_kwargs)
+            transcript = self._invoke_api(audio_file, translate, **new_kwargs)
         return transcript
 
-    def _invoke_api(self, audio_file: BinaryIO, translate: Optional[bool] = False, **kwargs) -> Dict[str, Any]:
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        request = PreparedRequest()
-        url: str = (
-            "https://api.openai.com/v1/audio/transcriptions"
-            if not translate
-            else "https://api.openai.com/v1/audio/translations"
-        )
+    def _invoke_api(
+        self, audio_file: Union[str, BinaryIO], translate: Optional[bool] = False, **kwargs
+    ) -> Dict[str, Any]:
+        if isinstance(audio_file, str):
+            with open(audio_file, "rb") as f:
+                return self._invoke_api(f, translate, **kwargs)
+        else:
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            request = PreparedRequest()
+            url: str = (
+                "https://api.openai.com/v1/audio/transcriptions"
+                if not translate
+                else "https://api.openai.com/v1/audio/translations"
+            )
 
-        request.prepare(
-            method="POST",
-            url=url,
-            headers=headers,
-            data={"model": "whisper-1", **kwargs},
-            files=[("file", (audio_file.name, audio_file, "application/octet-stream"))],
-        )
-        response = requests.post(url, data=request.body, headers=request.headers, timeout=600)
+            request.prepare(
+                method="POST",
+                url=url,
+                headers=headers,
+                data={"model": "whisper-1", **kwargs},
+                files=[("file", (audio_file.name, audio_file, "application/octet-stream"))],
+            )
+            response = requests.post(url, data=request.body, headers=request.headers, timeout=600)
 
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
+            if response.status_code != 200:
+                openai_error: OpenAIError
+                if response.status_code == 429:
+                    openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+                else:
+                    openai_error = OpenAIError(
+                        f"OpenAI returned an error.\n"
+                        f"Status code: {response.status_code}\n"
+                        f"Response body: {response.text}",
+                        status_code=response.status_code,
+                    )
+                raise openai_error
 
-        return json.loads(response.content)
+            return json.loads(response.content)
 
-    def _invoke_local(self, audio_file: BinaryIO, translate: Optional[bool] = False, **kwargs) -> Dict[str, Any]:
-        with tempfile.NamedTemporaryFile() as fl:
-            fl.write(audio_file.read())
-            fl.flush()
-
+    def _invoke_local(
+        self, audio_file: Union[str, BinaryIO], translate: Optional[bool] = False, **kwargs
+    ) -> Dict[str, Any]:
+        if isinstance(audio_file, str):
+            with open(audio_file, "rb") as f:
+                return self._invoke_local(f, translate, **kwargs)
+        else:
             return_segments = kwargs.pop("return_segments", None)
             kwargs["task"] = "translate" if translate else "transcribe"
-            transcription = self._model.transcribe(fl.name, **kwargs)
+            transcription = self._model.transcribe(audio_file.name, **kwargs)
             if not return_segments:
                 transcription.pop("segments", None)
 
             return transcription
 
-    def run(self, audio: BinaryIO, source_language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
-        document = self.transcribe(
-            audio=audio, source_language=source_language, return_segments=return_segments, translate=translate
-        )
+    def run(self, audio_file: Union[str, BinaryIO], source_language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
+        document = self.transcribe(audio_file, source_language, return_segments, translate)
 
         output = {"documents": [document]}
 
         return output, "output_1"
 
-    def run_batch(self, audios: List[BinaryIO], source_language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
+    def run_batch(self, audio_files: List[Union[str, BinaryIO]], source_language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
         documents = []
-        for audio in audios:
-            document = self.transcribe(
-                audio=audio, source_language=source_language, return_segments=return_segments, translate=translate
-            )
+        for audio in audio_files:
+            document = self.transcribe(audio, source_language, return_segments, translate)
             documents.append(document)
 
         output = {"documents": documents}
