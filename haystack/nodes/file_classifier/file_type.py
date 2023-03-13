@@ -40,7 +40,9 @@ class FileTypeClassifier(BaseComponent):
               If no value is provided, the value created by default comprises: `txt`, `pdf`, `md`, `docx`, and `html`.
              Lists with duplicate elements are not allowed.
         """
+        self._default_types = False
         if supported_types is None:
+            self._default_types = True
             supported_types = DEFAULT_TYPES
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types
@@ -66,7 +68,7 @@ class FileTypeClassifier(BaseComponent):
         try:
             extension = magic.from_file(str(file_path), mime=True)
             real_extension = mimetypes.guess_extension(extension)
-            if real_extension in MEDIA_TYPES:
+            if self._default_types and real_extension in MEDIA_TYPES:
                 return "media"
             return real_extension or ""
         except NameError:
