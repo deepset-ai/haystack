@@ -1034,9 +1034,44 @@ class TestPromptTemplateSyntax:
                 "how?",
                 ["context: doc1 d question: what!"],
             ),
+            ("context", None, None, ["context"]),
         ],
     )
     def test_prompt_template_syntax_fill(
+        self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
+    ):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        assert prompts == expected_prompts
+
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, expected_exc_match",
+        [
+            ("{__import__('os').listdir('.')}", None, None, "Invalid function in prompt text"),
+            ("{__import__('os')}", None, None, "Invalid function in prompt text"),
+            ("{requests.get('https://haystack.deepset.ai/')}", None, None, "Invalid function in prompt text"),
+            ("{join(__import__('os').listdir('.'))}", None, None, "Invalid function in prompt text"),
+        ],
+    )
+    def test_prompt_template_syntax_fill_raises(
+        self, prompt_text: str, documents: List[Document], query: str, expected_exc_match: str
+    ):
+        with pytest.raises(ValueError, match=expected_exc_match):
+            prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, expected_prompts",
+        [
+            ("__import__('os').listdir('.')", None, None, ["__import__('os').listdir('.')"]),
+            (
+                "requests.get('https://haystack.deepset.ai/')",
+                None,
+                None,
+                ["requests.get('https://haystack.deepset.ai/')"],
+            ),
+        ],
+    )
+    def test_prompt_template_syntax_fill_ignores_dangerous_input(
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
         prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)

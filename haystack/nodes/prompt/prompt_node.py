@@ -262,11 +262,16 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         # the prompt context values should all be lists, as they will be split as one
         prompt_context_copy = {k: v if isinstance(v, list) else [v] for k, v in template_dict.items()}
-        max_len = max(len(v) for v in prompt_context_copy.values())
-        if max_len > 1:
-            for key, value in prompt_context_copy.items():
-                if len(value) == 1:
-                    prompt_context_copy[key] = value * max_len
+        if prompt_context_copy:
+            max_len = max(len(v) for v in prompt_context_copy.values())
+            if max_len > 1:
+                for key, value in prompt_context_copy.items():
+                    if len(value) == 1:
+                        prompt_context_copy[key] = value * max_len
+        else:
+            # add dummy to execute the template once
+            prompt_context_copy = {"dummy": [None]}
+
         for prompt_context_values in zip(*prompt_context_copy.values()):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
             prompt_prepared: str = eval(  # pylint: disable=eval-used
