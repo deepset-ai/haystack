@@ -1023,21 +1023,25 @@ class TestPromptTemplateSyntax:
         assert prompts == expected_prompts
 
     @pytest.mark.parametrize(
-        "prompt_text, documents, query, exc_type, expected_exc_match",
+        "prompt_text, exc_type, expected_exc_match",
         [
-            ("{__import__('os').listdir('.')}", None, None, ValueError, "Invalid function in prompt text"),
-            ("{__import__('os')}", None, None, ValueError, "Invalid function in prompt text"),
-            (
-                "{requests.get('https://haystack.deepset.ai/')}",
-                None,
-                None,
-                ValueError,
-                "Invalid function in prompt text",
-            ),
-            ("{join(__import__('os').listdir('.'))}", None, None, ValueError, "Invalid function in prompt text"),
-            ("{for}", None, None, SyntaxError, "invalid syntax"),
-            ("This is an invalid {variable .", None, None, SyntaxError, "f-string: expecting '}'"),
+            ("{__import__('os').listdir('.')}", ValueError, "Invalid function in prompt text"),
+            ("{__import__('os')}", ValueError, "Invalid function in prompt text"),
+            ("{requests.get('https://haystack.deepset.ai/')}", ValueError, "Invalid function in prompt text"),
+            ("{join(__import__('os').listdir('.'))}", ValueError, "Invalid function in prompt text"),
+            ("{for}", SyntaxError, "invalid syntax"),
+            ("This is an invalid {variable .", SyntaxError, "f-string: expecting '}'"),
         ],
+    )
+    def test_prompt_template_syntax_init_raises(
+        self, prompt_text: str, exc_type: Type[BaseException], expected_exc_match: str
+    ):
+        with pytest.raises(exc_type, match=expected_exc_match):
+            PromptTemplate(name="test", prompt_text=prompt_text)
+
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, exc_type, expected_exc_match",
+        [("{join}", None, None, ValueError, "Expected prompt parameters")],
     )
     def test_prompt_template_syntax_fill_raises(
         self,
@@ -1049,6 +1053,7 @@ class TestPromptTemplateSyntax:
     ):
         with pytest.raises(exc_type, match=expected_exc_match):
             prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+            next(prompt_template.fill(documents=documents, query=query))
 
     @pytest.mark.parametrize(
         "prompt_text, documents, query, expected_prompts",
@@ -1060,6 +1065,7 @@ class TestPromptTemplateSyntax:
                 None,
                 ["requests.get('https://haystack.deepset.ai/')"],
             ),
+            ("{query}", None, print, ["<built-in function print>"]),
         ],
     )
     def test_prompt_template_syntax_fill_ignores_dangerous_input(
