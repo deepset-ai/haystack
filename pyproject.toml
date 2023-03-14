@@ -156,6 +156,7 @@ audio = [
   "protobuf<=3.20.1",
   "soundfile< 0.12.0",
   "numpy<1.24",  # Keep compatibility with latest numba
+  "openai-whisper"
 ]
 beir = [
   "beir; platform_system != 'Windows'",
