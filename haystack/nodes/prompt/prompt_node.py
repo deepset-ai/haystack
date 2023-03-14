@@ -165,7 +165,7 @@ class PromptModel(BaseComponent):
     """
     The PromptModel class is a component that uses a pre-trained model to perform tasks based on a prompt. Out of
     the box, it supports model invocation layers for:
-    - Hugging Face transformers (all text2text-generation models)
+    - Hugging Face transformers (all text2text-generation and text-generation models)
     - OpenAI InstructGPT models
     - Azure OpenAI InstructGPT models
 
@@ -400,7 +400,8 @@ class PromptNode(BaseComponent):
     additional custom model invocation layers.
 
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
-    LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
+    LLM does not "follow" prompt instructions well. The list of instructions following models increases every month,
+    and the current list includes: Flan, OpenAI InstructGPT, opt-iml, bloomz, and mt0 models.
 
     For more details, see  [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """

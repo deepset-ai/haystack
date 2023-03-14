@@ -117,7 +117,7 @@ class PromptModelInvocationLayer:
 
 
 def instruction_following_models() -> List[str]:
-    return ["flan", "mt0", "bloomz", "davinci"]
+    return ["flan", "mt0", "bloomz", "davinci", "opt-iml"]
 
 
 class StopWordsCriteria(StoppingCriteria):
@@ -220,7 +220,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         if len(model_input_kwargs) > 0:
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
-
+        self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
         self.pipe = pipeline(
             model=model_name_or_path,
             device=self.devices[0] if "device_map" not in model_input_kwargs else None,
@@ -237,8 +237,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
         :return: A list of generated text.
 
-        Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face as model_input_kwargs.
-        Other kwargs are ignored.
+        Note: Only kwargs relevant to Text2TextGenerationPipeline and TextGenerationPipeline are passed to
+        Hugging Face as model_input_kwargs. Other kwargs are ignored.
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
@@ -246,14 +246,25 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
-            # Consider only Text2TextGenerationPipeline relevant, ignore others
-            # For more details refer to Hugging Face Text2TextGenerationPipeline documentation
+            # Consider only Text2TextGenerationPipeline and TextGenerationPipeline relevant, ignore others
+            # For more details refer to Hugging Face Text2TextGenerationPipeline and TextGenerationPipeline
+            # documentation
             # TODO resolve these kwargs from the pipeline signature
             model_input_kwargs = {
                 key: kwargs[key]
-                for key in ["return_tensors", "return_text", "clean_up_tokenization_spaces", "truncation"]
+                for key in [
+                    "return_tensors",
+                    "return_text",
+                    "return_full_text",
+                    "clean_up_tokenization_spaces",
+                    "truncation",
+                ]
                 if key in kwargs
             }
+            # Prefer return_full_text is False for text-generation (unless explicitly set)
+            # Thus only generated text is returned (excluding prompt)
+            if "text-generation" == self.task_name and "return_full_text" not in model_input_kwargs:
+                model_input_kwargs["return_full_text"] = False
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
@@ -302,7 +313,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         task_name: Optional[str] = None
         try:
-            task_name = get_task(model_name_or_path)
+            task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
         except RuntimeError:
             # This will fail for all non-HF models
             return False
