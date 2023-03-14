@@ -1,9 +1,12 @@
 import ast
 import copy
+from functools import reduce
 import logging
 import re
 from abc import ABC
+from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
+from uuid import uuid4
 
 import torch
 
@@ -43,7 +46,36 @@ class BasePromptTemplate(BaseComponent):
         raise NotImplementedError("This method should never be implemented in the derived class")
 
 
-PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "to_list"]
+PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "to_list", "documents_to_strings", "replace"]
+
+
+def documents_to_strings(documents: List[Union[Document, str]]) -> List[str]:
+    for doc in documents:
+        if not isinstance(doc, str) and not isinstance(doc.content, str):
+            raise ValueError("PromptNode only accepts text documents.")
+    return [doc.content if isinstance(doc, Document) else doc for doc in documents]
+
+
+def join(documents: List[Document], delimiter: str = " ", pattern="$content", str_replace=None) -> str:
+    str_replace = str_replace or {}
+
+    template = Template(pattern)
+    pattern_params = [
+        match.groupdict().get("named", match.groupdict().get("braced"))
+        for match in template.pattern.finditer(template.template)
+    ]
+    meta_params = [param for param in pattern_params if param and param not in ["content", "idx"]]
+    content = delimiter.join(
+        template.substitute(
+            {
+                "idx": i + 1,
+                "content": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), doc.content),
+                **{k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), doc.meta[k]) for k in meta_params},
+            }
+        )
+        for i, doc in enumerate(documents)
+    )
+    return content
 
 
 class PromptTemplate(BasePromptTemplate, ABC):
@@ -79,23 +111,66 @@ class PromptTemplate(BasePromptTemplate, ABC):
         prompt_text = prompt_text.strip("'").strip('"').replace('"', "'")
 
         self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
-        self._used_functions = []
+        prompt_params_functions = {}
+        used_functions = []
         used_names = []
-        for node in ast.walk(self._ast_expression):
-            if isinstance(node, ast.Call):
+        comprehension_targets = []
+
+        class UsedNamesFinder(ast.NodeVisitor):
+            def visit_Name(self, node: ast.Name) -> None:
+                used_names.append(node.id)
+
+            def visit_comprehension(self, node: ast.comprehension) -> None:
+                super().generic_visit(node)
+                if isinstance(node.target, ast.Name):
+                    comprehension_targets.append(node.target.id)
+
+        class CallTransformer(ast.NodeTransformer):
+            def visit_Call(self, node: ast.Call) -> Optional[ast.AST]:
+                # TODO: validate nested calls
                 if isinstance(node.func, ast.Name) and node.func.id in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
-                    self._used_functions.append(node.func.id)
+                    # functions: func(args, kwargs)
+                    used_functions.append(node.func.id)
+                    id = uuid4().hex
+                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node))
+                    return ast.Name(id=id, ctx=ast.Load())
+                elif isinstance(node.func, ast.Attribute) and node.func.attr in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
+                    # methods: instance.method(args, kwargs)
+                    used_functions.append(node.func.attr)
+                    id = uuid4().hex
+                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node))
+                    return ast.Name(id=id, ctx=ast.Load())
                 else:
                     raise ValueError(
                         f"Invalid function in prompt text for prompt template {name}. "
                         f"Allowed functions are {PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}."
                     )
-            elif isinstance(node, ast.Name):
-                used_names.append(node.id)
+
+        class RawParamsTransformer(ast.NodeTransformer):
+            def visit_Name(self, node: ast.Name) -> Optional[ast.AST]:
+                if node.id not in prompt_params_functions:
+                    id = uuid4().hex
+                    if node.id == "documents":
+                        call = ast.Call(
+                            func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node], keywords=[]
+                        )
+                        prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=call))
+                    else:
+                        prompt_params_functions[id] = ast.fix_missing_locations(
+                            ast.Expression(body=ast.Name(id=node.id, ctx=ast.Load()))
+                        )
+                    return ast.Name(id=id, ctx=ast.Load())
+                return node
+
+        UsedNamesFinder().visit(self._ast_expression)
+        self._ast_expression = ast.fix_missing_locations(CallTransformer().visit(self._ast_expression))
+        self._ast_expression = ast.fix_missing_locations(RawParamsTransformer().visit(self._ast_expression))
+        self._prompt_params_functions: Dict[str, ast.Expression] = prompt_params_functions
+        self._used_functions: List[str] = used_functions
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = list(set(used_names) - set(self._used_functions))
+        self.prompt_params = list(set(used_names) - set(self._used_functions) - set(comprehension_targets))
         self.output_shapers = output_shapers or []
         if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
             raise ValueError(
@@ -110,7 +185,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param kwargs: Keyword arguments to fill the parameters in the prompt text of a PromptTemplate.
         :return: A dictionary with the prompt text and the prompt parameters.
         """
-        template_dict = {}
+        params_dict = {}
         # attempt to resolve args first
         if args:
             if len(args) != len(self.prompt_params):
@@ -122,24 +197,25 @@ class PromptTemplate(BasePromptTemplate, ABC):
                     args,
                 )
             for prompt_param, arg in zip(self.prompt_params, args):
-                template_dict[prompt_param] = [arg] if isinstance(arg, str) else arg
+                params_dict[prompt_param] = [arg] if isinstance(arg, str) else arg
         # then attempt to resolve kwargs
         if kwargs:
             for param in self.prompt_params:
                 if param in kwargs:
-                    # TODO: apply shaping functions here
-                    if param == "documents":
-                        for doc in kwargs.get("documents", []):
-                            if not isinstance(doc, str) and not isinstance(doc.content, str):
-                                raise ValueError("PromptNode only accepts text documents.")
-                        kwargs["documents"] = [
-                            doc.content if isinstance(doc, Document) else doc for doc in kwargs.get("documents", [])
-                        ]
-                    template_dict[param] = kwargs[param]
+                    params_dict[param] = kwargs[param]
 
-        if set(template_dict.keys()) != set(self.prompt_params):
-            available_params = set(list(template_dict.keys()) + list(set(kwargs.keys())))
+        if set(params_dict.keys()) != set(self.prompt_params):
+            available_params = set(list(params_dict.keys()) + list(set(kwargs.keys())))
             raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
+
+        template_dict = {}
+        for id, call in self._prompt_params_functions.items():
+            allowed_globals = {k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}
+            call_result = eval(
+                compile(call, filename="<string>", mode="eval"), allowed_globals, params_dict
+            )  # pylint: disable=eval-used
+            params_dict[id] = call_result
+            template_dict[id] = call_result
 
         return template_dict
 
@@ -180,14 +256,16 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         # the prompt context values should all be lists, as they will be split as one
         prompt_context_copy = {k: v if isinstance(v, list) else [v] for k, v in template_dict.items()}
+        max_len = max(len(v) for v in prompt_context_copy.values())
+        if max_len > 1:
+            for key, value in prompt_context_copy.items():
+                if len(value) == 1:
+                    prompt_context_copy[key] = value * max_len
         for prompt_context_values in zip(*prompt_context_copy.values()):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
-            # add prompt params to locals for eval()
-            for key, value in template_input.items():
-                locals()[key] = value
-            prompt_prepared: str = eval(
-                compile(self._ast_expression, filename="<string>", mode="eval")
-            )  # pylint: disable=eval-used
+            prompt_prepared: str = eval(  # pylint: disable=eval-used
+                compile(self._ast_expression, filename="<string>", mode="eval"), {}, template_input
+            )
             yield prompt_prepared
 
     def __repr__(self):

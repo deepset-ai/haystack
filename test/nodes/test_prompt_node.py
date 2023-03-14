@@ -981,6 +981,12 @@ class TestPromptTemplateSyntax:
                 ["context: doc1 question: how?", "context: doc2 question: how?"],
             ),
             (
+                "context: {' '.join([d.content for d in documents])} question: how?",
+                [Document("doc1"), Document("doc2")],
+                None,
+                ["context: doc1 doc2 question: how?"],
+            ),
+            (
                 "context: {documents} question: {query}",
                 [Document("doc1"), Document("doc2")],
                 "how?",
@@ -992,11 +998,36 @@ class TestPromptTemplateSyntax:
                 "how?",
                 ["context: doc1 {question}: how?"],
             ),
-            # ("context: {join(documents)} question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
-            # ("Please answer the question: {join(documents, 'delim', {'{': '('})} Question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
-            # ('Please answer the question: {join(documents, "delim", {"{": "("})} Question: {to_list(query)}', {"documents", "query"}, {"join", "to_list"}),
-            # ("Please answer the question: {join(documents, 'delim', {'a': {'b': 'c'}})} Question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
-            # ("Please answer the question: {join(document=documents, delimiter='delim', replace_chars={'{': '('})} Question: {to_list(query)}", {"documents", "query"}, {"join", "to_list"}),
+            (
+                "context: {join(documents)} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 doc2 question: how?"],
+            ),
+            (
+                "Please answer the question: {join(documents, ' delim ', '[$idx] $content', {'{': '('})} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                "Please answer the question: {join(documents=documents, delimiter=' delim ', pattern='[$idx] $content', str_replace={'{': '('})} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                'Please answer the question: {join(documents, " delim ", "[$idx] $content", {"{": "("})} question: {query}',
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                "context: {join(documents)} question: {query.replace('how', 'what')}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 doc2 question: what?"],
+            ),
         ],
     )
     def test_prompt_template_syntax_fill(
