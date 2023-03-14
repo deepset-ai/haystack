@@ -89,19 +89,21 @@ class MyDocumentStore:
     def count_items(self, **kwargs) -> int:
         ...
 
-    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
+    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Document]:
         ...
 
-    def write_items(self, items: List[Dict[str, Any]], **kwargs) -> None:
+    def write_items(self, documents: List[Document], **kwargs) -> None:
         ...
 
     def delete_items(self, ids: List[str], **kwargs) -> None:
         ...
 ```
 
-The contract is extremely narrow to encourage the use of specialized nodes. `DocumentStore`s' primary focus should be storing documents: the fact that most vector stores also support retrieval should be outside of this abstraction and made available through methods that do not belong to the contract.
+The contract is quite narrow to encourage the use of specialized nodes. `DocumentStore`s' primary focus should be storing documents: the fact that most vector stores also support retrieval should be outside of this abstraction and made available through methods that do not belong to the contract.
 
 This allows `Retriever`s to carry out their tasks while avoiding clutter on `DocumentStore`s that do not support some features.
+
+Note also how the concept of `index` is not present anymore, as it it mostly ES-specific.
 
 For example, a `MemoryDocumentStore` could offer the following API:
 
@@ -111,10 +113,10 @@ class MemoryDocumentStore:
     def count_items(self, **kwargs) -> int:
         ...
 
-    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
+    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Document]:
         ...
 
-    def write_items(self, items: List[Dict[str, Any]], **kwargs) -> None:
+    def write_items(self, documents: List[Document], **kwargs) -> None:
         ...
 
     def delete_items(self, ids: List[str], **kwargs) -> None:
@@ -147,7 +149,73 @@ class MemoryDocumentStore:
 
 In this way, a `DocumentWriter` could easily use the `write_documents` method defined in the contract on all document stores, while `MemoryRetriever` can leverage the fact that it only supports `MemoryDocumentStore`, so it can assume all its custom methods like `bm25_retrieval`, `vector_similarity_retrieval`, etc... are present.
 
-Note also how the concept of `index` is not present anymore, as it it mostly ES-specific.
+Here is, for comparison, an example implementation of a DocumentWriter, a document-store agnostic node.
+
+```python
+@node
+class DocumentWriter:
+
+    def __init__(self, inputs=['documents'], stores=["documents"]):
+        self.store_names = stores
+        self.inputs = inputs
+        self.outputs = []
+        self.init_parameters = {"inputs": inputs, "stores": stores}
+
+    def run(
+        self,
+        name: str,
+        data: List[Tuple[str, Any]],
+        parameters: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        writer_parameters = parameters.get(name, {})
+        stores = writer_parameters.pop("stores", {})
+
+        all_documents = []
+        for _, documents in data:
+            all_documents += documents
+
+        for store_name in self.store_names:
+            stores[store_name].write_documents(documents=all_documents, **writer_parameters)
+
+        return ({}, parameters)
+```
+This class does not check which document store it is using, because it can safely assume they are going to have a `write_documents` method.
+
+Here instead we can see an example implementation of a MemoryRetriever, a document-store aware node.
+
+```python
+@node
+class MemoryRetriever:
+
+    def __init__(self, inputs=['query'], output="documents", stores=["documents"]):
+        self.store_names = stores
+        self.inputs = inputs
+        self.outputs = [output]
+        self.init_parameters = {"inputs": inputs, "output": output "stores": stores}
+
+    def run(
+        self,
+        name: str,
+        data: List[Tuple[str, Any]],
+        parameters: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+
+        retriever_parameters = parameters.get(name, {})
+        stores = retriever_parameters.pop("stores", {})
+        retrieval_method = retriever_parameters.pop("retrieval_method", "bm25")
+
+        for store_name in self.store_names:
+            if not isinstance(stores[store_name], MemoryStore):
+                raise ValueError("MemoryRetriever only works with MemoryDocumentStore.")
+
+            if retrieval_method == "bm25":
+                documents = stores[store_name].bm25_retrieval(queries=queries, **retriever_parameters)
+            elif retrieval_method == "embedding":
+                documents = stores[store_name].vector_similarity_retrieval(queries=queries, **retriever_parameters)
+            ...
+
+        return ({self.outputs[0]: documents}, parameters)
+```
 
 # Drawbacks
 
