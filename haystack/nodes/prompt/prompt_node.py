@@ -2,7 +2,6 @@ import ast
 import copy
 from functools import reduce
 import logging
-import re
 from abc import ABC
 from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
