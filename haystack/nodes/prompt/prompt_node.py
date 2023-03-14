@@ -219,7 +219,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = ast_validator.prompt_params
+        self.prompt_params = [param for param in ast_validator.prompt_params if param not in ["new_line", "tab"]]
         self.output_shapers = output_shapers or []
         if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
             raise ValueError(
