@@ -71,7 +71,7 @@ def run(pipeline_name: str, data: Dict[str, Any], parameters: Dict[str, Dict[str
         raise HTTPException(
             status_code=404,
             detail=f"Pipeline named '{pipeline_name}' not found. "
-            f"Available pipelines: '{', '.join(app.pipelines.keys())}'",
+            f"Available pipelines: {', '.join(app.pipelines.keys())}",
         )
     pipeline = app.pipelines[pipeline_name]
 

@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
     "fastapi<1",
     "uvicorn<1",
-    "python-multipart<1",  # optional FastAPI dependency for form data
+    "python-multipart<1",  # file uploads
 ]
 dynamic = ["version"]
 
