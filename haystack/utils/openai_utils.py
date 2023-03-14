@@ -102,7 +102,7 @@ def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float,
         openai_error: OpenAIError
         if response.status_code == 429:
             openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-        if response.status_code == 401:
+        elif response.status_code == 401:
             openai_error = OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
         else:
             openai_error = OpenAIError(
