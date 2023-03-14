@@ -99,9 +99,7 @@ class MyDocumentStore:
         ...
 ```
 
-The contract is quite narrow to encourage the use of specialized nodes. `DocumentStore`s' primary focus should be storing documents: the fact that most vector stores also support retrieval should be outside of this abstraction and made available through methods that do not belong to the contract.
-
-This allows `Retriever`s to carry out their tasks while avoiding clutter on `DocumentStore`s that do not support some features.
+The contract is quite narrow to encourage the use of specialized nodes. `DocumentStore`s' primary focus should be storing documents: the fact that most vector stores also support retrieval should be outside of this abstraction and made available through methods that do not belong to the contract. This allows `Retriever`s to carry out their tasks while avoiding clutter on `DocumentStore`s that do not support some features.
 
 Note also how the concept of `index` is not present anymore, as it it mostly ES-specific.
 
@@ -149,7 +147,7 @@ class MemoryDocumentStore:
 
 In this way, a `DocumentWriter` could easily use the `write_documents` method defined in the contract on all document stores, while `MemoryRetriever` can leverage the fact that it only supports `MemoryDocumentStore`, so it can assume all its custom methods like `bm25_retrieval`, `vector_similarity_retrieval`, etc... are present.
 
-Here is, for comparison, an example implementation of a DocumentWriter, a document-store agnostic node.
+Here is, for comparison, an example implementation of a `DocumentWriter`, a document-store agnostic node.
 
 ```python
 @node
@@ -181,7 +179,7 @@ class DocumentWriter:
 ```
 This class does not check which document store it is using, because it can safely assume they are going to have a `write_documents` method.
 
-Here instead we can see an example implementation of a MemoryRetriever, a document-store aware node.
+Here instead we can see an example implementation of a `MemoryRetriever`, a document-store aware node.
 
 ```python
 @node
@@ -217,6 +215,8 @@ class MemoryRetriever:
         return ({self.outputs[0]: documents}, parameters)
 ```
 
+Note how `MemoryRetriever` is making use of methods that are not specified in the contract and therefore has to check that the document store it has been connected to is a proper one.
+
 # Drawbacks
 
 ### Migration effort
@@ -236,3 +236,7 @@ This proposal is part of the Haystack 2.0 rollout strategy. See https://github.c
 # How we teach this
 
 Documentation is going to be crucial, as much as tutorials and demos. We plan to start working on those as soon as basic nodes (one reader and one retriever) are added to Haystack v2 and `MemoryDocumentStore` receives its first implementation.
+
+# Open questions
+
+- We should enable validation of `DocumentStore`s for nodes that are document-store aware. It could be done by an additional `validation` method with relative ease, but it's currently not mentioned in the node/pipeline contract.
