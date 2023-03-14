@@ -1,4 +1,4 @@
-- Title: Stores and Data
+- Title: DocumentStores and Retrievers
 - Decision driver: @ZanSara
 - Start Date: 2023-03-09
 - Proposal PR: 4370
@@ -10,7 +10,7 @@ Haystack's Document Stores are a very central component in Haystack and, as the 
 
 As the framework grew, so did the number of Document Stores and their API, until the point where keeping them aligned aligned on the same feature set started to become a serious challenge.
 
-In this proposal we outline a reviewed design of the same concept: the `Store`, a class that can do more than just storing documents, by doing less that what `DocumentStore`s do right now.
+In this proposal we outline a reviewed design of the same concept.
 
 Note: these stores are designed to work **only** alongside Haystack 2.0 Pipelines (see https://github.com/deepset-ai/haystack/pull/4284)
 
@@ -18,31 +18,70 @@ Note: these stores are designed to work **only** alongside Haystack 2.0 Pipeline
 
 Current `DocumentStore` face several issues mostly due to their organic growth. Some of them are:
 
-- Very aware of what they are storing. They are strictly oriented towards storing text `Document`s and `Label`s, and they generally react badly to new primitives or `content_type`s.
-
-- `DocumentStore`s perform the bulk of retrieval, but they need to be tighly coupled to a `Retriever` object to work. We believe this coupling can be broken by a clear API boundary between `Stores`, `Retriever`s and `Embedder`s. In this PR we focus on decoupling `Store`s and `Retriever`s, while the relationship between `Retriever`s and `Embedder`s is left for another proposal.
+- `DocumentStore`s perform the bulk of retrieval, but they need to be tighly coupled to a `Retriever` object to work. We believe this coupling can be broken by a clear API boundary between `DocumentStores`, `Retriever`s and `Embedder`s. In this PR we focus on decoupling them.
 
 - `DocumentStore`s tend to bring in complex dependencies, so less used stores should be easy to decouple into external packages at need.
 
 # Basic example
 
-The proposal focuses on two hierarchies: one for the stores and one for the data they store. In addition, we propose a new structure for `Retriever`s that does not involve creating embeddings.
+Stores will have to follow a contract rather than subclassing a base class. We define a contract for `DocumentStore` that defines a very simple CRUD API for Documents. Then, we provide one implementation for each underlying technology (`MemoryDocumentStore`, `ElasticsearchDocumentStore`, `FaissDocumentStore`) that respects such contract.
 
-## The `Data` hierarchy
+Once stores are defined, we will create one `Retriever` for each `DocumentStore`. Such retrievers are going to be highly specialized nodes that expect one specific document store and can handle all its specific requirements without being bound to a generic interface.
 
-We define a Data object that has only two fields: `id`, `content`, `meta`, and `id_hash_keys`. From there, we create a matrix of subclasses by "semantic" (`Document`, `Answer`, `Label`, etc), and by "content type" (`Text`, `Table`, `Image`, etc).
+For example, this is how embedding-based retrieval would look like:
 
-This double matrix allows for accurate validation with Pydantic.
+```python
+from haystack import Pipeline
+from haystack.nodes import (
+    TxtConverter,
+    PreProcessor,
+    DocumentWriter,
+    DocumentEmbedder,
+    StringEmbedder,
+    MemoryRetriever,
+    Reader,
+)
+from haystack.document_stores import MemoryDocumentStore
 
-## The `Store` hierarchy
+docstore = MemoryDocumentStore()
 
-Stores follow a similar pattern, but using a contract rather than subclassing. We define a contract for `Store` that defines a very simple CRUD API. This API stores simple Python dictionaries.
+indexing_pipe = Pipeline()
+indexing_pipe.add_store("document_store", docstore)
+indexing_pipe.add_node("txt_converter", TxtConverter())
+indexing_pipe.add_node("preprocessor", PreProcessor())
+indexing_pipe.add_node("embedder", DocumentEmbedder(model_name="deepset/model-name"))
+indexing_pipe.add_node("writer", DocumentWriter(store="document_store"))
+query_pipe.connect("txt_converter", "preprocessor")
+query_pipe.connect("preprocessor", "embedder")
+query_pipe.connect("embedder", "writer")
 
-Then, we provide one implementation for each underlying technology (`StoreInMemory`, `StoreInElasticsearch`, `StoreInFaiss`) that respects such contract. These implementations should be very simple, because they are supposed to perform only basic CRUD, **not retrieval**.
+indexing_pipe.run(...)
 
-On top of these specialized stores, we then provide wrappers that handles specific `Data` subclasses. For example we could have `DocumentStoreInMemory`, `LabelStoreInMemory`, `DocumentStoreInElasticsearch`, etc...
+query_pipe = Pipeline()
+query_pipe.add_store("document_store", docstore)
+query_pipe.add_node("embedder", StringEmbedder(model_name="deepset/model-name"))
+query_pipe.add_node("retriever", MemoryRetriever(store="document_store", retrieval_method="embedding"))
+query_pipe.add_node("reader", Reader(model_name="deepset/model-name"))
+query_pipe.connect("embedder", "retriever")
+query_pipe.connect("retriever", "reader")
 
-In this case, we foresee implementing mostly `DocumentStore` variants, because those will add support for dense/sparse retrieval (see "Detailed design"). This, however, does not prevent the creation of other specialized subclasses if the need shows, like `LabelStore` for evaluation, `AnswerStore` and `QueryStore` for FAQ matching, etc. Note how these stores can be made generic for all variants of `Document`, or specialized by content type `ImageDocumentStoreInMemory` if there is a very specific need for it.
+results = query_pipe.run(...)
+```
+
+Note a few key differences with the existing Haystack process:
+
+- During indexing we do not use any `Retriever`, but rather a `DocumentEmbedder`. This class accepts a model name and simply adds embeddings to the `Document`s it receives.
+
+- We used an explicit `DocumentWriter` node instead of adding the `DocumentStore` at the end of the pipeline. That node will be generic for any document store, because the `DocumentStore` contract declares a `write_documents` method (see "Detailed Design").
+
+- During query, the first step is not a `Retriever` anymore, but a `StringEmbedder`. Such node will convert the query into its embedding representation and forward it over to a `Retriever` that expects it. In this case, an imaginary `MemoryRetriever` can be configured to expect an embedding by setting the `retrieval_method` flag to `embedding`.
+
+
+
+Note how we are using `MemoryRetriever`, which for example might accept a `retrieval_method` parameter to select between BM25 and embedding-based retrieval. Other document stores might support that, for example Weaviate, while others might not, like FAISS. this distinction will be evident in the parameters of their respective Retrievers.
+
+With respect to embedding retrieval, the process is slightly different
+
 
 # Detailed design
 
