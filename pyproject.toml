@@ -195,6 +195,10 @@ ray = [
 colab = [
   "pillow<=9.0.0",
 ]
+# Haystack v2, codename "Alfalfa 🌿"
+alfalfa = [
+  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settle, remove 'allow-direct-references = true' below
+]
 dev = [
   "pre-commit",
   # Type check
@@ -244,6 +248,9 @@ Homepage = "https://github.com/deepset-ai/haystack"
 [tool.hatch.version]
 path = "VERSION.txt"
 pattern = "(?P<version>.+)"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
 include = [
