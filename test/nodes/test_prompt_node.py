@@ -895,6 +895,7 @@ def test_HFLocalInvocationLayer_supports():
 
 
 class TestPromptTemplateSyntax:
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "prompt_text, expected_prompt_params, expected_used_functions",
         [
@@ -936,6 +937,7 @@ class TestPromptTemplateSyntax:
         assert set(prompt_template.prompt_params) == expected_prompt_params
         assert set(prompt_template._used_functions) == expected_used_functions
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "prompt_text, documents, query, expected_prompts",
         [
@@ -1016,6 +1018,7 @@ class TestPromptTemplateSyntax:
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
         assert prompts == expected_prompts
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "prompt_text, exc_type, expected_exc_match",
         [
@@ -1033,6 +1036,7 @@ class TestPromptTemplateSyntax:
         with pytest.raises(exc_type, match=expected_exc_match):
             PromptTemplate(name="test", prompt_text=prompt_text)
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "prompt_text, documents, query, exc_type, expected_exc_match",
         [("{join}", None, None, ValueError, "Expected prompt parameters")],
@@ -1049,6 +1053,7 @@ class TestPromptTemplateSyntax:
             prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
             next(prompt_template.fill(documents=documents, query=query))
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "prompt_text, documents, query, expected_prompts",
         [
