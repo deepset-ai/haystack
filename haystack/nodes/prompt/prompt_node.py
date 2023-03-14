@@ -278,7 +278,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             available_params = set(list(params_dict.keys()) + list(set(kwargs.keys())))
             raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
 
-        template_dict = {"_force_one_prompt": True}
+        template_dict = {"_at_least_one_prompt": True}
         for id, call in self._prompt_params_functions.items():
             template_dict[id] = eval(  # pylint: disable=eval-used
                 compile(call, filename="<string>", mode="eval"), self.globals, params_dict
