@@ -261,6 +261,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
             available_params = set(list(params_dict.keys()) + list(set(kwargs.keys())))
             raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
 
+        params_dict["new_line"] = "\n"
+        params_dict["tab"] = "\t"
+
         template_dict = {}
         for id, call in self._prompt_params_functions.items():
             allowed_globals = {k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}
