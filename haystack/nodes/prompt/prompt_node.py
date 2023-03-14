@@ -10,6 +10,7 @@ from uuid import uuid4
 import torch
 
 from haystack import MultiLabel
+from haystack.errors import HaystackError, NodeError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.other.shaper import Shaper
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer
@@ -77,6 +78,99 @@ def join(documents: List[Document], delimiter: str = " ", pattern="$content", st
     return content
 
 
+class PromptTemplateValidationError(NodeError):
+    pass
+
+
+class _ValidationVisitor(ast.NodeVisitor):
+    """
+    This class is used to validate the prompt text for a prompt template.
+    It checks that the prompt text is a valid f-string and that it only uses allowed functions.
+    Useful information extracted from the AST is stored in the class attributes (e.g. `prompt_params` and `used_functions`)
+    """
+
+    def __init__(self, prompt_template_name: str):
+        self.used_names: List[str] = []
+        self.comprehension_targets: List[str] = []
+        self.used_functions: List[str] = []
+        self.prompt_template_name = prompt_template_name
+
+    @property
+    def prompt_params(self) -> List[str]:
+        """
+        The names of the variables used in the prompt text.
+        E.g. for the prompt text `f"Hello {name}"`, the prompt_params would be `["name"]`
+        """
+        return list(set(self.used_names) - set(self.used_functions) - set(self.comprehension_targets))
+
+    def visit_Name(self, node: ast.Name) -> None:
+        """
+        Stores the name of the variable used in the prompt text. This also includes function and method names.
+        E.g. for the prompt text `f"Hello {func(name)}"`, the used_names would be `["func", "name"]`
+        """
+        self.used_names.append(node.id)
+
+    def visit_comprehension(self, node: ast.comprehension) -> None:
+        """
+        Stores the name of the variable used in comprehensions.
+        E.g. for the prompt text `f"Hello {[name for name in names]}"`, the comprehension_targets would be `["name"]`
+        """
+        super().generic_visit(node)
+        if isinstance(node.target, ast.Name):
+            self.comprehension_targets.append(node.target.id)
+        elif isinstance(node.target, ast.Tuple):
+            self.comprehension_targets.extend([elt.id for elt in node.target.elts if isinstance(elt, ast.Name)])
+
+    def visit_Call(self, node: ast.Call) -> None:
+        """
+        Stores the name of functions and methods used in the prompt text and validates that only allowed functions are used.
+        E.g. for the prompt text `f"Hello {func(name)}"`, the used_functions would be `["func"]`
+
+        raises: PromptTemplateValidationError if an invalid function is used in the prompt text
+        """
+        super().generic_visit(node)
+        if isinstance(node.func, ast.Name) and node.func.id in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
+            # functions: func(args, kwargs)
+            self.used_functions.append(node.func.id)
+        elif isinstance(node.func, ast.Attribute) and node.func.attr in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
+            # methods: instance.method(args, kwargs)
+            self.used_functions.append(node.func.attr)
+        else:
+            raise PromptTemplateValidationError(
+                f"Invalid function in prompt text for prompt template {self.prompt_template_name}. "
+                f"Allowed functions are {PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}."
+            )
+
+
+class _FstringParamsTransformer(ast.NodeTransformer):
+    """
+    This class is used to transform an AST for f-strings into a format that can be used by the PromptTemplate.
+    It replaces all f-string expressions with a unique id and stores the corresponding expression in a dictionary.
+
+    The stored expressions can be evaluated using the `eval` function given the `prompt_params` (see _ValidatorVisitor) .
+    PromptTemplate determines the number of prompts to generate and renders them using the evaluated expressions.
+    """
+
+    def __init__(self):
+        self.prompt_params_functions: Dict[str, ast.Expression] = {}
+
+    def visit_FormattedValue(self, node: ast.FormattedValue) -> Optional[ast.AST]:
+        """
+        Replaces the f-string expression with a unique id and stores the corresponding expression in a dictionary.
+        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings` to ensure that the documents get rendered correctly.
+        """
+        super().generic_visit(node)
+        id = uuid4().hex
+        if isinstance(node.value, ast.Name) and node.value.id == "documents":
+            call = ast.Call(func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node.value], keywords=[])
+            self.prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=call))
+        else:
+            self.prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node.value))
+        return ast.FormattedValue(
+            value=ast.Name(id=id, ctx=ast.Load()), conversion=node.conversion, format_spec=node.format_spec
+        )
+
+
 class PromptTemplate(BasePromptTemplate, ABC):
     """
     PromptTemplate is a template for a prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what such prompt template may look like:
@@ -102,7 +196,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         :param name: The name of the prompt template (for example, sentiment-analysis, question-generation). You can specify your own name but it must be unique.
         :param prompt_text: The prompt text, including prompt parameters.
-        :param prompt_params: Optional parameters that need to be filled in the prompt text. If you don't specify them, they're inferred from the prompt text. Any variable in prompt text in the format `{variablename}` is interpreted as a prompt parameter.
+        :param output_shapers: A list of shapers that will be applied to the output of the model.
+                For example, if you want to convert the output of the model to a Answer object, you can use a shaper using the `string_to_answer` function.
+                Note, that the last shaper in the list must only have one output and PromptNode will use this value as the output_variable.
         """
         super().__init__()
 
@@ -112,59 +208,18 @@ class PromptTemplate(BasePromptTemplate, ABC):
         )
 
         self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
-        prompt_params_functions = {}
-        used_functions = []
-        used_names = []
-        comprehension_targets = []
 
-        class ValidationVisitor(ast.NodeVisitor):
-            def visit_Name(self, node: ast.Name) -> None:
-                used_names.append(node.id)
+        ast_validator = _ValidationVisitor(prompt_template_name=name)
+        ast_validator.visit(self._ast_expression)
 
-            def visit_comprehension(self, node: ast.comprehension) -> None:
-                super().generic_visit(node)
-                if isinstance(node.target, ast.Name):
-                    comprehension_targets.append(node.target.id)
-                elif isinstance(node.target, ast.Tuple):
-                    comprehension_targets.extend([elt.id for elt in node.target.elts if isinstance(elt, ast.Name)])
-
-            def visit_Call(self, node: ast.Call) -> None:
-                super().generic_visit(node)
-                if isinstance(node.func, ast.Name) and node.func.id in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
-                    # functions: func(args, kwargs)
-                    used_functions.append(node.func.id)
-                elif isinstance(node.func, ast.Attribute) and node.func.attr in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
-                    # methods: instance.method(args, kwargs)
-                    used_functions.append(node.func.attr)
-                else:
-                    raise ValueError(
-                        f"Invalid function in prompt text for prompt template {name}. "
-                        f"Allowed functions are {PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}."
-                    )
-
-        class FstringParamsTransformer(ast.NodeTransformer):
-            def visit_FormattedValue(self, node: ast.FormattedValue) -> Optional[ast.AST]:
-                super().generic_visit(node)
-                id = uuid4().hex
-                if isinstance(node.value, ast.Name) and node.value.id == "documents":
-                    call = ast.Call(
-                        func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node.value], keywords=[]
-                    )
-                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=call))
-                else:
-                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node.value))
-                return ast.FormattedValue(
-                    value=ast.Name(id=id, ctx=ast.Load()), conversion=node.conversion, format_spec=node.format_spec
-                )
-
-        ValidationVisitor().visit(self._ast_expression)
-        self._ast_expression = ast.fix_missing_locations(FstringParamsTransformer().visit(self._ast_expression))
-        self._prompt_params_functions: Dict[str, ast.Expression] = prompt_params_functions
-        self._used_functions: List[str] = used_functions
+        ast_transformer = _FstringParamsTransformer()
+        self._ast_expression = ast.fix_missing_locations(ast_transformer.visit(self._ast_expression))
+        self._prompt_params_functions = ast_transformer.prompt_params_functions
+        self._used_functions = ast_validator.used_functions
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = list(set(used_names) - set(self._used_functions) - set(comprehension_targets))
+        self.prompt_params = ast_validator.prompt_params
         self.output_shapers = output_shapers or []
         if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
             raise ValueError(
