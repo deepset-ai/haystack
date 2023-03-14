@@ -107,7 +107,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
         super().__init__()
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
-        prompt_text = prompt_text.strip("'").strip('"').replace('"', "'")
+        prompt_text = (
+            prompt_text.strip("'").strip('"').replace('"', "'").replace("\n", "{new_line}").replace("\n", "{tab}")
+        )
 
         self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
         prompt_params_functions = {}
@@ -447,22 +449,22 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         PromptTemplate(
             name="zero-shot-react",
             prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
-            "correctly, you have access to the following tools:{new_line}{new_line}"
-            "{tool_names_with_descriptions}{new_line}{new_line}"
+            "correctly, you have access to the following tools:\n\n"
+            "{tool_names_with_descriptions}\n\n"
             "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
             "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
-            "for a final answer, respond with the `Final Answer:`{new_line}{new_line}"
-            "Use the following format:{new_line}{new_line}"
-            "Question: the question to be answered{new_line}"
-            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.{new_line}"
-            "Tool: pick one of {tool_names} {new_line}"
-            "Tool Input: the input for the tool{new_line}"
-            "Observation: the tool will respond with the result{new_line}"
-            "...{new_line}"
-            "Final Answer: the final answer to the question, make it short (1-5 words){new_line}{new_line}"
-            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass{new_line}"
-            "---{new_line}{new_line}"
-            "Question: {query}{new_line}"
+            "for a final answer, respond with the `Final Answer:`\n\n"
+            "Use the following format:\n\n"
+            "Question: the question to be answered\n"
+            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
+            "Tool: pick one of {tool_names} \n"
+            "Tool Input: the input for the tool\n"
+            "Observation: the tool will respond with the result\n"
+            "...\n"
+            "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
+            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
+            "---\n\n"
+            "Question: {query}\n"
             "Thought: Let's think step-by-step, I first need to ",
         ),
     ]

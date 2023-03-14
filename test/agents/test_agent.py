@@ -167,7 +167,7 @@ def test_tool_result_extraction(reader, retriever_with_docs):
     assert result == "Paris" or result == "Madrid"
 
     # PromptNode as a Tool
-    pt = PromptTemplate("test", "Here is a question: $query, Answer:")
+    pt = PromptTemplate("test", "Here is a question: {query}, Answer:")
     pn = PromptNode(default_prompt_template=pt)
 
     t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
