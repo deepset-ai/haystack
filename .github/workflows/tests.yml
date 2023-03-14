@@ -103,7 +103,7 @@ jobs:
         uses: ./.github/actions/python_cache/
 
       - name: Install Haystack
-        run: pip install .[all,version2]
+        run: pip install .[all,alfalfa]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
@@ -467,6 +467,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
@@ -507,6 +508,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
@@ -593,6 +595,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # we add "and not document_store" to exclude the tests that were ported to the new strategy
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not document_store" test/${{ matrix.folder }}
@@ -635,6 +638,11 @@ jobs:
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
+    - name: Add Tesseract to system PATH
+      shell: pwsh
+      run: |
+        echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
     - name: Setup Python
       uses: ./.github/actions/python_cache/
       with:
@@ -646,6 +654,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
