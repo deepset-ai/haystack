@@ -3,6 +3,7 @@ import copy
 from functools import reduce
 import logging
 from abc import ABC
+import os
 from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
 from uuid import uuid4
@@ -10,6 +11,7 @@ from uuid import uuid4
 import torch
 
 from haystack import MultiLabel
+from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
 from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.other.shaper import Shaper
@@ -46,7 +48,11 @@ class BasePromptTemplate(BaseComponent):
         raise NotImplementedError("This method should never be implemented in the derived class")
 
 
-PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "documents_to_strings", "replace", "enumerate", "str"]
+PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ast.literal_eval(
+    os.environ.get(
+        HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "documents_to_strings", "replace", "enumerate", "str"]'
+    )
+)
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
 PROMPT_TEMPLATE_STR_REPLACE = {'"': "'"}
