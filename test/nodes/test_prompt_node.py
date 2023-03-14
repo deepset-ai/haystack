@@ -1072,6 +1072,7 @@ class TestPromptTemplateSyntax:
                 ["requests.get('https://haystack.deepset.ai/')"],
             ),
             ("{query}", None, print, ["<built-in function print>"]),
+            ("\b\b__import__('os').listdir('.')", None, None, ["\x08\x08__import__('os').listdir('.')"]),
         ],
     )
     def test_prompt_template_syntax_fill_ignores_dangerous_input(
