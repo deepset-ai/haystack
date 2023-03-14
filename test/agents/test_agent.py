@@ -177,8 +177,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
             "Word: Rome\nLength: 4\n"
             "Word: Arles\nLength: 5\n"
             "Word: Berlin\nLength: 6\n"
-            "Word: $query?\nLength: ",
-            prompt_params=["query"],
+            "Word: {query}?\nLength: ",
         ),
     )
 
@@ -227,8 +226,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
             "Word: Rome\nLength: 4\n"
             "Word: Arles\nLength: 5\n"
             "Word: Berlin\nLength: 6\n"
-            "Word: $query?\nLength: ",
-            prompt_params=["query"],
+            "Word: {query}\nLength: ",
         ),
     )
 
