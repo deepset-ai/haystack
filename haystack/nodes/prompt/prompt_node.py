@@ -45,7 +45,7 @@ class BasePromptTemplate(BaseComponent):
         raise NotImplementedError("This method should never be implemented in the derived class")
 
 
-PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "to_list", "documents_to_strings", "replace"]
+PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "documents_to_strings", "replace"]
 
 
 def documents_to_strings(documents: List[Union[Document, str]]) -> List[str]:

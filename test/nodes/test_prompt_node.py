@@ -730,7 +730,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
               type: PromptTemplate
               params:
                 name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel_openai
