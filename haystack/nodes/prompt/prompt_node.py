@@ -84,13 +84,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
     ```python
         PromptTemplate(name="sentiment-analysis",
                    prompt_text="Give a sentiment for this context. Answer with positive, negative
-                   or neutral. Context: $documents; Answer:")
+                   or neutral. Context: {documents}; Answer:")
     ```
 
     Optionally, you can declare prompt parameters in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
-    the prompt_text for the model to perform the task. For example, in the template above, there's one prompt parameter, `documents`. You declare prompt parameters by adding variables to the prompt text. These variables should be in the format: `$variable`. In the template above, the variable is `$documents`.
+    the prompt_text for the model to perform the task. For example, in the template above, there's one prompt parameter, `documents`. You declare prompt parameters by adding variables to the prompt text. These variables should be in the format: `$variable`. In the template above, the variable is `{documents}`.
 
-    At runtime, these variables are filled in with arguments passed to the `fill()` method of the PromptTemplate. So in the example above, the `$documents` variable will be filled with the Documents whose sentiment you want the model to analyze.
+    At runtime, these variables are filled in with arguments passed to the `fill()` method of the PromptTemplate. So in the example above, the `{documents}` variable will be filled with the Documents whose sentiment you want the model to analyze.
 
     For more details on how to use PromptTemplate, see
     [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
@@ -221,6 +221,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
             template_dict[id] = call_result
 
         template_dict = {k: v for k, v in template_dict.items() if k in self._outermost_prompt_params}
+        template_dict["new_line"] = "\n"
+        template_dict["tab"] = "\t"
 
         return template_dict
 
@@ -246,9 +248,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         You can pass non-keyword (args) or keyword (kwargs) arguments to this method. If you pass non-keyword arguments, their order must match the left-to-right
         order of appearance of the parameters in the prompt text. For example, if the prompt text is:
-        `Come up with a question for the given context and the answer. Context: $documents;
-        Answer: $answers; Question:`, then the first non-keyword argument fills the `$documents` variable
-        and the second non-keyword argument fills the `$answers` variable.
+        `Come up with a question for the given context and the answer. Context: {documents};
+        Answer: {answers}; Question:`, then the first non-keyword argument fills the `{documents}` variable
+        and the second non-keyword argument fills the `{answers}` variable.
 
         If you pass keyword arguments, the order of the arguments doesn't matter. Variables in the
         prompt text are filled with the corresponding keyword argument.
@@ -261,15 +263,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         # the prompt context values should all be lists, as they will be split as one
         prompt_context_copy = {k: v if isinstance(v, list) else [v] for k, v in template_dict.items()}
-        if prompt_context_copy:
-            max_len = max(len(v) for v in prompt_context_copy.values())
-            if max_len > 1:
-                for key, value in prompt_context_copy.items():
-                    if len(value) == 1:
-                        prompt_context_copy[key] = value * max_len
-        else:
-            # add dummy to execute the template once
-            prompt_context_copy = {"dummy": [None]}
+        max_len = max(len(v) for v in prompt_context_copy.values())
+        if max_len > 1:
+            for key, value in prompt_context_copy.items():
+                if len(value) == 1:
+                    prompt_context_copy[key] = value * max_len
 
         for prompt_context_values in zip(*prompt_context_copy.values()):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
@@ -415,66 +413,66 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         PromptTemplate(
             name="question-answering",
-            prompt_text="Given the context please answer the question. Context: $documents; Question: "
-            "$questions; Answer:",
+            prompt_text="Given the context please answer the question. Context: {documents}; Question: "
+            "{query}; Answer:",
         ),
         PromptTemplate(
             name="question-generation",
-            prompt_text="Given the context please generate a question. Context: $documents; Question:",
+            prompt_text="Given the context please generate a question. Context: {documents}; Question:",
         ),
         PromptTemplate(
             name="conditioned-question-generation",
             prompt_text="Please come up with a question for the given context and the answer. "
-            "Context: $documents; Answer: $answers; Question:",
+            "Context: {documents}; Answer: {answers}; Question:",
         ),
-        PromptTemplate(name="summarization", prompt_text="Summarize this document: $documents Summary:"),
+        PromptTemplate(name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
         PromptTemplate(
             name="question-answering-check",
             prompt_text="Does the following context contain the answer to the question? "
-            "Context: $documents; Question: $questions; Please answer yes or no! Answer:",
+            "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
         ),
         PromptTemplate(
             name="sentiment-analysis",
             prompt_text="Please give a sentiment for this context. Answer with positive, "
-            "negative or neutral. Context: $documents; Answer:",
+            "negative or neutral. Context: {documents}; Answer:",
         ),
         PromptTemplate(
             name="multiple-choice-question-answering",
-            prompt_text="Question:$questions ; Choose the most suitable option to answer the above question. "
-            "Options: $options; Answer:",
+            prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
+            "Options: {options}; Answer:",
         ),
         PromptTemplate(
             name="topic-classification",
-            prompt_text="Categories: $options; What category best describes: $documents; Answer:",
+            prompt_text="Categories: {options}; What category best describes: {documents}; Answer:",
         ),
         PromptTemplate(
             name="language-detection",
             prompt_text="Detect the language in the following context and answer with the "
-            "name of the language. Context: $documents; Answer:",
+            "name of the language. Context: {documents}; Answer:",
         ),
         PromptTemplate(
             name="translation",
-            prompt_text="Translate the following context to $target_language. Context: $documents; Translation:",
+            prompt_text="Translate the following context to {target_language}. Context: {documents}; Translation:",
         ),
         PromptTemplate(
             name="zero-shot-react",
             prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
-            "correctly, you have access to the following tools:\n\n"
-            "$tool_names_with_descriptions\n\n"
+            "correctly, you have access to the following tools:{new_line}{new_line}"
+            "{tool_names_with_descriptions}{new_line}{new_line}"
             "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
             "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
-            "for a final answer, respond with the `Final Answer:`\n\n"
-            "Use the following format:\n\n"
-            "Question: the question to be answered\n"
-            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
-            "Tool: pick one of $tool_names \n"
-            "Tool Input: the input for the tool\n"
-            "Observation: the tool will respond with the result\n"
-            "...\n"
-            "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
-            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
-            "---\n\n"
-            "Question: $query\n"
+            "for a final answer, respond with the `Final Answer:`{new_line}{new_line}"
+            "Use the following format:{new_line}{new_line}"
+            "Question: the question to be answered{new_line}"
+            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.{new_line}"
+            "Tool: pick one of {tool_names} {new_line}"
+            "Tool Input: the input for the tool{new_line}"
+            "Observation: the tool will respond with the result{new_line}"
+            "...{new_line}"
+            "Final Answer: the final answer to the question, make it short (1-5 words){new_line}{new_line}"
+            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass{new_line}"
+            "---{new_line}{new_line}"
+            "Question: {query}{new_line}"
             "Thought: Let's think step-by-step, I first need to ",
         ),
     ]
