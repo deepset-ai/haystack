@@ -171,9 +171,7 @@ class CohereError(NodeError):
 class CohereUnauthorizedError(CohereError):
     """Exception for unauthorized access to Cohere APIs"""
 
-    def __init__(
-        self, message: Optional[str] = None, send_message_in_event: bool = False
-    ):
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
         super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
 
 
