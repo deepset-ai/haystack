@@ -163,17 +163,6 @@ def test_add_and_remove_template(prompt_node):
     assert "custom-task" not in prompt_node.get_prompt_template_names()
 
 
-@pytest.mark.unit
-def test_invalid_template():
-    with pytest.raises(ValueError, match="Invalid parameter"):
-        PromptTemplate(
-            name="custom-task", prompt_text="Custom task: $pram1 $param2", prompt_params=["param1", "param2"]
-        )
-
-    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
-        PromptTemplate(name="custom-task", prompt_text="Custom task: $param1", prompt_params=["param1", "param2"])
-
-
 @pytest.mark.integration
 def test_add_template_and_invoke(prompt_node):
     tt = PromptTemplate(
@@ -1047,6 +1036,7 @@ class TestPromptTemplateSyntax:
             ),
             ("{join(__import__('os').listdir('.'))}", None, None, ValueError, "Invalid function in prompt text"),
             ("{for}", None, None, SyntaxError, "invalid syntax"),
+            ("This is an invalid {variable .", None, None, SyntaxError, "f-string: expecting '}'"),
         ],
     )
     def test_prompt_template_syntax_fill_raises(
