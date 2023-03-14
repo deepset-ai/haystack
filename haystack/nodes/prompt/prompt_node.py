@@ -180,6 +180,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
             )
 
+    @property
+    def output_variable(self) -> Optional[str]:
+        return self.output_shapers[-1].outputs[0] if self.output_shapers else None
+
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
         Prepares and verifies the prompt template with input parameters.
@@ -775,10 +779,7 @@ class PromptNode(BaseComponent):
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
         prompt_template = self.get_prompt_template(self.default_prompt_template)
-        output_variable = self.output_variable
-        last_shaper = prompt_template.output_shapers[-1]
-        if last_shaper:
-            output_variable = last_shaper.outputs[0]
+        output_variable = prompt_template.output_variable or self.output_variable
 
         invocation_context[output_variable] = results
         final_result: Dict[str, Any] = {
