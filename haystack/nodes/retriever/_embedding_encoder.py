@@ -390,7 +390,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         res = json.loads(response.text)
         if response.status_code == 401:
             raise CohereUnauthorizedError(f"Invalid Cohere API key. {response.text}")
-        elif response.status_code != 200:
+        if response.status_code != 200:
             raise CohereError(response.text, status_code=response.status_code)
         generated_embeddings = [e for e in res["embeddings"]]
         return np.array(generated_embeddings)
