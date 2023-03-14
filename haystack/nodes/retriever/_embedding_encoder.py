@@ -388,10 +388,10 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         headers = {"Authorization": f"BEARER {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=COHERE_TIMEOUT)
         res = json.loads(response.text)
-        if response.status_code != 200:
             if response.status_code == 401:
                 raise CohereUnauthorizedError(f"Invalid Cohere API key. {response.text}")
-            raise CohereError(response.text, status_code=response.status_code)
+            elif response.status_code != 200:
+                raise CohereError(response.text, status_code=response.status_code)
         generated_embeddings = [e for e in res["embeddings"]]
         return np.array(generated_embeddings)
 
