@@ -279,7 +279,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                             raise ValueError(
                                 "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
                                 "method before adding the vectors. For details, refer to the documentation: "
-                                "https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_"
+                                "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
                                 "".format(self.faiss_index_factory_str)
                             )
 
@@ -350,7 +350,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise ValueError(
                 "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
                 "method before adding the vectors. For details, refer to the documentation: "
-                "https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_"
+                "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
                 "".format(self.faiss_index_factory_str)
             )
 
