@@ -995,6 +995,12 @@ class TestPromptTemplateSyntax:
                 ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
             ),
             (
+                "Please answer the question: {' delim '.join(['['+str(idx+1)+'] '+d.content.replace('{', '(') for idx, d in enumerate(documents)])} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
                 'Please answer the question: {join(documents, " delim ", "[$idx] $content", {"{": "("})} question: {query}',
                 [Document("doc1"), Document("doc2")],
                 "how?",

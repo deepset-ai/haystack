@@ -45,7 +45,7 @@ class BasePromptTemplate(BaseComponent):
         raise NotImplementedError("This method should never be implemented in the derived class")
 
 
-PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "documents_to_strings", "replace"]
+PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "documents_to_strings", "replace", "enumerate", "str"]
 
 
 def documents_to_strings(documents: List[Union[Document, str]]) -> List[str]:
@@ -114,9 +114,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         used_functions = []
         used_names = []
         comprehension_targets = []
-        outermost_prompt_params = []
 
-        class UsedNamesFinder(ast.NodeVisitor):
+        class ValidationVisitor(ast.NodeVisitor):
             def visit_Name(self, node: ast.Name) -> None:
                 used_names.append(node.id)
 
@@ -124,52 +123,42 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 super().generic_visit(node)
                 if isinstance(node.target, ast.Name):
                     comprehension_targets.append(node.target.id)
+                elif isinstance(node.target, ast.Tuple):
+                    comprehension_targets.extend([elt.id for elt in node.target.elts if isinstance(elt, ast.Name)])
 
-        class CallTransformer(ast.NodeTransformer):
-            def visit_Call(self, node: ast.Call) -> Optional[ast.AST]:
+            def visit_Call(self, node: ast.Call) -> None:
                 super().generic_visit(node)
                 if isinstance(node.func, ast.Name) and node.func.id in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
                     # functions: func(args, kwargs)
                     used_functions.append(node.func.id)
-                    id = uuid4().hex
-                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node))
-                    return ast.Name(id=id, ctx=ast.Load())
                 elif isinstance(node.func, ast.Attribute) and node.func.attr in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
                     # methods: instance.method(args, kwargs)
                     used_functions.append(node.func.attr)
-                    id = uuid4().hex
-                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node))
-                    return ast.Name(id=id, ctx=ast.Load())
                 else:
                     raise ValueError(
                         f"Invalid function in prompt text for prompt template {name}. "
                         f"Allowed functions are {PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}."
                     )
 
-        class RawParamsTransformer(ast.NodeTransformer):
-            def visit_Name(self, node: ast.Name) -> Optional[ast.AST]:
-                if node.id not in prompt_params_functions:
-                    id = uuid4().hex
-                    if node.id == "documents":
-                        call = ast.Call(
-                            func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node], keywords=[]
-                        )
-                        prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=call))
-                    else:
-                        prompt_params_functions[id] = ast.fix_missing_locations(
-                            ast.Expression(body=ast.Name(id=node.id, ctx=ast.Load()))
-                        )
-                    node = ast.Name(id=id, ctx=ast.Load())
+        class FstringParamsTransformer(ast.NodeTransformer):
+            def visit_FormattedValue(self, node: ast.FormattedValue) -> Optional[ast.AST]:
+                super().generic_visit(node)
+                id = uuid4().hex
+                if isinstance(node.value, ast.Name) and node.value.id == "documents":
+                    call = ast.Call(
+                        func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node.value], keywords=[]
+                    )
+                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=call))
+                else:
+                    prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node.value))
+                return ast.FormattedValue(
+                    value=ast.Name(id=id, ctx=ast.Load()), conversion=node.conversion, format_spec=node.format_spec
+                )
 
-                outermost_prompt_params.append(node.id)
-                return node
-
-        UsedNamesFinder().visit(self._ast_expression)
-        self._ast_expression = ast.fix_missing_locations(CallTransformer().visit(self._ast_expression))
-        self._ast_expression = ast.fix_missing_locations(RawParamsTransformer().visit(self._ast_expression))
+        ValidationVisitor().visit(self._ast_expression)
+        self._ast_expression = ast.fix_missing_locations(FstringParamsTransformer().visit(self._ast_expression))
         self._prompt_params_functions: Dict[str, ast.Expression] = prompt_params_functions
         self._used_functions: List[str] = used_functions
-        self._outermost_prompt_params: List[str] = outermost_prompt_params
 
         self.name = name
         self.prompt_text = prompt_text
@@ -218,13 +207,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
         template_dict = {}
         for id, call in self._prompt_params_functions.items():
             allowed_globals = {k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}
-            call_result = eval(  # pylint: disable=eval-used
+            template_dict[id] = eval(  # pylint: disable=eval-used
                 compile(call, filename="<string>", mode="eval"), allowed_globals, params_dict
             )
-            params_dict[id] = call_result
-            template_dict[id] = call_result
 
-        template_dict = {k: v for k, v in template_dict.items() if k in self._outermost_prompt_params}
         template_dict["new_line"] = "\n"
         template_dict["tab"] = "\t"
 
