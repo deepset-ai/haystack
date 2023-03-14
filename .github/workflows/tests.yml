@@ -1,3 +1,4 @@
+# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
 name: Tests
 
 on:
@@ -453,10 +454,6 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
       run: |
@@ -469,6 +466,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
@@ -501,12 +499,6 @@ jobs:
       with:
         prefix: windows
 
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
@@ -515,6 +507,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
@@ -585,9 +578,6 @@ jobs:
     - name: Run Parsr
       run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
 
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
     - name: Install tesseract
       run: |
         sudo apt update
@@ -604,6 +594,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # we add "and not document_store" to exclude the tests that were ported to the new strategy
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not document_store" test/${{ matrix.folder }}
@@ -639,13 +630,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        choco install --no-progress xpdf-utils
         choco install --no-progress tesseract
         choco install --no-progress openjdk --version=11.0.2.01
         refreshenv
         choco install --no-progress elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+
+    - name: Add Tesseract to system PATH
+      shell: pwsh
+      run: |
+        echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -658,6 +653,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch

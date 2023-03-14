@@ -1,6 +1,11 @@
 import os
 import uuid
 from contextlib import contextmanager
+import random
+from pathlib import Path
+
+import torch
+import numpy as np
 
 import pytest
 
@@ -14,6 +19,15 @@ from haystack.document_stores import (
     OpenSearchDocumentStore,
     FAISSDocumentStore,
 )
+
+
+SAMPLES_PATH = Path(__file__).parent / "samples"
+
+
+# Fix all random seeds that come to mind
+torch.manual_seed(0)
+np.random.seed(0)
+random.seed(0)
 
 
 @pytest.fixture

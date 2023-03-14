@@ -1,35 +1,16 @@
 import copy
-import json
 import logging
-import os
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from string import Template
-from typing import Dict, List, Optional, Tuple, Union, Any, Type, Iterator
+from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
 
-import requests
 import torch
-from transformers import (
-    pipeline,
-    AutoConfig,
-    StoppingCriteria,
-    StoppingCriteriaList,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
-from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
 from haystack import MultiLabel
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-)
-from haystack.errors import OpenAIError, OpenAIRateLimitError
-from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
+from haystack.nodes.prompt.providers import PromptModelInvocationLayer
 from haystack.schema import Document
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
@@ -179,372 +160,19 @@ class PromptTemplate(BasePromptTemplate, ABC):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
 
 
-class PromptModelInvocationLayer:
-    """
-    PromptModelInvocationLayer implementations execute a prompt on an underlying model.
-
-    The implementation can be a simple invocation on the underlying model running in a local runtime, or
-    could be even remote, for example, a call to a remote API endpoint.
-    """
-
-    def __init__(self, model_name_or_path: str, max_length: Optional[int] = 100, **kwargs):
-        """
-        Creates a new PromptModelInvocationLayer instance.
-
-
-        :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of output text.
-        :param kwargs: Additional keyword arguments passed to the underlying model.
-
-        """
-        if model_name_or_path is None or len(model_name_or_path) == 0:
-            raise ValueError("model_name_or_path cannot be None or empty string")
-
-        self.model_name_or_path = model_name_or_path
-        self.max_length: Optional[int] = max_length
-
-    @abstractmethod
-    def invoke(self, *args, **kwargs):
-        """
-        It takes a prompt and returns a list of generated text using the underlying model.
-        :return: A list of generated text.
-        """
-        pass
-
-    @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
-        """
-        Checks if the given model is supported by this invocation layer.
-
-        :param model_name_or_path: The name or path of the model.
-        :return: True if this invocation layer supports the model, False otherwise.
-        """
-        return False
-
-
-class StopWordsCriteria(StoppingCriteria):
-    """
-    Stops text generation if any one of the stop words is generated.
-    """
-
-    def __init__(self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stop_words: List[str]):
-        super().__init__()
-        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        return any(torch.isin(input_ids[-1], self.stop_words[-1]))
-
-
-class HFLocalInvocationLayer(PromptModelInvocationLayer):
-    """
-    A subclass of the PromptModelInvocationLayer class. It loads a pre-trained model from Hugging Face and
-    passes a prepared prompt into that model.
-
-    Note: kwargs other than init parameter names are ignored to enable reflective construction of the class,
-    as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
-    """
-
-    def __init__(
-        self,
-        model_name_or_path: str = "google/flan-t5-base",
-        max_length: Optional[int] = 100,
-        use_auth_token: Optional[Union[str, bool]] = None,
-        use_gpu: Optional[bool] = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
-        **kwargs,
-    ):
-        """
-        Creates an instance of HFLocalInvocationLayer used to invoke local Hugging Face models.
-
-        :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of the output text.
-        :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
-        :param use_gpu: Whether to use GPU for inference.
-        :param device: The device to use for inference.
-        :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
-        all PromptModelInvocationLayer instances, this instance of HFLocalInvocationLayer might receive some unrelated
-        kwargs. Only kwargs relevant to the HFLocalInvocationLayer are considered. The list of supported kwargs
-        includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
-        For more details about these kwargs, see
-        Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
-        """
-        super().__init__(model_name_or_path, max_length)
-        self.use_auth_token = use_auth_token
-
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
-        if len(self.devices) > 1:
-            logger.warning(
-                "Multiple devices are not supported in %s inference, using the first device %s.",
-                self.__class__.__name__,
-                self.devices[0],
-            )
-
-        # Due to reflective construction of all invocation layers we might receive some
-        # unknown kwargs, so we need to take only the relevant.
-        # For more details refer to Hugging Face pipeline documentation
-        # Do not use `device_map` AND `device` at the same time as they will conflict
-        model_input_kwargs = {
-            key: kwargs[key]
-            for key in [
-                "model_kwargs",
-                "trust_remote_code",
-                "revision",
-                "feature_extractor",
-                "tokenizer",
-                "config",
-                "use_fast",
-                "torch_dtype",
-                "device_map",
-            ]
-            if key in kwargs
-        }
-        # flatten model_kwargs one level
-        if "model_kwargs" in model_input_kwargs:
-            mkwargs = model_input_kwargs.pop("model_kwargs")
-            model_input_kwargs.update(mkwargs)
-
-        torch_dtype = model_input_kwargs.get("torch_dtype")
-        if torch_dtype is not None:
-            if isinstance(torch_dtype, str):
-                if "torch." in torch_dtype:
-                    torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
-                elif torch_dtype == "auto":
-                    torch_dtype_resolved = torch_dtype
-                else:
-                    raise ValueError(
-                        f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
-                    )
-            elif isinstance(torch_dtype, torch.dtype):
-                torch_dtype_resolved = torch_dtype
-            else:
-                raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
-            model_input_kwargs["torch_dtype"] = torch_dtype_resolved
-
-        if len(model_input_kwargs) > 0:
-            logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
-
-        self.pipe = pipeline(
-            "text2text-generation",
-            model=model_name_or_path,
-            device=self.devices[0] if "device_map" not in model_input_kwargs else None,
-            use_auth_token=self.use_auth_token,
-            model_kwargs=model_input_kwargs,
-        )
-
-    def invoke(self, *args, **kwargs):
-        """
-        It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
-        :return: A list of generated text.
-
-        Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face as model_input_kwargs.
-        Other kwargs are ignored.
-        """
-        output: List[Dict[str, str]] = []
-        stop_words = kwargs.pop("stop_words", None)
-        top_k = kwargs.pop("top_k", None)
-        if kwargs and "prompt" in kwargs:
-            prompt = kwargs.pop("prompt")
-
-            # Consider only Text2TextGenerationPipeline relevant, ignore others
-            # For more details refer to Hugging Face Text2TextGenerationPipeline documentation
-            # TODO resolve these kwargs from the pipeline signature
-            model_input_kwargs = {
-                key: kwargs[key]
-                for key in ["return_tensors", "return_text", "clean_up_tokenization_spaces", "truncation"]
-                if key in kwargs
-            }
-            if stop_words:
-                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
-                model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
-            if top_k:
-                model_input_kwargs["num_return_sequences"] = top_k
-                model_input_kwargs["num_beams"] = top_k
-            output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
-        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
-
-        if stop_words:
-            # Although HF generates text until stop words are encountered unfortunately it includes the stop word
-            # We want to exclude it to be consistent with other invocation layers
-            for idx, _ in enumerate(generated_texts):
-                for stop_word in stop_words:
-                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
-        return generated_texts
-
-    @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
-        try:
-            config = AutoConfig.from_pretrained(model_name_or_path)
-        except OSError:
-            # This is needed so OpenAI models are skipped over
-            return False
-
-        if not all(m in model_name_or_path for m in ["flan", "t5"]):
-            logger.warning(
-                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
-                "Many of the default prompts and PromptTemplates will likely not work as intended. "
-                "Use custom prompts and PromptTemplates specific to the %s model",
-                model_name_or_path,
-            )
-
-        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
-        return config.architectures[0] in supported_models
-
-
-class OpenAIInvocationLayer(PromptModelInvocationLayer):
-    """
-    PromptModelInvocationLayer implementation for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
-    See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
-
-    Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
-    as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
-    """
-
-    def __init__(
-        self, api_key: str, model_name_or_path: str = "text-davinci-003", max_length: Optional[int] = 100, **kwargs
-    ):
-        """
-         Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
-
-        :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of the output text.
-        :param api_key: The OpenAI API key.
-        :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
-        all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
-        kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
-        kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
-        logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
-        [documentation](https://platform.openai.com/docs/api-reference/completions/create).
-
-        """
-        super().__init__(model_name_or_path, max_length)
-        if not isinstance(api_key, str) or len(api_key) == 0:
-            raise OpenAIError(
-                f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
-            )
-        self.api_key = api_key
-        self.url = "https://api.openai.com/v1/completions"
-
-        # Due to reflective construction of all invocation layers we might receive some
-        # unknown kwargs, so we need to take only the relevant.
-        # For more details refer to OpenAI documentation
-        self.model_input_kwargs = {
-            key: kwargs[key]
-            for key in [
-                "suffix",
-                "max_tokens",
-                "temperature",
-                "top_p",
-                "n",
-                "logprobs",
-                "echo",
-                "stop",
-                "presence_penalty",
-                "frequency_penalty",
-                "best_of",
-                "logit_bias",
-            ]
-            if key in kwargs
-        }
-
-    @retry_with_exponential_backoff(
-        backoff_in_seconds=float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 5)),
-        max_retries=int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)),
-        errors=(OpenAIRateLimitError, OpenAIError),
-    )
-    def invoke(self, *args, **kwargs):
-        """
-        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
-
-        :return: The responses are being returned.
-
-        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see OpenAI [documentation](https://platform.openai.com/docs/api-reference/completions/create).
-        """
-        prompt = kwargs.get("prompt")
-        if not prompt:
-            raise ValueError(
-                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
-                f"Make sure to provide prompt in kwargs."
-            )
-
-        kwargs_with_defaults = self.model_input_kwargs
-        if kwargs:
-            # we use keyword stop_words but OpenAI uses stop
-            if "stop_words" in kwargs:
-                kwargs["stop"] = kwargs.pop("stop_words")
-            if "top_k" in kwargs:
-                top_k = kwargs.pop("top_k")
-                kwargs["n"] = top_k
-                kwargs["best_of"] = top_k
-            kwargs_with_defaults.update(kwargs)
-        payload = {
-            "model": self.model_name_or_path,
-            "prompt": prompt,
-            "suffix": kwargs_with_defaults.get("suffix", None),
-            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
-            "temperature": kwargs_with_defaults.get("temperature", 0.7),
-            "top_p": kwargs_with_defaults.get("top_p", 1),
-            "n": kwargs_with_defaults.get("n", 1),
-            "stream": False,  # no support for streaming
-            "logprobs": kwargs_with_defaults.get("logprobs", None),
-            "echo": kwargs_with_defaults.get("echo", False),
-            "stop": kwargs_with_defaults.get("stop", None),
-            "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
-            "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "best_of": kwargs_with_defaults.get("best_of", 1),
-            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
-        }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request(
-            "POST",
-            self.url,
-            headers=headers,
-            data=json.dumps(payload),
-            timeout=float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30)),
-        )
-        res = json.loads(response.text)
-
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
-
-        number_of_truncated_completions = sum(1 for ans in res["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_completions > 0:
-            logger.warning(
-                "%s out of the %s completions have been truncated before reaching a natural stopping point."
-                "Consider increasing the max_tokens parameter to allow for longer completions.",
-                number_of_truncated_completions,
-                payload["n"],
-            )
-
-        responses = [ans["text"].strip() for ans in res["choices"]]
-        return responses
-
-    @classmethod
-    def supports(cls, model_name_or_path: str) -> bool:
-        return any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-
-
 class PromptModel(BaseComponent):
     """
     The PromptModel class is a component that uses a pre-trained model to perform tasks based on a prompt. Out of
-    the box, it supports two model invocation layers: Hugging Face transformers and OpenAI, with the ability to
-    register additional custom invocation layers.
+    the box, it supports model invocation layers for:
+    - Hugging Face transformers (all text2text-generation models)
+    - OpenAI InstructGPT models
+    - Azure OpenAI InstructGPT models
 
     Although it is possible to use PromptModel to make prompt invocations on the underlying model, use
     PromptNode to interact with the model. PromptModel instances are a way for multiple
     PromptNode instances to use a single PromptNode, and thus save computational resources.
 
-    For more details, refer to [Promptnode](https://docs.haystack.deepset.ai/docs/prompt_node).
+    For more details, refer to [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     outgoing_edges = 1
@@ -557,6 +185,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -568,7 +197,13 @@ class PromptModel(BaseComponent):
         :param use_auth_token: The Hugging Face token to use.
         :param use_gpu: Whether to use GPU or not.
         :param devices: The devices to use where the model is loaded.
+        :param invocation_layer_class: The custom invocation layer class to use. If None, known invocation layers are used.
         :param model_kwargs: Additional keyword arguments passed to the underlying model.
+
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
+        Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
+        azure_deployment_name (The name of the Azure OpenAI API deployment). These parameters should be supplied
+        in the `model_kwargs` dictionary.
         """
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -579,15 +214,11 @@ class PromptModel(BaseComponent):
         self.devices = devices
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
+        self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
 
-        self.invocation_layers: List[Type[PromptModelInvocationLayer]] = []
-
-        self.register(HFLocalInvocationLayer)  # pylint: disable=W0108
-        self.register(OpenAIInvocationLayer)  # pylint: disable=W0108
-
-        self.model_invocation_layer = self.create_invocation_layer()
-
-    def create_invocation_layer(self) -> PromptModelInvocationLayer:
+    def create_invocation_layer(
+        self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]
+    ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
             "use_auth_token": self.use_auth_token,
@@ -596,23 +227,23 @@ class PromptModel(BaseComponent):
         }
         all_kwargs = {**self.model_kwargs, **kwargs}
 
-        for invocation_layer in self.invocation_layers:
-            if invocation_layer.supports(self.model_name_or_path):
+        if invocation_layer_class:
+            return invocation_layer_class(
+                model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
+            )
+        # search all invocation layer classes and find the first one that supports the model,
+        # then create an instance of that invocation layer
+        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
+            if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
                 )
         raise ValueError(
-            f"Model {self.model_name_or_path} is not supported - no invocation layer found."
-            f" Currently supported models are: {self.invocation_layers}"
-            f" Register a new invocation layer for {self.model_name_or_path} using the register method."
+            f"Model {self.model_name_or_path} is not supported - no matching invocation layer found."
+            f" Currently supported invocation layers are: {PromptModelInvocationLayer.invocation_layer_providers}"
+            f" You can implement and provide custom invocation layer for {self.model_name_or_path} by subclassing "
+            "PromptModelInvocationLayer."
         )
-
-    def register(self, invocation_layer: Type[PromptModelInvocationLayer]):
-        """
-        Registers additional prompt model invocation layer. It takes a function that returns a boolean as a
-        matching condition on `model_name_or_path` and a class that implements `PromptModelInvocationLayer` interface.
-        """
-        self.invocation_layers.append(invocation_layer)
 
     def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
         """
@@ -624,6 +255,13 @@ class PromptModel(BaseComponent):
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
+
+    def _ensure_token_limit(self, prompt: str) -> str:
+        """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        return self.model_invocation_layer._ensure_token_limit(prompt=prompt)
 
     def run(
         self,
@@ -646,6 +284,9 @@ class PromptModel(BaseComponent):
         debug: Optional[bool] = None,
     ):
         raise NotImplementedError("This method should never be implemented in the derived class")
+
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, self.__dict__)
 
 
 def get_predefined_prompt_templates() -> List[PromptTemplate]:
@@ -721,7 +362,8 @@ class PromptNode(BaseComponent):
     """
     The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode
     supports multiple NLP tasks out of the box. You can use it to perform tasks, such as
-    summarization, question answering, question generation, and more, using a single, unified model within the Haystack framework.
+    summarization, question answering, question generation, and more, using a single, unified model within the Haystack
+    framework.
 
     One of the benefits of PromptNode is that you can use it to define and add additional prompt templates
      the model supports. Defining additional prompt templates makes it possible to extend the model's capabilities
@@ -732,9 +374,13 @@ class PromptNode(BaseComponent):
     Using an instance of the PromptModel class, you can create multiple PromptNodes that share the same model, saving
     the memory and time required to load the model multiple times.
 
-    PromptNode also supports multiple model invocation layers: Hugging Face transformers and OpenAI with an
-    ability to register additional custom invocation layers. However, we currently support only
-    T5 Flan and OpenAI InstructGPT models.
+    PromptNode also supports multiple model invocation layers:
+    - Hugging Face transformers (all text2text-generation models)
+    - OpenAI InstructGPT models
+    - Azure OpenAI InstructGPT models
+
+    However, users are not limited to above-mentioned models only as there is a built-in ability to register
+    additional custom model invocation layers.
 
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
@@ -772,6 +418,12 @@ class PromptNode(BaseComponent):
         :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model's going to generate three answers to the query.
         :param stop_words: Stops text generation if any of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
+
+        Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (The URL for the
+        Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
+        azure_deployment_name (The name of the Azure OpenAI API deployment).
+        These parameters should be supplied in the `model_kwargs` dictionary.
+
         """
         send_event("PromptNode initialized")
         super().__init__()
@@ -857,6 +509,7 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
                 # and pass the prepared prompt and kwargs copy to the model
+                prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
@@ -865,6 +518,7 @@ class PromptNode(BaseComponent):
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)

@@ -4,7 +4,7 @@ import logging
 import re
 from typing import List, Optional, Union, Dict, Tuple, Any
 
-from haystack import Pipeline, BaseComponent, Answer
+from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
@@ -54,6 +54,7 @@ class Tool:
             RetrieverQuestionGenerationPipeline,
         ],
         description: str,
+        output_variable: Optional[str] = "results",
     ):
         if re.search(r"\W", name):
             raise ValueError(
@@ -62,6 +63,39 @@ class Tool:
         self.name = name
         self.pipeline_or_node = pipeline_or_node
         self.description = description
+        self.output_variable = output_variable
+
+    def run(self, tool_input: str, params: Optional[dict] = None) -> str:
+        # We can only pass params to pipelines but not to nodes
+        if isinstance(self.pipeline_or_node, (Pipeline, BaseStandardPipeline)):
+            result = self.pipeline_or_node.run(query=tool_input, params=params)
+        elif isinstance(self.pipeline_or_node, BaseRetriever):
+            result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        else:
+            result = self.pipeline_or_node.run(query=tool_input)
+        return self._process_result(result)
+
+    def _process_result(self, result: Any) -> str:
+        # Base case: string or an empty container
+        if not result or isinstance(result, str):
+            return str(result)
+        # Recursive case: process the result based on its type and return the result
+        else:
+            if isinstance(result, (tuple, list)):
+                return self._process_result(result[0] if result else [])
+            elif isinstance(result, dict):
+                if self.output_variable not in result:
+                    raise ValueError(
+                        f"Tool {self.name} returned result {result} but "
+                        f"output variable '{self.output_variable}' not found."
+                    )
+                return self._process_result(result[self.output_variable])
+            elif isinstance(result, Answer):
+                return self._process_result(result.answer)
+            elif isinstance(result, Document):
+                return self._process_result(result.content)
+            else:
+                return str(result)
 
 
 class Agent:
@@ -180,18 +214,8 @@ class Agent:
                 transcript += preds[0]
                 return self._format_answer(query=query, transcript=transcript, answer=final_answer)
             tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=preds[0])
-            if tool_name is None or tool_input is None:
-
-                raise AgentError(
-                    f"Could not identify the next tool or input for that tool from Agent's output. Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
-                    f"# Agent's output: {preds[0]} \n"
-                    f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
-                    f"# Transcript:\n{transcript}"
-                )
-
-            result = self._run_tool(tool_name=tool_name, tool_input=tool_input, transcript=transcript, params=params)
-            observation = self._extract_observation(result)
-            transcript += f"{preds[0]}\nObservation: {observation}\nThought: Now that I know that {observation} is the answer to {tool_name} {tool_input}, I "
+            observation = self._run_tool(tool_name, tool_input, transcript + preds[0], params)
+            transcript += f"{preds[0]}\nObservation: {observation}\nThought:"
 
         logger.warning(
             "The Agent reached the maximum number of iterations (%s) for query (%s). Increase the max_iterations parameter "
@@ -226,41 +250,22 @@ class Agent:
         return results
 
     def _run_tool(
-        self, tool_name: str, tool_input: str, transcript: str, params: Optional[dict] = None
-    ) -> Union[Tuple[Dict[str, Any], str], Dict[str, Any]]:
+        self, tool_name: Optional[str], tool_input: Optional[str], transcript: str, params: Optional[dict] = None
+    ) -> str:
+        if tool_name is None or tool_input is None:
+            raise AgentError(
+                f"Could not identify the next tool or input for that tool from Agent's output. "
+                f"Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
+                f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
+                f"# Transcript:\n{transcript}"
+            )
         if not self.has_tool(tool_name):
             raise AgentError(
                 f"The tool {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
                 "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
                 f"Transcript:\n{transcript}"
             )
-
-        pipeline_or_node = self.tools[tool_name].pipeline_or_node
-        # We can only pass params to pipelines but not to nodes
-        if isinstance(pipeline_or_node, (Pipeline, BaseStandardPipeline)):
-            result = pipeline_or_node.run(query=tool_input, params=params)
-        elif isinstance(pipeline_or_node, BaseRetriever):
-            result = pipeline_or_node.run(query=tool_input, root_node="Query")
-        else:
-            result = pipeline_or_node.run(query=tool_input)
-        return result
-
-    def _extract_observation(self, result: Union[Tuple[Dict[str, Any], str], Dict[str, Any]]) -> str:
-        observation = ""
-        # if result was returned by a node it is of type tuple. We use only the output but not the name of the output.
-        # if result was returned by a pipeline it is of type dict that we can use directly.
-        if isinstance(result, tuple):
-            result = result[0]
-        if isinstance(result, dict):
-            if result.get("results", None):
-                observation = result["results"][0]
-            elif result.get("answers", None):
-                observation = result["answers"][0].answer
-            elif result.get("documents", None):
-                observation = result["documents"][0].content
-
-        # observation remains "" if no result/answer/document was returned
-        return observation
+        return self.tools[tool_name].run(tool_input, params)
 
     def _extract_tool_name_and_tool_input(self, pred: str) -> Tuple[Optional[str], Optional[str]]:
         """

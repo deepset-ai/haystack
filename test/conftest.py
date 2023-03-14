@@ -54,7 +54,6 @@ from haystack.nodes import (
     TableReader,
     RCIReader,
     TransformersSummarizer,
-    TransformersTranslator,
     QuestionGenerator,
     PromptTemplate,
 )
@@ -537,7 +536,17 @@ def rag_generator():
 
 @pytest.fixture
 def openai_generator():
-    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
+    azure_conf = haystack_azure_conf()
+    if azure_conf:
+        return OpenAIAnswerGenerator(
+            api_key=azure_conf["api_key"],
+            azure_base_url=azure_conf["azure_base_url"],
+            azure_deployment_name=azure_conf["azure_deployment_name"],
+            model="text-babbage-001",
+            top_k=1,
+        )
+    else:
+        return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
 
 
 @pytest.fixture
@@ -548,21 +557,6 @@ def question_generator():
 @pytest.fixture
 def lfqa_generator(request):
     return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
-
-
-@pytest.fixture
-def summarizer():
-    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
-
-
-@pytest.fixture
-def en_to_de_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-
-
-@pytest.fixture
-def de_to_en_translator():
-    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
 @pytest.fixture
@@ -701,9 +695,18 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "openai":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="ada",
+            embedding_model="text-embedding-ada-002",
             use_gpu=False,
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+    elif retriever_type == "azure":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="text-embedding-ada-002",
+            use_gpu=False,
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
+            azure_deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED"),
         )
     elif retriever_type == "cohere":
         retriever = EmbeddingRetriever(
@@ -788,23 +791,6 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
         similarity="dot_product",
         tmp_path=tmp_path,
     )
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "pinecone", "weaviate"])
-def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
-    if request.param == "pinecone":
-        mock_pinecone(monkeypatch)
-
-    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(
-        document_store_type=request.param,
-        embedding_dim=embedding_dim.args[0],
-        similarity="dot_product",
-        tmp_path=tmp_path,
-    )
-    document_store.write_documents(docs)
     yield document_store
     document_store.delete_index(document_store.index)
 
@@ -974,6 +960,30 @@ def prompt_node():
     return PromptNode("google/flan-t5-small", devices=["cpu"])
 
 
+def haystack_azure_conf():
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
+    azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    azure_deployment_name = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", None)
+    if api_key and azure_base_url and azure_deployment_name:
+        return {"api_key": api_key, "azure_base_url": azure_base_url, "azure_deployment_name": azure_deployment_name}
+    else:
+        return {}
+
+
+@pytest.fixture
+def haystack_openai_config(request):
+    if request.param == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY", None)
+        if not api_key:
+            return {}
+        else:
+            return {"api_key": api_key, "embedding_model": "text-embedding-ada-002"}
+    elif request.param == "azure":
+        return haystack_azure_conf()
+
+    return {}
+
+
 @pytest.fixture
 def prompt_model(request):
     if request.param == "openai":
@@ -981,5 +991,15 @@ def prompt_model(request):
         if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
         return PromptModel("text-davinci-003", api_key=api_key)
+    elif request.param == "azure":
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
+        if api_key is None or api_key == "":
+            api_key = "KEY_NOT_FOUND"
+        return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
+
+
+@pytest.fixture
+def azure_conf():
+    return haystack_azure_conf()

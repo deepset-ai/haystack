@@ -4,7 +4,7 @@ import pandas as pd
 
 from haystack.nodes import EmbeddingRetriever, TableTextRetriever
 
-from .conftest import document_store
+from ..conftest import document_store
 
 
 @pytest.mark.parametrize("name", ["elasticsearch", "faiss", "memory", "milvus"])

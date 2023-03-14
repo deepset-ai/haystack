@@ -219,6 +219,29 @@ def test_generate_doc_id_using_custom_list():
         _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content", "non_existing_field"])
 
 
+def test_generate_doc_id_custom_list_meta():
+    text1 = "text1"
+    text2 = "text2"
+
+    doc1_text1 = Document(
+        content=text1, meta={"name": "doc1", "url": "https://deepset.ai"}, id_hash_keys=["content", "meta.url"]
+    )
+    doc2_text1 = Document(
+        content=text1, meta={"name": "doc2", "url": "https://deepset.ai"}, id_hash_keys=["content", "meta.url"]
+    )
+    assert doc1_text1.id == doc2_text1.id
+
+    doc1_text1 = Document(content=text1, meta={"name": "doc1", "url": "https://deepset.ai"}, id_hash_keys=["meta.url"])
+    doc2_text2 = Document(content=text2, meta={"name": "doc2", "url": "https://deepset.ai"}, id_hash_keys=["meta.url"])
+    assert doc1_text1.id == doc2_text2.id
+
+    doc1_text1 = Document(content=text1, meta={"name": "doc1", "url": "https://deepset.ai"}, id_hash_keys=["meta.url"])
+    doc2_text2 = Document(
+        content=text2, meta={"name": "doc2", "url": "https://deepset.ai"}, id_hash_keys=["meta.url", "meta.name"]
+    )
+    assert doc1_text1.id != doc2_text2.id
+
+
 def test_aggregate_labels_with_labels():
     label1_with_filter1 = Label(
         query="question",
