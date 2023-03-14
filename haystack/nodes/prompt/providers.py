@@ -512,7 +512,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         :return: A list of generated responses.
 
         Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
-        For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat)
+        For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat).
         """
         prompt = kwargs.get("prompt", None)
 
@@ -522,9 +522,9 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             messages = prompt
         else:
             raise ValueError(
-                f"Provided prompt is incorrect."
-                f"Model {self.model_name_or_path} requires either a string or messages using ChatML format."
-                f"See https://github.com/openai/openai-python/blob/main/chatml.md for more details."
+                f"The prompt format is different than what the model expects."
+                f"The model {self.model_name_or_path} requires either a string or messages in the ChatML format."
+                f"For more details, see this [GitHub discussion](https://github.com/openai/openai-python/blob/main/chatml.md)."
             )
 
         kwargs_with_defaults = self.model_input_kwargs
@@ -565,7 +565,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         return assistant_response
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        """Make sure the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
 
         :param prompt: Prompt text to be sent to the generative model.
@@ -582,9 +582,9 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
         # TODO: support truncation as in _ensure_token_limit methods for other invocation layers
         raise ValueError(
-            f"Prompt/messages are too long ({n_prompt_tokens} tokens). "
-            f"The prompt/messages length and the answer length ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} tokens). "
-            f"Reduce the length of the prompt/messages."
+            f"The prompt or the messages are too long ({n_prompt_tokens} tokens). "
+            f"The length of the prompt or messages and the answer ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} tokens). "
+            f"Reduce the length of the prompt or messages."
         )
 
     @property

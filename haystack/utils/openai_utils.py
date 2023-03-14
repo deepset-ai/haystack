@@ -70,9 +70,9 @@ def count_openai_tokens(text: str, tokenizer) -> int:
 
 
 def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> int:
-    """Count the number of tokens in `messages` based on the provided OpenAI `tokenizer`.
+    """Count the number of tokens in `messages` based on the OpenAI `tokenizer` provided.
 
-    :param messages: messages to be tokenized.
+    :param messages: The messages to be tokenized.
     :param tokenizer: An OpenAI tokenizer.
     """
     # adapted from https://platform.openai.com/docs/guides/chat/introduction
