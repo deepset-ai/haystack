@@ -47,6 +47,9 @@ class BasePromptTemplate(BaseComponent):
 
 
 PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ["join", "documents_to_strings", "replace", "enumerate", "str"]
+PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t"}
+PROMPT_TEMPLATE_STRIPS = ["'", '"']
+PROMPT_TEMPLATE_STR_REPLACE = {'"': "'"}
 
 
 def documents_to_strings(documents: List[Union[Document, str]]) -> List[str]:
@@ -203,9 +206,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
         super().__init__()
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
-        prompt_text = (
-            prompt_text.strip("'").strip('"').replace('"', "'").replace("\n", "{new_line}").replace("\n", "{tab}")
-        )
+        for strip in PROMPT_TEMPLATE_STRIPS:
+            prompt_text = prompt_text.strip(strip)
+        replacements = {**PROMPT_TEMPLATE_STR_REPLACE, **{v: k for k, v in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS.items()}}
+        for old, new in replacements.items():
+            prompt_text = prompt_text.replace(old, new)
 
         self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
 
@@ -219,7 +224,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = [param for param in ast_validator.prompt_params if param not in ["new_line", "tab"]]
+        self.prompt_params = [
+            param for param in ast_validator.prompt_params if param not in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS
+        ]
+        self.globals = {
+            **{k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS},
+            **PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS,
+        }
         self.output_shapers = output_shapers or []
         if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
             raise ValueError(
@@ -261,18 +272,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
             available_params = set(list(params_dict.keys()) + list(set(kwargs.keys())))
             raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
 
-        params_dict["new_line"] = "\n"
-        params_dict["tab"] = "\t"
-
-        template_dict = {}
+        template_dict = {"_force_one_prompt": True}
         for id, call in self._prompt_params_functions.items():
-            allowed_globals = {k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}
             template_dict[id] = eval(  # pylint: disable=eval-used
-                compile(call, filename="<string>", mode="eval"), allowed_globals, params_dict
+                compile(call, filename="<string>", mode="eval"), self.globals, params_dict
             )
-
-        template_dict["new_line"] = "\n"
-        template_dict["tab"] = "\t"
 
         return template_dict
 
@@ -322,7 +326,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         for prompt_context_values in zip(*prompt_context_copy.values()):
             template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
             prompt_prepared: str = eval(  # pylint: disable=eval-used
-                compile(self._ast_expression, filename="<string>", mode="eval"), {}, template_input
+                compile(self._ast_expression, filename="<string>", mode="eval"), self.globals, template_input
             )
             yield prompt_prepared
 
