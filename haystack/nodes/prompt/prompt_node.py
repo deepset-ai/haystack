@@ -618,12 +618,7 @@ class PromptNode(BaseComponent):
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
         prompt_template_used = prompt_template or self.default_prompt_template
         if prompt_template_used:
-            if isinstance(prompt_template_used, PromptTemplate):
-                template_to_fill = prompt_template_used
-            elif isinstance(prompt_template_used, str):
-                template_to_fill = self.get_prompt_template(prompt_template_used)
-            else:
-                raise ValueError(f"{prompt_template_used} with args {args} , and kwargs {kwargs} not supported")
+            template_to_fill = self.get_prompt_template(prompt_template_used)
 
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
@@ -706,15 +701,19 @@ class PromptNode(BaseComponent):
         template_name = prompt_template if isinstance(prompt_template, str) else prompt_template.name
         return template_name in self.prompt_templates
 
-    def get_prompt_template(self, prompt_template_name: str) -> PromptTemplate:
+    def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> PromptTemplate:
         """
         Returns a prompt template by name.
         :param prompt_template_name: The name of the prompt template to be returned.
         :return: The prompt template object.
         """
-        if prompt_template_name not in self.prompt_templates:
-            raise ValueError(f"Prompt template {prompt_template_name} not supported")
-        return self.prompt_templates[prompt_template_name]
+        if isinstance(prompt_template, PromptTemplate):
+            return prompt_template
+
+        if not isinstance(prompt_template, str) or prompt_template not in self.prompt_templates:
+            raise ValueError(f"Prompt template {prompt_template} not supported")
+
+        return self.prompt_templates[prompt_template]
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """
@@ -775,13 +774,7 @@ class PromptNode(BaseComponent):
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
-        if isinstance(self.default_prompt_template, PromptTemplate):
-            prompt_template = self.default_prompt_template
-        elif isinstance(self.default_prompt_template, str):
-            prompt_template = self.get_prompt_template(self.default_prompt_template)
-        else:
-            raise ValueError(f"Invalid default prompt template: {self.default_prompt_template}")
-
+        prompt_template = self.get_prompt_template(self.default_prompt_template)
         output_variable = self.output_variable
         last_shaper = prompt_template.output_shapers[-1]
         if last_shaper:
