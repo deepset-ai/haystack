@@ -152,9 +152,7 @@ def test_create_prompt_node():
 @pytest.mark.integration
 def test_add_and_remove_template(prompt_node):
     num_default_tasks = len(prompt_node.get_prompt_template_names())
-    custom_task = PromptTemplate(
-        name="custom-task", prompt_text="Custom task: $param1, $param2", prompt_params=["param1", "param2"]
-    )
+    custom_task = PromptTemplate(name="custom-task", prompt_text="Custom task: {param1}, {param2}")
     prompt_node.add_prompt_template(custom_task)
     assert len(prompt_node.get_prompt_template_names()) == num_default_tasks + 1
     assert "custom-task" in prompt_node.get_prompt_template_names()
@@ -168,8 +166,7 @@ def test_add_template_and_invoke(prompt_node):
     tt = PromptTemplate(
         name="sentiment-analysis-new",
         prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: $documents; Answer:",
-        prompt_params=["documents"],
+        "negative or neutral. Context: {documents}; Answer:",
     )
     prompt_node.add_prompt_template(tt)
 
@@ -182,8 +179,7 @@ def test_on_the_fly_prompt(prompt_node):
     prompt_template = PromptTemplate(
         name="sentiment-analysis-temp",
         prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: $documents; Answer:",
-        prompt_params=["documents"],
+        "negative or neutral. Context: {documents}; Answer:",
     )
     r = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
     assert r[0].casefold() == "positive"
@@ -328,7 +324,7 @@ def test_stop_words(prompt_model):
 
     tt = PromptTemplate(
         name="question-generation-copy",
-        prompt_text="Given the context please generate a question. Context: $documents; Question:",
+        prompt_text="Given the context please generate a question. Context: {documents}; Question:",
     )
     # with custom prompt template
     r = node.prompt(tt, documents=["Berlin is the capital of Germany."])
@@ -392,8 +388,7 @@ def test_complex_pipeline_with_qa(prompt_model):
 
     prompt_template = PromptTemplate(
         name="question-answering-new",
-        prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
-        prompt_params=["documents", "query"],
+        prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
     )
     node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
@@ -580,7 +575,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               type: PromptTemplate
               params:
                 name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
@@ -658,7 +653,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
               type: PromptTemplate
               params:
                 name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
@@ -805,9 +800,7 @@ class TestTokenLimit:
     @pytest.mark.integration
     def test_hf_token_limit_warning(self, prompt_node, caplog):
         prompt_template = PromptTemplate(
-            name="too-long-temp",
-            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
-            prompt_params=["documents"],
+            name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:"
         )
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
@@ -820,11 +813,7 @@ class TestTokenLimit:
         reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     def test_openai_token_limit_warning(self, caplog):
-        tt = PromptTemplate(
-            name="too-long-temp",
-            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
-            prompt_params=["documents"],
-        )
+        tt = PromptTemplate(name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:")
         prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
@@ -880,8 +869,7 @@ class TestRunBatch:
 
         prompt_template = PromptTemplate(
             name="question-answering-new",
-            prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
-            prompt_params=["documents", "query"],
+            prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
         )
         node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
