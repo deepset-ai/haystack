@@ -18,7 +18,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     Transformer based model for document language classification using the HuggingFace's transformers framework
     (https://github.com/huggingface/transformers).
     While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
-    This node detects the languge of Documents and adds the output to the Documents metadata.
+    This node detects the language of Documents and adds the output to the Documents metadata.
     The meta field of the Document is a dictionary with the following format:
     ``'meta': {'name': '450_Baelor.txt', 'language': 'en'}``
     - Using the document language classifier, you can directly get predictions via predict()
