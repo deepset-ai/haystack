@@ -354,7 +354,7 @@ def test_simple_pipeline(prompt_model):
 def test_complex_pipeline(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
-    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="questions")
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query")
     node2 = PromptNode(prompt_model, default_prompt_template="question-answering")
 
     pipe = Pipeline()
@@ -404,7 +404,7 @@ def test_complex_pipeline_with_qa(prompt_model):
         debug=True,  # so we can verify that the constructed prompt is returned in debug
     )
 
-    assert len(result["results"]) == 1
+    assert len(result["results"]) == 2
     assert "carla" in result["results"][0].casefold()
 
     # also verify that the PromptNode has included its constructed prompt LLM model input in the returned debug
@@ -418,9 +418,7 @@ def test_complex_pipeline_with_qa(prompt_model):
 @pytest.mark.integration
 def test_complex_pipeline_with_shared_model():
     model = PromptModel()
-    node = PromptNode(
-        model_name_or_path=model, default_prompt_template="question-generation", output_variable="questions"
-    )
+    node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation", output_variable="query")
     node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering")
 
     pipe = Pipeline()
@@ -493,7 +491,7 @@ def test_complex_pipeline_yaml(tmp_path):
             - name: p1
               params:
                 default_prompt_template: question-generation
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -515,8 +513,8 @@ def test_complex_pipeline_yaml(tmp_path):
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -532,7 +530,7 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question-generation
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -555,8 +553,8 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -581,7 +579,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question_generation_template
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -604,8 +602,8 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -659,7 +657,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question_generation_template
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -685,8 +683,8 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
@@ -731,7 +729,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
               params:
                 model_name_or_path: pmodel_openai
                 default_prompt_template: question_generation_template
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -754,8 +752,8 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -769,7 +767,7 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
             - name: p1
               params:
                 default_prompt_template: question-generation
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
