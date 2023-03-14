@@ -1,4 +1,4 @@
-- Title: DocumentStores and Retrievers
+- Title: `DocumentStores` and `Retrievers`
 - Decision driver: @ZanSara
 - Start Date: 2023-03-09
 - Proposal PR: 4370
@@ -51,9 +51,9 @@ indexing_pipe.add_node("txt_converter", TxtConverter())
 indexing_pipe.add_node("preprocessor", PreProcessor())
 indexing_pipe.add_node("embedder", DocumentEmbedder(model_name="deepset/model-name"))
 indexing_pipe.add_node("writer", DocumentWriter(store="document_store"))
-query_pipe.connect("txt_converter", "preprocessor")
-query_pipe.connect("preprocessor", "embedder")
-query_pipe.connect("embedder", "writer")
+indexing_pipe.connect("txt_converter", "preprocessor")
+indexing_pipe.connect("preprocessor", "embedder")
+indexing_pipe.connect("embedder", "writer")
 
 indexing_pipe.run(...)
 
@@ -77,347 +77,89 @@ Note a few key differences with the existing Haystack process:
 - During query, the first step is not a `Retriever` anymore, but a `StringEmbedder`. Such node will convert the query into its embedding representation and forward it over to a `Retriever` that expects it. In this case, an imaginary `MemoryRetriever` can be configured to expect an embedding by setting the `retrieval_method` flag to `embedding`.
 
 
-
-Note how we are using `MemoryRetriever`, which for example might accept a `retrieval_method` parameter to select between BM25 and embedding-based retrieval. Other document stores might support that, for example Weaviate, while others might not, like FAISS. this distinction will be evident in the parameters of their respective Retrievers.
-
-With respect to embedding retrieval, the process is slightly different
-
-
 # Detailed design
 
-## Design of the `Data` hierarchy
+## `DocumentStore` contract
 
-The design for the Data subclasses is fairly straigthforward and consists mostly of very small, immutable dataclasses. Here we propose an implementation example with `Data`, four content type variants, `Document` and its content types variants again.
+Here is a summary of the basic contract that all `DocumentStore`s are expected to follow.
 
 ```python
-from typing import List, Any, Dict, Literal
-from math import inf
-from pathlib import Path
-import logging
-import json
-from dataclasses import asdict, dataclass, field
-import mmh3
+class MyDocumentStore:
 
-#: List of all `content_type` supported
-ContentTypes = Literal["text", "table", "image", "audio"]
+    def count_items(self, **kwargs) -> int:
+        ...
 
-@dataclass(frozen=True, kw_only=True, eq=True)
-class Data:
+    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
+        ...
 
-    id: str = field(default_factory=str)
-    content: Any = field(default_factory=lambda: None)
-    # The content_type field makes it much simpler to deserialize into the correct class
-    content_type: ContentTypes
-    meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=lambda: ["content"], hash=False)
+    def write_items(self, items: List[Dict[str, Any]], **kwargs) -> None:
+        ...
 
-    def __str__(self):
-        return f"{self.__class__.__name__}('{self.content}')"
-
-    def to_dict(self):
-        return asdict(self)
-
-    def to_json(self, **json_kwargs):
-        return json.dumps(self.to_dict(), *json_kwargs)
-
-    @classmethod
-    def from_dict(cls, dictionary):
-        return cls(**dictionary)
-
-    @classmethod
-    def from_json(cls, data, **json_kwargs):
-        dictionary = json.loads(data, **json_kwargs)
-        return cls.from_dict(dictionary=dictionary)
-
-@dataclass(frozen=True, kw_only=True)
-class Text(Data):
-    content: str
-    content_type: ContentTypes = "text"
-
-@dataclass(frozen=True, kw_only=True)
-class Table(Data):
-    content: 'pd.DataFrame'
-    content_type: ContentTypes = "table"
-
-@dataclass(frozen=True, kw_only=True)
-class Image(Data):
-    content: Path
-    content_type: ContentTypes = "image"
-
-@dataclass(frozen=True, kw_only=True)
-class Audio(Data):
-    content: Path
-    content_type: ContentTypes = "audio"
-
-
-@dataclass(frozen=True, kw_only=True)
-class Document(Data):
-
-    score: Optional[float] = None
-    embedding: Optional[np.ndarray] = field(default=lambda:None, repr=False)
-
-    def __lt__(self, other):
-        if not hasattr(other, "score"):
-            raise ValueError("Documents can only be compared with other Documents.")
-        return (self.score if self.score is not None else -inf) < (
-            other.score if other.score is not None else -inf
-        )
-
-    def __le__(self, other):
-        if not hasattr(other, "score"):
-            raise ValueError("Documents can only be compared with other Documents.")
-        return (self.score if self.score is not None else -inf) <= (
-            other.score if other.score is not None else -inf
-        )
-
-@dataclass(frozen=True, kw_only=True)
-class TextDocument(Text, Document):
-    pass
-
-@dataclass(frozen=True, kw_only=True)
-class TableDocument(Table, Document):
-    pass
-
-@dataclass(frozen=True, kw_only=True)
-class ImageDocument(Image, Document):
-    pass
-
-@dataclass(frozen=True, kw_only=True)
-class AudioDocument(Audio, Document):
-    pass
+    def delete_items(self, ids: List[str], **kwargs) -> None:
+        ...
 ```
 
-### Foreseen subclasses
+The contract is extremely narrow to encourage the use of specialized nodes. `DocumentStore`s' primary focus should be storing documents: the fact that most vector stores also support retrieval should be outside of this abstraction and made available through methods that do not belong to the contract.
 
-From the point of view of modality, for now we foresee 4 content types: `text`, `table`, `image` and `audio`.
+This allows `Retriever`s to carry out their tasks while avoiding clutter on `DocumentStore`s that do not support some features.
 
-From the point of view of semantics, the rule of thumb is: "if it could ever make sense to assign metadata or embeddings to it, it can be a data class". As a consequence, we shortlisted the following: `Document`, `Answer`, `Label`, `MultiLabel` (to be evaluated) and `Query` (to be evaluated). Note the lack of `Span`, also to be discussed.
-
-Note for the reviewers: this is clearly an early attempt. This list is not binding. Making stores unaware of which dataclass they're storing makes it way easier to add/remove dataclasses later, so we should not focus too much on this list right now and rather iterate before Haystack v2.0.
-
-## Design of the `Store` hierarchy
-
-`Store`s are a bit more complex as they have to be disentangled from `Retriever`s.
-
-First, let's define the API of a basic `Store`:
+For example, a `MemoryDocumentStore` could offer the following API:
 
 ```python
-class Store(ABC):
+class MemoryDocumentStore:
 
-    def __init__(self):
-        pass
-
-    def has_item(self, id: str) -> bool:
-        pass
-
-    def get_item(self, id: str) -> Dict[str, Any]:
-        pass
-
-    def count_items(self, filters: Dict[str, Any]) -> int:
-        pass
-
-    def get_ids(self, filters: Dict[str, Any]) -> List[str]:
-        pass
-
-    def get_items(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
-        pass
-
-    def write_items(self, items: Iterable[Dict[str, Any]], duplicates: Literal["skip", "overwrite", "fail"]) -> None:
-        pass
-
-    def delete_items(self, ids: List[str], fail_on_missing_item: bool = False) -> None:
-        pass
-```
-
-As you can see, many concepts were kept from old `DocumentStore`s, with a few notable exceptions:
-
-- There's no more `count_documents`, `get_documents`, etc, but only `count_items`, `get_item`. This store is generic and can contain any type of data. Therefore, we can store `Document`s separately from `Label`s and we don't need to care about supporting both: if a generic `Store` exists for that backend, it can automatically store both `Document`s and `Label`s by adding a very thin layer on top (see below).
-
-- No mention of retrieval other than `get_items`, which only accepts `filters`. That's because `get_items` is NOT supposed to be used for retrieval but only, when needed, for filtering.
-
-- We removed the concept of `index`. Stores are not a monolithic representation of any specific (vector) database: if users want to leverage ES' indices or Pinecone's Namespaces, they can create a Store for each of them. We want to keep the Store's API as minimal and generic as possible, to allow agnostic nodes to use the stores intechangeably.
-
-Let's now assume we create a `StoreInMemory` that implements the methods above. From such class we could then create a wrapper called `DocumentStoreInMemory`, which would look like this:
-
-```python
-class DocumentStoreInMemory:
-
-    def __init__(self, ...params...):
-        self.store = StoreInMemory()
-        self.bm25 = BM25Index()
+    def count_items(self, **kwargs) -> int:
         ...
 
-    def has_document(self, id: str) -> bool:
+    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         ...
 
-    def get_document(self, id: str) -> Optional[Document]:
-        item = self.store.get_item(id=id, pool=pool)
-        # Deserializes it back to a Document object because we know we're storing
-        # Documents in this store
-        return Document.from_dict(item)
-
-    def count_documents(self, filters: Dict[str, Any]):
+    def write_items(self, items: List[Dict[str, Any]], **kwargs) -> None:
         ...
 
-    def get_document_ids(self, filters: Dict[str, Any]) -> List[str]:
+    def delete_items(self, ids: List[str], **kwargs) -> None:
         ...
 
-    def get_documents(self, filters: Dict[str, Any]) -> List[Document]:
-        items = self.store.get_items(id=id, filters=filters)
-        # Deserializes it back to Document objects because we know we're storing
-        # Documents in this store
-        return [Document.from_dict(item) for item in items]
-
-    def write_documents(
+    def bm25_retrieval(
         self,
-        documents: List[Document],
-        duplicates: Literal["skip", "overwrite", "fail"] = "overwrite",
-    ) -> None:
-        self.store.write_items(
-            # Serializes it to dictionary before writing
-            items=(doc.to_dict() for doc in documents),
-            duplicates=duplicates,
-        )
-        # Additional code to support BM25 retrieval
-        if self.bm25:
-            self.bm25.update_bm25(self.get_documents(filters={}))
-
-    def delete_documents(self, ids: List[str], fail_on_missing_item: bool = False) -> None:
-        ...
-
-    def get_relevant_documents(
-        self,
-        queries: List[Query],
+        queries: List[str],   # Note: takes strings!
         filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 10,
-        use_bm25: bool = True,
-        similarity: str = "dot_product",
-        scoring_batch_size: int = 500000,
-        scale_score: bool = True,
-    ) -> Dict[str, List[Document]]:
-
-        ######################
-        # Performs retrieval #
-        ######################
-
-        filters = filters or {}
-
-        # BM25 Retrieval
-        if use_bm25:
-            relevant_documents = {}
-            for query in queries:
-                relevant_documents[query] = list(self._bm25_retrieval(...))
-            return relevant_documents
-
-        # Embedding Retrieval
-        relevant_documents = self._embedding_retrieval(...)
-        return relevant_documents
-
-    def _bm25_retrieval(...) -> List[Document]:
+        top_k: int = 10
+    ) -> List[List[Document]]:
         ...
 
-    def _embedding_retrieval(...) -> Dict[str, List[Document]]:
+    def vector_similarity_retrieval(
+        self,
+        queries: List[np.array],   # Note: takes embeddings!
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10
+    ) -> List[List[Document]]:
+        ...
+
+    def knn_retrieval(
+        self,
+        queries: List[np.array],   # Note: takes embeddings!
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10
+    ) -> List[List[Document]]:
         ...
 ```
 
-Note two important details:
+In this way, a `DocumentWriter` could easily use the `write_documents` method defined in the contract on all document stores, while `MemoryRetriever` can leverage the fact that it only supports `MemoryDocumentStore`, so it can assume all its custom methods like `bm25_retrieval`, `vector_similarity_retrieval`, etc... are present.
 
-- `DocumentStoreInMemory` DOES NOT inherit from `StoreInMemory`. It uses the store internally. This spares us the "signature creep" seen in many DocumentStores currently, which are being forced to have all identical signatures even in such context where it makes no sense (how all DocumentStores have to support `headers` and then just throw warnings if set). Composition in this case is an extremely valuable tool.
-
-- On the other hand, `DocumentStoreInMemory` only adds one single (public) method to the `Store` signature: `get_relevant_documents`. This is the Retriever contract: see the next paragraph for details.
-
-## The `Retriever`s contract
-
-We define an explicit contract between `DocumentStore`s (not all `Store`s, just their `Document` variety) and `Retriever`s. This contract is very simple and states that:
-
-> All document stores that support retrieval should define a `get_relevant_documents()` method.
-
-Each `Retriever` will define a set of parameters it is going to pass to its `DocumentStore`, and all `DocumentStore`s that want to support that `Retriever` type must accept its set of parameters. Note that such signature is not enforced by any inheritance.
-
-For example:
-
-```python
-@node
-class BM25Retriever:
-    """
-    BM25Retriever works with any store that accepts BM25
-    parameters in `get_relevant_documents`:
-    - `use_bm25`
-    - `bm25_parameters`
-    """
-    def __init__(self, ...):
-        pass
-
-    def run(self, ...):
-        ...
-
-        if not hasattr(stores[store_name], "get_relevant_documents"):
-            raise ValueError(f"{store_name} is not a DocumentStore or it does not support Retrievers.")
-
-        documents = stores["documents"].get_relevant_documents(
-            queries=queries,
-            filters=filters,
-            top_k=top_k,
-            use_bm25=True,   # This is specific to BM25Retriever
-            bm25_parameters=bm25_parameters   # This is specific to BM25Retriever
-        )
-        ...
-
-@node
-class EmbeddingRetriever:
-    """
-    EmbeddingRetriever works with any store that accepts
-    dense retrieval parameters in `get_relevant_documents`:
-    - `use_embedding`
-    - `similarity`
-    - `scale_score`
-    """
-    def __init__(self, ...):
-        pass
-
-    def run(self, ...):
-        ...
-        if not hasattr(stores[store_name], "get_relevant_documents"):
-            raise ValueError(f"{store_name} is not a DocumentStore or it does not support Retrievers.")
-
-        documents = stores["documents"].get_relevant_documents(
-            queries=queries,
-            filters=filters,
-            top_k=top_k,
-            use_embedding=True, # This is specific to EmbeddingRetriever
-            similarity=similarity,   # This is specific to EmbeddingRetriever
-            scale_score=scale_score   # This is specific to EmbeddingRetriever
-        )
-        ...
-```
-
-### Expected question: "Why not one method for each retrieval type?"
-
-It migth seem appealing to decide that for every retrieval method, DocumentStores wishing to support it should add a separate `get_relevant_documents_with_[bm25|embedding|magic|...]()`. That would allows document stores to type-check the signature and do more validation before hand.
-
-However, I believe such design would tie too strictly `Store`s and `Retriever`s. Some stores might be able to share a lot of logic, parameters, etc... across different retrieval methods (think about `top_k`, for example), while adding a method for each technique incentivizes code repetition.
-
-This is, however, up for debate and further evaluation.
+Note also how the concept of `index` is not present anymore, as it it mostly ES-specific.
 
 # Drawbacks
 
 ### Migration effort
 
-We will need to migrate all DocumentStores into their Store implementation. Although it is going to be a massive undertaking, this process will allow us to drop less used DocumentStore backends and focus on the most important ones.
+We will need to migrate all `DocumentStore`s and heavily cut their API. Although it is going to be a massive undertaking, this process will allow us to drop less used `DocumentStore` backends and focus on the most important ones. It will also highly reduce the code we have to maintain.
 
-An example shortlist could be:
-
-- `StoreInMemory`
-- `StoreIn(Elasticsearch|Opensearch)` (choose one)
-- `StoreIn(Qdrant|Weaviate|Pinecone)` (choose one or two)
-- `StoreInFAISS`
-- `StoreInSQL`
-
-all with their `DocumentStore` variant only. We will later consider additional implementations.
+We will also need to re-implement the ehtire Retrieval stack. We believe a lot of code could be reused, but we will focus on leveraging each document store facilities a lot more, and that will require almost complete rewriters. The upside is that the resulting code should be several times shorter, so the maintenance burden should be limited.
 
 # Alternatives
 
-Not really any. We could force support for the old Docstores into the new Pipelines, but I see no value in such effort given that with the same investment we can get a massively smaller codebase.
+We could force support for the old Docstores into the new Pipelines, but I see no value in such effort given that with the same investment we can get a massively smaller codebase.
 
 # Adoption strategy
 
@@ -425,8 +167,4 @@ This proposal is part of the Haystack 2.0 rollout strategy. See https://github.c
 
 # How we teach this
 
-Documentation is going to be crucial, as much as tutorials and demos. We plan to start working on those as soon as basic nodes (one reader and one retriever) are added to Haystack v2 and `DocumentStoreInMemory` receives its first implementation.
-
-# Unresolved questions
-
-_Waiting for review_.
+Documentation is going to be crucial, as much as tutorials and demos. We plan to start working on those as soon as basic nodes (one reader and one retriever) are added to Haystack v2 and `MemoryDocumentStore` receives its first implementation.
