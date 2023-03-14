@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "haystack-rest-api"
+description = 'REST API server for Haystack (https://github.com/deepset-ai/haystack)'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "Apache-2.0"
+keywords = []
+authors = [
+  { name = "deepset.ai", email = "malte.pietsch@deepset.ai" },
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "fastapi<1",
+    "uvicorn<1",
+    "python-multipart<1",  # optional FastAPI dependency for form data
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+  "httpx"
+]
+
+[project.urls]
+Documentation = "https://github.com/deepset-ai/haystack/tree/main/haystack/v2/rest_api#readme"
+Issues = "https://github.com/deepset-ai/haystack/issues"
+Source = "https://github.com/deepset-ai/haystack/tree/main/haystack/v2/rest_api"
+
+[tool.hatch.version]
+path = "haystack/v2/rest_api/__about__.py"
+
+[tool.hatch.build.targets.sdist]
+[tool.hatch.build.targets.wheel]
+
+[tool.hatch.envs.default]
+dependencies = [
+  "pytest",
+  "pytest-cov",
+]
+[tool.hatch.envs.default.scripts]
+cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=haystack.v2.rest_api --cov=tests"
+no-cov = "cov --no-cov"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["38", "39", "310", "311"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+omit = ["haystack/v2/rest_api/__about__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.black]
+line-length = 120
