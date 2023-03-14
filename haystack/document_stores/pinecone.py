@@ -291,6 +291,13 @@ class PineconeDocumentStore(BaseDocumentStore):
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
         stats = self.pinecone_indexes[index].describe_index_stats(filter=pinecone_syntax_filter)
+
+        if only_documents_without_embedding:
+            count = 0
+            for namespace in stats["namespaces"].keys():
+                if "no-vectors" in namespace:
+                    count += stats["namespaces"][namespace]["vector_count"]
+            return count
         # Document count is total number of vectors across all namespaces (no-vectors + vectors)
         count = 0
         for namespace in stats["namespaces"].keys():
@@ -491,7 +498,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
                 f"PineconeDocumentStore() again ..."
             )
-        document_count = self.get_document_count(index=index, filters=filters)
+        document_count = self.get_document_count(
+            index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
+        )
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
