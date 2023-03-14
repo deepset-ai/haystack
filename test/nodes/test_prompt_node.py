@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Set, Union, List, Dict, Any, Tuple
+from typing import Optional, Set, Type, Union, List, Dict, Any, Tuple
 
 import pytest
 import torch
@@ -42,41 +42,30 @@ def get_api_key(request):
 
 @pytest.mark.unit
 def test_prompt_templates():
-    p = PromptTemplate("t1", "Here is some fake template with variable $foo", ["foo"])
+    p = PromptTemplate("t1", "Here is some fake template with variable {foo}")
+    assert set(p.prompt_params) == {"foo"}
 
-    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
-        PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo"])
+    p = PromptTemplate("t3", "Here is some fake template with variable {foo} and {bar}")
+    assert set(p.prompt_params) == {"foo", "bar"}
 
-    with pytest.raises(ValueError, match="Invalid parameter"):
-        PromptTemplate("t2", "Here is some fake template with variable $footur", ["foo"])
+    p = PromptTemplate("t4", "Here is some fake template with variable {foo1} and {bar2}")
+    assert set(p.prompt_params) == {"foo1", "bar2"}
 
-    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
-        PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo", "bar", "baz"])
+    p = PromptTemplate("t4", "Here is some fake template with variable {foo_1} and {bar_2}")
+    assert set(p.prompt_params) == {"foo_1", "bar_2"}
 
-    p = PromptTemplate("t3", "Here is some fake template with variable $for and $bar", ["for", "bar"])
+    p = PromptTemplate("t4", "Here is some fake template with variable {Foo_1} and {Bar_2}")
+    assert set(p.prompt_params) == {"Foo_1", "Bar_2"}
 
-    # last parameter: "prompt_params" can be omitted
-    p = PromptTemplate("t4", "Here is some fake template with variable $foo and $bar")
-    assert p.prompt_params == ["foo", "bar"]
-
-    p = PromptTemplate("t4", "Here is some fake template with variable $foo1 and $bar2")
-    assert p.prompt_params == ["foo1", "bar2"]
-
-    p = PromptTemplate("t4", "Here is some fake template with variable $foo_1 and $bar_2")
-    assert p.prompt_params == ["foo_1", "bar_2"]
-
-    p = PromptTemplate("t4", "Here is some fake template with variable $Foo_1 and $Bar_2")
-    assert p.prompt_params == ["Foo_1", "Bar_2"]
-
-    p = PromptTemplate("t4", "'Here is some fake template with variable $baz'")
-    assert p.prompt_params == ["baz"]
+    p = PromptTemplate("t4", "'Here is some fake template with variable {baz}'")
+    assert set(p.prompt_params) == {"baz"}
     # strip single quotes, happens in YAML as we need to use single quotes for the template string
-    assert p.prompt_text == "Here is some fake template with variable $baz"
+    assert p.prompt_text == "Here is some fake template with variable {baz}"
 
-    p = PromptTemplate("t4", '"Here is some fake template with variable $baz"')
-    assert p.prompt_params == ["baz"]
+    p = PromptTemplate("t4", '"Here is some fake template with variable {baz}"')
+    assert set(p.prompt_params) == {"baz"}
     # strip double quotes, happens in YAML as we need to use single quotes for the template string
-    assert p.prompt_text == "Here is some fake template with variable $baz"
+    assert p.prompt_text == "Here is some fake template with variable {baz}"
 
 
 @pytest.mark.unit
@@ -1045,18 +1034,30 @@ class TestPromptTemplateSyntax:
         assert prompts == expected_prompts
 
     @pytest.mark.parametrize(
-        "prompt_text, documents, query, expected_exc_match",
+        "prompt_text, documents, query, exc_type, expected_exc_match",
         [
-            ("{__import__('os').listdir('.')}", None, None, "Invalid function in prompt text"),
-            ("{__import__('os')}", None, None, "Invalid function in prompt text"),
-            ("{requests.get('https://haystack.deepset.ai/')}", None, None, "Invalid function in prompt text"),
-            ("{join(__import__('os').listdir('.'))}", None, None, "Invalid function in prompt text"),
+            ("{__import__('os').listdir('.')}", None, None, ValueError, "Invalid function in prompt text"),
+            ("{__import__('os')}", None, None, ValueError, "Invalid function in prompt text"),
+            (
+                "{requests.get('https://haystack.deepset.ai/')}",
+                None,
+                None,
+                ValueError,
+                "Invalid function in prompt text",
+            ),
+            ("{join(__import__('os').listdir('.'))}", None, None, ValueError, "Invalid function in prompt text"),
+            ("{for}", None, None, SyntaxError, "invalid syntax"),
         ],
     )
     def test_prompt_template_syntax_fill_raises(
-        self, prompt_text: str, documents: List[Document], query: str, expected_exc_match: str
+        self,
+        prompt_text: str,
+        documents: List[Document],
+        query: str,
+        exc_type: Type[BaseException],
+        expected_exc_match: str,
     ):
-        with pytest.raises(ValueError, match=expected_exc_match):
+        with pytest.raises(exc_type, match=expected_exc_match):
             prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
 
     @pytest.mark.parametrize(
