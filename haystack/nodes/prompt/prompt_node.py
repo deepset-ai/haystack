@@ -10,7 +10,7 @@ from uuid import uuid4
 import torch
 
 from haystack import MultiLabel
-from haystack.errors import HaystackError, NodeError
+from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.other.shaper import Shaper
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer
