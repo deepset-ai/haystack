@@ -96,6 +96,9 @@ dependencies = [
 
   # Schema validation
   "jsonschema",
+
+  # Preview
+  "canals"
 ]
 
 [project.optional-dependencies]
@@ -194,10 +197,6 @@ ray = [
 ]
 colab = [
   "pillow<=9.0.0",
-]
-# Haystack v2, codename "Alfalfa 🌿"
-alfalfa = [
-  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settle, remove 'allow-direct-references = true' below
 ]
 dev = [
   "pre-commit",
