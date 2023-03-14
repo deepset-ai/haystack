@@ -94,6 +94,7 @@ jobs:
           - document_stores
           - nodes
           - agents
+          - v2
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -102,7 +103,7 @@ jobs:
         uses: ./.github/actions/python_cache/
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,alfalfa]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
