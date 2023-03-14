@@ -1028,6 +1028,12 @@ class TestPromptTemplateSyntax:
                 "how?",
                 ["context: doc1 doc2 question: what?"],
             ),
+            (
+                "context: {join(documents)[:6]} question: {query.replace('how', 'what').replace('?', '!')}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 d question: what!"],
+            ),
         ],
     )
     def test_prompt_template_syntax_fill(

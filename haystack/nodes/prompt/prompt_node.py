@@ -115,6 +115,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         used_functions = []
         used_names = []
         comprehension_targets = []
+        outermost_prompt_params = []
 
         class UsedNamesFinder(ast.NodeVisitor):
             def visit_Name(self, node: ast.Name) -> None:
@@ -127,7 +128,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         class CallTransformer(ast.NodeTransformer):
             def visit_Call(self, node: ast.Call) -> Optional[ast.AST]:
-                # TODO: validate nested calls
+                super().generic_visit(node)
                 if isinstance(node.func, ast.Name) and node.func.id in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS:
                     # functions: func(args, kwargs)
                     used_functions.append(node.func.id)
@@ -159,7 +160,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
                         prompt_params_functions[id] = ast.fix_missing_locations(
                             ast.Expression(body=ast.Name(id=node.id, ctx=ast.Load()))
                         )
-                    return ast.Name(id=id, ctx=ast.Load())
+                    node = ast.Name(id=id, ctx=ast.Load())
+
+                outermost_prompt_params.append(node.id)
                 return node
 
         UsedNamesFinder().visit(self._ast_expression)
@@ -167,6 +170,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         self._ast_expression = ast.fix_missing_locations(RawParamsTransformer().visit(self._ast_expression))
         self._prompt_params_functions: Dict[str, ast.Expression] = prompt_params_functions
         self._used_functions: List[str] = used_functions
+        self._outermost_prompt_params: List[str] = outermost_prompt_params
 
         self.name = name
         self.prompt_text = prompt_text
@@ -211,11 +215,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
         template_dict = {}
         for id, call in self._prompt_params_functions.items():
             allowed_globals = {k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS}
-            call_result = eval(
+            call_result = eval(  # pylint: disable=eval-used
                 compile(call, filename="<string>", mode="eval"), allowed_globals, params_dict
-            )  # pylint: disable=eval-used
+            )
             params_dict[id] = call_result
             template_dict[id] = call_result
+
+        template_dict = {k: v for k, v in template_dict.items() if k in self._outermost_prompt_params}
 
         return template_dict
 
