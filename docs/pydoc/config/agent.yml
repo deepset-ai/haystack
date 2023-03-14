@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Uses a large language model to answer complex queries that require multiple steps to find the correct answer.
-   category: 6310ca73c622850ddd3875a2
+   category: haystack-classes
    title: Agent API
    slug: agent-api
    order: 0

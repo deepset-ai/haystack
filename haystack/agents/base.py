@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 class Tool:
     """
     Agent uses tools to find the best answer. A tool is a pipeline or a node. When you add a tool to an Agent, the Agent can
-    invoke the underlying pipeline or node to answer questions. 
-    
+    invoke the underlying pipeline or node to answer questions.
+
     You must provide a name and a description for each tool. The name should be short and should indicate what the tool can do. The description should explain what the tool is useful for. The Agent uses the description to decide when to use a tool, so the wording you use is important.
 
     :param name: The name of the tool. The Agent uses this name to refer to the tool in the text the Agent generates.
@@ -120,7 +120,7 @@ class Agent:
         `agent.add_tool(
             Tool(
                 name="Calculator",
-                pipeline_or_node=calculator 
+                pipeline_or_node=calculator
                 description="Useful when you need to answer questions about math"
             )
         )
@@ -181,7 +181,6 @@ class Agent:
                 return self._format_answer(query=query, transcript=transcript, answer=final_answer)
             tool_name, tool_input = self._extract_tool_name_and_tool_input(pred=preds[0])
             if tool_name is None or tool_input is None:
-
 
                 raise AgentError(
                     f"Could not identify the next tool or input for that tool from Agent's output. Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
