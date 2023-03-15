@@ -40,12 +40,6 @@ pipe.add_node(component=shaper, name="shaper", inputs=["web_retriever"])
 pipe.add_node(component=pn, name="prompt_node", inputs=["shaper"])
 
 questions = [
-    # "Who won the 1971 San Francisco mayoral election?",
-    # "Where was Jeremy McKinnon born?",
-    # "What river is near Dundalk, Ireland?",
-    # "What party does Joseph Alioto belong to?",
-    # "When was the Democratic Party founded?",
-    # "Who is Olivia Wilde's boyfriend?",
     "What are the advantages of EmbeddingRetriever in Haystack?",
     "What are the advantages of PromptNode in Haystack?",
     "What PromptNode invocation layers are available in Haystack?",
