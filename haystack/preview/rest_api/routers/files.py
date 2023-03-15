@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import os
 import logging
 import shutil
@@ -36,7 +34,7 @@ def upload_file(path: Path, file: UploadFile = File(...)):
 
     if os.path.exists(Path(path)):
         raise HTTPException(
-            status_code=409, detail=f"A file with the same name already exist. Rename it and try again."  # 409 Conflict
+            status_code=409, detail="A file with the same name already exist. Rename it and try again."  # 409 Conflict
         )
     try:
         file_path = Path(path)
