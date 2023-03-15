@@ -96,6 +96,7 @@ def join_documents(
     You can use the following placeholders:
     - $content: the content of the document
     - $idx: the index of the document in the list
+    - $id: the id of the document
     - $META_FIELD: the value of the metadata field of name 'META_FIELD'
 
     All metadata is dropped. (TODO: fix)
@@ -130,6 +131,7 @@ def format_document(
     You can use the following placeholders:
     - $content: the content of the document
     - $idx: the index of the document in the list
+    - $id: the id of the document
     - $META_FIELD: the value of the metadata field of name 'META_FIELD'
 
     Example:
@@ -151,11 +153,12 @@ def format_document(
         match.groupdict().get("named", match.groupdict().get("braced"))
         for match in template.pattern.finditer(template.template)
     ]
-    meta_params = [param for param in pattern_params if param and param not in ["content", "idx"]]
+    meta_params = [param for param in pattern_params if param and param not in ["content", "idx", "id"]]
     content = template.substitute(
         {
             "idx": idx,
             "content": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), document.content),
+            "id": reduce(lambda id, kv: id.replace(*kv), str_replace.items(), document.id),
             **{
                 k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), document.meta.get(k, ""))
                 for k in meta_params
@@ -223,6 +226,7 @@ def join_documents_to_string(
     You can use the following placeholders:
     - $content: the content of the document
     - $idx: the index of the document in the list
+    - $id: the id of the document
     - $META_FIELD: the value of the metadata field of name 'META_FIELD'
 
     Example:

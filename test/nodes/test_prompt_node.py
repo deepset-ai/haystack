@@ -11,6 +11,7 @@ from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt import PromptModelInvocationLayer
 from haystack.nodes.prompt.prompt_node import PromptTemplateValidationError
 from haystack.nodes.prompt.providers import HFLocalInvocationLayer
+from haystack.schema import Answer
 
 
 def skip_test_for_invalid_key(prompt_model):
@@ -1072,6 +1073,66 @@ class TestPromptTemplateSyntax:
     ):
         prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        assert prompts == expected_prompts
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, expected_prompts",
+        [
+            ("{join(documents)}", [Document("doc1"), Document("doc2")], ["doc1 doc2"]),
+            (
+                "{join(documents, ' delim ', '[$idx] $content', {'c': 'C'})}",
+                [Document("doc1"), Document("doc2")],
+                ["[1] doC1 delim [2] doC2"],
+            ),
+            (
+                "{join(documents, ' delim ', '[$id] $content', {'c': 'C'})}",
+                [Document("doc1", id="123"), Document("doc2", id="456")],
+                ["[123] doC1 delim [456] doC2"],
+            ),
+            (
+                "{join(documents, ' delim ', '[$file_id] $content', {'c': 'C'})}",
+                [Document("doc1", meta={"file_id": "123.txt"}), Document("doc2", meta={"file_id": "456.txt"})],
+                ["[123.txt] doC1 delim [456.txt] doC2"],
+            ),
+        ],
+    )
+    def test_join(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        assert prompts == expected_prompts
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, expected_prompts",
+        [
+            ("{to_strings(documents)}", [Document("doc1"), Document("doc2")], ["doc1", "doc2"]),
+            (
+                "{to_strings(documents, '[$idx] $content', {'c': 'C'})}",
+                [Document("doc1"), Document("doc2")],
+                ["[1] doC1", "[2] doC2"],
+            ),
+            (
+                "{to_strings(documents, '[$id] $content', {'c': 'C'})}",
+                [Document("doc1", id="123"), Document("doc2", id="456")],
+                ["[123] doC1", "[456] doC2"],
+            ),
+            (
+                "{to_strings(documents, '[$file_id] $content', {'c': 'C'})}",
+                [Document("doc1", meta={"file_id": "123.txt"}), Document("doc2", meta={"file_id": "456.txt"})],
+                ["[123.txt] doC1", "[456.txt] doC2"],
+            ),
+            ("{to_strings(documents, '[$file_id] $content', {'c': 'C'})}", ["doc1", "doc2"], ["doC1", "doC2"]),
+            (
+                "{to_strings(documents, '[$idx] $answer', {'c': 'C'})}",
+                [Answer("doc1"), Answer("doc2")],
+                ["[1] doC1", "[2] doC2"],
+            ),
+        ],
+    )
+    def test_to_strings(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
         assert prompts == expected_prompts
 
     @pytest.mark.unit
