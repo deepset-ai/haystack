@@ -19,19 +19,22 @@ async def http_error_handler(_: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse({"errors": [exc.detail]}, status_code=exc.status_code)
 
 
+class HaystackAPI(FastAPI):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pipelines = load_pipelines(DEFAULT_PIPELINES)
+
+        from haystack.preview.rest_api.routers import pipelines, about, files
+
+        self.include_router(pipelines.router, tags=["pipelines"])
+        self.include_router(files.router, tags=["files"])
+        self.include_router(about.router, tags=["about"])
+
+        self.add_exception_handler(HTTPException, http_error_handler)
+
+
 def get_app():
     global APP  # pylint: disable=global-statement
     if APP:
         return APP
-
-    APP = FastAPI(title="Haystack", debug=False, version=__version__, root_path="/", openapi_tags=OPENAPI_TAGS)
-    APP.pipelines = load_pipelines(DEFAULT_PIPELINES)
-
-    from haystack.preview.rest_api.routers import pipelines, about, files
-
-    APP.include_router(pipelines.router, tags=["pipelines"])
-    APP.include_router(files.router, tags=["files"])
-    APP.include_router(about.router, tags=["about"])
-
-    APP.add_exception_handler(HTTPException, http_error_handler)
-    return APP
+    return HaystackAPI(title="Haystack", debug=False, version=__version__, root_path="/", openapi_tags=OPENAPI_TAGS)
