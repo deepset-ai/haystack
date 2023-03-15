@@ -973,15 +973,6 @@ def test_with_multiple_prompt_nodes(tmp_path):
               - name: prompt_model
                 type: PromptModel
 
-              - name: shaper
-                type: Shaper
-                params:
-                  func: value_to_list
-                  inputs:
-                    value: query
-                    target_list: documents
-                  outputs: [questions]
-
               - name: renamer
                 type: Shaper
                 params:
@@ -989,7 +980,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
                   inputs:
                     value: new-questions
                   outputs:
-                    - questions
+                    - query
 
               - name: prompt_node
                 type: PromptNode
@@ -1014,12 +1005,9 @@ def test_with_multiple_prompt_nodes(tmp_path):
             pipelines:
               - name: query
                 nodes:
-                  - name: shaper
-                    inputs:
-                      - Query
                   - name: prompt_node
                     inputs:
-                      - shaper
+                      - Query
                   - name: prompt_node_second
                     inputs:
                       - prompt_node
