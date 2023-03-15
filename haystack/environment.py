@@ -1,3 +1,4 @@
+# pylint: disable=global-statement
 import logging
 import os
 import platform
