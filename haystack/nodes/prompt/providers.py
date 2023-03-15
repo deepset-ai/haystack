@@ -447,7 +447,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         }
         if not stream:
             res = openai_request(url=self.url, headers=self.headers, payload=payload)
-            _check_openai_text_completion_answers(result=res, payload=payload)
+            _check_openai_finish_reason(result=res, payload=payload)
             responses = [ans["text"].strip() for ans in res["choices"]]
             return responses
         else:
