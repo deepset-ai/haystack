@@ -99,7 +99,10 @@ dependencies = [
   "jsonschema",
 
   # Preview
-  "canals"
+  "canals",
+
+  # Agent events
+  "events"
 ]
 
 [project.optional-dependencies]
