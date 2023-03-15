@@ -504,7 +504,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
                     func="strings_to_answers",
                     inputs={"strings": "results", "prompt": "prompt", "documents": "documents"},
                     outputs=["answers"],
-                    params={"reference_pattern": "\[(\d+)\]"},
+                    params={"reference_pattern": r"\[(\d+)\]"},
                 )
             ],
         ),
