@@ -86,16 +86,16 @@ Here is a summary of the basic contract that all `DocumentStore`s are expected t
 ```python
 class MyDocumentStore:
 
-    def count_items(self, **kwargs) -> int:
+    def count_documents(self, **kwargs) -> int:
         ...
 
-    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Document]:
+    def filter_documents(self, filters: Dict[str, Any], **kwargs) -> List[Document]:
         ...
 
-    def write_items(self, documents: List[Document], **kwargs) -> None:
+    def write_documents(self, documents: List[Document], **kwargs) -> None:
         ...
 
-    def delete_items(self, ids: List[str], **kwargs) -> None:
+    def delete_documents(self, ids: List[str], **kwargs) -> None:
         ...
 ```
 
@@ -108,16 +108,13 @@ For example, a `MemoryDocumentStore` could offer the following API:
 ```python
 class MemoryDocumentStore:
 
-    def count_items(self, **kwargs) -> int:
+    def filter_documents(self, filters: Dict[str, Any], **kwargs) -> List[Document]:
         ...
 
-    def get_items(self, filters: Dict[str, Any], **kwargs) -> List[Document]:
+    def write_documents(self, documents: List[Document], **kwargs) -> None:
         ...
 
-    def write_items(self, documents: List[Document], **kwargs) -> None:
-        ...
-
-    def delete_items(self, ids: List[str], **kwargs) -> None:
+    def delete_documents(self, ids: List[str], **kwargs) -> None:
         ...
 
     def bm25_retrieval(
