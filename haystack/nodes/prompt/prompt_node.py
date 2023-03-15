@@ -53,7 +53,7 @@ PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ast.literal_eval(
         HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "documents_to_strings", "replace", "enumerate", "str"]'
     )
 )
-PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t"}
+PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
 PROMPT_TEMPLATE_STR_REPLACE = {'"': "'"}
 
@@ -88,6 +88,10 @@ def join(documents: List[Document], delimiter: str = " ", pattern="$content", st
 
 
 class PromptTemplateValidationError(NodeError):
+    """
+    Error raised when a prompt template is invalid.
+    """
+
     pass
 
 
@@ -195,10 +199,14 @@ class PromptTemplate(BasePromptTemplate, ABC):
                    or neutral. Context: {documents}; Answer:")
     ```
 
-    Optionally, you can declare prompt parameters in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
+    Optionally, you can declare prompt parameters using f-string syntax in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
     the prompt_text for the model to perform the task. For example, in the template above, there's one prompt parameter, `documents`. You declare prompt parameters by adding variables to the prompt text. These variables should be in the format: `{variable}`. In the template above, the variable is `{documents}`.
 
     At runtime, these variables are filled in with arguments passed to the `fill()` method of the PromptTemplate. So in the example above, the `{documents}` variable will be filled with the Documents whose sentiment you want the model to analyze.
+
+    Note that other than strict f-string syntax, you can safely use the following backslash characters in text parts of the prompt text: `\n`, `\t`, `\r`.
+    If you want to use them in f-string expressions, use `new_line`, `tab`, `carriage_return` instead.
+    Double quotes (e.g. `"`) will be automatically replaced with single quotes (e.g. `'`) in the prompt text. If you want to use double quotes in the prompt text, use `{double_quote}` instead.
 
     For more details on how to use PromptTemplate, see
     [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
@@ -220,8 +228,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         for strip in PROMPT_TEMPLATE_STRIPS:
             prompt_text = prompt_text.strip(strip)
         replacements = {
-            **PROMPT_TEMPLATE_STR_REPLACE,
             **{v: "{" + k + "}" for k, v in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS.items()},
+            **PROMPT_TEMPLATE_STR_REPLACE,
         }
         for old, new in replacements.items():
             prompt_text = prompt_text.replace(old, new)
