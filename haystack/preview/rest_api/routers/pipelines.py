@@ -6,7 +6,7 @@ import json
 
 from fastapi import FastAPI, APIRouter, HTTPException
 
-from haystack.v2.rest_api.app import get_app
+from haystack.preview.rest_api.app import get_app
 
 
 logger = logging.getLogger(__name__)

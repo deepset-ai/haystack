@@ -8,8 +8,8 @@ from pathlib import Path
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 
-from haystack.v2.rest_api.app import get_app
-from haystack.v2.rest_api.config import FILE_UPLOAD_PATH
+from haystack.preview.rest_api.app import get_app
+from haystack.preview.rest_api.config import FILE_UPLOAD_PATH
 
 
 logger = logging.getLogger(__name__)

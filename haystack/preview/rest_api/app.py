@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse
 from canals import load_pipelines
 
 from haystack import __version__
-from haystack.v2.rest_api.config import DEFAULT_PIPELINES
+from haystack.preview.rest_api.config import DEFAULT_PIPELINES
 
 
 APP = None
@@ -27,7 +27,7 @@ def get_app() -> FastAPI:
     APP = FastAPI(title="Haystack", debug=False, version=__version__, root_path="/", openapi_tags=OPENAPI_TAGS)
     APP.pipelines = load_pipelines(DEFAULT_PIPELINES)
 
-    from haystack.v2.rest_api.routers import pipelines, about, files
+    from haystack.preview.rest_api.routers import pipelines, about, files
 
     APP.include_router(pipelines.router, tags=["pipelines"])
     APP.include_router(files.router, tags=["files"])

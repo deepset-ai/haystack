@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-import haystack.v2.rest_api.routers.files as files_router
+import haystack.preview.rest_api.routers.files as files_router
 
 
 @pytest.fixture(autouse=True)

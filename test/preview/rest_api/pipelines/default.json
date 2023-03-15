@@ -36,5 +36,5 @@
             ]
         }
     },
-    "dependencies": ["haystack.v2.rest_api.test.nodes"]
+    "dependencies": ["test.rest_api.nodes"]
 }

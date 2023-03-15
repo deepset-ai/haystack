@@ -2,7 +2,7 @@ import logging
 
 import uvicorn
 from fastapi import FastAPI
-from haystack.v2.rest_api.app import get_app
+from haystack.preview.rest_api.app import get_app
 
 
 if __name__ == "__main__":

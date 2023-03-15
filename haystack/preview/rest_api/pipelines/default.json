@@ -1,0 +1,4 @@
+{
+    "pipelines": {},
+    "dependencies": ["haystack.preview"]
+}
