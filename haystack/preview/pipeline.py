@@ -75,13 +75,13 @@ class Pipeline(CanalsPipeline):
         super().run(data=data, parameters=parameters, debug=debug)
 
 
-def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
-    if not _reader:
-        _reader = json.load
+def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = json.load):
     return load_canals_pipelines(path=path, _reader=_reader)
 
 
-def save_pipelines(pipelines: Dict[str, Pipeline], path: Path, _writer: Optional[Callable[..., Any]] = None):
-    if not _writer:
-        _writer = lambda obj, handle: json.dump(obj, handle, indent=4)
+def save_pipelines(
+    pipelines: Dict[str, Pipeline],
+    path: Path,
+    _writer: Optional[Callable[..., Any]] = lambda obj, handle: json.dump(obj, handle, indent=4),
+):
     save_canals_pipelines(pipelines=pipelines, path=path, _writer=_writer)
