@@ -52,7 +52,7 @@ class Document:
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
     score: Optional[float] = field(default=None, compare=True)
-    embedding: Optional[ndarray] = field(default=lambda: None, repr=False)
+    embedding: Optional[ndarray] = field(default=None, repr=False)
 
     def __str__(self):
         return f"{self.__class__.__name__}('{self.content}')"
@@ -76,7 +76,11 @@ class Document:
                 )
         # Generate the ID
         content_to_hash = ":".join(
-            [self.__class__.__name__, self.content, *[str(self.meta.get(key, "")) for key in self.id_hash_keys]]
+            [
+                self.__class__.__name__,
+                str(self.content),
+                *[str(self.metadata.get(key, "")) for key in self.id_hash_keys],
+            ]
         )
         hashed_content = "{:02x}".format(hash128(content_to_hash, signed=False))
         object.__setattr__(self, "id", hashed_content)
