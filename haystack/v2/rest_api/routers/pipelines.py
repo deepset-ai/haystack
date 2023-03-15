@@ -75,6 +75,16 @@ def run(pipeline_name: str, data: Dict[str, Any], parameters: Dict[str, Dict[str
         )
     pipeline = app.pipelines[pipeline_name]
 
+    for parameters_for_node in parameters.keys():
+        try:
+            pipeline.get_node(parameters_for_node)
+        except ValueError as _:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Node named '{parameters_for_node}' not found. "
+                f"Available nodes for '{pipeline_name}': {', '.join(pipeline.graph.nodes)}",
+            )
+
     start_time = time.time()
     try:
         result = pipeline.run(data=data, parameters=parameters, debug=debug)
