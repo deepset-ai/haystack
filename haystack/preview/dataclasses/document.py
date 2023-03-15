@@ -48,7 +48,7 @@ class Document:
 
     id: str = field(default_factory=str)
     content: Any = field(default_factory=lambda: None)
-    content_type: ContentTypes
+    content_type: ContentTypes = "text"
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
     score: Optional[float] = field(default=None, compare=True)

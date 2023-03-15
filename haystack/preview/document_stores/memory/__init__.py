@@ -1,2 +1,1 @@
-from haystack.v2.stores.memory.store import StoreInMemory
-from haystack.v2.stores.memory.document_store import MemoryDocumentStore
+from haystack.preview.document_stores.memory.document_store import MemoryDocumentStore
