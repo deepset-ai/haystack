@@ -1,32 +1,5 @@
 import json
 
-import pytest
-from fastapi.testclient import TestClient
-
-from haystack import __version__
-from haystack.v2.rest_api.app import get_app
-
-
-@pytest.fixture
-def client():
-    app = get_app()
-    client = TestClient(app)
-    return client
-
-
-def test_ready(client):
-    response = client.get(url="/ready")
-    assert 200 == response.status_code
-    response_json = response.json()
-    assert response_json == True
-
-
-def test_version(client):
-    response = client.get(url="/version")
-    assert 200 == response.status_code
-    response_json = response.json()
-    assert response_json == {"haystack": __version__}
-
 
 def test_list_pipelines(client):
     response = client.get(url="/pipelines")

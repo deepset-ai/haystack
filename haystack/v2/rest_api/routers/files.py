@@ -17,8 +17,8 @@ router = APIRouter()
 app: FastAPI = get_app()
 
 
-@router.post("/files")
-def upload_file(file: UploadFile = File(...), folder: Optional[str] = None):
+@router.post("/files/upload/{path:path}")
+def upload_file(path: Path, file: UploadFile = File(...)):
     """
     You can use this endpoint to upload a file. It gets stored in an internal folder, ready
     to be used by Pipelines. The folder where the files are stored can be configured
@@ -28,63 +28,63 @@ def upload_file(file: UploadFile = File(...), folder: Optional[str] = None):
     You can reference them with the path after upload within the REST API,
     for example as `/files/<folder>/<filename>`.
     """
-    upload_path = FILE_UPLOAD_PATH / folder if folder else FILE_UPLOAD_PATH
+    path = FILE_UPLOAD_PATH / path
 
-    if not os.path.exists(upload_path):
-        logger.info("Creating %s", upload_path.absolute())
-        os.makedirs(upload_path)
+    if not os.path.exists(path.parent):
+        logger.info("Creating %s", path.parent.absolute())
+        os.makedirs(path.parent)
 
-    if os.path.exists(Path(upload_path) / file.filename):
+    if os.path.exists(Path(path)):
         raise HTTPException(
             status_code=409, detail=f"A file with the same name already exist. Rename it and try again."  # 409 Conflict
         )
     try:
-        file_path = Path(upload_path) / file.filename
+        file_path = Path(path)
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     finally:
         file.file.close()
 
 
-@router.get("/files")
-def list_files(folder: Optional[str] = None):
+@router.get("/files/list")
+@router.get("/files/list/{path:path}")
+def list_files(path: Path = "."):
     """
-    Returns a list of the uploaded files.
+    Returns a list of the uploaded files at the given path.
     """
     if not os.path.exists(FILE_UPLOAD_PATH):
         logger.info("Creating %s", FILE_UPLOAD_PATH.absolute())
         os.makedirs(FILE_UPLOAD_PATH)
 
-    upload_path = FILE_UPLOAD_PATH / folder if folder else FILE_UPLOAD_PATH
+    path = FILE_UPLOAD_PATH / path
 
-    if not os.path.exists(upload_path):
-        raise HTTPException(status_code=404, detail=f"The path '{folder}' does not exist")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"The path '{path.relative_to(FILE_UPLOAD_PATH)}' does not exist.")
+
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=404, detail=f"'{path.relative_to(FILE_UPLOAD_PATH)}' is not a directory.")
+
     return {
         "files": [
             filename.name
-            for filename in list(Path(upload_path).iterdir())
+            for filename in list(Path(path).iterdir())
             if filename.is_file() and filename.name != ".gitignore"
         ],
-        "folders": [folder.name for folder in list(Path(upload_path).iterdir()) if folder.is_dir()],
+        "folders": [folder.name for folder in list(Path(path).iterdir()) if folder.is_dir()],
     }
 
 
-@router.post("/files/{file_name}")
-def download_file(file_name: str, folder: Optional[str] = None):
+@router.get("/files/download/{path:path}")
+def download_file(path: Path = "."):
     """
     You can use this endpoint to download a file.
 
     You can reference them with the path after upload within the REST API,
     for example as `/files/<folder>/<filename>`.
     """
-    upload_path = FILE_UPLOAD_PATH / folder if folder else FILE_UPLOAD_PATH
+    path = FILE_UPLOAD_PATH / path
 
-    if not os.path.exists(upload_path):
-        raise HTTPException(status_code=404, detail=f"The path '{folder}' does not exist.")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"'{path.relative_to(FILE_UPLOAD_PATH)}' does not exist.")
 
-    if not os.path.exists(upload_path / file_name):
-        raise HTTPException(
-            status_code=404,
-            detail=f"The file '{(upload_path / file_name).relative_to(FILE_UPLOAD_PATH)}' does not exist in this folder.",
-        )
-    return FileResponse(upload_path / file_name)
+    return FileResponse(path)
