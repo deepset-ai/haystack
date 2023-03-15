@@ -32,6 +32,7 @@ env:
     --ignore=test/nodes/test_summarizer.py
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  PYTHON_VERSION: "3.8"
 
 jobs:
 
@@ -42,6 +43,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Black
       run: |
@@ -99,8 +102,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install .[all,alfalfa]
@@ -134,8 +138,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .[docstores]
@@ -162,8 +167,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .[sql]
@@ -198,8 +204,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .[docstores]
@@ -226,8 +233,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .
@@ -254,8 +262,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .
@@ -292,8 +301,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .[docstores]
@@ -320,8 +330,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
       run: pip install .[pinecone]
@@ -351,8 +362,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Setup Milvus
       run: |
@@ -386,8 +398,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .
@@ -414,8 +427,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .
@@ -442,8 +456,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install -U .
@@ -480,8 +495,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
@@ -523,10 +539,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
@@ -566,8 +581,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Cache HF models
       id: cache-hf-models
@@ -671,10 +687,9 @@ jobs:
       run: |
         echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
       run: pip install .
