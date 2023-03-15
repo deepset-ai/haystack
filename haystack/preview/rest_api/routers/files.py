@@ -48,7 +48,7 @@ def upload_file(path: Path, file: UploadFile = File(...)):
 
 @router.get("/files/list")
 @router.get("/files/list/{path:path}")
-def list_files(path: Path = "."):
+def list_files(path: Path = Path(".")):
     """
     Returns a list of the uploaded files at the given path.
     """
@@ -75,7 +75,7 @@ def list_files(path: Path = "."):
 
 
 @router.get("/files/download/{path:path}")
-def download_file(path: Path = "."):
+def download_file(path: Path = Path(".")):
     """
     You can use this endpoint to download a file.
 

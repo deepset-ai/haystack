@@ -19,7 +19,7 @@ async def http_error_handler(_: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse({"errors": [exc.detail]}, status_code=exc.status_code)
 
 
-def get_app() -> FastAPI:
+def get_app():
     global APP  # pylint: disable=global-statement
     if APP:
         return APP
