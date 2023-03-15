@@ -266,7 +266,7 @@ def strings_to_answers(
     :param prompt: The prompt used to generate the answers.
     :param documents: The documents used to generate the answers.
     :param reference_pattern: The regex pattern to use for parsing the document references.
-        Example: "\[(\d+)\]" will find "1" in string "this is an answer[1]".
+        Example: r"\[(\d+)\]" will find "1" in string "this is an answer[1]".
         If None, no parsing is done and all documents are referenced.
     :param reference_mode: The mode used to reference documents. Supported modes are:
         - index: the document references are the one-based index of the document in the list of documents.
@@ -293,7 +293,7 @@ def strings_to_answers(
     ```python
     assert strings_to_answers(strings=["first[1]", "second[2]", "third[1][3]"], prompt="prompt",
             documents=[Document(id="123", content="content"), Document(id="456", content="content"), Document(id="789", content="content")],
-            reference_pattern="\[(\d+)\]",
+            reference_pattern=r"\[(\d+)\]",
             reference_mode="index"
         ) == [
             Answer(answer="first", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
@@ -333,7 +333,7 @@ def parse_references(
 
     :param string: The string to parse.
     :param reference_pattern: The regex pattern to use for parsing the document references.
-        Example: "\[(\d+)\]" will find "1" in string "this is an answer[1]".
+        Example: r"\[(\d+)\]" will find "1" in string "this is an answer[1]".
         If None, no parsing is done and all candidate document ids are returned.
     :param candidates: A dictionary of candidates to choose from. The keys are the reference strings and the values are the document ids.
         If None, no parsing is done and None is returned.
