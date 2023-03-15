@@ -94,6 +94,8 @@ jobs:
           - document_stores
           - nodes
           - agents
+          - preview
+          - prompt
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -102,7 +104,7 @@ jobs:
         uses: ./.github/actions/python_cache/
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,alfalfa]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
@@ -401,6 +403,34 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-promptnode:
+    name: Integration / PromptNode / ${{ matrix.os }}
+    needs:
+      - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest,windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/prompt
+
+      - uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   integration-tests-agents:
     name: Integration / Agents / ${{ matrix.os }}
     needs:
@@ -458,7 +488,7 @@ jobs:
     - name: Install audio libraries
       run: |
         sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
+        sudo apt-get install ffmpeg
 
     - name: Install Haystack
       run: pip install .[audio]
@@ -466,6 +496,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
@@ -506,6 +537,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
@@ -530,7 +562,7 @@ jobs:
           - "modeling"
           - "others"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     steps:
     - uses: actions/checkout@v3
@@ -592,6 +624,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # we add "and not document_store" to exclude the tests that were ported to the new strategy
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not document_store" test/${{ matrix.folder }}
@@ -634,6 +667,11 @@ jobs:
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
+    - name: Add Tesseract to system PATH
+      shell: pwsh
+      run: |
+        echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
     - name: Setup Python
       uses: ./.github/actions/python_cache/
       with:
@@ -645,6 +683,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
