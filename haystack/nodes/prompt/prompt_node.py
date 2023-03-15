@@ -233,9 +233,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = [
+        self.prompt_params = sorted(
             param for param in ast_validator.prompt_params if param not in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS
-        ]
+        )
         self.globals = {
             **{k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS},
             **PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS,
@@ -686,11 +686,11 @@ class PromptNode(BaseComponent):
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
-                kwargs_copy["prompt"] = prompt
                 # and pass the prepared prompt and kwargs copy to the model
                 prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
+                kwargs_copy["prompt"] = prompt
                 output = self.prompt_model.invoke(**kwargs_copy)
                 output = template_to_fill.post_process(output, **kwargs_copy)
                 results.extend(output)
