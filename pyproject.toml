@@ -223,6 +223,8 @@ dev = [
   "jupytercontrib",
   "watchdog",
   "requests-cache<1.0.0",
+  # preview rest api
+  "httpx"
 ]
 
 formatting = [
