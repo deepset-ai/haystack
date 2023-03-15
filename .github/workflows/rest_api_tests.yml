@@ -85,6 +85,7 @@ jobs:
       - name: Install REST API
         run: |
           pip install -U "./rest_api[dev]"
+          pip install ".[dev]"
           pip install .
 
       - name: Run tests
