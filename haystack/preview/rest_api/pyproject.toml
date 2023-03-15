@@ -37,12 +37,12 @@ dev = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/deepset-ai/haystack/tree/main/haystack/v2/rest_api#readme"
+Documentation = "https://github.com/deepset-ai/haystack/tree/main/haystack/preview/rest_api#readme"
 Issues = "https://github.com/deepset-ai/haystack/issues"
-Source = "https://github.com/deepset-ai/haystack/tree/main/haystack/v2/rest_api"
+Source = "https://github.com/deepset-ai/haystack/tree/main/haystack/preview/rest_api"
 
 [tool.hatch.version]
-path = "haystack/v2/rest_api/__about__.py"
+path = "haystack/preview/rest_api/__about__.py"
 
 [tool.hatch.build.targets.sdist]
 [tool.hatch.build.targets.wheel]
@@ -62,7 +62,7 @@ python = ["38", "39", "310", "311"]
 [tool.coverage.run]
 branch = true
 parallel = true
-omit = ["haystack/v2/rest_api/__about__.py"]
+omit = ["haystack/preview/rest_api/__about__.py"]
 
 [tool.coverage.report]
 exclude_lines = [

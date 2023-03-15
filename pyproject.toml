@@ -67,6 +67,7 @@ dependencies = [
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
+  "sseclient-py",  # server side events for OpenAI streaming
 
   # Preprocessing
   "more_itertools",  # for windowing
@@ -96,6 +97,9 @@ dependencies = [
 
   # Schema validation
   "jsonschema",
+
+  # Preview
+  "canals"
 ]
 
 [project.optional-dependencies]
@@ -195,15 +199,6 @@ ray = [
 ]
 colab = [
   "pillow<=9.0.0",
-]
-# Haystack v2, codename "Alfalfa 🌿"
-alfalfa = [
-  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settles, remove 'allow-direct-references = true' below
-]
-alfalfa-rest-api = [
-  "uvicorn",
-  "fastapi",
-  "python-multipart"  # To allow file upload
 ]
 dev = [
   "pre-commit",

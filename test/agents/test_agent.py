@@ -94,13 +94,13 @@ def test_max_iterations(caplog, monkeypatch):
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?")
     assert result["answers"] == [Answer(answer="", type="generative")]
-    assert "Maximum number of iterations (3) reached" in caplog.text
+    assert "maximum number of iterations (3)" in caplog.text.lower()
 
     # Setting max_iterations in the Agent's run method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?", max_iterations=2)
     assert result["answers"] == [Answer(answer="", type="generative")]
-    assert "Maximum number of iterations (2) reached" in caplog.text
+    assert "maximum number of iterations (2)" in caplog.text.lower()
 
 
 @pytest.mark.unit
