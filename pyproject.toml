@@ -151,6 +151,7 @@ audio = [
   "pyworld<0.3.1; python_version < '3.8'",
   "ffmpeg-python==0.2.0",
   "espnet",
+  "typeguard==2.13.3",
   "espnet-model-zoo",
   "pydub",
   "protobuf<=3.20.1",
