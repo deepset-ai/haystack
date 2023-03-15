@@ -12,13 +12,13 @@ from haystack import MultiLabel
 from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
 from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.other.shaper import (
+from haystack.nodes.other.shaper import (  # pylint: disable=unused-import
     Shaper,
-    join_documents_to_string as join,
+    join_documents_to_string as join,  # used as shaping function
     format_document,
     format_answer,
     format_string,
-)  # pylint: disable=unused-import
+)
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer
 from haystack.schema import Answer, Document
 from haystack.telemetry_2 import send_event
