@@ -94,7 +94,7 @@ jobs:
           - document_stores
           - nodes
           - agents
-          - v2
+          - preview
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
