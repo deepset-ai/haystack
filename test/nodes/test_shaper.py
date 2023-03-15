@@ -11,7 +11,7 @@ from haystack.nodes.retriever.sparse import BM25Retriever
 @pytest.fixture
 def mock_function(monkeypatch):
     monkeypatch.setattr(
-        haystack.nodes.other.shaper, "REGISTERED_FUNCTIONS", {"test_function": lambda a, b: ([a] * len(b),)}
+        haystack.nodes.other.shaper, "REGISTERED_FUNCTIONS", {"test_function": lambda a, b: [a] * len(b)}
     )
 
 
@@ -482,9 +482,9 @@ def test_strings_to_answers_no_meta_no_hashkeys():
     shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
     results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"]})
     assert results["invocation_context"]["answers"] == [
-        Answer(answer="first", type="generative"),
-        Answer(answer="second", type="generative"),
-        Answer(answer="third", type="generative"),
+        Answer(answer="first", type="generative", meta={"prompt": None}),
+        Answer(answer="second", type="generative", meta={"prompt": None}),
+        Answer(answer="third", type="generative", meta={"prompt": None}),
     ]
 
 
@@ -514,14 +514,14 @@ def test_strings_to_answers_yaml(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run()
     assert result["invocation_context"]["answers"] == [
-        Answer(answer="a", type="generative"),
-        Answer(answer="b", type="generative"),
-        Answer(answer="c", type="generative"),
+        Answer(answer="a", type="generative", meta={"prompt": None}),
+        Answer(answer="b", type="generative", meta={"prompt": None}),
+        Answer(answer="c", type="generative", meta={"prompt": None}),
     ]
     assert result["answers"] == [
-        Answer(answer="a", type="generative"),
-        Answer(answer="b", type="generative"),
-        Answer(answer="c", type="generative"),
+        Answer(answer="a", type="generative", meta={"prompt": None}),
+        Answer(answer="b", type="generative", meta={"prompt": None}),
+        Answer(answer="c", type="generative", meta={"prompt": None}),
     ]
 
 

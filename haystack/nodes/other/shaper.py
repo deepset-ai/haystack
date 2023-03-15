@@ -1,3 +1,5 @@
+from functools import reduce
+from string import Template
 from typing import Optional, List, Dict, Any, Tuple, Union, Callable
 
 import logging
@@ -9,49 +11,49 @@ from haystack.schema import Document, Answer, MultiLabel
 logger = logging.getLogger(__name__)
 
 
-def rename(value: Any) -> Tuple[Any]:
+def rename(value: Any) -> Any:
     """
     Identity function. Can be used to rename values in the invocation context without changing them.
 
     Example:
 
     ```python
-    assert rename(1) == (1, )
+    assert rename(1) == 1
     ```
     """
-    return (value,)
+    return value
 
 
-def value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
+def value_to_list(value: Any, target_list: List[Any]) -> List[Any]:
     """
     Transforms a value into a list containing this value as many times as the length of the target list.
 
     Example:
 
     ```python
-    assert value_to_list(value=1, target_list=list(range(5))) == ([1, 1, 1, 1, 1], )
+    assert value_to_list(value=1, target_list=list(range(5))) == [1, 1, 1, 1, 1]
     ```
     """
-    return ([value] * len(target_list),)
+    return [value] * len(target_list)
 
 
-def join_lists(lists: List[List[Any]]) -> Tuple[List[Any]]:
+def join_lists(lists: List[List[Any]]) -> List[Any]:
     """
     Joins the passed lists into a single one.
 
     Example:
 
     ```python
-    assert join_lists(lists=[[1, 2, 3], [4, 5]]) == ([1, 2, 3, 4, 5], )
+    assert join_lists(lists=[[1, 2, 3], [4, 5]]) == [1, 2, 3, 4, 5]
     ```
     """
     merged_list = []
     for inner_list in lists:
         merged_list += inner_list
-    return (merged_list,)
+    return merged_list
 
 
-def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
+def join_strings(strings: List[str], delimiter: str = " ", str_replace: Optional[Dict[str, str]] = None) -> str:
     """
     Transforms a list of strings into a single string. The content of this string
     is the content of all original strings separated by the delimiter you specify.
@@ -59,16 +61,41 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
     Example:
 
     ```python
-    assert join_strings(strings=["first", "second", "third"], delimiter=" - ") == ("first - second - third", )
+    assert join_strings(strings=["first", "second", "third"], delimiter=" - ", str_replace={"r", "R"}) == "fiRst - second - thiRd"
     ```
     """
-    return (delimiter.join(strings),)
+    str_replace = str_replace or {}
+    return delimiter.join([format_string(string, str_replace) for string in strings])
 
 
-def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Document]]:
+def format_string(string: str, str_replace: Optional[Dict[str, str]] = None) -> str:
+    """
+    Transforms a string using a substitution dict.
+
+    Example:
+
+    ```python
+    assert format_string(string="first", str_replace={"r", "R"}) == "fiRst"
+    ```
+    """
+    str_replace = str_replace or {}
+    return reduce(lambda s, kv: s.replace(*kv), str_replace.items(), string)
+
+
+def join_documents(
+    documents: List[Document],
+    delimiter: str = " ",
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+) -> List[Document]:
     """
     Transforms a list of documents into a list containing a single Document. The content of this list
-    is the content of all original documents separated by the delimiter you specify.
+    is the joined result of all original documents separated by the delimiter you specify.
+    How each document is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $content: the content of the document
+    - $idx: the index of the document in the list
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
 
     All metadata is dropped. (TODO: fix)
 
@@ -81,31 +108,169 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
             Document(content="second"),
             Document(content="third")
         ],
-        delimiter=" - "
-    ) == ([Document(content="first - second - third")], )
+        delimiter=" - ",
+        pattern="[$idx] $content",
+        str_replace={"r", "R"}
+    ) == [Document(content="[1] fiRst - [2] second - [3] thiRd")]
     ```
     """
-    return ([Document(content=delimiter.join([d.content for d in documents]))],)
+    return [Document(content=join_documents_to_string(documents, delimiter, pattern, str_replace))]
 
 
-def strings_to_answers(strings: List[str]) -> Tuple[List[Answer]]:
+def format_document(
+    document: Document,
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+    idx: Optional[int] = None,
+) -> str:
+    """
+    Transforms a document into a single string.
+    How the document is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $content: the content of the document
+    - $idx: the index of the document in the list
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+
+    Example:
+
+    ```python
+    assert format_document(
+        document=Document(content="first"),
+        pattern="prefix [$idx] $content",
+        str_replace={"r", "R"},
+        idx=1,
+    ) == "prefix [1] fiRst"
+    ```
+    """
+    str_replace = str_replace or {}
+    pattern = pattern or "$content"
+
+    template = Template(pattern)
+    pattern_params = [
+        match.groupdict().get("named", match.groupdict().get("braced"))
+        for match in template.pattern.finditer(template.template)
+    ]
+    meta_params = [param for param in pattern_params if param and param not in ["content", "idx"]]
+    content = template.substitute(
+        {
+            "idx": idx,
+            "content": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), document.content),
+            **{
+                k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), document.meta.get(k, ""))
+                for k in meta_params
+            },
+        }
+    )
+    return content
+
+
+def format_answer(
+    answer: Answer,
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+    idx: Optional[int] = None,
+) -> str:
+    """
+    Transforms an answer into a single string.
+    How the answer is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $answer: the answer text of the answer
+    - $idx: the index of the answer in the list
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+
+    Example:
+
+    ```python
+    assert format_answer(
+        answer=Answer(answer="first"),
+        pattern="prefix [$idx] $answer",
+        str_replace={"r", "R"},
+        idx=1,
+    ) == "prefix [1] fiRst"
+    ```
+    """
+    str_replace = str_replace or {}
+    pattern = pattern or "$answer"
+
+    template = Template(pattern)
+    pattern_params = [
+        match.groupdict().get("named", match.groupdict().get("braced"))
+        for match in template.pattern.finditer(template.template)
+    ]
+    meta_params = [param for param in pattern_params if param and param not in ["answer", "idx"]]
+    meta = answer.meta or {}
+    content = template.substitute(
+        {
+            "idx": idx,
+            "answer": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), answer.answer),
+            **{k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), meta.get(k, "")) for k in meta_params},
+        }
+    )
+    return content
+
+
+def join_documents_to_string(
+    documents: List[Document],
+    delimiter: str = " ",
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+) -> str:
+    """
+    Transforms a list of documents into a single string. The content of this string
+    is the joined result of all original documents separated by the delimiter you specify.
+    How each document is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $content: the content of the document
+    - $idx: the index of the document in the list
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+
+    Example:
+
+    ```python
+    assert join_documents_to_string(
+        documents=[
+            Document(content="first"),
+            Document(content="second"),
+            Document(content="third")
+        ],
+        delimiter=" - ",
+        pattern="[$idx] $content",
+        str_replace={"r", "R"}
+    ) == "[1] fiRst - [2] second - [3] thiRd"
+    ```
+    """
+    content = delimiter.join(
+        format_document(doc, pattern, str_replace, idx=idx) for idx, doc in enumerate(documents, start=1)
+    )
+    return content
+
+
+def strings_to_answers(
+    strings: List[str], prompt: Optional[str] = None, documents: Optional[List[Document]] = None
+) -> List[Answer]:
     """
     Transforms a list of strings into a list of Answers.
 
     Example:
 
     ```python
-    assert strings_to_answers(strings=["first", "second", "third"]) == ([
-            Answer(answer="first"),
-            Answer(answer="second"),
-            Answer(answer="third"),
-        ], )
+    assert strings_to_answers(strings=["first", "second", "third"], prompt="prompt", documents=[Document(id="123", content="content")]) == [
+            Answer(answer="first", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+            Answer(answer="second", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+            Answer(answer="third", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+        ]
     ```
     """
-    return ([Answer(answer=string, type="generative") for string in strings],)
+    document_ids = [doc.id for doc in documents] if documents else None
+    return [
+        Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
+        for string in strings
+    ]
 
 
-def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
+def answers_to_strings(
+    answers: List[Answer], pattern: Optional[str] = None, str_replace: Optional[Dict[str, str]] = None
+) -> List[str]:
     """
     Extracts the content field of Documents and returns a list of strings.
 
@@ -117,18 +282,20 @@ def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
                 Answer(answer="first"),
                 Answer(answer="second"),
                 Answer(answer="third")
-            ]
-        ) == (["first", "second", "third"],)
+            ],
+            pattern="[$idx] $answer",
+            str_replace={"r", "R"}
+        ) == ["[1] fiRst", "[2] second", "[3] thiRd"]
     ```
     """
-    return ([answer.answer for answer in answers],)
+    return [format_answer(answer, pattern, str_replace, idx) for idx, answer in enumerate(answers, start=1)]
 
 
 def strings_to_documents(
     strings: List[str],
     meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
     id_hash_keys: Optional[List[str]] = None,
-) -> Tuple[List[Document]]:
+) -> List[Document]:
     """
     Transforms a list of strings into a list of Documents. If you pass the metadata in a single
     dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
@@ -142,11 +309,11 @@ def strings_to_documents(
             strings=["first", "second", "third"],
             meta=[{"position": i} for i in range(3)],
             id_hash_keys=['content', 'meta]
-        ) == ([
+        ) == [
             Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
             Document(content="second", metadata={"position": 2}, id_hash_keys=['content', 'meta]),
             Document(content="third", metadata={"position": 3}, id_hash_keys=['content', 'meta])
-        ], )
+        ]
     ```
     """
     all_metadata: List[Optional[Dict[str, Any]]]
@@ -161,10 +328,12 @@ def strings_to_documents(
     else:
         all_metadata = [None] * len(strings)
 
-    return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
+    return [Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)]
 
 
-def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
+def documents_to_strings(
+    documents: List[Document], pattern: Optional[str] = None, str_replace: Optional[Dict[str, str]] = None
+) -> List[str]:
     """
     Extracts the content field of Documents and returns a list of strings.
 
@@ -176,14 +345,16 @@ def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
                 Document(content="first"),
                 Document(content="second"),
                 Document(content="third")
-            ]
-        ) == (["first", "second", "third"],)
+            ],
+            pattern="[$idx] $content",
+            str_replace={"r", "R"}
+        ) == ["[1] fiRst", "[2] second", "[3] thiRd"]
     ```
     """
-    return ([doc.content for doc in documents],)
+    return [format_document(doc, pattern, str_replace, idx) for idx, doc in enumerate(documents, start=1)]
 
 
-REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
+REGISTERED_FUNCTIONS: Dict[str, Callable[..., Any]] = {
     "rename": rename,
     "value_to_list": value_to_list,
     "join_lists": join_lists,
@@ -397,6 +568,8 @@ class Shaper(BaseComponent):
                 ", ".join([f"{key}={value}" for key, value in input_values.items()]),
             )
             output_values = self.function(**input_values)
+            if not isinstance(output_values, tuple):
+                output_values = (output_values,)
         except TypeError as e:
             raise ValueError(
                 "Shaper couldn't apply the function to your inputs and parameters. "

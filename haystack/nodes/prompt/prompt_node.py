@@ -1,10 +1,8 @@
 import ast
 import copy
-from functools import reduce
 import logging
 from abc import ABC
 import os
-from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
 from uuid import uuid4
 
@@ -14,9 +12,15 @@ from haystack import MultiLabel
 from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
 from haystack.errors import NodeError
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.other.shaper import Shaper
+from haystack.nodes.other.shaper import (
+    Shaper,
+    join_documents_to_string as join,
+    format_document,
+    format_answer,
+    format_string,
+)  # pylint: disable=unused-import
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer
-from haystack.schema import Document
+from haystack.schema import Answer, Document
 from haystack.telemetry_2 import send_event
 
 logger = logging.getLogger(__name__)
@@ -49,42 +53,25 @@ class BasePromptTemplate(BaseComponent):
 
 
 PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ast.literal_eval(
-    os.environ.get(
-        HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "documents_to_strings", "replace", "enumerate", "str"]'
-    )
+    os.environ.get(HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "to_strings", "replace", "enumerate", "str"]')
 )
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
 PROMPT_TEMPLATE_STR_REPLACE = {'"': "'"}
 
 
-def documents_to_strings(documents: List[Union[Document, str]]) -> List[str]:
-    for doc in documents:
-        if not isinstance(doc, str) and not isinstance(doc.content, str):
-            raise ValueError("PromptNode only accepts text documents.")
-    return [doc.content if isinstance(doc, Document) else doc for doc in documents]
-
-
-def join(documents: List[Document], delimiter: str = " ", pattern="$content", str_replace=None) -> str:
-    str_replace = str_replace or {}
-
-    template = Template(pattern)
-    pattern_params = [
-        match.groupdict().get("named", match.groupdict().get("braced"))
-        for match in template.pattern.finditer(template.template)
-    ]
-    meta_params = [param for param in pattern_params if param and param not in ["content", "idx"]]
-    content = delimiter.join(
-        template.substitute(
-            {
-                "idx": i + 1,
-                "content": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), doc.content),
-                **{k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), doc.meta[k]) for k in meta_params},
-            }
-        )
-        for i, doc in enumerate(documents)
-    )
-    return content
+def to_strings(items: List[Union[str, Document, Answer]], pattern=None, str_replace=None) -> List[str]:
+    results = []
+    for idx, item in enumerate(items, start=1):
+        if isinstance(item, str):
+            results.append(format_string(item, str_replace=str_replace))
+        elif isinstance(item, Document):
+            results.append(format_document(document=item, pattern=pattern, str_replace=str_replace, idx=idx))
+        elif isinstance(item, Answer):
+            results.append(format_answer(answer=item, pattern=pattern, str_replace=str_replace, idx=idx))
+        else:
+            raise ValueError(f"Unsupported item type: {type(item)}")
+    return results
 
 
 class PromptTemplateValidationError(NodeError):
@@ -179,8 +166,8 @@ class _FstringParamsTransformer(ast.NodeTransformer):
             return node
 
         id = uuid4().hex
-        if isinstance(node.value, ast.Name) and node.value.id == "documents":
-            call = ast.Call(func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node.value], keywords=[])
+        if isinstance(node.value, ast.Name) and node.value.id in ["documents", "answers"]:
+            call = ast.Call(func=ast.Name(id="to_strings", ctx=ast.Load()), args=[node.value], keywords=[])
             self.prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=call))
         else:
             self.prompt_params_functions[id] = ast.fix_missing_locations(ast.Expression(body=node.value))
@@ -255,7 +242,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         }
         self.output_shapers = output_shapers or []
         if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
-            raise ValueError(
+            raise PromptTemplateValidationError(
                 f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
             )
 
@@ -699,11 +686,12 @@ class PromptNode(BaseComponent):
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
+                kwargs_copy["prompt"] = prompt
                 # and pass the prepared prompt and kwargs copy to the model
                 prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
-                output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                output = self.prompt_model.invoke(**kwargs_copy)
                 output = template_to_fill.post_process(output, **kwargs_copy)
                 results.extend(output)
         else:

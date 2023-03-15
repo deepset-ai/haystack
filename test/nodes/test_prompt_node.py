@@ -923,7 +923,7 @@ class TestPromptTemplateSyntax:
                 {"join", "replace"},
             ),
             (
-                "Please answer the question: {join(document=documents, delimiter='delim', replace_chars={'{': '('})} Question: {query.replace('A', 'a')}",
+                "Please answer the question: {join(document=documents, delimiter='delim', str_replace={'{': '('})} Question: {query.replace('A', 'a')}",
                 {"documents", "query"},
                 {"join", "replace"},
             ),
