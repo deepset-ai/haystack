@@ -46,7 +46,6 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "importlib-metadata; python_version < '3.8'",
   "requests",
   "pydantic",
   "transformers[torch]==4.25.1",
