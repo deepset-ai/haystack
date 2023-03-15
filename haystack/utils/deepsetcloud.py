@@ -141,6 +141,25 @@ class DeepsetCloudClient:
             auto_paging_page_size=auto_paging_page_size,
         )
 
+    def get_with_auto_cursor_paging(
+        self,
+        url: str,
+        query_params: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+        auto_paging_page_size: Optional[int] = None,
+    ) -> Generator:
+        return self._execute_auto_cursor_paging_request(
+            method="GET",
+            url=url,
+            query_params=query_params,
+            headers=headers,
+            stream=stream,
+            raise_on_error=raise_on_error,
+            auto_paging_page_size=auto_paging_page_size,
+        )
+
     def post(
         self,
         url: str,
@@ -307,6 +326,41 @@ class DeepsetCloudClient:
             yield from payload["data"]
             has_more = payload["has_more"]
             page_number += 1
+
+    def _execute_auto_cursor_paging_request(
+        self,
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE"],
+        url: str,
+        json: Optional[dict] = None,
+        data: Optional[Any] = None,
+        query_params: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+        cursor_field: str = "created_at",
+        auto_paging_page_size: Optional[int] = None,
+    ) -> Generator:
+        query_params = query_params.copy() if query_params is not None else {}
+        if auto_paging_page_size:
+            query_params["limit"] = auto_paging_page_size
+
+        last_element = None
+        has_more = True
+        while has_more:
+            query_params["after"] = last_element
+            payload = self._execute_request(
+                method=method,
+                url=url,
+                json=json,
+                data=data,
+                query_params=query_params,
+                headers=headers,
+                stream=stream,
+                raise_on_error=raise_on_error,
+            ).json()
+            yield from payload["data"]
+            has_more = payload["has_more"]
+            last_element = payload["data"][-1][cursor_field]
 
     def _execute_request(
         self,
@@ -1081,7 +1135,7 @@ class FileClient:
         workspace_url = self._build_workspace_url(workspace)
         files_url = f"{workspace_url}/files"
         query_params = {"name": name, "meta_key": meta_key, "meta_value": meta_value}
-        generator = self.client.get_with_auto_paging(url=files_url, headers=headers, query_params=query_params)
+        generator = self.client.get_with_auto_cursor_paging(url=files_url, headers=headers, query_params=query_params)
         return generator
 
     def _build_workspace_url(self, workspace: Optional[str] = None):
