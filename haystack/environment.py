@@ -1,3 +1,4 @@
+# pylint: disable=global-statement
 import logging
 import os
 import platform
@@ -21,6 +22,9 @@ env_meta_data: Dict[str, Any] = {}
 
 logger = logging.getLogger(__name__)
 
+# IS_DOCKER cache copy
+IS_DOCKER_CACHE = None
+
 
 def set_pytorch_secure_model_loading(flag_val="1"):
     # To load secure only model pytorch requires value of
@@ -32,21 +36,49 @@ def set_pytorch_secure_model_loading(flag_val="1"):
         logger.info("TORCH_FORCE_WEIGHTS_ONLY_LOAD is already set to %s, Haystack will use the same.", os_flag_val)
 
 
+def in_podman() -> bool:
+    """
+    Podman run would create the file /run/.containernv, see:
+    https://github.com/containers/podman/blob/main/docs/source/markdown/podman-run.1.md.in#L31
+    """
+    return os.path.exists("/run/.containerenv")
+
+
+def has_dockerenv() -> bool:
+    """
+    This might not work anymore at some point (even if it's been a while now), see:
+    https://github.com/moby/moby/issues/18355#issuecomment-220484748
+    """
+    return os.path.exists("/.dockerenv")
+
+
+def has_docker_cgroup_v1() -> bool:
+    """
+    This only works with cgroups v1
+    """
+    path = "/proc/self/cgroup"  # 'self' should be always symlinked to the actual PID
+    return os.path.isfile(path) and any("docker" in line for line in open(path))
+
+
+def has_docker_cgroup_v2() -> bool:
+    """
+    cgroups v2 version, inspired from
+    https://github.com/jenkinsci/docker-workflow-plugin/blob/master/src/main/java/org/jenkinsci/plugins/docker/workflow/client/DockerClient.java
+    """
+    path = "/proc/self/mountinfo"  # 'self' should be always symlinked to the actual PID
+    return os.path.isfile(path) and any("/docker/containers/" in line for line in open(path))
+
+
 def is_containerized() -> Optional[bool]:
-    # https://www.baeldung.com/linux/is-process-running-inside-container
-    # Using CPU scheduling info as I found it to be the only one usable on my machine.
-    path = "/proc/1/sched"
-    try:
-        if os.path.exists("/.dockerenv"):
-            return True
-        with open(path, "r") as cgroupfile:
-            first_line = cgroupfile.readline()
-            if first_line.startswith("systemd") or first_line.startswith("init"):
-                return False
-            return True
-    except Exception:
-        logger.debug("Failed to detect if Haystack is running in a container (for telemetry purposes).")
-        return None
+    """
+    This code is based on the popular 'is-docker' package for node.js
+    """
+    global IS_DOCKER_CACHE
+
+    if IS_DOCKER_CACHE is None:
+        IS_DOCKER_CACHE = in_podman() or has_dockerenv() or has_docker_cgroup_v1() or has_docker_cgroup_v2()
+
+    return IS_DOCKER_CACHE
 
 
 def collect_static_system_specs() -> Dict[str, Any]:

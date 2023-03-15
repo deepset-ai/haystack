@@ -67,6 +67,7 @@ dependencies = [
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
+  "sseclient-py",  # server side events for OpenAI streaming
 
   # Preprocessing
   "more_itertools",  # for windowing
@@ -96,6 +97,9 @@ dependencies = [
 
   # Schema validation
   "jsonschema",
+
+  # Preview
+  "canals"
 ]
 
 [project.optional-dependencies]
@@ -147,16 +151,6 @@ docstores-gpu = [
   "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 audio = [
-  "pyworld>=0.3.1; python_version >= '3.8'",
-  "pyworld<0.3.1; python_version < '3.8'",
-  "ffmpeg-python==0.2.0",
-  "espnet",
-  "typeguard==2.13.3",
-  "espnet-model-zoo",
-  "pydub",
-  "protobuf<=3.20.1",
-  "soundfile< 0.12.0",
-  "numpy<1.24",  # Keep compatibility with latest numba
   "openai-whisper"
 ]
 beir = [
@@ -195,10 +189,6 @@ ray = [
 ]
 colab = [
   "pillow<=9.0.0",
-]
-# Haystack v2, codename "Alfalfa 🌿"
-alfalfa = [
-  "canals @ git+https://github.com/deepset-ai/canals.git",  # Once canals settle, remove 'allow-direct-references = true' below
 ]
 dev = [
   "pre-commit",

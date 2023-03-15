@@ -94,7 +94,7 @@ jobs:
           - document_stores
           - nodes
           - agents
-          - v2
+          - preview
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -459,7 +459,7 @@ jobs:
     - name: Install audio libraries
       run: |
         sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
+        sudo apt-get install ffmpeg
 
     - name: Install Haystack
       run: pip install .[audio]
