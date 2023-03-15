@@ -478,13 +478,111 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
 
 
 @pytest.mark.unit
-def test_strings_to_answers_no_meta_no_hashkeys():
+def test_strings_to_answers_simple():
     shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
     results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"]})
     assert results["invocation_context"]["answers"] == [
         Answer(answer="first", type="generative", meta={"prompt": None}),
         Answer(answer="second", type="generative", meta={"prompt": None}),
         Answer(answer="third", type="generative", meta={"prompt": None}),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_prompt():
+    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses", "prompt": "prompt"}, outputs=["answers"])
+    results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"], "prompt": "test prompt"})
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first", type="generative", meta={"prompt": "test prompt"}),
+        Answer(answer="second", type="generative", meta={"prompt": "test prompt"}),
+        Answer(answer="third", type="generative", meta={"prompt": "test prompt"}),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_documents():
+    shaper = Shaper(
+        func="strings_to_answers", inputs={"strings": "responses", "documents": "documents"}, outputs=["answers"]
+    )
+    results, _ = shaper.run(
+        invocation_context={
+            "responses": ["first", "second", "third"],
+            "documents": [Document(id="123", content="test"), Document(id="456", content="test")],
+        }
+    )
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="second", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="third", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_references_index():
+    shaper = Shaper(
+        func="strings_to_answers",
+        inputs={"strings": "responses", "documents": "documents"},
+        outputs=["answers"],
+        params={"reference_pattern": r"\[(\d+)\]"},
+    )
+    results, _ = shaper.run(
+        invocation_context={
+            "responses": ["first[1]", "second[2]", "third[1][2]", "fourth"],
+            "documents": [Document(id="123", content="test"), Document(id="456", content="test")],
+        }
+    )
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first[1]", type="generative", meta={"prompt": None}, document_ids=["123"]),
+        Answer(answer="second[2]", type="generative", meta={"prompt": None}, document_ids=["456"]),
+        Answer(answer="third[1][2]", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="fourth", type="generative", meta={"prompt": None}, document_ids=[]),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_references_id():
+    shaper = Shaper(
+        func="strings_to_answers",
+        inputs={"strings": "responses", "documents": "documents"},
+        outputs=["answers"],
+        params={"reference_pattern": r"\[(\d+)\]", "reference_mode": "id"},
+    )
+    results, _ = shaper.run(
+        invocation_context={
+            "responses": ["first[123]", "second[456]", "third[123][456]", "fourth"],
+            "documents": [Document(id="123", content="test"), Document(id="456", content="test")],
+        }
+    )
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first[123]", type="generative", meta={"prompt": None}, document_ids=["123"]),
+        Answer(answer="second[456]", type="generative", meta={"prompt": None}, document_ids=["456"]),
+        Answer(answer="third[123][456]", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="fourth", type="generative", meta={"prompt": None}, document_ids=[]),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_references_meta():
+    shaper = Shaper(
+        func="strings_to_answers",
+        inputs={"strings": "responses", "documents": "documents"},
+        outputs=["answers"],
+        params={"reference_pattern": r"\[([^\]]+)\]", "reference_mode": "meta", "reference_meta_field": "file_id"},
+    )
+    results, _ = shaper.run(
+        invocation_context={
+            "responses": ["first[123.txt]", "second[456.txt]", "third[123.txt][456.txt]", "fourth"],
+            "documents": [
+                Document(id="123", content="test", meta={"file_id": "123.txt"}),
+                Document(id="456", content="test", meta={"file_id": "456.txt"}),
+            ],
+        }
+    )
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first[123.txt]", type="generative", meta={"prompt": None}, document_ids=["123"]),
+        Answer(answer="second[456.txt]", type="generative", meta={"prompt": None}, document_ids=["456"]),
+        Answer(answer="third[123.txt][456.txt]", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="fourth", type="generative", meta={"prompt": None}, document_ids=[]),
     ]
 
 
@@ -522,6 +620,55 @@ def test_strings_to_answers_yaml(tmp_path):
         Answer(answer="a", type="generative", meta={"prompt": None}),
         Answer(answer="b", type="generative", meta={"prompt": None}),
         Answer(answer="c", type="generative", meta={"prompt": None}),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_reference_meta(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: strings_to_answers
+                inputs:
+                  documents: documents
+                params:
+                  reference_meta_field: file_id
+                  reference_mode: meta
+                  reference_pattern: \[([^\]]+)\]
+                  strings: ['first[123.txt]', 'second[456.txt]', 'third[123.txt][456.txt]', 'fourth']
+                outputs:
+                  - answers
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        documents=[
+            Document(id="123", content="test", meta={"file_id": "123.txt"}),
+            Document(id="456", content="test", meta={"file_id": "456.txt"}),
+        ]
+    )
+    assert result["invocation_context"]["answers"] == [
+        Answer(answer="first[123.txt]", type="generative", meta={"prompt": None}, document_ids=["123"]),
+        Answer(answer="second[456.txt]", type="generative", meta={"prompt": None}, document_ids=["456"]),
+        Answer(answer="third[123.txt][456.txt]", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="fourth", type="generative", meta={"prompt": None}, document_ids=[]),
+    ]
+    assert result["answers"] == [
+        Answer(answer="first[123.txt]", type="generative", meta={"prompt": None}, document_ids=["123"]),
+        Answer(answer="second[456.txt]", type="generative", meta={"prompt": None}, document_ids=["456"]),
+        Answer(answer="third[123.txt][456.txt]", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+        Answer(answer="fourth", type="generative", meta={"prompt": None}, document_ids=[]),
     ]
 
 

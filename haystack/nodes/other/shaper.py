@@ -1,7 +1,7 @@
 from functools import reduce
 import re
 from string import Template
-from typing import Optional, List, Dict, Any, Tuple, Union, Callable
+from typing import Literal, Optional, List, Dict, Any, Tuple, Union, Callable
 
 import logging
 
@@ -250,13 +250,33 @@ def strings_to_answers(
     strings: List[str],
     prompt: Optional[str] = None,
     documents: Optional[List[Document]] = None,
-    document_idx_pattern: Optional[str] = None,
+    reference_pattern: Optional[str] = None,
+    reference_mode: Literal["index", "id", "meta"] = "index",
+    reference_meta_field: Optional[str] = None,
 ) -> List[Answer]:
     """
     Transforms a list of strings into a list of Answers.
+    Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the strings.
 
-    Example:
+    :param strings: The list of strings to transform.
+    :param prompt: The prompt used to generate the answers.
+    :param documents: The documents used to generate the answers.
+    :param reference_pattern: The regex pattern to use for parsing the document references.
+        Example: "\[(\d+)\]" will find "1" in string "this is an answer[1]".
+        If None, no parsing is done and all documents are referenced.
+    :param reference_mode: The mode used to reference documents. Supported modes are:
+        - index: the document references are the one-based index of the document in the list of documents.
+            Example: "this is an answer[1]" will reference the first document in the list of documents.
+        - id: the document references are the document ids.
+            Example: "this is an answer[123]" will reference the document with id "123".
+        - meta: the document references are the value of a metadata field of the document.
+            Example: "this is an answer[123]" will reference the document with the value "123" in the metadata field specified by reference_meta_field.
+    :param reference_meta_field: The name of the metadata field to use for document references in reference_mode "meta".
+    :return: The list of answers.
 
+    Examples:
+
+    Without reference parsing:
     ```python
     assert strings_to_answers(strings=["first", "second", "third"], prompt="prompt", documents=[Document(id="123", content="content")]) == [
             Answer(answer="first", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
@@ -264,30 +284,63 @@ def strings_to_answers(
             Answer(answer="third", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
         ]
     ```
+
+    With reference parsing:
+    ```python
+    assert strings_to_answers(strings=["first[1]", "second[2]", "third[1][3]"], prompt="prompt",
+            documents=[Document(id="123", content="content"), Document(id="456", content="content"), Document(id="789", content="content")],
+            reference_pattern="\[(\d+)\]",
+            reference_mode="index"
+        ) == [
+            Answer(answer="first", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+            Answer(answer="second", type="generative", document_ids=["456"], meta={"prompt": "prompt"}),
+            Answer(answer="third", type="generative", document_ids=["123", "789"], meta={"prompt": "prompt"}),
+        ]
+    ```
     """
-    candidates = {str(idx): doc.id for idx, doc in enumerate(documents, start=1)} if documents else {}
+    if reference_mode == "index":
+        candidates = {str(idx): doc.id for idx, doc in enumerate(documents, start=1)} if documents else {}
+    elif reference_mode == "id":
+        candidates = {doc.id: doc.id for doc in documents} if documents else {}
+    elif reference_mode == "meta":
+        if not reference_meta_field:
+            raise ValueError("reference_meta_field must be specified when reference_mode is 'meta'")
+        candidates = (
+            {doc.meta[reference_meta_field]: doc.id for doc in documents if doc.meta.get(reference_meta_field)}
+            if documents
+            else {}
+        )
+    else:
+        raise ValueError(f"Invalid document_id_mode: {reference_mode}")
+
     answers = []
     for string in strings:
-        document_ids = parse_document_ids(
-            string=string, document_idx_pattern=document_idx_pattern, candidates=candidates
-        )
+        document_ids = parse_references(string=string, reference_pattern=reference_pattern, candidates=candidates)
         answer = Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
         answers.append(answer)
     return answers
 
 
-def parse_document_ids(
-    string: str, document_idx_pattern: Optional[str] = None, candidates: Optional[Dict[str, str]] = None
+def parse_references(
+    string: str, reference_pattern: Optional[str] = None, candidates: Optional[Dict[str, str]] = None
 ) -> Optional[List[str]]:
     """
-    Parses an answer string for document indexes and converts them to document ids.
+    Parses an answer string for document references and returns the document ids of the referenced documents.
+
+    :param string: The string to parse.
+    :param reference_pattern: The regex pattern to use for parsing the document references.
+        Example: "\[(\d+)\]" will find "1" in string "this is an answer[1]".
+        If None, no parsing is done and all candidate document ids are returned.
+    :param candidates: A dictionary of candidates to choose from. The keys are the reference strings and the values are the document ids.
+        If None, no parsing is done and None is returned.
+    :return: A list of document ids.
     """
     if not candidates:
         return None
-    if not document_idx_pattern:
+    if not reference_pattern:
         return list(candidates.values())
 
-    document_idxs = re.findall(document_idx_pattern, string)
+    document_idxs = re.findall(reference_pattern, string)
     return [candidates[idx] for idx in document_idxs if idx in candidates]
 
 
