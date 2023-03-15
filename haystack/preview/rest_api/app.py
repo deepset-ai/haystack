@@ -35,6 +35,6 @@ class HaystackAPI(FastAPI):
 
 def get_app():
     global APP  # pylint: disable=global-statement
-    if APP:
-        return APP
-    return HaystackAPI(title="Haystack", debug=False, version=__version__, root_path="/", openapi_tags=OPENAPI_TAGS)
+    if not APP:
+        APP = HaystackAPI(title="Haystack", debug=False, version=__version__, root_path="/", openapi_tags=OPENAPI_TAGS)
+    return APP
