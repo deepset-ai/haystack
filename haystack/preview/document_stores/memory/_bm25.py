@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 try:
     import rank_bm25
 except ImportError as e:
-    logger.debug("rank_bm25 not found: MemoryDocumentStore won't be able to build BM25 pools.")
+    logger.debug("rank_bm25 not found: MemoryDocumentStore won't be able to retrieve by BM25.")
 
 
-from haystack.v2.data import Document
-from haystack.v2.stores._utils import StoreError
+from haystack.preview.dataclasses import Document
+from haystack.preview.document_stores._utils import StoreError
 
 
 class BM25RepresentationMissing(StoreError):

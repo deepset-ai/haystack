@@ -2,29 +2,41 @@ from typing import Iterable
 
 import logging
 
-import numpy as np
-
 
 logger = logging.getLogger(__name__)
 
+
 try:
-    import torch
+    from numpy import ndarray, exp
+
+    try:
+        from numba import njit
+
+        @njit
+        def expit(x: float) -> float:
+            return 1 / (1 + exp(-x))
+
+    except (ImportError, ModuleNotFoundError) as e:
+        logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
+
+        def njit(f):
+            return f
+
+except ImportError as e:
+    logger.debug("numpy is not installed: local embedding retrieval won't work.")
+    ndarray = None
+
+
+try:
+    from torch import device
 except ImportError as e:
     logger.debug("torch is not installed: local embedding retrieval won't work.")
-
-
-try:
-    from numba import njit
-except (ImportError, ModuleNotFoundError) as e:
-    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
-
-    def njit(f):
-        return f
+    device = None
 
 
 # TODO can we process several queries at once? We should be able to!
 def get_scores_torch(
-    query: np.ndarray, documents: Iterable[np.ndarray], similarity: str, batch_size: int, device: "torch.device"
+    query: ndarray, documents: Iterable[ndarray], similarity: str, batch_size: int, device: device
 ) -> Iterable[float]:
     """
     Calculate similarity scores between query embedding and a list of documents using torch.
@@ -88,6 +100,14 @@ def get_scores_numpy(query: np.ndarray, documents: np.ndarray, similarity: str) 
     :param device: the CUDA device to use
     :returns: list of scores in the same order as the documents
     """
+    try:
+        import numpy as np
+    except ImportError as e:
+        raise ImportError(
+            "torch is not installed: local embedding retrieval can't work. "
+            "Install torch with `pip install torch` to fix this error."
+        ) from e
+
     if len(query.shape) == 1:
         query = np.expand_dims(query, 0)
 
@@ -115,8 +135,3 @@ def scale_to_unit_interval(score: float, similarity: str) -> float:
         return (score + 1) / 2
     else:
         return float(expit(score / 100))
-
-
-@njit
-def expit(x: float) -> float:
-    return 1 / (1 + np.exp(-x))
