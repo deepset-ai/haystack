@@ -214,7 +214,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
         for strip in PROMPT_TEMPLATE_STRIPS:
             prompt_text = prompt_text.strip(strip)
-        replacements = {**PROMPT_TEMPLATE_STR_REPLACE, **{v: k for k, v in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS.items()}}
+        replacements = {
+            **PROMPT_TEMPLATE_STR_REPLACE,
+            **{v: "{" + k + "}" for k, v in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS.items()},
+        }
         for old, new in replacements.items():
             prompt_text = prompt_text.replace(old, new)
 
