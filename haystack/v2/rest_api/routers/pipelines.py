@@ -104,7 +104,4 @@ def run(pipeline_name: str, data: Dict[str, Any], parameters: Dict[str, Dict[str
         )
         return result
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Pipeline '{pipeline_name}' failed. Exception: {exc}",
-        )
+        raise HTTPException(status_code=500, detail=f"Pipeline '{pipeline_name}' failed. Exception: {exc}")

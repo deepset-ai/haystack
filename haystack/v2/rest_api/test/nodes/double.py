@@ -23,17 +23,3 @@ class Double:
             value *= 2
 
         return ({self.outputs[0]: value}, parameters)
-
-
-def test_double_default():
-    node = Double()
-    results = node.run(name="test_node", data=[("value", 10)], parameters={})
-    assert results == ({"value": 20}, {})
-    assert node.init_parameters == {"input": "value", "output": "value"}
-
-
-def test_double_init_params():
-    node = Double(input="test_in", output="test_out")
-    results = node.run(name="test_node", data=[("test_in", 10)], parameters={})
-    assert results == ({"test_out": 20}, {})
-    assert node.init_parameters == {"input": "test_in", "output": "test_out"}
