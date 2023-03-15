@@ -62,7 +62,7 @@ def join_strings(strings: List[str], delimiter: str = " ", str_replace: Optional
     Example:
 
     ```python
-    assert join_strings(strings=["first", "second", "third"], delimiter=" - ", str_replace={"r", "R"}) == "fiRst - second - thiRd"
+    assert join_strings(strings=["first", "second", "third"], delimiter=" - ", str_replace={"r": "R"}) == "fiRst - second - thiRd"
     ```
     """
     str_replace = str_replace or {}
@@ -76,7 +76,7 @@ def format_string(string: str, str_replace: Optional[Dict[str, str]] = None) -> 
     Example:
 
     ```python
-    assert format_string(string="first", str_replace={"r", "R"}) == "fiRst"
+    assert format_string(string="first", str_replace={"r": "R"}) == "fiRst"
     ```
     """
     str_replace = str_replace or {}
@@ -111,7 +111,7 @@ def join_documents(
         ],
         delimiter=" - ",
         pattern="[$idx] $content",
-        str_replace={"r", "R"}
+        str_replace={"r": "R"}
     ) == [Document(content="[1] fiRst - [2] second - [3] thiRd")]
     ```
     """
@@ -138,7 +138,7 @@ def format_document(
     assert format_document(
         document=Document(content="first"),
         pattern="prefix [$idx] $content",
-        str_replace={"r", "R"},
+        str_replace={"r": "R"},
         idx=1,
     ) == "prefix [1] fiRst"
     ```
@@ -185,7 +185,7 @@ def format_answer(
     assert format_answer(
         answer=Answer(answer="first"),
         pattern="prefix [$idx] $answer",
-        str_replace={"r", "R"},
+        str_replace={"r": "R"},
         idx=1,
     ) == "prefix [1] fiRst"
     ```
@@ -236,7 +236,7 @@ def join_documents_to_string(
         ],
         delimiter=" - ",
         pattern="[$idx] $content",
-        str_replace={"r", "R"}
+        str_replace={"r": "R"}
     ) == "[1] fiRst - [2] second - [3] thiRd"
     ```
     """
@@ -360,7 +360,7 @@ def answers_to_strings(
                 Answer(answer="third")
             ],
             pattern="[$idx] $answer",
-            str_replace={"r", "R"}
+            str_replace={"r": "R"}
         ) == ["[1] fiRst", "[2] second", "[3] thiRd"]
     ```
     """
@@ -423,7 +423,7 @@ def documents_to_strings(
                 Document(content="third")
             ],
             pattern="[$idx] $content",
-            str_replace={"r", "R"}
+            str_replace={"r": "R"}
         ) == ["[1] fiRst", "[2] second", "[3] thiRd"]
     ```
     """

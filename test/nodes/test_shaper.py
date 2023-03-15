@@ -294,6 +294,17 @@ def test_join_strings_default_delimiter():
 
 
 @pytest.mark.unit
+def test_join_strings_with_str_replace():
+    shaper = Shaper(
+        func="join_strings",
+        params={"strings": ["first", "second", "third"], "delimiter": " - ", "str_replace": {"r": "R"}},
+        outputs=["single_string"],
+    )
+    results, _ = shaper.run()
+    assert results["invocation_context"]["single_string"] == "fiRst - second - thiRd"
+
+
+@pytest.mark.unit
 def test_join_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -351,6 +362,38 @@ def test_join_strings_default_delimiter_yaml(tmp_path):
     assert result["invocation_context"]["single_string"] == "first second third"
 
 
+@pytest.mark.unit
+def test_join_strings_with_str_replace_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: join_strings
+                inputs:
+                  strings: documents
+                outputs:
+                  - single_string
+                params:
+                  delimiter: ' - '
+                  str_replace:
+                    r: R
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(documents=["first", "second", "third"])
+    assert result["invocation_context"]["single_string"] == "fiRst - second - thiRd"
+
+
 #
 # join_documents
 #
@@ -405,6 +448,20 @@ def test_join_documents_default_delimiter():
         documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert results["invocation_context"]["documents"] == [Document(content="first second third")]
+
+
+@pytest.mark.unit
+def test_join_documents_with_pattern_and_str_replace():
+    shaper = Shaper(
+        func="join_documents",
+        inputs={"documents": "documents"},
+        outputs=["documents"],
+        params={"delimiter": " - ", "pattern": "[$idx] $content", "str_replace": {"r": "R"}},
+    )
+    results, _ = shaper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert results["invocation_context"]["documents"] == [Document(content="[1] fiRst - [2] second - [3] thiRd")]
 
 
 @pytest.mark.unit
@@ -470,6 +527,41 @@ def test_join_documents_default_delimiter_yaml(tmp_path):
         query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
     )
     assert result["invocation_context"]["documents"] == [Document(content="first second third")]
+
+
+@pytest.mark.unit
+def test_join_documents_with_pattern_and_str_replace_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: join_documents
+                inputs:
+                  documents: documents
+                outputs:
+                  - documents
+                params:
+                  delimiter: ' - '
+                  pattern: '[$idx] $content'
+                  str_replace:
+                    r: R
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="test query", documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert result["invocation_context"]["documents"] == [Document(content="[1] fiRst - [2] second - [3] thiRd")]
 
 
 #
@@ -685,6 +777,18 @@ def test_answers_to_strings():
 
 
 @pytest.mark.unit
+def test_answers_to_strings_with_pattern_and_str_replace():
+    shaper = Shaper(
+        func="answers_to_strings",
+        inputs={"answers": "documents"},
+        outputs=["strings"],
+        params={"pattern": "[$idx] $answer", "str_replace": {"r": "R"}},
+    )
+    results, _ = shaper.run(documents=[Answer(answer="first"), Answer(answer="second"), Answer(answer="third")])
+    assert results["invocation_context"]["strings"] == ["[1] fiRst", "[2] second", "[3] thiRd"]
+
+
+@pytest.mark.unit
 def test_answers_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -710,6 +814,38 @@ def test_answers_to_strings_yaml(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(documents=[Answer(answer="a"), Answer(answer="b"), Answer(answer="c")])
     assert result["invocation_context"]["strings"] == ["a", "b", "c"]
+
+
+@pytest.mark.unit
+def test_answers_to_strings_with_pattern_and_str_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: answers_to_strings
+                inputs:
+                  answers: documents
+                outputs:
+                  - strings
+                params:
+                  pattern: '[$idx] $answer'
+                  str_replace:
+                    r: R
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(documents=[Answer(answer="first"), Answer(answer="second"), Answer(answer="third")])
+    assert result["invocation_context"]["strings"] == ["[1] fiRst", "[2] second", "[3] thiRd"]
 
 
 #
@@ -870,6 +1006,20 @@ def test_documents_to_strings():
 
 
 @pytest.mark.unit
+def test_documents_to_strings_with_pattern_and_str_replace():
+    shaper = Shaper(
+        func="documents_to_strings",
+        inputs={"documents": "documents"},
+        outputs=["strings"],
+        params={"pattern": "[$idx] $content", "str_replace": {"r": "R"}},
+    )
+    results, _ = shaper.run(
+        documents=[Document(content="first"), Document(content="second"), Document(content="third")]
+    )
+    assert results["invocation_context"]["strings"] == ["[1] fiRst", "[2] second", "[3] thiRd"]
+
+
+@pytest.mark.unit
 def test_documents_to_strings_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -895,6 +1045,38 @@ def test_documents_to_strings_yaml(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(documents=[Document(content="a"), Document(content="b"), Document(content="c")])
     assert result["invocation_context"]["strings"] == ["a", "b", "c"]
+
+
+@pytest.mark.unit
+def test_documents_to_strings_with_pattern_and_str_replace_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: documents_to_strings
+                inputs:
+                  documents: documents
+                outputs:
+                  - strings
+                params:
+                  pattern: '[$idx] $content'
+                  str_replace:
+                    r: R
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(documents=[Document(content="first"), Document(content="second"), Document(content="third")])
+    assert result["invocation_context"]["strings"] == ["[1] fiRst", "[2] second", "[3] thiRd"]
 
 
 #
