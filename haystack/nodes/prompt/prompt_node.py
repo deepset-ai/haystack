@@ -169,6 +169,11 @@ class _FstringParamsTransformer(ast.NodeTransformer):
         If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings` to ensure that the documents get rendered correctly.
         """
         super().generic_visit(node)
+
+        # Keep special char variables as is. They are available via globals.
+        if isinstance(node.value, ast.Name) and node.value.id in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS:
+            return node
+
         id = uuid4().hex
         if isinstance(node.value, ast.Name) and node.value.id == "documents":
             call = ast.Call(func=ast.Name(id="documents_to_strings", ctx=ast.Load()), args=[node.value], keywords=[])
