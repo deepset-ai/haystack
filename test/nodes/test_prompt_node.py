@@ -210,7 +210,7 @@ def test_question_generation(prompt_node):
 
 @pytest.mark.integration
 def test_template_selection(prompt_node):
-    qa = prompt_node.set_default_prompt_template("question-answering")
+    qa = prompt_node.set_default_prompt_template("question-answering-per-document")
     r = qa(
         ["Berlin is the capital of Germany.", "Paris is the capital of France."],
         ["What is the capital of Germany?", "What is the capital of France"],
@@ -226,14 +226,14 @@ def test_has_supported_template_names(prompt_node):
 @pytest.mark.integration
 def test_invalid_template_params(prompt_node):
     with pytest.raises(ValueError, match="Expected prompt parameters"):
-        prompt_node.prompt("question-answering", {"some_crazy_key": "Berlin is the capital of Germany."})
+        prompt_node.prompt("question-answering-per-document", {"some_crazy_key": "Berlin is the capital of Germany."})
 
 
 @pytest.mark.integration
 def test_wrong_template_params(prompt_node):
     with pytest.raises(ValueError, match="Expected prompt parameters"):
         # with don't have options param, multiple choice QA has
-        prompt_node.prompt("question-answering", options=["Berlin is the capital of Germany."])
+        prompt_node.prompt("question-answering-per-document", options=["Berlin is the capital of Germany."])
 
 
 @pytest.mark.integration
@@ -258,7 +258,7 @@ def test_invalid_state_ops(prompt_node):
     with pytest.raises(ValueError, match="Prompt template no_such_task_exists"):
         prompt_node.remove_prompt_template("no_such_task_exists")
         # remove default task
-        prompt_node.remove_prompt_template("question-answering")
+        prompt_node.remove_prompt_template("question-answering-per-document")
 
 
 @pytest.mark.integration
@@ -355,7 +355,7 @@ def test_complex_pipeline(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
     node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query")
-    node2 = PromptNode(prompt_model, default_prompt_template="question-answering")
+    node2 = PromptNode(prompt_model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -377,6 +377,63 @@ def test_simple_pipeline_with_topk(prompt_model):
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
     assert len(result["results"]) == 2
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
+def test_pipeline_with_standard_qa(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1", "2"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Given the context please answer the question. Context: My name is Carla and I live in Berlin My name is Christelle and I live in Paris; "
+        "Question: Who lives in Berlin?; Answer:"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_qa_with_references(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla, as stated in document[1]" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. "
+        "You must only use information from the given documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
+        "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. If the documents do not contain the answer to the question, "
+        "say that ‘answering is not possible given the available information.’\n\nDocument[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris \n "
+        "Question: Who lives in Berlin?; Answer: "
+    )
 
 
 @pytest.mark.integration
@@ -419,7 +476,7 @@ def test_complex_pipeline_with_qa(prompt_model):
 def test_complex_pipeline_with_shared_model():
     model = PromptModel()
     node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation", output_variable="query")
-    node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering")
+    node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -495,7 +552,7 @@ def test_complex_pipeline_yaml(tmp_path):
               type: PromptNode
             - name: p2
               params:
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -535,7 +592,7 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -584,7 +641,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -662,7 +719,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -734,7 +791,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -771,11 +828,11 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
               type: PromptNode
             - name: p2
               params:
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             - name: p3
               params:
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query

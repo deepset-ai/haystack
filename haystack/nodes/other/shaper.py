@@ -1,4 +1,5 @@
 from functools import reduce
+import re
 from string import Template
 from typing import Optional, List, Dict, Any, Tuple, Union, Callable
 
@@ -246,7 +247,10 @@ def join_documents_to_string(
 
 
 def strings_to_answers(
-    strings: List[str], prompt: Optional[str] = None, documents: Optional[List[Document]] = None
+    strings: List[str],
+    prompt: Optional[str] = None,
+    documents: Optional[List[Document]] = None,
+    document_idx_pattern: Optional[str] = None,
 ) -> List[Answer]:
     """
     Transforms a list of strings into a list of Answers.
@@ -261,11 +265,30 @@ def strings_to_answers(
         ]
     ```
     """
-    document_ids = [doc.id for doc in documents] if documents else None
-    return [
-        Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
-        for string in strings
-    ]
+    candidates = {str(idx): doc.id for idx, doc in enumerate(documents, start=1)} if documents else {}
+    answers = []
+    for string in strings:
+        document_ids = parse_document_ids(
+            string=string, document_idx_pattern=document_idx_pattern, candidates=candidates
+        )
+        answer = Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
+        answers.append(answer)
+    return answers
+
+
+def parse_document_ids(
+    string: str, document_idx_pattern: Optional[str] = None, candidates: Optional[Dict[str, str]] = None
+) -> Optional[List[str]]:
+    """
+    Parses an answer string for document indexes and converts them to document ids.
+    """
+    if not candidates:
+        return None
+    if not document_idx_pattern:
+        return list(candidates.values())
+
+    document_idxs = re.findall(document_idx_pattern, string)
+    return [candidates[idx] for idx in document_idxs if idx in candidates]
 
 
 def answers_to_strings(

@@ -938,7 +938,7 @@ def test_with_prompt_node(tmp_path):
                 params:
                   output_variable: answers
                   model_name_or_path: prompt_model
-                  default_prompt_template: question-answering
+                  default_prompt_template: question-answering-per-document
 
             pipelines:
               - name: query
@@ -986,7 +986,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
                 type: PromptNode
                 params:
                   model_name_or_path: prompt_model
-                  default_prompt_template: question-answering
+                  default_prompt_template: question-answering-per-document
 
               - name: prompt_node_second
                 type: PromptNode
@@ -1000,7 +1000,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
                 params:
                   output_variable: answers
                   model_name_or_path: google/flan-t5-small
-                  default_prompt_template: question-answering
+                  default_prompt_template: question-answering-per-document
 
             pipelines:
               - name: query

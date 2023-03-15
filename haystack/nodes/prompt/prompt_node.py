@@ -476,8 +476,37 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         PromptTemplate(
             name="question-answering",
+            prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
+            "{query}; Answer:",
+            output_shapers=[
+                Shaper(
+                    func="strings_to_answers",
+                    outputs=["answers"],
+                    inputs={"strings": "results", "prompt": "prompt", "documents": "documents"},
+                )
+            ],
+        ),
+        PromptTemplate(
+            name="question-answering-per-document",
             prompt_text="Given the context please answer the question. Context: {documents}; Question: "
             "{query}; Answer:",
+        ),
+        PromptTemplate(
+            name="question-answering-with-references",
+            prompt_text="Create a concise and informative answer (no more than 50 words) for a given question "
+            "based solely on the given documents. You must only use information from the given documents. "
+            "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
+            "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. "
+            "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
+            "{join(documents, delimiter=new_line, pattern=new_line+'Document[$idx]: $content', str_replace={new_line: ' ', '[': '(', ']': ')'})} \n Question: {query}; Answer: ",
+            output_shapers=[
+                Shaper(
+                    func="strings_to_answers",
+                    inputs={"strings": "results", "prompt": "prompt", "documents": "documents"},
+                    outputs=["answers"],
+                    params={"document_idx_pattern": "\[(\d+)\]"},
+                )
+            ],
         ),
         PromptTemplate(
             name="question-generation",
