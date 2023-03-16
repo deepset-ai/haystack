@@ -210,5 +210,4 @@ def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__ca
     for duplicate in duplicate_names:
         del node_classes[duplicate]
 
-    print(node_classes)
     return node_classes
