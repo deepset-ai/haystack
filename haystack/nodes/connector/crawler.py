@@ -262,33 +262,13 @@ class Crawler(BaseComponent):
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
 
         documents: List[Document] = []
+        base_urls = [None] * len(urls)
+        urls_to_search = []
 
         # Start by crawling the initial list of urls
         if filter_urls:
             pattern = re.compile("|".join(filter_urls))
-            for url in urls:
-                if pattern.search(url):
-                    documents += self._crawl_urls(
-                        [url],
-                        extract_hidden_text=extract_hidden_text,
-                        loading_wait_time=loading_wait_time,
-                        id_hash_keys=id_hash_keys,
-                        output_dir=output_dir,
-                        overwrite_existing_files=overwrite_existing_files,
-                        file_path_meta_field_name=file_path_meta_field_name,
-                        crawler_naming_function=crawler_naming_function,
-                    )
-        else:
-            documents += self._crawl_urls(
-                urls,
-                extract_hidden_text=extract_hidden_text,
-                loading_wait_time=loading_wait_time,
-                id_hash_keys=id_hash_keys,
-                output_dir=output_dir,
-                overwrite_existing_files=overwrite_existing_files,
-                file_path_meta_field_name=file_path_meta_field_name,
-                crawler_naming_function=crawler_naming_function,
-            )
+            urls = [url for url in urls if pattern.search(url)]
 
         # follow one level of sublinks if requested
         if crawler_depth == 1:
@@ -303,18 +283,20 @@ class Crawler(BaseComponent):
                         loading_wait_time=loading_wait_time,
                     )
                 )
-            for url, extracted_sublink in sub_links.items():
-                documents += self._crawl_urls(
-                    extracted_sublink,
-                    base_url=url,
-                    extract_hidden_text=extract_hidden_text,
-                    loading_wait_time=loading_wait_time,
-                    id_hash_keys=id_hash_keys,
-                    output_dir=output_dir,
-                    overwrite_existing_files=overwrite_existing_files,
-                    file_path_meta_field_name=file_path_meta_field_name,
-                    crawler_naming_function=crawler_naming_function,
-                )
+                base_urls.extend([url_] * len(sub_links[url_]))
+                urls_to_search.extend(sub_links[url_] + [url_])
+
+        documents += self._crawl_urls(
+            urls=urls_to_search,
+            base_urls=base_urls,
+            extract_hidden_text=extract_hidden_text,
+            loading_wait_time=loading_wait_time,
+            id_hash_keys=id_hash_keys,
+            output_dir=output_dir,
+            overwrite_existing_files=overwrite_existing_files,
+            file_path_meta_field_name=file_path_meta_field_name,
+            crawler_naming_function=crawler_naming_function,
+        )
 
         return documents
 
@@ -384,7 +366,7 @@ class Crawler(BaseComponent):
         self,
         urls: List[str],
         extract_hidden_text: bool,
-        base_url: Optional[str] = None,
+        base_urls: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
         loading_wait_time: Optional[int] = None,
         overwrite_existing_files: Optional[bool] = False,
@@ -393,7 +375,10 @@ class Crawler(BaseComponent):
         file_path_meta_field_name: Optional[str] = None,
     ) -> List[Document]:
         documents: List[Document] = []
-        for link in urls:
+        if base_urls and len(base_urls) != len(urls):
+            logger.error("Must have the same number of base urls and urls to search.")
+
+        for link, base_url in zip(urls, base_urls):
             logger.info("Scraping contents from '%s'", link)
             self.driver.get(link)
             if loading_wait_time is not None:
