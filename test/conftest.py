@@ -62,12 +62,6 @@ from haystack.nodes.prompt import PromptNode, PromptModel
 from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
 
-try:
-    from elasticsearch import Elasticsearch
-    import weaviate
-except (ImportError, ModuleNotFoundError) as ie:
-    _optional_component_not_installed("test", "test", ie)
-
 from .mocks import pinecone as pinecone_mock
 
 
