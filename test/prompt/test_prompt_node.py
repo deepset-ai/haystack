@@ -478,7 +478,7 @@ def test_pipeline_with_qa_with_references(prompt_model):
         result["answers"][0].meta["prompt"]
         == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. "
         "You must only use information from the given documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
-        "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number,number,etc]’. If the documents do not contain the answer to the question, "
+        "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. If the documents do not contain the answer to the question, "
         "say that ‘answering is not possible given the available information.’\n\nDocument[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris \n "
         "Question: Who lives in Berlin?; Answer: "
     )
