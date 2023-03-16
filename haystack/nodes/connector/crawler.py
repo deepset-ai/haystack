@@ -5,10 +5,11 @@ import os
 import re
 import sys
 import time
-import joblib
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
+
+import joblib
 
 try:
     from selenium import webdriver
@@ -256,8 +257,8 @@ class Crawler(BaseComponent):
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
 
         documents: List[Document] = []
-        base_urls = [None] * len(urls)
-        urls_to_search = []
+        base_urls: List[str] = []
+        urls_to_search: List[str] = []
 
         # Start by crawling the initial list of urls
         if filter_urls:
@@ -280,10 +281,12 @@ class Crawler(BaseComponent):
                 base_urls.extend([url_] * len(sub_links[url_]))
                 urls_to_search.extend(sub_links[url_])
 
-        if urls_to_search:
+        if urls_to_search and base_urls:
             if 1 < num_processes:
                 delayed_funcs = [
                     joblib.delayed(_crawl_urls)(
+                        None,
+                        webdriver_options=self.options,
                         urls=[_url],
                         base_urls=[_base_url],
                         extract_hidden_text=extract_hidden_text,
@@ -299,6 +302,8 @@ class Crawler(BaseComponent):
                 documents += joblib.Parallel(n_jobs=num_processes, backend="loky", batch_size="auto")(delayed_funcs)
             else:
                 documents += _crawl_urls(
+                    self.driver,
+                    webdriver_options=self.options,
                     urls=urls_to_search,
                     base_urls=base_urls,
                     extract_hidden_text=extract_hidden_text,
@@ -516,10 +521,10 @@ def _write_file(
 
 def _crawl_urls(
     driver: webdriver.Chrome,
-    webdriver_options: Optional[List[str]],
+    webdriver_options: Options,
     urls: List[str],
     extract_hidden_text: bool,
-    base_urls: Optional[List[str]] = None,
+    base_urls: List[str],
     id_hash_keys: Optional[List[str]] = None,
     loading_wait_time: Optional[int] = None,
     overwrite_existing_files: Optional[bool] = False,
