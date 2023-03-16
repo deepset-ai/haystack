@@ -1,12 +1,11 @@
 import logging
 
 import uvicorn
-from fastapi import FastAPI
 from haystack.preview.rest_api.app import get_app
 
 
 if __name__ == "__main__":
-    app: FastAPI = get_app()
+    app = get_app()
 
     logger = logging.getLogger(__name__)
 

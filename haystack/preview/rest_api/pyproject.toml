@@ -28,6 +28,7 @@ dependencies = [
     "fastapi<1",
     "uvicorn<1",
     "python-multipart<1",  # file uploads
+    "click"    # CLI
 ]
 dynamic = ["version"]
 
