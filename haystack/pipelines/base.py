@@ -1639,8 +1639,10 @@ class Pipeline:
                     df_answers["gold_contexts_similarity"] = df_answers.map_rows(
                         lambda row: [
                             calculate_context_similarity(
-                                str(gold_context),  # could be dataframe
-                                str(row["context"]) if row["context"] is not None else "",  # could be dataframe
+                                str(gold_context),  # could be dataframe or list of lists
+                                str(row["context"])
+                                if row["context"] is not None
+                                else "",  # could be dataframe or list of lists
                                 min_length=context_matching_min_length,
                                 boost_split_overlaps=context_matching_boost_split_overlaps,
                             )
@@ -1773,9 +1775,13 @@ class Pipeline:
                     df_docs["gold_contexts_similarity"] = df_docs.map_rows(
                         lambda row: [
                             calculate_context_similarity(
-                                str(gold_context) if isinstance(gold_context, pd.DataFrame) else gold_context,
+                                str(gold_context)
+                                if isinstance(gold_context, (pd.DataFrame, list))
+                                else gold_context,  # could be dataframe or list of lists
                                 str(row["context"])
-                                if isinstance(row["context"], pd.DataFrame)
+                                if isinstance(
+                                    row["context"], (pd.DataFrame, list)
+                                )  # could be dataframe or list of lists
                                 else row["context"] or "",
                                 min_length=context_matching_min_length,
                                 boost_split_overlaps=context_matching_boost_split_overlaps,
