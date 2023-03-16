@@ -272,17 +272,18 @@ class Crawler(BaseComponent):
                 base_urls.extend([url_] * len(sub_links[url_]))
                 urls_to_search.extend(sub_links[url_] + [url_])
 
-        documents += _crawl_urls(
-            urls=urls_to_search,
-            base_urls=base_urls,
-            extract_hidden_text=extract_hidden_text,
-            loading_wait_time=loading_wait_time,
-            id_hash_keys=id_hash_keys,
-            output_dir=output_dir,
-            overwrite_existing_files=overwrite_existing_files,
-            file_path_meta_field_name=file_path_meta_field_name,
-            crawler_naming_function=crawler_naming_function,
-        )
+        if urls_to_search:
+            documents += _crawl_urls(
+                urls=urls_to_search,
+                base_urls=base_urls,
+                extract_hidden_text=extract_hidden_text,
+                loading_wait_time=loading_wait_time,
+                id_hash_keys=id_hash_keys,
+                output_dir=output_dir,
+                overwrite_existing_files=overwrite_existing_files,
+                file_path_meta_field_name=file_path_meta_field_name,
+                crawler_naming_function=crawler_naming_function,
+            )
 
         return documents
 
