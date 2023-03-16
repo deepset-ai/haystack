@@ -1,7 +1,9 @@
+import json
 import logging
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Dict, List, Optional, Union, Type
 
+import sseclient
 import torch
 from transformers import (
     pipeline,
@@ -27,6 +29,38 @@ from haystack.utils.openai_utils import (
 logger = logging.getLogger(__name__)
 
 
+class TokenStreamingHandler(ABC):
+    """
+    TokenStreamingHandler implementations handle the streaming of tokens from the stream.
+    """
+
+    DONE_MARKER = "[DONE]"
+
+    @abstractmethod
+    def __call__(self, token_received: str, **kwargs) -> str:
+        """
+        This callback method is called when a new token is received from the stream.
+
+        :param token_received: The token received from the stream.
+        :param kwargs: Additional keyword arguments passed to the handler.
+        :return: The token to be sent to the stream.
+        """
+        pass
+
+
+class DefaultTokenStreamingHandler(TokenStreamingHandler):
+    def __call__(self, token_received, **kwargs) -> str:
+        """
+        This callback method is called when a new token is received from the stream.
+
+        :param token_received: The token received from the stream.
+        :param kwargs: Additional keyword arguments passed to the handler.
+        :return: The token to be sent to the stream.
+        """
+        print(token_received, flush=True, end="")
+        return token_received
+
+
 class PromptModelInvocationLayer:
     """
     PromptModelInvocationLayer implementations execute a prompt on an underlying model.
@@ -34,6 +68,8 @@ class PromptModelInvocationLayer:
     The implementation can be a simple invocation on the underlying model running in a local runtime, or
     could be even remote, for example, a call to a remote API endpoint.
     """
+
+    invocation_layer_providers: List[Type["PromptModelInvocationLayer"]] = []
 
     def __init__(self, model_name_or_path: str, **kwargs):
         """
@@ -46,6 +82,15 @@ class PromptModelInvocationLayer:
             raise ValueError("model_name_or_path cannot be None or empty string")
 
         self.model_name_or_path = model_name_or_path
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Used to register user-defined invocation layers.
+
+        Called when a subclass of PromptModelInvocationLayer is imported.
+        """
+        super().__init_subclass__(**kwargs)
+        cls.invocation_layer_providers.append(cls)
 
     @abstractmethod
     def invoke(self, *args, **kwargs):
@@ -74,10 +119,6 @@ class PromptModelInvocationLayer:
         :param prompt: Prompt text to be sent to the generative model.
         """
         pass
-
-
-def known_providers() -> List[Type[PromptModelInvocationLayer]]:
-    return [HFLocalInvocationLayer, OpenAIInvocationLayer, AzureOpenAIInvocationLayer]
 
 
 class StopWordsCriteria(StoppingCriteria):
@@ -334,6 +375,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 "frequency_penalty",
                 "best_of",
                 "logit_bias",
+                "stream",
+                "stream_handler",
             ]
             if key in kwargs
         }
@@ -378,6 +421,11 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 kwargs["n"] = top_k
                 kwargs["best_of"] = top_k
             kwargs_with_defaults.update(kwargs)
+
+        # either stream is True (will use default handler) or stream_handler is provided
+        stream = (
+            kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
+        )
         payload = {
             "model": self.model_name_or_path,
             "prompt": prompt,
@@ -386,7 +434,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 1),
             "n": kwargs_with_defaults.get("n", 1),
-            "stream": False,  # no support for streaming
+            "stream": stream,
             "logprobs": kwargs_with_defaults.get("logprobs", None),
             "echo": kwargs_with_defaults.get("echo", False),
             "stop": kwargs_with_defaults.get("stop", None),
@@ -395,10 +443,28 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "best_of": kwargs_with_defaults.get("best_of", 1),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
-        res = openai_request(url=self.url, headers=self.headers, payload=payload)
-        _check_openai_text_completion_answers(result=res, payload=payload)
-        responses = [ans["text"].strip() for ans in res["choices"]]
-        return responses
+        if not stream:
+            res = openai_request(url=self.url, headers=self.headers, payload=payload)
+            _check_openai_text_completion_answers(result=res, payload=payload)
+            responses = [ans["text"].strip() for ans in res["choices"]]
+            return responses
+        else:
+            response = openai_request(
+                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+            )
+
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            client = sseclient.SSEClient(response)
+            tokens: List[str] = []
+            try:
+                for event in client.events():
+                    if event.data != TokenStreamingHandler.DONE_MARKER:
+                        ed = json.loads(event.data)
+                        token: str = ed["choices"][0]["text"]
+                        tokens.append(handler(token, event_data=ed["choices"]))
+            finally:
+                client.close()
+            return ["".join(tokens)]  # return a list of strings just like non-streaming
 
     def _ensure_token_limit(self, prompt: str) -> str:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.

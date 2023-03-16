@@ -1,4 +1,5 @@
 from haystack.utils.import_utils import safe_import
+from haystack.nodes.audio.whisper_transcriber import WhisperTranscriber, WhisperModel
 
 AnswerToSpeech = safe_import(
     "haystack.nodes.audio.answer_to_speech", "AnswerToSpeech", "audio"
