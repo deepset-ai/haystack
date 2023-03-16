@@ -286,7 +286,7 @@ class Crawler(BaseComponent):
                 base_urls.extend([url_] * len(sub_links[url_]))
                 urls_to_search.extend(sub_links[url_] + [url_])
 
-        documents += self._crawl_urls(
+        documents += _crawl_urls(
             urls=urls_to_search,
             base_urls=base_urls,
             extract_hidden_text=extract_hidden_text,
@@ -297,113 +297,6 @@ class Crawler(BaseComponent):
             file_path_meta_field_name=file_path_meta_field_name,
             crawler_naming_function=crawler_naming_function,
         )
-
-        return documents
-
-    def _create_document(
-        self, url: str, text: str, base_url: Optional[str] = None, id_hash_keys: Optional[List[str]] = None
-    ) -> Document:
-        """
-        Create a Document object from the given url and text.
-        :param url: The current url of the webpage.
-        :param text: The text content of the webpage.
-        :param base_url: The original url where we started to crawl.
-        :param id_hash_keys: The fields that should be used to generate the document id.
-        """
-
-        data: Dict[str, Any] = {}
-        data["meta"] = {"url": url}
-        if base_url:
-            data["meta"]["base_url"] = base_url
-        data["content"] = text
-        if id_hash_keys:
-            data["id_hash_keys"] = id_hash_keys
-
-        return Document.from_dict(data)
-
-    def _write_file(
-        self,
-        document: Document,
-        output_dir: Path,
-        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        overwrite_existing_files: Optional[bool] = None,
-        file_path_meta_field_name: Optional[str] = None,
-    ) -> Path:
-        url = document.meta["url"]
-        if crawler_naming_function is not None:
-            file_name_prefix = crawler_naming_function(url, document.content)  # type: ignore
-        else:
-            file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", url[:129])
-            file_name_hash = hashlib.md5(f"{url}".encode("utf-8")).hexdigest()
-            file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
-
-        file_path = output_dir / f"{file_name_prefix}.json"
-
-        if file_path_meta_field_name:
-            document.meta[file_path_meta_field_name] = str(file_path)
-
-        try:
-            if overwrite_existing_files or not file_path.exists():
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(document.to_dict(), f)
-            else:
-                logger.debug(
-                    "File '%s' already exists. Set 'overwrite_existing_files=True' to overwrite it.", file_path
-                )
-        except Exception:
-            logger.exception(
-                "Crawler can't save the content of '%s' under '%s'. "
-                "This webpage will be skipped, but links from this page will still be crawled. "
-                "Make sure the path above is accessible and the file name is valid. "
-                "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
-                url,
-                file_path,
-            )
-
-        return file_path
-
-    def _crawl_urls(
-        self,
-        urls: List[str],
-        extract_hidden_text: bool,
-        base_urls: Optional[List[str]] = None,
-        id_hash_keys: Optional[List[str]] = None,
-        loading_wait_time: Optional[int] = None,
-        overwrite_existing_files: Optional[bool] = False,
-        output_dir: Optional[Path] = None,
-        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        file_path_meta_field_name: Optional[str] = None,
-    ) -> List[Document]:
-        documents: List[Document] = []
-        if base_urls and len(base_urls) != len(urls):
-            logger.error("Must have the same number of base urls and urls to search.")
-
-        for link, base_url in zip(urls, base_urls):
-            logger.info("Scraping contents from '%s'", link)
-            self.driver.get(link)
-            if loading_wait_time is not None:
-                time.sleep(loading_wait_time)
-            el = self.driver.find_element(by=By.TAG_NAME, value="body")
-            if extract_hidden_text:
-                text = el.get_attribute("textContent")
-            else:
-                text = el.text
-
-            document = self._create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
-
-            if output_dir:
-                file_path = self._write_file(
-                    document,
-                    output_dir,
-                    crawler_naming_function,
-                    file_path_meta_field_name=file_path_meta_field_name,
-                    overwrite_existing_files=overwrite_existing_files,
-                )
-                logger.debug("Saved content to '%s'", file_path)
-
-            documents.append(document)
-
-        logger.debug("Crawler results: %s Documents", len(documents))
 
         return documents
 
@@ -541,3 +434,110 @@ class Crawler(BaseComponent):
                         sub_links.add(sub_link)
 
         return sub_links
+
+
+def _create_document(
+    url: str, text: str, base_url: Optional[str] = None, id_hash_keys: Optional[List[str]] = None
+) -> Document:
+    """
+    Create a Document object from the given url and text.
+    :param url: The current url of the webpage.
+    :param text: The text content of the webpage.
+    :param base_url: The original url where we started to crawl.
+    :param id_hash_keys: The fields that should be used to generate the document id.
+    """
+
+    data: Dict[str, Any] = {}
+    data["meta"] = {"url": url}
+    if base_url:
+        data["meta"]["base_url"] = base_url
+    data["content"] = text
+    if id_hash_keys:
+        data["id_hash_keys"] = id_hash_keys
+
+    return Document.from_dict(data)
+
+
+def _write_file(
+    document: Document,
+    output_dir: Path,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+    overwrite_existing_files: Optional[bool] = None,
+    file_path_meta_field_name: Optional[str] = None,
+) -> Path:
+    url = document.meta["url"]
+    if crawler_naming_function is not None:
+        file_name_prefix = crawler_naming_function(url, document.content)  # type: ignore
+    else:
+        file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", url[:129])
+        file_name_hash = hashlib.md5(f"{url}".encode("utf-8")).hexdigest()
+        file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
+
+    file_path = output_dir / f"{file_name_prefix}.json"
+
+    if file_path_meta_field_name:
+        document.meta[file_path_meta_field_name] = str(file_path)
+
+    try:
+        if overwrite_existing_files or not file_path.exists():
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(document.to_dict(), f)
+        else:
+            logger.debug("File '%s' already exists. Set 'overwrite_existing_files=True' to overwrite it.", file_path)
+    except Exception:
+        logger.exception(
+            "Crawler can't save the content of '%s' under '%s'. "
+            "This webpage will be skipped, but links from this page will still be crawled. "
+            "Make sure the path above is accessible and the file name is valid. "
+            "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+            url,
+            file_path,
+        )
+
+    return file_path
+
+
+def _crawl_urls(
+    driver: webdriver.Chrome,
+    urls: List[str],
+    extract_hidden_text: bool,
+    base_urls: Optional[List[str]] = None,
+    id_hash_keys: Optional[List[str]] = None,
+    loading_wait_time: Optional[int] = None,
+    overwrite_existing_files: Optional[bool] = False,
+    output_dir: Optional[Path] = None,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+    file_path_meta_field_name: Optional[str] = None,
+) -> List[Document]:
+    documents: List[Document] = []
+    if base_urls and len(base_urls) != len(urls):
+        logger.error("Must have the same number of base urls and urls to search.")
+
+    for link, base_url in zip(urls, base_urls):
+        logger.info("Scraping contents from '%s'", link)
+        driver.get(link)
+        if loading_wait_time is not None:
+            time.sleep(loading_wait_time)
+        el = driver.find_element(by=By.TAG_NAME, value="body")
+        if extract_hidden_text:
+            text = el.get_attribute("textContent")
+        else:
+            text = el.text
+
+        document = _create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
+
+        if output_dir:
+            file_path = _write_file(
+                document,
+                output_dir,
+                crawler_naming_function,
+                file_path_meta_field_name=file_path_meta_field_name,
+                overwrite_existing_files=overwrite_existing_files,
+            )
+            logger.debug("Saved content to '%s'", file_path)
+
+        documents.append(document)
+
+    logger.debug("Crawler results: %s Documents", len(documents))
+
+    return documents
