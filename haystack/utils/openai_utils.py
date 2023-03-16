@@ -79,7 +79,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
     model_tokenizer = MODEL_TO_ENCODING.get(model_name) if USE_TIKTOKEN else None
 
     if model_tokenizer:
-        # Based on OpenAI models page, 'davinci' considers have 2048 tokens,
+        # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
         ## therefore, it is better to add `text-davinci` instead to the condition.
         ## Ref: https://platform.openai.com/docs/models/gpt-3-5
         ##      https://platform.openai.com/docs/models/gpt-3
