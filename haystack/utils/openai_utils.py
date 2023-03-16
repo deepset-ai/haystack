@@ -75,7 +75,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
     :param model_name: Name of the OpenAI model.
     """
     tokenizer_name = "gpt2"
-    max_tokens_limit = 2049  # Based on the latest update.
+    max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
     model_tokenizer = MODEL_TO_ENCODING.get(model_name) if USE_TIKTOKEN else None
 
     if model_tokenizer:
