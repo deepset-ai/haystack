@@ -616,6 +616,7 @@ class PromptNode(BaseComponent):
         :param model_name_or_path: The name of the model to use or an instance of the PromptModel.
         :param default_prompt_template: The default prompt template to use for the model.
         :param output_variable: The name of the output variable in which you want to store the inference results.
+            If not set, PromptNode uses PromptTemplate's output_variable. If PromptTemplate's output_variable is not set, default name is `results`.
         :param max_length: The maximum length of the generated text output.
         :param api_key: The API key to use for the model.
         :param use_auth_token: The authentication token to use for the model.
@@ -635,7 +636,7 @@ class PromptNode(BaseComponent):
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
-        self.output_variable: str = output_variable or "results"
+        self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
@@ -862,7 +863,7 @@ class PromptNode(BaseComponent):
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
         prompt_template = self.get_prompt_template(self.default_prompt_template)
-        output_variable = prompt_template.output_variable or self.output_variable
+        output_variable = self.output_variable or prompt_template.output_variable or "results"
 
         invocation_context[output_variable] = results
         final_result: Dict[str, Any] = {
@@ -897,13 +898,16 @@ class PromptNode(BaseComponent):
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
         :param invocation_contexts: List of invocation contexts.
         """
+        prompt_template = self.get_prompt_template(self.default_prompt_template)
+        output_variable = self.output_variable or prompt_template.output_variable or "results"
+
         inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts)
-        all_results: Dict[str, List] = {self.output_variable: [], "invocation_contexts": [], "_debug": []}
+        all_results: Dict[str, List] = {output_variable: [], "invocation_contexts": [], "_debug": []}
         for query, docs, invocation_context in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
         ):
             results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
-            all_results[self.output_variable].append(results[self.output_variable])
+            all_results[output_variable].append(results[output_variable])
             all_results["invocation_contexts"].append(all_results["invocation_contexts"])
             all_results["_debug"].append(all_results["_debug"])
         return all_results, "output_1"
