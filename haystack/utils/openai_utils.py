@@ -4,7 +4,7 @@ import logging
 import platform
 import sys
 import json
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, Optional
 import requests
 
 from transformers import GPT2TokenizerFast
@@ -87,16 +87,25 @@ def _openai_text_completion_tokenization_details(model_name: str):
 @retry_with_exponential_backoff(
     backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
 )
-def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT):
+def openai_request(
+    url: str,
+    headers: Dict,
+    payload: Dict,
+    timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
+    read_response: Optional[bool] = True,
+    **kwargs,
+):
     """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
 
     :param url: The URL of the OpenAI API.
     :param headers: Dictionary of HTTP Headers to send with the :class:`Request`.
     :param payload: The payload to send with the request.
     :param timeout: The timeout length of the request. The default is 30s.
+    :param read_response: Whether to read the response as JSON. The default is True.
     """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
-    res = json.loads(response.text)
+    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout, **kwargs)
+    if read_response:
+        json_response = json.loads(response.text)
 
     if response.status_code != 200:
         openai_error: OpenAIError
@@ -112,8 +121,10 @@ def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float,
                 status_code=response.status_code,
             )
         raise openai_error
-
-    return res
+    if read_response:
+        return json_response
+    else:
+        return response
 
 
 def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:

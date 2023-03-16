@@ -23,6 +23,7 @@ def test_whisper_api_transcribe_with_params():
     assert "segments" not in audio_object_transcript and "segments" not in audio_path_transcript
 
 
+@pytest.mark.skip("Fails on CI cause it fills up memory")
 @pytest.mark.integration
 @pytest.mark.skipif(not is_whisper_available(), reason="Whisper is not installed")
 def test_whisper_local_transcribe():
@@ -31,6 +32,7 @@ def test_whisper_local_transcribe():
     assert "segments" not in audio_object_transcript and "segments" not in audio_path_transcript
 
 
+@pytest.mark.skip("Fails on CI cause it fills up memory")
 @pytest.mark.integration
 @pytest.mark.skipif(not is_whisper_available(), reason="Whisper is not installed")
 def test_whisper_local_transcribe_with_params():

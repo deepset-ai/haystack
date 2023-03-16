@@ -120,13 +120,6 @@ class NodeError(HaystackError):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
 
 
-class AudioNodeError(NodeError):
-    """Exception for issues that occur in a node of the audio module"""
-
-    def __init__(self, message: Optional[str] = None):
-        super().__init__(message=message)
-
-
 class OpenAIError(NodeError):
     """Exception for issues that occur in the OpenAI APIs"""
 
