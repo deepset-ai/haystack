@@ -41,8 +41,8 @@ def serve(host: str, port: int, pipelines: Path, log_level: str, no_debug: bool 
         logger.info(r"|                                                             |")
         logger.info(r"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         logger.info(r"| Haystack REST API server is running!                        |")
-        logger.info(f"| Debug Mode: {'OFF' if no_debug else 'ON'}".ljust(62) + "|")
-        logger.info(f"| API Docs: http://{host}:{port}/docs".ljust(62) + "|")
+        logger.info(r"| Debug Mode: %s                                             |", "OFF" if no_debug else "ON ")
+        logger.info(r"| API Docs: %s|", f"http://{host}:{port}/docs".ljust(50))
         logger.info(r"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     uvicorn.run(app, host=host, port=port)
