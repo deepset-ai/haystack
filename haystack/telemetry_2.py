@@ -203,8 +203,7 @@ def send_pipeline_event(pipeline: "Pipeline", event_name: str, event_properties:
     try:
         if telemetry:
             if event_properties:
-                event_properties = {
-                    **event_properties,
+                event_properties.update({
                     "pipeline.classname": pipeline.__class__.__name__,
                     "pipeline.fingerprint": pipeline.fingerprint,
                     "pipeline.yaml_hash": pipeline.yaml_hash,
