@@ -103,25 +103,11 @@ class Crawler(BaseComponent):
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
-        IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IN_WINDOWS = sys.platform in ["win32", "cygwin"]
-        IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
-
-        if webdriver_options is None:
-            webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
-        webdriver_options.append("--headless")
-        if IS_ROOT or IN_WINDOWS:
-            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
-        if IN_COLAB or IN_AZUREML:
-            webdriver_options.append("--disable-dev-shm-usage")
-
-        options = Options()
-        for option in set(webdriver_options):
-            options.add_argument(option)
+        self.options = _get_webdriver_system_options(webdriver_options)
 
         if IN_COLAB:
             try:
-                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
+                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=self.options)
             except WebDriverException as exc:
                 raise NodeError(
                     """
@@ -162,7 +148,7 @@ class Crawler(BaseComponent):
                 ) from exc
         else:
             logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=self.options)
         self.urls = urls
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
@@ -499,6 +485,7 @@ def _write_file(
 
 def _crawl_urls(
     driver: webdriver.Chrome,
+    webdriver_options: Optional[List[str]],
     urls: List[str],
     extract_hidden_text: bool,
     base_urls: Optional[List[str]] = None,
@@ -509,6 +496,9 @@ def _crawl_urls(
     crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     file_path_meta_field_name: Optional[str] = None,
 ) -> List[Document]:
+    # if using multiprocessing we need to create a Chrome driver per process
+    driver = driver if driver else _create_webdriver(webdriver_options)
+
     documents: List[Document] = []
     if base_urls and len(base_urls) != len(urls):
         logger.error("Must have the same number of base urls and urls to search.")
@@ -541,3 +531,38 @@ def _crawl_urls(
     logger.debug("Crawler results: %s Documents", len(documents))
 
     return documents
+
+
+def _create_webdriver(webdriver_options: Options) -> webdriver.Chrome:
+    """
+    Create a webdriver Chrome driver with certain options
+    :param: Options for a webdriver.Chrome
+    :return: A webdriver Chrome driver
+    """
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=webdriver_options)
+
+
+def _get_webdriver_system_options(webdriver_options: Optional[List[str]] = None) -> Options:
+    """
+    Method to get the correct webdriver options from the system environment
+    :param webdriver_options: Optional webdriver options aside from defaults
+    :return: Options for a webdriver.Chrome
+    """
+    IN_COLAB = "google.colab" in sys.modules
+    IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
+    IN_WINDOWS = sys.platform in ["win32", "cygwin"]
+    IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
+
+    if webdriver_options is None:
+        webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
+    webdriver_options.append("--headless")
+    if IS_ROOT or IN_WINDOWS:
+        webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+    if IN_COLAB or IN_AZUREML:
+        webdriver_options.append("--disable-dev-shm-usage")
+
+    options = Options()
+    for option in set(webdriver_options):
+        options.add_argument(option)
+
+    return options
