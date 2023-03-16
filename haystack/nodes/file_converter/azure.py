@@ -211,7 +211,10 @@ class AzureConverter(BaseConverter):
     def _convert_tables(
         self, result: AnalyzeResult, meta: Optional[Dict[str, Any]], id_hash_keys: Optional[List[str]] = None
     ) -> List[Document]:
-        converted_tables = []
+        converted_tables: List[Document] = []
+
+        if not result.tables:
+            return converted_tables
 
         for table in result.tables:
             # Initialize table with empty cells
@@ -233,8 +236,10 @@ class AzureConverter(BaseConverter):
                     table_list.pop(0)
                     continue
 
-                for c in range(cell.column_span):
-                    for r in range(cell.row_span):
+                column_span = cell.column_span if cell.column_span else 0
+                for c in range(column_span):
+                    row_span = cell.row_span if cell.row_span else 0
+                    for r in range(row_span):
                         if (
                             self.merge_multiple_column_headers
                             and cell.kind == "columnHeader"
@@ -251,24 +256,39 @@ class AzureConverter(BaseConverter):
                 del table_list[row_idx]
 
             # Get preceding context of table
-            table_beginning_page = next(
-                page for page in result.pages if page.page_number == table.bounding_regions[0].page_number
-            )
+            if table.bounding_regions:
+                table_beginning_page = next(
+                    page for page in result.pages if page.page_number == table.bounding_regions[0].page_number
+                )
+            else:
+                table_beginning_page = None
             table_start_offset = table.spans[0].offset
-            preceding_lines = [
-                line.content for line in table_beginning_page.lines if line.spans[0].offset < table_start_offset
-            ]
+            if table_beginning_page and table_beginning_page.lines:
+                preceding_lines = [
+                    line.content for line in table_beginning_page.lines if line.spans[0].offset < table_start_offset
+                ]
+            else:
+                preceding_lines = []
             preceding_context = "\n".join(preceding_lines[-self.preceding_context_len :]) + f"\n{caption}"
             preceding_context = preceding_context.strip()
 
             # Get following context
-            table_end_page = (
-                table_beginning_page
-                if len(table.bounding_regions) == 1
-                else next(page for page in result.pages if page.page_number == table.bounding_regions[-1].page_number)
-            )
+            if table.bounding_regions and len(table.bounding_regions) == 1:
+                table_end_page = table_beginning_page
+            elif table.bounding_regions:
+                table_end_page = next(
+                    page for page in result.pages if page.page_number == table.bounding_regions[-1].page_number
+                )
+            else:
+                table_end_page = None
+
             table_end_offset = table_start_offset + table.spans[0].length
-            following_lines = [line.content for line in table_end_page.lines if line.spans[0].offset > table_end_offset]
+            if table_end_page and table_end_page.lines:
+                following_lines = [
+                    line.content for line in table_end_page.lines if line.spans[0].offset > table_end_offset
+                ]
+            else:
+                following_lines = []
             following_context = "\n".join(following_lines[: self.following_context_len])
 
             table_meta = copy.deepcopy(meta)
@@ -279,7 +299,7 @@ class AzureConverter(BaseConverter):
             else:
                 table_meta = {"preceding_context": preceding_context, "following_context": following_context}
 
-            if self.add_page_number:
+            if self.add_page_number and table.bounding_regions:
                 table_meta["page"] = table.bounding_regions[0].page_number
 
             table_df = pd.DataFrame(columns=table_list[0], data=table_list[1:])
@@ -294,16 +314,20 @@ class AzureConverter(BaseConverter):
     ) -> Document:
         text = ""
         table_spans_by_page = defaultdict(list)
-        for table in result.tables:
+        tables = result.tables if result.tables else []
+        for table in tables:
+            if not table.bounding_regions:
+                continue
             table_spans_by_page[table.bounding_regions[0].page_number].append(table.spans[0])
 
         for page in result.pages:
             tables_on_page = table_spans_by_page[page.page_number]
-            for line in page.lines:
+            lines = page.lines if page.lines else []
+            for line in lines:
                 in_table = False
                 # Check if line is part of a table
-                for table in tables_on_page:
-                    if table.offset <= line.spans[0].offset <= table.offset + table.length:
+                for t in tables_on_page:
+                    if t.offset <= line.spans[0].offset <= t.offset + t.length:
                         in_table = True
                         break
                 if in_table:
