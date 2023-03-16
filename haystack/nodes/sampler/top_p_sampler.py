@@ -44,9 +44,9 @@ class TopPSampler(BaseSampler):
         self,
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         model_version: Optional[str] = None,
-        top_p: Optional[float] = 0.999,
+        top_p: Optional[float] = 1.0,
         strict: Optional[bool] = False,
-        top_score_name: Optional[str] = "score",
+        top_score_field: Optional[str] = "score",
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
@@ -57,8 +57,10 @@ class TopPSampler(BaseSampler):
         :param model_name_or_path: Path to a pretrained sentence-transformers model.
         :param model_version: The version of the model to use. Can be a tag name, a branch name, or a commit hash.
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
-        :param strict: If `top_` is set to a low value and resulted in no documents, then setting `strict` to `False` ensures at least one document is returned.
-        :param top_score_name: The name of the score that should be used to insert the scores into the meta field of the document.
+        :param strict: If `top_p` is set to a low value and sampler returned no documents, then setting `strict` to
+        `False` ensures at least one document is returned. If `strict` is set to `True`, then no documents are returned.
+        :param top_score_field: The name of the score that should be used to insert the scores into the meta field
+        of the document.
         :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
         :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
         :param use_auth_token: The token to use as the HTTP bearer authorization for remote files.
@@ -67,15 +69,15 @@ class TopPSampler(BaseSampler):
         super().__init__()
 
         self.top_p = top_p
-        self.top_score_name = top_score_name
+        self.top_score_field = top_score_field
         self.strict = strict
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.cross_encoder = CrossEncoder(model_name_or_path, device=str(self.devices[0]))
 
     def predict(self, query: str, documents: List[Document], top_p: Optional[float] = None) -> List[Document]:
         """
-        Returns a list of documents filtered using `top_p`, based on the similarity scores between the query and the documents
-        whose cumulative probability is less than or equal to `top_p`.
+        Returns a list of documents filtered using `top_p`, based on the similarity scores between the query and the
+        documents whose cumulative probability is less than or equal to `top_p`.
 
         :param query: Query string.
         :param documents: List of Document.
@@ -117,9 +119,9 @@ class TopPSampler(BaseSampler):
             selected_docs = [documents[highest_prob_indices[0]]]
 
         # include prob scores in the results
-        if self.top_score_name:
+        if self.top_score_field:
             for idx, doc in enumerate(selected_docs):
-                doc.meta[self.top_score_name] = "{:.2f}".format(sorted_probs[idx])
+                doc.meta[self.top_score_field] = str(sorted_probs[idx])
         return selected_docs
 
     def predict_batch(
@@ -138,7 +140,8 @@ class TopPSampler(BaseSampler):
               supplied query.
 
 
-        - If you provide a list of multiple queries, provide a list of lists of Documents. Each list of Documents is re-ranked based on its corresponding query.
+        - If you provide a list of multiple queries, provide a list of lists of Documents. Each list of Documents
+        is re-ranked based on its corresponding query.
         """
         if top_p is None:
             top_p = self.top_p
@@ -155,5 +158,6 @@ class TopPSampler(BaseSampler):
             return [self.predict(query, docs, top_p) for query, docs in zip(queries, documents)]
 
         raise ValueError(
-            "The input is not valid. Check the documentation of this method for information about valid input types."
+            f"The input is not valid. Provided were the following queries {queries} and documents {documents}"
+            f"Check the method documentation regarding the valid parameters and their types."
         )

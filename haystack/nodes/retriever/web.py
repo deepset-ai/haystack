@@ -30,6 +30,22 @@ class SearchResult:
 
 
 class WebRetriever(BaseRetriever):
+    """
+    WebRetriever is a retriever allowing users to query the web for relevant documents.
+
+    WebRetriever operates in two modes:
+
+    - snippet mode: WebRetriever will return a list of Documents, each Document being a snippet of the search result
+    - document mode: WebRetriever will return a list of Documents, each Document being a full HTML stripped document
+    of the search result
+
+    In document mode, given a user query passed via the run method, SearchEngine first fetches the top p query relevant
+    URL results, which are in turn downloaded and processed. The processing involves stripping irrelevant HTML tags and
+    producing clean raw text wrapped in Document(s). WebRetriever then splits raw text into paragraph-long Documents of
+    the desired preprocessor specified size.
+
+    """
+
     def __init__(
         self,
         web_search: WebSearch,
@@ -39,11 +55,20 @@ class WebRetriever(BaseRetriever):
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
         cache_headers: Optional[Dict[str, str]] = None,
-        cache_time: int = 2 * 24 * 60 * 60,
+        cache_time: int = 1 * 24 * 60 * 60,
         apply_sampler_to_processed_docs: Optional[bool] = True,
     ):
         """
-        Collect complete documents from the web using the links from the WebSearch node.
+        :param web_search: WebSearch node.
+        :param top_p: Top p documents to be returned by the retriever. If None, all documents are returned.
+        :param mode: Whether to return snippets or full documents.
+        :param preprocessor: Preprocessor to be used to split documents into paragraphs.
+        :param cache_document_store: DocumentStore to be used to cache search results.
+        :param cache_index: Index name to be used to cache search results.
+        :param cache_headers: Headers to be used to cache search results.
+        :param cache_time: Time in seconds to cache search results. Defaults to 24 hours.
+        :param apply_sampler_to_processed_docs: Whether to apply sampler to processed documents. If True, the sampler
+        will be applied to the processed documents.
         """
         super().__init__()
         self.web_search = web_search
@@ -126,7 +151,7 @@ class WebRetriever(BaseRetriever):
     def retrieve(  # type: ignore[override]
         self,
         query: str,
-        top_p: Optional[int] = None,
+        top_p: Optional[float] = None,
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
@@ -139,11 +164,12 @@ class WebRetriever(BaseRetriever):
         You can then store the documents in a DocumentStore for later use. They can be cached in a DocumentStore to improve
         retrieval time.
         :param query: The query string.
-        :top_p: The top-p sampling parameter that helps to strike a balance between the coherence and diversity of the generated text. If you need factual answers, set it to a lower value, like `0`. If set to `None`, the default value is used.
-        :index_name: The index name to save the documents to.
-        :duplicate_documents: Determines how to handle documents with the same ID. If set to "skip", it skips documents with the same ID. If set to "overwrite", it overwrites documents with the same ID. If set to "fail", it raises an exception.
-        use_cache: If set to `True`, it caches the results in the DocumentStore.
-        cache_time: The time limit in seconds to check the cache. The default is 24 hours.
+        :param top_p: The top-p sampling parameter to be used to sample documents. If None, the default value is used.
+        :param preprocessor: The preprocessor to be used to split documents into paragraphs.
+        :param cache_document_store: The DocumentStore to cache the documents to.
+        :param cache_index: The index name to save the documents to.
+        :param cache_headers: The headers to save the documents to.
+        :param cache_time: The time limit in seconds to check the cache. The default is 24 hours.
         """
 
         preprocessor = preprocessor or self.preprocessor
@@ -268,7 +294,8 @@ class WebRetriever(BaseRetriever):
             cached = self._save_cache(query_norm, extracted_docs, cache_index=cache_index, cache_headers=cache_headers)
             if not cached:
                 logger.warning(
-                    "Could not save documents to the DocumentStore cache. Check your document store configuration."
+                    "Could not save retrieved documents to the DocumentStore cache. "
+                    "Check your document store configuration."
                 )
 
         processed_docs = (

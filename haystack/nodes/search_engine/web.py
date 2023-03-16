@@ -8,8 +8,15 @@ from haystack.nodes.search_engine.base import SearchEngine
 
 class WebSearch(BaseComponent):
     """
-    WebSearch queries a search engine and retrieves results. It can use various search engine providers, for example SerperDev,
-    SerpAPI, and the like.
+    WebSearch queries a search engine and retrieves results as a list of Documents. WebSearch abstracts away the details
+    of the underlying search engine provider, provides common interface for all providers and allows use of various
+    search engines.
+
+    The following search engines providers(bridges) are currently supported:
+    - SerperDev (default)
+    - SerpAPI
+    - BingAPI
+
     """
 
     outgoing_edges = 1
@@ -17,7 +24,8 @@ class WebSearch(BaseComponent):
     def __init__(self, api_key: str, search_engine_provider: Union[str, SearchEngine] = "SerperDev", **kwargs):
         """
         :param api_key: API key for the search engine provider.
-        :param search_engine_provider: Name of the search engine provider, for example "SerperDev", "SerpAPI".
+        :param search_engine_provider: Name of the search engine provider class, see providers.py for a list of
+        supported providers.
         :param kwargs: Additional parameters to pass to the search engine provider.
         """
         super().__init__()
@@ -49,6 +57,12 @@ class WebSearch(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
+        """
+        Search the search engine for the given query and return the results. Only the query parameter is used.
+        :param query: The query to search for
+
+        :return: List of search results as documents.
+        """
         return {"documents": self.search_engine.search(query)}, "output_1"
 
     def run_batch(
@@ -61,13 +75,21 @@ class WebSearch(BaseComponent):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
-        pass
+        results = []
+        if isinstance(queries, str):
+            queries = [queries]
+        elif not isinstance(queries, list):
+            raise ValueError("NeuralWebSearch run_batch requires the `queries` parameter to be Union[str, List[str]]")
+        for query in queries:
+            results.append(self.search_engine.search(query))
+        return {"documents": results}, "output_1"
 
 
 class NeuralWebSearch(BaseComponent):
     """
     NeuralWebSearch queries a search engine, retrieves the results, and uses PromptNode along with PromptTemplate
-    to extract the final answer from the retrieved results, effectively building a QA system on top of a search engine.
+    to extract the final answer from the retrieved results, effectively building an extractive QA system on top
+    of provided WebSearch component.
     """
 
     outgoing_edges = 1
@@ -79,7 +101,7 @@ class NeuralWebSearch(BaseComponent):
         prompt_template: PromptTemplate,
         prepare_template_params_fn: Callable[[List[Document], Dict[str, Any]], Dict[str, str]],
         extract_final_answer_fn: Callable[[str], str],
-        top_p: float = 0.98,
+        top_p: float = 0.95,
         **kwargs,
     ):
         """
@@ -97,6 +119,15 @@ class NeuralWebSearch(BaseComponent):
         self.prepare_template_params_fn = prepare_template_params_fn
         self.extract_final_answer_fn = extract_final_answer_fn
 
+    def query_and_extract_answer(self, query: str, documents: List[Document]):
+        result, _ = self.websearch.run(query=query)
+        doc_hits: List[Document] = result["documents"]
+        doc_hits = self.sampler.predict(query=query, documents=doc_hits)
+        prompt_kwargs = self.prepare_template_params_fn(doc_hits, {"query": query, "documents": documents})
+        response = self.prompt_node.prompt(self.prompt_template, **prompt_kwargs)
+        final_answer = self.extract_final_answer_fn(next(iter(response)))
+        return final_answer
+
     def run(
         self,
         query: Optional[str] = None,
@@ -105,19 +136,13 @@ class NeuralWebSearch(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
+        """
+        Search the search engine for the given query and return the results. Only the query parameter is used.
+        """
         if not query:
             raise ValueError("NeuralWebSearch requires the `query` parameter.")
 
-        result, _ = self.websearch.run(query=query)
-
-        doc_hits: List[Document] = result["documents"]
-        doc_hits = self.sampler.predict(query=query, documents=doc_hits)
-
-        prompt_kwargs = self.prepare_template_params_fn(doc_hits, {"query": query, "documents": documents})
-
-        response = self.prompt_node.prompt(self.prompt_template, **prompt_kwargs)
-        final_answer = self.extract_final_answer_fn(next(iter(response)))
-
+        final_answer = self.query_and_extract_answer(query, documents)
         return {"output": final_answer}, "output_1"
 
     def run_batch(
@@ -129,5 +154,15 @@ class NeuralWebSearch(BaseComponent):
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
-    ):
-        pass
+    ) -> Tuple[Dict, str]:
+        """
+        Search the search engine for the given query and return the results. Only the query parameter is used.
+        """
+        results = []
+        if isinstance(queries, str):
+            queries = [queries]
+        elif not isinstance(queries, list):
+            raise ValueError("NeuralWebSearch run_batch requires the `queries` parameter to be Union[str, List[str]]")
+        for query in queries:
+            results.append(self.query_and_extract_answer(query=query))
+        return {"output": results}, "output_1"

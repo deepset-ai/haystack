@@ -10,7 +10,7 @@ class SearchEngine(ABC):
     """
 
     @abstractmethod
-    def search(self, query, **kwargs) -> List[Document]:
+    def search(self, query: str, **kwargs) -> List[Document]:
         """
         Search the search engine for the given query and return the results.
         :param query: The query to search for.

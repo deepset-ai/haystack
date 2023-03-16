@@ -10,6 +10,7 @@ from haystack.schema import Document
     not os.environ.get("SERPERDEV_API_KEY", None),
     reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
 )
+@pytest.mark.integration
 def test_web_search():
     ws = WebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None))
     result, _ = ws.run(query="Who is the boyfriend of Olivia Wilde?")
@@ -22,6 +23,7 @@ def test_web_search():
     not os.environ.get("SERPERDEV_API_KEY", None),
     reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
 )
+@pytest.mark.integration
 def test_web_search_with_site_keyword():
     ws = WebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None))
     result, _ = ws.run(query='site:lifewire.com OR site:nasa.gov "electric vehicles"')

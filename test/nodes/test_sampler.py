@@ -35,6 +35,7 @@ docs = [
 ]
 
 
+@pytest.mark.unit
 def test_top_p_sampling(top_p_sampler):
     query = "What is the most important religious learning from the Bible?"
     results = top_p_sampler.predict(query=query, documents=docs, top_p=0.98)
@@ -43,6 +44,7 @@ def test_top_p_sampling(top_p_sampler):
     assert results[1].id == "5"
 
 
+@pytest.mark.unit
 def test_top_p_sampling_at_least_one_result(top_p_sampler):
     query = "What is the most important building in King's Landing that has a religious background?"
     results = top_p_sampler.predict(query=query, documents=docs, top_p=0.9)
@@ -63,12 +65,11 @@ def test_top_p_sampling_at_least_one_result(top_p_sampler):
     not os.environ.get("SERPERDEV_API_KEY", None),
     reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
 )
-def test_sampler_pipeline():
+def test_sampler_pipeline(top_p_sampler):
     ws = WebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None))
-    sampler = TopPSampler()
     pipe = Pipeline()
     pipe.add_node(component=ws, name="ws", inputs=["Query"])
-    pipe.add_node(component=sampler, name="sampler", inputs=["ws"])
+    pipe.add_node(component=top_p_sampler, name="sampler", inputs=["ws"])
     result = pipe.run(query="Who is the boyfriend of Olivia Wilde?")
     assert "documents" in result
     assert len(result["documents"]) > 0
@@ -80,13 +81,12 @@ def test_sampler_pipeline():
     not os.environ.get("SERPERDEV_API_KEY", None),
     reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
 )
-def test_sampler_with_ranker_pipeline():
+def test_sampler_with_ranker_pipeline(top_p_sampler):
     ws = WebSearch(api_key=os.environ.get("SERPERDEV_API_KEY", None))
-    sampler = TopPSampler()
     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
     pipe = Pipeline()
     pipe.add_node(component=ws, name="ws", inputs=["Query"])
-    pipe.add_node(component=sampler, name="sampler", inputs=["ws"])
+    pipe.add_node(component=top_p_sampler, name="sampler", inputs=["ws"])
     pipe.add_node(component=ranker, name="ranker", inputs=["sampler"])
     result = pipe.run(query="Who is the boyfriend of Olivia Wilde?")
     assert "documents" in result
