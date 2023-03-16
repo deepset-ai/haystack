@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import time
+import joblib
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
@@ -58,6 +59,7 @@ class Crawler(BaseComponent):
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
+        num_processes: Optional[int] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -99,6 +101,7 @@ class Crawler(BaseComponent):
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
             If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+        :param num_processes: Optional ability to spawn more than 1 process when downloading urls. This will significantly increase memory usage as each process spawns a separate Chrome driver.
         """
         super().__init__()
 
@@ -159,6 +162,7 @@ class Crawler(BaseComponent):
         self.crawler_naming_function = crawler_naming_function
         self.output_dir = output_dir
         self.file_path_meta_field_name = file_path_meta_field_name
+        self.num_processes = num_processes or 1
 
     def __del__(self):
         self.driver.quit()
@@ -175,6 +179,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        num_processes: Optional[int] = None,
     ) -> List[Document]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -205,6 +210,7 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param num_processes: Optional ability to spawn more than 1 process when downloading urls. This will significantly increase memory usage as each process spawns a separate Chrome driver.
 
         :return: List of Documents that were created during crawling
         """
@@ -229,6 +235,8 @@ class Crawler(BaseComponent):
             file_path_meta_field_name = self.file_path_meta_field_name
         if crawler_naming_function is None:
             crawler_naming_function = self.crawler_naming_function
+        if num_processes is None:
+            num_processes = self.num_processes
 
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -273,17 +281,34 @@ class Crawler(BaseComponent):
                 urls_to_search.extend(sub_links[url_] + [url_])
 
         if urls_to_search:
-            documents += _crawl_urls(
-                urls=urls_to_search,
-                base_urls=base_urls,
-                extract_hidden_text=extract_hidden_text,
-                loading_wait_time=loading_wait_time,
-                id_hash_keys=id_hash_keys,
-                output_dir=output_dir,
-                overwrite_existing_files=overwrite_existing_files,
-                file_path_meta_field_name=file_path_meta_field_name,
-                crawler_naming_function=crawler_naming_function,
-            )
+            if 1 < num_processes:
+                delayed_funcs = [
+                    joblib.delayed(_crawl_urls)(
+                        urls=[_url],
+                        base_urls=[_base_url],
+                        extract_hidden_text=extract_hidden_text,
+                        loading_wait_time=loading_wait_time,
+                        id_hash_keys=id_hash_keys,
+                        output_dir=output_dir,
+                        overwrite_existing_files=overwrite_existing_files,
+                        file_path_meta_field_name=file_path_meta_field_name,
+                        crawler_naming_function=crawler_naming_function,
+                    )
+                    for _url, _base_url in zip(urls, base_urls)
+                ]
+                documents += joblib.Parallel(n_jobs=num_processes, backend="loky", batch_size="auto")(delayed_funcs)
+            else:
+                documents += _crawl_urls(
+                    urls=urls_to_search,
+                    base_urls=base_urls,
+                    extract_hidden_text=extract_hidden_text,
+                    loading_wait_time=loading_wait_time,
+                    id_hash_keys=id_hash_keys,
+                    output_dir=output_dir,
+                    overwrite_existing_files=overwrite_existing_files,
+                    file_path_meta_field_name=file_path_meta_field_name,
+                    crawler_naming_function=crawler_naming_function,
+                )
 
         return documents
 
@@ -299,6 +324,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         file_path_meta_field_name: Optional[str] = None,
+        num_processes: Optional[int] = None,
     ) -> Tuple[Dict[str, List[Document]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -328,6 +354,7 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param num_processes: Optional ability to spawn more than 1 process when downloading urls. This will significantly increase memory usage as each process spawns a separate Chrome driver.
 
         :return: Tuple({"documents": List of Documents, ...}, Name of output edge)
         """
@@ -343,6 +370,7 @@ class Crawler(BaseComponent):
             id_hash_keys=id_hash_keys,
             file_path_meta_field_name=file_path_meta_field_name,
             crawler_naming_function=crawler_naming_function,
+            num_processes=num_processes,
         )
         results = {"documents": documents}
 
@@ -360,6 +388,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         file_path_meta_field_name: Optional[str] = None,
+        num_processes: Optional[int] = None,
     ):
         return self.run(
             output_dir=output_dir,
@@ -372,6 +401,7 @@ class Crawler(BaseComponent):
             loading_wait_time=loading_wait_time,
             crawler_naming_function=crawler_naming_function,
             file_path_meta_field_name=file_path_meta_field_name,
+            num_processes=num_processes,
         )
 
     @staticmethod
