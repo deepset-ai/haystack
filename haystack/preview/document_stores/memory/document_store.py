@@ -116,7 +116,14 @@ class MemoryDocumentStore:
 
     def bm25_retrieval(self, query: str, filters: Dict[str, Any], top_k: int = 5) -> List[Document]:
         """
-        Performs BM25 retrieval using rank_bm25.
+        Performs BM25 retrieval using `rank_bm25`.
+
+        :param query: the query, as a string
+        :param filters: perform retrieval only on the subset defined by this filter
+        :param top_k: how many hits to return. Note that it might return less than top_k if the store
+            contains less than top_k documents, or the filters returnes less than top_k documents.
+        :returns: a list of documents in order of relevance. The documents have the score field populated
+            with the value computed by bm25 against the given query.
         """
         if not argsort:
             raise ImportError(
@@ -153,12 +160,11 @@ class MemoryDocumentStore:
                 returned_docs += 1
                 current_position += 1
 
-    def _embedding_retrieval(
+    def embedding_retrieval(
         self,
         queries: List[ndarray],
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
-        use_bm25: bool = True,
         similarity: str = "dot_product",
         scoring_batch_size: int = 500000,
         scale_score: bool = True,
@@ -168,56 +174,56 @@ class MemoryDocumentStore:
         """
         pass
 
-    #     results: Dict[str, List[Document]] = {}
-    #     for query in queries:
-    #         if query is None or not query.content:
-    #             logger.info(
-    #                 "You tried to perform retrieval on an empty query (%s). No documents returned for it.", query
-    #             )
-    #             results[query] = []
-    #             continue
-    #         if query.embedding is None:
-    #             raise MissingEmbeddingError(
-    #                 "You tried to perform retrieval by embedding similarity on a query without embedding (%s). "
-    #                 "Please compute the embeddings for all your queries before using this method.",
-    #                 query,
-    #             )
+        # results: Dict[str, List[Document]] = {}
+        # for query in queries:
+        #     if query is None or not query.content:
+        #         logger.info(
+        #             "You tried to perform retrieval on an empty query (%s). No documents returned for it.", query
+        #         )
+        #         results[query] = []
+        #         continue
+        #     if query.embedding is None:
+        #         raise MissingEmbeddingError(
+        #             "You tried to perform retrieval by embedding similarity on a query without embedding (%s). "
+        #             "Please compute the embeddings for all your queries before using this method.",
+        #             query,
+        #         )
 
-    #         filtered_documents = self.document_store.get_items(filters=filters)
-    #         try:
-    #             ids, embeddings = zip(*[(doc["id"], doc["embedding"]) for doc in filtered_documents])
-    #         except KeyError:
-    #             # FIXME make it nodeable
-    #             raise MissingEmbeddingError(
-    #                 "Some of the documents don't have embeddings. Use the Embedder to compute them."
-    #             )
+        #     filtered_documents = self.document_store.get_items(filters=filters)
+        #     try:
+        #         ids, embeddings = zip(*[(doc["id"], doc["embedding"]) for doc in filtered_documents])
+        #     except KeyError:
+        #         # FIXME make it nodeable
+        #         raise MissingEmbeddingError(
+        #             "Some of the documents don't have embeddings. Use the Embedder to compute them."
+        #         )
 
-    #         # At this stage the iterable gets consumed.
-    #         if self.device and self.device.type == "cuda":
-    #             scores = get_scores_torch(
-    #                 query=query.embedding,
-    #                 documents=embeddings,
-    #                 similarity=similarity,
-    #                 batch_size=batch_size,
-    #                 device=self.device,
-    #             )
-    #         else:
-    #             embeddings = np.array(embeddings)
-    #             scores = get_scores_numpy(query.embedding, embeddings, similarity=similarity)
+        #     # At this stage the iterable gets consumed.
+        #     if self.device and self.device.type == "cuda":
+        #         scores = get_scores_torch(
+        #             query=query.embedding,
+        #             documents=embeddings,
+        #             similarity=similarity,
+        #             batch_size=batch_size,
+        #             device=self.device,
+        #         )
+        #     else:
+        #         embeddings = np.array(embeddings)
+        #         scores = get_scores_numpy(query.embedding, embeddings, similarity=similarity)
 
-    #         top_k_ids = sorted(list(zip(ids, scores)), key=lambda x: x[1] if x[1] is not None else 0.0, reverse=True)[
-    #             :top_k
-    #         ]
+        #     top_k_ids = sorted(list(zip(ids, scores)), key=lambda x: x[1] if x[1] is not None else 0.0, reverse=True)[
+        #         :top_k
+        #     ]
 
-    #         relevant_documents = []
-    #         for id, score in top_k_ids:
-    #             document_data = self.document_store.get_item(id=id)
-    #             if scale_score:
-    #                 score = scale_to_unit_interval(score, similarity)
-    #             document_data["score"] = score
-    #             document = TextDocument.from_dict(dictionary=document_data)
-    #             relevant_documents.append(document)
+        #     relevant_documents = []
+        #     for id, score in top_k_ids:
+        #         document_data = self.document_store.get_item(id=id)
+        #         if scale_score:
+        #             score = scale_to_unit_interval(score, similarity)
+        #         document_data["score"] = score
+        #         document = TextDocument.from_dict(dictionary=document_data)
+        #         relevant_documents.append(document)
 
-    #         results[query] = relevant_documents
+        #     results[query] = relevant_documents
 
-    #     return results
+        # return results
