@@ -484,6 +484,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="question-answering-per-document",
             prompt_text="Given the context please answer the question. Context: {documents}; Question: "
             "{query}; Answer:",
+            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
         ),
         PromptTemplate(
             name="question-answering-with-references",
@@ -505,17 +506,20 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
         PromptTemplate(
             name="question-generation",
             prompt_text="Given the context please generate a question. Context: {documents}; Question:",
+            output_shapers=[Shaper(func="rename", outputs=["query"], inputs={"value": "results"})],
         ),
         PromptTemplate(
             name="conditioned-question-generation",
             prompt_text="Please come up with a question for the given context and the answer. "
             "Context: {documents}; Answer: {answers}; Question:",
+            output_shapers=[Shaper(func="rename", outputs=["query"], inputs={"value": "results"})],
         ),
         PromptTemplate(name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
         PromptTemplate(
             name="question-answering-check",
             prompt_text="Does the following context contain the answer to the question? "
             "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
+            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
         ),
         PromptTemplate(
             name="sentiment-analysis",
@@ -526,6 +530,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="multiple-choice-question-answering",
             prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
             "Options: {options}; Answer:",
+            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
         ),
         PromptTemplate(
             name="topic-classification",
@@ -714,10 +719,11 @@ class PromptNode(BaseComponent):
                 prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
-                kwargs_copy["prompt"] = prompt
-                output = self.prompt_model.invoke(**kwargs_copy)
-                output = template_to_fill.post_process(output, **kwargs_copy)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
                 results.extend(output)
+
+            kwargs["prompts"] = prompt_collector
+            results = template_to_fill.post_process(results, **kwargs)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
@@ -866,6 +872,7 @@ class PromptNode(BaseComponent):
         output_variable = self.output_variable or prompt_template.output_variable or "results"
 
         invocation_context[output_variable] = results
+        invocation_context["prompts"] = prompt_collector
         final_result: Dict[str, Any] = {
             output_variable: results,
             "invocation_context": invocation_context,
@@ -908,8 +915,8 @@ class PromptNode(BaseComponent):
         ):
             results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
             all_results[output_variable].append(results[output_variable])
-            all_results["invocation_contexts"].append(all_results["invocation_contexts"])
-            all_results["_debug"].append(all_results["_debug"])
+            all_results["invocation_contexts"].append(results["invocation_context"])
+            all_results["_debug"].append(results["_debug"])
         return all_results, "output_1"
 
     def _prepare_model_kwargs(self):

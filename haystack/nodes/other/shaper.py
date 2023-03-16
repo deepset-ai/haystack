@@ -253,7 +253,7 @@ def join_documents_to_string(
 
 def strings_to_answers(
     strings: List[str],
-    prompt: Optional[str] = None,
+    prompts: Optional[List[str]] = None,
     documents: Optional[List[Document]] = None,
     reference_pattern: Optional[str] = None,
     reference_mode: Literal["index", "id", "meta"] = "index",
@@ -264,7 +264,7 @@ def strings_to_answers(
     Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the strings.
 
     :param strings: The list of strings to transform.
-    :param prompt: The prompt used to generate the answers.
+    :param prompts: The prompts used to generate the answers.
     :param documents: The documents used to generate the answers.
     :param reference_pattern: The regex pattern to use for parsing the document references.
         Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
@@ -303,6 +303,68 @@ def strings_to_answers(
         ]
     ```
     """
+    if prompts:
+        if len(prompts) == 1:
+            # one prompt for all strings/documents
+            documents_per_string: List[Optional[List[Document]]] = [documents] * len(strings)
+            prompt_per_string: List[Optional[str]] = [prompts[0]] * len(strings)
+        elif len(prompts) > 1 and len(strings) % len(prompts) == 0:
+            # one prompt per string/document
+            if documents is not None and len(documents) != len(prompts):
+                raise ValueError("The number of documents must match the number of prompts")
+            string_multiplier = len(strings) // len(prompts)
+            documents_per_string = (
+                [[doc] for doc in documents for _ in range(string_multiplier)] if documents else [None] * len(strings)
+            )
+            prompt_per_string = [prompt for prompt in prompts for _ in range(string_multiplier)]
+        else:
+            raise ValueError("The number of prompts must be one or a multiple of the number of strings")
+    else:
+        documents_per_string = [documents] * len(strings)
+        prompt_per_string = [None] * len(strings)
+
+    answers = []
+    for string, prompt, _documents in zip(strings, prompt_per_string, documents_per_string):
+        answer = string_to_answer(
+            string=string,
+            prompt=prompt,
+            documents=_documents,
+            reference_pattern=reference_pattern,
+            reference_mode=reference_mode,
+            reference_meta_field=reference_meta_field,
+        )
+        answers.append(answer)
+    return answers
+
+
+def string_to_answer(
+    string: str,
+    prompt: Optional[str],
+    documents: Optional[List[Document]],
+    reference_pattern: Optional[str],
+    reference_mode: Literal["index", "id", "meta"],
+    reference_meta_field: Optional[str] = None,
+) -> Answer:
+    """
+    Transforms a string into an Answer.
+    Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the string.
+
+    :param string: The string to transform.
+    :param prompt: The prompt used to generate the answer.
+    :param documents: The documents used to generate the answer.
+    :param reference_pattern: The regex pattern to use for parsing the document references.
+        Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
+        If None, no parsing is done and all documents are referenced.
+    :param reference_mode: The mode used to reference documents. Supported modes are:
+        - index: the document references are the one-based index of the document in the list of documents.
+            Example: "this is an answer[1]" will reference the first document in the list of documents.
+        - id: the document references are the document ids.
+            Example: "this is an answer[123]" will reference the document with id "123".
+        - meta: the document references are the value of a metadata field of the document.
+            Example: "this is an answer[123]" will reference the document with the value "123" in the metadata field specified by reference_meta_field.
+    :param reference_meta_field: The name of the metadata field to use for document references in reference_mode "meta".
+    :return: The answer
+    """
     if reference_mode == "index":
         candidates = {str(idx): doc.id for idx, doc in enumerate(documents, start=1)} if documents else {}
     elif reference_mode == "id":
@@ -318,12 +380,9 @@ def strings_to_answers(
     else:
         raise ValueError(f"Invalid document_id_mode: {reference_mode}")
 
-    answers = []
-    for string in strings:
-        document_ids = parse_references(string=string, reference_pattern=reference_pattern, candidates=candidates)
-        answer = Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
-        answers.append(answer)
-    return answers
+    document_ids = parse_references(string=string, reference_pattern=reference_pattern, candidates=candidates)
+    answer = Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
+    return answer
 
 
 def parse_references(

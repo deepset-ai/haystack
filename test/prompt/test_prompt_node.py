@@ -231,7 +231,7 @@ def test_template_selection(prompt_node):
         ["Berlin is the capital of Germany.", "Paris is the capital of France."],
         ["What is the capital of Germany?", "What is the capital of France"],
     )
-    assert r[0].casefold() == "berlin" and r[1].casefold() == "paris"
+    assert r[0].answer.casefold() == "berlin" and r[1].answer.casefold() == "paris"
 
 
 @pytest.mark.integration
@@ -402,7 +402,7 @@ def test_simple_pipeline(prompt_model):
 def test_complex_pipeline(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
-    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query")
+    node = PromptNode(prompt_model, default_prompt_template="question-generation")
     node2 = PromptNode(prompt_model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
@@ -410,7 +410,7 @@ def test_complex_pipeline(prompt_model):
     pipe.add_node(component=node2, name="prompt_node_2", inputs=["prompt_node"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
-    assert "berlin" in result["results"][0].casefold()
+    assert "berlin" in result["answers"][0].answer.casefold()
 
 
 @pytest.mark.integration
@@ -424,7 +424,7 @@ def test_simple_pipeline_with_topk(prompt_model):
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
-    assert len(result["results"]) == 2
+    assert len(result["query"]) == 2
 
 
 @pytest.mark.integration
@@ -523,7 +523,7 @@ def test_complex_pipeline_with_qa(prompt_model):
 @pytest.mark.integration
 def test_complex_pipeline_with_shared_model():
     model = PromptModel()
-    node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation", output_variable="query")
+    node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation")
     node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
@@ -531,7 +531,7 @@ def test_complex_pipeline_with_shared_model():
     pipe.add_node(component=node2, name="prompt_node_2", inputs=["prompt_node"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
-    assert result["results"][0] == "Berlin"
+    assert result["answers"][0].answer == "Berlin"
 
 
 @pytest.mark.integration
@@ -596,7 +596,6 @@ def test_complex_pipeline_yaml(tmp_path):
             - name: p1
               params:
                 default_prompt_template: question-generation
-                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -615,7 +614,7 @@ def test_complex_pipeline_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
     assert len(result["query"]) > 0
@@ -635,7 +634,6 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question-generation
-                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -655,7 +653,7 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
     assert len(result["query"]) > 0
@@ -704,7 +702,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
     assert len(result["query"]) > 0
@@ -785,7 +783,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
     assert len(result["query"]) > 0
@@ -854,7 +852,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is a city in Germany.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
     assert len(result["query"]) > 0
@@ -872,7 +870,6 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
             - name: p1
               params:
                 default_prompt_template: question-generation
-                output_variable: query
               type: PromptNode
             - name: p2
               params:

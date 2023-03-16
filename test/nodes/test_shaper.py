@@ -582,8 +582,8 @@ def test_strings_to_answers_simple():
 
 @pytest.mark.unit
 def test_strings_to_answers_with_prompt():
-    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses", "prompt": "prompt"}, outputs=["answers"])
-    results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"], "prompt": "test prompt"})
+    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
+    results, _ = shaper.run(invocation_context={"responses": ["first", "second", "third"], "prompts": ["test prompt"]})
     assert results["invocation_context"]["answers"] == [
         Answer(answer="first", type="generative", meta={"prompt": "test prompt"}),
         Answer(answer="second", type="generative", meta={"prompt": "test prompt"}),
@@ -593,9 +593,7 @@ def test_strings_to_answers_with_prompt():
 
 @pytest.mark.unit
 def test_strings_to_answers_with_documents():
-    shaper = Shaper(
-        func="strings_to_answers", inputs={"strings": "responses", "documents": "documents"}, outputs=["answers"]
-    )
+    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
     results, _ = shaper.run(
         invocation_context={
             "responses": ["first", "second", "third"],
@@ -606,6 +604,40 @@ def test_strings_to_answers_with_documents():
         Answer(answer="first", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
         Answer(answer="second", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
         Answer(answer="third", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_prompt_per_document():
+    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
+    results, _ = shaper.run(
+        invocation_context={
+            "responses": ["first", "second"],
+            "documents": [Document(id="123", content="test"), Document(id="456", content="test")],
+            "prompts": ["prompt1", "prompt2"],
+        }
+    )
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first", type="generative", meta={"prompt": "prompt1"}, document_ids=["123"]),
+        Answer(answer="second", type="generative", meta={"prompt": "prompt2"}, document_ids=["456"]),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_prompt_per_document_multiple_results():
+    shaper = Shaper(func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"])
+    results, _ = shaper.run(
+        invocation_context={
+            "responses": ["first", "second", "third", "fourth"],
+            "documents": [Document(id="123", content="test"), Document(id="456", content="test")],
+            "prompts": ["prompt1", "prompt2"],
+        }
+    )
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first", type="generative", meta={"prompt": "prompt1"}, document_ids=["123"]),
+        Answer(answer="second", type="generative", meta={"prompt": "prompt1"}, document_ids=["123"]),
+        Answer(answer="third", type="generative", meta={"prompt": "prompt2"}, document_ids=["456"]),
+        Answer(answer="fourth", type="generative", meta={"prompt": "prompt2"}, document_ids=["456"]),
     ]
 
 
@@ -716,7 +748,7 @@ def test_strings_to_answers_yaml(tmp_path):
 
 
 @pytest.mark.unit
-def test_strings_to_answers_with_reference_meta(tmp_path):
+def test_strings_to_answers_with_reference_meta_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -762,6 +794,84 @@ def test_strings_to_answers_with_reference_meta(tmp_path):
         Answer(answer="third[123.txt][456.txt]", type="generative", meta={"prompt": None}, document_ids=["123", "456"]),
         Answer(answer="fourth", type="generative", meta={"prompt": None}, document_ids=[]),
     ]
+
+
+@pytest.mark.integration
+def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+              - name: prompt_model
+                type: PromptModel
+
+              - name: prompt_template_raw_qa_per_document
+                type: PromptTemplate
+                params:
+                  name: raw-question-answering-per-document
+                  prompt_text: 'Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer:'
+
+              - name: prompt_node_raw_qa
+                type: PromptNode
+                params:
+                  model_name_or_path: prompt_model
+                  default_prompt_template: prompt_template_raw_qa_per_document
+                  top_k: 2
+
+              - name: prompt_node_question_generation
+                type: PromptNode
+                params:
+                  model_name_or_path: prompt_model
+                  default_prompt_template: question-generation
+
+              - name: shaper
+                type: Shaper
+                params:
+                  func: strings_to_answers
+                  inputs:
+                    strings: results
+                  outputs:
+                    - answers
+
+
+            pipelines:
+              - name: query
+                nodes:
+                  - name: prompt_node_question_generation
+                    inputs:
+                      - Query
+                  - name: prompt_node_raw_qa
+                    inputs:
+                      - prompt_node_question_generation
+                  - name: shaper
+                    inputs:
+                      - prompt_node_raw_qa
+            """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="What's Berlin like?",
+        documents=[
+            Document("Berlin is an amazing city.", id="123"),
+            Document("Berlin is a cool city in Germany.", id="456"),
+        ],
+    )
+    results = result["answers"]
+    assert len(results) == 4
+    assert any([True for r in results if "Berlin" in r.answer])
+    for answer in results[:2]:
+        assert answer.document_ids == ["123"]
+        assert (
+            answer.meta["prompt"]
+            == f"Given the context please answer the question. Context: Berlin is an amazing city.; Question: {result['query'][0]}; Answer:"
+        )
+    for answer in results[2:]:
+        assert answer.document_ids == ["456"]
+        assert (
+            answer.meta["prompt"]
+            == f"Given the context please answer the question. Context: Berlin is a cool city in Germany.; Question: {result['query'][1]}; Answer:"
+        )
 
 
 #
@@ -1252,16 +1362,6 @@ def test_with_prompt_node(tmp_path):
               - name: prompt_model
                 type: PromptModel
 
-              - name: shaper
-                type: Shaper
-                params:
-                  func: value_to_list
-                  inputs:
-                    value: query
-                    target_list: documents
-                  outputs:
-                    - questions
-
               - name: prompt_node
                 type: PromptNode
                 params:
@@ -1272,12 +1372,9 @@ def test_with_prompt_node(tmp_path):
             pipelines:
               - name: query
                 nodes:
-                  - name: shaper
-                    inputs:
-                      - Query
                   - name: prompt_node
                     inputs:
-                      - shaper
+                      - Query
             """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
@@ -1286,10 +1383,8 @@ def test_with_prompt_node(tmp_path):
         documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
     )
     assert len(result["answers"]) == 2
-    assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in result["answers"])
-
-    assert len(result["invocation_context"]) > 0
-    assert len(result["invocation_context"]["questions"]) == 2
+    raw_answers = [answer.answer for answer in result["answers"]]
+    assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in raw_answers)
 
 
 @pytest.mark.integration
@@ -1327,7 +1422,6 @@ def test_with_multiple_prompt_nodes(tmp_path):
               - name: prompt_node_third
                 type: PromptNode
                 params:
-                  output_variable: answers
                   model_name_or_path: google/flan-t5-small
                   default_prompt_template: question-answering-per-document
 
@@ -1355,7 +1449,7 @@ def test_with_multiple_prompt_nodes(tmp_path):
     )
     results = result["answers"]
     assert len(results) == 2
-    assert any([True for r in results if "Berlin" in r])
+    assert any([True for r in results if "Berlin" in r.answer])
 
 
 @pytest.mark.unit
