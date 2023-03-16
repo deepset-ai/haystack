@@ -64,11 +64,12 @@ def test_crawler_url_none_exception(webdriver):
 
 
 @pytest.mark.integration
-def test_crawler(tmp_path):
+@pytest.mark.parametrize("num_processes", [1, 2])
+def test_crawler(tmp_path, num_processes):
     tmp_dir = tmp_path
     url = ["https://haystack.deepset.ai/"]
 
-    crawler = Crawler(output_dir=tmp_dir, file_path_meta_field_name="file_path")
+    crawler = Crawler(output_dir=tmp_dir, file_path_meta_field_name="file_path", num_processes=num_processes)
 
     documents = crawler.crawl(urls=url, crawler_depth=0)
     docs_path = [Path(doc.meta["file_path"]) for doc in documents]
