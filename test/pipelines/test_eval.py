@@ -21,7 +21,7 @@ from haystack.pipelines.standard_pipelines import (
     TranslationWrapperPipeline,
 )
 from haystack.nodes.translator.transformers import TransformersTranslator
-from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
+from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span, TableCell
 
 from ..conftest import SAMPLES_PATH
 
@@ -416,7 +416,7 @@ EVAL_TABLE_LABELS = [
         labels=[
             Label(
                 query="How old is Brad Pitt?",
-                answer=Answer(answer="56", offsets_in_context=[Span(1, 2)]),
+                answer=Answer(answer="56", offsets_in_context=[TableCell(1, 2)]),
                 document=Document(
                     id="a044cf3fb8aade03a12399c7a2fe9a6b",
                     content_type="table",
@@ -435,7 +435,7 @@ EVAL_TABLE_LABELS = [
             ),
             Label(  # Label with different doc but same answer and query
                 query="How old is Brad Pitt?",
-                answer=Answer(answer="56", offsets_in_context=[Span(4, 5)]),
+                answer=Answer(answer="56", offsets_in_context=[TableCell(4, 5)]),
                 document=Document(
                     id="a044cf3fb8aade03a12399c7a2fe9a6b",
                     content_type="table",
@@ -454,7 +454,7 @@ EVAL_TABLE_LABELS = [
         labels=[
             Label(
                 query="To which state does Spikeroog belong?",
-                answer=Answer(answer="Lower Saxony", offsets_in_context=[Span(7, 8)]),
+                answer=Answer(answer="Lower Saxony", offsets_in_context=[TableCell(7, 8)]),
                 document=Document(
                     id="b044cf3fb8aade03a12399c7a2fe9a6c",
                     content_type="table",
