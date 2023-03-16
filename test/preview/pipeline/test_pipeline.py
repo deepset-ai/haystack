@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 import pytest
 
-from haystack.v2 import Pipeline, node, NoSuchStoreError
+from haystack.preview import Pipeline, node, NoSuchStoreError
 
 
 class MockStore:

@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
+          python-version: 3.8
 
       - name: Install Haystack (CPU)
         # FIXME audio temporarily not checked as we plan to remove it in the near future
@@ -65,7 +65,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
+          python-version: 3.8
 
       - name: Install Haystack
         # FIXME audio temporarily not checked as we plan to remove it in the near future
