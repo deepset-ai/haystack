@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../haystack/agents/agent]
-    modules: ['agent']
+    search_path: [../../../haystack/agents]
+    modules: ['base']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
