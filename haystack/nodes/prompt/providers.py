@@ -583,7 +583,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         else:
             raise ValueError(
                 f"The prompt format is different than what the model expects. "
-                f"The model {self.model_name_or_path} requires either a string or messages in the ChatML format."
+                f"The model {self.model_name_or_path} requires either a string or messages in the ChatML format. "
                 f"For more details, see this [GitHub discussion](https://github.com/openai/openai-python/blob/main/chatml.md)."
             )
 
