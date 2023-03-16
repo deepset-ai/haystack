@@ -94,7 +94,8 @@ jobs:
           - document_stores
           - nodes
           - agents
-          - v2
+          - preview
+          - prompt
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -402,6 +403,34 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-promptnode:
+    name: Integration / PromptNode / ${{ matrix.os }}
+    needs:
+      - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest,windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/prompt
+
+      - uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   integration-tests-agents:
     name: Integration / Agents / ${{ matrix.os }}
     needs:
@@ -459,7 +488,7 @@ jobs:
     - name: Install audio libraries
       run: |
         sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
+        sudo apt-get install ffmpeg
 
     - name: Install Haystack
       run: pip install .[audio]
@@ -533,7 +562,7 @@ jobs:
           - "modeling"
           - "others"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     steps:
     - uses: actions/checkout@v3
