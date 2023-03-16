@@ -4,14 +4,14 @@ import logging
 import time
 import json
 
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException
 
 from haystack.preview.rest_api.app import get_app
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-app: FastAPI = get_app()
+app = get_app()
 
 
 @router.get("/pipelines")
