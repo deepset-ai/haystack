@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 class TopPSampler(BaseSampler):
     """
     Filters documents based on the cumulative probability of the similarity scores between the
-    query and the documents using the top p sampling.
+    query and the documents using top p sampling.
 
     Top p sampling selects a subset of the most relevant data points from a larger set of data. The technique
     involves calculating the cumulative probability of the scores of each data point, and then
     selecting the top p percent of data points with the highest cumulative probability.
 
-    In the context of TopPSampler, the run method takes in a query and a set of documents,
+    In the context of TopPSampler, the `run()` method takes in a query and a set of documents,
     calculates the similarity scores between the query and the documents, and then filters
     the documents based on the cumulative probability of these scores. The TopPSampler provides a
     way to efficiently select the most relevant documents based on their similarity to a given query.
@@ -54,15 +54,14 @@ class TopPSampler(BaseSampler):
         """
         Initialize a TopPSampler.
 
-        :param model_name_or_path: Path to a pretrained sentence-transformers model
-        :param model_version: The version of the model to use. Can be a tag name, branch name, or commit hash.
-        :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99)
-        :param strict: if strict is set to False, and low top_p resulted in no documents being selected, then return at
-        least one document
-        :param top_score_name: Name of the score that should be used to insert the scores into the meta field of the Document
-        :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of torch devices (e.g. cuda:0, cpu, mps) to limit inference to specific devices.
-        :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
+        :param model_name_or_path: Path to a pretrained sentence-transformers model.
+        :param model_version: The version of the model to use. Can be a tag name, a branch name, or a commit hash.
+        :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
+        :param strict: If `top_` is set to a low value and resulted in no documents, then setting `strict` to `False` ensures at least one document is returned.
+        :param top_score_name: The name of the score that should be used to insert the scores into the meta field of the document.
+        :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
+        :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
+        :param use_auth_token: The token to use as the HTTP bearer authorization for remote files.
 
         """
         super().__init__()
@@ -75,14 +74,14 @@ class TopPSampler(BaseSampler):
 
     def predict(self, query: str, documents: List[Document], top_p: Optional[float] = None) -> List[Document]:
         """
-        Returns a top p filtered list of documents based on the similarity scores between the query and the documents
-        whose cumulative probability is less than or equal to top_p.
+        Returns a list of documents filtered using `top_p`, based on the similarity scores between the query and the documents
+        whose cumulative probability is less than or equal to `top_p`.
 
-        :param query: Query string
-        :param documents: List of Document
-        :param top_p: Cumulative probability threshold for filtering the documents, if not provided, the value of top_p
-        set during TopPSampler initialization will be used
-        :return: List of Document sorted by (desc.) similarity with the query
+        :param query: Query string.
+        :param documents: List of Document.
+        :param top_p: Cumulative probability threshold for filtering the documents. If not provided, the top_p value
+        set during TopPSampler initialization is used.
+        :return: List of Documents sorted by (desc.) similarity with the query.
         """
         if top_p is None:
             top_p = self.top_p
@@ -133,16 +132,13 @@ class TopPSampler(BaseSampler):
         """
          - If you provide a list containing a single query...
 
-            - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
+            - ... and a single list of Documents, the single list of Documents is be re-ranked based on the
               supplied query.
-            - ... and a list of lists of Documents, each list of Documents will be re-ranked individually based on the
+            - ... and a list of lists of Documents, each list of Documents is re-ranked individually based on the
               supplied query.
 
 
-        - If you provide a list of multiple queries...
-
-            - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
-              its corresponding query.
+        - If you provide a list of multiple queries, provide a list of lists of Documents. Each list of Documents is re-ranked based on its corresponding query.
         """
         if top_p is None:
             top_p = self.top_p
@@ -158,4 +154,6 @@ class TopPSampler(BaseSampler):
         if len(queries) > 1 and isinstance(documents[0], list):
             return [self.predict(query, docs, top_p) for query, docs in zip(queries, documents)]
 
-        raise ValueError("Invalid input. Please check the documentation of this method.")
+        raise ValueError(
+            "The input is not valid. Check the documentation of this method for information about valid input types."
+        )

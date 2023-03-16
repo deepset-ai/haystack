@@ -8,17 +8,17 @@ from haystack.nodes.search_engine.base import SearchEngine
 
 class WebSearch(BaseComponent):
     """
-    WebSearch queries a search engine and retrieve results. It can use various search engine providers, e.g. SerperDev,
-    SerpAPI, etc.
+    WebSearch queries a search engine and retrieves results. It can use various search engine providers, for example SerperDev,
+    SerpAPI, and the like.
     """
 
     outgoing_edges = 1
 
     def __init__(self, api_key: str, search_engine_provider: Union[str, SearchEngine] = "SerperDev", **kwargs):
         """
-        :param api_key: API key for the search engine provider
-        :param search_engine_provider: Name of the search engine provider, e.g. "SerperDev", "SerpAPI"
-        :param kwargs: Additional parameters to pass to the search engine provider
+        :param api_key: API key for the search engine provider.
+        :param search_engine_provider: Name of the search engine provider, for example "SerperDev", "SerpAPI".
+        :param kwargs: Additional parameters to pass to the search engine provider.
         """
         super().__init__()
         if isinstance(search_engine_provider, str):
@@ -28,8 +28,8 @@ class WebSearch(BaseComponent):
 
             if not klass:
                 raise ValueError(
-                    f"Could not locate SearchEngine class with name {search_engine_provider}. "
-                    f"Make sure to pass the full path to the class."
+                    f"Could not locate the SearchEngine class with the name {search_engine_provider}. "
+                    f"Make sure you pass the full path to the class."
                 )
             if not issubclass(klass, SearchEngine):
                 raise ValueError(f"Class {search_engine_provider} is not a subclass of SearchEngine.")
@@ -38,7 +38,7 @@ class WebSearch(BaseComponent):
             self.search_engine = search_engine_provider
         else:
             raise ValueError(
-                "search_engine_provider must be either a string (SearchEngine class name) or a SearchEngine instance"
+                "search_engine_provider must be either a string (SearchEngine class name) or a SearchEngine instance."
             )
 
     def run(
@@ -66,8 +66,8 @@ class WebSearch(BaseComponent):
 
 class NeuralWebSearch(BaseComponent):
     """
-    NeuralWebSearch queries a search engine, retrieve results, and uses PromptNode along with PromptTemplate
-    to extract the final answer from the retrieved results effectively building a QA system on top of a search engine.
+    NeuralWebSearch queries a search engine, retrieves the results, and uses PromptNode along with PromptTemplate
+    to extract the final answer from the retrieved results, effectively building a QA system on top of a search engine.
     """
 
     outgoing_edges = 1
@@ -83,11 +83,11 @@ class NeuralWebSearch(BaseComponent):
         **kwargs,
     ):
         """
-        :param websearch: WebSearch node
-        :param prompt_node: PromptNode node
-        :param prompt_template: PromptTemplate to use for the prompt node
-        :param prepare_template_params_fn: Function that prepares the template parameters for the prompt template
-        :param extract_final_answer_fn: Function that extracts the final answer from the prompt node output
+        :param websearch: WebSearch node.
+        :param prompt_node: PromptNode node.
+        :param prompt_template: The name of the PromptTemplate to use for the PromptNode.
+        :param prepare_template_params_fn: Function that prepares the template parameters for the prompt template.
+        :param extract_final_answer_fn: Function that extracts the final answer from the prompt node output.
         """
         super().__init__()
         self.websearch = websearch
@@ -106,7 +106,7 @@ class NeuralWebSearch(BaseComponent):
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
         if not query:
-            raise ValueError("Query parameter is required for NeuralWebSearch")
+            raise ValueError("NeuralWebSearch requires the `query` parameter.")
 
         result, _ = self.websearch.run(query=query)
 

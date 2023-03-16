@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class SerpAPI(SearchEngine):
     """
     SerpAPI is a search engine that provides a REST API to access search results from Google, Bing, Yahoo, Yandex,
-    Amazon etc. See https://serpapi.com/ for more details.
+    Amazon, and similar. See the [SerpAPI website](https://serpapi.com/) for more details.
     """
 
     def __init__(self, api_key: str, engine: str = "google", **kwargs):
@@ -85,12 +85,12 @@ class SerpAPI(SearchEngine):
 
 class SerperDev(SearchEngine):
     """
-    Search engine using SerperDev API. See https://serper.dev/ for more details.
+    Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.
     """
 
     def __init__(self, api_key: str, **kwargs):
         """
-        :param api_key: API key for SerperDev API.
+        :param api_key: API key for the SerperDev API.
         :param kwargs: Additional parameters passed to the SerperDev API.
         """
         super().__init__()
@@ -137,12 +137,12 @@ class SerperDev(SearchEngine):
 
 class BingAPI(SearchEngine):
     """
-    Search engine using Bing API. See https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview for more details.
+    Search engine using the Bing API. See [Bing Web Search API](https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview) for more details.
     """
 
     def __init__(self, api_key: str, **kwargs):
         """
-        :param api_key: API key for Bing API.
+        :param api_key: API key for the Bing API.
         :param kwargs: Additional parameters passed to the SerperDev API.
         """
         super().__init__()
@@ -153,11 +153,11 @@ class BingAPI(SearchEngine):
         """
         :param query: Query string.
         :param kwargs: Additional parameters passed to the SerperDev API.
-                       As an example you can pass the market parameter to specify the market to use for the query. 'mkt':'en-US'
+                       As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
                        If you don't specify the market parameter, the default market for the user's location is used.
-                       For a complete list of the market codes see https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#market-codes
-                       You can also pass the count parameter to specify the number of results to return. 'count':10
-                       You can find the full list of parameters here: https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#query-parameters
+                       For a complete list of the market codes, see [Market Codes](https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#market-codes).
+                       You can also pass the count parameter to specify the number of results to return: 'count':10.
+                       You can find a full list of parameters at [Query Parameters](https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference#query-parameters).
         :return: List[Document]
         """
         kwargs = {**self.kwargs, **kwargs}

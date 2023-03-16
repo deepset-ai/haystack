@@ -66,7 +66,7 @@ class BaseSampler(BaseComponent):
         return output, "output_1"
 
     def timing(self, fn, attr_name):
-        """Wrapper method used to time functions."""
+        """A wrapper method used for time functions."""
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -84,7 +84,7 @@ class BaseSampler(BaseComponent):
         print("Sampler (Speed)")
         print("---------------")
         if not self.query_count:
-            print("No querying performed via Retriever.run()")
+            print("No querying performed with Retriever.run()")
         else:
             print(f"Queries Performed: {self.query_count}")
             print(f"Query time: {self.query_time}s")
