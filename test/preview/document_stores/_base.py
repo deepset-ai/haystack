@@ -1,10 +1,6 @@
 import pytest
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores import MemoryDocumentStore, MissingDocumentError, DuplicateDocumentError
-
-#
-# TODO make a base test class to test all future docdocstore against
-#
+from haystack.preview.document_stores import MissingDocumentError, DuplicateDocumentError
 
 
 class DocumentStoreBaseTests:

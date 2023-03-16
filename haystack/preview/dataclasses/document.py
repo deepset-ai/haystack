@@ -1,21 +1,12 @@
 from typing import List, Any, Dict, Literal, Optional
 
-from math import inf
-from pathlib import Path
-import logging
 import json
+import hashlib
+import logging
+from pathlib import Path
 from dataclasses import asdict, dataclass, field
 
 logger = logging.getLogger(__name__)
-
-try:
-    from mmh3 import hash128
-except ImportError as exc:
-    logging.debug("mmh3 can't be imported. Document IDs are going to be computed with hashlib.")
-
-    import hashlib
-
-    hash128 = lambda x, _: hashlib.sha256(str(x).encode("utf-8")).hexdigest()
 
 try:
     from numpy import ndarray
@@ -82,7 +73,7 @@ class Document:
                 *[str(self.metadata.get(key, "")) for key in self.id_hash_keys],
             ]
         )
-        hashed_content = "{:02x}".format(hash128(content_to_hash, signed=False))
+        hashed_content = hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
         object.__setattr__(self, "id", hashed_content)
 
     def to_dict(self):
