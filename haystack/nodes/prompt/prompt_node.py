@@ -478,13 +478,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="question-answering",
             prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
             "{query}; Answer:",
-            output_shapers=[
-                Shaper(
-                    func="strings_to_answers",
-                    outputs=["answers"],
-                    inputs={"strings": "results", "prompt": "prompt", "documents": "documents"},
-                )
-            ],
+            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
         ),
         PromptTemplate(
             name="question-answering-per-document",
@@ -502,7 +496,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             output_shapers=[
                 Shaper(
                     func="strings_to_answers",
-                    inputs={"strings": "results", "prompt": "prompt", "documents": "documents"},
+                    inputs={"strings": "results"},
                     outputs=["answers"],
                     params={"reference_pattern": r"\[(\d+)\]"},
                 )

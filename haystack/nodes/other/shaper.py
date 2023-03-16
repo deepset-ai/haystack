@@ -1,4 +1,5 @@
 from functools import reduce
+import inspect
 import re
 from string import Template
 from typing import Literal, Optional, List, Dict, Any, Tuple, Union, Callable
@@ -639,6 +640,16 @@ class Shaper(BaseComponent):
             else:
                 if value in invocation_context.keys() and value is not None:
                     input_values[key] = invocation_context[value]
+
+        # auto fill in input values if there's an invocation context value with the same name
+        function_params = inspect.signature(self.function).parameters
+        for parameter in function_params.values():
+            if (
+                parameter.name not in input_values.keys()
+                and parameter.name not in self.params.keys()
+                and parameter.name in invocation_context.keys()
+            ):
+                input_values[parameter.name] = invocation_context[parameter.name]
 
         input_values = {**self.params, **input_values}
         try:
