@@ -278,7 +278,7 @@ class Crawler(BaseComponent):
                     )
                 )
                 base_urls.extend([url_] * len(sub_links[url_]))
-                urls_to_search.extend(sub_links[url_] + [url_])
+                urls_to_search.extend(sub_links[url_])
 
         if urls_to_search:
             if 1 < num_processes:
