@@ -200,7 +200,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
-        send_event("SentenceTransformersEmbeddingEncoder.train()")
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
