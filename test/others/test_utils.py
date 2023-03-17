@@ -51,7 +51,7 @@ def noop():
 
 
 def test_deprecation_previous_major_and_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.1"):
             fail_at_version(1, 1)(noop)()
 
@@ -65,7 +65,7 @@ def test_deprecation_previous_major_and_minor():
 
 
 def test_deprecation_previous_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.2"):
             fail_at_version(1, 2)(noop)()
 
@@ -79,7 +79,7 @@ def test_deprecation_previous_major_same_minor():
 
 
 def test_deprecation_previous_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.3"):
             fail_at_version(1, 3)(noop)()
 
@@ -93,7 +93,7 @@ def test_deprecation_previous_major_later_minor():
 
 
 def test_deprecation_same_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.1"):
             fail_at_version(2, 1)(noop)()
 
@@ -107,7 +107,7 @@ def test_deprecation_same_major_previous_minor():
 
 
 def test_deprecation_same_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.2"):
             fail_at_version(2, 2)(noop)()
 
@@ -121,7 +121,7 @@ def test_deprecation_same_major_same_minor():
 
 
 def test_deprecation_same_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(2, 3)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -132,7 +132,7 @@ def test_deprecation_same_major_later_minor():
 
 
 def test_deprecation_later_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 1)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -143,7 +143,7 @@ def test_deprecation_later_major_previous_minor():
 
 
 def test_deprecation_later_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 2)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -154,7 +154,7 @@ def test_deprecation_later_major_same_minor():
 
 
 def test_deprecation_later_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 3)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
