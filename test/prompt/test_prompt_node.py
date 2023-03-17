@@ -487,6 +487,90 @@ def test_pipeline_with_qa_with_references(prompt_model):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_prompt_text_at_query_time(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+        params={
+            "prompt_template": "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n{join(documents, delimiter=new_line+new_line, pattern='Document[$idx]: $content')}\n\nQuestion: {query}\n\nAnswer: "
+        },
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n"
+        "Document[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris\n\n"
+        "Question: Who lives in Berlin?\n\nAnswer: "
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_prompt_template_at_query_time(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    prompt_template_yaml = """
+            name: "question-answering-with-references-custom"
+            prompt_text: 'Create a concise and informative answer (no more than 50 words) for
+                a given question based solely on the given documents. Cite the documents using Document[number] notation.
+
+
+                {join(documents, delimiter=new_line+new_line, pattern=''Document[$id]: $content'')}
+
+
+                Question: {query}
+
+
+                Answer: '
+            output_shapers:
+                - func: strings_to_answers
+                  inputs:
+                    strings: results
+                  outputs:
+                    - answers
+                  params:
+                    reference_pattern: Document\\[([^\\]]+)\\]
+                    reference_mode: id
+        """
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+        params={"prompt_template": prompt_template_yaml},
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n"
+        "Document[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris\n\n"
+        "Question: Who lives in Berlin?\n\nAnswer: "
+    )
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_complex_pipeline_with_qa(prompt_model):
     """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,

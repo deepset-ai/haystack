@@ -805,9 +805,17 @@ class PromptNode(BaseComponent):
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None] = None) -> Optional[PromptTemplate]:
         """
-        Returns a prompt template by name.
-        :param prompt_template_name: The name of the prompt template to be returned.
-        :return: The prompt template object.
+        Resolves a prompt template.
+
+        :param prompt_template: The prompt template to be resolved. You can choose between the following types:
+            - None: returns the default prompt template
+            - PromptTemplate: returns the given prompt template object
+            - str: parses the string depending on its content:
+                - prompt template name: returns the prompt template registered with the given name
+                - prompt template yaml: returns a prompt template specified by the given yaml
+                - prompt text: returns a copy of the default prompt template with the given prompt text
+
+            :return: The prompt template object.
         """
         prompt_template = prompt_template or self.default_prompt_template
         if prompt_template is None:
@@ -816,25 +824,22 @@ class PromptNode(BaseComponent):
         if isinstance(prompt_template, PromptTemplate):
             return prompt_template
 
-        if not isinstance(prompt_template, str):
-            raise ValueError(
-                f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} or pass a PromptTemplate instance for prompting."
-            )
-
-        if prompt_template in self.prompt_templates:
+        if isinstance(prompt_template, str) and prompt_template in self.prompt_templates:
             return self.prompt_templates[prompt_template]
 
-        if re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
+        # if it's not a string or looks like a prompt template name
+        if not isinstance(prompt_template, str) or re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
             raise ValueError(
                 f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} or pass a PromptTemplate instance for prompting."
             )
 
-        prompt_template_parsed = yaml.safe_load(prompt_template)
-        if isinstance(prompt_template_parsed, dict):
-            return PromptTemplate(**prompt_template_parsed)
+        if "prompt_text:" in prompt_template:
+            prompt_template_parsed = yaml.safe_load(prompt_template)
+            if isinstance(prompt_template_parsed, dict):
+                return PromptTemplate(**prompt_template_parsed)
 
         # it's a prompt_text
-        prompt_text = prompt_template_parsed
+        prompt_text = prompt_template
         output_shapers = []
         default_prompt_template = self.get_prompt_template()
         if default_prompt_template:
@@ -878,6 +883,13 @@ class PromptNode(BaseComponent):
         :param meta: PromptNode usually ignores meta information, unless it's used as a parameter in the
         PromptTemplate.
         :param invocation_context: The invocation context to be used for the prompt.
+        :param prompt_template: The prompt template to use. You can choose between the following types:
+            - None: use default prompt template
+            - PromptTemplate: use the given prompt template object
+            - str: parses the string depending on its content:
+                - prompt template name: uses the prompt template registered with the given name
+                - prompt template yaml: uses the prompt template specified by the given yaml
+                - prompt text: uses a copy of the default prompt template with the given prompt text
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
@@ -940,6 +952,13 @@ class PromptNode(BaseComponent):
         :param queries: List of queries.
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
         :param invocation_contexts: List of invocation contexts.
+        :param prompt_templates: The prompt templates to use. You can choose between the following types:
+            - None: use default prompt template
+            - PromptTemplate: use the given prompt template object
+            - str: parses the string depending on its content:
+                - prompt template name: uses the prompt template registered with the given name
+                - prompt template yaml: uses the prompt template specified by the given yaml
+                - prompt text: uses a copy of the default prompt template with the given prompt text
         """
         inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts, prompt_templates)
         all_results: Dict[str, List] = defaultdict(list)
