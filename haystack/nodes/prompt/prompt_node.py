@@ -1,12 +1,15 @@
 import ast
+from collections import defaultdict
 import copy
 import logging
 from abc import ABC
 import os
+import re
 from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
 from uuid import uuid4
 
 import torch
+import yaml
 
 from haystack import MultiLabel
 from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
@@ -199,7 +202,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
     [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
-    def __init__(self, name: str, prompt_text: str, output_shapers: Optional[List[Shaper]] = None):
+    def __init__(
+        self, name: str, prompt_text: str, output_shapers: Optional[Union[List[Shaper], List[Dict[str, Any]]]] = None
+    ):
         """
          Creates a PromptTemplate instance.
 
@@ -240,7 +245,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
             **{k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS},
             **PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS,
         }
-        self.output_shapers = output_shapers or []
+        self.output_shapers: List[Shaper] = []
+        if output_shapers:
+            for shaper in output_shapers:
+                if isinstance(shaper, dict):
+                    self.output_shapers.append(Shaper(**shaper))
+                elif isinstance(shaper, Shaper):
+                    self.output_shapers.append(shaper)
+                else:
+                    raise TypeError(
+                        f"Expected output_shapers to be a list of dicts or Shapers, but got {type(shaper)}."
+                    )
         if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
             raise PromptTemplateValidationError(
                 f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
@@ -700,18 +715,11 @@ class PromptNode(BaseComponent):
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
-        if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
-            raise ValueError(
-                f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} "
-                f"or pass a PromptTemplate instance for prompting."
-            )
 
         # kwargs override model kwargs
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
-        prompt_template_used = prompt_template or self.default_prompt_template
-        if prompt_template_used:
-            template_to_fill = self.get_prompt_template(prompt_template_used)
-
+        template_to_fill = self.get_prompt_template(prompt_template)
+        if template_to_fill:
             # prompt template used, yield prompts from inputs args
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = copy.copy(kwargs)
@@ -795,19 +803,38 @@ class PromptNode(BaseComponent):
         template_name = prompt_template if isinstance(prompt_template, str) else prompt_template.name
         return template_name in self.prompt_templates
 
-    def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> PromptTemplate:
+    def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None] = None) -> Optional[PromptTemplate]:
         """
         Returns a prompt template by name.
         :param prompt_template_name: The name of the prompt template to be returned.
         :return: The prompt template object.
         """
+        prompt_template = prompt_template or self.default_prompt_template
+        if prompt_template is None:
+            return None
+
         if isinstance(prompt_template, PromptTemplate):
             return prompt_template
 
-        if not isinstance(prompt_template, str) or prompt_template not in self.prompt_templates:
-            raise ValueError(f"Prompt template {prompt_template} not supported")
+        if prompt_template in self.prompt_templates:
+            return self.prompt_templates[prompt_template]
 
-        return self.prompt_templates[prompt_template]
+        if re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
+            raise ValueError(
+                f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} or pass a PromptTemplate instance for prompting."
+            )
+
+        prompt_template_parsed = yaml.safe_load(prompt_template)
+        if isinstance(prompt_template_parsed, dict):
+            return PromptTemplate(**prompt_template_parsed)
+
+        # it's a prompt_text
+        prompt_text = prompt_template_parsed
+        output_shapers = []
+        default_prompt_template = self.get_prompt_template()
+        if default_prompt_template:
+            output_shapers = default_prompt_template.output_shapers
+        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_shapers=output_shapers)
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """
@@ -828,7 +855,7 @@ class PromptNode(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
-        prompt_text: Optional[str] = None,
+        prompt_template: Optional[Union[str, PromptTemplate]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
@@ -867,17 +894,13 @@ class PromptNode(BaseComponent):
         if meta and "meta" not in invocation_context.keys():
             invocation_context["meta"] = meta
 
-        prompt_template = self.get_prompt_template(self.default_prompt_template)
-        if prompt_text and "prompt_text" not in invocation_context.keys():
-            prompt_template = PromptTemplate(
-                name="custom-at-query-time", prompt_text=prompt_text, output_shapers=prompt_template.output_shapers
-            )
-            invocation_context["prompt_template"] = prompt_template
+        if "prompt_template" not in invocation_context.keys():
+            invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
 
+        prompt_template_resolved: PromptTemplate = invocation_context["prompt_template"]
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
-        output_variable = self.output_variable or prompt_template.output_variable or "results"
-
+        output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
         invocation_context[output_variable] = results
         invocation_context["prompts"] = prompt_collector
         final_result: Dict[str, Any] = {
@@ -892,6 +915,7 @@ class PromptNode(BaseComponent):
         queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         invocation_contexts: Optional[List[Dict[str, Any]]] = None,
+        prompt_templates: Optional[List[Union[str, PromptTemplate]]] = None,
     ):
         """
         Runs PromptNode in batch mode.
@@ -912,15 +936,16 @@ class PromptNode(BaseComponent):
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
         :param invocation_contexts: List of invocation contexts.
         """
-        prompt_template = self.get_prompt_template(self.default_prompt_template)
-        output_variable = self.output_variable or prompt_template.output_variable or "results"
-
-        inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts)
-        all_results: Dict[str, List] = {output_variable: [], "invocation_contexts": [], "_debug": []}
-        for query, docs, invocation_context in zip(
-            inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
+        inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts, prompt_templates)
+        all_results: Dict[str, List] = defaultdict(list)
+        for query, docs, invocation_context, prompt_template in zip(
+            inputs["queries"], inputs["documents"], inputs["invocation_contexts"], inputs["prompt_templates"]
         ):
-            results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
+            prompt_template = self.get_prompt_template(self.default_prompt_template)
+            output_variable = self.output_variable or prompt_template.output_variable or "results"
+            results = self.run(
+                query=query, documents=docs, invocation_context=invocation_context, prompt_template=prompt_template
+            )[0]
             all_results[output_variable].append(results[output_variable])
             all_results["invocation_contexts"].append(results["invocation_context"])
             all_results["_debug"].append(results["_debug"])
@@ -936,6 +961,7 @@ class PromptNode(BaseComponent):
         queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         invocation_contexts: Optional[List[Dict[str, Any]]] = None,
+        prompt_templates: Optional[List[Union[str, PromptTemplate]]] = None,
     ) -> Dict[str, List]:
         """Flatten and copy the queries, documents, and invocation contexts into lists of equal length.
 
@@ -958,6 +984,7 @@ class PromptNode(BaseComponent):
         # Check that queries, and invocation_contexts are of the same length if provided
         input_queries: List[Any]
         input_invocation_contexts: List[Any]
+        input_prompt_templates: List[Any]
         if queries is not None and invocation_contexts is not None:
             if len(queries) != len(invocation_contexts):
                 raise ValueError("The input variables queries and invocation_contexts should have the same length.")
@@ -973,37 +1000,59 @@ class PromptNode(BaseComponent):
             input_queries = [None]
             input_invocation_contexts = [None]
 
+        if prompt_templates is not None:
+            if len(prompt_templates) != len(input_queries):
+                raise ValueError("The input variables prompt_templates and queries should have the same length.")
+            input_prompt_templates = prompt_templates
+        else:
+            input_prompt_templates = [None] * len(input_queries)
+
         multi_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], list)
         single_docs_list = isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], Document)
 
         # Docs case 1: single list of Documents
         # -> apply each query (and invocation_contexts) to all Documents
-        inputs: Dict[str, List] = {"queries": [], "invocation_contexts": [], "documents": []}
+        inputs: Dict[str, List] = defaultdict(list)
         if documents is not None:
             if single_docs_list:
-                for query, invocation_context in zip(input_queries, input_invocation_contexts):
+                for query, invocation_context, prompt_template in zip(
+                    input_queries, input_invocation_contexts, input_prompt_templates
+                ):
                     for doc in documents:
                         inputs["queries"].append(query)
                         inputs["invocation_contexts"].append(invocation_context)
                         inputs["documents"].append([doc])
+                        inputs["prompt_templates"].append(prompt_template)
             # Docs case 2: list of lists of Documents
             # -> apply each query (and invocation_context) to corresponding list of Documents,
             # if queries contains only one query, apply it to each list of Documents
             elif multi_docs_list:
                 total_queries = input_queries.copy()
                 total_invocation_contexts = input_invocation_contexts.copy()
-                if len(total_queries) == 1 and len(total_invocation_contexts) == 1:
+                total_prompt_templates = input_prompt_templates.copy()
+                if len(total_queries) == 1 and len(total_invocation_contexts) == 1 and len(total_prompt_templates) == 1:
                     total_queries = input_queries * len(documents)
                     total_invocation_contexts = input_invocation_contexts * len(documents)
-                if len(total_queries) != len(documents) or len(total_invocation_contexts) != len(documents):
+                    total_prompt_templates = input_prompt_templates * len(documents)
+                if (
+                    len(total_queries) != len(documents)
+                    or len(total_invocation_contexts) != len(documents)
+                    or len(total_prompt_templates) != len(documents)
+                ):
                     raise ValueError("Number of queries must be equal to number of provided Document lists.")
-                for query, invocation_context, cur_docs in zip(total_queries, total_invocation_contexts, documents):
+                for query, invocation_context, prompt_template, cur_docs in zip(
+                    total_queries, total_invocation_contexts, total_prompt_templates, documents
+                ):
                     inputs["queries"].append(query)
                     inputs["invocation_contexts"].append(invocation_context)
                     inputs["documents"].append(cur_docs)
-        elif queries is not None or invocation_contexts is not None:
-            for query, invocation_context in zip(input_queries, input_invocation_contexts):
+                    inputs["prompt_templates"].append(prompt_template)
+        elif queries is not None or invocation_contexts is not None or prompt_templates is not None:
+            for query, invocation_context, prompt_template in zip(
+                input_queries, input_invocation_contexts, input_prompt_templates
+            ):
                 inputs["queries"].append(query)
                 inputs["invocation_contexts"].append(invocation_context)
                 inputs["documents"].append([None])
+                inputs["prompt_templates"].append(prompt_template)
         return inputs

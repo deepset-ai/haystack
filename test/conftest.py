@@ -378,7 +378,7 @@ class MockPromptNode(PromptNode):
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]
 
-    def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> PromptTemplate:
+    def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
         if prompt_template == "think-step-by-step":
             return PromptTemplate(
                 name="think-step-by-step",

@@ -133,7 +133,12 @@ class Agent:
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
         self.prompt_node = prompt_node
-        self.prompt_template = prompt_node.get_prompt_template(prompt_template)
+        resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
+        if not resolved_prompt_template:
+            raise ValueError(
+                f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
+            )
+        self.prompt_template = resolved_prompt_template
         self.tools = {tool.name: tool for tool in tools} if tools else {}
         self.tool_names = ", ".join(self.tools.keys())
         self.tool_names_with_descriptions = "\n".join(
