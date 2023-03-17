@@ -2,7 +2,7 @@ import logging
 from typing import Dict, List, Optional, Union, Any
 
 from haystack.modeling.utils import initialize_device_settings
-from haystack.v2.nodes.prompt.providers import prompt_model_provider
+from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
 
 
 logger = logging.getLogger(__name__)
@@ -21,19 +21,15 @@ try:
     )
     from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 
-    TRANSFORMERS_IMPORTED = False
+    TRANSFORMERS_IMPORTED = True
 except ImportError as exc:
     logger.debug("Either tranformers or torch could not be imported. HuggingFace models will fail to initialize.")
 
 
 @prompt_model_provider
-class HFLocalInvocationLayer:
+class HFLocalProvider:
     """
-    A subclass of the PromptModelInvocationLayer class. It loads a pre-trained model from Hugging Face and
-    passes a prepared prompt into that model.
-
-    Note: kwargs other than init parameter names are ignored to enable reflective construction of the class,
-    as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
+    It loads a pre-trained model from Hugging Face and passes a prepared prompt into that model.
     """
 
     def __init__(
@@ -79,7 +75,10 @@ class HFLocalInvocationLayer:
             )
 
         # Resolve torch_dtype
-        model_kwargs["torch_dtype"] = self._resolve_dtype(dtype_name=model_kwargs.get("torch_dtype"))
+        if not model_kwargs:
+            model_kwargs = {}
+        else:
+            model_kwargs["torch_dtype"] = self._resolve_dtype(dtype_name=model_kwargs.get("torch_dtype"))
 
         # Do not use `device_map` AND `device` at the same time as they will conflict
         self.pipe = pipeline(
@@ -134,6 +133,8 @@ class HFLocalInvocationLayer:
         :return: A list of generated text.
         """
         output: List[Dict[str, str]] = []
+        if not model_kwargs:
+            model_kwargs = {}
 
         prompt = self._ensure_token_limit(prompt=prompt)
 

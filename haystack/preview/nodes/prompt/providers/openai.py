@@ -1,10 +1,11 @@
 from typing import Dict, Optional, Any, Union, Tuple
 
+import os
 import json
 import logging
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
-from haystack.v2.nodes.prompt.providers import prompt_model_provider
+from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
 
 
 logger = logging.getLogger(__name__)
@@ -39,10 +40,13 @@ except ImportError as exc3:
         return func
 
 
+OPENAI_TIMEOUT = float(os.environ.get("HAYSTACK_OPENAI_TIMEOUT_SEC", 30))
+
+
 @prompt_model_provider
-class OpenAIInvocationLayer:
+class OpenAIProvider:
     """
-    PromptModelInvocationLayer implementation for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
+    OUsed for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
     See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
     """
 
@@ -221,11 +225,9 @@ class OpenAIInvocationLayer:
             )
 
 
-class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
+class AzureOpenAIProvider(OpenAIProvider):
     """
-    Azure OpenAI Invocation Layer
-
-    This layer is used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIInvocationLayer
+    Used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIProvider
     with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
     endpoint and the azure_deployment_name is the name of the deployment.
     """

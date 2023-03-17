@@ -1,15 +1,15 @@
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 
-from haystack.v2 import node
-from haystack.v2.nodes.prompt.providers import get_model
+from haystack.preview import node
+from haystack.preview.nodes.prompt.providers.base import get_model
 
 
 logger = logging.getLogger(__name__)
 
 
 PREDEFINED_TEMPLATES = {
-    "question-answering": "Given the context please answer the question. Context: $documents; Question: $questions; Answer:",
+    "question-answering": "Given the context please answer the question. Context: $documents; Question: $question; Answer:",
     "question-generation": "Given the context please generate a question. Context: $documents; Question:",
     "conditioned-question-generation": "Please come up with a question for the given context and the answer. Context: $documents; Answer: $answers; Question:",
     "summarization": "Summarize this document: $documents Summary:",
@@ -111,10 +111,12 @@ class PromptNode:
 
     def warm_up(self):
         if not self.model:
-            self.model = get_model(name=self.model_name, provider=self.model_provider, model_kwargs=self.model_kwargs)
+            self.model = get_model(
+                model_name_or_path=self.model_name, model_provider=self.model_provider, model_kwargs=self.model_kwargs
+            )
 
     def run(
-        self, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]
+        self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]
     ) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
         It takes in a prompt, and returns a list of responses using the underlying invocation layer.
@@ -124,7 +126,7 @@ class PromptNode:
         :return: A list of model generated responses for the prompt or prompts.
         """
         data = {key: value for key, value in data}
-        output = self.prompt(**data, **parameters)
+        output = self.prompt(**data, **parameters.get(name, {}))
         return ({self.outputs[0]: output}, parameters)
 
     def prompt(self, **kwargs):
@@ -135,6 +137,7 @@ class PromptNode:
         :param kwargs: Additional keyword arguments to pass to the invocation layer.
         :return: A list of model generated responses for the prompt or prompts.
         """
+        self.warm_up()
         prompt = self._render_prompt(**kwargs)
         return self.model.invoke(prompt=prompt)
 
@@ -146,5 +149,5 @@ class PromptNode:
         """
         prompt = self.template
         for key, value in kwargs.items():
-            prompt = prompt.replace(f"${key}", value)
+            prompt = prompt.replace(f"${key}", str(value))
         return prompt

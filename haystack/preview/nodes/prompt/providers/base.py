@@ -68,7 +68,7 @@ def get_model(
     model_name_or_path: str,
     model_provider: Optional[Type] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,
-    modules_to_search: Optional[List[str]] = ["haystack"],
+    modules_to_search: Optional[List[str]] = ["haystack.preview"],
 ) -> object:
     """
     Returns an instance of the proper model provider for the given
@@ -77,19 +77,20 @@ def get_model(
     :param model_name_or_path: the name or path of the model to load
     :param model_provider: if set, either returns an instance of the given provider or fails.
     :param model_kwargs: any kwargs that the model and/ore the provider might require for initialization
-    :returns: an instance of the model, ready to use. See `haystack.v2.nodes.prompt.providers.base`.
+    :returns: an instance of the model, ready to use. See `base.py`.
     """
     providers = _find_decorated_classes(modules_to_search=modules_to_search, decorator="__haystack_prompt_model__")
     if model_provider:
-        return model_provider(model_name_or_path=model_name_or_path, **model_kwargs)
+        return model_provider(model_name_or_path=model_name_or_path, **(model_kwargs or {}))
     # search all providers and find the first one that supports the model,
     # then create an instance of a mode with that provider.
-    for provider in providers:
-        if provider.supports(model_name_or_path, **model_kwargs):
-            return provider(model_name_or_path=model_name_or_path, **model_kwargs)
+    for provider in providers.values():
+        if provider.supports(model_name_or_path, **(model_kwargs or {})):
+            return provider(model_name_or_path=model_name_or_path, **(model_kwargs or {}))
     raise ValueError(
-        f"Model '{model_name_or_path}' is not supported - no matching invocation layer found."
-        f" Currently supported invocation layers are: {', '.join([provider.__name__ for provider in providers])}"
-        f" You can implement a custom provider for {model_name_or_path} by creating a class that respects "
+        f"Model '{model_name_or_path}' is not supported - no matching providers found. "
+        f"Currently supported providers are: {', '.join([provider for provider in providers.keys()])} "
+        "Make sure all the dependencies needed by your provider are met, or enable DEBUG logs to check for failed imports. "
+        f"You can implement a custom provider for {model_name_or_path} by creating a class that respects "
         "the @prompt_model_provider contract. See the documentation for details."
     )
