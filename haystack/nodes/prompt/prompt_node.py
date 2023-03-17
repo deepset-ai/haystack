@@ -218,6 +218,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 output_shapers=[
                     {"func": "strings_to_answers", "inputs": {"strings": "results"}, "outputs": ["answers"]},
                 ]
+                ```
         """
         super().__init__()
 
