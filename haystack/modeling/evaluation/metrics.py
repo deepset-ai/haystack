@@ -4,6 +4,11 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from sentence_transformers import CrossEncoder, SentenceTransformer
+from transformers import AutoConfig
+
+from haystack.modeling.model.prediction_head import PredictionHead
+from haystack.modeling.utils import flatten_list
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +32,6 @@ try:
 except ImportError as exc:
     logger.debug("seqeval could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
     token_classification_report = None
-
-from transformers import AutoConfig
-
-from haystack.modeling.model.prediction_head import PredictionHead
-from haystack.modeling.utils import flatten_list
 
 
 registered_metrics = {}
@@ -73,7 +73,7 @@ def simple_accuracy(preds, labels):
 def acc_and_f1(preds, labels):
     if not f1_score:
         raise ImportError(
-            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
         )
     acc = simple_accuracy(preds, labels)
     f1 = f1_score(y_true=labels, y_pred=preds)
@@ -83,7 +83,7 @@ def acc_and_f1(preds, labels):
 def f1_macro(preds, labels):
     if not f1_score:
         raise ImportError(
-            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
         )
     return {"f1_macro": f1_score(y_true=labels, y_pred=preds, average="macro")}
 
@@ -91,7 +91,7 @@ def f1_macro(preds, labels):
 def pearson_and_spearman(preds, labels):
     if not pearsonr or not spearmanr:
         raise ImportError(
-            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
         )
     pearson_corr = pearsonr(preds, labels)[0]
     spearman_corr = spearmanr(preds, labels)[0]
@@ -124,13 +124,13 @@ def compute_metrics(metric: str, preds, labels):
     }
     assert len(preds) == len(labels)
     if metric in FUNCTION_FOR_METRIC.keys():
-        if (
+        if (  # pylint: disable=too-many-boolean-expressions
             (metric == "mcc" and not matthews_corrcoef)
             or (metric == "mse" and not mean_squared_error)
             or (metric == "r2" and not r2_score)
         ):
             raise ImportError(
-                "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+                "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
             )
         return FUNCTION_FOR_METRIC[metric](preds, labels)
     elif isinstance(metric, list):
@@ -150,14 +150,12 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
         report_fn = registered_reports[head.ph_output_type]  # type: ignore [index]
     elif head.ph_output_type == "per_token":
         if not token_classification_report:
-            raise ImportError(
-                "seqeval could not be imported. " "Run 'pip install farm-haystack[eval]' to fix this issue."
-            )
+            raise ImportError("seqeval could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
         report_fn = token_classification_report
     elif head.ph_output_type == "per_sequence":
         if not classification_report:
             raise ImportError(
-                "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+                "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
             )
         report_fn = classification_report
     elif head.ph_output_type == "per_token_squad":
@@ -455,7 +453,7 @@ def semantic_answer_similarity(
     """
     if not cosine_similarity:
         raise ImportError(
-            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
         )
 
     assert len(predictions) == len(gold_labels)

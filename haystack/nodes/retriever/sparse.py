@@ -7,21 +7,21 @@ from collections import OrderedDict, namedtuple
 import pandas as pd
 
 
+from haystack.schema import Document
+from haystack.document_stores.base import BaseDocumentStore, FilterType
+from haystack.document_stores import KeywordDocumentStore
+from haystack.nodes.retriever import BaseRetriever
+from haystack.errors import DocumentStoreError
+
+
 logger = logging.getLogger(__name__)
 
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
 except ImportError as exc:
-    logger.debug("sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue.")
+    logger.debug("sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue.")
     TfidfVectorizer = None
-
-
-from haystack.schema import Document
-from haystack.document_stores.base import BaseDocumentStore, FilterType
-from haystack.document_stores import KeywordDocumentStore
-from haystack.nodes.retriever import BaseRetriever
-from haystack.errors import DocumentStoreError
 
 
 class BM25Retriever(BaseRetriever):
@@ -461,7 +461,7 @@ class TfidfRetriever(BaseRetriever):
         """
         if not TfidfVectorizer:
             raise ImportError(
-                "sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+                "sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
             )
         super().__init__()
 

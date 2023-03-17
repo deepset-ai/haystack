@@ -6,6 +6,8 @@ import urllib
 
 from tqdm.auto import tqdm
 
+from haystack.nodes.query_classifier.base import BaseQueryClassifier
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +16,9 @@ try:
     from sklearn.ensemble._gb_losses import BinomialDeviance
     from sklearn.ensemble._gb import GradientBoostingClassifier
 except ImportError as exc:
-    logger.debug("sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue.")
+    logger.debug("sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue.")
     BinomialDeviance = None
     GradientBoostingClassifier = None
-
-from haystack.nodes.query_classifier.base import BaseQueryClassifier
 
 
 class SklearnQueryClassifier(BaseQueryClassifier):
@@ -84,7 +84,7 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         """
         if not BinomialDeviance and not GradientBoostingClassifier:
             raise ImportError(
-                "sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+                "sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
             )
 
         if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (

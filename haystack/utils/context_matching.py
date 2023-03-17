@@ -6,6 +6,7 @@ from itertools import groupby
 from multiprocessing.pool import Pool
 from collections import namedtuple
 
+from tqdm.auto import tqdm
 
 logger = logging.getLogger(__file__)
 
@@ -15,8 +16,6 @@ try:
 except ImportError as exc:
     logger.debug("rapidfuzz could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
     fuzz = None
-
-from tqdm.auto import tqdm
 
 
 _CandidateScore = namedtuple("_CandidateScore", ["context_id", "candidate_id", "score"])

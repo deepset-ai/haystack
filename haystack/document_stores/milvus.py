@@ -10,11 +10,11 @@ try:
     from pymilvus import FieldSchema, CollectionSchema, Collection, connections, utility
     from pymilvus.client.abstract import QueryResult
     from pymilvus.client.types import DataType
-    from haystack.document_stores.sql import SQLDocumentStore
+    from haystack.document_stores.sql import SQLDocumentStore  # type: ignore
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
-    _optional_component_not_installed(__name__, "milvus2", ie)
+    _optional_component_not_installed(__name__, "milvus", ie)
 
 from haystack.schema import Document, FilterType
 from haystack.document_stores.base import get_batches_from_generator
