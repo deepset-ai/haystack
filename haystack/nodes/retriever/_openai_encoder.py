@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import cpu_count
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
+from haystack.telemetry_2 import send_event
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -23,6 +24,7 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
+        send_event("OpenAIEmbeddingEncoder initialized", event_properties={"model": retriever.embedding_mode})
         # See https://platform.openai.com/docs/guides/embeddings and
         # https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/embeddings?tabs=console for more details
         self.using_azure = (
