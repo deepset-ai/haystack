@@ -24,7 +24,7 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-        send_event("OpenAIEmbeddingEncoder initialized", event_properties={"model": retriever.embedding_mode})
+        send_event("OpenAIEmbeddingEncoder initialized", event_properties={"model": retriever.embedding_model})
         # See https://platform.openai.com/docs/guides/embeddings and
         # https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/embeddings?tabs=console for more details
         self.using_azure = (
