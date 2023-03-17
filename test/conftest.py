@@ -995,5 +995,13 @@ def prompt_model(request):
 
 
 @pytest.fixture
+def chatgpt_prompt_model():
+    api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
+    if api_key is None or api_key == "":
+        api_key = "KEY_NOT_FOUND"
+    return PromptModel("gpt-3.5-turbo", api_key=api_key)
+
+
+@pytest.fixture
 def azure_conf():
     return haystack_azure_conf()

@@ -17,6 +17,9 @@ on:
       - "rest_api/**.py"
       - "rest_api/pyproject.toml"
 
+env:
+  PYTHON_VERSION: "3.8"
+
 jobs:
   black:
     runs-on: ubuntu-latest
@@ -24,6 +27,8 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Black
         run: |
@@ -73,12 +78,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install REST API
         run: |
           pip install -U "./rest_api[dev]"
+          pip install ".[dev]"
           pip install .
 
       - name: Run tests
