@@ -3,15 +3,15 @@ name: Minor Version Release
 on:
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: "3.8"
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
 
       - name: Define all versions
         id: versions
@@ -41,6 +41,13 @@ jobs:
           git commit -m "Update unstable version"
           git push -u origin bump-version
           gh pr create -B main -H bump-version --title 'Bump unstable version' --body 'Part of the release process' --label 'ignore-for-release-notes'
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install release_docs.py dependencies
+        run: pip install requests
 
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
