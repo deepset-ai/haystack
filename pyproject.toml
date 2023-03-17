@@ -78,10 +78,6 @@ dependencies = [
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",
 
-  # for stats in run_classifier
-  "scipy>=1.3.2",
-  "scikit-learn>=1.0.0",
-
   # Metrics and logging
   "seqeval",
   "mlflow",
@@ -181,6 +177,10 @@ onnx = [
 onnx-gpu = [
   "onnxruntime-gpu",
   "onnxruntime_tools",
+]
+stats = [  # for stats in run_classifier
+  "scipy>=1.3.2",
+  "scikit-learn>=1.0.0",
 ]
 ray = [
   "ray>=1.9.1,<2; platform_system != 'Windows'",

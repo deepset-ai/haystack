@@ -3,17 +3,30 @@ from functools import reduce
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from scipy.stats import pearsonr, spearmanr
 from sentence_transformers import CrossEncoder, SentenceTransformer
 from seqeval.metrics import classification_report as token_classification_report
-from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, mean_squared_error, r2_score
-from sklearn.metrics.pairwise import cosine_similarity
+
+logger = logging.getLogger(__name__)
+
+try:
+    from scipy.stats import pearsonr, spearmanr
+    from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, mean_squared_error, r2_score
+    from sklearn.metrics.pairwise import cosine_similarity
+except ImportError as exc:
+    logger.debug("scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue.")
+    pearsonr = None
+    spearmanr = None
+    classification_report = None
+    f1_score = None
+    matthews_corrcoef = None
+    mean_squared_error = None
+    r2_score = None
+    cosine_similarity = None
+
 from transformers import AutoConfig
 
 from haystack.modeling.model.prediction_head import PredictionHead
 from haystack.modeling.utils import flatten_list
-
-logger = logging.getLogger(__name__)
 
 
 registered_metrics = {}
@@ -53,16 +66,28 @@ def simple_accuracy(preds, labels):
 
 
 def acc_and_f1(preds, labels):
+    if not f1_score:
+        raise ImportError(
+            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+        )
     acc = simple_accuracy(preds, labels)
     f1 = f1_score(y_true=labels, y_pred=preds)
     return {"acc": acc["acc"], "f1": f1, "acc_and_f1": (acc["acc"] + f1) / 2}
 
 
 def f1_macro(preds, labels):
+    if not f1_score:
+        raise ImportError(
+            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+        )
     return {"f1_macro": f1_score(y_true=labels, y_pred=preds, average="macro")}
 
 
 def pearson_and_spearman(preds, labels):
+    if not pearsonr or not spearmanr:
+        raise ImportError(
+            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+        )
     pearson_corr = pearsonr(preds, labels)[0]
     spearman_corr = spearmanr(preds, labels)[0]
     return {"pearson": pearson_corr, "spearman": spearman_corr, "corr": (pearson_corr + spearman_corr) / 2}
@@ -94,6 +119,14 @@ def compute_metrics(metric: str, preds, labels):
     }
     assert len(preds) == len(labels)
     if metric in FUNCTION_FOR_METRIC.keys():
+        if (
+            (metric == "mcc" and not matthews_corrcoef)
+            or (metric == "mse" and not mean_squared_error)
+            or (metric == "r2" and not r2_score)
+        ):
+            raise ImportError(
+                "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+            )
         return FUNCTION_FOR_METRIC[metric](preds, labels)
     elif isinstance(metric, list):
         ret = {}
@@ -113,6 +146,10 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
     elif head.ph_output_type == "per_token":
         report_fn = token_classification_report
     elif head.ph_output_type == "per_sequence":
+        if not classification_report:
+            raise ImportError(
+                "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+            )
         report_fn = classification_report
     elif head.ph_output_type == "per_token_squad":
         report_fn = lambda *args, **kwargs: "Not Implemented"  # pylint: disable=unnecessary-lambda-assignment
@@ -407,6 +444,11 @@ def semantic_answer_similarity(
                            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :return: top_1_sas, top_k_sas, pred_label_matrix
     """
+    if not cosine_similarity:
+        raise ImportError(
+            "scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue."
+        )
+
     assert len(predictions) == len(gold_labels)
 
     config = AutoConfig.from_pretrained(sas_model_name_or_path, use_auth_token=use_auth_token)
