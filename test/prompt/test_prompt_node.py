@@ -552,8 +552,8 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
     result = pipe.run(
         query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
         documents=[
-            Document("My name is Carla and I live in Berlin", id="1"),
-            Document("My name is Christelle and I live in Paris", id="2"),
+            Document("My name is Carla and I live in Berlin", id="doc-1"),
+            Document("My name is Christelle and I live in Paris", id="doc-2"),
         ],
         params={"prompt_template": prompt_template_yaml},
     )
@@ -561,11 +561,11 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
     assert len(result["answers"]) == 1
     assert "carla" in result["answers"][0].answer.casefold()
 
-    assert result["answers"][0].document_ids == ["1"]
+    assert result["answers"][0].document_ids == ["doc-1"]
     assert (
         result["answers"][0].meta["prompt"]
         == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n"
-        "Document[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris\n\n"
+        "Document[doc-1]: My name is Carla and I live in Berlin\n\nDocument[doc-2]: My name is Christelle and I live in Paris\n\n"
         "Question: Who lives in Berlin?\n\nAnswer: "
     )
 
