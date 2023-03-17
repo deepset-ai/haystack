@@ -32,6 +32,7 @@ env:
     --ignore=test/nodes/test_summarizer.py
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  PYTHON_VERSION: "3.8"
 
 jobs:
 
@@ -42,6 +43,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Black
       run: |
@@ -99,11 +102,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,alfalfa]
+        run: pip install .[all]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
@@ -134,11 +138,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
@@ -162,11 +167,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[sql]
+        run: pip install .[dev,sql]
 
       - name: Run tests
         run: |
@@ -198,11 +204,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
@@ -226,11 +233,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
@@ -254,11 +262,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[faiss,dev]
 
       - name: Run tests
         run: |
@@ -292,11 +301,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
@@ -320,11 +330,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .[pinecone]
+      run: pip install .[dev,pinecone]
 
     - name: Run tests
       env:
@@ -351,8 +362,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Haystack
+      run: pip install .[all]
 
     - name: Setup Milvus
       run: |
@@ -362,7 +377,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Install Haystack
-      run: pip install .[milvus]
+      run: pip install .[dev,milvus]
 
     - name: Run tests
       run: |
@@ -386,11 +401,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
@@ -414,11 +430,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
@@ -442,11 +459,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
@@ -480,8 +498,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
@@ -490,7 +509,7 @@ jobs:
         sudo apt-get install ffmpeg
 
     - name: Install Haystack
-      run: pip install .[audio]
+      run: pip install .[all]
 
     - name: Run tests
       env:
@@ -523,15 +542,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
 
     - name: Run tests
       env:
@@ -566,22 +584,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Cache HF models
-      id: cache-hf-models
-      uses: actions/cache@v3
+    - uses: actions/setup-python@v4
       with:
-        path: ~/.cache/huggingface/transformers/
-        key: hf-models
-      env:
-        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
-
-    - name: Download models
-      if: steps.cache-hf-models.outputs.cache-hit != 'true'
-      run: |
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Run Elasticsearch
       run: |
@@ -618,7 +623,21 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
+
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
 
     - name: Run tests
       env:
@@ -671,13 +690,12 @@ jobs:
       run: |
         echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
 
     - name: Run tests
       env:

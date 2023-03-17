@@ -5,7 +5,7 @@ import logging
 from abc import ABC
 import os
 import re
-from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
+from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type, overload
 from uuid import uuid4
 
 import torch
@@ -443,7 +443,7 @@ class PromptModel(BaseComponent):
             "PromptModelInvocationLayer."
         )
 
-    def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
+    def invoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
         """
         It takes in a prompt, and returns a list of responses using the underlying invocation layer.
 
@@ -454,7 +454,15 @@ class PromptModel(BaseComponent):
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
 
+    @overload
     def _ensure_token_limit(self, prompt: str) -> str:
+        ...
+
+    @overload
+    def _ensure_token_limit(self, prompt: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        ...
+
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
 
         :param prompt: Prompt text to be sent to the generative model.
@@ -714,7 +722,7 @@ class PromptNode(BaseComponent):
         send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
-        prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
+        prompt_collector: List[Union[str, List[Dict[str, str]]]] = kwargs.pop("prompt_collector", [])
 
         # kwargs override model kwargs
         kwargs = {**self._prepare_model_kwargs(), **kwargs}

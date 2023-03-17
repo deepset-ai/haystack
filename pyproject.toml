@@ -90,7 +90,7 @@ dependencies = [
   "elasticsearch>=7.7,<8",
 
   # OpenAI tokenizer
-  "tiktoken>=0.2.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
@@ -183,8 +183,8 @@ onnx-gpu = [
   "onnxruntime_tools",
 ]
 ray = [
-  "ray>=1.9.1,<2; platform_system != 'Windows'",
-  "ray>=1.9.1,<2,!=1.12.0; platform_system == 'Windows'",  # Avoid 1.12.0 due to https://github.com/ray-project/ray/issues/24169 (fails on windows)
+  "ray[serve]>=1.9.1,<2; platform_system != 'Windows'",
+  "ray[serve]>=1.9.1,<2,!=1.12.0; platform_system == 'Windows'",  # Avoid 1.12.0 due to https://github.com/ray-project/ray/issues/24169 (fails on windows)
   "aiorwlock>=1.3.0,<2",
 ]
 colab = [
