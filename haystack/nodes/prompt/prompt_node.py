@@ -679,10 +679,10 @@ class PromptNode(BaseComponent):
             sa(documents=[Document("I am in love and I feel great!")])
         ```
         """
-        if "prompt_template_name" in kwargs:
-            prompt_template_name = kwargs["prompt_template_name"]
-            kwargs.pop("prompt_template_name")
-            return self.prompt(prompt_template_name, *args, **kwargs)
+        if "prompt_template" in kwargs:
+            prompt_template = kwargs["prompt_template"]
+            kwargs.pop("prompt_template")
+            return self.prompt(prompt_template, *args, **kwargs)
         else:
             return self.prompt(self.default_prompt_template, *args, **kwargs)
 
@@ -828,6 +828,7 @@ class PromptNode(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
+        prompt_text: Optional[str] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
@@ -866,9 +867,15 @@ class PromptNode(BaseComponent):
         if meta and "meta" not in invocation_context.keys():
             invocation_context["meta"] = meta
 
+        prompt_template = self.get_prompt_template(self.default_prompt_template)
+        if prompt_text and "prompt_text" not in invocation_context.keys():
+            prompt_template = PromptTemplate(
+                name="custom-at-query-time", prompt_text=prompt_text, output_shapers=prompt_template.output_shapers
+            )
+            invocation_context["prompt_template"] = prompt_template
+
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
-        prompt_template = self.get_prompt_template(self.default_prompt_template)
         output_variable = self.output_variable or prompt_template.output_variable or "results"
 
         invocation_context[output_variable] = results
