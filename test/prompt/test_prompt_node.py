@@ -260,13 +260,15 @@ def test_run_invalid_template(prompt_node):
 
 @pytest.mark.integration
 def test_invalid_prompting(prompt_node):
-    with pytest.raises(ValueError, match="Hey there, what is the best city in the worl"):
-        prompt_node.prompt(
-            "Hey there, what is the best city in the world?" "Hey there, what is the best city in the world?"
-        )
-
     with pytest.raises(ValueError, match="Hey there, what is the best city in the"):
         prompt_node.prompt(["Hey there, what is the best city in the world?", "Hey, answer me!"])
+
+
+@pytest.mark.integration
+def test_prompt_at_query_time(prompt_node: PromptNode):
+    results = prompt_node.prompt("Hey there, what is the best city in the world?")
+    assert len(results) == 1
+    assert isinstance(results[0], str)
 
 
 @pytest.mark.integration

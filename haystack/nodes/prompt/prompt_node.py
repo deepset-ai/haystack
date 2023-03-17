@@ -816,6 +816,11 @@ class PromptNode(BaseComponent):
         if isinstance(prompt_template, PromptTemplate):
             return prompt_template
 
+        if not isinstance(prompt_template, str):
+            raise ValueError(
+                f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} or pass a PromptTemplate instance for prompting."
+            )
+
         if prompt_template in self.prompt_templates:
             return self.prompt_templates[prompt_template]
 
@@ -897,9 +902,9 @@ class PromptNode(BaseComponent):
         if "prompt_template" not in invocation_context.keys():
             invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
 
-        prompt_template_resolved: PromptTemplate = invocation_context["prompt_template"]
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
+        prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
         output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
         invocation_context[output_variable] = results
         invocation_context["prompts"] = prompt_collector
