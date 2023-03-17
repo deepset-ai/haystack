@@ -63,6 +63,9 @@ class WebSearch(BaseComponent):
 
         :return: List of search results as documents.
         """
+        # query is a required parameter for search, we need to keep the signature of run() the same as in other nodes
+        if not query:
+            raise ValueError("WebSearch run requires the `query` parameter")
         return {"documents": self.search_engine.search(query)}, "output_1"
 
     def run_batch(
@@ -119,11 +122,11 @@ class NeuralWebSearch(BaseComponent):
         self.prepare_template_params_fn = prepare_template_params_fn
         self.extract_final_answer_fn = extract_final_answer_fn
 
-    def query_and_extract_answer(self, query: str, documents: List[Document]):
+    def query_and_extract_answer(self, query: str):
         result, _ = self.websearch.run(query=query)
         doc_hits: List[Document] = result["documents"]
         doc_hits = self.sampler.predict(query=query, documents=doc_hits)
-        prompt_kwargs = self.prepare_template_params_fn(doc_hits, {"query": query, "documents": documents})
+        prompt_kwargs = self.prepare_template_params_fn(doc_hits, {"query": query})
         response = self.prompt_node.prompt(self.prompt_template, **prompt_kwargs)
         final_answer = self.extract_final_answer_fn(next(iter(response)))
         return final_answer
@@ -142,7 +145,7 @@ class NeuralWebSearch(BaseComponent):
         if not query:
             raise ValueError("NeuralWebSearch requires the `query` parameter.")
 
-        final_answer = self.query_and_extract_answer(query, documents)
+        final_answer = self.query_and_extract_answer(query)
         return {"output": final_answer}, "output_1"
 
     def run_batch(

@@ -19,7 +19,7 @@ class BaseSampler(BaseComponent):
     query_time = 0
 
     @abstractmethod
-    def predict(self, query: str, documents: List[Document], top_p: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_p: Optional[float] = None):
         pass
 
     @abstractmethod
@@ -32,7 +32,7 @@ class BaseSampler(BaseComponent):
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 
-    def run(self, query: str, documents: List[Document], top_p: Optional[int] = None):  # type: ignore
+    def run(self, query: str, documents: List[Document], top_p: Optional[float] = None):  # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -50,7 +50,7 @@ class BaseSampler(BaseComponent):
         self,
         queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
-        top_p: Optional[int] = None,
+        top_p: Optional[float] = None,
         batch_size: Optional[int] = None,
     ):
         self.query_count = +len(queries)

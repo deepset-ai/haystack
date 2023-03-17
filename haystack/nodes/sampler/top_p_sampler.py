@@ -149,13 +149,13 @@ class TopPSampler(BaseSampler):
         # TODO: add support for batch_size if possible
 
         if len(queries) == 1 and isinstance(documents[0], Document):
-            return self.predict(queries[0], documents, top_p)
+            return self.predict(queries[0], documents, top_p)  # type: ignore
 
         if len(queries) == 1 and isinstance(documents[0], list):
-            return [self.predict(queries[0], docs, top_p) for docs in documents]
+            return [self.predict(queries[0], docs, top_p) for docs in documents]  # type: ignore
 
         if len(queries) > 1 and isinstance(documents[0], list):
-            return [self.predict(query, docs, top_p) for query, docs in zip(queries, documents)]
+            return [self.predict(query, docs, top_p) for query, docs in zip(queries, documents)]  # type: ignore
 
         raise ValueError(
             f"The input is not valid. Provided were the following queries {queries} and documents {documents}"

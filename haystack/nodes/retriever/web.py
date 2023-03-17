@@ -80,7 +80,7 @@ class WebRetriever(BaseRetriever):
         self.cache_time = cache_time
         self.apply_sampler_to_processed_docs = apply_sampler_to_processed_docs
         if top_p is not None:
-            self.sampler = TopPSampler(top_p=top_p, top_score_name="score")
+            self.sampler = TopPSampler(top_p=top_p, top_score_field="score")
 
     def _normalize_query(self, query: str) -> str:
         return "".join([c for c in normalize("NFKD", query.lower()) if not combining(c)])
