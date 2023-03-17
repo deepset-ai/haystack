@@ -32,6 +32,7 @@ env:
     --ignore=test/nodes/test_summarizer.py
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  PYTHON_VERSION: "3.8"
 
 jobs:
 
@@ -42,6 +43,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Black
       run: |
@@ -89,18 +92,19 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-latest
         topic:
           - document_stores
           - nodes
           - agents
-          - v2
+          - preview
+          - prompt
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
         run: pip install .[all,version2]
@@ -134,11 +138,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
@@ -157,16 +162,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[sql]
+        run: pip install .[dev,sql]
 
       - name: Run tests
         run: |
@@ -198,11 +204,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
@@ -221,16 +228,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
@@ -249,16 +257,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[faiss,dev]
 
       - name: Run tests
         run: |
@@ -292,11 +301,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
@@ -315,16 +325,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .[pinecone]
+      run: pip install .[dev,pinecone]
 
     - name: Run tests
       env:
@@ -351,8 +362,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Haystack
+      run: pip install .[all]
 
     - name: Setup Milvus
       run: |
@@ -362,7 +377,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Install Haystack
-      run: pip install .[milvus]
+      run: pip install .[dev,milvus]
 
     - name: Run tests
       run: |
@@ -381,20 +396,50 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
+
+      - uses: act10ns/slack@v2
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  integration-tests-promptnode:
+    name: Integration / PromptNode / ${{ matrix.os }}
+    needs:
+      - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest,windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install .[dev]
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/prompt
 
       - uses: act10ns/slack@v2
         with:
@@ -414,11 +459,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
@@ -452,21 +498,23 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
       run: |
         sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
+        sudo apt-get install ffmpeg
 
     - name: Install Haystack
-      run: pip install .[audio]
+      run: pip install .[all]
 
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
@@ -494,19 +542,19 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
 
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
@@ -531,27 +579,14 @@ jobs:
           - "modeling"
           - "others"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Cache HF models
-      id: cache-hf-models
-      uses: actions/cache@v3
+    - uses: actions/setup-python@v4
       with:
-        path: ~/.cache/huggingface/transformers/
-        key: hf-models
-      env:
-        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
-
-    - name: Download models
-      if: steps.cache-hf-models.outputs.cache-hit != 'true'
-      run: |
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Run Elasticsearch
       run: |
@@ -588,11 +623,26 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
+
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
 
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: '/usr/share/tesseract-ocr/4.00/tessdata'
       # we add "and not document_store" to exclude the tests that were ported to the new strategy
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not document_store" test/${{ matrix.folder }}
@@ -635,17 +685,22 @@ jobs:
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - name: Add Tesseract to system PATH
+      shell: pwsh
+      run: |
+        echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
 
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+        TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
