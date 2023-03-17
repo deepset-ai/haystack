@@ -213,6 +213,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param output_shapers: A list of shapers that will be applied to the output of the model.
                 For example, if you want to convert the output of the model to a Answer object, you can use a shaper using the `string_to_answer` function.
                 Note, that the last shaper in the list must only have one output and PromptNode will use this value as the output_variable.
+                Instead of shapers, you can also pass dictionaries defining the shapers. For example:
+                ```
+                output_shapers=[
+                    {"function": "string_to_answer", "inputs": {"strings": "results"}, "outputs": ["answer"]},
+                ]
         """
         super().__init__()
 
