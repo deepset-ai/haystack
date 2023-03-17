@@ -265,6 +265,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # Thus only generated text is returned (excluding prompt)
             if "text-generation" == self.task_name and "return_full_text" not in model_input_kwargs:
                 model_input_kwargs["return_full_text"] = False
+                model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
