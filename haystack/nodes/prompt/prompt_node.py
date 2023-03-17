@@ -216,7 +216,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 Instead of shapers, you can also pass dictionaries defining the shapers. For example:
                 ```
                 output_shapers=[
-                    {"func": "string_to_answer", "inputs": {"strings": "results"}, "outputs": ["answers"]},
+                    {"func": "strings_to_answers", "inputs": {"strings": "results"}, "outputs": ["answers"]},
                 ]
         """
         super().__init__()
