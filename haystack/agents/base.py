@@ -125,7 +125,7 @@ class Agent:
         tools: Optional[List[Tool]] = None,
         max_steps: int = 8,
         tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
-        final_answer_pattern: str = r"Final Answer:\s*(\w+)\s*",
+        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
     ):
         """
          Creates an Agent instance.

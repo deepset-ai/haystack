@@ -135,10 +135,31 @@ def test_extract_tool_name_and_tool_input():
 
 @pytest.mark.unit
 def test_extract_final_answer():
-    step = AgentStep(prompt_node_response="have the final answer to the question.\nFinal Answer: Florida")
+    match_examples = [
+        "have the final answer to the question.\nFinal Answer: Florida",
+        "Final Answer: 42 is the answer",
+        "Final Answer:  1234",
+        "Final Answer:  Answer",
+        "Final Answer:  This list: one and two and three",
+        "Final Answer:42",
+        "Final Answer:   ",
+        "Final Answer:    The answer is 99    ",
+    ]
+    expected_answers = [
+        "Florida",
+        "42 is the answer",
+        "1234",
+        "Answer",
+        "This list: one and two and three",
+        "42",
+        "",
+        "The answer is 99",
+    ]
 
-    final_answer = step.extract_final_answer()
-    assert final_answer == "Florida"
+    for example, expected_answer in zip(match_examples, expected_answers):
+        agent_step = AgentStep(prompt_node_response=example)
+        final_answer = agent_step.extract_final_answer()
+        assert final_answer == expected_answer
 
 
 @pytest.mark.unit
@@ -155,6 +176,7 @@ def test_final_answer_regex():
         "Final Answer: 42 is the answer",
         "Final Answer:  1234",
         "Final Answer:  Answer",
+        "Final Answer:  This list: one and two and three",
         "Final Answer:42",
         "Final Answer:   ",
         "Final Answer:    The answer is 99    ",
