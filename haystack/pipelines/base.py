@@ -83,6 +83,7 @@ class Pipeline:
         self.run_total = 0
         self.sent_event_in_window = False
         self.yaml_hash = False
+        self.last_run = None
 
     @property
     def root_node(self) -> Optional[str]:

@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 import json
 import yaml
+import datetime
 
 import posthog
 
@@ -202,14 +203,22 @@ def send_pipeline_event(pipeline: "Pipeline", event_name: str, event_properties:
     """
     try:
         if telemetry:
-            if event_properties:
-                event_properties.update(
-                    {
-                        "pipeline.classname": pipeline.__class__.__name__,
-                        "pipeline.fingerprint": pipeline.fingerprint,
-                        "pipeline.yaml_hash": pipeline.yaml_hash,
-                    }
-                )
+            if not event_properties:
+                event_properties = {}
+            event_properties.update(
+                {
+                    "pipeline.classname": pipeline.__class__.__name__,
+                    "pipeline.fingerprint": pipeline.fingerprint,
+                    "pipeline.yaml_hash": pipeline.yaml_hash,
+                }
+            )
+            now = datetime.datetime.now()
+            if pipeline.last_run:
+                event_properties["pipeline.since_last_run"] = (now - pipeline.last_run).total_seconds()
+            else:
+                event_properties["pipeline.since_last_run"] = 0
+            pipeline.last_run = now
+
             telemetry.send_event(event_name=event_name, event_properties=event_properties)
     except Exception as e:
         # Never let telemetry break things
