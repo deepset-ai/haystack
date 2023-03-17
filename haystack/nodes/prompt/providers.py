@@ -261,9 +261,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 ]
                 if key in kwargs
             }
+            is_text_generation = "text-generation" == self.task_name
             # Prefer return_full_text is False for text-generation (unless explicitly set)
             # Thus only generated text is returned (excluding prompt)
-            if "text-generation" == self.task_name and "return_full_text" not in model_input_kwargs:
+            if is_text_generation and "return_full_text" not in model_input_kwargs:
                 model_input_kwargs["return_full_text"] = False
                 model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
@@ -272,7 +273,13 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if top_k:
                 model_input_kwargs["num_return_sequences"] = top_k
                 model_input_kwargs["num_beams"] = top_k
-            output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
+            # max_new_tokens is used for text-generation and max_length for text2text-generation
+            if is_text_generation:
+                model_input_kwargs["max_new_tokens"] = self.max_length
+            else:
+                model_input_kwargs["max_length"] = self.max_length
+
+            output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
         if stop_words:
