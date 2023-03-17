@@ -12,6 +12,7 @@ from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.openai_utils import USE_TIKTOKEN, count_openai_tokens, load_openai_tokenizer, openai_request
+from haystack.telemetry_2 import send_event
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -23,6 +24,7 @@ OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
+        send_event("OpenAIEmbeddingEncoder initialized", event_properties={"model": retriever.embedding_model})
         # See https://platform.openai.com/docs/guides/embeddings and
         # https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/embeddings?tabs=console for more details
         self.using_azure = (
