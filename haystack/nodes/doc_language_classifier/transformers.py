@@ -65,7 +65,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     ):
         """
         Load a language detection model from Transformers.
-        For a full list of available modes, see [Hugging Face models](https://huggingface.co/models).
+        For a full list of available models, see [Hugging Face models](https://huggingface.co/models).
         For language detection models, see [Language Detection models](https://huggingface.co/models?search=language%20detection) on Hugging Face.
 
         :param route_by_language: Sends Documents to a different output edge depending on their language.
