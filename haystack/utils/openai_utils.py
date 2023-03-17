@@ -4,7 +4,7 @@ import logging
 import platform
 import sys
 import json
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, Optional
 import requests
 
 from transformers import GPT2TokenizerFast
@@ -75,28 +75,55 @@ def _openai_text_completion_tokenization_details(model_name: str):
     :param model_name: Name of the OpenAI model.
     """
     tokenizer_name = "gpt2"
-    if "davinci" in model_name:
-        max_tokens_limit = 4000
-        if USE_TIKTOKEN:
-            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
-    else:
-        max_tokens_limit = 2048
+    max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    model_tokenizer = MODEL_TO_ENCODING.get(model_name) if USE_TIKTOKEN else None
+
+    if model_tokenizer:
+        # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
+        ## therefore, it is better to add `text-davinci` instead to the condition.
+        ## Ref: https://platform.openai.com/docs/models/gpt-3-5
+        ##      https://platform.openai.com/docs/models/gpt-3
+        if "text-davinci" in model_name:
+            max_tokens_limit = 4097
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-3"):
+            max_tokens_limit = 4096
+            tokenizer_name = model_tokenizer
+        # Ref: https://platform.openai.com/docs/models/gpt-4
+        elif model_name.startswith("gpt-4-32k"):
+            max_tokens_limit = 32768  # tokens
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-4"):
+            max_tokens_limit = 8192  # tokens
+            tokenizer_name = model_tokenizer
+        else:
+            tokenizer_name = model_tokenizer
+
     return tokenizer_name, max_tokens_limit
 
 
 @retry_with_exponential_backoff(
     backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
 )
-def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT):
+def openai_request(
+    url: str,
+    headers: Dict,
+    payload: Dict,
+    timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
+    read_response: Optional[bool] = True,
+    **kwargs,
+):
     """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
 
     :param url: The URL of the OpenAI API.
     :param headers: Dictionary of HTTP Headers to send with the :class:`Request`.
     :param payload: The payload to send with the request.
     :param timeout: The timeout length of the request. The default is 30s.
+    :param read_response: Whether to read the response as JSON. The default is True.
     """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
-    res = json.loads(response.text)
+    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout, **kwargs)
+    if read_response:
+        json_response = json.loads(response.text)
 
     if response.status_code != 200:
         openai_error: OpenAIError
@@ -110,8 +137,10 @@ def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float,
                 status_code=response.status_code,
             )
         raise openai_error
-
-    return res
+    if read_response:
+        return json_response
+    else:
+        return response
 
 
 def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
