@@ -122,7 +122,9 @@ class BaseReader(BaseComponent):
             # filters out empty documents
             relevant_documents = list(
                 {
-                    label.document.id: label.document for label in labels.labels if label.document.content.strip() != ""
+                    label.document.id: label.document
+                    for label in labels.labels
+                    if not isinstance(label.document.content, str) or label.document.content.strip() != ""
                 }.values()
             )
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
@@ -184,7 +186,7 @@ class BaseReader(BaseComponent):
                     {
                         label.document.id: label.document
                         for label in labelx.labels
-                        if label.document.content.strip() != ""
+                        if not isinstance(label.document.content, str) or label.document.content.strip() != ""
                     }.values()
                 )
                 relevant_documents.append(relevant_docs_labelx)

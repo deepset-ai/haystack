@@ -4,7 +4,7 @@ import logging
 import platform
 import sys
 import json
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, Optional, List
 import requests
 
 from transformers import GPT2TokenizerFast
@@ -69,34 +69,83 @@ def count_openai_tokens(text: str, tokenizer) -> int:
         return len(tokenizer.tokenize(text))
 
 
+def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> int:
+    """Count the number of tokens in `messages` based on the OpenAI `tokenizer` provided.
+
+    :param messages: The messages to be tokenized.
+    :param tokenizer: An OpenAI tokenizer.
+    """
+    # adapted from https://platform.openai.com/docs/guides/chat/introduction
+    # should be kept up to date
+    num_tokens = 0
+    for message in messages:
+        num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
+        for key, value in message.items():
+            if USE_TIKTOKEN:
+                num_tokens += len(tokenizer.encode(value))
+            else:
+                num_tokens += len(tokenizer.tokenize(value))
+            if key == "name":  # if there's a name, the role is omitted
+                num_tokens += -1  # role is always required and always 1 token
+    num_tokens += 2  # every reply is primed with <im_start>assistant
+    return num_tokens
+
+
 def _openai_text_completion_tokenization_details(model_name: str):
     """Return the tokenizer name and max tokens limit for a given OpenAI `model_name`.
 
     :param model_name: Name of the OpenAI model.
     """
     tokenizer_name = "gpt2"
-    if "davinci" in model_name:
-        max_tokens_limit = 4000
-        if USE_TIKTOKEN:
-            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
-    else:
-        max_tokens_limit = 2048
+    max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    model_tokenizer = MODEL_TO_ENCODING.get(model_name) if USE_TIKTOKEN else None
+
+    if model_tokenizer:
+        # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
+        ## therefore, it is better to add `text-davinci` instead to the condition.
+        ## Ref: https://platform.openai.com/docs/models/gpt-3-5
+        ##      https://platform.openai.com/docs/models/gpt-3
+        if "text-davinci" in model_name:
+            max_tokens_limit = 4097
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-3"):
+            max_tokens_limit = 4096
+            tokenizer_name = model_tokenizer
+        # Ref: https://platform.openai.com/docs/models/gpt-4
+        elif model_name.startswith("gpt-4-32k"):
+            max_tokens_limit = 32768  # tokens
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-4"):
+            max_tokens_limit = 8192  # tokens
+            tokenizer_name = model_tokenizer
+        else:
+            tokenizer_name = model_tokenizer
+
     return tokenizer_name, max_tokens_limit
 
 
 @retry_with_exponential_backoff(
     backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
 )
-def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT):
+def openai_request(
+    url: str,
+    headers: Dict,
+    payload: Dict,
+    timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
+    read_response: Optional[bool] = True,
+    **kwargs,
+):
     """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
 
     :param url: The URL of the OpenAI API.
     :param headers: Dictionary of HTTP Headers to send with the :class:`Request`.
     :param payload: The payload to send with the request.
     :param timeout: The timeout length of the request. The default is 30s.
+    :param read_response: Whether to read the response as JSON. The default is True.
     """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
-    res = json.loads(response.text)
+    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout, **kwargs)
+    if read_response:
+        json_response = json.loads(response.text)
 
     if response.status_code != 200:
         openai_error: OpenAIError
@@ -110,13 +159,15 @@ def openai_request(url: str, headers: Dict, payload: Dict, timeout: Union[float,
                 status_code=response.status_code,
             )
         raise openai_error
+    if read_response:
+        return json_response
+    else:
+        return response
 
-    return res
 
-
-def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
-    """Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`,
-    log a warning to the user.
+def _check_openai_finish_reason(result: Dict, payload: Dict) -> None:
+    """Check the `finish_reason` the answers returned by OpenAI completions endpoint.
+    If the `finish_reason` is `length` or `content_filter`, log a warning to the user.
 
     :param result: The result returned from the OpenAI API.
     :param payload: The payload sent to the OpenAI API.
@@ -126,6 +177,16 @@ def _check_openai_text_completion_answers(result: Dict, payload: Dict) -> None:
         logger.warning(
             "%s out of the %s completions have been truncated before reaching a natural stopping point. "
             "Increase the max_tokens parameter to allow for longer completions.",
+            number_of_truncated_completions,
+            payload["n"],
+        )
+
+    number_of_content_filtered_completions = sum(
+        1 for ans in result["choices"] if ans["finish_reason"] == "content_filter"
+    )
+    if number_of_content_filtered_completions > 0:
+        logger.warning(
+            "%s out of the %s completions have omitted content due to a flag from OpenAI content filters.",
             number_of_truncated_completions,
             payload["n"],
         )

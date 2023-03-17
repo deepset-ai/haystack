@@ -62,12 +62,6 @@ from haystack.nodes.prompt import PromptNode, PromptModel
 from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
 
-try:
-    from elasticsearch import Elasticsearch
-    import weaviate
-except (ImportError, ModuleNotFoundError) as ie:
-    _optional_component_not_installed("test", "test", ie)
-
 from .mocks import pinecone as pinecone_mock
 
 
@@ -998,6 +992,14 @@ def prompt_model(request):
         return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
+
+
+@pytest.fixture
+def chatgpt_prompt_model():
+    api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
+    if api_key is None or api_key == "":
+        api_key = "KEY_NOT_FOUND"
+    return PromptModel("gpt-3.5-turbo", api_key=api_key)
 
 
 @pytest.fixture

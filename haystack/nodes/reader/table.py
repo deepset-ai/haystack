@@ -279,7 +279,8 @@ class _TapasEncoder:
         if isinstance(answers[0], list):
             answers = list(itertools.chain.from_iterable(answers))
         for ans, doc in zip(answers, table_documents):
-            ans.document_ids = [doc.id]
+            if ans is not None:
+                ans.document_ids = [doc.id]
 
         # Remove no_answers from the answers list
         answers = [ans for ans in answers if ans is not None]
