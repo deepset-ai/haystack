@@ -571,6 +571,47 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
 
 
 @pytest.mark.integration
+def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: template_with_nested_shaper
+              type: PromptTemplate
+              params:
+                name: custom-template-with-nested-shaper
+                prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
+                output_shapers:
+                - func: strings_to_answers
+                  inputs:
+                    strings: results
+                  outputs:
+                  - answers
+            - name: p1
+              params:
+                model_name_or_path: google/flan-t5-small
+                default_prompt_template: template_with_nested_shaper
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
+    result = pipeline.run(query="What is an amazing city?", documents=[Document("Berlin is an amazing city.")])
+    answer = result["answers"][0].answer
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in answer.casefold())
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Given the context please answer the question. Context: Berlin is an amazing city.; Question: What is an amazing city?; Answer: "
+    )
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_complex_pipeline_with_qa(prompt_model):
     """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
