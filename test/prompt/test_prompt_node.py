@@ -9,12 +9,27 @@ from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt import PromptModelInvocationLayer
-from haystack.nodes.prompt.providers import HFLocalInvocationLayer
+from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler
 
 
 def skip_test_for_invalid_key(prompt_model):
     if prompt_model.api_key is not None and prompt_model.api_key == "KEY_NOT_FOUND":
         pytest.skip("No API key found, skipping test")
+
+
+class TestTokenStreamingHandler(TokenStreamingHandler):
+    stream_handler_invoked = False
+
+    def __call__(self, token_received, *args, **kwargs) -> str:
+        """
+        This callback method is called when a new token is received from the stream.
+
+        :param token_received: The token received from the stream.
+        :param kwargs: Additional keyword arguments passed to the underlying model.
+        :return: The token to be sent to the stream.
+        """
+        self.stream_handler_invoked = True
+        return token_received
 
 
 class CustomInvocationLayer(PromptModelInvocationLayer):
@@ -359,6 +374,38 @@ def test_stop_words(prompt_model):
     # with custom prompt template and stop words set in kwargs (overrides PN stop words)
     r = node.prompt(tt, documents=["Berlin is the capital of Germany."], stop_words=None)
     assert "capital" in r[0] or "Germany" in r[0]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_streaming_prompt_node_with_params(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+
+    # test streaming of calls to OpenAI by passing a stream handler to the prompt method
+    ttsh = TestTokenStreamingHandler()
+    node = PromptNode(prompt_model)
+    response = node("What are some of the best cities in the world to live and why?", stream=True, stream_handler=ttsh)
+
+    assert len(response[0]) > 0, "Response should not be empty"
+    assert ttsh.stream_handler_invoked, "Stream handler should have been invoked"
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key.",
+)
+def test_streaming_prompt_node():
+    ttsh = TestTokenStreamingHandler()
+
+    # test streaming of all calls to OpenAI by registering a stream handler as a model kwarg
+    node = PromptNode(
+        "text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"), model_kwargs={"stream_handler": ttsh}
+    )
+    response = node("What are some of the best cities in the world to live?")
+
+    assert len(response[0]) > 0, "Response should not be empty"
+    assert ttsh.stream_handler_invoked, "Stream handler should have been invoked"
 
 
 @pytest.mark.integration
@@ -851,7 +898,7 @@ class TestTokenLimit:
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2000 tokens) fits within the max token limit (2048 tokens)." in caplog.text
+            assert "and answer length (2000 tokens) fits within the max token limit (2049 tokens)." in caplog.text
 
 
 class TestRunBatch:
