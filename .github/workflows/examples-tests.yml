@@ -16,6 +16,7 @@ on:
 
 env:
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  PYTHON_VERSION: "3.8"
 
 jobs:
   tests:
@@ -33,8 +34,9 @@ jobs:
       steps:
         - uses: actions/checkout@v3
 
-        - name: Setup Python
-          uses: ./.github/actions/python_cache/
+        - uses: actions/setup-python@v4
+          with:
+            python-version: ${{ env.PYTHON_VERSION }}
 
         - name: Install Haystack
           run: pip install .[all]
