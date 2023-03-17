@@ -898,7 +898,7 @@ class TestTokenLimit:
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2000 tokens) fits within the max token limit (2048 tokens)." in caplog.text
+            assert "and answer length (2000 tokens) fits within the max token limit (2049 tokens)." in caplog.text
 
 
 class TestRunBatch:
