@@ -898,7 +898,7 @@ class TestTokenLimit:
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2000 tokens) fits within the max token limit (2048 tokens)." in caplog.text
+            assert "and answer length (2000 tokens) fits within the max token limit (2049 tokens)." in caplog.text
 
 
 class TestRunBatch:
@@ -973,3 +973,48 @@ class TestRunBatch:
 def test_HFLocalInvocationLayer_supports():
     assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
     assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
+
+
+@pytest.mark.integration
+def test_chatgpt_direct_prompting(chatgpt_prompt_model):
+    skip_test_for_invalid_key(chatgpt_prompt_model)
+    pn = PromptNode(chatgpt_prompt_model)
+    result = pn("Hey, I need some Python help. When should I use list comprehension?")
+    assert len(result) == 1 and all(w in result[0] for w in ["comprehension", "list"])
+
+
+@pytest.mark.integration
+def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
+    skip_test_for_invalid_key(chatgpt_prompt_model)
+    pn = PromptNode(chatgpt_prompt_model)
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Who won the world series in 2020?"},
+        {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+        {"role": "user", "content": "Where was it played?"},
+    ]
+
+    result = pn(messages)
+    assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_chatgpt_promptnode():
+    pn = PromptNode(model_name_or_path="gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY", None))
+
+    result = pn("Hey, I need some Python help. When should I use list comprehension?")
+    assert len(result) == 1 and all(w in result[0] for w in ["comprehension", "list"])
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Who won the world series in 2020?"},
+        {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+        {"role": "user", "content": "Where was it played?"},
+    ]
+    result = pn(messages)
+    assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
