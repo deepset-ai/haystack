@@ -5,7 +5,7 @@ import re
 from typing import List, Optional, Union, Dict, Any
 
 from haystack import Pipeline, BaseComponent, Answer, Document
-from haystack.agents.schema import AgentStep
+from haystack.agents.agent_step import AgentStep
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
@@ -25,10 +25,12 @@ logger = logging.getLogger(__name__)
 
 class Tool:
     """
-    Agent uses tools to find the best answer. A tool is a pipeline or a node. When you add a tool to an Agent, the Agent can
-    invoke the underlying pipeline or node to answer questions.
+    Agent uses tools to find the best answer. A tool is a pipeline or a node. When you add a tool to an Agent, the Agent
+    can invoke the underlying pipeline or node to answer questions.
 
-    You must provide a name and a description for each tool. The name should be short and should indicate what the tool can do. The description should explain what the tool is useful for. The Agent uses the description to decide when to use a tool, so the wording you use is important.
+    You must provide a name and a description for each tool. The name should be short and should indicate what the tool
+    can do. The description should explain what the tool is useful for. The Agent uses the description to decide when
+    to use a tool, so the wording you use is important.
 
     :param name: The name of the tool. The Agent uses this name to refer to the tool in the text the Agent generates.
         The name should be short, ideally one token, and a good description of what the tool can do, for example:
@@ -59,7 +61,8 @@ class Tool:
     ):
         if re.search(r"\W", name):
             raise ValueError(
-                f"Invalid name supplied for tool: '{name}'. Use only letters (a-z, A-Z), digits (0-9) and underscores (_)."
+                f"Invalid name supplied for tool: '{name}'. Use only letters (a-z, A-Z), digits (0-9) and "
+                f"underscores (_)."
             )
         self.name = name
         self.pipeline_or_node = pipeline_or_node
@@ -102,14 +105,16 @@ class Tool:
 class Agent:
     """
     An Agent answers queries using the tools you give to it. The tools are pipelines or nodes. The Agent uses a large
-    language model (LLM) through the PromptNode you initialize it with. To answer a query, the Agent follows this sequence:
+    language model (LLM) through the PromptNode you initialize it with. To answer a query, the Agent follows this
+    sequence:
+
     1. It generates a thought based on the query.
     2. It decides which tool to use.
     3. It generates the input for the tool.
     4. Based on the output it gets from the tool, the Agent can either stop if it now knows the answer or repeat the
     process of 1) generate thought, 2) choose tool, 3) generate input.
 
-    Agents are useful for questions containing multiple subquestions that can be answered step-by-step (Multihop QA)
+    Agents are useful for questions containing multiple sub questions that can be answered step-by-step (Multi-hop QA)
     using multiple pipelines and nodes as tools.
     """
 
@@ -118,19 +123,25 @@ class Agent:
         prompt_node: PromptNode,
         prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
         tools: Optional[List[Tool]] = None,
-        max_iterations: int = 8,
+        max_steps: int = 8,
         tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
         final_answer_pattern: str = r"Final Answer:\s*(\w+)\s*",
     ):
         """
          Creates an Agent instance.
 
-        :param prompt_node: The PromptNode that the Agent uses to decide which tool to use and what input to provide to it in each iteration.
-        :param prompt_template: The name of a PromptTemplate for the PromptNode. It's used for generating thoughts and choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a new template in a similar format.
-        :param tools: A list of tools the Agent can run. If you don't specify any tools here, you must add them with `add_tool()` before running the Agent.
-        :param max_iterations: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
-            Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer. The default is 5.
-        :param tool_pattern: A regular expression to extract the name of the tool and the corresponding input from the text the Agent generated.
+        :param prompt_node: The PromptNode that the Agent uses to decide which tool to use and what input to provide to
+        it in each iteration.
+        :param prompt_template: The name of a PromptTemplate for the PromptNode. It's used for generating thoughts and
+        choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a
+        new template in a similar format.
+        :param tools: A list of tools the Agent can run. If you don't specify any tools here, you must add them
+        with `add_tool()` before running the Agent.
+        :param max_steps: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
+            Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer.
+            The default is 5.
+        :param tool_pattern: A regular expression to extract the name of the tool and the corresponding input from the
+        text the Agent generated.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
         self.prompt_node = prompt_node
@@ -142,7 +153,7 @@ class Agent:
         self.tool_names_with_descriptions = "\n".join(
             [f"{tool.name}: {tool.description}" for tool in self.tools.values()]
         )
-        self.max_iterations = max_iterations
+        self.max_steps = max_steps
         self.tool_pattern = tool_pattern
         self.final_answer_pattern = final_answer_pattern
         send_custom_event(event=f"{type(self).__name__} initialized")
@@ -151,7 +162,8 @@ class Agent:
         """
         Add a tool to the Agent. This also updates the PromptTemplate for the Agent's PromptNode with the tool name.
 
-        :param tool: The tool to add to the Agent. Any previously added tool with the same name will be overwritten. Example:
+        :param tool: The tool to add to the Agent. Any previously added tool with the same name will be overwritten.
+        Example:
         `agent.add_tool(
             Tool(
                 name="Calculator",
@@ -175,15 +187,16 @@ class Agent:
         return tool_name in self.tools
 
     def run(
-        self, query: str, max_iterations: Optional[int] = None, params: Optional[dict] = None
+        self, query: str, max_steps: Optional[int] = None, params: Optional[dict] = None
     ) -> Dict[str, Union[str, List[Answer]]]:
         """
         Runs the Agent given a query and optional parameters to pass on to the tools used. The result is in the
         same format as a pipeline's result: a dictionary with a key `answers` containing a list of answers.
 
-        :param query: The search query.
-        :param max_iterations: The number of times the Agent can run a tool +1 to infer it knows the final answer.
-            If you want to set it, make it at least 2 so that the Agent can run a tool once and then infer it knows the final answer.
+        :param query: The search query
+        :param max_steps: The number of times the Agent can run a tool +1 to infer it knows the final answer.
+            If you want to set it, make it at least 2 so that the Agent can run a tool once and then infer it knows the
+            final answer.
         :param params: A dictionary of parameters you want to pass to the tools that are pipelines.
                        To pass a parameter to all nodes in those pipelines, use the format: `{"top_k": 10}`.
                        To pass a parameter to targeted nodes in those pipelines, use the format:
@@ -192,26 +205,28 @@ class Agent:
         """
         if not self.tools:
             raise AgentError(
-                "An Agent needs tools to run. Add at least one tool using `add_tool()` or set the parameter `tools` when initializing the Agent."
+                "An Agent needs tools to run. Add at least one tool using `add_tool()` or set the parameter `tools` "
+                "when initializing the Agent."
             )
-        if max_iterations is None:
-            max_iterations = self.max_iterations
-        if max_iterations < 2:
+        if max_steps is None:
+            max_steps = self.max_steps
+        if max_steps < 2:
             raise AgentError(
-                f"max_iterations must be at least 2 to let the Agent use a tool once and then infer it knows the final answer. It was set to {max_iterations}."
+                f"max_steps must be at least 2 to let the Agent use a tool once and then infer it knows the final "
+                f"answer. It was set to {max_steps}."
             )
 
-        agent_step = self._create_first_step(query, max_iterations)
-        while not agent_step.is_terminal():
+        agent_step = self._create_first_step(query, max_steps)
+        while not agent_step.is_last():
             agent_step = self._step(agent_step, params)
 
         return agent_step.final_answer(query=query)
 
-    def _create_first_step(self, query: str, max_iterations: int = 10):
+    def _create_first_step(self, query: str, max_steps: int = 10):
         transcript = self._get_initial_transcript(query=query)
         return AgentStep(
             current_step=1,
-            max_steps=max_iterations,
+            max_steps=max_steps,
             final_answer_pattern=self.final_answer_pattern,
             prompt_node_response="",  # no LLM response for the first step
             transcript=transcript,
@@ -219,27 +234,28 @@ class Agent:
 
     def _step(self, current_step: AgentStep, params: Optional[dict] = None):
         # plan next step using the LLM
-        llm_response = self.prompt_node(current_step.prepare_prompt())
+        prompt_node_response = self.prompt_node(current_step.prepare_prompt())
 
         # from the LLM response, create the next step
-        next_step = current_step.create_next_step(llm_response)
+        next_step = current_step.create_next_step(prompt_node_response)
 
         # run the tool selected by the LLM
-        observation = self._run_tool(next_step, params) if not next_step.is_terminal() else None
+        observation = self._run_tool(next_step, params) if not next_step.is_last() else None
 
         # update the next step with the observation
         next_step.completed(observation)
         return next_step
 
     def run_batch(
-        self, queries: List[str], max_iterations: Optional[int] = None, params: Optional[dict] = None
+        self, queries: List[str], max_steps: Optional[int] = None, params: Optional[dict] = None
     ) -> Dict[str, str]:
         """
         Runs the Agent in a batch mode.
 
         :param queries: List of search queries.
-        :param max_iterations: The number of times the Agent can run a tool +1 to infer it knows the final answer.
-            If you want to set it, make it at least 2 so that the Agent can run a tool once and then infer it knows the final answer.
+        :param max_steps: The number of times the Agent can run a tool +1 to infer it knows the final answer.
+            If you want to set it, make it at least 2 so that the Agent can run a tool once and then infer it knows
+            the final answer.
         :param params: A dictionary of parameters you want to pass to the tools that are pipelines.
                        To pass a parameter to all nodes in those pipelines, use the format: `{"top_k": 10}`.
                        To pass a parameter to targeted nodes in those pipelines, use the format:
@@ -248,7 +264,7 @@ class Agent:
         """
         results: Dict = {"queries": [], "answers": [], "transcripts": []}
         for query in queries:
-            result = self.run(query=query, max_iterations=max_iterations, params=params)
+            result = self.run(query=query, max_steps=max_steps, params=params)
             results["queries"].append(result["query"])
             results["answers"].append(result["answers"])
             results["transcripts"].append(result["transcript"])

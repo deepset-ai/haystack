@@ -39,6 +39,9 @@ class AgentStep:
         self.transcript = transcript
 
     def prepare_prompt(self):
+        """
+        Prepares the prompt for the next step.
+        """
         return self.transcript
 
     def create_next_step(self, prompt_node_response: Any) -> AgentStep:
@@ -48,12 +51,14 @@ class AgentStep:
         """
         if not isinstance(prompt_node_response, list):
             raise AgentError(
-                f"Agent output must be a list of str, but {prompt_node_response} received. Transcript:\n{self.transcript}"
+                f"Agent output must be a list of str, but {prompt_node_response} received. "
+                f"Transcript:\n{self.transcript}"
             )
 
         if not prompt_node_response:
             raise AgentError(
-                f"Agent output must be a non empy list of str, but {prompt_node_response} received. Transcript:\n{self.transcript}"
+                f"Agent output must be a non empty list of str, but {prompt_node_response} received. "
+                f"Transcript:\n{self.transcript}"
             )
 
         return AgentStep(
@@ -82,7 +87,7 @@ class AgentStep:
         Formats an answer as a dict containing `query` and `answers` similar to the output of a Pipeline.
         The full transcript based on the Agent's initial prompt template and the text it generated during execution.
 
-        :param query: The search query.
+        :param query: The search query
         """
         answer: Dict[str, Any] = {
             "query": query,
@@ -91,7 +96,7 @@ class AgentStep:
         }
         if self.current_step >= self.max_steps:
             logger.warning(
-                "Maximum number of iterations (%s) reached for query (%s). Increase max_iterations "
+                "Maximum number of iterations (%s) reached for query (%s). Increase max_steps "
                 "or no answer can be provided for this query.",
                 self.max_steps,
                 query,
@@ -117,7 +122,7 @@ class AgentStep:
         Parse the final answer from the PromptNode response.
         :return: The final answer.
         """
-        if not self.is_terminal():
+        if not self.is_last():
             raise AgentError("Cannot extract final answer from non terminal step.")
 
         final_answer_match = re.search(self.final_answer_pattern, self.prompt_node_response)
@@ -133,7 +138,7 @@ class AgentStep:
         """
         return bool(re.search(self.final_answer_pattern, self.prompt_node_response))
 
-    def is_terminal(self) -> bool:
+    def is_last(self) -> bool:
         """
         Check if this is the last step of the Agent.
         :return: True if this is the last step of the Agent, False otherwise.
@@ -143,7 +148,7 @@ class AgentStep:
     def completed(self, observation: Optional[str]):
         """
         Update the transcript with the observation
-        :param observation: The observation from the Agent environment.
+        :param observation: received observation from the Agent environment.
         """
         self.transcript += (
             f"{self.prompt_node_response}\nObservation: {observation}\nThought:"

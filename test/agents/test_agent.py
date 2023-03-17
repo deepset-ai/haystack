@@ -72,9 +72,9 @@ def test_agent_chooses_no_action():
 
 
 @pytest.mark.unit
-def test_max_iterations(caplog, monkeypatch):
-    # Run an Agent and stop because max_iterations is reached
-    agent = Agent(prompt_node=MockPromptNode(), max_iterations=3)
+def test_max_steps(caplog, monkeypatch):
+    # Run an Agent and stop because max_steps is reached
+    agent = Agent(prompt_node=MockPromptNode(), max_steps=3)
     retriever = MockRetriever()
     agent.add_tool(
         Tool(
@@ -91,15 +91,15 @@ def test_max_iterations(caplog, monkeypatch):
 
     monkeypatch.setattr(AgentStep, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
 
-    # Using max_iterations as specified in the Agent's init method
+    # Using max_steps as specified in the Agent's init method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?")
     assert result["answers"] == [Answer(answer="", type="generative")]
     assert "maximum number of iterations (3)" in caplog.text.lower()
 
-    # Setting max_iterations in the Agent's run method
+    # Setting max_steps in the Agent's run method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
-        result = agent.run("Where does Christelle live?", max_iterations=2)
+        result = agent.run("Where does Christelle live?", max_steps=2)
     assert result["answers"] == [Answer(answer="", type="generative")]
     assert "maximum number of iterations (2)" in caplog.text.lower()
 
