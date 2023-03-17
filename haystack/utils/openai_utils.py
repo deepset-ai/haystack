@@ -75,12 +75,30 @@ def _openai_text_completion_tokenization_details(model_name: str):
     :param model_name: Name of the OpenAI model.
     """
     tokenizer_name = "gpt2"
-    if "davinci" in model_name:
-        max_tokens_limit = 4000
-        if USE_TIKTOKEN:
-            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
-    else:
-        max_tokens_limit = 2048
+    max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    model_tokenizer = MODEL_TO_ENCODING.get(model_name) if USE_TIKTOKEN else None
+
+    if model_tokenizer:
+        # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
+        ## therefore, it is better to add `text-davinci` instead to the condition.
+        ## Ref: https://platform.openai.com/docs/models/gpt-3-5
+        ##      https://platform.openai.com/docs/models/gpt-3
+        if "text-davinci" in model_name:
+            max_tokens_limit = 4097
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-3"):
+            max_tokens_limit = 4096
+            tokenizer_name = model_tokenizer
+        # Ref: https://platform.openai.com/docs/models/gpt-4
+        elif model_name.startswith("gpt-4-32k"):
+            max_tokens_limit = 32768  # tokens
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-4"):
+            max_tokens_limit = 8192  # tokens
+            tokenizer_name = model_tokenizer
+        else:
+            tokenizer_name = model_tokenizer
+
     return tokenizer_name, max_tokens_limit
 
 
