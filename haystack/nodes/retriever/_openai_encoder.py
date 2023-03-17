@@ -4,7 +4,6 @@ from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import cpu_count
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
-from haystack.telemetry_2 import send_event
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -13,6 +12,7 @@ from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.utils.openai_utils import USE_TIKTOKEN, count_openai_tokens, load_openai_tokenizer, openai_request
+from haystack.telemetry_2 import send_event
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever

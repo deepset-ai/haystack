@@ -4,9 +4,9 @@ import uuid
 import logging
 from pathlib import Path
 import json
-import yaml
 import datetime
 
+import yaml
 import posthog
 
 from haystack.environment import collect_static_system_specs, collect_dynamic_system_specs
