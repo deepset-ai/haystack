@@ -8,7 +8,6 @@ from collections import defaultdict
 import pandas as pd
 
 from haystack.schema import Document, Answer
-from haystack.document_stores.sql import DocumentORM  #  type: ignore[attr-defined]
 
 
 logger = logging.getLogger(__name__)
@@ -183,6 +182,8 @@ def convert_labels_to_squad(labels_file: str):
     :param labels_file: The path to the file containing labels.
     :return:
     """
+    from haystack.document_stores.sql import DocumentORM  #  type: ignore[attr-defined]
+
     with open(labels_file, encoding="utf-8") as label_file:
         labels = json.load(label_file)
 

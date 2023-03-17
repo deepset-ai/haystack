@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 import logging
 from pathlib import Path
 
-import mlflow
 from requests.exceptions import ConnectionError
 
 from haystack import __version__
@@ -12,6 +11,12 @@ from haystack.environment import get_or_create_env_meta_data
 
 
 logger = logging.getLogger(__name__)
+
+try:
+    import mlflow
+except ImportError as exc:
+    logger.debug("mlflow could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+    mlflow = None
 
 
 def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
@@ -156,6 +161,8 @@ class MLflowTrackingHead(BaseTrackingHead):
         """
         Experiment tracking head for MLflow.
         """
+        if not mlflow:
+            raise ImportError("mlflow could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
         super().__init__()
         self.tracking_uri = tracking_uri
         self.auto_track_environment = auto_track_environment

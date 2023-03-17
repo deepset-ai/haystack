@@ -1,12 +1,21 @@
+import logging
 from typing import Union, List, Dict, Optional, Tuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
-from sqlalchemy.sql import select
-from sqlalchemy import and_, or_
-
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import FilterError
+
+logger = logging.getLogger(__file__)
+
+try:
+    from sqlalchemy.sql import select
+    from sqlalchemy import and_, or_
+except ImportError as exc:
+    logger.debug("sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue.")
+    select = None
+    and_ = None
+    or_ = None
 
 
 def nested_defaultdict() -> defaultdict:
@@ -310,6 +319,10 @@ class NotOperation(LogicalFilterClause):
         return {"bool": {"must_not": conditions}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         conditions = [
             meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm))
             for condition in self.conditions
@@ -357,6 +370,10 @@ class AndOperation(LogicalFilterClause):
         return {"bool": {"must": conditions}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         conditions = [
             meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm))
             for condition in self.conditions
@@ -389,6 +406,10 @@ class OrOperation(LogicalFilterClause):
         return {"bool": {"should": conditions}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         conditions = [
             meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm))
             for condition in self.conditions
@@ -434,6 +455,10 @@ class EqOperation(ComparisonOperation):
         return {"term": {self.field_name: self.comparison_value}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value == self.comparison_value
         )
@@ -466,6 +491,10 @@ class InOperation(ComparisonOperation):
         return {"terms": {self.field_name: self.comparison_value}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value.in_(self.comparison_value)
         )
@@ -508,6 +537,10 @@ class NeOperation(ComparisonOperation):
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value != self.comparison_value
         )
@@ -540,6 +573,10 @@ class NinOperation(ComparisonOperation):
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value.notin_(self.comparison_value)
         )
@@ -582,6 +619,10 @@ class GtOperation(ComparisonOperation):
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value > self.comparison_value
         )
@@ -617,6 +658,10 @@ class GteOperation(ComparisonOperation):
         return {"range": {self.field_name: {"gte": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value >= self.comparison_value
         )
@@ -652,6 +697,10 @@ class LtOperation(ComparisonOperation):
         return {"range": {self.field_name: {"lt": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value < self.comparison_value
         )
@@ -687,6 +736,10 @@ class LteOperation(ComparisonOperation):
         return {"range": {self.field_name: {"lte": self.comparison_value}}}
 
     def convert_to_sql(self, meta_document_orm):
+        if not select:
+            raise ImportError(
+                "sqlalchemy could not be imported. Run 'pip install farm-haystack[sql]' to fix this issue."
+            )
         return select([meta_document_orm.document_id]).where(
             meta_document_orm.name == self.field_name, meta_document_orm.value <= self.comparison_value
         )

@@ -24,7 +24,7 @@ from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever.dense import DenseRetriever
 
 logger = logging.getLogger(__name__)
 

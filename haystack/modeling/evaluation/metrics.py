@@ -4,7 +4,6 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from sentence_transformers import CrossEncoder, SentenceTransformer
-from seqeval.metrics import classification_report as token_classification_report
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ try:
     from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, mean_squared_error, r2_score
     from sklearn.metrics.pairwise import cosine_similarity
 except ImportError as exc:
-    logger.debug("scipy or sklearn could not be imported. " "Run 'pip install farm-haystack[stats]' to fix this issue.")
+    logger.debug("scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue.")
     pearsonr = None
     spearmanr = None
     classification_report = None
@@ -22,6 +21,12 @@ except ImportError as exc:
     mean_squared_error = None
     r2_score = None
     cosine_similarity = None
+
+try:
+    from seqeval.metrics import classification_report as token_classification_report
+except ImportError as exc:
+    logger.debug("seqeval could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+    token_classification_report = None
 
 from transformers import AutoConfig
 
@@ -144,6 +149,10 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
     if head.ph_output_type in registered_reports:
         report_fn = registered_reports[head.ph_output_type]  # type: ignore [index]
     elif head.ph_output_type == "per_token":
+        if not token_classification_report:
+            raise ImportError(
+                "seqeval could not be imported. " "Run 'pip install farm-haystack[eval]' to fix this issue."
+            )
         report_fn = token_classification_report
     elif head.ph_output_type == "per_sequence":
         if not classification_report:

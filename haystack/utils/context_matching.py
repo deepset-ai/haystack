@@ -1,11 +1,21 @@
 from typing import Generator, Iterable, Optional, Tuple, List, Union
 
 import re
+import logging
 from itertools import groupby
 from multiprocessing.pool import Pool
 from collections import namedtuple
 
-from rapidfuzz import fuzz
+
+logger = logging.getLogger(__file__)
+
+
+try:
+    from rapidfuzz import fuzz
+except ImportError as exc:
+    logger.debug("rapidfuzz could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+    fuzz = None
+
 from tqdm.auto import tqdm
 
 
@@ -46,6 +56,8 @@ def calculate_context_similarity(
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
+    if not fuzz:
+        raise ImportError("rapidfuzz could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
     # we need to handle short contexts/contents (e.g single word)
     # as they produce high scores by matching if the chars of the word are contained in the other one
     # this has to be done after normalizing

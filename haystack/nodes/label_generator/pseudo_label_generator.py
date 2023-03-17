@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import torch
 from sentence_transformers import CrossEncoder
@@ -9,8 +9,11 @@ from tqdm.auto import tqdm
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.base import BaseRetriever
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +63,7 @@ class PseudoLabelGenerator(BaseComponent):
     def __init__(
         self,
         question_producer: Union[QuestionGenerator, List[Dict[str, str]]],
-        retriever: BaseRetriever,
+        retriever: "BaseRetriever",
         cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         max_questions_per_document: int = 3,
         top_k: int = 50,

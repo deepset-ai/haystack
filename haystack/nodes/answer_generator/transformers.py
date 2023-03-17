@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, TYPE_CHECKING
 
 import logging
 from collections.abc import Callable
@@ -15,8 +15,10 @@ from transformers import (
 
 from haystack.schema import Document
 from haystack.nodes.answer_generator.base import BaseGenerator
-from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.modeling.utils import initialize_device_settings
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.dense import DensePassageRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +71,7 @@ class RAGenerator(BaseGenerator):
         self,
         model_name_or_path: str = "facebook/rag-token-nq",
         model_version: Optional[str] = None,
-        retriever: Optional[DensePassageRetriever] = None,
+        retriever: Optional["DensePassageRetriever"] = None,
         generator_type: str = "token",
         top_k: int = 2,
         max_length: int = 200,
