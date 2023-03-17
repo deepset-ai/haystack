@@ -999,12 +999,6 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         # Default Retrieval via BM25 using the user's query on `self.content_field`
         else:
-            logger.warning(
-                "As of v1.14.1 Weaviate's BM25 retrieval is still in experimental phase, "
-                "so use it with care! To turn on the BM25 experimental feature in Weaviate "
-                "you need to start it with the `ENABLE_EXPERIMENTAL_BM25='true'` "
-                "environmental variable."
-            )
 
             # Retrieval with BM25 AND filtering
             if filters:  # pylint: disable=no-else-raise
