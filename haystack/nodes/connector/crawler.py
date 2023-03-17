@@ -166,7 +166,8 @@ class Crawler(BaseComponent):
         self.num_processes = num_processes or 1
 
     def __del__(self):
-        self.driver.quit()
+        if hasattr(self, "driver"):
+            self.driver.quit()
 
     def crawl(
         self,
@@ -602,3 +603,9 @@ def _get_webdriver_system_options(webdriver_options: Optional[List[str]] = None)
         options.add_argument(option)
 
     return options
+
+
+url = ["https://haystack.deepset.ai/"]
+crawler = Crawler(output_dir="./crawlerrr", file_path_meta_field_name="file_path", num_processes=2)
+ds = crawler.run(url)
+print(ds)
