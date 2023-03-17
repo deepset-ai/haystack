@@ -253,7 +253,7 @@ def join_documents_to_string(
 
 def strings_to_answers(
     strings: List[str],
-    prompts: Optional[List[str]] = None,
+    prompts: Optional[List[Union[str, List[Dict[str, str]]]]] = None,
     documents: Optional[List[Document]] = None,
     reference_pattern: Optional[str] = None,
     reference_mode: Literal["index", "id", "meta"] = "index",
@@ -307,7 +307,7 @@ def strings_to_answers(
         if len(prompts) == 1:
             # one prompt for all strings/documents
             documents_per_string: List[Optional[List[Document]]] = [documents] * len(strings)
-            prompt_per_string: List[Optional[str]] = [prompts[0]] * len(strings)
+            prompt_per_string: List[Optional[Union[str, List[Dict[str, str]]]]] = [prompts[0]] * len(strings)
         elif len(prompts) > 1 and len(strings) % len(prompts) == 0:
             # one prompt per string/document
             if documents is not None and len(documents) != len(prompts):
@@ -339,7 +339,7 @@ def strings_to_answers(
 
 def string_to_answer(
     string: str,
-    prompt: Optional[str],
+    prompt: Optional[Union[str, List[Dict[str, str]]]],
     documents: Optional[List[Document]],
     reference_pattern: Optional[str],
     reference_mode: Literal["index", "id", "meta"],
