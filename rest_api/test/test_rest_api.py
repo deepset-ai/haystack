@@ -31,8 +31,8 @@ def test_doc_store_error_for_indexing_pipelines(caplog):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
     p, _ = _load_pipeline(yaml_pipeline_path, "indexing")
 
-    assert p is None
-    assert "are not supported by the REST API" in caplog.text
+    assert isinstance(p, Pipeline)
+    assert "will not work as expected" in caplog.text
 
 
 def test_single_worker_doc_store_success_for_query_pipelines():

@@ -31,12 +31,19 @@ def _load_pipeline(pipeline_yaml_path, pipeline_name):
     return pipeline, document_store
 
 
+def _get_last_pipeline_component(pipeline):
+    last_node_name = list(pipeline.graph.nodes.keys())[-1]
+    return pipeline.get_node(last_node_name)
+
+
 def _get_pipeline_doc_store(pipeline, pipeline_name):
     document_store = pipeline.get_document_store()
     logger.info("Loading docstore: %s", document_store)
-    if pipeline_name and "index" in pipeline_name and isinstance(document_store, SINGLE_PROCESS_DOC_STORES):
-        raise PipelineConfigError(
-            "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore are not supported by the REST APIs."
+    last_node = _get_last_pipeline_component(pipeline)
+    if pipeline_name and pipeline_name.startswith("indexing") and isinstance(last_node, SINGLE_PROCESS_DOC_STORES):
+        logger.warning(
+            "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore detected!"
+            "\n These DocumentStores will not work as expected in indexing pipelines with REST APIs."
         )
     return document_store
 
