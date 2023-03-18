@@ -86,7 +86,7 @@ class TopPSampler(BaseSampler):
         :return: List of Documents sorted by (desc.) similarity with the query.
         """
         if top_p is None:
-            top_p = self.top_p
+            top_p = self.top_p if self.top_p else 1.0
 
         if not documents:
             return []

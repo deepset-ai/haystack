@@ -45,6 +45,17 @@ def test_top_p_sampling(top_p_sampler):
 
 
 @pytest.mark.unit
+def test_top_p_sampling_top_p_none(top_p_sampler):
+    query = "What is the most important religious learning from the Bible?"
+    results = top_p_sampler.predict(query=query, documents=docs, top_p=None)
+    assert len(results) == 5
+
+    new_sampler = TopPSampler(top_p=None)
+    results = new_sampler.predict(query=query, documents=docs)
+    assert len(results) == 5
+
+
+@pytest.mark.unit
 def test_top_p_sampling_at_least_one_result(top_p_sampler):
     query = "What is the most important building in King's Landing that has a religious background?"
     results = top_p_sampler.predict(query=query, documents=docs, top_p=0.9)
