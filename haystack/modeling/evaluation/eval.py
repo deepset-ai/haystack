@@ -58,7 +58,9 @@ class Evaluator:
         :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
-        send_event("Evaluator.eval()")
+        send_event(
+            event_name="Evaluation", event_properties={"class": self.__class__.__name__, "function_name": "eval"}
+        )
         model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
         model.prediction_heads[0].use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
         model.eval()
