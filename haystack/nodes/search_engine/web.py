@@ -21,7 +21,13 @@ class WebSearch(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self, api_key: str, search_engine_provider: Union[str, SearchEngine] = "SerperDev", **kwargs):
+    def __init__(
+        self,
+        api_key: str,
+        top_k: Optional[int] = 10,
+        search_engine_provider: Union[str, SearchEngine] = "SerperDev",
+        **kwargs,
+    ):
         """
         :param api_key: API key for the search engine provider.
         :param search_engine_provider: Name of the search engine provider class, see providers.py for a list of
@@ -41,7 +47,7 @@ class WebSearch(BaseComponent):
                 )
             if not issubclass(klass, SearchEngine):
                 raise ValueError(f"Class {search_engine_provider} is not a subclass of SearchEngine.")
-            self.search_engine = klass(api_key=api_key, **kwargs)  # type: ignore
+            self.search_engine = klass(api_key=api_key, top_k=top_k, **kwargs)  # type: ignore
         elif isinstance(search_engine_provider, SearchEngine):
             self.search_engine = search_engine_provider
         else:

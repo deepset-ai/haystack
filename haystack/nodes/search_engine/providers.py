@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import requests
 
@@ -16,9 +16,10 @@ class SerpAPI(SearchEngine):
     Amazon, and similar. See the [SerpAPI website](https://serpapi.com/) for more details.
     """
 
-    def __init__(self, api_key: str, engine: str = "google", **kwargs):
+    def __init__(self, api_key: str, top_k: Optional[int] = 10, engine: Optional[str] = "google", **kwargs):
         """
         :param api_key: API key for SerpAPI.
+        :param top_k: Number of results to return.
         :param engine: Search engine to use.
         :param kwargs: Additional parameters passed to the SerperDev API.
         """
@@ -27,6 +28,7 @@ class SerpAPI(SearchEngine):
         self.api_key = api_key
         self.kwargs = kwargs
         self.engine = engine
+        self.top_k = top_k
 
     def search(self, query: str, **kwargs) -> List[Document]:
         """
@@ -35,7 +37,7 @@ class SerpAPI(SearchEngine):
         :return: List[Document]
         """
         kwargs = {**self.kwargs, **kwargs}
-
+        top_k = kwargs.pop("top_k", self.top_k)
         url = "https://serpapi.com/search"
 
         params = {"source": "python", "serp_api_key": self.api_key, "q": query, **kwargs}
@@ -80,7 +82,7 @@ class SerpAPI(SearchEngine):
         documents = organic + people_also_search + related_questions
 
         logger.debug("SerpAPI returned %s documents for the query '%s'", len(documents), query)
-        return documents
+        return documents[:top_k]
 
 
 class SerperDev(SearchEngine):
@@ -88,13 +90,15 @@ class SerperDev(SearchEngine):
     Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.
     """
 
-    def __init__(self, api_key: str, **kwargs):
+    def __init__(self, api_key: str, top_k: Optional[int] = 10, **kwargs):
         """
         :param api_key: API key for the SerperDev API.
+        :param top_k: Number of documents to return.
         :param kwargs: Additional parameters passed to the SerperDev API.
         """
         super().__init__()
         self.api_key = api_key
+        self.top_k = top_k
         self.kwargs = kwargs
 
     def search(self, query: str, **kwargs) -> List[Document]:
@@ -104,6 +108,7 @@ class SerperDev(SearchEngine):
         :return: List[Document]
         """
         kwargs = {**self.kwargs, **kwargs}
+        top_k = kwargs.pop("top_k", self.top_k)
 
         url = "https://google.serper.dev/search"
 
@@ -116,23 +121,46 @@ class SerperDev(SearchEngine):
 
         json_result = response.json()
         organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"]]
+        answer_box = []
+        if "answerBox" in json_result:
+            answer_dict = json_result["answerBox"]
+            answer_box_content = ""
+            if "snippetHighlighted" in answer_dict:
+                highlighted_answers = answer_dict["snippetHighlighted"]
+                if isinstance(highlighted_answers, list) and len(highlighted_answers) > 0:
+                    answer_box_content = highlighted_answers[0]
+                elif isinstance(highlighted_answers, str):
+                    answer_box_content = highlighted_answers
+            else:
+                answer_box_content = json_result["answerBox"].get("snippet", "")
+            answer_box = [
+                Document.from_dict(
+                    {
+                        "title": answer_dict.get("title", ""),
+                        "content": answer_box_content,
+                        "link": answer_dict.get("link", ""),
+                    }
+                )
+            ]
+
         people_also_ask = []
         if "peopleAlsoAsk" in json_result:
             for result in json_result["peopleAlsoAsk"]:
+                title = result.get("title", "")
                 people_also_ask.append(
                     Document.from_dict(
                         {
-                            "title": result["title"],
-                            "content": result["snippet"] if result.get("snippet") else result["title"],
-                            "link": result["link"],
+                            "title": title,
+                            "content": result["snippet"] if result.get("snippet") else title,
+                            "link": result.get("link", None),
                         }
                     )
                 )
 
-        documents = organic + people_also_ask
+        documents = answer_box + organic + people_also_ask
 
         logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
-        return documents
+        return documents[:top_k]
 
 
 class BingAPI(SearchEngine):
@@ -140,13 +168,15 @@ class BingAPI(SearchEngine):
     Search engine using the Bing API. See [Bing Web Search API](https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview) for more details.
     """
 
-    def __init__(self, api_key: str, **kwargs):
+    def __init__(self, api_key: str, top_k: Optional[int] = 10, **kwargs):
         """
         :param api_key: API key for the Bing API.
+        :param top_k: Number of documents to return.
         :param kwargs: Additional parameters passed to the SerperDev API.
         """
         super().__init__()
         self.api_key = api_key
+        self.top_k = top_k
         self.kwargs = kwargs
 
     def search(self, query: str, **kwargs) -> List[Document]:
@@ -161,6 +191,7 @@ class BingAPI(SearchEngine):
         :return: List[Document]
         """
         kwargs = {**self.kwargs, **kwargs}
+        top_k = kwargs.pop("top_k", self.top_k)
         url = "https://api.bing.microsoft.com/v7.0/search"
 
         params: Dict[str, Union[str, int, float]] = {"q": query, "count": 50, **kwargs}
@@ -199,4 +230,4 @@ class BingAPI(SearchEngine):
                     )
 
         logger.debug("Bing API returned %s documents for the query '%s'", len(documents), query)
-        return documents
+        return documents[:top_k]
