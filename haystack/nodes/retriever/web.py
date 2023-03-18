@@ -42,6 +42,22 @@ class WebRetriever(BaseRetriever):
     clean raw text wrapped in Document(s). WebRetriever then splits raw text into Documents of the desired preprocessor
     specified size. Finally, WebRetriever applies top p sampling on these Documents and returns at most top_k Documents.
 
+    Finding the right balance between top_k and top_p is crucial to obtain high-quality and diverse results in document
+    mode. To explore a wide range of potential results, it's recommended to set top_k for WebSearch close to 10.
+    However, keep in mind that setting a high top_k value will result in fetching and processing many web pages.
+
+    WebRetriever downloads web page results returned by WebSearch, strips HTML, and extracts raw text, which is then
+    split into smaller documents using the optional PreProcessor.
+
+    Post processed documents are then sampled using top_p. If top_p is set too high (close to 1.0), the number of
+    resulting search documents might also be high, especially if the cumulative probability distribution of the
+    document scores is flat (many documents have similar scores, no outliers). If top_p is set too low (less than 0.75),
+    the number of returned documents might be low, but the relevance of the documents will be the highest.
+
+    The recommended approach is to use the default values for top_k and top_p and adjust them based on your specific
+    use case. The default values are 5 and 0.95, respectively. This means that WebRetriever will return at most
+    five of the most relevant processed documents, ensuring that the search results are diverse but still of high
+    quality. If you want to return more results, you can increase top_k.
     """
 
     def __init__(
