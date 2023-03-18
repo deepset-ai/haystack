@@ -6,10 +6,9 @@ from multiprocessing import cpu_count
 from typing import Any, Dict, Iterator, List, Optional, Literal
 from unicodedata import combining, normalize
 
-from courlan.clean import clean_url
+import requests
 from htmldate.core import find_date
-from trafilatura import bare_extraction
-from trafilatura.downloads import fetch_url
+from boilerpy3 import extractors
 
 from haystack import Document
 from haystack.document_stores.base import BaseDocumentStore
@@ -39,10 +38,10 @@ class WebRetriever(BaseRetriever):
     - document mode: WebRetriever will return a list of Documents, each Document being a full HTML stripped document
     of the search result
 
-    In document mode, given a user query passed via the run method, SearchEngine first fetches the top p query relevant
-    URL results, which are in turn downloaded and processed. The processing involves stripping irrelevant HTML tags and
-    producing clean raw text wrapped in Document(s). WebRetriever then splits raw text into paragraph-long Documents of
-    the desired preprocessor specified size.
+    In document mode, given a user query passed via the run method, WebSearch first fetches the top k query relevant
+    URL results, which are in turn downloaded and processed. The processing involves stripping HTML tags and producing
+    clean raw text wrapped in Document(s). WebRetriever then splits raw text into Documents of the desired preprocessor
+    specified size. Finally, WebRetriever applies top p sampling on these Documents and returns at most top_k Documents.
 
     """
 
@@ -50,6 +49,7 @@ class WebRetriever(BaseRetriever):
         self,
         web_search: WebSearch,
         top_p: Optional[float] = 0.95,
+        top_k: Optional[int] = 5,
         mode: Literal["snippet", "document"] = "document",
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
@@ -60,7 +60,8 @@ class WebRetriever(BaseRetriever):
     ):
         """
         :param web_search: WebSearch node.
-        :param top_p: Top p documents to be returned by the retriever. If None, all documents are returned.
+        :param top_p: Top p to apply to the retrieved and processed documents.
+        :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets or full documents.
         :param preprocessor: Preprocessor to be used to split documents into paragraphs.
         :param cache_document_store: DocumentStore to be used to cache search results.
@@ -79,6 +80,7 @@ class WebRetriever(BaseRetriever):
         self.cache_headers = cache_headers
         self.cache_time = cache_time
         self.apply_sampler_to_processed_docs = apply_sampler_to_processed_docs
+        self.top_k = top_k
         if top_p is not None:
             self.sampler = TopPSampler(top_p=top_p, top_score_field="score")
 
@@ -152,6 +154,7 @@ class WebRetriever(BaseRetriever):
         self,
         query: str,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
@@ -160,11 +163,12 @@ class WebRetriever(BaseRetriever):
         **kwargs,
     ) -> List[Document]:
         """
-        Retrieve documents based on the list of URLs from the WebSearchEngine. The documents are scraped from the web at real-time.
-        You can then store the documents in a DocumentStore for later use. They can be cached in a DocumentStore to improve
-        retrieval time.
-        :param query: The query string.
+        Retrieve documents based on the list of URLs from the WebSearchEngine. The documents are scraped from the web
+        at real-time. You can then store the documents in a DocumentStore for later use. They can be cached in a
+        DocumentStore to improve retrieval time.
+        :param query: The query string
         :param top_p: The top-p sampling parameter to be used to sample documents. If None, the default value is used.
+        :param top_k: The number of documents to be returned by the retriever. If None, the default value is used.
         :param preprocessor: The preprocessor to be used to split documents into paragraphs.
         :param cache_document_store: The DocumentStore to cache the documents to.
         :param cache_index: The index name to save the documents to.
@@ -177,6 +181,7 @@ class WebRetriever(BaseRetriever):
         cache_index = cache_index or self.cache_index
         cache_headers = cache_headers or self.cache_headers
         cache_time = cache_time or self.cache_time
+        top_k = top_k or self.top_k
 
         query_norm = self._normalize_query(query)
 
@@ -187,9 +192,6 @@ class WebRetriever(BaseRetriever):
         # cache miss
         if not extracted_docs:
             search_results, _ = self.web_search.run(query=query)
-
-            if self.sampler and search_results["documents"]:
-                search_results, _ = self.sampler.run(query, search_results["documents"], top_p=top_p)
             search_results = search_results["documents"]
             if self.mode == "snippet":
                 return search_results  # type: ignore
@@ -199,41 +201,24 @@ class WebRetriever(BaseRetriever):
                 for r in search_results
                 if r.meta.get("link")
             ]
+            logger.debug("Starting to fetch %d links from WebSearch results", len(links))
 
             def scrape_direct(link: SearchResult) -> Dict[str, Any]:
+                extractor = extractors.ArticleExtractor(raise_on_failure=False)
                 try:
-                    response = fetch_url(link.url)
-
-                    if response is None:
-                        logger.debug("No response from URL %s, trying Google cache", link.url)
-                        response = fetch_url(f"https://webcache.googleusercontent.com/search?q=cache:{link.url}")
-
-                    if response is not None:
-                        extracted = bare_extraction(
-                            response,
-                            include_comments=False,
-                            include_tables=False,
-                            include_links=False,
-                            deduplicate=True,
-                            date_extraction_params={
-                                "extensive_search": True,
-                                "outputformat": "%Y-%m-%d",
-                                "original_date": True,
-                            },
-                        )
-
-                        if isinstance(extracted, dict):
-                            extracted["url"] = clean_url(link.url)
-                            extracted["search.score"] = link.score
-                            extracted["search.position"] = link.position
-
-                            return {
-                                k: v
-                                for k, v in extracted.items()
-                                if k not in ["fingerprint", "license", "body", "comments", "raw_text", "commentsbody"]
+                    extracted_content = ""
+                    extracted_doc = {}
+                    response = requests.get(link.url, headers=self._request_headers(), timeout=10)
+                    if response.status_code == 200 and len(response.text) > 0:
+                        extracted_content = extractor.get_content(response.text)
+                        if extracted_content:
+                            extracted_doc = {
+                                "text": extracted_content,
+                                "url": link.url,
+                                "search.score": link.score,
+                                "search.position": link.position,
                             }
-
-                    return {}
+                    return extracted_doc
 
                 except Exception as e:
                     logger.error("Error retrieving URL %s: %s", link.url, e)
@@ -241,17 +226,17 @@ class WebRetriever(BaseRetriever):
 
             thread_count = cpu_count() if len(links) > cpu_count() else len(links)
             with ThreadPoolExecutor(max_workers=thread_count) as executor:
-                results: Iterator[Dict[str, Any]] = executor.map(scrape_direct, links)
+                scraped_pages: Iterator[Dict[str, Any]] = executor.map(scrape_direct, links)
 
                 failed = 0
                 extracted_docs = []
-                for r, doc in zip(results, search_results):
-                    if r and "text" in r:
-                        r["id_hash_keys"] = ["meta.url", "meta.search.query"]
-                        r["search.query"] = query_norm
+                for scraped_page, doc in zip(scraped_pages, search_results):
+                    if scraped_page and "text" in scraped_page:
+                        scraped_page["id_hash_keys"] = ["meta.url", "meta.search.query"]
+                        scraped_page["search.query"] = query_norm
 
-                        r.pop("description", None)
-                        document = Document.from_dict(r, field_map={"text": "content"})
+                        scraped_page.pop("description", None)
+                        document = Document.from_dict(scraped_page, field_map={"text": "content"})
 
                         document.meta["timestamp"] = int(datetime.utcnow().timestamp())
                         document.meta["search.position"] = doc.meta.get("position")
@@ -259,7 +244,7 @@ class WebRetriever(BaseRetriever):
 
                         extracted_docs.append(document)
                     else:
-                        logger.warning("Could not extract text from URL %s. Using search snippet.", doc.meta["link"])
+                        logger.debug("Could not extract text from URL %s. Using search snippet.", doc.meta["link"])
 
                         if "date" in doc.meta:
                             doc.meta["date"] = find_date(
@@ -267,7 +252,7 @@ class WebRetriever(BaseRetriever):
                             )
 
                         if "link" in doc.meta:
-                            doc.meta["url"] = clean_url(doc.meta["link"])
+                            doc.meta["url"] = doc.meta["link"]
                             del doc.meta["link"]
 
                         doc.meta["id_hash_keys"] = ["meta.url", "meta.search.query"]
@@ -309,12 +294,14 @@ class WebRetriever(BaseRetriever):
             if sampled_docs is not None:
                 processed_docs = sampled_docs["documents"]
 
-        return processed_docs if processed_docs else []
+        final_docs = processed_docs if processed_docs else []
+        return final_docs[:top_k]
 
     def retrieve_batch(  # type: ignore[override]
         self,
         queries: List[str],
         top_p: Optional[int] = None,
+        top_k: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
@@ -329,6 +316,7 @@ class WebRetriever(BaseRetriever):
                 self.retrieve(
                     q,
                     top_p=top_p,
+                    top_k=top_k,
                     preprocessor=preprocessor,
                     cache_document_store=cache_document_store,
                     cache_index=cache_index,
@@ -338,3 +326,12 @@ class WebRetriever(BaseRetriever):
             )
 
         return [documents]
+
+    def _request_headers(self):
+        headers = {
+            "accept": "*/*",
+            "User-Agent": "haystack/WebRetriever/1.15",
+            "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
+            "referer": "https://www.google.com/",
+        }
+        return headers

@@ -70,12 +70,7 @@ dependencies = [
   "sseclient-py",  # server side events for OpenAI streaming
 
   # Web Retriever
-  "trafilatura",
-  "courlan",
-
-  # Web Retriever
-  "trafilatura",
-  "courlan",
+  "boilerpy3",
 
   # Preprocessing
   "more_itertools",  # for windowing
