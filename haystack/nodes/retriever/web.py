@@ -7,7 +7,6 @@ from typing import Any, Dict, Iterator, List, Optional, Literal
 from unicodedata import combining, normalize
 
 import requests
-from htmldate.core import find_date
 from boilerpy3 import extractors
 
 from haystack import Document
@@ -245,11 +244,6 @@ class WebRetriever(BaseRetriever):
                         extracted_docs.append(document)
                     else:
                         logger.debug("Could not extract text from URL %s. Using search snippet.", doc.meta["link"])
-
-                        if "date" in doc.meta:
-                            doc.meta["date"] = find_date(
-                                doc.meta["date"], extensive_search=True, outputformat="%Y-%m-%d"
-                            )
 
                         if "link" in doc.meta:
                             doc.meta["url"] = doc.meta["link"]
