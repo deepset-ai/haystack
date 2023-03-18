@@ -245,37 +245,16 @@ class WebRetriever(BaseRetriever):
 
                 failed = 0
                 extracted_docs = []
-                for scraped_page, doc in zip(scraped_pages, search_results):
+                for scraped_page, search_result_doc in zip(scraped_pages, search_results):
                     if scraped_page and "text" in scraped_page:
-                        scraped_page["id_hash_keys"] = ["meta.url", "meta.search.query"]
-                        scraped_page["search.query"] = query_norm
-
-                        scraped_page.pop("description", None)
-                        document = Document.from_dict(scraped_page, field_map={"text": "content"})
-
-                        document.meta["timestamp"] = int(datetime.utcnow().timestamp())
-                        document.meta["search.position"] = doc.meta.get("position")
-                        document.meta["search.score"] = doc.meta.get("score")
-
+                        document = self._document_from_scraped_page(search_result_doc, scraped_page, query_norm)
                         extracted_docs.append(document)
                     else:
-                        logger.debug("Could not extract text from URL %s. Using search snippet.", doc.meta["link"])
-
-                        if "link" in doc.meta:
-                            doc.meta["url"] = doc.meta["link"]
-                            del doc.meta["link"]
-
-                        doc.meta["id_hash_keys"] = ["meta.url", "meta.search.query"]
-                        doc.meta["search.query"] = query_norm
-
-                        doc._get_id(id_hash_keys=doc.meta["id_hash_keys"])
-
-                        doc.meta["search.position"] = doc.meta.pop("position", None)
-                        doc.meta["search.score"] = doc.meta.pop("score", None)
-                        doc.meta["search.snippet"] = 1
-                        doc.meta["timestamp"] = int(datetime.utcnow().timestamp())
-
-                        extracted_docs.append(doc)
+                        logger.debug(
+                            "Could not extract text from URL %s. Using search snippet.", search_result_doc.meta["link"]
+                        )
+                        snippet_doc = self._document_from_snippet(search_result_doc, query_norm)
+                        extracted_docs.append(snippet_doc)
                         failed += 1
 
                 logger.debug(
@@ -345,3 +324,25 @@ class WebRetriever(BaseRetriever):
             "referer": "https://www.google.com/",
         }
         return headers
+
+    def _document_from_snippet(self, doc, query_norm):
+        doc_dict = {
+            "text": doc.content,
+            "url": doc.meta["link"],
+            "id_hash_keys": ["meta.url", "meta.search.query"],
+            "search.query": query_norm,
+        }
+        d = Document.from_dict(doc_dict, field_map={"text": "content"})
+        d.meta["timestamp"] = int(datetime.utcnow().timestamp())
+        d.meta["search.position"] = doc.meta.pop("position", None)
+        d.meta["search.snippet"] = 1
+        return d
+
+    def _document_from_scraped_page(self, search_result_doc, scraped_page, query_norm):
+        scraped_page["id_hash_keys"] = ["meta.url", "meta.search.query"]
+        scraped_page["search.query"] = query_norm
+        scraped_page.pop("description", None)
+        document = Document.from_dict(scraped_page, field_map={"text": "content"})
+        document.meta["timestamp"] = int(datetime.utcnow().timestamp())
+        document.meta["search.position"] = search_result_doc.meta.get("position")
+        return document
