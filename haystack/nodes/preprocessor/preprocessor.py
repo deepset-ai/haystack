@@ -4,7 +4,6 @@ from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import List, Optional, Generator, Set, Union, Tuple, Dict
-import os
 
 try:
     from typing import Literal
@@ -770,7 +769,7 @@ class PreProcessor(BasePreProcessor):
             % {
                 "NonWord": sentence_tokenizer._lang_vars._re_non_word_chars,
                 # SentEndChars might be followed by closing brackets, so we match them here.
-                "SentEndChars": sentence_tokenizer._lang_vars._re_sent_end_chars + "[\)\]}]*",
+                "SentEndChars": sentence_tokenizer._lang_vars._re_sent_end_chars + r"[\)\]}]*",
             },
             re.UNICODE | re.VERBOSE,
         )
