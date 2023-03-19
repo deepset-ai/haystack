@@ -1290,7 +1290,7 @@ class FARMReader(BaseReader):
                     answer_end_in_overlap = ans.offset_answer_end - overlap["range"][0]
 
                     # Check if predictions from overlapping Document are within the overlap
-                    overlapping_doc_pred = preds_per_doc.get(overlap["doc_id"])
+                    overlapping_doc_pred = preds_per_doc[overlap["doc_id"]]
                     cur_doc_overlap = [ol for ol in overlapping_docs[overlap["doc_id"]] if ol["doc_id"] == pred.id][0]
                     for pot_dupl_ans_idx in reversed(range(len(overlapping_doc_pred.prediction))):
                         pot_duplicate_ans = overlapping_doc_pred.prediction[pot_dupl_ans_idx]

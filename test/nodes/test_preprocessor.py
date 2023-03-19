@@ -540,3 +540,62 @@ def test_preprocessor_very_long_document(caplog):
     assert results == documents
     for i in range(5):
         assert f"is 6{i} characters long after preprocessing, where the maximum length should be 10." in caplog.text
+
+
+@pytest.mark.unit
+def test_split_respect_sentence_boundary_exceeding_split_len_not_repeated():
+    preproc = PreProcessor(split_length=13, split_overlap=3, split_by="word", split_respect_sentence_boundary=True)
+    document = Document(
+        content=(
+            "This is a test sentence with many many words that exceeds the split length and should not be repeated. "
+            "This is another test sentence. (This is a third test sentence.) "
+            "This is the last test sentence."
+        )
+    )
+    documents = preproc.process(document)
+    assert len(documents) == 3
+    assert (
+        documents[0].content
+        == "This is a test sentence with many many words that exceeds the split length and should not be repeated. "
+    )
+    assert "This is a test sentence with many many words" not in documents[1].content
+    assert "This is a test sentence with many many words" not in documents[2].content
+
+
+@pytest.mark.unit
+def test_split_overlap_information():
+    preproc = PreProcessor(split_length=13, split_overlap=3, split_by="word", split_respect_sentence_boundary=True)
+    document = Document(
+        content=(
+            "This is a test sentence with many many words that exceeds the split length and should not be repeated. "
+            "This is another test sentence. (This is a third test sentence.) This is the fourth sentence. "
+            "This is the last test sentence."
+        )
+    )
+    documents = preproc.process(document)
+    assert len(documents) == 4
+    # The first Document should not overlap with any other Document as it exceeds the split length, the other Documents
+    # should overlap with the previous Document (if applicable) and the next Document (if applicable)
+    assert len(documents[0].meta["_split_overlap"]) == 0
+    assert len(documents[1].meta["_split_overlap"]) == 1
+    assert len(documents[2].meta["_split_overlap"]) == 2
+    assert len(documents[3].meta["_split_overlap"]) == 1
+
+    assert documents[1].meta["_split_overlap"][0]["doc_id"] == documents[2].id
+    assert documents[2].meta["_split_overlap"][0]["doc_id"] == documents[1].id
+    assert documents[2].meta["_split_overlap"][1]["doc_id"] == documents[3].id
+    assert documents[3].meta["_split_overlap"][0]["doc_id"] == documents[2].id
+
+    doc1_overlap_doc2 = documents[1].meta["_split_overlap"][0]["range"]
+    doc2_overlap_doc1 = documents[2].meta["_split_overlap"][0]["range"]
+    assert (
+        documents[1].content[doc1_overlap_doc2[0] : doc1_overlap_doc2[1]]
+        == documents[2].content[doc2_overlap_doc1[0] : doc2_overlap_doc1[1]]
+    )
+
+    doc2_overlap_doc3 = documents[2].meta["_split_overlap"][1]["range"]
+    doc3_overlap_doc2 = documents[3].meta["_split_overlap"][0]["range"]
+    assert (
+        documents[2].content[doc2_overlap_doc3[0] : doc2_overlap_doc3[1]]
+        == documents[3].content[doc3_overlap_doc2[0] : doc3_overlap_doc2[1]]
+    )
