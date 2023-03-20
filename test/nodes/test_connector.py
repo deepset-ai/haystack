@@ -152,7 +152,10 @@ def test_crawler_extract_hidden_text(test_url, tmp_path, extract_hidden_text):
         urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=extract_hidden_text, crawler_depth=0
     )
     crawled_content = documents["documents"][0].content
-    assert "hidden text" in crawled_content
+    if extract_hidden_text:
+        assert "hidden text" in crawled_content
+    else:
+        assert "hidden text" not in crawled_content
 
 
 @pytest.mark.integration
