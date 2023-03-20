@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import copy
 import re
 import sys
 import time
@@ -257,14 +258,14 @@ class Crawler(BaseComponent):
             else:
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
 
-        documents: List[Document] = []
-        base_urls: List[str] = []
-        urls_to_search: List[str] = []
-
         # Start by crawling the initial list of urls
         if filter_urls:
             pattern = re.compile("|".join(filter_urls))
             urls = [url for url in urls if pattern.search(url)]
+
+        documents: List[Document] = []
+        base_urls: List[str] = []
+        urls_to_search: List[str] = copy.deepcopy(urls)
 
         # follow one level of sublinks if requested
         if crawler_depth == 1:
