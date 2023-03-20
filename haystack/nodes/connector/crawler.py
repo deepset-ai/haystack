@@ -264,7 +264,7 @@ class Crawler(BaseComponent):
             urls = [url for url in urls if pattern.search(url)]
 
         documents: List[Document] = []
-        base_urls: List[str] = []
+        base_urls: List[str] = [None] * len(urls)
         urls_to_search: List[str] = copy.deepcopy(urls)
 
         # follow one level of sublinks if requested
