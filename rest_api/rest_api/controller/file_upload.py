@@ -76,7 +76,7 @@ def upload_file(
         finally:
             file.file.close()
 
-    params = json.loads(additional_params) or {}
+    params = json.loads(additional_params) or {}  # type: ignore
 
     # Find nodes names
     converters = indexing_pipeline.get_nodes_by_class(BaseConverter)
