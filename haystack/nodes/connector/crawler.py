@@ -264,7 +264,7 @@ class Crawler(BaseComponent):
             urls = [url for url in urls if pattern.search(url)]
 
         documents: List[Document] = []
-        base_urls: List[str] = [None] * len(urls)
+        base_urls: List[Optional[str]] = [None] * len(urls)
         urls_to_search: List[str] = copy.deepcopy(urls)
 
         # follow one level of sublinks if requested
@@ -526,7 +526,7 @@ def _crawl_urls(
     webdriver_options: Options,
     urls: List[str],
     extract_hidden_text: bool,
-    base_urls: List[str],
+    base_urls: List[Optional[str]],
     id_hash_keys: Optional[List[str]] = None,
     loading_wait_time: Optional[int] = None,
     overwrite_existing_files: Optional[bool] = False,
