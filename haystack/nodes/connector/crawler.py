@@ -301,7 +301,7 @@ class Crawler(BaseComponent):
                     )
                     for _url, _base_url in zip(urls, base_urls)
                 ]
-                documents += joblib.Parallel(n_jobs=num_processes, backend="loky", batch_size="auto")(delayed_funcs)
+                documents += joblib.Parallel(n_jobs=num_processes, backend="loky", batch_size="auto")(delayed_funcs)[0]
             else:
                 documents += _crawl_urls(
                     self.driver,

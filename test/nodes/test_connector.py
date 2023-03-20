@@ -65,7 +65,7 @@ def test_crawler_url_none_exception(webdriver):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("num_processes", [1, 2])
-def test_crawler(tmp_path, num_processes):
+def test_crawler_with_multiprocessing(tmp_path, num_processes):
     tmp_dir = tmp_path
     url = ["https://haystack.deepset.ai/"]
 
@@ -133,30 +133,26 @@ def test_crawler_output_file_structure(test_url, tmp_path):
 
 
 @pytest.mark.integration
-def test_crawler_filter_urls(test_url, tmp_path):
+@pytest.mark.parametrize("filter_url", ["index", "page1"])
+def test_crawler_filter_urls(test_url, tmp_path, filter_url):
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
 
-    documents = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["index"], crawler_depth=1)
+    documents = crawler.crawl(urls=[test_url + f"/{filter_url}.html"], filter_urls=[filter_url], crawler_depth=1)
     assert len(documents) == 1
-    assert content_match(crawler, test_url + "/index.html", documents[0].meta["file_path"])
+    assert content_match(crawler, test_url + f"/{filter_url}.html", documents[0].meta["file_path"])
 
-    # Note: filter_urls can exclude pages listed in `urls` as well
-    documents = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
-    assert len(documents) == 1
-    assert content_match(crawler, test_url + "/page1.html", documents[0].meta["file_path"])
-    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google.com"], crawler_depth=1)
+    assert not crawler.crawl(urls=[test_url + f"/{filter_url}.html"], filter_urls=["google.com"], crawler_depth=1)
 
 
 @pytest.mark.integration
-def test_crawler_extract_hidden_text(test_url, tmp_path):
+@pytest.mark.parametrize("extract_hidden_text", [True, False])
+def test_crawler_extract_hidden_text(test_url, tmp_path, extract_hidden_text):
     crawler = Crawler(output_dir=tmp_path)
-    documents, _ = crawler.run(urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=True, crawler_depth=0)
+    documents, _ = crawler.run(
+        urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=extract_hidden_text, crawler_depth=0
+    )
     crawled_content = documents["documents"][0].content
     assert "hidden text" in crawled_content
-
-    documents, _ = crawler.run(urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=False, crawler_depth=0)
-    crawled_content = documents["documents"][0].content
-    assert "hidden text" not in crawled_content
 
 
 @pytest.mark.integration
