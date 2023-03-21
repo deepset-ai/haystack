@@ -102,7 +102,7 @@ def get_component_definitions(
                     key,
                     name,
                 )
-            return component_definitions
+    return component_definitions
 
 
 def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
