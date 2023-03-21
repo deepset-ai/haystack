@@ -75,21 +75,34 @@ def get_component_definitions(
         component_definitions[name] = component_definition
 
         if overwrite_with_env_variables:
-            for key, value in os.environ.items():
-                env_prefix = f"{name}_params_".upper()
-                if key.startswith(env_prefix):
-                    param_name = key.replace(env_prefix, "").lower()
-                    if "params" not in component_definition:
-                        component_definition["params"] = {}
-                    component_definition["params"][param_name] = value
-                    logger.info(
-                        "Param '%s' of component '%s' overwritten with environment variable '%s' value '%s'.",
-                        param_name,
-                        name,
-                        key,
-                        value,
-                    )
-    return component_definitions
+            # To call environ variable, you may need to follow this;
+            # Ref: https://legacy.docs.greatexpectations.io/en/latest/guides/how_to_guides/configuring_data_contexts/how_to_use_a_yaml_file_or_environment_variables_to_populate_credentials.html
+            # Based on the provided reference, we can create a prefix to detect the kind of value for each param variable.
+            # Also, for the prefix ref: https://stackoverflow.com/a/52412796/14473118
+            yml_env_var_prefix = re.compile(r"\$\{([^}^{]+)\}")
+
+            for key, value in component_definition["params"].items():
+                detect_var = yml_env_var_prefix.match(str(value))
+                if detect_var:
+                    env_variable = detect_var.group()[2:-1]
+                    try:
+                        env_value = os.environ[env_variable]
+                    except KeyError:
+                        logging.error(
+                            "Can't find the provided environment variable %s, we will set the value as it is.", value
+                        )
+                        env_value = value
+                else:
+                    env_value = value
+
+                # Set the value to the param variable from the environ or set the same value if it was not environ variable value
+                component_definition["params"][key] = env_value
+                logger.info(
+                    "Param %s of component '%s' overwritten with environment variable value.",  # Can't mention the value since it can be API value.
+                    key,
+                    name,
+                )
+            return component_definitions
 
 
 def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
