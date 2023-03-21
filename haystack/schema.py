@@ -1508,8 +1508,6 @@ class EvaluationResult:
             "gold_answers_match",
             "gold_contexts_similarity",
             "offsets_in_document",
-            "document_ids",
-            "custom_document_ids",
             "gold_document_contents",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)

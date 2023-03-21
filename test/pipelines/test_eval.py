@@ -1910,3 +1910,79 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "custom_document_id" not in eval_result["legacy"]
     assert "gold_document_contents" not in eval_result["legacy"]
     assert "content" not in eval_result["legacy"]
+
+
+def test_load_evaluation_result_w_empty_document_ids(tmp_path):
+    eval_result_csv = Path(tmp_path) / "Reader.csv"
+    with open(eval_result_csv, "w") as eval_result_csv:
+        columns = [
+            "multilabel_id",
+            "query",
+            "filters",
+            "gold_answers",
+            "answer",
+            "context",
+            "exact_match",
+            "f1",
+            "exact_match_context_scope",
+            "f1_context_scope",
+            "exact_match_document_id_scope",
+            "f1_document_id_scope",
+            "exact_match_document_id_and_context_scope",
+            "f1_document_id_and_context_scope",
+            "gold_contexts",
+            "rank",
+            "document_ids",
+            "gold_document_ids",
+            "offsets_in_document",
+            "gold_offsets_in_documents",
+            "offsets_in_context",
+            "gold_offsets_in_contexts",
+            "gold_answers_exact_match",
+            "gold_answers_f1",
+            "gold_documents_id_match",
+            "gold_contexts_similarity",
+            "type",
+            "node",
+            "eval_mode",
+            "index",
+        ]
+        writer = DictWriter(eval_result_csv, fieldnames=columns)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "multilabel_id": "ddc1562602f2d6d895b91e53f83e4c16",
+                "query": "who is written in the book of life",
+                "filters": "b'null'",
+                "gold_answers": "['every person who is destined for Heaven or the World to Come', 'all people considered righteous before God']",
+                "answer": None,
+                "context": None,
+                "exact_match": 0.0,
+                "f1": 0.0,
+                "exact_match_context_scope": 0.0,
+                "f1_context_scope": 0.0,
+                "exact_match_document_id_scope": 0.0,
+                "f1_document_id_scope": 0.0,
+                "exact_match_document_id_and_context_scope": 0.0,
+                "f1_document_id_and_context_scope": 0.0,
+                "gold_contexts": "['Book of Life - wikipedia Book of Life Jump to: navigation, search...']",
+                "rank": 1.0,
+                "document_ids": None,
+                "gold_document_ids": "['de2fd2f109e11213af1ea189fd1488a3-0', 'de2fd2f109e11213af1ea189fd1488a3-0']",
+                "offsets_in_document": "[{'start': 0, 'end': 0}]",
+                "gold_offsets_in_documents": "[{'start': 374, 'end': 434}, {'start': 1107, 'end': 1149}]",
+                "offsets_in_context": "[{'start': 0, 'end': 0}]",
+                "gold_offsets_in_contexts": "[{'start': 374, 'end': 434}, {'start': 1107, 'end': 1149}]",
+                "gold_answers_exact_match": "[0, 0]",
+                "gold_answers_f1": "[0, 0]",
+                "gold_documents_id_match": "[0.0, 0.0]",
+                "gold_contexts_similarity": "[0.0, 0.0]",
+                "type": "answer",
+                "node": "Reader",
+                "eval_mode": "integrated",
+            }
+        )
+
+    eval_result = EvaluationResult.load(tmp_path)
+    assert "Reader" in eval_result
+    assert len(eval_result) == 1
