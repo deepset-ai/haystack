@@ -1,6 +1,3 @@
-from typing import List
-
-import os
 import logging
 import os
 from math import isclose

@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
-from typing import Any, Dict, Iterator, List, Optional, Literal
+from typing import Any, Dict, Iterator, List, Optional, Literal, Union
 from unicodedata import combining, normalize
 
 import requests
@@ -14,6 +14,7 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes import TopPSampler
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.search_engine import SearchEngine
 from haystack.nodes.search_engine.web import WebSearch
 from haystack.schema import FilterType
 
@@ -65,7 +66,9 @@ class WebRetriever(BaseRetriever):
 
     def __init__(
         self,
-        web_search: WebSearch,
+        api_key: str,
+        search_engine_provider: Union[str, SearchEngine] = "SerperDev",
+        top_search_results: Optional[int] = 10,
         top_p: Optional[float] = 0.95,
         top_k: Optional[int] = 5,
         mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "preprocessed_documents",
@@ -77,7 +80,6 @@ class WebRetriever(BaseRetriever):
         apply_sampler_to_processed_docs: Optional[bool] = True,
     ):
         """
-        :param web_search: WebSearch node.
         :param top_p: Top p to apply to the retrieved and processed documents.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents or preprocessed documents. Preprocessed documents are the default.
@@ -90,7 +92,9 @@ class WebRetriever(BaseRetriever):
         will be applied to the processed documents.
         """
         super().__init__()
-        self.web_search = web_search
+        self.web_search = WebSearch(
+            api_key=api_key, top_k=top_search_results, search_engine_provider=search_engine_provider
+        )
         self.mode = mode
         self.cache_document_store = cache_document_store
         self.cache_index = cache_index

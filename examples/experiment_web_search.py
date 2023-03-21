@@ -1,27 +1,25 @@
 import os
-import re
-from typing import Dict, Any, List
 
-from haystack import Document
+from haystack import Pipeline
 from haystack.agents import Agent, Tool
-from haystack.nodes import PromptNode, PromptTemplate
-from haystack.nodes.search_engine import WebSearch, NeuralWebSearch
+from haystack.nodes import PromptNode, PromptTemplate, TopPSampler, Shaper
+from haystack.nodes.retriever.web import WebRetriever
 
-search_key = os.environ.get("SERPERDEV_API_KEY")
+search_key = os.environ.get("SERPAPI_API_KEY")
 if not search_key:
-    raise ValueError("Please set the SERPERDEV_API_KEY environment variable")
+    raise ValueError("Please set the SERPAPI_API_KEY environment variable")
 
-ws = WebSearch(api_key=search_key)
-
-pn = PromptNode("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
+openai_key = os.environ.get("OPENAI_API_KEY")
+if not search_key:
+    raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
 prompt_text = """
 Answer the following question using the paragraphs below as sources. An answer should be short, a few words at most.
-Provide the answer as the last generated line starting with Answer:
+Provide the answer as the last generated line of text.
 
-Paragraphs: $paragraphs
+Paragraphs: $documents
 
-Question: $question
+Question: $query
 
 Instructions: Consider all the paragraphs above and their corresponding scores to generate the answer. While a single
 paragraph may have a high score, it's important to consider all paragraphs for the same answer candidate to answer
@@ -30,31 +28,23 @@ accurately.
 Let's think step-by-step, we have the following distinct answer possibilities:
 
 """
-pt = PromptTemplate("neural_web_search", prompt_text=prompt_text)
 
-
-def prepare_prompt_params(results: List[Document], invocation_context: Dict[str, Any]):
-    paragraphs = "\n".join([f"-[{doc.meta['score']}] {doc.content}" for doc in results])
-    return {"paragraphs": paragraphs, "question": invocation_context.get("query")}
-
-
-def prepare_final_answer(prompt_node_response: str):
-    answer_text = "No answer"
-    answer_regex = r"Answer:\s*(.*)"
-    answer_match = re.search(answer_regex, prompt_node_response)
-
-    if answer_match:
-        answer_text = answer_match.group(1).strip()
-    return answer_text
-
-
-ns = NeuralWebSearch(
-    websearch=ws,
-    prompt_node=pn,
-    prompt_template=pt,
-    prepare_template_params_fn=prepare_prompt_params,
-    extract_final_answer_fn=prepare_final_answer,
+pn = PromptNode(
+    "text-davinci-003",
+    api_key=openai_key,
+    max_length=256,
+    default_prompt_template=PromptTemplate("question-answering-with-scores", prompt_text=prompt_text),
 )
+
+web_retriever = WebRetriever(api_key=search_key, search_engine_provider="SerpAPI")
+sampler = TopPSampler(top_p=0.95)
+shaper = Shaper(func="join_documents_and_scores", inputs={"documents": "documents"}, outputs=["documents"])
+
+pipeline = Pipeline()
+pipeline.add_node(component=web_retriever, name="Retriever", inputs=["Query"])
+pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
+pipeline.add_node(component=shaper, name="Shaper", inputs=["Sampler"])
+pipeline.add_node(component=pn, name="PromptNode", inputs=["Shaper"])
 
 questions = [
     "Who won the 1971 San Francisco mayoral election?",
@@ -67,7 +57,7 @@ questions = [
 ]
 
 # for q in questions:
-#     response, _ = ns.run(q)
+#     response = pipeline.run(q)
 #     print(f"{q} - {response['output']}")
 
 few_shot_prompt = """
@@ -134,17 +124,17 @@ prompt_node = PromptNode(
     "text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
 )
 
-neural_search_tool = Tool(
+web_qa_tool = Tool(
     name="Search",
-    pipeline_or_node=ns,
+    pipeline_or_node=pipeline,
     description="useful for when you need to Google questions.",
-    output_variable="output",
+    output_variable="results",
 )
 
 agent = Agent(
     prompt_node=prompt_node,
     prompt_template=few_shot_agent_template,
-    tools=[neural_search_tool],
+    tools=[web_qa_tool],
     final_answer_pattern=r"Final Answer\s*:\s*(.*)",
 )
 
