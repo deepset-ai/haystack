@@ -1,7 +1,7 @@
 import os
 
 from haystack import Pipeline
-from haystack.nodes import PromptNode, PromptTemplate, Shaper, PreProcessor
+from haystack.nodes import PromptNode, PromptTemplate, Shaper
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.search_engine import WebSearch
 
@@ -14,9 +14,8 @@ if not search_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
 
-p = PreProcessor()
 ws = WebSearch(api_key=search_key)
-wr = WebRetriever(web_search=ws, top_p=0.95, preprocessor=p)
+wr = WebRetriever(web_search=ws, top_p=0.95)
 
 prompt_text = """
 Synthesize a comprehensive answer from the following most relevant paragraphs and the given question.

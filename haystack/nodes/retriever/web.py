@@ -33,14 +33,17 @@ class WebRetriever(BaseRetriever):
 
     WebRetriever operates in two modes:
 
-    - snippet mode: WebRetriever will return a list of Documents, each Document being a snippet of the search result
-    - document mode: WebRetriever will return a list of Documents, each Document being a full HTML stripped document
+    - snippets mode: WebRetriever will return a list of Documents, each Document being a snippet of the search result
+    - raw_documents mode: WebRetriever will return a list of Documents, each Document being a full HTML stripped document
+    of the search result
+    - preprocessed_documents mode: WebRetriever will return a list of Documents, each Document being a preprocessed split of the full HTML stripped page
     of the search result
 
-    In document mode, given a user query passed via the run method, WebSearch first fetches the top k query relevant
+    In preprocessed_documents mode, given a user query passed via the run method, WebSearch first fetches the top k query relevant
     URL results, which are in turn downloaded and processed. The processing involves stripping HTML tags and producing
     clean raw text wrapped in Document(s). WebRetriever then splits raw text into Documents of the desired preprocessor
-    specified size. Finally, WebRetriever applies top p sampling on these Documents and returns at most top_k Documents.
+    specified size. This step can be skipped by choosing the raw_documents mode.
+    Finally, WebRetriever applies top p sampling on these Documents and returns at most top_k Documents.
 
     Finding the right balance between top_k and top_p is crucial to obtain high-quality and diverse results in document
     mode. To explore a wide range of potential results, it's recommended to set top_k for WebSearch close to 10.
@@ -65,7 +68,7 @@ class WebRetriever(BaseRetriever):
         web_search: WebSearch,
         top_p: Optional[float] = 0.95,
         top_k: Optional[int] = 5,
-        mode: Literal["snippet", "document"] = "document",
+        mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "preprocessed_documents",
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
@@ -77,8 +80,8 @@ class WebRetriever(BaseRetriever):
         :param web_search: WebSearch node.
         :param top_p: Top p to apply to the retrieved and processed documents.
         :param top_k: Top k documents to be returned by the retriever.
-        :param mode: Whether to return snippets or full documents.
-        :param preprocessor: Preprocessor to be used to split documents into paragraphs.
+        :param mode: Whether to return snippets, raw documents or preprocessed documents. Preprocessed documents are the default.
+        :param preprocessor: Optional Preprocessor to be used to split documents into paragraphs. If not provided, the default Preprocessor is used.
         :param cache_document_store: DocumentStore to be used to cache search results.
         :param cache_index: Index name to be used to cache search results.
         :param cache_headers: Headers to be used to cache search results.
@@ -89,7 +92,6 @@ class WebRetriever(BaseRetriever):
         super().__init__()
         self.web_search = web_search
         self.mode = mode
-        self.preprocessor = preprocessor
         self.cache_document_store = cache_document_store
         self.cache_index = cache_index
         self.cache_headers = cache_headers
@@ -98,6 +100,10 @@ class WebRetriever(BaseRetriever):
         self.top_k = top_k
         if top_p is not None:
             self.sampler = TopPSampler(top_p=top_p, top_score_field="score")
+        if preprocessor is not None:
+            self.preprocessor = preprocessor
+        else:
+            self.preprocessor = PreProcessor()
 
     def _normalize_query(self, query: str) -> str:
         return "".join([c for c in normalize("NFKD", query.lower()) if not combining(c)])
@@ -208,7 +214,7 @@ class WebRetriever(BaseRetriever):
         if not extracted_docs:
             search_results, _ = self.web_search.run(query=query)
             search_results = search_results["documents"]
-            if self.mode == "snippet":
+            if self.mode == "snippets":
                 return search_results  # type: ignore
 
             links: List[SearchResult] = [
@@ -258,7 +264,7 @@ class WebRetriever(BaseRetriever):
                         failed += 1
 
                 logger.debug(
-                    "Extracted %d documents / %s snippet from %s URLs.",
+                    "Extracted %d documents / %s snippets from %s URLs.",
                     len(extracted_docs) - failed,
                     failed,
                     len(links),
@@ -273,7 +279,9 @@ class WebRetriever(BaseRetriever):
                 )
 
         processed_docs = (
-            [t for d in extracted_docs for t in preprocessor.process([d])] if preprocessor else extracted_docs
+            [t for d in extracted_docs for t in preprocessor.process([d])]
+            if self.mode == "preprocessed_documents"
+            else extracted_docs
         )
 
         logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
