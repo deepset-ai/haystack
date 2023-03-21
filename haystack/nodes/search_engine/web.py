@@ -1,8 +1,7 @@
 import pydoc
-from typing import List, Dict, Any, Optional, Union, Tuple, Type, Callable
+from typing import List, Dict, Any, Optional, Union, Tuple, Type
 
 from haystack import BaseComponent, MultiLabel, Document
-from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
 from haystack.nodes.search_engine.base import SearchEngine
 
 
@@ -88,7 +87,7 @@ class WebSearch(BaseComponent):
         if isinstance(queries, str):
             queries = [queries]
         elif not isinstance(queries, list):
-            raise ValueError("NeuralWebSearch run_batch requires the `queries` parameter to be Union[str, List[str]]")
+            raise ValueError("WebSearch run_batch requires the `queries` parameter to be Union[str, List[str]]")
         for query in queries:
             results.append(self.search_engine.search(query))
         return {"documents": results}, "output_1"
