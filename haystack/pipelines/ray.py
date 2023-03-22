@@ -23,6 +23,7 @@ from haystack.pipelines.config import (
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, MultiLabel
+from haystack.telemetry_2 import send_pipeline_run_event
 
 
 logger = logging.getLogger(__name__)
@@ -311,6 +312,19 @@ class RayPipeline(Pipeline):
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        send_pipeline_run_event(
+            pipeline=self,
+            classname=self.__class__.__name__,
+            function_name="run_async",
+            query=query,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         # validate the node names
         self._validate_node_names_in_params(params=params)
 
