@@ -9,7 +9,7 @@ import requests
 
 from transformers import GPT2TokenizerFast
 
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.environment import (
     HAYSTACK_REMOTE_API_BACKOFF_SEC,
@@ -151,6 +151,8 @@ def openai_request(
         openai_error: OpenAIError
         if response.status_code == 429:
             openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+        elif response.status_code == 401:
+            openai_error = OpenAIUnauthorizedError(f"API key is invalid: {response.text}")
         else:
             openai_error = OpenAIError(
                 f"OpenAI returned an error.\n"

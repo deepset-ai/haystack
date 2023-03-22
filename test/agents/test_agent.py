@@ -1,11 +1,12 @@
 import logging
 import os
+import re
 from typing import Tuple
 
 import pytest
 
 from haystack import BaseComponent, Answer, Document
-from haystack.agents import Agent
+from haystack.agents import Agent, AgentStep
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
@@ -71,9 +72,9 @@ def test_agent_chooses_no_action():
 
 
 @pytest.mark.unit
-def test_max_iterations(caplog, monkeypatch):
-    # Run an Agent and stop because max_iterations is reached
-    agent = Agent(prompt_node=MockPromptNode(), max_iterations=3)
+def test_max_steps(caplog, monkeypatch):
+    # Run an Agent and stop because max_steps is reached
+    agent = Agent(prompt_node=MockPromptNode(), max_steps=3)
     retriever = MockRetriever()
     agent.add_tool(
         Tool(
@@ -88,17 +89,17 @@ def test_max_iterations(caplog, monkeypatch):
     def mock_extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
-    monkeypatch.setattr(Agent, "_extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
+    monkeypatch.setattr(AgentStep, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
 
-    # Using max_iterations as specified in the Agent's init method
+    # Using max_steps as specified in the Agent's init method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
         result = agent.run("Where does Christelle live?")
     assert result["answers"] == [Answer(answer="", type="generative")]
     assert "maximum number of iterations (3)" in caplog.text.lower()
 
-    # Setting max_iterations in the Agent's run method
+    # Setting max_steps in the Agent's run method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
-        result = agent.run("Where does Christelle live?", max_iterations=2)
+        result = agent.run("Where does Christelle live?", max_steps=2)
     assert result["answers"] == [Answer(answer="", type="generative")]
     assert "maximum number of iterations (2)" in caplog.text.lower()
 
@@ -115,35 +116,81 @@ def test_run_tool():
             output_variable="documents",
         )
     )
-    result = agent._run_tool(tool_name="Retriever", tool_input="", transcript="")
+    pn_response = "need to find out what city he was born.\nTool: Retriever\nTool Input: Where was Jeremy McKinnon born"
+
+    step = AgentStep(prompt_node_response=pn_response)
+    result = agent._run_tool(step)
     assert result == "[]"  # empty list of documents
 
 
 @pytest.mark.unit
 def test_extract_tool_name_and_tool_input():
-    agent = Agent(prompt_node=MockPromptNode())
+    tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
+    pn_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
 
-    pred = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
-    tool_name, tool_input = agent._extract_tool_name_and_tool_input(pred)
+    step = AgentStep(prompt_node_response=pn_response)
+    tool_name, tool_input = step.extract_tool_name_and_tool_input(tool_pattern=tool_pattern)
     assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
 
 
 @pytest.mark.unit
 def test_extract_final_answer():
-    agent = Agent(prompt_node=MockPromptNode())
+    match_examples = [
+        "have the final answer to the question.\nFinal Answer: Florida",
+        "Final Answer: 42 is the answer",
+        "Final Answer:  1234",
+        "Final Answer:  Answer",
+        "Final Answer:  This list: one and two and three",
+        "Final Answer:42",
+        "Final Answer:   ",
+        "Final Answer:    The answer is 99    ",
+    ]
+    expected_answers = [
+        "Florida",
+        "42 is the answer",
+        "1234",
+        "Answer",
+        "This list: one and two and three",
+        "42",
+        "",
+        "The answer is 99",
+    ]
 
-    pred = "have the final answer to the question.\nFinal Answer: Florida"
-    final_answer = agent._extract_final_answer(pred)
-    assert final_answer == "Florida"
+    for example, expected_answer in zip(match_examples, expected_answers):
+        agent_step = AgentStep(prompt_node_response=example)
+        final_answer = agent_step.extract_final_answer()
+        assert final_answer == expected_answer
 
 
 @pytest.mark.unit
 def test_format_answer():
-    agent = Agent(prompt_node=MockPromptNode())
-    formatted_answer = agent._format_answer(query="query", answer="answer", transcript="transcript")
+    step = AgentStep(prompt_node_response="have the final answer to the question.\nFinal Answer: Florida")
+    formatted_answer = step.final_answer(query="query")
     assert formatted_answer["query"] == "query"
-    assert formatted_answer["answers"] == [Answer(answer="answer", type="generative")]
-    assert formatted_answer["transcript"] == "transcript"
+    assert formatted_answer["answers"] == [Answer(answer="Florida", type="generative")]
+
+
+@pytest.mark.unit
+def test_final_answer_regex():
+    match_examples = [
+        "Final Answer: 42 is the answer",
+        "Final Answer:  1234",
+        "Final Answer:  Answer",
+        "Final Answer:  This list: one and two and three",
+        "Final Answer:42",
+        "Final Answer:   ",
+        "Final Answer:    The answer is 99    ",
+    ]
+
+    non_match_examples = ["Final answer: 42 is the answer", "Final Answer", "The final answer is: 100"]
+    final_answer_pattern = r"Final Answer\s*:\s*(.*)"
+    for example in match_examples:
+        match = re.match(final_answer_pattern, example)
+        assert match is not None
+
+    for example in non_match_examples:
+        match = re.match(final_answer_pattern, example)
+        assert match is None
 
 
 @pytest.mark.integration

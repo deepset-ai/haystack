@@ -154,7 +154,9 @@ class BaseRetriever(BaseComponent):
                              contains the keys "predictions" and "metrics".
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
-        send_event("BaseRetriever.eval()")
+        send_event(
+            event_name="Evaluation", event_properties={"class": self.__class__.__name__, "function_name": "eval"}
+        )
         # Extract all questions for evaluation
         filters: Dict = {"origin": [label_origin]}
 
