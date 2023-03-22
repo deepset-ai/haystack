@@ -420,6 +420,7 @@ class PromptNode(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
+        debug: Optional[bool] = False,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -452,6 +453,8 @@ class PromptNode(BaseComponent):
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
+        self.debug = debug
+        
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -653,6 +656,9 @@ class PromptNode(BaseComponent):
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
         prompt_collector: List[str] = []
+            
+        if self.debug is None:
+            self.debug = False
 
         invocation_context = invocation_context or {}
         if query and "query" not in invocation_context.keys():
@@ -684,8 +690,11 @@ class PromptNode(BaseComponent):
         final_result: Dict[str, Any] = {
             self.output_variable: results,
             "invocation_context": invocation_context,
-            "_debug": {"prompts_used": prompt_collector},
         }
+
+        if self.debug == True:
+            final_result["_debug"] = {"prompts_used": prompt_collector}
+
         return final_result, "output_1"
 
     def run_batch(  # type: ignore
