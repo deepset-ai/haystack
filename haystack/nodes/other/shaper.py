@@ -108,7 +108,7 @@ def join_documents_and_scores(documents: List[Document]) -> Tuple[List[Document]
     ) == ([Document(content="-[0.9] first\n -[0.7] second\n -[0.5] third")], )
     ```
     """
-    content = "\n".join([f"-[{doc.meta['score']}] {doc.content}" for doc in documents])
+    content = "\n".join([f"-[{round(doc.meta['score'],2)}] {doc.content}" for doc in documents])
     return ([Document(content=content)],)
 
 

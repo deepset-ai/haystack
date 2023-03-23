@@ -1,11 +1,12 @@
 import json
 import logging
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Any
 
 import requests
 
 from haystack import Document
 from haystack.nodes.search_engine.base import SearchEngine
+from haystack.nodes.search_engine.utils import calculate_ranking_scores
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,10 @@ class SerperDev(SearchEngine):
                 elif isinstance(highlighted_answers, str):
                     answer_box_content = highlighted_answers
             else:
-                answer_box_content = json_result["answerBox"].get("snippet", "")
+                for key in ["snippet", "answer", "title"]:
+                    if key in answer_dict:
+                        answer_box_content = answer_dict[key]
+                        break
             answer_box = [
                 Document.from_dict(
                     {
@@ -160,7 +164,14 @@ class SerperDev(SearchEngine):
         documents = answer_box + organic + people_also_ask
 
         logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
-        return documents[:top_k]
+        result_docs = documents[:top_k]
+        return self._post_process_results(result_docs, len(answer_box) > 0)
+
+    def _post_process_results(self, results: List[Document], has_answer_box: bool = False) -> List[Document]:
+        scores = calculate_ranking_scores(results, boost_first_factor=5 if has_answer_box else None)
+        for doc, score in zip(results, scores):
+            doc.score = doc.meta["score"] = score
+        return results
 
 
 class BingAPI(SearchEngine):
