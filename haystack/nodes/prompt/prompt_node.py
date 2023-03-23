@@ -297,6 +297,18 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "$questions; Answer:",
         ),
         PromptTemplate(
+            name="question-answering-with-document-scores",
+            prompt_text="Answer the following question using the paragraphs below as sources. "
+            "An answer should be short, a few words at most.\n"
+            "Provide the answer as the last generated line of text.\n\n"
+            "Paragraphs: $documents\n"
+            "Question: $query\n\n"
+            "Instructions: Consider all the paragraphs above and their corresponding scores to generate "
+            "the answer. While a single paragraph may have a high score, it's important to consider all "
+            "paragraphs for the same answer candidate to answer accurately.\n\n"
+            "Let's think step-by-step, we have the following distinct answer possibilities:\n",
+        ),
+        PromptTemplate(
             name="question-generation",
             prompt_text="Given the context please generate a question. Context: $documents; Question:",
         ),

@@ -16,6 +16,7 @@ from haystack.pipelines import (
     FAQPipeline,
     TranslationWrapperPipeline,
     RetrieverQuestionGenerationPipeline,
+    WebQAPipeline,
 )
 from haystack.telemetry import send_custom_event
 
@@ -52,6 +53,7 @@ class Tool:
             FAQPipeline,
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
+            WebQAPipeline,
         ],
         description: str,
         output_variable: Optional[str] = "results",

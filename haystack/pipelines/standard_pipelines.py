@@ -5,6 +5,8 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from haystack.nodes.retriever.web import WebRetriever
+
 try:
     from typing import Literal
 except ImportError:
@@ -19,10 +21,9 @@ from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.nodes.translator.base import BaseTranslator
-from haystack.nodes import PreProcessor, TextConverter
+from haystack.nodes import PreProcessor, TextConverter, PromptNode, TopPSampler, Shaper
 from haystack.pipelines.base import Pipeline
-from haystack.schema import Document, EvaluationResult, MultiLabel
-
+from haystack.schema import Document, EvaluationResult, MultiLabel, Answer
 
 logger = logging.getLogger(__name__)
 
@@ -336,6 +337,53 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
                       by this method under the key "_debug"
         """
         output = self.pipeline.run(query=query, params=params, debug=debug)
+        return output
+
+
+class WebQAPipeline(BaseStandardPipeline):
+    """
+    Pipeline for Generative Question Answering based on Documents returned from a web search engine.
+    """
+
+    def __init__(
+        self,
+        retriever: WebRetriever,
+        prompt_node: PromptNode,
+        sampler: Optional[TopPSampler] = None,
+        shaper: Optional[Shaper] = None,
+    ):
+        """
+        :param retriever: The WebRetriever used for retrieving documents from a web search engine.
+        :param prompt_node: The PromptNode used for generating the answer based on retrieved documents.
+        :param sampler: The sampler used for sampling a subset of documents from the retrieved documents. Optional.
+        :param shaper: The shaper used for transforming the documents and scores into a format that can be used by the prompt node. Optional.
+        """
+        if not sampler:
+            sampler = TopPSampler(top_p=0.95)
+        if not shaper:
+            shaper = Shaper(func="join_documents_and_scores", inputs={"documents": "documents"}, outputs=["documents"])
+
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
+        self.pipeline.add_node(component=shaper, name="Shaper", inputs=["Sampler"])
+        self.pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Shaper"])
+        self.metrics_filter = {"Retriever": ["recall_single_hit"]}
+
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
+        """
+        :param query: The search query string.
+        :param params: Params for the `Retriever`, `Sampler`, `Shaper` and ``PromptNode. For instance,
+                       params={"Retriever": {"top_k": 3}, "Sampler": {"top_p": 0.8}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+                      about their execution. By default these include the input parameters
+                      they received and the output they generated.
+                      All debug information can then be found in the dict returned
+                      by this method under the key "_debug"
+        """
+        output = self.pipeline.run(query=query, params=params, debug=debug)
+        # Extract the answer from the last line of the PromptNode's output
+        output["answers"] = [Answer(answer=output["results"][0].split("\n")[-1], type="generative")]
         return output
 
 

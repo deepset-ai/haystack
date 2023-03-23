@@ -1,9 +1,9 @@
 import os
 
-from haystack import Pipeline
 from haystack.agents import Agent, Tool
-from haystack.nodes import PromptNode, PromptTemplate, TopPSampler, Shaper
+from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
+from haystack.pipelines import WebQAPipeline
 
 search_key = os.environ.get("SERPAPI_API_KEY")
 if not search_key:
@@ -13,52 +13,15 @@ openai_key = os.environ.get("OPENAI_API_KEY")
 if not search_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
-prompt_text = """
-Answer the following question using the paragraphs below as sources. An answer should be short, a few words at most.
-Provide the answer as the last generated line of text.
-
-Paragraphs: $documents
-
-Question: $query
-
-Instructions: Consider all the paragraphs above and their corresponding scores to generate the answer. While a single
-paragraph may have a high score, it's important to consider all paragraphs for the same answer candidate to answer
-accurately.
-
-Let's think step-by-step, we have the following distinct answer possibilities:
-
-"""
 
 pn = PromptNode(
     "text-davinci-003",
     api_key=openai_key,
     max_length=256,
-    default_prompt_template=PromptTemplate("question-answering-with-scores", prompt_text=prompt_text),
+    default_prompt_template="question-answering-with-document-scores",
 )
-
 web_retriever = WebRetriever(api_key=search_key, search_engine_provider="SerpAPI")
-sampler = TopPSampler(top_p=0.95)
-shaper = Shaper(func="join_documents_and_scores", inputs={"documents": "documents"}, outputs=["documents"])
-
-pipeline = Pipeline()
-pipeline.add_node(component=web_retriever, name="Retriever", inputs=["Query"])
-pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
-pipeline.add_node(component=shaper, name="Shaper", inputs=["Sampler"])
-pipeline.add_node(component=pn, name="PromptNode", inputs=["Shaper"])
-
-questions = [
-    "Who won the 1971 San Francisco mayoral election?",
-    "Where was Jeremy McKinnon born?",
-    "What river is near Dundalk, Ireland?",
-    "Who is Kyle Moran?",
-    "What party does Joseph Alioto belong to?",
-    "When was the Democratic Party founded?",
-    "Who is Olivia Wilde's boyfriend?",
-]
-
-# for q in questions:
-#     response = pipeline.run(q)
-#     print(f"{q} - {response['output']}")
+pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
 
 few_shot_prompt = """
 You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions correctly, you have access to the following tools:
@@ -145,6 +108,6 @@ hotpot_questions = [
     "Which author is English: John Braine or Studs Terkel?",
 ]
 
-for q in hotpot_questions:
-    result = agent.run(query=q)
+for question in hotpot_questions:
+    result = agent.run(query=question)
     print(f"\n{result}\n")
