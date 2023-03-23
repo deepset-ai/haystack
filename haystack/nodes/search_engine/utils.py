@@ -8,7 +8,7 @@ def calculate_ranking_scores(list_items: List[Any], boost_first_factor: Optional
     :param boost_first_factor: The factor to boost the score of the first item by.
     """
     n = len(list_items)
-    scores = [0] * n
+    scores = [0.0] * n
 
     # Compute the scores based on rank position
     for i, item in enumerate(list_items):

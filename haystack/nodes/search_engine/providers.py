@@ -6,7 +6,6 @@ import requests
 
 from haystack import Document
 from haystack.nodes.search_engine.base import SearchEngine
-from haystack.nodes.search_engine.utils import calculate_ranking_scores
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,29 @@ class SerpAPI(SearchEngine):
 
         json_result = json.loads(response.text)
 
-        organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic_results"]]
+        organic = [
+            Document.from_dict(d, field_map={"snippet": "content"})
+            for d in json_result["organic_results"]
+            if "snippet" in d
+        ]
+        answer_box = []
+        if "answer_box" in json_result:
+            answer_dict = json_result["answer_box"]
+            for key in ["answer", "snippet_highlighted_words", "snippet", "title"]:
+                if key in answer_dict:
+                    answer_box_content = answer_dict[key]
+                    if isinstance(answer_box_content, list):
+                        answer_box_content = answer_box_content[0]
+                    answer_box = [
+                        Document.from_dict(
+                            {
+                                "title": answer_dict.get("title", ""),
+                                "content": answer_box_content,
+                                "link": answer_dict.get("displayed_link", ""),
+                            }
+                        )
+                    ]
+                    break
 
         people_also_search = []
         if "people_also_search_for" in json_result:
@@ -80,10 +101,11 @@ class SerpAPI(SearchEngine):
                     )
                 )
 
-        documents = organic + people_also_search + related_questions
+        documents = answer_box + organic + people_also_search + related_questions
 
         logger.debug("SerpAPI returned %s documents for the query '%s'", len(documents), query)
-        return documents[:top_k]
+        result_docs = documents[:top_k]
+        return self.score_results(result_docs, len(answer_box) > 0)
 
 
 class SerperDev(SearchEngine):
@@ -121,31 +143,35 @@ class SerperDev(SearchEngine):
             raise Exception(f"Error while querying {self.__class__.__name__}: {response.text}")
 
         json_result = response.json()
-        organic = [Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"]]
+        organic = [
+            Document.from_dict(d, field_map={"snippet": "content"}) for d in json_result["organic"] if "snippet" in d
+        ]
         answer_box = []
         if "answerBox" in json_result:
             answer_dict = json_result["answerBox"]
-            answer_box_content = ""
-            if "snippetHighlighted" in answer_dict:
-                highlighted_answers = answer_dict["snippetHighlighted"]
-                if isinstance(highlighted_answers, list) and len(highlighted_answers) > 0:
-                    answer_box_content = highlighted_answers[0]
-                elif isinstance(highlighted_answers, str):
-                    answer_box_content = highlighted_answers
-            else:
+            highlighted_answers = answer_dict.get("snippetHighlighted")
+            answer_box_content = (
+                highlighted_answers[0]
+                if isinstance(highlighted_answers, list) and len(highlighted_answers) > 0
+                else highlighted_answers
+                if isinstance(highlighted_answers, str)
+                else None
+            )
+            if not answer_box_content:
                 for key in ["snippet", "answer", "title"]:
                     if key in answer_dict:
                         answer_box_content = answer_dict[key]
                         break
-            answer_box = [
-                Document.from_dict(
-                    {
-                        "title": answer_dict.get("title", ""),
-                        "content": answer_box_content,
-                        "link": answer_dict.get("link", ""),
-                    }
-                )
-            ]
+            if answer_box_content:
+                answer_box = [
+                    Document.from_dict(
+                        {
+                            "title": answer_dict.get("title", ""),
+                            "content": answer_box_content,
+                            "link": answer_dict.get("link", ""),
+                        }
+                    )
+                ]
 
         people_also_ask = []
         if "peopleAlsoAsk" in json_result:
@@ -165,13 +191,7 @@ class SerperDev(SearchEngine):
 
         logger.debug("Serper Dev returned %s documents for the query '%s'", len(documents), query)
         result_docs = documents[:top_k]
-        return self._post_process_results(result_docs, len(answer_box) > 0)
-
-    def _post_process_results(self, results: List[Document], has_answer_box: bool = False) -> List[Document]:
-        scores = calculate_ranking_scores(results, boost_first_factor=5 if has_answer_box else None)
-        for doc, score in zip(results, scores):
-            doc.score = doc.meta["score"] = score
-        return results
+        return self.score_results(result_docs, len(answer_box) > 0)
 
 
 class BingAPI(SearchEngine):
