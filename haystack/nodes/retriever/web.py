@@ -107,7 +107,7 @@ class WebRetriever(BaseRetriever):
         if preprocessor is not None:
             self.preprocessor = preprocessor
         else:
-            self.preprocessor = PreProcessor()
+            self.preprocessor = PreProcessor(progress_bar=False)
 
     def _normalize_query(self, query: str) -> str:
         return "".join([c for c in normalize("NFKD", query.lower()) if not combining(c)])
