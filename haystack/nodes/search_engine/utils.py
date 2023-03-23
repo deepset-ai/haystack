@@ -11,7 +11,7 @@ def calculate_ranking_scores(list_items: List[Any], boost_first_factor: Optional
     scores = [0.0] * n
 
     # Compute the scores based on rank position
-    for i, item in enumerate(list_items):
+    for i, _ in enumerate(list_items):
         scores[i] = (n - i) / ((n * (n + 1)) / 2)
 
     # Apply the boost factor to the first item
