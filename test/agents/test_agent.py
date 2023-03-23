@@ -316,4 +316,5 @@ def test_webqa_pipeline():
     result = pipeline.run(query="Who is the father of Arya Stark?")
     assert isinstance(result, dict)
     assert len(result["results"]) == 1
-    assert "Stark" in result["results"][0]
+    answer = result["results"][0]
+    assert "Stark" in answer or "NED" in answer

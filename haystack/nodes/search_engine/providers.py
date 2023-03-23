@@ -138,7 +138,7 @@ class SerperDev(SearchEngine):
         payload = json.dumps({"q": query, "gl": "us", "hl": "en", "autocorrect": True, **kwargs})
         headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
-        response = requests.request("POST", url, headers=headers, data=payload, timeout=10)
+        response = requests.request("POST", url, headers=headers, data=payload, timeout=30)
         if response.status_code != 200:
             raise Exception(f"Error while querying {self.__class__.__name__}: {response.text}")
 
