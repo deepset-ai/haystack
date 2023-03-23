@@ -3,9 +3,9 @@ from haystack.nodes import PromptNode
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
 
-search_key = os.environ.get("SERPAPI_API_KEY")
+search_key = os.environ.get("SERPERDEV_API_KEY")
 if not search_key:
-    raise ValueError("Please set the SERPAPI_API_KEY environment variable")
+    raise ValueError("Please set the SERPERDEV_API_KEY environment variable")
 
 openai_key = os.environ.get("OPENAI_API_KEY")
 if not search_key:
@@ -17,7 +17,7 @@ pn = PromptNode(
     max_length=256,
     default_prompt_template="question-answering-with-document-scores",
 )
-web_retriever = WebRetriever(api_key=search_key, search_engine_provider="SerpAPI")
+web_retriever = WebRetriever(api_key=search_key, search_engine_provider="SerperDev")
 pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
 
 questions = [
