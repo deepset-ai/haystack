@@ -17,7 +17,7 @@ pn = PromptNode(
     max_length=256,
     default_prompt_template="question-answering-with-document-scores",
 )
-web_retriever = WebRetriever(api_key=search_key, search_engine_provider="SerperDev")
+web_retriever = WebRetriever(api_key=search_key, mode="snippets")
 pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
 
 questions = [
