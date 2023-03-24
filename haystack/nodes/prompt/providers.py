@@ -763,22 +763,19 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         **kwargs,
     ):
         """
-         Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
+         Creates an instance of PromptModelInvocation Layer for Anthropic's Claude models.
 
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of the output text.
-        :param api_key: The OpenAI API key.
-        :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
-        all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
-        kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
-        kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
-        logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
-        [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        :param max_tokens_to_sample: The maximum length of the output text.
+        :param api_key: The Anthropic API key.
+        :param kwargs: Additional keyword arguments passed to the underlying model. The list of Anthropic-relevant
+        kwargs includes: stop_sequences, temperature, top_p, top_k, and stream. For more details about these kwargs,
+        see Anthropic's [documentation](https://console.anthropic.com/docs/api/reference).
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise AnthropicError(
-                f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
+                f"api_key {api_key} must be a valid Anthropic key. Visit https://console.anthropic.com/account/keys to get one."
             )
         self.api_key = api_key
         self.max_tokens_to_sample = max_tokens_to_sample
@@ -789,7 +786,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
 
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
-        # For more details refer to OpenAI documentation
+        # For more details refer to Anthropic documentation
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
