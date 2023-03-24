@@ -20,7 +20,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.nodes.translator.base import BaseTranslator
-from haystack.nodes import PreProcessor, TextConverter, PromptNode, Shaper
+from haystack.nodes import PreProcessor, TextConverter, PromptNode, Shaper, TopPSampler
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, EvaluationResult, MultiLabel, Answer
 
@@ -344,7 +344,13 @@ class WebQAPipeline(BaseStandardPipeline):
     Pipeline for Generative Question Answering based on Documents returned from a web search engine.
     """
 
-    def __init__(self, retriever: WebRetriever, prompt_node: PromptNode, shaper: Optional[Shaper] = None):
+    def __init__(
+        self,
+        retriever: WebRetriever,
+        prompt_node: PromptNode,
+        sampler: Optional[TopPSampler] = None,
+        shaper: Optional[Shaper] = None,
+    ):
         """
         :param retriever: The WebRetriever used for retrieving documents from a web search engine.
         :param prompt_node: The PromptNode used for generating the answer based on retrieved documents.
@@ -352,10 +358,14 @@ class WebQAPipeline(BaseStandardPipeline):
         """
         if not shaper:
             shaper = Shaper(func="join_documents_and_scores", inputs={"documents": "documents"}, outputs=["documents"])
+        if not sampler and retriever.mode == "snippets":
+            # Documents returned by WebRetriever in mode "snippets" have scores, which we can use for sampling.
+            sampler = TopPSampler(top_p=0.95)
 
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(component=shaper, name="Shaper", inputs=["Retriever"])
+        self.pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
+        self.pipeline.add_node(component=shaper, name="Shaper", inputs=["Sampler"])
         self.pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Shaper"])
         self.metrics_filter = {"Retriever": ["recall_single_hit"]}
 

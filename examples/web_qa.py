@@ -11,14 +11,14 @@ openai_key = os.environ.get("OPENAI_API_KEY")
 if not search_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
-pn = PromptNode(
+prompt_node = PromptNode(
     "text-davinci-003",
     api_key=openai_key,
     max_length=256,
     default_prompt_template="question-answering-with-document-scores",
 )
-web_retriever = WebRetriever(api_key=search_key, mode="snippets")
-pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
+web_retriever = WebRetriever(api_key=search_key)
+pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
 
 questions = [
     "Who won the 1971 San Francisco mayoral election?",

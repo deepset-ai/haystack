@@ -11,7 +11,6 @@ from boilerpy3 import extractors
 
 from haystack import Document
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.nodes import TopPSampler
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.search_engine import SearchEngine
@@ -44,7 +43,7 @@ class WebRetriever(BaseRetriever):
     URL results, which are in turn downloaded and processed. The processing involves stripping HTML tags and producing
     clean raw text wrapped in Document(s). WebRetriever then splits raw text into Documents of the desired preprocessor
     specified size. This step can be skipped by choosing the raw_documents mode.
-    Finally, WebRetriever applies top p sampling on these Documents and returns at most top_k Documents.
+    Finally, WebRetriever returns at most top_k Documents.
 
     Finding the right balance between top_k and top_p is crucial to obtain high-quality and diverse results in document
     mode. To explore a wide range of potential results, it's recommended to set top_k for WebSearch close to 10.
@@ -52,11 +51,6 @@ class WebRetriever(BaseRetriever):
 
     WebRetriever downloads web page results returned by WebSearch, strips HTML, and extracts raw text, which is then
     split into smaller documents using the optional PreProcessor.
-
-    Post processed documents are then sampled using top_p. If top_p is set too high (close to 1.0), the number of
-    resulting search documents might also be high, especially if the cumulative probability distribution of the
-    document scores is flat (many documents have similar scores, no outliers). If top_p is set too low (less than 0.75),
-    the number of returned documents might be low, but the relevance of the documents will be the highest.
 
     The recommended approach is to use the default values for top_k and top_p and adjust them based on your specific
     use case. The default values are 5 and 0.95, respectively. This means that WebRetriever will return at most
@@ -69,18 +63,15 @@ class WebRetriever(BaseRetriever):
         api_key: str,
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
         top_search_results: Optional[int] = 10,
-        top_p: Optional[float] = 0.95,
         top_k: Optional[int] = 5,
-        mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "preprocessed_documents",
+        mode: Literal["snippets", "raw_documents", "preprocessed_documents"] = "snippets",
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
         cache_index: Optional[str] = None,
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: int = 1 * 24 * 60 * 60,
-        apply_sampler_to_processed_docs: Optional[bool] = True,
     ):
         """
-        :param top_p: Top p to apply to the retrieved and processed documents.
         :param top_k: Top k documents to be returned by the retriever.
         :param mode: Whether to return snippets, raw documents or preprocessed documents. Preprocessed documents are the default.
         :param preprocessor: Optional Preprocessor to be used to split documents into paragraphs. If not provided, the default Preprocessor is used.
@@ -88,8 +79,6 @@ class WebRetriever(BaseRetriever):
         :param cache_index: Index name to be used to cache search results.
         :param cache_headers: Headers to be used to cache search results.
         :param cache_time: Time in seconds to cache search results. Defaults to 24 hours.
-        :param apply_sampler_to_processed_docs: Whether to apply sampler to processed documents. If True, the sampler
-        will be applied to the processed documents.
         """
         super().__init__()
         self.web_search = WebSearch(
@@ -100,10 +89,7 @@ class WebRetriever(BaseRetriever):
         self.cache_index = cache_index
         self.cache_headers = cache_headers
         self.cache_time = cache_time
-        self.apply_sampler_to_processed_docs = apply_sampler_to_processed_docs
         self.top_k = top_k
-        if top_p is not None:
-            self.sampler = TopPSampler(top_p=top_p, top_score_field="score")
         if preprocessor is not None:
             self.preprocessor = preprocessor
         else:
@@ -178,7 +164,6 @@ class WebRetriever(BaseRetriever):
     def retrieve(  # type: ignore[override]
         self,
         query: str,
-        top_p: Optional[float] = None,
         top_k: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
         cache_document_store: Optional[BaseDocumentStore] = None,
@@ -192,7 +177,6 @@ class WebRetriever(BaseRetriever):
         at real-time. You can then store the documents in a DocumentStore for later use. They can be cached in a
         DocumentStore to improve retrieval time.
         :param query: The query string
-        :param top_p: The top-p sampling parameter to be used to sample documents. If None, the default value is used.
         :param top_k: The number of documents to be returned by the retriever. If None, the default value is used.
         :param preprocessor: The preprocessor to be used to split documents into paragraphs.
         :param cache_document_store: The DocumentStore to cache the documents to.
@@ -289,14 +273,7 @@ class WebRetriever(BaseRetriever):
         )
 
         logger.debug("Processed %d documents resulting in %s documents", len(extracted_docs), len(processed_docs))
-
-        if self.sampler and self.apply_sampler_to_processed_docs:
-            sampled_docs, _ = self.sampler.run(query, processed_docs)
-            if sampled_docs is not None:
-                processed_docs = sampled_docs["documents"]
-
-        final_docs = processed_docs if processed_docs else []
-        return final_docs[:top_k]
+        return processed_docs[:top_k]
 
     def retrieve_batch(  # type: ignore[override]
         self,

@@ -13,7 +13,7 @@ if not search_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
 
-web_retriever = WebRetriever(api_key=search_key)
+web_retriever = WebRetriever(api_key=search_key, mode="preprocessed_documents")
 
 prompt_text = """
 Synthesize a comprehensive answer from the following most relevant paragraphs and the given question.
@@ -32,9 +32,9 @@ prompt_node = PromptNode(
 shaper = Shaper(func="join_documents", inputs={"documents": "documents"}, outputs=["documents"])
 
 pipeline = Pipeline()
-pipeline.add_node(component=web_retriever, name="web_retriever", inputs=["Query"])
-pipeline.add_node(component=shaper, name="shaper", inputs=["web_retriever"])
-pipeline.add_node(component=prompt_node, name="prompt_node", inputs=["shaper"])
+pipeline.add_node(component=web_retriever, name="Retriever", inputs=["Query"])
+pipeline.add_node(component=shaper, name="Shaper", inputs=["Retriever"])
+pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Shaper"])
 
 # Long-Form QA requiring multiple context paragraphs for the synthesis of an elaborate generative answer
 questions = [
