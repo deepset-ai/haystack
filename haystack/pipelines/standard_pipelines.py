@@ -5,8 +5,6 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack.nodes.retriever.web import WebRetriever
-
 try:
     from typing import Literal
 except ImportError:
@@ -19,9 +17,10 @@ from haystack.nodes.other.document_merger import DocumentMerger
 from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.nodes.translator.base import BaseTranslator
-from haystack.nodes import PreProcessor, TextConverter, PromptNode, TopPSampler, Shaper
+from haystack.nodes import PreProcessor, TextConverter, PromptNode, Shaper
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, EvaluationResult, MultiLabel, Answer
 
