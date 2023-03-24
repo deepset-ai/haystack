@@ -192,9 +192,8 @@ class Agent:
             print_text(f"\n{llm_prefix}")
 
         def on_agent_start(**kwargs: Any) -> None:
-            agent_info_copy = kwargs.copy()
-            agent_name = agent_info_copy.pop("name", "react")
-            print_text(f"\nAgent {agent_name} started with {agent_info_copy}\n")
+            agent_name = kwargs.pop("name", "react")
+            print_text(f"\nAgent {agent_name} started with {kwargs}\n")
 
         self.callback_manager.on_tool_finish += on_tool_finish
         self.callback_manager.on_agent_start += on_agent_start
