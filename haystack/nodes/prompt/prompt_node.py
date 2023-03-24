@@ -420,6 +420,7 @@ class PromptNode(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
+        debug: Optional[bool] = False,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -452,6 +453,8 @@ class PromptNode(BaseComponent):
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
+        self.debug = debug
+
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -681,11 +684,11 @@ class PromptNode(BaseComponent):
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
         invocation_context[self.output_variable] = results
-        final_result: Dict[str, Any] = {
-            self.output_variable: results,
-            "invocation_context": invocation_context,
-            "_debug": {"prompts_used": prompt_collector},
-        }
+        final_result: Dict[str, Any] = {self.output_variable: results, "invocation_context": invocation_context}
+
+        if self.debug:
+            final_result["_debug"] = {"prompts_used": prompt_collector}
+
         return final_result, "output_1"
 
     def run_batch(  # type: ignore

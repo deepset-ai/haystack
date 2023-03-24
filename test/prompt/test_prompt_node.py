@@ -467,6 +467,31 @@ def test_simple_pipeline_with_topk(prompt_model):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
+def test_prompt_node_no_debug(prompt_model):
+    """Pipeline with PromptNode should not generate debug info if debug is false."""
+
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+
+    # debug explicitely False
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=False)
+    assert result.get("_debug", "No debug info") == "No debug info"
+
+    # debug None
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=None)
+    assert result.get("_debug", "No debug info") == "No debug info"
+
+    # debug True
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=True)
+    assert (
+        result["_debug"]["prompt_node"]["runtime"]["prompts_used"][0]
+        == "Given the context please generate a question. Context: Berlin is the capital of Germany; Question:"
+    )
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_complex_pipeline_with_qa(prompt_model):
     """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
