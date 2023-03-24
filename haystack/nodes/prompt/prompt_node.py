@@ -71,7 +71,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param prompt_params: Optional parameters that need to be filled in the prompt text. If you don't specify them, they're inferred from the prompt text. Any variable in prompt text in the format `$variablename` is interpreted as a prompt parameter.
         """
         super().__init__()
-        if not prompt_params:
+        if prompt_params:
+            self.prompt_params = prompt_params
+        else:
             # Define the regex pattern to match the strings after the $ character
             pattern = r"\$([a-zA-Z0-9_]+)"
             self.prompt_params = re.findall(pattern, prompt_text)
