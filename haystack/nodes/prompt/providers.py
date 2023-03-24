@@ -31,7 +31,6 @@ from haystack.utils.anthropic_utils import (
     load_anthropic_tokenizer,
     _anthropic_text_completion_tokenization_details,
     count_anthropic_tokens,
-    count_anthropic_tokens_messages,
 )
 
 logger = logging.getLogger(__name__)
@@ -812,7 +811,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def url(self) -> str:
-        return f"https://api.anthropic.com/v1/complete"
+        return "https://api.anthropic.com/v1/complete"
 
     @property
     def headers(self) -> Dict[str, str]:
