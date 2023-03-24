@@ -17,7 +17,10 @@ class HaystackError(Exception):
     """
 
     def __init__(
-        self, message: Optional[str] = None, docs_link: Optional[str] = None, send_message_in_event: bool = True
+        self,
+        message: Optional[str] = None,
+        docs_link: Optional[str] = None,
+        send_message_in_event: bool = True,
     ):
         payload = {"message": message} if send_message_in_event else {}
         send_custom_event(event=f"{type(self).__name__} raised", payload=payload)
@@ -43,7 +46,11 @@ class HaystackError(Exception):
 class ModelingError(HaystackError):
     """Exception for issues raised by the modeling module"""
 
-    def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = "https://haystack.deepset.ai/"):
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        docs_link: Optional[str] = "https://haystack.deepset.ai/",
+    ):
         super().__init__(message=message, docs_link=docs_link)
 
 
@@ -51,7 +58,9 @@ class AgentError(HaystackError):
     """Exception for issues raised within an agent"""
 
     def __init__(
-        self, message: Optional[str] = None, docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/agents"
+        self,
+        message: Optional[str] = None,
+        docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/agents",
     ):
         super().__init__(message=message, docs_link=docs_link)
 
@@ -80,7 +89,9 @@ class PipelineConfigError(PipelineError):
     def __init__(
         self,
         message: Optional[str] = None,
-        docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/pipelines#yaml-file-definitions",
+        docs_link: Optional[
+            str
+        ] = "https://docs.haystack.deepset.ai/docs/pipelines#yaml-file-definitions",
     ):
         super().__init__(message=message, docs_link=docs_link)
 
@@ -88,7 +99,9 @@ class PipelineConfigError(PipelineError):
 class DocumentStoreError(HaystackError):
     """Exception for issues that occur in a document store"""
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = False
+    ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
 
 
@@ -116,7 +129,9 @@ class DuplicateDocumentError(DocumentStoreError, ValueError):
 class NodeError(HaystackError):
     """Exception for issues that occur in a node"""
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = True):
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = True
+    ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
 
 
@@ -124,7 +139,23 @@ class OpenAIError(NodeError):
     """Exception for issues that occur in the OpenAI APIs"""
 
     def __init__(
-        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+        self,
+        message: Optional[str] = None,
+        status_code: Optional[int] = None,
+        send_message_in_event: bool = False,
+    ):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+        self.status_code = status_code
+
+
+class AnthropicError(NodeError):
+    """Exception for issues that occur in the Anthropic APIs"""
+
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        status_code: Optional[int] = None,
+        send_message_in_event: bool = False,
     ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
@@ -137,8 +168,14 @@ class OpenAIRateLimitError(OpenAIError):
     See https://help.openai.com/en/articles/5955598-is-api-usage-subject-to-any-rate-limits
     """
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
-        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(
+            message=message,
+            status_code=429,
+            send_message_in_event=send_message_in_event,
+        )
 
 
 class OpenAIUnauthorizedError(OpenAIError):
@@ -147,15 +184,24 @@ class OpenAIUnauthorizedError(OpenAIError):
     See https://platform.openai.com/docs/guides/error-codes/api-errors
     """
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
-        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(
+            message=message,
+            status_code=401,
+            send_message_in_event=send_message_in_event,
+        )
 
 
 class CohereError(NodeError):
     """Exception for issues that occur in the Cohere APIs"""
 
     def __init__(
-        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+        self,
+        message: Optional[str] = None,
+        status_code: Optional[int] = None,
+        send_message_in_event: bool = False,
     ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
@@ -164,8 +210,14 @@ class CohereError(NodeError):
 class CohereUnauthorizedError(CohereError):
     """Exception for unauthorized access to Cohere APIs"""
 
-    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
-        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(
+            message=message,
+            status_code=401,
+            send_message_in_event=send_message_in_event,
+        )
 
 
 class ImageToTextError(NodeError):
@@ -173,3 +225,35 @@ class ImageToTextError(NodeError):
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message)
+
+
+class AnthropicRateLimitError(AnthropicError):
+    """
+    Rate limit error for Anthropic API (status code 429)
+    See https://console.anthropic.com/docs/api/errors
+    """
+
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(
+            message=message,
+            status_code=429,
+            send_message_in_event=send_message_in_event,
+        )
+
+
+class AnthropicUnauthorizedError(OpenAIError):
+    """
+    Unauthorized error for Anthropic API (status code 401)
+    https://console.anthropic.com/docs/api/errors
+    """
+
+    def __init__(
+        self, message: Optional[str] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(
+            message=message,
+            status_code=401,
+            send_message_in_event=send_message_in_event,
+        )

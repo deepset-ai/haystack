@@ -6,10 +6,16 @@ from typing import Dict, List, Optional, Union, Type, cast
 
 import sseclient
 import torch
-from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import (
+    pipeline,
+    StoppingCriteriaList,
+    StoppingCriteria,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
 from transformers.pipelines import get_task
 
-from haystack.errors import OpenAIError
+from haystack.errors import OpenAIError, AnthropicError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.openai_utils import (
     USE_TIKTOKEN,
@@ -19,6 +25,13 @@ from haystack.utils.openai_utils import (
     _check_openai_finish_reason,
     count_openai_tokens,
     count_openai_tokens_messages,
+)
+from haystack.utils.anthropic_utils import (
+    anthropic_request,
+    load_anthropic_tokenizer,
+    _anthropic_text_completion_tokenization_details,
+    count_anthropic_tokens,
+    count_anthropic_tokens_messages,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,7 +121,9 @@ class PromptModelInvocationLayer:
         return False
 
     @abstractmethod
-    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+    def _ensure_token_limit(
+        self, prompt: Union[str, List[Dict[str, str]]]
+    ) -> Union[str, List[Dict[str, str]]]:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
 
         :param prompt: Prompt text to be sent to the generative model.
@@ -117,7 +132,16 @@ class PromptModelInvocationLayer:
 
 
 def instruction_following_models() -> List[str]:
-    return ["flan", "mt0", "bloomz", "davinci", "opt-iml"]
+    return [
+        "flan",
+        "mt0",
+        "bloomz",
+        "davinci",
+        "opt-iml",
+        "claude-v1",
+        "claude-v1.0",
+        "claude-v1.2",
+    ]
 
 
 class StopWordsCriteria(StoppingCriteria):
@@ -125,11 +149,19 @@ class StopWordsCriteria(StoppingCriteria):
     Stops text generation if any one of the stop words is generated.
     """
 
-    def __init__(self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stop_words: List[str]):
+    def __init__(
+        self,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        stop_words: List[str],
+    ):
         super().__init__()
-        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
+        self.stop_words = tokenizer.encode(
+            stop_words, add_special_tokens=False, return_tensors="pt"
+        )
 
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+    def __call__(
+        self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs
+    ) -> bool:
         return any(torch.isin(input_ids[-1], self.stop_words[-1]))
 
 
@@ -169,7 +201,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         super().__init__(model_name_or_path)
         self.use_auth_token = use_auth_token
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(
+            devices=devices, use_cuda=use_gpu, multi_gpu=False
+        )
         if len(self.devices) > 1:
             logger.warning(
                 "Multiple devices are not supported in %s inference, using the first device %s.",
@@ -219,7 +253,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             model_input_kwargs["torch_dtype"] = torch_dtype_resolved
 
         if len(model_input_kwargs) > 0:
-            logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
+            logger.info(
+                "Using model input kwargs %s in %s",
+                model_input_kwargs,
+                self.__class__.__name__,
+            )
         self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
         self.pipe = pipeline(
             model=model_name_or_path,
@@ -268,7 +306,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 model_input_kwargs["return_full_text"] = False
                 model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
-                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
+                sw = StopWordsCriteria(
+                    tokenizer=self.pipe.tokenizer, stop_words=stop_words
+                )
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             if top_k:
                 model_input_kwargs["num_return_sequences"] = top_k
@@ -287,10 +327,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # We want to exclude it to be consistent with other invocation layers
             for idx, _ in enumerate(generated_texts):
                 for stop_word in stop_words:
-                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+                    generated_texts[idx] = (
+                        generated_texts[idx].replace(stop_word, "").strip()
+                    )
         return generated_texts
 
-    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+    def _ensure_token_limit(
+        self, prompt: Union[str, List[Dict[str, str]]]
+    ) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
 
@@ -321,7 +365,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         task_name: Optional[str] = None
         try:
-            task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
+            task_name = get_task(
+                model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None)
+            )
         except RuntimeError:
             # This will fail for all non-HF models
             return False
@@ -339,7 +385,11 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "text-davinci-003", max_length: Optional[int] = 100, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "text-davinci-003",
+        max_length: Optional[int] = 100,
+        **kwargs,
     ):
         """
          Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
@@ -402,7 +452,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
     def invoke(self, *args, **kwargs):
         """
@@ -433,7 +486,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         # either stream is True (will use default handler) or stream_handler is provided
         stream = (
-            kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
+            kwargs_with_defaults.get("stream", False)
+            or kwargs_with_defaults.get("stream_handler", None) is not None
         )
         payload = {
             "model": self.model_name_or_path,
@@ -459,10 +513,16 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             return responses
         else:
             response = openai_request(
-                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+                url=self.url,
+                headers=self.headers,
+                payload=payload,
+                read_response=False,
+                stream=True,
             )
 
-            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop(
+                "stream_handler", DefaultTokenStreamingHandler()
+            )
             client = sseclient.SSEClient(response)
             tokens: List[str] = []
             try:
@@ -475,7 +535,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 client.close()
             return ["".join(tokens)]  # return a list of strings just like non-streaming
 
-    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+    def _ensure_token_limit(
+        self, prompt: Union[str, List[Dict[str, str]]]
+    ) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
 
@@ -498,7 +560,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         if USE_TIKTOKEN:
             tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
+            decoded_string = self._tokenizer.decode(
+                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
+            )
         else:
             tokenized_payload = self._tokenizer.tokenize(prompt)
             decoded_string = self._tokenizer.convert_tokens_to_string(
@@ -508,7 +572,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        valid_model = any(
+            m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path
+        )
         return valid_model and kwargs.get("azure_base_url") is None
 
 
@@ -550,9 +616,13 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
         Ensures Azure OpenAI Invocation Layer is selected when azure_base_url and azure_deployment_name are provided in
         addition to a list of supported models.
         """
-        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        valid_model = any(
+            m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path
+        )
         return (
-            valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
+            valid_model
+            and kwargs.get("azure_base_url") is not None
+            and kwargs.get("azure_deployment_name") is not None
         )
 
 
@@ -568,7 +638,11 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "gpt-3.5-turbo", max_length: Optional[int] = 500, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "gpt-3.5-turbo",
+        max_length: Optional[int] = 500,
+        **kwargs,
     ):
         super().__init__(api_key, model_name_or_path, max_length, **kwargs)
 
@@ -585,7 +659,9 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
         if isinstance(prompt, str):
             messages = [{"role": "user", "content": prompt}]
-        elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
+        elif (
+            isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict)
+        ):
             messages = prompt
         else:
             raise ValueError(
@@ -619,7 +695,9 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         }
         response = openai_request(url=self.url, headers=self.headers, payload=payload)
         _check_openai_finish_reason(result=response, payload=payload)
-        assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
+        assistant_response = [
+            choice["message"]["content"].strip() for choice in response["choices"]
+        ]
 
         # Although ChatGPT generates text until stop words are encountered, unfortunately it includes the stop word
         # We want to exclude it to be consistent with other invocation layers
@@ -627,11 +705,15 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             stop_words = kwargs_with_defaults["stop"]
             for idx, _ in enumerate(assistant_response):
                 for stop_word in stop_words:
-                    assistant_response[idx] = assistant_response[idx].replace(stop_word, "").strip()
+                    assistant_response[idx] = (
+                        assistant_response[idx].replace(stop_word, "").strip()
+                    )
 
         return assistant_response
 
-    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+    def _ensure_token_limit(
+        self, prompt: Union[str, List[Dict[str, str]]]
+    ) -> Union[str, List[Dict[str, str]]]:
         """Make sure the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
 
@@ -639,7 +721,9 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         """
         if isinstance(prompt, str):
             messages = [{"role": "user", "content": prompt}]
-        elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
+        elif (
+            isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict)
+        ):
             messages = prompt
 
         n_prompt_tokens = count_openai_tokens_messages(messages, self._tokenizer)
@@ -661,4 +745,211 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         valid_model = any(m for m in ["gpt-3.5-turbo"] if m in model_name_or_path)
+        return valid_model
+
+
+class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
+    """
+    Anthropic Claude Invocation Layer
+
+    This layer is used to invoke the Claude API provided by Anthropic.
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        model_name_or_path: str = "claude-v1",
+        max_tokens_to_sample: Optional[int] = 200,
+        **kwargs,
+    ):
+        """
+         Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
+
+        :param model_name_or_path: The name or path of the underlying model.
+        :param max_length: The maximum length of the output text.
+        :param api_key: The OpenAI API key.
+        :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
+        all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
+        kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
+        kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
+        logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        """
+        super().__init__(model_name_or_path)
+        if not isinstance(api_key, str) or len(api_key) == 0:
+            raise AnthropicError(
+                f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
+            )
+        self.api_key = api_key
+        self.max_tokens_to_sample = max_tokens_to_sample
+
+        # 200 is the default length for answers from Anthropic
+        # max_tokens_to_sample must be set otherwise AnthropicInvocationLayer._ensure_token_limit will fail.
+        self.max_length = max_tokens_to_sample or 200
+
+        # Due to reflective construction of all invocation layers we might receive some
+        # unknown kwargs, so we need to take only the relevant.
+        # For more details refer to OpenAI documentation
+        self.model_input_kwargs = {
+            key: kwargs[key]
+            for key in [
+                "max_tokens_to_sample",
+                "temperature",
+                "top_p",
+                "top_k",
+                "stop_sequences",
+                "stream",
+                "stream_handler",
+            ]
+            if key in kwargs
+        }
+
+        (
+            tokenizer_name,
+            max_tokens_limit,
+        ) = _anthropic_text_completion_tokenization_details(
+            model_name=self.model_name_or_path
+        )
+        self.max_tokens_limit = max_tokens_limit
+        self._tokenizer = load_anthropic_tokenizer(tokenizer_name=tokenizer_name)
+
+    @property
+    def url(self) -> str:
+        return f"https://api.anthropic.com/v1/complete"
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {"x-api-key": self.api_key, "Content-Type": "application/json"}
+
+    def invoke(self, *args, **kwargs):
+        """
+        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
+
+        :return: The responses are being returned.
+
+        """
+
+        human_prompt = "\n\nHuman: "
+        assitant_prompt = "\n\nAssistant: "
+
+        prompt = kwargs.get("prompt")
+        if not prompt:
+            raise ValueError(
+                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"Make sure to provide prompt in kwargs."
+            )
+
+        kwargs_with_defaults = self.model_input_kwargs
+        if kwargs:
+            # we use keyword stop_words but Anthropic uses stop_sequences
+            if "stop_words" in kwargs:
+                kwargs["stop_sequences"] = kwargs.pop("stop_words")
+            if "max_tokens" in kwargs:
+                kwargs["max_tokens_to_sample"] = kwargs.pop("max_tokens")
+            kwargs_with_defaults.update(kwargs)
+
+        # either stream is True (will use default handler) or stream_handler is provided
+        stream = (
+            kwargs_with_defaults.get("stream", False)
+            or kwargs_with_defaults.get("stream_handler", None) is not None
+        )
+        # check if stop_sequences is None, and if so, set it to default
+        if kwargs["stop_sequences"] is None:
+            stop_sequences = ["\n\nHuman: "]
+        else:
+            stop_sequences = kwargs["stop_sequences"]
+
+        payload = {
+            "model": self.model_name_or_path,
+            "prompt": "{} {} {}".format(human_prompt, prompt, assitant_prompt),
+            "max_tokens_to_sample": kwargs_with_defaults.get(
+                "max_tokens_to_sample", self.max_tokens_to_sample
+            ),
+            "temperature": kwargs_with_defaults.get("temperature", 1),
+            "top_p": kwargs_with_defaults.get("top_p", -1),
+            "top_k": kwargs_with_defaults.get("top_k", -1),
+            "stream": stream,
+            "stop_sequences": stop_sequences,
+        }
+        if not stream:
+            res = anthropic_request(url=self.url, headers=self.headers, payload=payload)
+            # _check_openai_finish_reason(result=res, payload=payload)
+            responses = [res["completion"].strip()]
+            return responses
+        else:
+            response = anthropic_request(
+                url=self.url,
+                headers=self.headers,
+                payload=payload,
+                read_response=False,
+                stream=True,
+            )
+
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop(
+                "stream_handler", DefaultTokenStreamingHandler()
+            )
+            client = sseclient.SSEClient(response)
+            tokens: List[str] = []
+            try:
+                for event in client.events():
+                    if event.data != TokenStreamingHandler.DONE_MARKER:
+                        ed = json.loads(event.data)
+                        token: str = ed["choices"][0]["text"]
+                        tokens.append(handler(token, event_data=ed["completion"]))
+            finally:
+                client.close()
+            return ["".join(tokens)]  # return a list of strings just like non-streaming
+
+    def _ensure_token_limit(
+        self, prompt: Union[str, List[Dict[str, str]]]
+    ) -> Union[str, List[Dict[str, str]]]:
+        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        n_prompt_tokens = count_anthropic_tokens(cast(str, prompt), self._tokenizer)
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+            return prompt
+
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "Reduce the length of the prompt to prevent it from being cut off.",
+            n_prompt_tokens,
+            self.max_tokens_limit - n_answer_tokens,
+            n_answer_tokens,
+            self.max_tokens_limit,
+        )
+
+        if USE_TIKTOKEN:
+            tokenized_payload = self._tokenizer.encode(prompt)
+            decoded_string = self._tokenizer.decode(
+                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
+            )
+        else:
+            tokenized_payload = self._tokenizer.tokenize(prompt)
+            decoded_string = self._tokenizer.convert_tokens_to_string(
+                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
+            )
+        return decoded_string
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        """
+        Ensures Anthropic Claude Invocation Layer is selected only when Claude models are specified in
+        the model name.
+        """
+        valid_model = any(
+            m
+            for m in [
+                "claude-v1",
+                "claude-v1.0",
+                "claude-v1.2",
+                "claude-instant-v1",
+                "claude-instant-v1.0",
+            ]
+            if m in model_name_or_path
+        )
         return valid_model
