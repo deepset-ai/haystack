@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
 
 try:
     from typing import Literal
@@ -30,7 +31,6 @@ from haystack.modeling.infer import Inferencer
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.telemetry_2 import send_event
 
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-COHERE_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
@@ -380,8 +380,10 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             "multilingual-22-12",
         )
 
-    @retry_with_exponential_backoff(
-        backoff_in_seconds=COHERE_BACKOFF, max_retries=COHERE_MAX_RETRIES, errors=(CohereError,)
+    @retry(
+        retry=retry_if_exception_type(CohereError),
+        wait=wait_exponential(multiplier=COHERE_BACKOFF),
+        stop=stop_after_attempt(COHERE_MAX_RETRIES),
     )
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "texts": text, "truncate": "END"}
