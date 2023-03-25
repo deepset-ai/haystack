@@ -541,25 +541,20 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
     prompt_template_yaml = """
             name: "question-answering-with-references-custom"
             prompt_text: 'Create a concise and informative answer (no more than 50 words) for
-                a given question based solely on the given documents. Cite the documents using Document[number] notation.
+                a given question based solely on the given documents. Cite the documents using Doc[number] notation.
 
 
-                {join(documents, delimiter=new_line+new_line, pattern=''Document[$id]: $content'')}
+                {join(documents, delimiter=new_line+new_line, pattern=''Doc[$idx]: $content'')}
 
 
                 Question: {query}
 
 
                 Answer: '
-            output_shapers:
-                - func: strings_to_answers
-                  inputs:
-                    strings: results
-                  outputs:
-                    - answers
-                  params:
-                    reference_pattern: Document\\[([^\\]]+)\\]
-                    reference_mode: id
+            output_parser:
+                type: RegexAnswerParser
+                params:
+                    reference_pattern: Doc\\[([^\\]]+)\\]
         """
 
     pipe = Pipeline()
@@ -579,8 +574,8 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
     assert result["answers"][0].document_ids == ["doc-1"]
     assert (
         result["answers"][0].meta["prompt"]
-        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n"
-        "Document[doc-1]: My name is Carla and I live in Berlin\n\nDocument[doc-2]: My name is Christelle and I live in Paris\n\n"
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Doc[number] notation.\n\n"
+        "Doc[1]: My name is Carla and I live in Berlin\n\nDoc[2]: My name is Christelle and I live in Paris\n\n"
         "Question: Who lives in Berlin?\n\nAnswer: "
     )
 
@@ -597,12 +592,8 @@ def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
               params:
                 name: custom-template-with-nested-shaper
                 prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
-                output_shapers:
-                - func: strings_to_answers
-                  inputs:
-                    strings: results
-                  outputs:
-                  - answers
+                output_parser:
+                  type: RegexAnswerParser
             - name: p1
               params:
                 model_name_or_path: google/flan-t5-small
