@@ -3,14 +3,14 @@ import logging
 from abc import abstractmethod, ABC
 from typing import Dict, List, Optional, Union, Type, cast
 
-
 import sseclient
 import torch
 from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
 from transformers.pipelines import get_task
 
-from haystack.errors import OpenAIError
+from haystack.errors import OpenAIError, CohereError, CohereUnauthorizedError
 from haystack.modeling.utils import initialize_device_settings
+from haystack.utils.http_client import HTTPClient
 from haystack.utils.openai_utils import (
     USE_TIKTOKEN,
     openai_request,
@@ -22,6 +22,16 @@ from haystack.utils.openai_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def remove_words(sentences: List[str], stop_words: List[str]) -> List[str]:
+    """
+    Remove stop words from a list of sentences.
+    """
+    for idx, _ in enumerate(sentences):
+        for stop_word in stop_words:
+            sentences[idx] = sentences[idx].replace(stop_word, "").strip()
+    return sentences
 
 
 class TokenStreamingHandler(ABC):
@@ -117,7 +127,7 @@ class PromptModelInvocationLayer:
 
 
 def instruction_following_models() -> List[str]:
-    return ["flan", "mt0", "bloomz", "davinci", "opt-iml"]
+    return ["flan", "mt0", "bloomz", "davinci", "opt-iml", "command"]
 
 
 class StopWordsCriteria(StoppingCriteria):
@@ -283,11 +293,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
         if stop_words:
-            # Although HF generates text until stop words are encountered unfortunately it includes the stop word
-            # We want to exclude it to be consistent with other invocation layers
-            for idx, _ in enumerate(generated_texts):
-                for stop_word in stop_words:
-                    generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
+            # HF stops on stop words, but we want to remove them from the output
+            generated_texts = remove_words(generated_texts, stop_words)
         return generated_texts
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
@@ -662,3 +669,91 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         valid_model = any(m for m in ["gpt-3.5-turbo"] if m in model_name_or_path)
         return valid_model
+
+
+class CohereInvocationLayer(PromptModelInvocationLayer):
+    """
+    A PromptModelInvocationLayer for the Cohere API.
+    """
+
+    def __init__(
+        self, api_key: str, model_name_or_path: str = "command-xlarge-beta", max_length: Optional[int] = 100, **kwargs
+    ):
+        """
+         Creates an instance of CohereInvocationLayer
+
+        :param model_name_or_path: The name of the model to use. Defaults to "command-xlarge-beta".
+        :param max_length: The maximum length of the output text.
+        :param api_key: The Cohere API token. You’ll need to provide your user token which can
+        be found in your Cohere account settings [page](https://dashboard.cohere.ai/api-keys).
+        """
+        super().__init__(model_name_or_path)
+        if not isinstance(api_key, str) or len(api_key) == 0:
+            raise RuntimeError(
+                f"api_key {api_key} must be a valid Cohere API key. "
+                f"You can find your API key in your Cohere account settings [page](https://dashboard.cohere.ai/api-keys)"
+            )
+        if not isinstance(model_name_or_path, str) or len(model_name_or_path) == 0:
+            raise RuntimeError(f"model_name_or_path {model_name_or_path} must be a valid Cohere model name. ")
+        self.api_key = api_key
+        self.max_length = max_length or 128
+
+        # See https://docs.cohere.ai/reference/generate for more details on the parameters
+        self.model_input_kwargs = {
+            key: kwargs[key]
+            for key in ["top_k", "top_p", "temperature", "stop_sequences", "max_tokens"]
+            if key in kwargs
+        }
+        self.client = HTTPClient(
+            method="POST",
+            url="https://api.cohere.ai/v1/generate",
+            headers=self.headers,
+            response_handler=lambda r: [o["text"] for o in r.json()["generations"]],
+            default_error_class=CohereError,
+            error_codes_map={401: CohereUnauthorizedError},
+        )
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+
+    def invoke(self, *args, **kwargs):
+        """
+        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
+
+        :return: The responses are being returned.
+        """
+        prompt = kwargs.get("prompt")
+        if not prompt:
+            raise ValueError(
+                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"Make sure to provide prompt in kwargs."
+            )
+        # we standardize on keyword stop_words but Cohere uses stop_sequences
+        stop_words = kwargs.pop("stop_words", None)
+        kwargs["stop_sequences"] = stop_words
+
+        # Cohere command can't generate more than one response
+        kwargs.pop("top_k", None)  # type: ignore
+        kwargs_with_defaults = self.model_input_kwargs
+        kwargs_with_defaults.update(kwargs)
+        payload = {
+            "prompt": prompt,
+            "model": self.model_name_or_path,
+            "stop_sequences": kwargs_with_defaults.get("stop_sequences", None),
+            "max_tokens": kwargs_with_defaults.get("max_length", self.max_length),
+            "temperature": kwargs_with_defaults.get("temperature", 0.9),
+            "top_p": kwargs_with_defaults.get("top_p", 0.75),
+        }
+
+        sentences = self.client.request(json=payload)
+        # Cohere stops generation on stop words, but we also want to remove them from the output
+        return remove_words(sentences, stop_words) if stop_words else sentences
+
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+        return prompt
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        # we are supporting Cohere command models only
+        return model_name_or_path is not None and "command" in model_name_or_path
