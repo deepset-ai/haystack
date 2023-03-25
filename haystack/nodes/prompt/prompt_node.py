@@ -179,6 +179,43 @@ class _FstringParamsTransformer(ast.NodeTransformer):
         )
 
 
+class BaseOutputParser(Shaper):
+    """
+    BaseOutputParser is used to parse the output of a model and convert it into Haystack primitives.
+    """
+
+    @property
+    def output_variable(self) -> Optional[str]:
+        return self.outputs[0]
+
+
+class RegexAnswerParser(BaseOutputParser):
+    """
+    RegexAnswerParser is used to parse the output of a model to extract the answer into a Answer object using regex patterns.
+    You can pass a reference_pattern to fill in the document_ids of the answer.
+    """
+
+    def __init__(self, pattern: Optional[str] = None, reference_pattern: Optional[str] = None):
+        """
+         :param pattern: The regex pattern to use for parsing the answer.
+            Examples:
+                `[^\\n]+$` will find "this is an answer" in string "this is an argument.\nthis is an answer".
+                `Answer: (.*)` will find "this is an answer" in string "this is an argument. Answer: this is an answer".
+            If None, the whole string is used as the answer. If not None, the first group of the regex is used as the answer. If there is no group, the whole match is used as the answer.
+        :param reference_pattern: The regex pattern to use for parsing the document references.
+            Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
+            If None, no parsing is done and all documents are referenced.
+        """
+        self.pattern = pattern
+        self.reference_pattern = reference_pattern
+        super().__init__(
+            func="strings_to_answers",
+            inputs={"strings": "results"},
+            outputs=["answers"],
+            params={"pattern": pattern, "reference_pattern": reference_pattern},
+        )
+
+
 class PromptTemplate(BasePromptTemplate, ABC):
     """
     PromptTemplate is a template for a prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what such prompt template may look like:
@@ -203,7 +240,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
     """
 
     def __init__(
-        self, name: str, prompt_text: str, output_shapers: Optional[Union[List[Shaper], List[Dict[str, Any]]]] = None
+        self, name: str, prompt_text: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None
     ):
         """
          Creates a PromptTemplate instance.
@@ -251,25 +288,16 @@ class PromptTemplate(BasePromptTemplate, ABC):
             **{k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS},
             **PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS,
         }
-        self.output_shapers: List[Shaper] = []
-        if output_shapers:
-            for shaper in output_shapers:
-                if isinstance(shaper, dict):
-                    self.output_shapers.append(Shaper(**shaper))
-                elif isinstance(shaper, Shaper):
-                    self.output_shapers.append(shaper)
-                else:
-                    raise TypeError(
-                        f"Expected output_shapers to be a list of dicts or Shapers, but got {type(shaper)}."
-                    )
-        if self.output_shapers and len(self.output_shapers[-1].outputs) != 1:
-            raise PromptTemplateValidationError(
-                f"The last shaper in the output shapers for prompt template {self.name} must have only one output."
-            )
+        if isinstance(output_parser, BaseOutputParser):
+            self.output_parser = output_parser
+        elif isinstance(output_parser, dict):
+            output_parser_type = output_parser["type"]
+            output_parser_params = output_parser["params"]
+            self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
 
     @property
     def output_variable(self) -> Optional[str]:
-        return self.output_shapers[-1].outputs[0] if self.output_shapers else None
+        return self.output_parser.output_variable if self.output_parser else None
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -317,12 +345,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param kwargs: Keyword arguments to use for post-processing the prompt output.
         :return: A dictionary with the post-processed output.
         """
-        if self.output_shapers:
+        if self.output_parser:
             invocation_context = kwargs
             invocation_context["results"] = prompt_output
-            for shaper in self.output_shapers:
-                shaper.run(invocation_context=invocation_context)
-            return invocation_context[shaper.outputs[0]]
+            self.output_parser.run(invocation_context=invocation_context)
+            return invocation_context[self.output_parser.outputs[0]]
         else:
             return prompt_output
 
@@ -515,13 +542,13 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="question-answering",
             prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
             "{query}; Answer:",
-            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
+            output_parser=RegexAnswerParser(),
         ),
         PromptTemplate(
             name="question-answering-per-document",
             prompt_text="Given the context please answer the question. Context: {documents}; Question: "
             "{query}; Answer:",
-            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
+            output_parser=RegexAnswerParser(),
         ),
         PromptTemplate(
             name="question-answering-with-references",
@@ -531,32 +558,23 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. "
             "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
             "{join(documents, delimiter=new_line, pattern=new_line+'Document[$idx]: $content', str_replace={new_line: ' ', '[': '(', ']': ')'})} \n Question: {query}; Answer: ",
-            output_shapers=[
-                Shaper(
-                    func="strings_to_answers",
-                    inputs={"strings": "results"},
-                    outputs=["answers"],
-                    params={"reference_pattern": r"Document\[(\d+)\]"},
-                )
-            ],
+            output_parser=RegexAnswerParser(reference_pattern=r"Document\[(\d+)\]"),
         ),
         PromptTemplate(
             name="question-generation",
             prompt_text="Given the context please generate a question. Context: {documents}; Question:",
-            output_shapers=[Shaper(func="rename", outputs=["query"], inputs={"value": "results"})],
         ),
         PromptTemplate(
             name="conditioned-question-generation",
             prompt_text="Please come up with a question for the given context and the answer. "
             "Context: {documents}; Answer: {answers}; Question:",
-            output_shapers=[Shaper(func="rename", outputs=["query"], inputs={"value": "results"})],
         ),
         PromptTemplate(name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
         PromptTemplate(
             name="question-answering-check",
             prompt_text="Does the following context contain the answer to the question? "
             "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
-            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
+            output_parser=RegexAnswerParser(),
         ),
         PromptTemplate(
             name="sentiment-analysis",
@@ -567,7 +585,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="multiple-choice-question-answering",
             prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
             "Options: {options}; Answer:",
-            output_shapers=[Shaper(func="strings_to_answers", outputs=["answers"], inputs={"strings": "results"})],
+            output_parser=RegexAnswerParser(),
         ),
         PromptTemplate(
             name="topic-classification",
@@ -863,11 +881,11 @@ class PromptNode(BaseComponent):
 
         # it's a prompt_text
         prompt_text = prompt_template
-        output_shapers = []
+        output_parser: Optional[BaseOutputParser] = None
         default_prompt_template = self.get_prompt_template()
         if default_prompt_template:
-            output_shapers = default_prompt_template.output_shapers
-        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_shapers=output_shapers)
+            output_parser = default_prompt_template.output_parser
+        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser)
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """

@@ -642,6 +642,35 @@ def test_strings_to_answers_with_prompt_per_document_multiple_results():
 
 
 @pytest.mark.unit
+def test_strings_to_answers_with_pattern_group():
+    shaper = Shaper(
+        func="strings_to_answers",
+        inputs={"strings": "responses"},
+        outputs=["answers"],
+        params={"pattern": r"Answer: (.*)"},
+    )
+    results, _ = shaper.run(invocation_context={"responses": ["Answer: first", "Answer: second", "Answer: third"]})
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first", type="generative", meta={"prompt": None}),
+        Answer(answer="second", type="generative", meta={"prompt": None}),
+        Answer(answer="third", type="generative", meta={"prompt": None}),
+    ]
+
+
+@pytest.mark.unit
+def test_strings_to_answers_with_pattern_no_group():
+    shaper = Shaper(
+        func="strings_to_answers", inputs={"strings": "responses"}, outputs=["answers"], params={"pattern": r"[^\n]+$"}
+    )
+    results, _ = shaper.run(invocation_context={"responses": ["Answer\nfirst", "Answer\nsecond", "Answer\n\nthird"]})
+    assert results["invocation_context"]["answers"] == [
+        Answer(answer="first", type="generative", meta={"prompt": None}),
+        Answer(answer="second", type="generative", meta={"prompt": None}),
+        Answer(answer="third", type="generative", meta={"prompt": None}),
+    ]
+
+
+@pytest.mark.unit
 def test_strings_to_answers_with_references_index():
     shaper = Shaper(
         func="strings_to_answers",
@@ -824,6 +853,7 @@ def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
                 params:
                   model_name_or_path: prompt_model
                   default_prompt_template: question-generation
+                  output_variable: query
 
               - name: shaper
                 type: Shaper
