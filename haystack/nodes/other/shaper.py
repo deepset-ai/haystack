@@ -255,6 +255,7 @@ def strings_to_answers(
     strings: List[str],
     prompts: Optional[List[Union[str, List[Dict[str, str]]]]] = None,
     documents: Optional[List[Document]] = None,
+    pattern: Optional[str] = None,
     reference_pattern: Optional[str] = None,
     reference_mode: Literal["index", "id", "meta"] = "index",
     reference_meta_field: Optional[str] = None,
@@ -266,6 +267,11 @@ def strings_to_answers(
     :param strings: The list of strings to transform.
     :param prompts: The prompts used to generate the answers.
     :param documents: The documents used to generate the answers.
+    :param pattern: The regex pattern to use for parsing the answer.
+        Examples:
+            `[^\\n]+$` will find "this is an answer" in string "this is an argument.\nthis is an answer".
+            `Answer: (.*)` will find "this is an answer" in string "this is an argument. Answer: this is an answer".
+        If None, the whole string is used as the answer. If not None, the first group of the regex is used as the answer. If there is no group, the whole match is used as the answer.
     :param reference_pattern: The regex pattern to use for parsing the document references.
         Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
         If None, no parsing is done and all documents are referenced.
@@ -329,6 +335,7 @@ def strings_to_answers(
             string=string,
             prompt=prompt,
             documents=_documents,
+            pattern=pattern,
             reference_pattern=reference_pattern,
             reference_mode=reference_mode,
             reference_meta_field=reference_meta_field,
@@ -341,8 +348,9 @@ def string_to_answer(
     string: str,
     prompt: Optional[Union[str, List[Dict[str, str]]]],
     documents: Optional[List[Document]],
-    reference_pattern: Optional[str],
-    reference_mode: Literal["index", "id", "meta"],
+    pattern: Optional[str] = None,
+    reference_pattern: Optional[str] = None,
+    reference_mode: Literal["index", "id", "meta"] = "index",
     reference_meta_field: Optional[str] = None,
 ) -> Answer:
     """
@@ -352,6 +360,11 @@ def string_to_answer(
     :param string: The string to transform.
     :param prompt: The prompt used to generate the answer.
     :param documents: The documents used to generate the answer.
+    :param pattern: The regex pattern to use for parsing the answer.
+        Examples:
+            `[^\\n]+$` will find "this is an answer" in string "this is an argument.\nthis is an answer".
+            `Answer: (.*)` will find "this is an answer" in string "this is an argument. Answer: this is an answer".
+        If None, the whole string is used as the answer. If not None, the first group of the regex is used as the answer. If there is no group, the whole match is used as the answer.
     :param reference_pattern: The regex pattern to use for parsing the document references.
         Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
         If None, no parsing is done and all documents are referenced.
@@ -380,6 +393,20 @@ def string_to_answer(
     else:
         raise ValueError(f"Invalid document_id_mode: {reference_mode}")
 
+    if pattern:
+        match = re.search(pattern, string)
+        if match:
+            if not match.lastindex:
+                # no group in pattern -> take the whole match
+                string = match.group(0)
+            elif match.lastindex == 1:
+                # one group in pattern -> take the group
+                string = match.group(1)
+            else:
+                # more than one group in pattern -> raise error
+                raise ValueError(f"Pattern must have at most one group: {pattern}")
+        else:
+            string = ""
     document_ids = parse_references(string=string, reference_pattern=reference_pattern, candidates=candidates)
     answer = Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
     return answer

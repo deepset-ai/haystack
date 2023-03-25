@@ -417,7 +417,7 @@ def test_simple_pipeline(prompt_model):
 def test_complex_pipeline(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
-    node = PromptNode(prompt_model, default_prompt_template="question-generation")
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query")
     node2 = PromptNode(prompt_model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
@@ -433,7 +433,7 @@ def test_complex_pipeline(prompt_model):
 def test_simple_pipeline_with_topk(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
-    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query", top_k=2)
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -538,7 +538,7 @@ def test_complex_pipeline_with_qa(prompt_model):
 @pytest.mark.integration
 def test_complex_pipeline_with_shared_model():
     model = PromptModel()
-    node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation")
+    node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation", output_variable="query")
     node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
@@ -611,6 +611,7 @@ def test_complex_pipeline_yaml(tmp_path):
             - name: p1
               params:
                 default_prompt_template: question-generation
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
@@ -649,6 +650,7 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question-generation
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
