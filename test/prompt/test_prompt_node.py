@@ -616,6 +616,7 @@ def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
         == "Given the context please answer the question. Context: Berlin is an amazing city.; Question: What is an amazing city?; Answer: "
     )
 
+
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
 def test_prompt_node_no_debug(prompt_model):
