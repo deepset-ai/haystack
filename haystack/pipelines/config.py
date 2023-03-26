@@ -130,7 +130,8 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
                 env_value = value
             
             # Check if the value is `bool` in form of `str` --> convert to `bool`
-            if env_value in tuple("True", "False"):
+            # Also, add a handler for `.yaml` bool values
+            if env_value in tuple("True", "False", "true", "false"):
                 env_value = bool(env_value)
                 
             # Set the value to the param variable from the environ or set the same value if it was not environ variable value
