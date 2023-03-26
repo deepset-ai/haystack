@@ -1,19 +1,24 @@
 import logging
 import os
 from math import isclose
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple, Any
 
 import pytest
 import numpy as np
 import pandas as pd
+import requests
+from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
 from elasticsearch import Elasticsearch
+from requests import Response
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.retriever.web import WebRetriever, SearchResult
+from haystack.nodes.search_engine import WebSearch
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -1146,3 +1151,94 @@ def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: 
 
     assert str(image_results[0].content) == str(SAMPLES_PATH / "images" / "paris.jpg")
     assert text_results[0].content == "My name is Christelle and I live in Paris"
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_raw_documents(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    class MockResponse:
+        def __init__(self, text, status_code):
+            self.text = text
+            self.status_code = status_code
+
+    def get(url, headers, timeout):
+        return MockResponse("mocked", 200)
+
+    def get_content(self, text: str) -> str:
+        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
+    monkeypatch.setattr(requests, "get", get)
+
+    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="raw_documents")
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert len(result) == 1
+    assert isinstance(result[0], Document)
+    assert (
+        result[0].content
+        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+    )
+    assert result[0].score == None
+    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_snippets(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    web_retriever = WebRetriever(api_key="", top_search_results=2)
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert result == expected_search_results["documents"]
