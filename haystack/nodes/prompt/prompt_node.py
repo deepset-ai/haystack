@@ -181,7 +181,8 @@ class _FstringParamsTransformer(ast.NodeTransformer):
 
 class BaseOutputParser(Shaper):
     """
-    BaseOutputParser is used to parse the output of a model and convert it into Haystack primitives.
+    A output parser defines in `PromptTemplate` how to parse the model output and convert it into Haystack primitives.
+    BaseOutputParser is the base class for output parser implementations.
     """
 
     @property
@@ -191,8 +192,9 @@ class BaseOutputParser(Shaper):
 
 class AnswerParser(BaseOutputParser):
     """
-    AnswerParser is used to parse the output of a model to extract the answer into a Answer object using regex patterns.
-    You can pass a reference_pattern to fill in the document_ids of the answer.
+    AnswerParser is used to parse the model output to extract the answer into a proper `Answer` object using regex patterns.
+    AnswerParser enriches the `Answer` object with the used prompts and the document_ids of the documents that were used to generate the answer.
+    You can pass a reference_pattern to extract the document_ids of the answer from the model output.
     """
 
     def __init__(self, pattern: Optional[str] = None, reference_pattern: Optional[str] = None):
@@ -247,8 +249,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         :param name: The name of the prompt template (for example, sentiment-analysis, question-generation). You can specify your own name but it must be unique.
         :param prompt_text: The prompt text, including prompt parameters.
-        :param output_parser: A parser that will be applied to the output of the model.
-                For example, if you want to convert the output of the model to an Answer object, you can use `AnswerParser`.
+        :param output_parser: A parser that will be applied to the model output.
+                For example, if you want to convert the model output to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
                 ```
                 output_parser=[
