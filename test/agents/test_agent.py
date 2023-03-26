@@ -4,8 +4,8 @@ from typing import Tuple
 
 import pytest
 
-from haystack import BaseComponent, Answer
-from haystack.agents import Agent
+from haystack import BaseComponent, Answer, Document
+from haystack.agents import Agent, AgentStep
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
