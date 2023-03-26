@@ -89,7 +89,6 @@ def get_component_definitions(
                         key,
                         value,
                     )
-
     return component_definitions
 
 
