@@ -1016,7 +1016,8 @@ class PromptNode(BaseComponent):
             )[0]
             all_results[output_variable].append(results[output_variable])
             all_results["invocation_contexts"].append(results["invocation_context"])
-            all_results["_debug"].append(results["_debug"])
+            if self.debug:
+                all_results["_debug"].append(results["_debug"])
         return all_results, "output_1"
 
     def _prepare_model_kwargs(self):
