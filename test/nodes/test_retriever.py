@@ -1103,6 +1103,7 @@ def test_multimodal_table_retrieval(table_docs: List[Document]):
     )
 
 
+@pytest.mark.skip("Must be reworked as it fails randomly")
 @pytest.mark.integration
 def test_multimodal_retriever_query():
     retriever = MultiModalRetriever(

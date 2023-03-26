@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 import pytest
 import sys
+import pandas as pd
 from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -406,6 +407,117 @@ FILE_SEARCH_EVAL_LABELS = [
         ]
     ),
 ]
+
+EVAL_TABLE_LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="How old is Brad Pitt?",
+                answer=Answer(answer="56", offsets_in_context=[Span(1, 2)]),
+                document=Document(
+                    id="a044cf3fb8aade03a12399c7a2fe9a6b",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["Actors", "Age", "Number of movies"],
+                        data=[
+                            ["Brad Pitt", "56", "87"],
+                            ["Leonardo Di Caprio", "45", "53"],
+                            ["George Clooney", "59", "69"],
+                        ],
+                    ),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            Label(  # Label with different doc but same answer and query
+                query="How old is Brad Pitt?",
+                answer=Answer(answer="56", offsets_in_context=[Span(4, 5)]),
+                document=Document(
+                    id="a044cf3fb8aade03a12399c7a2fe9a6b",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["Actors", "Age", "Number of movies"],
+                        data=[["Beyonce", "45", "53"], ["Brad Pitt", "56", "87"], ["Jane Doe", "59", "69"]],
+                    ),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+        ]
+    ),
+    MultiLabel(
+        labels=[
+            Label(
+                query="To which state does Spikeroog belong?",
+                answer=Answer(answer="Lower Saxony", offsets_in_context=[Span(7, 8)]),
+                document=Document(
+                    id="b044cf3fb8aade03a12399c7a2fe9a6c",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["0", "1"],
+                        data=[
+                            ["Area", "18.25 km2 (7.05 sq mi)"],
+                            ["Population", "794"],
+                            ["Country", "Germany"],
+                            ["State", "Lower Saxony"],
+                            ["District", "Wittmund"],
+                        ],
+                    ),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_qa_eval(table_reader_and_param, document_store, retriever):
+    docs = []
+    for multi_label in EVAL_TABLE_LABELS:
+        for label in multi_label.labels:
+            docs.append(label.document)
+
+    assert len(docs) == 3
+
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever=retriever)
+
+    table_reader, _ = table_reader_and_param
+    p = Pipeline()
+    p.add_node(component=retriever, name="TableRetriever", inputs=["Query"])
+    p.add_node(component=table_reader, name="TableReader", inputs=["TableRetriever"])
+
+    eval_result = p.eval(labels=EVAL_TABLE_LABELS, params={"TableRetriever": {"top_k": 2}})
+    table_reader_results = eval_result.node_results["TableReader"]
+
+    assert set(table_reader_results["query"].tolist()) == {
+        "How old is Brad Pitt?",
+        "To which state does Spikeroog belong?",
+    }
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer")
+    assert metrics["TableRetriever"]["recall_single_hit"] == 1.0
+    assert metrics["TableRetriever"]["recall_multi_hit"] == 1.0
+    assert metrics["TableRetriever"]["precision"] == 0.5
+    assert metrics["TableRetriever"]["mrr"] == 1.0
+    assert metrics["TableRetriever"]["map"] == 1.0
+    assert metrics["TableRetriever"]["ndcg"] == 1.0
+    assert metrics["TableReader"]["exact_match"] == 1.0
+    assert metrics["TableReader"]["f1"] == 1.0
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
