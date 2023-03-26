@@ -408,6 +408,21 @@ def test_streaming_prompt_node():
     assert ttsh.stream_handler_invoked, "Stream handler should have been invoked"
 
 
+def test_prompt_node_with_text_generation_model():
+    # test simple prompting with text generation model
+    # by default, we force the model not return prompt text
+    # Thus text-generation models can be used with PromptNode
+    # just like text2text-generation models
+    node = PromptNode("bigscience/bigscience-small-testing")
+    r = node("Hello big science!")
+    assert len(r[0]) > 0
+
+    # test prompting with parameter to return prompt text as well
+    # users can use this param to get the prompt text and the generated text
+    r = node("Hello big science!", return_full_text=True)
+    assert len(r[0]) > 0 and r[0].startswith("Hello big science!")
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_simple_pipeline(prompt_model):
@@ -449,6 +464,31 @@ def test_simple_pipeline_with_topk(prompt_model):
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
     assert len(result["results"]) == 2
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
+def test_prompt_node_no_debug(prompt_model):
+    """Pipeline with PromptNode should not generate debug info if debug is false."""
+
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+
+    # debug explicitely False
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=False)
+    assert result.get("_debug", "No debug info") == "No debug info"
+
+    # debug None
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=None)
+    assert result.get("_debug", "No debug info") == "No debug info"
+
+    # debug True
+    result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")], debug=True)
+    assert (
+        result["_debug"]["prompt_node"]["runtime"]["prompts_used"][0]
+        == "Given the context please generate a question. Context: Berlin is the capital of Germany; Question:"
+    )
 
 
 @pytest.mark.integration

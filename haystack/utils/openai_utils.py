@@ -6,11 +6,10 @@ import sys
 import json
 from typing import Dict, Union, Tuple, Optional, List
 import requests
-
+from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
 from transformers import GPT2TokenizerFast
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.environment import (
     HAYSTACK_REMOTE_API_BACKOFF_SEC,
     HAYSTACK_REMOTE_API_MAX_RETRIES,
@@ -25,7 +24,7 @@ system = platform.system()
 
 
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-OPENAI_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+OPENAI_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
@@ -124,8 +123,10 @@ def _openai_text_completion_tokenization_details(model_name: str):
     return tokenizer_name, max_tokens_limit
 
 
-@retry_with_exponential_backoff(
-    backoff_in_seconds=OPENAI_BACKOFF, max_retries=OPENAI_MAX_RETRIES, errors=(OpenAIRateLimitError, OpenAIError)
+@retry(
+    retry=retry_if_exception_type(OpenAIRateLimitError),
+    wait=wait_exponential(multiplier=OPENAI_BACKOFF),
+    stop=stop_after_attempt(OPENAI_MAX_RETRIES),
 )
 def openai_request(
     url: str,
