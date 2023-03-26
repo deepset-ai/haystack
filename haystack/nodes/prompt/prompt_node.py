@@ -291,7 +291,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             self.output_parser = output_parser
         elif isinstance(output_parser, dict):
             output_parser_type = output_parser["type"]
-            output_parser_params = output_parser["params"]
+            output_parser_params = output_parser.get("params", {})
             self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
 
     @property
