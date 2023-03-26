@@ -288,7 +288,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             **{k: v for k, v in globals().items() if k in PROMPT_TEMPLATE_ALLOWED_FUNCTIONS},
             **PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS,
         }
-        if isinstance(output_parser, BaseOutputParser):
+        if not output_parser or isinstance(output_parser, BaseOutputParser):
             self.output_parser = output_parser
         elif isinstance(output_parser, dict):
             output_parser_type = output_parser["type"]
