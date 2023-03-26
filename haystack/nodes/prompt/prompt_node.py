@@ -1,4 +1,5 @@
 import ast
+from collections import defaultdict
 import copy
 import logging
 from abc import ABC
@@ -952,14 +953,15 @@ class PromptNode(BaseComponent):
         output_variable = self.output_variable or prompt_template.output_variable or "results"
 
         inputs = PromptNode._flatten_inputs(queries, documents, invocation_contexts)
-        all_results: Dict[str, List] = {output_variable: [], "invocation_contexts": [], "_debug": []}
+        all_results: Dict[str, List] = defaultdict(list)
         for query, docs, invocation_context in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"]
         ):
             results = self.run(query=query, documents=docs, invocation_context=invocation_context)[0]
             all_results[output_variable].append(results[output_variable])
             all_results["invocation_contexts"].append(results["invocation_context"])
-            all_results["_debug"].append(results["_debug"])
+            if self.debug:
+                all_results["_debug"].append(results["_debug"])
         return all_results, "output_1"
 
     def _prepare_model_kwargs(self):
