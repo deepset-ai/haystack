@@ -30,46 +30,44 @@ class TopPSampler(BaseSampler):
     Usage example:
 
     ```python
-    search = WebSearch(api_key="<your_api_key_here>")
+    prompt_node = PromptNode(
+        "text-davinci-003",
+        api_key=openai_key,
+        max_length=256,
+        default_prompt_template="question-answering-with-document-scores",
+    )
+    retriever = WebRetriever(api_key=os.environ.get("SERPERDEV_API_KEY"), mode="preprocessed_documents")
     sampler = TopPSampler(top_p=0.95)
 
-    p = Pipeline()
-    p.add_node(component=search, name="Search", inputs=["Query"])
-    p.add_node(component=sampler, name="Sampler", inputs=["Search"])
-    print(p.run(query="What's the secret of the Universe?"))
+    pipeline = WebQAPipeline(retriever=retriever, prompt_node=prompt_node, sampler=sampler)
+    print(pipeline.run(query="What's the secret of the Universe?"))
     ```
     """
 
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        model_version: Optional[str] = None,
         top_p: Optional[float] = 1.0,
         strict: Optional[bool] = False,
-        top_score_field: Optional[str] = "score",
+        score_field: Optional[str] = "score",
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Initialize a TopPSampler.
 
         :param model_name_or_path: Path to a pretrained sentence-transformers model.
-        :param model_version: The version of the model to use. Can be a tag name, a branch name, or a commit hash.
         :param top_p: Cumulative probability threshold for filtering the documents (usually between 0.9 and 0.99).
         :param strict: If `top_p` is set to a low value and sampler returned no documents, then setting `strict` to
         `False` ensures at least one document is returned. If `strict` is set to `True`, then no documents are returned.
-        :param top_score_field: The name of the score that should be used to insert the scores into the meta field
-        of the document.
+        :param score_field: The name of the field that should be used to store the scores a document's meta data.
         :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
         :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
-        :param use_auth_token: The token to use as the HTTP bearer authorization for remote files.
-
         """
         super().__init__()
 
         self.top_p = top_p
-        self.top_score_field = top_score_field
+        self.score_field = score_field
         self.strict = strict
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.cross_encoder = CrossEncoder(model_name_or_path, device=str(self.devices[0]))
@@ -119,9 +117,9 @@ class TopPSampler(BaseSampler):
             selected_docs = [documents[highest_prob_indices[0]]]
 
         # include prob scores in the results
-        if self.top_score_field:
+        if self.score_field:
             for idx, doc in enumerate(selected_docs):
-                doc.meta[self.top_score_field] = str(sorted_probs[idx])
+                doc.meta[self.score_field] = str(sorted_probs[idx])
         return selected_docs
 
     def predict_batch(
@@ -134,7 +132,7 @@ class TopPSampler(BaseSampler):
         """
          - If you provide a list containing a single query...
 
-            - ... and a single list of Documents, the single list of Documents is be re-ranked based on the
+            - ... and a single list of Documents, the single list of Documents is re-ranked based on the
               supplied query.
             - ... and a list of lists of Documents, each list of Documents is re-ranked individually based on the
               supplied query.

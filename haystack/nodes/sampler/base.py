@@ -53,7 +53,7 @@ class BaseSampler(BaseComponent):
         top_p: Optional[float] = None,
         batch_size: Optional[int] = None,
     ):
-        self.query_count = +len(queries)
+        self.query_count += len(queries)
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(queries=queries, documents=documents, top_p=top_p, batch_size=batch_size)
 

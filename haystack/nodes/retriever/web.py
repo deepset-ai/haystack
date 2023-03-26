@@ -9,11 +9,11 @@ from unicodedata import combining, normalize
 import requests
 from boilerpy3 import extractors
 
-from haystack import Document
+from haystack import Document, __version__
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.search_engine import SearchEngine
+from haystack.nodes.search_engine.web import SearchEngine
 from haystack.nodes.search_engine.web import WebSearch
 from haystack.schema import FilterType
 
@@ -52,8 +52,8 @@ class WebRetriever(BaseRetriever):
     WebRetriever downloads web page results returned by WebSearch, strips HTML, and extracts raw text, which is then
     split into smaller documents using the optional PreProcessor.
 
-    The recommended approach is to use the default values for top_k and top_p and adjust them based on your specific
-    use case. The default values are 5 and 0.95, respectively. This means that WebRetriever will return at most
+    The recommended approach is to use the default value for top_k and adjust it based on your specific
+    use case. The default value is 5. This means that WebRetriever will return at most
     five of the most relevant processed documents, ensuring that the search results are diverse but still of high
     quality. If you want to return more results, you can increase top_k.
     """
@@ -215,7 +215,6 @@ class WebRetriever(BaseRetriever):
             def scrape_direct(link: SearchResult) -> Dict[str, Any]:
                 extractor = extractors.ArticleExtractor(raise_on_failure=False)
                 try:
-                    extracted_content = ""
                     extracted_doc = {}
                     response = requests.get(link.url, headers=self._request_headers(), timeout=10)
                     if response.status_code == 200 and len(response.text) > 0:
@@ -308,7 +307,7 @@ class WebRetriever(BaseRetriever):
     def _request_headers(self):
         headers = {
             "accept": "*/*",
-            "User-Agent": "haystack/WebRetriever/1.15",
+            "User-Agent": f"haystack/WebRetriever/{__version__}",
             "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
             "referer": "https://www.google.com/",
         }

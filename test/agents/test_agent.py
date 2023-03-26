@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 
-from haystack import BaseComponent, Answer, Document
+from haystack import BaseComponent, Answer
 from haystack.agents import Agent
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
@@ -311,7 +311,7 @@ def test_webqa_pipeline():
         max_length=256,
         default_prompt_template="question-answering-with-document-scores",
     )
-    web_retriever = WebRetriever(api_key=search_key, mode="snippets", top_search_results=2)
+    web_retriever = WebRetriever(api_key=search_key, top_search_results=2)
     pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
     result = pipeline.run(query="Who is the father of Arya Stark?")
     assert isinstance(result, dict)

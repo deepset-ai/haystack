@@ -358,14 +358,18 @@ class WebQAPipeline(BaseStandardPipeline):
         """
         if not shaper:
             shaper = Shaper(func="join_documents_and_scores", inputs={"documents": "documents"}, outputs=["documents"])
-        if not sampler and retriever.mode == "snippets":
-            # Documents returned by WebRetriever in mode "snippets" have scores, which we can use for sampling.
+        if not sampler and retriever.mode != "snippets":
+            # Documents returned by WebRetriever in mode "snippets" already have scores.
+            # For other modes, we need to add a sampler if none is provided to compute the scores.
             sampler = TopPSampler(top_p=0.95)
 
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
-        self.pipeline.add_node(component=shaper, name="Shaper", inputs=["Sampler"])
+        if sampler:
+            self.pipeline.add_node(component=sampler, name="Sampler", inputs=["Retriever"])
+            self.pipeline.add_node(component=shaper, name="Shaper", inputs=["Sampler"])
+        else:
+            self.pipeline.add_node(component=shaper, name="Shaper", inputs=["Retriever"])
         self.pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Shaper"])
         self.metrics_filter = {"Retriever": ["recall_single_hit"]}
 
