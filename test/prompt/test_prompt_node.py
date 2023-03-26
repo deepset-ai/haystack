@@ -552,7 +552,7 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
 
                 Answer: '
             output_parser:
-                type: RegexAnswerParser
+                type: AnswerParser
                 params:
                     reference_pattern: Doc\\[([^\\]]+)\\]
         """
@@ -593,7 +593,7 @@ def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
                 name: custom-template-with-nested-shaper
                 prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
                 output_parser:
-                  type: RegexAnswerParser
+                  type: AnswerParser
             - name: p1
               params:
                 model_name_or_path: google/flan-t5-small

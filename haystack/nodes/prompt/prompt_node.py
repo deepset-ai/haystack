@@ -189,9 +189,9 @@ class BaseOutputParser(Shaper):
         return self.outputs[0]
 
 
-class RegexAnswerParser(BaseOutputParser):
+class AnswerParser(BaseOutputParser):
     """
-    RegexAnswerParser is used to parse the output of a model to extract the answer into a Answer object using regex patterns.
+    AnswerParser is used to parse the output of a model to extract the answer into a Answer object using regex patterns.
     You can pass a reference_pattern to fill in the document_ids of the answer.
     """
 
@@ -248,11 +248,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param name: The name of the prompt template (for example, sentiment-analysis, question-generation). You can specify your own name but it must be unique.
         :param prompt_text: The prompt text, including prompt parameters.
         :param output_parser: A parser that will be applied to the output of the model.
-                For example, if you want to convert the output of the model to an Answer object, you can use `RegexAnswerParser`.
+                For example, if you want to convert the output of the model to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
                 ```
                 output_parser=[
-                    {"type": "RegexAnswerParser", "params": {"pattern": "Answer: (.*)"}},
+                    {"type": "AnswerParser", "params": {"pattern": "Answer: (.*)"}},
                 ]
                 ```
         """
@@ -542,13 +542,13 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="question-answering",
             prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
             "{query}; Answer:",
-            output_parser=RegexAnswerParser(),
+            output_parser=AnswerParser(),
         ),
         PromptTemplate(
             name="question-answering-per-document",
             prompt_text="Given the context please answer the question. Context: {documents}; Question: "
             "{query}; Answer:",
-            output_parser=RegexAnswerParser(),
+            output_parser=AnswerParser(),
         ),
         PromptTemplate(
             name="question-answering-with-references",
@@ -558,7 +558,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. "
             "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
             "{join(documents, delimiter=new_line, pattern=new_line+'Document[$idx]: $content', str_replace={new_line: ' ', '[': '(', ']': ')'})} \n Question: {query}; Answer: ",
-            output_parser=RegexAnswerParser(reference_pattern=r"Document\[(\d+)\]"),
+            output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]"),
         ),
         PromptTemplate(
             name="question-generation",
@@ -574,7 +574,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="question-answering-check",
             prompt_text="Does the following context contain the answer to the question? "
             "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
-            output_parser=RegexAnswerParser(),
+            output_parser=AnswerParser(),
         ),
         PromptTemplate(
             name="sentiment-analysis",
@@ -585,7 +585,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="multiple-choice-question-answering",
             prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
             "Options: {options}; Answer:",
-            output_parser=RegexAnswerParser(),
+            output_parser=AnswerParser(),
         ),
         PromptTemplate(
             name="topic-classification",
