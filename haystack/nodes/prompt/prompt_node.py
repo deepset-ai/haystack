@@ -243,9 +243,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         :param name: The name of the prompt template (for example, sentiment-analysis, question-generation). You can specify your own name but it must be unique.
         :param prompt_text: The prompt text, including prompt parameters.
-        :param output_shapers: A list of shapers that will be applied to the output of the model.
-                For example, if you want to convert the output of the model to a Answer object, you can use a shaper using the `string_to_answer` function.
-                Note, that the last shaper in the list must only have one output and PromptNode will use this value as the output_variable.
+        :param output_parser: A parser that will be applied to the output of the model.
+                For example, if you want to convert the output of the model to an Answer object, you can use `RegexAnswerParser`.
         """
         super().__init__()
 
