@@ -16,7 +16,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "milvus2", ie)
 
 from haystack.schema import Document, FilterType
-from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.nodes.retriever import DenseRetriever
 
