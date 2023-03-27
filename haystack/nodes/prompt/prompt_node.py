@@ -72,7 +72,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         """
         super().__init__()
         if prompt_params:
-            self.prompt_params = prompt_params
+            self.prompt_params: List[str] = prompt_params
         else:
             # Define the regex pattern to match the strings after the $ character
             pattern = r"\$([a-zA-Z0-9_]+)"
