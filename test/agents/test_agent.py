@@ -214,7 +214,7 @@ def test_tool_result_extraction(reader, retriever_with_docs):
     assert result == "Paris" or result == "Madrid"
 
     # PromptNode as a Tool
-    pt = PromptTemplate("test", "Here is a question: $query, Answer:")
+    pt = PromptTemplate("test", "Here is a question: {query}, Answer:")
     pn = PromptNode(default_prompt_template=pt)
 
     t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
@@ -253,8 +253,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
             "Word: Rome\nLength: 4\n"
             "Word: Arles\nLength: 5\n"
             "Word: Berlin\nLength: 6\n"
-            "Word: $query?\nLength: ",
-            prompt_params=["query"],
+            "Word: {query}?\nLength: ",
         ),
     )
 
@@ -304,8 +303,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
             "Word: Rome\nLength: 4\n"
             "Word: Arles\nLength: 5\n"
             "Word: Berlin\nLength: 6\n"
-            "Word: $query?\nLength: ",
-            prompt_params=["query"],
+            "Word: {query}\nLength: ",
         ),
     )
 
