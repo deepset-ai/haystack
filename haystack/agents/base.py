@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 import re
+from hashlib import md5
 from typing import List, Optional, Union, Dict, Any
 
 from events import Events
 
 from haystack import Pipeline, BaseComponent, Answer, Document
+from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color
 from haystack.agents.utils import print_text
@@ -174,6 +176,18 @@ class Agent:
         self.tool_pattern = tool_pattern
         self.final_answer_pattern = final_answer_pattern
         self.add_default_logging_callbacks()
+        self.update_hash()
+
+    def update_hash(self):
+        """
+        Used for telemetry. Hashes the tool classnames to send an event only when they change.
+        See haystack/telemetry.py::send_event
+        """
+        try:
+            self.hash = md5(" ".join([tool.pipeline_or_node.__class__.__name__ for tool in self.tools.values()]))
+        except Exception as exc:
+            logger.debug("Telemetry exception: %s", str(exc))
+            self.hash = "[an exception occurred during hashing]"
 
     def add_default_logging_callbacks(self, agent_color: Color = Color.GREEN) -> None:
         def on_tool_finish(
@@ -240,6 +254,13 @@ class Agent:
                         `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}`.
                         You can only pass parameters to tools that are pipelines, but not nodes.
         """
+        try:
+            if not self.hash == self.last_hash:
+                self.last_hash = self.hash
+                send_event(event_name="Agent", event_properties={"llm.agent_hash": self.hash})
+        except Exception as exc:
+            logger.debug("Telemetry exception: %s", exc)
+
         if not self.tools:
             raise AgentError(
                 "An Agent needs tools to run. Add at least one tool using `add_tool()` or set the parameter `tools` "
@@ -311,6 +332,13 @@ class Agent:
                         `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}`.
                         You can only pass parameters to tools that are pipelines but not nodes.
         """
+        try:
+            if not self.hash == self.last_hash:
+                self.last_hash = self.hash
+                send_event(event_name="Agent", event_properties={"llm.agent_hash": self.hash})
+        except Exception as exc:
+            logger.debug("Telemetry exception: %s", exc)
+
         results: Dict = {"queries": [], "answers": [], "transcripts": []}
         for query in queries:
             result = self.run(query=query, max_steps=max_steps, params=params)
