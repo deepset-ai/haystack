@@ -22,6 +22,7 @@ from haystack.pipelines import (
     FAQPipeline,
     TranslationWrapperPipeline,
     RetrieverQuestionGenerationPipeline,
+    WebQAPipeline,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class Tool:
             FAQPipeline,
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
+            WebQAPipeline,
         ],
         description: str,
         output_variable: str = "results",

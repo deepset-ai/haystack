@@ -561,6 +561,17 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]"),
         ),
         PromptTemplate(
+            name="question-answering-with-document-scores",
+            prompt_text="Answer the following question using the paragraphs below as sources. "
+            "An answer should be short, a few words at most.\n"
+            "Paragraphs:\n{documents}\n"
+            "Question: {query}\n\n"
+            "Instructions: Consider all the paragraphs above and their corresponding scores to generate "
+            "the answer. While a single paragraph may have a high score, it's important to consider all "
+            "paragraphs for the same answer candidate to answer accurately.\n\n"
+            "After having considered all possibilities, the final answer is:\n",
+        ),
+        PromptTemplate(
             name="question-generation",
             prompt_text="Given the context please generate a question. Context: {documents}; Question:",
         ),

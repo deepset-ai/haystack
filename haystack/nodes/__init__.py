@@ -43,6 +43,8 @@ from haystack.nodes.retriever import (
     TableTextRetriever,
     MultiModalRetriever,
 )
+
+from haystack.nodes.sampler import BaseSampler, TopPSampler
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
 
