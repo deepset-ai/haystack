@@ -102,9 +102,7 @@ class Telemetry:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
-def send_pipeline_run_event(  # type: ignore
-    classname: str,
-    function_name: str,
+def send_pipeline_event(  # type: ignore
     pipeline: "Pipeline",  # type: ignore
     query: Optional[str] = None,
     queries: Optional[List[str]] = None,
@@ -118,8 +116,6 @@ def send_pipeline_run_event(  # type: ignore
     """
     Sends a telemetry event about the execution of a pipeline, if telemetry is enabled.
 
-    :param classname: The name of the Pipeline class (Pipeline, RayPipeline, ...)
-    :param function_name: The name of the function that was invoked (run, run_batch, async_run, ...).
     :param pipeline: the pipeline that is running
     :param query: the value of the `query` input of the pipeline, if any
     :param queries: the value of the `queries` input of the pipeline, if any
@@ -132,25 +128,24 @@ def send_pipeline_run_event(  # type: ignore
     """
     try:
         if telemetry:
-            event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {
-                "class": classname,
-                "function_name": function_name,
-            }
-
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
             if exec_context == "public_demo":
                 event_properties["pipeline.is_public_demo"] = True
                 event_properties["pipeline.run_parameters.query"] = query
                 event_properties["pipeline.run_parameters.params"] = params
-                telemetry.send_event(event_name=function_name, event_properties=event_properties)
+                telemetry.send_event(event_name="Public Demo", event_properties=event_properties)
                 return
 
-            # Collect pipeline profile
-            event_properties["pipeline.classname"] = pipeline.__class__.__name__
-            event_properties["pipeline.fingerprint"] = pipeline.fingerprint
-            if pipeline.yaml_hash:
-                event_properties["pipeline.yaml_hash"] = pipeline.yaml_hash
+            # Send this event only if the pipeline config has changed
+            if pipeline.last_config_hash == pipeline.config_hash:
+                return
+            pipeline.last_config_hash = pipeline.config_hash
+
+            event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {
+                "pipeline.classname": pipeline.__class__.__name__,
+                "pipeline.config_hash": pipeline.config_hash,
+            }
 
             # Add document store
             docstore = pipeline.get_document_store()
@@ -190,38 +185,10 @@ def send_pipeline_run_event(  # type: ignore
             event_properties["pipeline.run_parameters.params"] = bool(params)
             event_properties["pipeline.run_parameters.debug"] = bool(debug)
 
-            telemetry.send_event(event_name="Pipeline run", event_properties=event_properties)
+            telemetry.send_event(event_name="Pipeline", event_properties=event_properties)
     except Exception as e:
         # Never let telemetry break things
-        logger.debug("There was an issue sending a '%s' telemetry event", function_name, exc_info=e)
-
-
-def send_pipeline_event(pipeline: "Pipeline", event_name: str, event_properties: Optional[Dict[str, Any]] = None):  # type: ignore
-    """
-    Send a telemetry event related to a pipeline which is not a call to run(), if telemetry is enabled.
-    """
-    try:
-        if telemetry:
-            if not event_properties:
-                event_properties = {}
-            event_properties.update(
-                {
-                    "pipeline.classname": pipeline.__class__.__name__,
-                    "pipeline.fingerprint": pipeline.fingerprint,
-                    "pipeline.yaml_hash": pipeline.yaml_hash,
-                }
-            )
-            now = datetime.datetime.now()
-            if pipeline.last_run:
-                event_properties["pipeline.since_last_run"] = (now - pipeline.last_run).total_seconds()
-            else:
-                event_properties["pipeline.since_last_run"] = 0
-            pipeline.last_run = now
-
-            telemetry.send_event(event_name=event_name, event_properties=event_properties)
-    except Exception as e:
-        # Never let telemetry break things
-        logger.debug("There was an issue sending a '%s' telemetry event", event_name, exc_info=e)
+        logger.debug("There was an issue sending a 'Pipeline' telemetry event", exc_info=e)
 
 
 def send_event(event_name: str, event_properties: Optional[Dict[str, Any]] = None):
