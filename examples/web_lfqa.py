@@ -27,7 +27,7 @@ prompt_node = PromptNode(
 )
 
 web_retriever = WebRetriever(api_key=search_key, top_search_results=2, mode="preprocessed_documents")
-pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node, sampler=TopPSampler(top_p=0.95))
+pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
 
 # Long-Form QA requiring multiple context paragraphs for the synthesis of an elaborate generative answer
 questions = [
