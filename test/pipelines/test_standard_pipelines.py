@@ -1,6 +1,10 @@
+import os
+
 import pytest
 
-from haystack.pipelines import TranslationWrapperPipeline, ExtractiveQAPipeline
+from haystack.nodes import PromptNode
+from haystack.nodes.retriever.web import WebRetriever
+from haystack.pipelines import ExtractiveQAPipeline, WebQAPipeline
 
 from haystack.schema import Answer
 
@@ -60,3 +64,30 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     prediction = pipeline.run(query=query, params={"Retriever": {"top_k": 1}, "Reader": {"top_k": 1}})
     assert prediction is not None
     assert len(prediction["answers"]) == 1
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+@pytest.mark.skipif(
+    not os.environ.get("SERPERDEV_API_KEY", None),
+    reason="Please export an env var called SERPERDEV_API_KEY containing the SerperDev key to run this test.",
+)
+def test_webqa_pipeline():
+    search_key = os.environ.get("SERPERDEV_API_KEY")
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    pn = PromptNode(
+        "text-davinci-003",
+        api_key=openai_key,
+        max_length=256,
+        default_prompt_template="question-answering-with-document-scores",
+    )
+    web_retriever = WebRetriever(api_key=search_key, top_search_results=2)
+    pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
+    result = pipeline.run(query="Who is the father of Arya Stark?")
+    assert isinstance(result, dict)
+    assert len(result["results"]) == 1
+    answer = result["results"][0]
+    assert "Stark" in answer or "NED" in answer
