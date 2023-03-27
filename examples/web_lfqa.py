@@ -1,6 +1,6 @@
 import os
 
-from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
+from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
 

@@ -38,14 +38,14 @@ class WebRetriever(BaseRetriever):
     - raw_documents mode: WebRetriever returns a list of Documents. Each Document is a full website returned by the search, stripped of HTML.
     - preprocessed_documents mode: WebRetriever return a list of Documents. Each Document is a preprocessed split of the full website stripped of HTML.
 
-    In the preprocessed_documents mode, after WebSearch receives the query through the `run()` method, it fetches the top_k URLs relevant to the query. WebSearch then downloads and processes these URLs. 
+    In the preprocessed_documents mode, after WebSearch receives the query through the `run()` method, it fetches the top_k URLs relevant to the query. WebSearch then downloads and processes these URLs.
     The processing involves stripping HTML tags and producing
-    a clean, raw text wrapped in the Document objects. WebRetriever then splits raw text into Documents according to the PreProcessor settings. 
+    a clean, raw text wrapped in the Document objects. WebRetriever then splits raw text into Documents according to the PreProcessor settings.
     Finally, WebRetriever returns the top_k preprocessed Documents.
 
     Finding the right balance between top_k and top_p is crucial to obtain high-quality and diverse results in the document
     mode. To explore potential results, we recommend that you set top_k for WebSearch close to 10.
-    However, keep in mind that setting a high top_k value results in fetching and processing numerous web pages and is heavier on the resources. 
+    However, keep in mind that setting a high top_k value results in fetching and processing numerous web pages and is heavier on the resources.
 
     We recommend you use the default value for top_k and adjust it based on your specific
     use case. The default value is 5. This means WebRetriever returns at most
