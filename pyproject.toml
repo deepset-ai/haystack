@@ -137,9 +137,11 @@ pinecone = [
 ]
 graphdb = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2", # GPL-2.0-only license issue
 ]
 inmemorygraph = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2", # GPL-2.0-only license issue
 ]
 opensearch = [
   "opensearch-py>=2",
