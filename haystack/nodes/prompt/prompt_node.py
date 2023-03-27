@@ -253,9 +253,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 For example, if you want to convert the model output to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
                 ```
-                output_parser=[
-                    {"type": "AnswerParser", "params": {"pattern": "Answer: (.*)"}},
-                ]
+                output_parser={"type": "AnswerParser", "params": {"pattern": "Answer: (.*)"}},
                 ```
         """
         super().__init__()
