@@ -1497,6 +1497,7 @@ class Pipeline:
             "type",  # generic
             "node",  # generic
             "eval_mode",  # generic
+            "prompt",  # answer-specific
         ]
         for key, df in eval_result.node_results.items():
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
@@ -1598,6 +1599,8 @@ class Pipeline:
                     df_answers["gold_offsets_in_contexts"] = [gold_offsets_in_contexts] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["gold_contexts"] = [gold_contexts] * len(df_answers)
+                    if any(answer for answer in answers if answer.type == "generative"):
+                        df_answers["prompt"] = [(answer.meta or {}).get("prompt") for answer in answers]
                     df_answers["gold_answers_exact_match"] = df_answers.map_rows(
                         lambda row: [calculate_em_str(gold_answer, row["answer"]) for gold_answer in gold_answers]
                     )
@@ -1710,7 +1713,11 @@ class Pipeline:
                 df_answers["node"] = node_name
                 df_answers["multilabel_id"] = query_labels.id
                 df_answers["query"] = query
-                df_answers["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
+                df_answers["filters"] = (
+                    json.dumps(query_labels.filters, sort_keys=True).encode()
+                    if query_labels.filters is not None
+                    else None
+                )
                 df_answers["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
                 partial_dfs.append(df_answers)
 
