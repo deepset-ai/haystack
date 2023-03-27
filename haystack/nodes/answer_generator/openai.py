@@ -92,12 +92,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 PromptTemplate(
                     name="question-answering-with-examples",
                     prompt_text="Please answer the question according to the above context."
-                                "\n===\nContext: $examples_context\n===\n$examples\n\n"
-                                "===\nContext: $context\n===\n$query",
-                    prompt_params=["examples_context", "examples", "context", "query"],
+                                "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
+                                "===\nContext: {context}\n===\n{query}",
                 )
             ```
-            To learn how variables, such as'$context', are substituted in the `prompt_text`, see
+            To learn how variables, such as'{context}', are substituted in the `prompt_text`, see
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
@@ -118,9 +117,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             prompt_template = PromptTemplate(
                 name="question-answering-with-examples",
                 prompt_text="Please answer the question according to the above context."
-                "\n===\nContext: $examples_context\n===\n$examples\n\n"
-                "===\nContext: $context\n===\n$query",
-                prompt_params=["examples_context", "examples", "context", "query"],
+                "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
+                "===\nContext: {context}\n===\n{query}",
             )
         else:
             # Check for required prompts
