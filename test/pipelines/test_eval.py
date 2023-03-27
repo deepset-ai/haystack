@@ -10,7 +10,6 @@ import responses
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
-from haystack.nodes.other.shaper import Shaper
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.prompt.prompt_node import PromptNode
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
@@ -758,35 +757,16 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(retriever_with_docs, name="Retriever", inputs=["Query"])
     pipeline.add_node(
-        Shaper(func="join_documents", inputs={"documents": "documents"}, outputs=["documents"], publish_outputs=False),
-        name="InputDocumentShaper",
-        inputs=["Retriever"],
-    )
-    pipeline.add_node(
-        Shaper(func="value_to_list", inputs={"value": "query"}, outputs=["questions"], params={"target_list": [1]}),
-        name="InputQueryShaper",
-        inputs=["InputDocumentShaper"],
-    )
-    pipeline.add_node(
         PromptNode(default_prompt_template="question-answering", model_name_or_path="google/flan-t5-small", top_k=2),
         name="PromptNode",
-        inputs=["InputQueryShaper"],
-    )
-    pipeline.add_node(
-        Shaper(
-            func="strings_to_answers",
-            inputs={"strings": "results", "prompts_used": "prompts_used"},
-            outputs=["answers"],
-        ),
-        name="OutputAnswerShaper",
-        inputs=["PromptNode"],
+        inputs=["Retriever"],
     )
 
     eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
-    generator_result = eval_result["OutputAnswerShaper"]
+    generator_result = eval_result["PromptNode"]
     retriever_result = eval_result["Retriever"]
 
     expected_generator_result_columns = [
