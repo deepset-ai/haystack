@@ -74,15 +74,7 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
-        self.init_time = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime.now(datetime.timezone.utc)
-        self.event_time_interval = datetime.timedelta(hours=24)
-        self.event_run_total_threshold = 100
-        self.last_window_run_total = 0
-        self.run_total = 0
-        self.sent_event_in_window = False
         self.yaml_hash = False
-        self.last_run = None
 
     @property
     def root_node(self) -> Optional[str]:
@@ -605,8 +597,6 @@ class Pipeline:
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        self.run_total += 1
-        self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
     def run_batch(  # type: ignore
@@ -770,15 +760,6 @@ class Pipeline:
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        # increase counter of how many queries/documents have been processed by the pipeline
-        if queries:
-            self.run_total += len(queries)
-        elif documents:
-            self.run_total += len(documents)
-        else:
-            self.run_total += 1
-
-        self.send_pipeline_event_if_needed()
         return node_output
 
     @classmethod
@@ -2389,12 +2370,6 @@ class Pipeline:
         retrievers_used = retrievers if retrievers else "None"
         doc_stores_used = doc_stores if doc_stores else "None"
         return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
-
-    def uptime(self) -> timedelta:
-        """
-        Returns the uptime of the pipeline in timedelta.
-        """
-        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
 
 class _HaystackBeirRetrieverAdapter:
