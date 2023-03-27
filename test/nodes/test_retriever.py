@@ -4,7 +4,6 @@ from math import isclose
 from typing import Dict, List, Optional, Union
 
 import pytest
-import torch
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -21,7 +20,6 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
-from haystack.nodes.retriever._embedding_encoder import _DefaultEmbeddingEncoder
 
 from ..conftest import SAMPLES_PATH, MockRetriever
 
@@ -318,28 +316,6 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
         embedding /= np.linalg.norm(embedding)
         assert len(embedding) == 768
         assert isclose(embedding[0], expected_value, rel_tol=0.01)
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedding", "retribert", "embedding_sbert"], indirect=True)
-def test_embedding_train_mode(retriever, docs_with_ids):
-    # Set to deterministic seed
-    old_seed = torch.seed()
-    torch.manual_seed(0)
-
-    embeddings_default_mode = retriever.embed_documents(documents=docs_with_ids)
-    if isinstance(retriever.embedding_encoder, _DefaultEmbeddingEncoder):
-        retriever.embedding_encoder.embedding_model.model.train()
-    else:
-        retriever.embedding_encoder.embedding_model.train()
-    embeddings_train_mode = retriever.embed_documents(documents=docs_with_ids)
-
-    for emb1, emb2 in zip(embeddings_train_mode, embeddings_default_mode):
-        assert any(np.isclose(emb1, emb2, rtol=1.0e-5))
-
-    # Set back to old_seed
-    torch.manual_seed(old_seed)
 
 
 @pytest.mark.integration

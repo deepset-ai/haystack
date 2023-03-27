@@ -69,7 +69,6 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
         # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
-        self.embedding_model.model.eval()
         emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
         emb = np.stack([r["vec"] for r in emb])
         return emb
@@ -268,7 +267,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param queries: List of queries to embed.
         :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
-        self.embedding_model.eval()
         query_text = [{"text": q} for q in queries]
         dataloader = self._create_dataloader(query_text)
 
@@ -296,7 +294,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
-        self.embedding_model.eval()
         doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 

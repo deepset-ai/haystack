@@ -431,7 +431,6 @@ class EntityExtractor(BaseComponent):
         dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=self.num_workers)
 
         # Forward
-        self.model.eval()
         predictions: List[Dict[str, Any]] = []
         for batch in tqdm(dataloader, disable=not self.progress_bar, total=len(dataloader), desc="Extracting entities"):
             batch = ensure_tensor_on_device(batch, device=self.devices[0])

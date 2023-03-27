@@ -55,7 +55,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         :param query: Text query that shall be translated to SPARQL and then executed on the knowledge graph
         :param top_k: How many SPARQL queries to generate per text query.
         """
-        self.model.eval()
         if top_k is None:
             top_k = self.top_k
         inputs = self.tok([query], max_length=100, truncation=True, return_tensors="pt")

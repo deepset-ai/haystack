@@ -173,7 +173,6 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param batch_size: The number of Documents to classify at a time.
         :return: A list of Documents enriched with meta information.
         """
-        self.model.model.eval()
         if batch_size is None:
             batch_size = self.batch_size
 

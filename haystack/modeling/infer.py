@@ -358,7 +358,6 @@ class Inferencer:
                         Example: QA - input string to convert the predicted answer from indices back to string space
         :return: list of predictions
         """
-        self.model.eval()
         samples = [s for b in baskets for s in b.samples]
 
         data_loader = NamedDataLoader(
@@ -395,7 +394,6 @@ class Inferencer:
                         Example: QA - input string to convert the predicted answer from indices back to string space
         :return: list of predictions
         """
-        self.model.eval()
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names  # type: ignore [arg-type]
         )  # type ignore

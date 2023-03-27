@@ -136,7 +136,6 @@ class TransformersReader(BaseReader):
         :param top_k: The maximum number of answers to return
         :return: Dict containing query and answers
         """
-        self.model.model.eval()
         if top_k is None:
             top_k = self.top_k
 
@@ -203,7 +202,6 @@ class TransformersReader(BaseReader):
         :param top_k: Number of returned answers per query.
         :param batch_size: Number of query-document pairs to be processed at a time.
         """
-        self.model.model.eval()
         if top_k is None:
             top_k = self.top_k
 
