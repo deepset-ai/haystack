@@ -291,6 +291,7 @@ class Trainer:
                 )
                 self.test_result = evaluator_test.eval(self.model)
                 evaluator_test.log_results(self.test_result, "Test", self.global_step)
+        self.model.eval()
         return self.model
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
