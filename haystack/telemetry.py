@@ -4,7 +4,6 @@ import uuid
 import logging
 from pathlib import Path
 import json
-import datetime
 
 import yaml
 import posthog
