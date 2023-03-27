@@ -163,9 +163,7 @@ class Agent:
             )
         )
         self.prompt_node = prompt_node
-        self.prompt_template = (
-            prompt_node.get_prompt_template(prompt_template) if isinstance(prompt_template, str) else prompt_template
-        )
+        self.prompt_template = prompt_node.get_prompt_template(prompt_template)
         self.tools = {tool.name: tool for tool in tools} if tools else {}
         self.tool_names = ", ".join(self.tools.keys())
         self.tool_names_with_descriptions = "\n".join(
