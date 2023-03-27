@@ -131,9 +131,11 @@ def send_pipeline_event(  # type: ignore
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
             if exec_context == "public_demo":
-                event_properties["pipeline.is_public_demo"] = True
-                event_properties["pipeline.run_parameters.query"] = query
-                event_properties["pipeline.run_parameters.params"] = params
+                event_properties = {
+                    "pipeline.is_public_demo": True,
+                    "pipeline.run_parameters.query": query,
+                    "pipeline.run_parameters.params": params,
+                }
                 telemetry.send_event(event_name="Public Demo", event_properties=event_properties)
                 return
 

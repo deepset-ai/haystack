@@ -51,7 +51,7 @@ from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-from haystack.telemetry import send_pipeline_event
+from haystack.telemetry import send_event, send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -1235,7 +1235,10 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name="Evaluation")
+        send_event(
+            event_name="Evaluation",
+            event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
+        )
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1353,7 +1356,10 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name="Evaluation")
+        send_event(
+            event_name="Evaluation",
+            event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
+        )
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
