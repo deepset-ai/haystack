@@ -276,6 +276,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             n_skipped_tokens = 0
             # Reversing the order of documents b/c we want to throw away less relevant docs first
             for doc in reversed(documents):
+                skipped_docs += 1
                 n_skipped_tokens += count_openai_tokens(text=doc.content, tokenizer=self._tokenizer)
                 # Only skip enough tokens to fit within the MAX_TOKENS_LIMIT
                 if n_skipped_tokens >= abs(leftover_token_len):
