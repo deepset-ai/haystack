@@ -69,6 +69,9 @@ dependencies = [
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
 
+  # Web Retriever
+  "boilerpy3",
+
   # Preprocessing
   "more_itertools",  # for windowing
   "python-docx",
@@ -99,7 +102,10 @@ dependencies = [
   "jsonschema",
 
   # Preview
-  "canals"
+  "canals",
+
+  # Agent events
+  "events"
 ]
 
 [project.optional-dependencies]
@@ -137,9 +143,11 @@ pinecone = [
 ]
 graphdb = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2", # GPL-2.0-only license issue
 ]
 inmemorygraph = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2", # GPL-2.0-only license issue
 ]
 opensearch = [
   "opensearch-py>=2",

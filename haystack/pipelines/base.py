@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import datetime
 import itertools
-from datetime import timedelta
 from functools import partial
-from hashlib import sha1
+from hashlib import md5
 from time import time
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -23,7 +21,6 @@ import tempfile
 from pathlib import Path
 
 import yaml
-import mmh3
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -53,9 +50,8 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
+from haystack.telemetry import send_event, send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -75,15 +71,8 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
-        self.init_time = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime.now(datetime.timezone.utc)
-        self.event_time_interval = datetime.timedelta(hours=24)
-        self.event_run_total_threshold = 100
-        self.last_window_run_total = 0
-        self.run_total = 0
-        self.sent_event_in_window = False
-        self.yaml_hash = False
-        self.last_run = None
+        self.config_hash = None
+        self.last_config_hash = None
 
     @property
     def root_node(self) -> Optional[str]:
@@ -437,14 +426,22 @@ class Pipeline:
             node={"name": name, "inputs": inputs},
             instance=component,
         )
-        # TELEMETRY: Hash the config of the pipeline without node names
-        # to be able to cluster later by "pipeline type"
-        # (is any specific pipeline configuration very popular?)
-        fingerprint_config = copy.copy(self.get_config())
-        for comp in fingerprint_config["components"]:
-            del comp["name"]
-        fingerprint = json.dumps(fingerprint_config, default=str)
-        self.fingerprint = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
+        self.update_config_hash()
+
+    def update_config_hash(self):
+        """
+        Used for telemetry. Hashes the config, except for the node names, to send an event only when the pipeline changes.
+        See haystack/telemetry.py::send_pipeline_event
+        """
+        try:
+            config_to_hash = copy.copy(self.get_config())
+            for comp in config_to_hash["components"]:
+                del comp["name"]
+            config_hash = json.dumps(config_to_hash, default=str)
+            self.config_hash = md5(config_hash)
+        except Exception as exc:
+            logger.debug("Telemetry exception: %s", str(exc))
+            self.config_hash = "[an exception occurred during hashing]"
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -495,10 +492,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        send_pipeline_run_event(
+        send_pipeline_event(
             pipeline=self,
-            classname=self.__class__.__name__,
-            function_name="run",
             query=query,
             file_paths=file_paths,
             labels=labels,
@@ -606,8 +601,6 @@ class Pipeline:
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        self.run_total += 1
-        self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
     def run_batch(  # type: ignore
@@ -647,10 +640,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        send_pipeline_run_event(
+        send_pipeline_event(
             pipeline=self,
-            classname=self.__class__.__name__,
-            function_name="run_batch",
             queries=queries,
             file_paths=file_paths,
             labels=labels,
@@ -771,15 +762,6 @@ class Pipeline:
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        # increase counter of how many queries/documents have been processed by the pipeline
-        if queries:
-            self.run_total += len(queries)
-        elif documents:
-            self.run_total += len(documents)
-        else:
-            self.run_total += 1
-
-        self.send_pipeline_event_if_needed()
         return node_output
 
     @classmethod
@@ -815,16 +797,6 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
-        send_event_2(
-            event_name=f"{cls.__name__}.eval_beir()",
-            event_properties={
-                "dataset": dataset,
-                "index_pipeline": index_pipeline.yaml_hash,
-                "query_pipeline": query_pipeline.yaml_hash,
-                "num_documents": num_documents,
-                "top_k_values": top_k_values,
-            },
-        )
 
         if index_params is None:
             index_params = {}
@@ -1193,7 +1165,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
@@ -1264,7 +1235,10 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name="Evaluation", event_properties={"function_name": "eval"})
+        send_event(
+            event_name="Evaluation",
+            event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
+        )
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1312,7 +1286,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval_batch(
         self,
         labels: List[MultiLabel],
@@ -1383,7 +1356,10 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name=f"{self.__class__.__name__}.eval_batch()")
+        send_event(
+            event_name="Evaluation",
+            event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
+        )
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1532,6 +1508,7 @@ class Pipeline:
             "type",  # generic
             "node",  # generic
             "eval_mode",  # generic
+            "prompt",  # answer-specific
         ]
         for key, df in eval_result.node_results.items():
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
@@ -1633,6 +1610,8 @@ class Pipeline:
                     df_answers["gold_offsets_in_contexts"] = [gold_offsets_in_contexts] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["gold_contexts"] = [gold_contexts] * len(df_answers)
+                    if any(answer for answer in answers if answer.type == "generative"):
+                        df_answers["prompt"] = [(answer.meta or {}).get("prompt") for answer in answers]
                     df_answers["gold_answers_exact_match"] = df_answers.map_rows(
                         lambda row: [calculate_em_str(gold_answer, row["answer"]) for gold_answer in gold_answers]
                     )
@@ -1745,7 +1724,11 @@ class Pipeline:
                 df_answers["node"] = node_name
                 df_answers["multilabel_id"] = query_labels.id
                 df_answers["query"] = query
-                df_answers["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
+                df_answers["filters"] = (
+                    json.dumps(query_labels.filters, sort_keys=True).encode()
+                    if query_labels.filters is not None
+                    else None
+                )
                 df_answers["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
                 partial_dfs.append(df_answers)
 
@@ -2020,7 +2003,6 @@ class Pipeline:
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
         )
-        pipeline.yaml_hash = "{:02x}".format(mmh3.hash128(str(path), signed=False))
         return pipeline
 
     @classmethod
@@ -2091,6 +2073,7 @@ class Pipeline:
             )
             pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
 
+        pipeline.update_config_hash()
         return pipeline
 
     @classmethod
@@ -2392,47 +2375,6 @@ class Pipeline:
         retrievers_used = retrievers if retrievers else "None"
         doc_stores_used = doc_stores if doc_stores else "None"
         return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
-
-    def uptime(self) -> timedelta:
-        """
-        Returns the uptime of the pipeline in timedelta.
-        """
-        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
-
-    def send_pipeline_event(self, is_indexing: bool = False):
-        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
-        fingerprint = sha1(json_repr.encode()).hexdigest()
-        send_custom_event(
-            "pipeline",
-            payload={
-                "fingerprint": fingerprint,
-                "type": "Indexing" if is_indexing else self.get_type(),
-                "uptime": int(self.uptime().total_seconds()),
-                "run_total": self.run_total,
-                "run_total_window": self.run_total - self.last_window_run_total,
-            },
-        )
-        now = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        self.last_window_run_total = self.run_total
-
-    def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        if is_telemetry_enabled():
-            should_send_event = (
-                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
-            )
-            if should_send_event and not self.sent_event_in_window:
-                self.send_pipeline_event(is_indexing)
-                self.sent_event_in_window = True
-            elif self._has_event_time_interval_exceeded():
-                self.sent_event_in_window = False
-
-    def _has_event_time_interval_exceeded(self):
-        now = datetime.datetime.now(datetime.timezone.utc)
-        return now - self.time_of_last_sent_event > self.event_time_interval
-
-    def _has_event_run_total_threshold_exceeded(self):
-        return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:

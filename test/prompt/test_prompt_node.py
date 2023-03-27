@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Union, List, Dict, Any, Tuple
+from typing import Optional, Set, Type, Union, List, Dict, Any, Tuple
 
 import pytest
 import torch
@@ -9,7 +9,9 @@ from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt import PromptModelInvocationLayer
+from haystack.nodes.prompt.prompt_node import PromptTemplateValidationError
 from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler
+from haystack.schema import Answer
 
 
 def skip_test_for_invalid_key(prompt_model):
@@ -57,47 +59,36 @@ def get_api_key(request):
 
 @pytest.mark.unit
 def test_prompt_templates():
-    p = PromptTemplate("t1", "Here is some fake template with variable $foo", ["foo"])
+    p = PromptTemplate("t1", "Here is some fake template with variable {foo}")
+    assert set(p.prompt_params) == {"foo"}
 
-    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
-        PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo"])
+    p = PromptTemplate("t3", "Here is some fake template with variable {foo} and {bar}")
+    assert set(p.prompt_params) == {"foo", "bar"}
 
-    with pytest.raises(ValueError, match="Invalid parameter"):
-        PromptTemplate("t2", "Here is some fake template with variable $footur", ["foo"])
+    p = PromptTemplate("t4", "Here is some fake template with variable {foo1} and {bar2}")
+    assert set(p.prompt_params) == {"foo1", "bar2"}
 
-    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
-        PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo", "bar", "baz"])
+    p = PromptTemplate("t4", "Here is some fake template with variable {foo_1} and {bar_2}")
+    assert set(p.prompt_params) == {"foo_1", "bar_2"}
 
-    p = PromptTemplate("t3", "Here is some fake template with variable $for and $bar", ["for", "bar"])
+    p = PromptTemplate("t4", "Here is some fake template with variable {Foo_1} and {Bar_2}")
+    assert set(p.prompt_params) == {"Foo_1", "Bar_2"}
 
-    # last parameter: "prompt_params" can be omitted
-    p = PromptTemplate("t4", "Here is some fake template with variable $foo and $bar")
-    assert p.prompt_params == ["foo", "bar"]
-
-    p = PromptTemplate("t4", "Here is some fake template with variable $foo1 and $bar2")
-    assert p.prompt_params == ["foo1", "bar2"]
-
-    p = PromptTemplate("t4", "Here is some fake template with variable $foo_1 and $bar_2")
-    assert p.prompt_params == ["foo_1", "bar_2"]
-
-    p = PromptTemplate("t4", "Here is some fake template with variable $Foo_1 and $Bar_2")
-    assert p.prompt_params == ["Foo_1", "Bar_2"]
-
-    p = PromptTemplate("t4", "'Here is some fake template with variable $baz'")
-    assert p.prompt_params == ["baz"]
+    p = PromptTemplate("t4", "'Here is some fake template with variable {baz}'")
+    assert set(p.prompt_params) == {"baz"}
     # strip single quotes, happens in YAML as we need to use single quotes for the template string
-    assert p.prompt_text == "Here is some fake template with variable $baz"
+    assert p.prompt_text == "Here is some fake template with variable {baz}"
 
-    p = PromptTemplate("t4", '"Here is some fake template with variable $baz"')
-    assert p.prompt_params == ["baz"]
+    p = PromptTemplate("t4", '"Here is some fake template with variable {baz}"')
+    assert set(p.prompt_params) == {"baz"}
     # strip double quotes, happens in YAML as we need to use single quotes for the template string
-    assert p.prompt_text == "Here is some fake template with variable $baz"
+    assert p.prompt_text == "Here is some fake template with variable {baz}"
 
 
 @pytest.mark.unit
 def test_prompt_template_repr():
-    p = PromptTemplate("t", "Here is variable $baz")
-    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable $baz, prompt_params=['baz'])"
+    p = PromptTemplate("t", "Here is variable {baz}")
+    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable {baz}, prompt_params=['baz'])"
     assert repr(p) == desired_repr
     assert str(p) == desired_repr
 
@@ -178,9 +169,7 @@ def test_create_prompt_node():
 @pytest.mark.integration
 def test_add_and_remove_template(prompt_node):
     num_default_tasks = len(prompt_node.get_prompt_template_names())
-    custom_task = PromptTemplate(
-        name="custom-task", prompt_text="Custom task: $param1, $param2", prompt_params=["param1", "param2"]
-    )
+    custom_task = PromptTemplate(name="custom-task", prompt_text="Custom task: {param1}, {param2}")
     prompt_node.add_prompt_template(custom_task)
     assert len(prompt_node.get_prompt_template_names()) == num_default_tasks + 1
     assert "custom-task" in prompt_node.get_prompt_template_names()
@@ -189,24 +178,12 @@ def test_add_and_remove_template(prompt_node):
     assert "custom-task" not in prompt_node.get_prompt_template_names()
 
 
-@pytest.mark.unit
-def test_invalid_template():
-    with pytest.raises(ValueError, match="Invalid parameter"):
-        PromptTemplate(
-            name="custom-task", prompt_text="Custom task: $pram1 $param2", prompt_params=["param1", "param2"]
-        )
-
-    with pytest.raises(ValueError, match="The number of parameters in prompt text"):
-        PromptTemplate(name="custom-task", prompt_text="Custom task: $param1", prompt_params=["param1", "param2"])
-
-
 @pytest.mark.integration
 def test_add_template_and_invoke(prompt_node):
     tt = PromptTemplate(
         name="sentiment-analysis-new",
         prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: $documents; Answer:",
-        prompt_params=["documents"],
+        "negative or neutral. Context: {documents}; Answer:",
     )
     prompt_node.add_prompt_template(tt)
 
@@ -219,8 +196,7 @@ def test_on_the_fly_prompt(prompt_node):
     prompt_template = PromptTemplate(
         name="sentiment-analysis-temp",
         prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: $documents; Answer:",
-        prompt_params=["documents"],
+        "negative or neutral. Context: {documents}; Answer:",
     )
     r = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
     assert r[0].casefold() == "positive"
@@ -250,12 +226,12 @@ def test_question_generation(prompt_node):
 
 @pytest.mark.integration
 def test_template_selection(prompt_node):
-    qa = prompt_node.set_default_prompt_template("question-answering")
+    qa = prompt_node.set_default_prompt_template("question-answering-per-document")
     r = qa(
         ["Berlin is the capital of Germany.", "Paris is the capital of France."],
         ["What is the capital of Germany?", "What is the capital of France"],
     )
-    assert r[0].casefold() == "berlin" and r[1].casefold() == "paris"
+    assert r[0].answer.casefold() == "berlin" and r[1].answer.casefold() == "paris"
 
 
 @pytest.mark.integration
@@ -266,14 +242,14 @@ def test_has_supported_template_names(prompt_node):
 @pytest.mark.integration
 def test_invalid_template_params(prompt_node):
     with pytest.raises(ValueError, match="Expected prompt parameters"):
-        prompt_node.prompt("question-answering", {"some_crazy_key": "Berlin is the capital of Germany."})
+        prompt_node.prompt("question-answering-per-document", {"some_crazy_key": "Berlin is the capital of Germany."})
 
 
 @pytest.mark.integration
 def test_wrong_template_params(prompt_node):
     with pytest.raises(ValueError, match="Expected prompt parameters"):
         # with don't have options param, multiple choice QA has
-        prompt_node.prompt("question-answering", options=["Berlin is the capital of Germany."])
+        prompt_node.prompt("question-answering-per-document", options=["Berlin is the capital of Germany."])
 
 
 @pytest.mark.integration
@@ -284,13 +260,15 @@ def test_run_invalid_template(prompt_node):
 
 @pytest.mark.integration
 def test_invalid_prompting(prompt_node):
-    with pytest.raises(ValueError, match="Hey there, what is the best city in the worl"):
-        prompt_node.prompt(
-            "Hey there, what is the best city in the world?" "Hey there, what is the best city in the world?"
-        )
-
     with pytest.raises(ValueError, match="Hey there, what is the best city in the"):
         prompt_node.prompt(["Hey there, what is the best city in the world?", "Hey, answer me!"])
+
+
+@pytest.mark.integration
+def test_prompt_at_query_time(prompt_node: PromptNode):
+    results = prompt_node.prompt("Hey there, what is the best city in the world?")
+    assert len(results) == 1
+    assert isinstance(results[0], str)
 
 
 @pytest.mark.integration
@@ -298,7 +276,7 @@ def test_invalid_state_ops(prompt_node):
     with pytest.raises(ValueError, match="Prompt template no_such_task_exists"):
         prompt_node.remove_prompt_template("no_such_task_exists")
         # remove default task
-        prompt_node.remove_prompt_template("question-answering")
+        prompt_node.remove_prompt_template("question-answering-per-document")
 
 
 @pytest.mark.integration
@@ -365,7 +343,7 @@ def test_stop_words(prompt_model):
 
     tt = PromptTemplate(
         name="question-generation-copy",
-        prompt_text="Given the context please generate a question. Context: $documents; Question:",
+        prompt_text="Given the context please generate a question. Context: {documents}; Question:",
     )
     # with custom prompt template
     r = node.prompt(tt, documents=["Berlin is the capital of Germany."])
@@ -441,15 +419,15 @@ def test_simple_pipeline(prompt_model):
 def test_complex_pipeline(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
-    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="questions")
-    node2 = PromptNode(prompt_model, default_prompt_template="question-answering")
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query")
+    node2 = PromptNode(prompt_model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     pipe.add_node(component=node2, name="prompt_node_2", inputs=["prompt_node"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
-    assert "berlin" in result["results"][0].casefold()
+    assert "berlin" in result["answers"][0].answer.casefold()
 
 
 @pytest.mark.integration
@@ -457,13 +435,186 @@ def test_complex_pipeline(prompt_model):
 def test_simple_pipeline_with_topk(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
-    node = PromptNode(prompt_model, default_prompt_template="question-generation", top_k=2)
+    node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="query", top_k=2)
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
-    assert len(result["results"]) == 2
+    assert len(result["query"]) == 2
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
+def test_pipeline_with_standard_qa(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1", "2"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Given the context please answer the question. Context: My name is Carla and I live in Berlin My name is Christelle and I live in Paris; "
+        "Question: Who lives in Berlin?; Answer:"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_qa_with_references(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla, as stated in document[1]" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. "
+        "You must only use information from the given documents. Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
+        "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. If the documents do not contain the answer to the question, "
+        "say that ‘answering is not possible given the available information.’\n\nDocument[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris \n "
+        "Question: Who lives in Berlin?; Answer: "
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_prompt_text_at_query_time(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+        params={
+            "prompt_template": "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n{join(documents, delimiter=new_line+new_line, pattern='Document[$idx]: $content')}\n\nQuestion: {query}\n\nAnswer: "
+        },
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n"
+        "Document[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris\n\n"
+        "Question: Who lives in Berlin?\n\nAnswer: "
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_prompt_template_at_query_time(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    prompt_template_yaml = """
+            name: "question-answering-with-references-custom"
+            prompt_text: 'Create a concise and informative answer (no more than 50 words) for
+                a given question based solely on the given documents. Cite the documents using Doc[number] notation.
+
+
+                {join(documents, delimiter=new_line+new_line, pattern=''Doc[$idx]: $content'')}
+
+
+                Question: {query}
+
+
+                Answer: '
+            output_parser:
+                type: AnswerParser
+                params:
+                    reference_pattern: Doc\\[([^\\]]+)\\]
+        """
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="doc-1"),
+            Document("My name is Christelle and I live in Paris", id="doc-2"),
+        ],
+        params={"prompt_template": prompt_template_yaml},
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["doc-1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Doc[number] notation.\n\n"
+        "Doc[1]: My name is Carla and I live in Berlin\n\nDoc[2]: My name is Christelle and I live in Paris\n\n"
+        "Question: Who lives in Berlin?\n\nAnswer: "
+    )
+
+
+@pytest.mark.integration
+def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: template_with_nested_shaper
+              type: PromptTemplate
+              params:
+                name: custom-template-with-nested-shaper
+                prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
+                output_parser:
+                  type: AnswerParser
+            - name: p1
+              params:
+                model_name_or_path: google/flan-t5-small
+                default_prompt_template: template_with_nested_shaper
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
+    result = pipeline.run(query="What is an amazing city?", documents=[Document("Berlin is an amazing city.")])
+    answer = result["answers"][0].answer
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in answer.casefold())
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Given the context please answer the question. Context: Berlin is an amazing city.; Question: What is an amazing city?; Answer: "
+    )
 
 
 @pytest.mark.integration
@@ -501,8 +652,7 @@ def test_complex_pipeline_with_qa(prompt_model):
 
     prompt_template = PromptTemplate(
         name="question-answering-new",
-        prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
-        prompt_params=["documents", "query"],
+        prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
     )
     node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
@@ -517,7 +667,7 @@ def test_complex_pipeline_with_qa(prompt_model):
         debug=True,  # so we can verify that the constructed prompt is returned in debug
     )
 
-    assert len(result["results"]) == 1
+    assert len(result["results"]) == 2
     assert "carla" in result["results"][0].casefold()
 
     # also verify that the PromptNode has included its constructed prompt LLM model input in the returned debug
@@ -531,17 +681,15 @@ def test_complex_pipeline_with_qa(prompt_model):
 @pytest.mark.integration
 def test_complex_pipeline_with_shared_model():
     model = PromptModel()
-    node = PromptNode(
-        model_name_or_path=model, default_prompt_template="question-generation", output_variable="questions"
-    )
-    node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering")
+    node = PromptNode(model_name_or_path=model, default_prompt_template="question-generation", output_variable="query")
+    node2 = PromptNode(model_name_or_path=model, default_prompt_template="question-answering-per-document")
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
     pipe.add_node(component=node2, name="prompt_node_2", inputs=["prompt_node"])
     result = pipe.run(query="not relevant", documents=[Document("Berlin is the capital of Germany")])
 
-    assert result["results"][0] == "Berlin"
+    assert result["answers"][0].answer == "Berlin"
 
 
 @pytest.mark.integration
@@ -606,11 +754,11 @@ def test_complex_pipeline_yaml(tmp_path):
             - name: p1
               params:
                 default_prompt_template: question-generation
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -625,11 +773,11 @@ def test_complex_pipeline_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -645,12 +793,12 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question-generation
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -665,11 +813,11 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -689,17 +837,17 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               type: PromptTemplate
               params:
                 name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question_generation_template
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -714,11 +862,11 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -767,17 +915,17 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
               type: PromptTemplate
               params:
                 name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
                 default_prompt_template: question_generation_template
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -795,11 +943,11 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.parametrize("haystack_openai_config", ["openai", "azure"], indirect=True)
@@ -839,17 +987,17 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
               type: PromptTemplate
               params:
                 name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel_openai
                 default_prompt_template: question_generation_template
-                output_variable: questions
+                output_variable: query
               type: PromptNode
             - name: p2
               params:
                 model_name_or_path: pmodel
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -864,11 +1012,11 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is a city in Germany.")])
-    response = result["results"][0]
+    response = result["answers"][0].answer
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
     assert len(result["invocation_context"]) > 0
-    assert len(result["questions"]) > 0
-    assert "questions" in result["invocation_context"] and len(result["invocation_context"]["questions"]) > 0
+    assert len(result["query"]) > 0
+    assert "query" in result["invocation_context"] and len(result["invocation_context"]["query"]) > 0
 
 
 @pytest.mark.integration
@@ -882,15 +1030,14 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
             - name: p1
               params:
                 default_prompt_template: question-generation
-                output_variable: questions
               type: PromptNode
             - name: p2
               params:
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             - name: p3
               params:
-                default_prompt_template: question-answering
+                default_prompt_template: question-answering-per-document
               type: PromptNode
             pipelines:
             - name: query
@@ -914,9 +1061,7 @@ class TestTokenLimit:
     @pytest.mark.integration
     def test_hf_token_limit_warning(self, prompt_node, caplog):
         prompt_template = PromptTemplate(
-            name="too-long-temp",
-            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
-            prompt_params=["documents"],
+            name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:"
         )
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
@@ -929,11 +1074,7 @@ class TestTokenLimit:
         reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     def test_openai_token_limit_warning(self, caplog):
-        tt = PromptTemplate(
-            name="too-long-temp",
-            prompt_text="Repeating text" * 200 + "Docs: $documents; Answer:",
-            prompt_params=["documents"],
-        )
+        tt = PromptTemplate(name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:")
         prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
@@ -989,8 +1130,7 @@ class TestRunBatch:
 
         prompt_template = PromptTemplate(
             name="question-answering-new",
-            prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
-            prompt_params=["documents", "query"],
+            prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
         )
         node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
@@ -1013,6 +1153,252 @@ class TestRunBatch:
 def test_HFLocalInvocationLayer_supports():
     assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
     assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
+
+
+class TestPromptTemplateSyntax:
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, expected_prompt_params, expected_used_functions",
+        [
+            ("{documents}", {"documents"}, set()),
+            ("Please answer the question: {documents} Question: how?", {"documents"}, set()),
+            ("Please answer the question: {documents} Question: {query}", {"documents", "query"}, set()),
+            ("Please answer the question: {documents} {{Question}}: {query}", {"documents", "query"}, set()),
+            (
+                "Please answer the question: {join(documents)} Question: {query.replace('A', 'a')}",
+                {"documents", "query"},
+                {"join", "replace"},
+            ),
+            (
+                "Please answer the question: {join(documents, 'delim', {'{': '('})} Question: {query.replace('A', 'a')}",
+                {"documents", "query"},
+                {"join", "replace"},
+            ),
+            (
+                'Please answer the question: {join(documents, "delim", {"{": "("})} Question: {query.replace("A", "a")}',
+                {"documents", "query"},
+                {"join", "replace"},
+            ),
+            (
+                "Please answer the question: {join(documents, 'delim', {'a': {'b': 'c'}})} Question: {query.replace('A', 'a')}",
+                {"documents", "query"},
+                {"join", "replace"},
+            ),
+            (
+                "Please answer the question: {join(document=documents, delimiter='delim', str_replace={'{': '('})} Question: {query.replace('A', 'a')}",
+                {"documents", "query"},
+                {"join", "replace"},
+            ),
+        ],
+    )
+    def test_prompt_template_syntax_parser(
+        self, prompt_text: str, expected_prompt_params: Set[str], expected_used_functions: Set[str]
+    ):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        assert set(prompt_template.prompt_params) == expected_prompt_params
+        assert set(prompt_template._used_functions) == expected_used_functions
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, expected_prompts",
+        [
+            ("{documents}", [Document("doc1"), Document("doc2")], None, ["doc1", "doc2"]),
+            (
+                "context: {documents} question: how?",
+                [Document("doc1"), Document("doc2")],
+                None,
+                ["context: doc1 question: how?", "context: doc2 question: how?"],
+            ),
+            (
+                "context: {' '.join([d.content for d in documents])} question: how?",
+                [Document("doc1"), Document("doc2")],
+                None,
+                ["context: doc1 doc2 question: how?"],
+            ),
+            (
+                "context: {documents} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 question: how?", "context: doc2 question: how?"],
+            ),
+            (
+                "context: {documents} {{question}}: {query}",
+                [Document("doc1")],
+                "how?",
+                ["context: doc1 {question}: how?"],
+            ),
+            (
+                "context: {join(documents)} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 doc2 question: how?"],
+            ),
+            (
+                "Please answer the question: {join(documents, ' delim ', '[$idx] $content', {'{': '('})} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                "Please answer the question: {join(documents=documents, delimiter=' delim ', pattern='[$idx] $content', str_replace={'{': '('})} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                "Please answer the question: {' delim '.join(['['+str(idx+1)+'] '+d.content.replace('{', '(') for idx, d in enumerate(documents)])} question: {query}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                'Please answer the question: {join(documents, " delim ", "[$idx] $content", {"{": "("})} question: {query}',
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["Please answer the question: [1] doc1 delim [2] doc2 question: how?"],
+            ),
+            (
+                "context: {join(documents)} question: {query.replace('how', 'what')}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 doc2 question: what?"],
+            ),
+            (
+                "context: {join(documents)[:6]} question: {query.replace('how', 'what').replace('?', '!')}",
+                [Document("doc1"), Document("doc2")],
+                "how?",
+                ["context: doc1 d question: what!"],
+            ),
+            ("context", None, None, ["context"]),
+        ],
+    )
+    def test_prompt_template_syntax_fill(
+        self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
+    ):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        assert prompts == expected_prompts
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, expected_prompts",
+        [
+            ("{join(documents)}", [Document("doc1"), Document("doc2")], ["doc1 doc2"]),
+            (
+                "{join(documents, ' delim ', '[$idx] $content', {'c': 'C'})}",
+                [Document("doc1"), Document("doc2")],
+                ["[1] doC1 delim [2] doC2"],
+            ),
+            (
+                "{join(documents, ' delim ', '[$id] $content', {'c': 'C'})}",
+                [Document("doc1", id="123"), Document("doc2", id="456")],
+                ["[123] doC1 delim [456] doC2"],
+            ),
+            (
+                "{join(documents, ' delim ', '[$file_id] $content', {'c': 'C'})}",
+                [Document("doc1", meta={"file_id": "123.txt"}), Document("doc2", meta={"file_id": "456.txt"})],
+                ["[123.txt] doC1 delim [456.txt] doC2"],
+            ),
+        ],
+    )
+    def test_join(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        assert prompts == expected_prompts
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, expected_prompts",
+        [
+            ("{to_strings(documents)}", [Document("doc1"), Document("doc2")], ["doc1", "doc2"]),
+            (
+                "{to_strings(documents, '[$idx] $content', {'c': 'C'})}",
+                [Document("doc1"), Document("doc2")],
+                ["[1] doC1", "[2] doC2"],
+            ),
+            (
+                "{to_strings(documents, '[$id] $content', {'c': 'C'})}",
+                [Document("doc1", id="123"), Document("doc2", id="456")],
+                ["[123] doC1", "[456] doC2"],
+            ),
+            (
+                "{to_strings(documents, '[$file_id] $content', {'c': 'C'})}",
+                [Document("doc1", meta={"file_id": "123.txt"}), Document("doc2", meta={"file_id": "456.txt"})],
+                ["[123.txt] doC1", "[456.txt] doC2"],
+            ),
+            ("{to_strings(documents, '[$file_id] $content', {'c': 'C'})}", ["doc1", "doc2"], ["doC1", "doC2"]),
+            (
+                "{to_strings(documents, '[$idx] $answer', {'c': 'C'})}",
+                [Answer("doc1"), Answer("doc2")],
+                ["[1] doC1", "[2] doC2"],
+            ),
+        ],
+    )
+    def test_to_strings(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
+        assert prompts == expected_prompts
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, exc_type, expected_exc_match",
+        [
+            ("{__import__('os').listdir('.')}", PromptTemplateValidationError, "Invalid function in prompt text"),
+            ("{__import__('os')}", PromptTemplateValidationError, "Invalid function in prompt text"),
+            (
+                "{requests.get('https://haystack.deepset.ai/')}",
+                PromptTemplateValidationError,
+                "Invalid function in prompt text",
+            ),
+            ("{join(__import__('os').listdir('.'))}", PromptTemplateValidationError, "Invalid function in prompt text"),
+            ("{for}", SyntaxError, "invalid syntax"),
+            ("This is an invalid {variable .", SyntaxError, "f-string: expecting '}'"),
+        ],
+    )
+    def test_prompt_template_syntax_init_raises(
+        self, prompt_text: str, exc_type: Type[BaseException], expected_exc_match: str
+    ):
+        with pytest.raises(exc_type, match=expected_exc_match):
+            PromptTemplate(name="test", prompt_text=prompt_text)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, exc_type, expected_exc_match",
+        [("{join}", None, None, ValueError, "Expected prompt parameters")],
+    )
+    def test_prompt_template_syntax_fill_raises(
+        self,
+        prompt_text: str,
+        documents: List[Document],
+        query: str,
+        exc_type: Type[BaseException],
+        expected_exc_match: str,
+    ):
+        with pytest.raises(exc_type, match=expected_exc_match):
+            prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+            next(prompt_template.fill(documents=documents, query=query))
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, documents, query, expected_prompts",
+        [
+            ("__import__('os').listdir('.')", None, None, ["__import__('os').listdir('.')"]),
+            (
+                "requests.get('https://haystack.deepset.ai/')",
+                None,
+                None,
+                ["requests.get('https://haystack.deepset.ai/')"],
+            ),
+            ("{query}", None, print, ["<built-in function print>"]),
+            ("\b\b__import__('os').listdir('.')", None, None, ["\x08\x08__import__('os').listdir('.')"]),
+        ],
+    )
+    def test_prompt_template_syntax_fill_ignores_dangerous_input(
+        self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
+    ):
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
+        prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
+        assert prompts == expected_prompts
 
 
 @pytest.mark.integration

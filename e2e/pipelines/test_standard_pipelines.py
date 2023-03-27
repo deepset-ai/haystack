@@ -1,6 +1,17 @@
+import os
+
+import pytest
+
 from haystack.document_stores import InMemoryDocumentStore
-from haystack.pipelines import Pipeline, FAQPipeline, DocumentSearchPipeline, MostSimilarDocumentsPipeline
-from haystack.nodes import EmbeddingRetriever
+from haystack.nodes.retriever.web import WebRetriever
+from haystack.pipelines import (
+    Pipeline,
+    FAQPipeline,
+    DocumentSearchPipeline,
+    MostSimilarDocumentsPipeline,
+    WebQAPipeline,
+)
+from haystack.nodes import EmbeddingRetriever, PromptNode
 from haystack.schema import Document
 
 from ..conftest import SAMPLES_PATH
@@ -130,3 +141,29 @@ def test_query_and_indexing_pipeline():
     assert prediction["answers"][0].answer == "Adobe Systems"
     assert prediction["answers"][0].meta["classification"]["label"] == "joy"
     assert "_debug" not in prediction.keys()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+@pytest.mark.skipif(
+    not os.environ.get("SERPERDEV_API_KEY", None),
+    reason="Please export an env var called SERPERDEV_API_KEY containing the SerperDev key to run this test.",
+)
+def test_webqa_pipeline():
+    search_key = os.environ.get("SERPERDEV_API_KEY")
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    pn = PromptNode(
+        "text-davinci-003",
+        api_key=openai_key,
+        max_length=256,
+        default_prompt_template="question-answering-with-document-scores",
+    )
+    web_retriever = WebRetriever(api_key=search_key, top_search_results=2)
+    pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
+    result = pipeline.run(query="Who is the father of Arya Stark?")
+    assert isinstance(result, dict)
+    assert len(result["results"]) == 1
+    answer = result["results"][0]
+    assert "Stark" in answer or "NED" in answer
