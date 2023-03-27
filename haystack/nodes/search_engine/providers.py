@@ -20,8 +20,11 @@ class SerpAPI(SearchEngine):
         """
         :param api_key: API key for SerpAPI.
         :param top_k: Number of results to return.
-        :param engine: Search engine to use.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param engine: Search engine to use, for example google, bing, baidu, duckduckgo, yahoo, yandex.
+        See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported engines.
+        :param kwargs: Additional parameters passed to the SerperDev API. For example, you can set 'lr' to 'lang_en'
+        to limit the search to English.
+        See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported parameters.
         """
         super().__init__()
         self.params_dict: Dict[str, Union[str, int, float]] = {}
@@ -33,7 +36,9 @@ class SerpAPI(SearchEngine):
     def search(self, query: str, **kwargs) -> List[Document]:
         """
         :param query: Query string.
-        :param kwargs: Additional parameters passed to the SerpAPI.
+        :param kwargs: Additional parameters passed to the SerpAPI. For example, you can set 'lr' to 'lang_en'
+        to limit the search to English.
+        See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported parameters.
         :return: List[Document]
         """
         kwargs = {**self.kwargs, **kwargs}
@@ -118,6 +123,7 @@ class SerperDev(SearchEngine):
         :param api_key: API key for the SerperDev API.
         :param top_k: Number of documents to return.
         :param kwargs: Additional parameters passed to the SerperDev API.
+        For example, you can set 'num' to 20 to increase the number of search results.
         """
         super().__init__()
         self.api_key = api_key
@@ -127,7 +133,7 @@ class SerperDev(SearchEngine):
     def search(self, query: str, **kwargs) -> List[Document]:
         """
         :param query: Query string.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param kwargs: Additional parameters passed to the SerperDev API, such as top_k.
         :return: List[Document]
         """
         kwargs = {**self.kwargs, **kwargs}
@@ -203,7 +209,7 @@ class BingAPI(SearchEngine):
         """
         :param api_key: API key for the Bing API.
         :param top_k: Number of documents to return.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param kwargs: Additional parameters passed to the SerperDev API. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
         """
         super().__init__()
         self.api_key = api_key

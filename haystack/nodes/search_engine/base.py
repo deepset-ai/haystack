@@ -15,7 +15,7 @@ class SearchEngine(ABC):
         """
         Search the search engine for the given query and return the results.
         :param query: The query to search for.
-        :param kwargs: Additional parameters to pass to the search engine.
+        :param kwargs: Additional parameters to pass to the search engine, such as top_k.
         :return: List of search results as documents.
         """
 
