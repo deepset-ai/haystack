@@ -273,15 +273,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
         skipped_docs = 0
         # If leftover_token_len is negative we have gone past the MAX_TOKENS_LIMIT and the prompt must be trimmed
         if leftover_token_len < 0:
-            n_docs_tokens = [count_openai_tokens(text=doc.content, tokenizer=self._tokenizer) for doc in documents]
-            logger.debug("Number of tokens in documents: %s", n_docs_tokens)
-
-            # Reversing the order of documents b/c we want to throw away less relevant docs first
-            rev_n_docs_tokens = reversed(n_docs_tokens)
             n_skipped_tokens = 0
-            for doc_token_len in rev_n_docs_tokens:
-                n_skipped_tokens += doc_token_len
-                skipped_docs += 1
+            # Reversing the order of documents b/c we want to throw away less relevant docs first
+            for doc in reversed(documents):
+                n_skipped_tokens += count_openai_tokens(text=doc.content, tokenizer=self._tokenizer)
                 # Only skip enough tokens to fit within the MAX_TOKENS_LIMIT
                 if n_skipped_tokens >= abs(leftover_token_len):
                     break
