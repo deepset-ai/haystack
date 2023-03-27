@@ -949,3 +949,122 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             if m in model_name_or_path
         )
         return valid_model
+    
+class AzureChatGPTInvocationLayer(OpenAIInvocationLayer):
+    """
+    Azure ChatGPT Invocation Layer
+
+    PromptModelInvocationLayer implementation for Azure's GPT-3 ChatGPT API. Invocations are made using REST API.
+    It is essentially the same as the ChatGPTInvocationLayer
+    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
+    endpoint and the azure_deployment_name is the name of the deployment.
+    
+    Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
+    as many variants of PromptModelInvocationLayer are possible and they may have different parameters.
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        azure_base_url: str,
+        azure_deployment_name: str,
+        model_name_or_path: str = "gpt-35-turbo",
+        api_version: Optional[str] = "2023-03-15-preview",
+        max_length: Optional[int] = 800,
+        **kwargs,
+    ):
+        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
+        self.api_version = api_version
+        self.max_length = max_length
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        return {"api-key": self.api_key, "Content-Type": "application/json"}
+
+    def invoke(self, *args, **kwargs):
+        """
+        It takes in either a prompt or a list of messages and returns a list of responses, using a REST invocation.
+
+        :return: A list of generated responses.
+
+        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
+        For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat).
+        """
+        prompt = kwargs.get("prompt", None)
+
+        if isinstance(prompt, str):
+            messages = [{"role": "user", "content": prompt}]
+        elif (
+            isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict)
+        ):
+            messages = prompt
+        else:
+            raise ValueError(
+                f"The prompt format is different than what the model expects. "
+                f"The model {self.model_name_or_path} requires either a string or messages in the ChatML format. "
+                f"For more details, see this [GitHub discussion](https://github.com/openai/openai-python/blob/main/chatml.md)."
+            )
+
+        kwargs_with_defaults = self.model_input_kwargs
+        payload = {
+            "messages": messages,
+            "max_tokens": 800,
+            "temperature": kwargs_with_defaults.get("temperature", 0.7),
+            "top_p": kwargs_with_defaults.get("top_p", 0.95),
+            "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
+        }
+        response = openai_request(url=self.url, headers=self.headers, payload=payload)
+        _check_openai_finish_reason(result=response, payload=payload)
+        assistant_response = [
+            choice["message"]["content"].strip() for choice in response["choices"]
+        ]
+
+        # Although ChatGPT generates text until stop words are encountered, unfortunately it includes the stop word
+        # We want to exclude it to be consistent with other invocation layers
+        if "stop" in kwargs_with_defaults and kwargs_with_defaults["stop"] is not None:
+            stop_words = kwargs_with_defaults["stop"]
+            for idx, _ in enumerate(assistant_response):
+                for stop_word in stop_words:
+                    assistant_response[idx] = (
+                        assistant_response[idx].replace(stop_word, "").strip()
+                    )
+
+        return assistant_response
+
+    def _ensure_token_limit(
+        self, prompt: Union[str, List[Dict[str, str]]]
+    ) -> Union[str, List[Dict[str, str]]]:
+        """Make sure the length of the prompt and answer is within the max tokens limit of the model.
+        If needed, truncate the prompt text so that it fits within the limit.
+
+        :param prompt: Prompt text to be sent to the generative model.
+        """
+        if isinstance(prompt, str):
+            messages = [{"role": "user", "content": prompt}]
+        elif (
+            isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict)
+        ):
+            messages = prompt
+
+        n_prompt_tokens = count_openai_tokens_messages(messages, self._tokenizer)
+        n_answer_tokens = self.max_length
+        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+            return prompt
+
+        # TODO: support truncation as in _ensure_token_limit methods for other invocation layers
+        raise ValueError(
+            f"The prompt or the messages are too long ({n_prompt_tokens} tokens). "
+            f"The length of the prompt or messages and the answer ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} tokens). "
+            f"Reduce the length of the prompt or messages."
+        )
+
+    @property
+    def url(self) -> str:
+        return f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/chat/completions?api-version={self.api_version}"
+
+    @classmethod
+    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        valid_model = any(m for m in ["gpt-35-turbo"] if m in model_name_or_path)
+        return valid_model
