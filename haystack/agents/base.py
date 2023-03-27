@@ -179,6 +179,8 @@ class Agent:
         self.tool_pattern = tool_pattern
         self.final_answer_pattern = final_answer_pattern
         self.add_default_logging_callbacks()
+        self.hash = None
+        self.last_hash = None
         self.update_hash()
 
     def update_hash(self):

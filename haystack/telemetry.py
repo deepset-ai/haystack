@@ -130,7 +130,7 @@ def send_pipeline_event(  # type: ignore
             # Check if it's the public demo
             exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
             if exec_context == "public_demo":
-                event_properties = {
+                event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {
                     "pipeline.is_public_demo": True,
                     "pipeline.run_parameters.query": query,
                     "pipeline.run_parameters.params": params,
@@ -143,7 +143,7 @@ def send_pipeline_event(  # type: ignore
                 return
             pipeline.last_config_hash = pipeline.config_hash
 
-            event_properties: Dict[str, Optional[Union[str, bool, int, Dict[str, Any]]]] = {
+            event_properties = {
                 "pipeline.classname": pipeline.__class__.__name__,
                 "pipeline.config_hash": pipeline.config_hash,
             }
