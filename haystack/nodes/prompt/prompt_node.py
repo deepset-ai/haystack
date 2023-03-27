@@ -272,7 +272,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = sorted(
+        self.prompt_params: List[str] = sorted(
             param for param in ast_validator.prompt_params if param not in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS
         )
         self.globals = {
