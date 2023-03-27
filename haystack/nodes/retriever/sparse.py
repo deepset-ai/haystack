@@ -408,18 +408,6 @@ class FilterRetriever(BM25Retriever):
         return documents
 
 
-class ElasticsearchFilterOnlyRetriever(FilterRetriever):
-    def __init__(
-        self,
-        document_store: Optional[KeywordDocumentStore] = None,
-        top_k: int = 10,
-        all_terms_must_match: bool = False,
-        custom_query: Optional[str] = None,
-    ):
-        logger.warn("This class is now deprecated. Please use the FilterRetriever instead")
-        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
-
-
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
 Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "content", "meta"])
 
