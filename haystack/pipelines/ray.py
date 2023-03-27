@@ -4,6 +4,7 @@ import logging
 from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
+
 import networkx as nx
 
 try:
@@ -23,7 +24,7 @@ from haystack.pipelines.config import (
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, MultiLabel
-from haystack.telemetry import send_pipeline_run_event
+from haystack.telemetry import send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,7 @@ class RayPipeline(Pipeline):
                 inputs=node_config.get("inputs", []),
             )
 
+        pipeline.update_config_hash()
         return pipeline
 
     @classmethod
@@ -312,10 +314,8 @@ class RayPipeline(Pipeline):
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        send_pipeline_run_event(
+        send_pipeline_event(
             pipeline=self,
-            classname=self.__class__.__name__,
-            function_name="run_async",
             query=query,
             file_paths=file_paths,
             labels=labels,

@@ -145,6 +145,27 @@ def test_no_answer_output(no_answer_reader, docs):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_deduplication_for_overlapping_documents(reader):
+    docs = [
+        Document(
+            content="My name is Carla. I live in Berlin.",
+            id="doc1",
+            meta={"_split_id": 0, "_split_overlap": [{"doc_id": "doc2", "range": (18, 35)}]},
+        ),
+        Document(
+            content="I live in Berlin. My friends call me Carla.",
+            id="doc2",
+            meta={"_split_id": 1, "_split_overlap": [{"doc_id": "doc1", "range": (0, 17)}]},
+        ),
+    ]
+    prediction = reader.predict(query="Where does Carla live?", documents=docs, top_k=5)
+
+    # Check that there are no duplicate answers
+    assert len(set(ans.answer for ans in prediction["answers"])) == len(prediction["answers"])
+
+
+@pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):

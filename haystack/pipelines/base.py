@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 from functools import partial
+from hashlib import md5
 from time import time
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -20,7 +21,6 @@ import tempfile
 from pathlib import Path
 
 import yaml
-import mmh3
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -51,7 +51,7 @@ from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-from haystack.telemetry import send_pipeline_run_event, send_pipeline_event
+from haystack.telemetry import send_event, send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,8 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
-        self.yaml_hash = False
+        self.config_hash = None
+        self.last_config_hash = None
 
     @property
     def root_node(self) -> Optional[str]:
@@ -425,14 +426,22 @@ class Pipeline:
             node={"name": name, "inputs": inputs},
             instance=component,
         )
-        # TELEMETRY: Hash the config of the pipeline without node names
-        # to be able to cluster later by "pipeline type"
-        # (is any specific pipeline configuration very popular?)
-        fingerprint_config = copy.copy(self.get_config())
-        for comp in fingerprint_config["components"]:
-            del comp["name"]
-        fingerprint = json.dumps(fingerprint_config, default=str)
-        self.fingerprint = "{:02x}".format(mmh3.hash128(fingerprint, signed=False))
+        self.update_config_hash()
+
+    def update_config_hash(self):
+        """
+        Used for telemetry. Hashes the config, except for the node names, to send an event only when the pipeline changes.
+        See haystack/telemetry.py::send_pipeline_event
+        """
+        try:
+            config_to_hash = copy.copy(self.get_config())
+            for comp in config_to_hash["components"]:
+                del comp["name"]
+            config_hash = json.dumps(config_to_hash, default=str)
+            self.config_hash = md5(config_hash)
+        except Exception as exc:
+            logger.debug("Telemetry exception: %s", str(exc))
+            self.config_hash = "[an exception occurred during hashing]"
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -483,10 +492,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        send_pipeline_run_event(
+        send_pipeline_event(
             pipeline=self,
-            classname=self.__class__.__name__,
-            function_name="run",
             query=query,
             file_paths=file_paths,
             labels=labels,
@@ -633,10 +640,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        send_pipeline_run_event(
+        send_pipeline_event(
             pipeline=self,
-            classname=self.__class__.__name__,
-            function_name="run_batch",
             queries=queries,
             file_paths=file_paths,
             labels=labels,
@@ -1230,7 +1235,10 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name="Evaluation", event_properties={"function_name": "eval"})
+        send_event(
+            event_name="Evaluation",
+            event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
+        )
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1348,7 +1356,10 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name=f"{self.__class__.__name__}.eval_batch()")
+        send_event(
+            event_name="Evaluation",
+            event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
+        )
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1497,6 +1508,7 @@ class Pipeline:
             "type",  # generic
             "node",  # generic
             "eval_mode",  # generic
+            "prompt",  # answer-specific
         ]
         for key, df in eval_result.node_results.items():
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
@@ -1598,6 +1610,8 @@ class Pipeline:
                     df_answers["gold_offsets_in_contexts"] = [gold_offsets_in_contexts] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["gold_contexts"] = [gold_contexts] * len(df_answers)
+                    if any(answer for answer in answers if answer.type == "generative"):
+                        df_answers["prompt"] = [(answer.meta or {}).get("prompt") for answer in answers]
                     df_answers["gold_answers_exact_match"] = df_answers.map_rows(
                         lambda row: [calculate_em_str(gold_answer, row["answer"]) for gold_answer in gold_answers]
                     )
@@ -1710,7 +1724,11 @@ class Pipeline:
                 df_answers["node"] = node_name
                 df_answers["multilabel_id"] = query_labels.id
                 df_answers["query"] = query
-                df_answers["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
+                df_answers["filters"] = (
+                    json.dumps(query_labels.filters, sort_keys=True).encode()
+                    if query_labels.filters is not None
+                    else None
+                )
                 df_answers["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
                 partial_dfs.append(df_answers)
 
@@ -1985,7 +2003,6 @@ class Pipeline:
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
         )
-        pipeline.yaml_hash = "{:02x}".format(mmh3.hash128(str(path), signed=False))
         return pipeline
 
     @classmethod
@@ -2056,6 +2073,7 @@ class Pipeline:
             )
             pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
 
+        pipeline.update_config_hash()
         return pipeline
 
     @classmethod
