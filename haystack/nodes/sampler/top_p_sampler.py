@@ -78,7 +78,7 @@ class TopPSampler(BaseSampler):
         documents whose cumulative probability is less than or equal to `top_p`.
 
         :param query: Query string.
-        :param documents: List of Document.
+        :param documents: List of Documents.
         :param top_p: Cumulative probability threshold for filtering the documents. If not provided, the top_p value
         set during TopPSampler initialization is used.
         :return: List of Documents sorted by (desc.) similarity with the query.
@@ -156,6 +156,6 @@ class TopPSampler(BaseSampler):
             return [self.predict(query, docs, top_p) for query, docs in zip(queries, documents)]  # type: ignore
 
         raise ValueError(
-            f"The input is not valid. Provided were the following queries {queries} and documents {documents}"
-            f"Check the method documentation regarding the valid parameters and their types."
+            f"The following queries {queries} and documents {documents} were provided as input but it seems they're not valid."
+            f"Check the documentation of this method for valid parameters and their types."
         )

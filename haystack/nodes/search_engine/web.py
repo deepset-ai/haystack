@@ -8,10 +8,10 @@ from haystack.nodes.search_engine.base import SearchEngine
 class WebSearch(BaseComponent):
     """
     WebSearch queries a search engine and retrieves results as a list of Documents. WebSearch abstracts away the details
-    of the underlying search engine provider, provides common interface for all providers and allows use of various
+    of the underlying search engine provider, provides common interface for all providers, and makes it possible to use various
     search engines.
 
-    The following search engines providers(bridges) are currently supported:
+    WebSerach currently supports the following search engines providers (bridges):
     - SerperDev (default)
     - SerpAPI
     - BingAPI
@@ -29,7 +29,7 @@ class WebSearch(BaseComponent):
     ):
         """
         :param api_key: API key for the search engine provider.
-        :param search_engine_provider: Name of the search engine provider class, see providers.py for a list of
+        :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of
         supported providers.
         :param kwargs: Additional parameters to pass to the search engine provider.
         """
@@ -64,7 +64,7 @@ class WebSearch(BaseComponent):
     ) -> Tuple[Dict, str]:
         """
         Search the search engine for the given query and return the results. Only the query parameter is used.
-        :param query: The query to search for
+        :param query: The query to search for.
 
         :return: List of search results as documents.
         """

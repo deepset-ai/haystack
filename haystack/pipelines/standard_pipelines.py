@@ -341,7 +341,7 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
 
 class WebQAPipeline(BaseStandardPipeline):
     """
-    Pipeline for Generative Question Answering based on Documents returned from a web search engine.
+    Pipeline for Generative Question Answering performed based on Documents returned from a web search engine.
     """
 
     def __init__(
@@ -354,7 +354,7 @@ class WebQAPipeline(BaseStandardPipeline):
         """
         :param retriever: The WebRetriever used for retrieving documents from a web search engine.
         :param prompt_node: The PromptNode used for generating the answer based on retrieved documents.
-        :param shaper: The shaper used for transforming the documents and scores into a format that can be used by the prompt node. Optional.
+        :param shaper: The Shaper used for transforming the documents and scores into a format that can be used by the PromptNode. Optional.
         """
         if not shaper:
             shaper = Shaper(func="join_documents_and_scores", inputs={"documents": "documents"}, outputs=["documents"])
@@ -376,13 +376,13 @@ class WebQAPipeline(BaseStandardPipeline):
     def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         """
         :param query: The search query string.
-        :param params: Params for the `Retriever`, `Sampler`, `Shaper` and ``PromptNode. For instance,
-                       params={"Retriever": {"top_k": 3}, "Sampler": {"top_p": 0.8}}
+        :param params: Params for the `Retriever`, `Sampler`, `Shaper`, and ``PromptNode. For instance,
+                       params={"Retriever": {"top_k": 3}, "Sampler": {"top_p": 0.8}}. See the API documentation of each node for available parameters and their descriptions.
         :param debug: Whether the pipeline should instruct nodes to collect debug information
-                      about their execution. By default these include the input parameters
+                      about their execution. By default, these include the input parameters
                       they received and the output they generated.
-                      All debug information can then be found in the dict returned
-                      by this method under the key "_debug"
+                      YOu can then find all debug information in the dict thia method returns
+                      under the key "_debug".
         """
         output = self.pipeline.run(query=query, params=params, debug=debug)
         # Extract the answer from the last line of the PromptNode's output
