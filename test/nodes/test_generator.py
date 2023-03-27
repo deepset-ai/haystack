@@ -1,8 +1,6 @@
-import os
 import sys
 from typing import List
-import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
