@@ -1,4 +1,8 @@
-from typing import Optional, List, Dict, Any, Tuple, Union, Callable
+from functools import reduce
+import inspect
+import re
+from string import Template
+from typing import Literal, Optional, List, Dict, Any, Tuple, Union, Callable
 
 import logging
 
@@ -9,49 +13,49 @@ from haystack.schema import Document, Answer, MultiLabel
 logger = logging.getLogger(__name__)
 
 
-def rename(value: Any) -> Tuple[Any]:
+def rename(value: Any) -> Any:
     """
     Identity function. Can be used to rename values in the invocation context without changing them.
 
     Example:
 
     ```python
-    assert rename(1) == (1, )
+    assert rename(1) == 1
     ```
     """
-    return (value,)
+    return value
 
 
-def value_to_list(value: Any, target_list: List[Any]) -> Tuple[List[Any]]:
+def value_to_list(value: Any, target_list: List[Any]) -> List[Any]:
     """
     Transforms a value into a list containing this value as many times as the length of the target list.
 
     Example:
 
     ```python
-    assert value_to_list(value=1, target_list=list(range(5))) == ([1, 1, 1, 1, 1], )
+    assert value_to_list(value=1, target_list=list(range(5))) == [1, 1, 1, 1, 1]
     ```
     """
-    return ([value] * len(target_list),)
+    return [value] * len(target_list)
 
 
-def join_lists(lists: List[List[Any]]) -> Tuple[List[Any]]:
+def join_lists(lists: List[List[Any]]) -> List[Any]:
     """
     Joins the passed lists into a single one.
 
     Example:
 
     ```python
-    assert join_lists(lists=[[1, 2, 3], [4, 5]]) == ([1, 2, 3, 4, 5], )
+    assert join_lists(lists=[[1, 2, 3], [4, 5]]) == [1, 2, 3, 4, 5]
     ```
     """
     merged_list = []
     for inner_list in lists:
         merged_list += inner_list
-    return (merged_list,)
+    return merged_list
 
 
-def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
+def join_strings(strings: List[str], delimiter: str = " ", str_replace: Optional[Dict[str, str]] = None) -> str:
     """
     Transforms a list of strings into a single string. The content of this string
     is the content of all original strings separated by the delimiter you specify.
@@ -59,16 +63,42 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
     Example:
 
     ```python
-    assert join_strings(strings=["first", "second", "third"], delimiter=" - ") == ("first - second - third", )
+    assert join_strings(strings=["first", "second", "third"], delimiter=" - ", str_replace={"r": "R"}) == "fiRst - second - thiRd"
     ```
     """
-    return (delimiter.join(strings),)
+    str_replace = str_replace or {}
+    return delimiter.join([format_string(string, str_replace) for string in strings])
 
 
-def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Document]]:
+def format_string(string: str, str_replace: Optional[Dict[str, str]] = None) -> str:
+    """
+    Transforms a string using a substitution dict.
+
+    Example:
+
+    ```python
+    assert format_string(string="first", str_replace={"r": "R"}) == "fiRst"
+    ```
+    """
+    str_replace = str_replace or {}
+    return reduce(lambda s, kv: s.replace(*kv), str_replace.items(), string)
+
+
+def join_documents(
+    documents: List[Document],
+    delimiter: str = " ",
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+) -> List[Document]:
     """
     Transforms a list of documents into a list containing a single Document. The content of this list
-    is the content of all original documents separated by the delimiter you specify.
+    is the joined result of all original documents separated by the delimiter you specify.
+    How each document is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $content: the content of the document
+    - $idx: the index of the document in the list
+    - $id: the id of the document
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
 
     All metadata is dropped. (TODO: fix)
 
@@ -81,47 +111,333 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
             Document(content="second"),
             Document(content="third")
         ],
-        delimiter=" - "
-    ) == ([Document(content="first - second - third")], )
+        delimiter=" - ",
+        pattern="[$idx] $content",
+        str_replace={"r": "R"}
+    ) == [Document(content="[1] fiRst - [2] second - [3] thiRd")]
     ```
     """
-    return ([Document(content=delimiter.join([d.content for d in documents]))],)
+    return [Document(content=join_documents_to_string(documents, delimiter, pattern, str_replace))]
 
 
-def strings_to_answers(strings: List[str], prompts_used: Optional[List[Optional[str]]] = None) -> Tuple[List[Answer]]:
+def format_document(
+    document: Document,
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+    idx: Optional[int] = None,
+) -> str:
     """
-    Transforms a list of strings into a list of Answers.
+    Transforms a document into a single string.
+    How the document is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $content: the content of the document
+    - $idx: the index of the document in the list
+    - $id: the id of the document
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
 
     Example:
 
     ```python
-    assert strings_to_answers(strings=["first", "second", "third"]) == ([
-            Answer(answer="first"),
-            Answer(answer="second"),
-            Answer(answer="third"),
-        ], )
+    assert format_document(
+        document=Document(content="first"),
+        pattern="prefix [$idx] $content",
+        str_replace={"r": "R"},
+        idx=1,
+    ) == "prefix [1] fiRst"
     ```
     """
-    if prompts_used:
-        if len(prompts_used) > 1:
-            if len(prompts_used) != len(strings):
-                raise ValueError(
-                    f"Not enough prompts. strings_to_answers received {len(strings)} and {len(prompts_used)} prompts."
-                )
-        else:
-            prompts_used = prompts_used * len(strings)
-    else:
-        prompts_used = [None] * len(strings)
+    str_replace = str_replace or {}
+    pattern = pattern or "$content"
 
-    return (
-        [
-            Answer(answer=string, type="generative", meta={"prompt": prompt})
-            for string, prompt in zip(strings, prompts_used)
-        ],
+    template = Template(pattern)
+    pattern_params = [
+        match.groupdict().get("named", match.groupdict().get("braced"))
+        for match in template.pattern.finditer(template.template)
+    ]
+    meta_params = [param for param in pattern_params if param and param not in ["content", "idx", "id"]]
+    content = template.substitute(
+        {
+            "idx": idx,
+            "content": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), document.content),
+            "id": reduce(lambda id, kv: id.replace(*kv), str_replace.items(), document.id),
+            **{
+                k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), document.meta.get(k, ""))
+                for k in meta_params
+            },
+        }
     )
+    return content
 
 
-def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
+def format_answer(
+    answer: Answer,
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+    idx: Optional[int] = None,
+) -> str:
+    """
+    Transforms an answer into a single string.
+    How the answer is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $answer: the answer text of the answer
+    - $idx: the index of the answer in the list
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+
+    Example:
+
+    ```python
+    assert format_answer(
+        answer=Answer(answer="first"),
+        pattern="prefix [$idx] $answer",
+        str_replace={"r": "R"},
+        idx=1,
+    ) == "prefix [1] fiRst"
+    ```
+    """
+    str_replace = str_replace or {}
+    pattern = pattern or "$answer"
+
+    template = Template(pattern)
+    pattern_params = [
+        match.groupdict().get("named", match.groupdict().get("braced"))
+        for match in template.pattern.finditer(template.template)
+    ]
+    meta_params = [param for param in pattern_params if param and param not in ["answer", "idx"]]
+    meta = answer.meta or {}
+    content = template.substitute(
+        {
+            "idx": idx,
+            "answer": reduce(lambda content, kv: content.replace(*kv), str_replace.items(), answer.answer),
+            **{k: reduce(lambda val, kv: val.replace(*kv), str_replace.items(), meta.get(k, "")) for k in meta_params},
+        }
+    )
+    return content
+
+
+def join_documents_to_string(
+    documents: List[Document],
+    delimiter: str = " ",
+    pattern: Optional[str] = None,
+    str_replace: Optional[Dict[str, str]] = None,
+) -> str:
+    """
+    Transforms a list of documents into a single string. The content of this string
+    is the joined result of all original documents separated by the delimiter you specify.
+    How each document is represented is controlled by the pattern parameter.
+    You can use the following placeholders:
+    - $content: the content of the document
+    - $idx: the index of the document in the list
+    - $id: the id of the document
+    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+
+    Example:
+
+    ```python
+    assert join_documents_to_string(
+        documents=[
+            Document(content="first"),
+            Document(content="second"),
+            Document(content="third")
+        ],
+        delimiter=" - ",
+        pattern="[$idx] $content",
+        str_replace={"r": "R"}
+    ) == "[1] fiRst - [2] second - [3] thiRd"
+    ```
+    """
+    content = delimiter.join(
+        format_document(doc, pattern, str_replace, idx=idx) for idx, doc in enumerate(documents, start=1)
+    )
+    return content
+
+
+def strings_to_answers(
+    strings: List[str],
+    prompts: Optional[List[Union[str, List[Dict[str, str]]]]] = None,
+    documents: Optional[List[Document]] = None,
+    pattern: Optional[str] = None,
+    reference_pattern: Optional[str] = None,
+    reference_mode: Literal["index", "id", "meta"] = "index",
+    reference_meta_field: Optional[str] = None,
+) -> List[Answer]:
+    """
+    Transforms a list of strings into a list of Answers.
+    Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the strings.
+
+    :param strings: The list of strings to transform.
+    :param prompts: The prompts used to generate the answers.
+    :param documents: The documents used to generate the answers.
+    :param pattern: The regex pattern to use for parsing the answer.
+        Examples:
+            `[^\\n]+$` will find "this is an answer" in string "this is an argument.\nthis is an answer".
+            `Answer: (.*)` will find "this is an answer" in string "this is an argument. Answer: this is an answer".
+        If None, the whole string is used as the answer. If not None, the first group of the regex is used as the answer. If there is no group, the whole match is used as the answer.
+    :param reference_pattern: The regex pattern to use for parsing the document references.
+        Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
+        If None, no parsing is done and all documents are referenced.
+    :param reference_mode: The mode used to reference documents. Supported modes are:
+        - index: the document references are the one-based index of the document in the list of documents.
+            Example: "this is an answer[1]" will reference the first document in the list of documents.
+        - id: the document references are the document ids.
+            Example: "this is an answer[123]" will reference the document with id "123".
+        - meta: the document references are the value of a metadata field of the document.
+            Example: "this is an answer[123]" will reference the document with the value "123" in the metadata field specified by reference_meta_field.
+    :param reference_meta_field: The name of the metadata field to use for document references in reference_mode "meta".
+    :return: The list of answers.
+
+    Examples:
+
+    Without reference parsing:
+    ```python
+    assert strings_to_answers(strings=["first", "second", "third"], prompt="prompt", documents=[Document(id="123", content="content")]) == [
+            Answer(answer="first", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+            Answer(answer="second", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+            Answer(answer="third", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+        ]
+    ```
+
+    With reference parsing:
+    ```python
+    assert strings_to_answers(strings=["first[1]", "second[2]", "third[1][3]"], prompt="prompt",
+            documents=[Document(id="123", content="content"), Document(id="456", content="content"), Document(id="789", content="content")],
+            reference_pattern=r"\\[(\\d+)\\]",
+            reference_mode="index"
+        ) == [
+            Answer(answer="first", type="generative", document_ids=["123"], meta={"prompt": "prompt"}),
+            Answer(answer="second", type="generative", document_ids=["456"], meta={"prompt": "prompt"}),
+            Answer(answer="third", type="generative", document_ids=["123", "789"], meta={"prompt": "prompt"}),
+        ]
+    ```
+    """
+    if prompts:
+        if len(prompts) == 1:
+            # one prompt for all strings/documents
+            documents_per_string: List[Optional[List[Document]]] = [documents] * len(strings)
+            prompt_per_string: List[Optional[Union[str, List[Dict[str, str]]]]] = [prompts[0]] * len(strings)
+        elif len(prompts) > 1 and len(strings) % len(prompts) == 0:
+            # one prompt per string/document
+            if documents is not None and len(documents) != len(prompts):
+                raise ValueError("The number of documents must match the number of prompts")
+            string_multiplier = len(strings) // len(prompts)
+            documents_per_string = (
+                [[doc] for doc in documents for _ in range(string_multiplier)] if documents else [None] * len(strings)
+            )
+            prompt_per_string = [prompt for prompt in prompts for _ in range(string_multiplier)]
+        else:
+            raise ValueError("The number of prompts must be one or a multiple of the number of strings")
+    else:
+        documents_per_string = [documents] * len(strings)
+        prompt_per_string = [None] * len(strings)
+
+    answers = []
+    for string, prompt, _documents in zip(strings, prompt_per_string, documents_per_string):
+        answer = string_to_answer(
+            string=string,
+            prompt=prompt,
+            documents=_documents,
+            pattern=pattern,
+            reference_pattern=reference_pattern,
+            reference_mode=reference_mode,
+            reference_meta_field=reference_meta_field,
+        )
+        answers.append(answer)
+    return answers
+
+
+def string_to_answer(
+    string: str,
+    prompt: Optional[Union[str, List[Dict[str, str]]]],
+    documents: Optional[List[Document]],
+    pattern: Optional[str] = None,
+    reference_pattern: Optional[str] = None,
+    reference_mode: Literal["index", "id", "meta"] = "index",
+    reference_meta_field: Optional[str] = None,
+) -> Answer:
+    """
+    Transforms a string into an Answer.
+    Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the string.
+
+    :param string: The string to transform.
+    :param prompt: The prompt used to generate the answer.
+    :param documents: The documents used to generate the answer.
+    :param pattern: The regex pattern to use for parsing the answer.
+        Examples:
+            `[^\\n]+$` will find "this is an answer" in string "this is an argument.\nthis is an answer".
+            `Answer: (.*)` will find "this is an answer" in string "this is an argument. Answer: this is an answer".
+        If None, the whole string is used as the answer. If not None, the first group of the regex is used as the answer. If there is no group, the whole match is used as the answer.
+    :param reference_pattern: The regex pattern to use for parsing the document references.
+        Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
+        If None, no parsing is done and all documents are referenced.
+    :param reference_mode: The mode used to reference documents. Supported modes are:
+        - index: the document references are the one-based index of the document in the list of documents.
+            Example: "this is an answer[1]" will reference the first document in the list of documents.
+        - id: the document references are the document ids.
+            Example: "this is an answer[123]" will reference the document with id "123".
+        - meta: the document references are the value of a metadata field of the document.
+            Example: "this is an answer[123]" will reference the document with the value "123" in the metadata field specified by reference_meta_field.
+    :param reference_meta_field: The name of the metadata field to use for document references in reference_mode "meta".
+    :return: The answer
+    """
+    if reference_mode == "index":
+        candidates = {str(idx): doc.id for idx, doc in enumerate(documents, start=1)} if documents else {}
+    elif reference_mode == "id":
+        candidates = {doc.id: doc.id for doc in documents} if documents else {}
+    elif reference_mode == "meta":
+        if not reference_meta_field:
+            raise ValueError("reference_meta_field must be specified when reference_mode is 'meta'")
+        candidates = (
+            {doc.meta[reference_meta_field]: doc.id for doc in documents if doc.meta.get(reference_meta_field)}
+            if documents
+            else {}
+        )
+    else:
+        raise ValueError(f"Invalid document_id_mode: {reference_mode}")
+
+    if pattern:
+        match = re.search(pattern, string)
+        if match:
+            if not match.lastindex:
+                # no group in pattern -> take the whole match
+                string = match.group(0)
+            elif match.lastindex == 1:
+                # one group in pattern -> take the group
+                string = match.group(1)
+            else:
+                # more than one group in pattern -> raise error
+                raise ValueError(f"Pattern must have at most one group: {pattern}")
+        else:
+            string = ""
+    document_ids = parse_references(string=string, reference_pattern=reference_pattern, candidates=candidates)
+    answer = Answer(answer=string, type="generative", document_ids=document_ids, meta={"prompt": prompt})
+    return answer
+
+
+def parse_references(
+    string: str, reference_pattern: Optional[str] = None, candidates: Optional[Dict[str, str]] = None
+) -> Optional[List[str]]:
+    """
+    Parses an answer string for document references and returns the document ids of the referenced documents.
+
+    :param string: The string to parse.
+    :param reference_pattern: The regex pattern to use for parsing the document references.
+        Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
+        If None, no parsing is done and all candidate document ids are returned.
+    :param candidates: A dictionary of candidates to choose from. The keys are the reference strings and the values are the document ids.
+        If None, no parsing is done and None is returned.
+    :return: A list of document ids.
+    """
+    if not candidates:
+        return None
+    if not reference_pattern:
+        return list(candidates.values())
+
+    document_idxs = re.findall(reference_pattern, string)
+    return [candidates[idx] for idx in document_idxs if idx in candidates]
+
+
+def answers_to_strings(
+    answers: List[Answer], pattern: Optional[str] = None, str_replace: Optional[Dict[str, str]] = None
+) -> List[str]:
     """
     Extracts the content field of Documents and returns a list of strings.
 
@@ -133,18 +449,20 @@ def answers_to_strings(answers: List[Answer]) -> Tuple[List[str]]:
                 Answer(answer="first"),
                 Answer(answer="second"),
                 Answer(answer="third")
-            ]
-        ) == (["first", "second", "third"],)
+            ],
+            pattern="[$idx] $answer",
+            str_replace={"r": "R"}
+        ) == ["[1] fiRst", "[2] second", "[3] thiRd"]
     ```
     """
-    return ([answer.answer for answer in answers],)
+    return [format_answer(answer, pattern, str_replace, idx) for idx, answer in enumerate(answers, start=1)]
 
 
 def strings_to_documents(
     strings: List[str],
     meta: Union[List[Optional[Dict[str, Any]]], Optional[Dict[str, Any]]] = None,
     id_hash_keys: Optional[List[str]] = None,
-) -> Tuple[List[Document]]:
+) -> List[Document]:
     """
     Transforms a list of strings into a list of Documents. If you pass the metadata in a single
     dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
@@ -158,11 +476,11 @@ def strings_to_documents(
             strings=["first", "second", "third"],
             meta=[{"position": i} for i in range(3)],
             id_hash_keys=['content', 'meta]
-        ) == ([
+        ) == [
             Document(content="first", metadata={"position": 1}, id_hash_keys=['content', 'meta])]),
             Document(content="second", metadata={"position": 2}, id_hash_keys=['content', 'meta]),
             Document(content="third", metadata={"position": 3}, id_hash_keys=['content', 'meta])
-        ], )
+        ]
     ```
     """
     all_metadata: List[Optional[Dict[str, Any]]]
@@ -177,10 +495,12 @@ def strings_to_documents(
     else:
         all_metadata = [None] * len(strings)
 
-    return ([Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)],)
+    return [Document(content=string, meta=m, id_hash_keys=id_hash_keys) for string, m in zip(strings, all_metadata)]
 
 
-def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
+def documents_to_strings(
+    documents: List[Document], pattern: Optional[str] = None, str_replace: Optional[Dict[str, str]] = None
+) -> List[str]:
     """
     Extracts the content field of Documents and returns a list of strings.
 
@@ -192,14 +512,16 @@ def documents_to_strings(documents: List[Document]) -> Tuple[List[str]]:
                 Document(content="first"),
                 Document(content="second"),
                 Document(content="third")
-            ]
-        ) == (["first", "second", "third"],)
+            ],
+            pattern="[$idx] $content",
+            str_replace={"r": "R"}
+        ) == ["[1] fiRst", "[2] second", "[3] thiRd"]
     ```
     """
-    return ([doc.content for doc in documents],)
+    return [format_document(doc, pattern, str_replace, idx) for idx, doc in enumerate(documents, start=1)]
 
 
-REGISTERED_FUNCTIONS: Dict[str, Callable[..., Tuple[Any]]] = {
+REGISTERED_FUNCTIONS: Dict[str, Callable[..., Any]] = {
     "rename": rename,
     "value_to_list": value_to_list,
     "join_lists": join_lists,
@@ -405,6 +727,16 @@ class Shaper(BaseComponent):
                 if value in invocation_context.keys() and value is not None:
                     input_values[key] = invocation_context[value]
 
+        # auto fill in input values if there's an invocation context value with the same name
+        function_params = inspect.signature(self.function).parameters
+        for parameter in function_params.values():
+            if (
+                parameter.name not in input_values.keys()
+                and parameter.name not in self.params.keys()
+                and parameter.name in invocation_context.keys()
+            ):
+                input_values[parameter.name] = invocation_context[parameter.name]
+
         input_values = {**self.params, **input_values}
         try:
             logger.debug(
@@ -413,6 +745,8 @@ class Shaper(BaseComponent):
                 ", ".join([f"{key}={value}" for key, value in input_values.items()]),
             )
             output_values = self.function(**input_values)
+            if not isinstance(output_values, tuple):
+                output_values = (output_values,)
         except TypeError as e:
             raise ValueError(
                 "Shaper couldn't apply the function to your inputs and parameters. "
