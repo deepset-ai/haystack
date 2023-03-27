@@ -140,9 +140,11 @@ pinecone = [
 ]
 graphdb = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2",
 ]
 inmemorygraph = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2",
 ]
 opensearch = [
   "opensearch-py>=2",
