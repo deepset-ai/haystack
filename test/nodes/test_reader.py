@@ -13,6 +13,12 @@ from haystack.schema import Document, Answer, Label, MultiLabel, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes import FARMReader, TransformersReader
 
+from ..conftest import SAMPLES_PATH
+
+
+def _joinpath(rootdir, targetdir):
+    return os.path.join(os.sep, rootdir + os.sep, targetdir)
+
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
@@ -171,7 +177,7 @@ def test_no_answer_output(no_answer_reader, docs):
     assert no_answer_prediction["answers"][0].score <= 1
     assert no_answer_prediction["answers"][0].score >= 0
     assert no_answer_prediction["answers"][0].context == None
-    assert no_answer_prediction["answers"][0].document_id == None
+    assert no_answer_prediction["answers"][0].document_ids == None
     answers = [x.answer for x in no_answer_prediction["answers"]]
     assert answers.count("") == 1
     assert len(no_answer_prediction["answers"]) == 5
@@ -323,9 +329,12 @@ def test_farm_reader_load_hf_local(tmp_path):
     # Test Case: 2. HuggingFace downloaded (local load)
 
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    local_model_path = "locally_saved_hf"
+    cwd_path = os.getcwd()
+    local_model_path = _joinpath(cwd_path, local_model_path)
+
     # TODO: change the /tmp to proper tmp_path and get rid of rmtree
-    # local_model_path = str(Path.joinpath(tmp_path, "locally_saved_hf"))
-    local_model_path = "/tmp/locally_saved_hf"
+    # local_model_path = str(Path.joinpath(tmp_path, local_model_path))
     model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
     _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
     rmtree(local_model_path)
@@ -444,3 +453,40 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     )
     assert predictions["answers"][0][0].answer == ""  # Return no_answer for 1st query as document is empty
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
+
+
+def test_reader_training(tmp_path):
+    max_seq_len = 16
+    max_query_length = 8
+    reader = FARMReader(
+        model_name_or_path="deepset/tinyroberta-squad2",
+        use_gpu=False,
+        num_processes=0,
+        max_seq_len=max_seq_len,
+        doc_stride=2,
+        max_query_length=max_query_length,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    reader.train(
+        data_dir=str(SAMPLES_PATH / "squad"),
+        train_filename="tiny.json",
+        dev_filename="tiny.json",
+        test_filename="tiny.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        save_dir=save_dir,
+        evaluate_every=2,
+        max_seq_len=max_seq_len,
+        max_query_length=max_query_length,
+    )
+
+
+@pytest.mark.integration
+def test_reader_long_document(reader):
+    # Check that long documents with >2^16 characters do not result in negative offsets
+    docs = [Document(content=("abbreviation " * 2550) + "Christelle lives in Madrid.")]
+    res = reader.predict(query="Where does Christelle live?", documents=docs)
+    assert res["answers"][0].offsets_in_document[0].start >= 0
+    assert res["answers"][0].offsets_in_document[0].end >= 0

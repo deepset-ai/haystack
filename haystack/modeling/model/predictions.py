@@ -105,20 +105,23 @@ class QACandidate:
             self.answer = "no_answer"
             if self.offset_answer_start != 0 or self.offset_answer_end != 0:
                 logger.error(
-                    f"Both start and end offsets should be 0: \n"
-                    f"{self.offset_answer_start}, {self.offset_answer_end} with a no_answer. "
+                    "Both start and end offsets should be 0: \n%s, %s with a no_answer. ",
+                    self.offset_answer_start,
+                    self.offset_answer_end,
                 )
         else:
             self.answer = string
             if self.offset_answer_end - self.offset_answer_start <= 0:
                 logger.error(
-                    f"End offset comes before start offset: \n"
-                    f"({self.offset_answer_start}, {self.offset_answer_end}) with a span answer. "
+                    "End offset comes before start offset: \n(%s, %s) with a span answer. ",
+                    self.offset_answer_start,
+                    self.offset_answer_end,
                 )
             elif self.offset_answer_end <= 0:
                 logger.error(
-                    f"Invalid end offset: \n"
-                    f"({self.offset_answer_start}, {self.offset_answer_end}) with a span answer. "
+                    "Invalid end offset: \n(%s, %s) with a span answer. ",
+                    self.offset_answer_start,
+                    self.offset_answer_end,
                 )
 
     def _create_context_window(self, context_window_size: int, clear_text: str) -> Tuple[str, int, int]:
@@ -167,7 +170,8 @@ class QACandidate:
         """
         if self.offset_unit != "token":
             logger.error(
-                f"QACandidate needs to have self.offset_unit=token before calling _span_to_string() (id = {self.passage_id})"
+                "QACandidate needs to have self.offset_unit=token before calling _span_to_string() (id = %s)",
+                self.passage_id,
             )
 
         start_t = self.offset_answer_start
@@ -244,7 +248,7 @@ class QAPred(Pred):
         aggregation_level: str,
         no_answer_gap: float,
         ground_truth_answer: Optional[str] = None,
-        answer_types: List[str] = [],
+        answer_types: Optional[List[str]] = None,
     ):
         """
         :param id: The id of the passage or document
@@ -258,6 +262,8 @@ class QAPred(Pred):
         :param ground_truth_answer: Ground truth answers
         :param answer_types: List of answer_types supported by this task e.g. ["span", "yes_no", "no_answer"]
         """
+        if answer_types is None:
+            answer_types = []
         super().__init__(id, prediction, context)
         self.question = question
         self.token_offsets = token_offsets
@@ -297,10 +303,10 @@ class QAPred(Pred):
 
     def _answers_to_json(self, ext_id, squad=False) -> List[Dict]:
         """
-        Convert all answers into a json format
+        Convert all answers into a json format.
 
-        :param id: ID of the question document pair
-        :param squad: If True, no_answers are represented by the empty string instead of "no_answer"
+        :param ext_id: ID of the question document pair.
+        :param squad: If True, no_answers are represented by the empty string instead of "no_answer".
         """
         ret = []
 

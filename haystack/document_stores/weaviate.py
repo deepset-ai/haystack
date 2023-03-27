@@ -64,6 +64,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         timeout_config: tuple = (5, 15),
         username: Optional[str] = None,
         password: Optional[str] = None,
+        additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
         content_field: str = "content",
@@ -76,6 +77,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
+        replication_factor: int = 1,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
@@ -84,11 +86,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
+        :param additional_headers: additional headers to be included in the requests sent to Weaviate e.g. bearer token
         :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-        :param name_field: Name of field that contains the title of the the doc
+        :param name_field: Name of field that contains the title of the doc
         :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
@@ -110,6 +113,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param recreate_index: If set to True, an existing Weaviate index will be deleted and a new one will be
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index.
+        :param replication_factor: It sets the Weaviate Class's replication factor in Weaviate at the time of Class creation.
+                                   See: https://weaviate.io/developers/weaviate/current/configuration/replication.html
         """
         super().__init__()
 
@@ -118,10 +123,15 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         if username and password:
             secret = AuthClientPassword(username, password)
             self.weaviate_client = client.Client(
-                url=weaviate_url, auth_client_secret=secret, timeout_config=timeout_config
+                url=weaviate_url,
+                auth_client_secret=secret,
+                timeout_config=timeout_config,
+                additional_headers=additional_headers,
             )
         else:
-            self.weaviate_client = client.Client(url=weaviate_url, timeout_config=timeout_config)
+            self.weaviate_client = client.Client(
+                url=weaviate_url, timeout_config=timeout_config, additional_headers=additional_headers
+            )
 
         # Test Weaviate connection
         try:
@@ -156,6 +166,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
+        self.replication_factor = replication_factor
 
         self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
@@ -194,6 +205,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             },
                         ],
                         "vectorIndexConfig": {"distance": self.similarity},
+                        "replicationConfig": {"factor": self.replication_factor},
                     }
                 ]
             }
@@ -256,6 +268,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         if props.get("content_type") is not None:
             content_type = str(props.pop("content_type"))
 
+        id_hash_keys = None
+        if props.get("id_hash_keys") is not None:
+            id_hash_keys = props.pop("id_hash_keys")
+
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
             if "certainty" in props["_additional"]:
@@ -288,7 +304,14 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             meta_data[k] = v
 
         document = Document.from_dict(
-            {"id": id, "content": content, "content_type": content_type, "meta": meta_data, "score": score}
+            {
+                "id": id,
+                "content": content,
+                "content_type": content_type,
+                "meta": meta_data,
+                "score": score,
+                "id_hash_keys": id_hash_keys,
+            }
         )
 
         if return_embedding and embedding:
@@ -314,7 +337,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         try:
             result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-            logging.debug("Weaviate could not get the document requested: %s", usce)
+            logger.debug("Weaviate could not get the document requested: %s", usce)
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
@@ -341,7 +364,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             try:
                 result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-                logging.debug("Weaviate could not get the document requested: %s", usce)
+                logger.debug("Weaviate could not get the document requested: %s", usce)
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
@@ -358,7 +381,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
             if not self.uuid_format_warning_raised:
                 logger.warning(
-                    f"Document id {id} is not in uuid format. Such ids will be replaced by uuids, in this case {generated_uuid}."
+                    "Document id %s is not in uuid format. Such ids will be replaced by uuids, in this case %s.",
+                    id,
+                    generated_uuid,
                 )
                 self.uuid_format_warning_raised = True
             id = generated_uuid
@@ -510,7 +535,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                for idx, doc in enumerate(document_batch):
+                for doc in document_batch:
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
 
@@ -954,7 +979,6 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             properties.append("_additional {id, distance, vector}")
 
         if query is None:
-
             # Retrieval via custom query, no BM25
             if custom_query:
                 query_output = self.weaviate_client.query.raw(custom_query)
@@ -1002,23 +1026,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 # BM25 retrieval without filtering
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
-                    .with_near_vector({"vector": [0, 0]})
                     .with_limit(top_k)
+                    .with_bm25({"query": query, "properties": self.content_field})
                     .build()
                 )
-
-            # Build the BM25 part of the GQL manually.
-            # Currently the GetBuilder of the Weaviate-client (v3.6.0)
-            # does not support the BM25 part of GQL building, so
-            # the BM25 part needs to be added manually.
-            # The BM25 query needs to be provided all lowercase while
-            # the functionality is in experimental mode in Weaviate,
-            # see https://app.slack.com/client/T0181DYT9KN/C017EG2SL3H/thread/C017EG2SL3H-1658790227.208119
-            bm25_gql_query = f"""bm25: {{
-                query: "{query.replace('"', ' ').lower()}",
-                properties: ["{self.content_field}"]
-            }}"""
-            gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
 
             query_output = self.weaviate_client.query.raw(gql_query)
 
@@ -1507,8 +1518,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         """
         if index == self.index:
             logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+                "Deletion of default index '%s' detected. "
+                "If you plan to use this index again, please reinstantiate '%s' in order to avoid side-effects.",
+                index,
+                self.__class__.__name__,
             )
         self._delete_index(index)
 

@@ -1,0 +1,25 @@
+version: 'ignore'
+
+components:
+  - name: InMemoryDocumentStore
+    type: InMemoryDocumentStore
+  - name: tfidf_ret
+    params:
+      document_store: InMemoryDocumentStore
+    type: TfidfRetriever
+  - name: TextFileConverter
+    type: TextConverter
+pipelines:
+  - name: query
+    nodes:
+      - inputs:
+          - Query
+        name: tfidf_ret
+  - name: indexing
+    nodes:
+      - name: TextFileConverter
+        inputs: [ File ]
+      - name: tfidf_ret
+        inputs: [ TextFileConverter ]
+      - name: InMemoryDocumentStore
+        inputs: [ tfidf_ret ]

@@ -86,8 +86,9 @@ class TransformersReader(BaseReader):
 
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.model = pipeline(
@@ -169,7 +170,7 @@ class TransformersReader(BaseReader):
                 pred["doc_id"] = cur_doc_id
         predictions = list(itertools.chain.from_iterable(predictions))
 
-        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, all_docs, top_k)
+        answers, _ = self._extract_answers_of_predictions(predictions, all_docs, top_k)
 
         results = {"query": query, "answers": answers}
         return results
@@ -305,7 +306,7 @@ class TransformersReader(BaseReader):
                         context=cur_doc.content[context_start:context_end],
                         offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
                         offsets_in_context=[Span(start=pred["start"] - context_start, end=pred["end"] - context_start)],
-                        document_id=cur_doc.id,
+                        document_ids=[cur_doc.id],
                         meta=cur_doc.meta,
                     )
                 )

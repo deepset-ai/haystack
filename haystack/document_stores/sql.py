@@ -1,3 +1,4 @@
+#  type: ignore
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -24,7 +25,7 @@ try:
         TypeDecorator,
     )
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship, sessionmaker
+    from sqlalchemy.orm import relationship, sessionmaker, aliased
     from sqlalchemy.sql import case, null
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -41,7 +42,6 @@ Base = declarative_base()  # type: Any
 
 
 class ArrayType(TypeDecorator):
-
     impl = String
     cache_ok = True
 
@@ -80,17 +80,17 @@ class MetaDocumentORM(ORMBase):
     __tablename__ = "meta_document"
 
     name = Column(String(100), index=True)
-    value = Column(ArrayType(100), index=True)
+    value = Column(ArrayType(1000), index=True)
     documents = relationship("DocumentORM", back_populates="meta")
 
     document_id = Column(String(100), nullable=False, index=True)
     document_index = Column(String(100), nullable=False, index=True)
-    __table_args__ = (
+    __table_args__ = (  # type: ignore
         ForeignKeyConstraint(
             [document_id, document_index], [DocumentORM.id, DocumentORM.index], ondelete="CASCADE", onupdate="CASCADE"
         ),
         {},
-    )  # type: ignore
+    )
 
 
 class LabelORM(ORMBase):
@@ -118,12 +118,12 @@ class MetaLabelORM(ORMBase):
 
     label_id = Column(String(100), nullable=False, index=True)
     label_index = Column(String(100), nullable=False, index=True)
-    __table_args__ = (
+    __table_args__ = (  # type: ignore
         ForeignKeyConstraint(
             [label_id, label_index], [LabelORM.id, LabelORM.index], ondelete="CASCADE", onupdate="CASCADE"
         ),
         {},
-    )  # type: ignore
+    )
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -448,10 +448,11 @@ class SQLDocumentStore(BaseDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f"   Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                "   Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
         # TODO: Use batch_size
 
@@ -623,7 +624,6 @@ class SQLDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
     ) -> List[Document]:
-
         raise NotImplementedError(
             "SQLDocumentStore is currently not supporting embedding queries. "
             "Change the query type (e.g. by choosing a different retriever) "
@@ -687,7 +687,8 @@ class SQLDocumentStore(BaseDocumentStore):
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
 
-            self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
+            inner_query = document_ids_to_delete.subquery()
+            self.session.query(DocumentORM).filter(DocumentORM.id.in_(aliased(inner_query))).delete(
                 synchronize_session=False
             )
 
@@ -735,7 +736,8 @@ class SQLDocumentStore(BaseDocumentStore):
             if ids:
                 label_ids_to_delete = label_ids_to_delete.filter(LabelORM.id.in_(ids))
 
-            self.session.query(LabelORM).filter(LabelORM.id.in_(label_ids_to_delete)).delete(synchronize_session=False)
+            inner_query = label_ids_to_delete.subquery()
+            self.session.query(LabelORM).filter(LabelORM.id.in_(aliased(inner_query))).delete(synchronize_session=False)
 
         self.session.commit()
 
@@ -751,7 +753,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def chunked_dict(self, dictionary, size):
         it = iter(dictionary)
-        for i in range(0, len(dictionary), size):
+        for _ in range(0, len(dictionary), size):
             yield {k: dictionary[k] for k in itertools.islice(it, size)}
 
     def _column_windows(self, session, column, windowsize):

@@ -32,7 +32,6 @@ class BaseGenerator(BaseComponent):
         pass
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
-
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k)
         else:
@@ -72,12 +71,13 @@ class BaseGenerator(BaseComponent):
             answers.append(
                 Answer(
                     answer=generated_answer,
+                    document_ids=flat_docs_dict.get("id"),
                     type="generative",
                     meta={
-                        "doc_ids": flat_docs_dict["id"],
-                        "doc_scores": flat_docs_dict["score"],
-                        "content": flat_docs_dict["content"],
-                        "titles": [d.get("name", "") for d in flat_docs_dict["meta"]],
+                        "doc_scores": flat_docs_dict.get("score"),
+                        "content": flat_docs_dict.get("content"),
+                        "titles": [d.get("name", "") for d in flat_docs_dict.get("meta", [])],
+                        "doc_metas": flat_docs_dict.get("meta"),
                     },
                 )
             )

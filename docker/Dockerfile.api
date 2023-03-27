@@ -3,8 +3,10 @@ ARG base_image
 
 FROM ${base_image}:${base_image_tag}
 
-ENV SERVICE_NAME="gunicorn-service"
+ENV SERVICE_NAME="haystackd"
 
+# Haystack pipelines are run by the "haystackd" user.
+# This helps keep the process and log management organized.
 RUN addgroup --gid 1001 $SERVICE_NAME && \
     adduser --gid 1001 --uid 1001 --shell /bin/false --disabled-password $SERVICE_NAME && \
     mkdir -p /var/log/$SERVICE_NAME && \
@@ -12,14 +14,15 @@ RUN addgroup --gid 1001 $SERVICE_NAME && \
 
 
 # Create a folder for the /file-upload API endpoint with write permissions for the service user only
-RUN mkdir -p /opt/file-upload && chown $SERVICE_NAME:$SERVICE_NAME /opt/file-upload && chmod 600 /opt/file-upload
+RUN mkdir -p /opt/file-upload && chown $SERVICE_NAME:$SERVICE_NAME /opt/file-upload && chmod 700 /opt/file-upload
 
 # Tell rest_api which folder to use for uploads
 ENV FILE_UPLOAD_PATH="/opt/file-upload"
 
 ENV TIKA_LOG_PATH="/var/log/$SERVICE_NAME/"
 
+# The uvicorn server runs on port 8000, and it needs to be accessible from outside the container.
 EXPOSE 8000
 
 USER $SERVICE_NAME
-CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]
+CMD ["uvicorn", "rest_api.application:app",  "--host", "0.0.0.0"]

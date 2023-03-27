@@ -123,15 +123,17 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
 
         if labels and task == "text-classification":
             logger.warning(
-                f"Provided labels {labels} will be ignored for task text-classification. Set task to "
-                f"zero-shot-classification to use labels."
+                "Provided labels %s will be ignored for task text-classification. Set task to "
+                "zero-shot-classification to use labels.",
+                labels,
             )
 
         resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(resolved_devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {resolved_devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                resolved_devices[0],
             )
 
         if tokenizer is None:

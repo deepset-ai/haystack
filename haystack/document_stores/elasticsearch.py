@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, List, Optional, Type, Union
-from copy import deepcopy
 
 import numpy as np
 
@@ -52,7 +51,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
-        index_type: str = "flat",
         scroll: str = "1d",
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
@@ -114,8 +112,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
-                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
         :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
                        Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
                        For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
@@ -133,13 +129,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         :param use_system_proxy: Whether to use system proxy.
 
         """
-        # hnsw is only supported in OpensearchDocumentStore
-        if index_type == "hnsw":
-            raise DocumentStoreError(
-                "The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
-                "Try the OpenSearchDocumentStore instead."
-            )
-
         # Base constructor might need the client to be ready, create it first
         client = self._init_elastic_client(
             host=host,
@@ -174,7 +163,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             similarity=similarity,
             return_embedding=return_embedding,
             duplicate_documents=duplicate_documents,
-            index_type=index_type,
             scroll=scroll,
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
@@ -208,7 +196,6 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         timeout: int,
         use_system_proxy: bool,
     ) -> Elasticsearch:
-
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
@@ -232,6 +219,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         elif aws4auth:
             # aws elasticsearch with IAM
             # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
+            if username:
+                logger.warning(
+                    "aws4auth and a username are passed to the ElasticsearchDocumentStore. The username will be ignored and aws4auth will be used for authentication."
+                )
             client = Elasticsearch(
                 hosts=hosts,
                 http_auth=aws4auth,
@@ -377,9 +368,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
 
-        body = self._construct_dense_query_body(query_emb, filters, top_k, return_embedding)
+        body = self._construct_dense_query_body(
+            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding
+        )
 
-        logger.debug("Retriever query: %s", body)
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
@@ -399,19 +391,13 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             raise e
 
         documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
             for hit in result
         ]
         return documents
 
     def _construct_dense_query_body(
-        self,
-        query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
-        top_k: int = 10,
-        return_embedding: Optional[bool] = None,
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
@@ -421,20 +407,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             else:
                 body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
 
-        excluded_meta_data: Optional[list] = None
+        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
 
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
         return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
@@ -524,9 +500,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
         if not any(indices):
             logger.warning(
-                f"To use an index, you must create it first. The index called '{index_name}' doesn't exist. "
-                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance doesn't validate the index after you create it."
+                "To use an index, you must create it first. The index called '%s' doesn't exist. "
+                "You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                "Note that this instance doesn't validate the index after you create it.",
+                index_name,
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.

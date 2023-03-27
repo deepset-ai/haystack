@@ -27,7 +27,7 @@ class BM25Retriever(BaseRetriever):
         scale_score: bool = True,
     ):
         """
-        :param document_store: An instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore, OpenSearchDocumentStore, and OpenDistroElasticsearchDocumentStore.
+        :param document_store: An instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore and OpenSearchDocumentStore.
             If None, a document store must be passed to the retrieve method for this Retriever to work.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").

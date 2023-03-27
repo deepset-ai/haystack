@@ -1,19 +1,17 @@
-from copy import deepcopy
-from pathlib import Path
-import os
 import ssl
 import json
 import platform
 import sys
+import datetime
 from typing import Tuple
+from copy import deepcopy
+from unittest import mock
 
 import pytest
 from requests import PreparedRequest
 import responses
 import logging
-from transformers import pipeline
 import yaml
-import pandas as pd
 
 from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
@@ -36,16 +34,13 @@ from haystack.pipelines import (
     DocumentSearchPipeline,
     QuestionGenerationPipeline,
     MostSimilarDocumentsPipeline,
-    BaseStandardPipeline,
 )
-from haystack.pipelines.config import validate_config_strings, get_component_definitions
+from haystack.pipelines.config import get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import PreProcessor, TextConverter, QuestionGenerator
+from haystack.nodes import PreProcessor, TextConverter
 from haystack.utils.deepsetcloud import DeepsetCloudError
-from haystack import Document, Answer
-from haystack.nodes.other.route_documents import RouteDocuments
-from haystack.nodes.other.join_answers import JoinAnswers
+from haystack import Answer
 
 from ..conftest import (
     MOCK_DC,
@@ -91,7 +86,7 @@ class ParentComponent(BaseComponent):
         super().__init__()
 
     def run(*args, **kwargs):
-        logging.info("ParentComponent run() was called")
+        logger.info("ParentComponent run() was called")
 
     def run_batch(*args, **kwargs):
         pass
@@ -104,7 +99,7 @@ class ParentComponent2(BaseComponent):
         super().__init__()
 
     def run(*args, **kwargs):
-        logging.info("ParentComponent2 run() was called")
+        logger.info("ParentComponent2 run() was called")
 
     def run_batch(*args, **kwargs):
         pass
@@ -117,7 +112,7 @@ class ChildComponent(BaseComponent):
         super().__init__()
 
     def run(*args, **kwargs):
-        logging.info("ChildComponent run() was called")
+        logger.info("ChildComponent run() was called")
 
     def run_batch(*args, **kwargs):
         pass
@@ -681,112 +676,7 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
     )
 
 
-@pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
-def test_validate_user_input_invalid(input):
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(input)
-
-
-@pytest.mark.parametrize(
-    "input",
-    [
-        "test",
-        "testName",
-        "test_name",
-        "test-name",
-        "test-name1234",
-        "http://localhost:8000/my-path",
-        "C:\\Some\\Windows\\Path\\To\\file.txt",
-    ],
-)
-def test_validate_user_input_valid(input):
-    validate_config_strings(input)
-
-
-def test_validate_pipeline_config_component_with_json_input_valid():
-    validate_config_strings(
-        {"components": [{"name": "test", "type": "test", "params": {"custom_query": '{"json-key": "json-value"}'}}]}
-    )
-
-
-def test_validate_pipeline_config_component_with_json_input_invalid_key():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(
-            {
-                "components": [
-                    {"name": "test", "type": "test", "params": {"another_param": '{"json-key": "json-value"}'}}
-                ]
-            }
-        )
-
-
-def test_validate_pipeline_config_component_with_json_input_invalid_value():
-    with pytest.raises(PipelineConfigError, match="does not contain valid JSON"):
-        validate_config_strings(
-            {
-                "components": [
-                    {"name": "test", "type": "test", "params": {"custom_query": "this is surely not JSON! :)"}}
-                ]
-            }
-        )
-
-
-def test_validate_pipeline_config_invalid_component_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_component_type():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_component_param():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
-
-
-def test_validate_pipeline_config_invalid_component_param_key():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
-
-
-def test_validate_pipeline_config_invalid_pipeline_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_pipeline_node_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(
-            {
-                "components": [{"name": "test", "type": "test"}],
-                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "\btest"}]}],
-            }
-        )
-
-
-def test_validate_pipeline_config_invalid_pipeline_node_inputs():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
-        validate_config_strings(
-            {
-                "components": [{"name": "test", "type": "test"}],
-                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "test", "inputs": ["\btest"]}]}],
-            }
-        )
-
-
-def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limit):
-    pipeline_config = {}
-    node = {"config": pipeline_config}
-    pipeline_config["node"] = node
-
-    with pytest.raises(PipelineConfigError, match="recursive"):
-        validate_config_strings(pipeline_config)
-
-
 def test_pipeline_classify_type(tmp_path):
-
     pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
     assert pipe.get_type().startswith("GenerativeQAPipeline")
 

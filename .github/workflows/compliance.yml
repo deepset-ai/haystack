@@ -14,6 +14,7 @@ env:
 
 jobs:
   check-license-compliance-cpu:
+    if: ${{ !github.event.pull_request.head.repo.fork }}
     name: Check CPU dependencies
     runs-on: ubuntu-latest
     steps:
@@ -21,7 +22,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
+          python-version: 3.8
 
       - name: Install Haystack (CPU)
         # FIXME audio temporarily not checked as we plan to remove it in the near future
@@ -29,7 +30,6 @@ jobs:
           pip install --upgrade pip
           pip install .[docstores,crawler,preprocessing,ocr,ray,onnx,beir]
           pip install rest_api/
-          pip install ui/
 
       - name: Create file with full dependency list
         run: |
@@ -50,13 +50,14 @@ jobs:
           run-tests: true
 
       - name: Send Slack notification if license check failed
-        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08
+        uses: act10ns/slack@v2
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
           channel: ${{ env.SLACK_ALERT_CHANNEL }}
 
   check-license-compliance-gpu:
+    if: ${{ !github.event.pull_request.head.repo.fork }}
     name: Check GPU dependencies
     runs-on: ubuntu-latest
     steps:
@@ -64,7 +65,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
+          python-version: 3.8
 
       - name: Install Haystack
         # FIXME audio temporarily not checked as we plan to remove it in the near future
@@ -91,7 +92,7 @@ jobs:
           run-tests: true
 
       - name: Send Slack notification if license check failed
-        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08
+        uses: act10ns/slack@v2
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}

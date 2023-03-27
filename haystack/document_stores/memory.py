@@ -15,6 +15,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 import rank_bm25
+import pandas as pd
+from scipy.special import expit
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
@@ -49,7 +51,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         use_bm25: bool = False,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
-        bm25_parameters: dict = {},
+        bm25_parameters: Optional[Dict] = None,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -87,7 +89,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
                                 For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
+                                By default, no parameters are set.
         """
+        if bm25_parameters is None:
+            bm25_parameters = {}
         super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
@@ -110,8 +115,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.main_device = self.devices[0]
@@ -184,7 +190,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                     )
                 if duplicate_documents == "skip":
                     logger.warning(
-                        f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
+                        "Duplicate Documents: Document with id '%s' already exists in index '%s'", document.id, index
                     )
                     continue
             self.indexes[index][document.id] = document
@@ -202,15 +208,24 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index = index or self.index
 
         all_documents = self.get_all_documents(index=index)
-        textual_documents = [doc for doc in all_documents if doc.content_type == "text"]
+        textual_documents = []
+        for doc in all_documents:
+            if doc.content_type == "text":
+                textual_documents.append(doc.content.lower())
+            elif doc.content_type == "table":
+                if isinstance(doc.content, pd.DataFrame):
+                    textual_documents.append(doc.content.astype(str).to_csv(index=False).lower())
+                else:
+                    raise DocumentStoreError("Documents of type 'table' need to have a pd.DataFrame as content field")
         if len(textual_documents) < len(all_documents):
             logger.warning(
-                f"Some documents in {index} index are non-textual."
-                f" They will be written to the index, but the corresponding BM25 representations will not be generated."
+                "Some documents in %s index are non-textual."
+                " They will be written to the index, but the corresponding BM25 representations will not be generated.",
+                index,
             )
 
         tokenized_corpus = [
-            self.bm25_tokenization_regex(doc.content.lower())
+            self.bm25_tokenization_regex(doc)
             for doc in tqdm(textual_documents, unit=" docs", desc="Updating BM25 representation...")
         ]
         self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
@@ -236,10 +251,11 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_objects, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f" Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                " Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
 
         for label in label_objects:
@@ -266,47 +282,60 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
+    def get_documents_by_id(
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         """
         Fetch documents by specifying a list of text id strings.
         """
+        if headers:
+            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+        if batch_size:
+            logger.warning(
+                "InMemoryDocumentStore does not support batching in `get_documents_by_id` method. This parameter is ignored."
+            )
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
 
-    def get_scores_torch(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
+    def _get_scores_torch(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
         """
         Calculate similarity scores between query embedding and a list of documents using torch.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param document_to_search: List of documents to compare `query_emb` against.
+        :param documents_to_search: List of documents to compare `query_emb` against.
         """
-        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
-        if len(query_emb.shape) == 1:
-            query_emb = query_emb.unsqueeze(dim=0)
+        query_emb_tensor = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
+        if query_emb_tensor.ndim == 1:
+            query_emb_tensor = query_emb_tensor.unsqueeze(dim=0)
 
-        doc_embeds = np.array([doc.embedding for doc in document_to_search])
-        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)
-        if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
-        elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
-            return []
+        doc_embeds = np.array([doc.embedding for doc in documents_to_search])
+        doc_embeds_tensor = torch.as_tensor(doc_embeds, dtype=torch.float)
+        if doc_embeds_tensor.ndim == 1:
+            # if there are no embeddings, return an empty list
+            if doc_embeds_tensor.shape[0] == 0:
+                return []
+            doc_embeds_tensor = doc_embeds_tensor.unsqueeze(dim=0)
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
-            query_emb_norm = torch.norm(query_emb, dim=1)
-            query_emb = torch.div(query_emb, query_emb_norm)
+            query_emb_norm = torch.norm(query_emb_tensor, dim=1)
+            query_emb_tensor = torch.div(query_emb_tensor, query_emb_norm)
 
-            doc_embeds_norms = torch.norm(doc_embeds, dim=1)
-            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T
+            doc_embeds_norms = torch.norm(doc_embeds_tensor, dim=1)
+            doc_embeds_tensor = torch.div(doc_embeds_tensor.T, doc_embeds_norms).T
 
         curr_pos = 0
-        scores = []
-        while curr_pos < len(doc_embeds):
-            doc_embeds_slice = doc_embeds[curr_pos : curr_pos + self.scoring_batch_size]
+        scores: List[float] = []
+        while curr_pos < len(doc_embeds_tensor):
+            doc_embeds_slice = doc_embeds_tensor[curr_pos : curr_pos + self.scoring_batch_size]
             doc_embeds_slice = doc_embeds_slice.to(self.main_device)
             with torch.inference_mode():
-                slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
+                slice_scores = torch.matmul(doc_embeds_slice, query_emb_tensor.T).cpu()
                 slice_scores = slice_scores.squeeze(dim=1)
                 slice_scores = slice_scores.numpy().tolist()
 
@@ -315,21 +344,22 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         return scores
 
-    def get_scores_numpy(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
+    def _get_scores_numpy(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
         """
         Calculate similarity scores between query embedding and a list of documents using numpy.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param document_to_search: List of documents to compare `query_emb` against.
+        :param documents_to_search: List of documents to compare `query_emb` against.
         """
-        if len(query_emb.shape) == 1:
-            query_emb = np.expand_dims(query_emb, 0)
+        if query_emb.ndim == 1:
+            query_emb = np.expand_dims(a=query_emb, axis=0)
 
-        doc_embeds = np.array([doc.embedding for doc in document_to_search])
-        if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
-            doc_embeds = doc_embeds.unsqueeze(dim=0)
-        elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
-            return []
+        doc_embeds = np.array([doc.embedding for doc in documents_to_search])
+        if doc_embeds.ndim == 1:
+            # if there are no embeddings, return an empty list
+            if doc_embeds.shape[0] == 0:
+                return []
+            doc_embeds = np.expand_dims(a=doc_embeds, axis=0)
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
@@ -345,11 +375,11 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         return scores
 
-    def get_scores(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
+    def _get_scores(self, query_emb: np.ndarray, documents_to_search: List[Document]) -> List[float]:
         if self.main_device.type == "cuda":
-            scores = self.get_scores_torch(query_emb, document_to_search)
+            scores = self._get_scores_torch(query_emb, documents_to_search)
         else:
-            scores = self.get_scores_numpy(query_emb, document_to_search)
+            scores = self._get_scores_numpy(query_emb, documents_to_search)
 
         return scores
 
@@ -445,11 +475,17 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         if query_emb is None:
             return []
 
-        document_to_search = self.get_all_documents(index=index, filters=filters, return_embedding=True)
-        scores = self.get_scores(query_emb, document_to_search)
+        documents = self.get_all_documents(index=index, filters=filters, return_embedding=True)
+        documents_with_embeddings = [doc for doc in documents if doc.embedding is not None]
+        if len(documents) != len(documents_with_embeddings):
+            logger.warning(
+                "Skipping some of your documents that don't have embeddings. "
+                "To generate embeddings, run the document store's update_embeddings() method."
+            )
+        scores = self._get_scores(query_emb, documents_with_embeddings)
 
         candidate_docs = []
-        for doc, score in zip(document_to_search, scores):
+        for doc, score in zip(documents_with_embeddings, scores):
             curr_meta = deepcopy(doc.meta)
             new_document = Document(
                 id=doc.id, content=doc.content, content_type=doc.content_type, meta=curr_meta, embedding=doc.embedding
@@ -570,7 +606,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         """
         Return the count of embeddings in the document store.
         """
-        documents = self.get_all_documents(filters=filters, index=index)
+        documents = self.get_all_documents_generator(filters=filters, index=index, return_embedding=True)
         embedding_count = sum(doc.embedding is not None for doc in documents)
         return embedding_count
 
@@ -918,7 +954,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
-        scale_score: bool = False,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -926,6 +962,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query: The query.
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         """
 
         if headers:
@@ -937,10 +974,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         if filters:
             logger.warning(
                 "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
-            )
-        if scale_score is True:
-            logger.warning(
-                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
             )
 
         index = index or self.index
@@ -954,9 +987,12 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         tokenized_query = self.bm25_tokenization_regex(query.lower())
         docs_scores = self.bm25[index].get_scores(tokenized_query)
+        if scale_score is True:
+            # scaling probability from BM25
+            docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
-        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type == "text"]
+        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
         top_docs = []
         for i in top_docs_positions:
             doc = textual_docs_list[i]
@@ -974,7 +1010,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
-        scale_score: bool = False,
+        scale_score: bool = True,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -983,6 +1019,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query: The query.
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         """
 
         if headers:
@@ -995,10 +1032,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             logger.warning(
                 "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
             )
-        if scale_score is True:
-            logger.warning(
-                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
-            )
 
         index = index or self.index
         if index not in self.bm25:
@@ -1008,6 +1041,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         result_documents = []
         for query in queries:
-            result_documents.append(self.query(query=query, top_k=top_k, index=index))
+            result_documents.append(self.query(query=query, top_k=top_k, index=index, scale_score=scale_score))
 
         return result_documents

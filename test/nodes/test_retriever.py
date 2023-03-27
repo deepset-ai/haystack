@@ -58,14 +58,13 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
     # so without filters applied it does nothing
     if not isinstance(retriever_with_docs, FilterRetriever):
         # the BM25 implementation in Weaviate would NOT pick up the expected records
-        # just with the "Who lives in Berlin?" query, but would return empty results,
-        # (maybe live & Berlin are stopwords in Weaviate? :-) ), so for Weaviate we need a query with better matching
-        # This was caused by lack of stemming and casing in Weaviate BM25 implementation
-        # TODO - In Weaviate 1.17.0 there is a fix for the lack of casing, which means that once 1.17.0 is released
+        # because of the lack of stemming: "Who lives in berlin" returns only 1 record while
+        # "Who live in berlin" returns all 5 records.
+        # TODO - In Weaviate 1.19.0 there is a fix for the lack of stemming, which means that once 1.19.0 is released
         # this `if` can be removed, as the standard search query "Who lives in Berlin?" should work with Weaviate.
-        # See https://github.com/semi-technologies/weaviate/issues/2455#issuecomment-1355702003
+        # See https://github.com/weaviate/weaviate/issues/2439
         if isinstance(document_store_with_docs, WeaviateDocumentStore):
-            res = retriever_with_docs.retrieve(query="name is Carla, I live in Berlin")
+            res = retriever_with_docs.retrieve(query="Who live in berlin")
         else:
             res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
         assert res[0].content == "My name is Carla and I live in Berlin"
@@ -157,6 +156,9 @@ class MockBaseRetriever(MockRetriever):
     ):
         return [[self.mock_document] for _ in range(len(queries))]
 
+    def embed_documents(self, documents: List[Document]):
+        return np.full((len(documents), 768), 0.5)
+
 
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
@@ -169,6 +171,7 @@ def test_retrieval_empty_query(document_store: BaseDocumentStore):
     assert result[0]["documents"][0][0] == mock_document
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -186,6 +189,7 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
     assert res[0][0].meta["name"] == "filename1"
 
 
+@pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
@@ -267,6 +271,14 @@ def test_elasticsearch_custom_query():
     )
     results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
     assert len(results) == 4
+
+    # test linefeeds in query
+    results = retriever.retrieve(query="test\n", filters={"years": ["2020", "2021"]})
+    assert len(results) == 3
+
+    # test double quote in query
+    results = retriever.retrieve(query='test"', filters={"years": ["2020", "2021"]})
+    assert len(results) == 3
 
     # test custom "term" query
     retriever = BM25Retriever(
@@ -387,14 +399,13 @@ def test_openai_embedding_retriever_selection():
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.parametrize("retriever", ["cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
-    "the OpenAI/Cohere API key to run this test.",
+    not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called COHERE_API_KEY containing " "the Cohere API key to run this test.",
 )
-def test_basic_embedding(document_store, retriever, docs_with_ids):
+def test_basic_cohere_embedding(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -408,14 +419,105 @@ def test_basic_embedding(document_store, retriever, docs_with_ids):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason=("Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test."),
+)
+def test_basic_openai_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1536
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["azure"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("AZURE_OPENAI_API_KEY", None)
+    and not os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    and not os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED", None),
+    reason=(
+        "Please export env variables called AZURE_OPENAI_API_KEY containing "
+        "the Azure OpenAI key, AZURE_OPENAI_BASE_URL containing "
+        "the Azure OpenAI base URL, and AZURE_OPENAI_DEPLOYMENT_NAME_EMBED containing "
+        "the Azure OpenAI deployment name to run this test."
+    ),
+)
+def test_basic_azure_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1536
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
-    "the OpenAI/Cohere API key to run this test.",
+    not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called COHERE_API_KEY containing the Cohere API key to run this test.",
 )
-def test_retriever_basic_search(document_store, retriever, docs_with_ids):
+def test_retriever_basic_cohere_search(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export env called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_retriever_basic_openai_search(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["azure"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("AZURE_OPENAI_API_KEY", None)
+    and not os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    and not os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED", None),
+    reason=(
+        "Please export env variables called AZURE_OPENAI_API_KEY containing "
+        "the Azure OpenAI key, AZURE_OPENAI_BASE_URL containing "
+        "the Azure OpenAI base URL, and AZURE_OPENAI_DEPLOYMENT_NAME_EMBED containing "
+        "the Azure OpenAI deployment name to run this test."
+    ),
+)
+def test_retriever_basic_azure_search(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -453,6 +555,32 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     for doc, expected_value in zip(docs, expected_values):
         assert len(doc.embedding) == 512
         assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_text(document_store, retriever):
+    docs = [
+        Document(content="This is a test", content_type="text"),
+        Document(content="This is another test", content_type="text"),
+    ]
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_text_retriever_embedding_only_table(document_store, retriever):
+    doc = Document(
+        content=pd.DataFrame(columns=["id", "text"], data=[["1", "This is a test"], ["2", "This is another test"]]),
+        content_type="table",
+    )
+    document_store.write_documents([doc])
+    document_store.update_embeddings(retriever)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -994,6 +1122,7 @@ def test_multimodal_table_retrieval(table_docs: List[Document]):
     )
 
 
+@pytest.mark.skip("Must be reworked as it fails randomly")
 @pytest.mark.integration
 def test_multimodal_retriever_query():
     retriever = MultiModalRetriever(

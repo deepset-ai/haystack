@@ -47,6 +47,15 @@ class ModelingError(HaystackError):
         super().__init__(message=message, docs_link=docs_link)
 
 
+class AgentError(HaystackError):
+    """Exception for issues raised within an agent"""
+
+    def __init__(
+        self, message: Optional[str] = None, docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/agents"
+    ):
+        super().__init__(message=message, docs_link=docs_link)
+
+
 class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 
@@ -111,13 +120,6 @@ class NodeError(HaystackError):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
 
 
-class AudioNodeError(NodeError):
-    """Exception for issues that occur in a node of the audio module"""
-
-    def __init__(self, message: Optional[str] = None):
-        super().__init__(message=message)
-
-
 class OpenAIError(NodeError):
     """Exception for issues that occur in the OpenAI APIs"""
 
@@ -139,6 +141,16 @@ class OpenAIRateLimitError(OpenAIError):
         super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
 
 
+class OpenAIUnauthorizedError(OpenAIError):
+    """
+    Unauthorized error for OpenAI API (status code 401)
+    See https://platform.openai.com/docs/guides/error-codes/api-errors
+    """
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+
+
 class CohereError(NodeError):
     """Exception for issues that occur in the Cohere APIs"""
 
@@ -147,3 +159,17 @@ class CohereError(NodeError):
     ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
+
+
+class CohereUnauthorizedError(CohereError):
+    """Exception for unauthorized access to Cohere APIs"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+
+
+class ImageToTextError(NodeError):
+    """Exception for issues that occur in the ImageToText node"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)

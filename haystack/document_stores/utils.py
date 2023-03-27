@@ -52,8 +52,9 @@ def eval_data_from_json(
             problematic_ids.extend(cur_problematic_ids)
     if len(problematic_ids) > 0:
         logger.warning(
-            f"Could not convert an answer for {len(problematic_ids)} questions.\n"
-            f"There were conversion errors for question ids: {problematic_ids}"
+            "Could not convert an answer for %s questions.\nThere were conversion errors for question ids: %s",
+            len(problematic_ids),
+            problematic_ids,
         )
     return docs, labels
 
@@ -99,8 +100,10 @@ def eval_data_from_jsonl(
                 if len(docs) >= batch_size:
                     if len(problematic_ids) > 0:
                         logger.warning(
-                            f"Could not convert an answer for {len(problematic_ids)} questions.\n"
-                            f"There were conversion errors for question ids: {problematic_ids}"
+                            "Could not convert an answer for %s questions.\n"
+                            "There were conversion errors for question ids: %s",
+                            len(problematic_ids),
+                            problematic_ids,
                         )
                     yield docs, labels
                     docs = []
@@ -223,7 +226,7 @@ def _extract_docs_and_labels_from_dict(
                             context=cur_doc.content,
                             offsets_in_document=[Span(start=cur_ans_start, end=cur_ans_start + len(ans))],
                             offsets_in_context=[Span(start=cur_ans_start, end=cur_ans_start + len(ans))],
-                            document_id=cur_doc.id,
+                            document_ids=[cur_doc.id],
                         )
                         label = Label(
                             query=qa["question"],

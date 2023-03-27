@@ -1,6 +1,11 @@
 from abc import abstractmethod
 from typing import List, Dict, Union, Optional, Any
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import logging
 from pathlib import Path
 from copy import deepcopy
@@ -38,6 +43,7 @@ from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
 from haystack.modeling.utils import initialize_device_settings
+from haystack.telemetry_2 import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -178,9 +184,10 @@ class DensePassageRetriever(DenseRetriever):
 
         if document_store and document_store.similarity != "dot_product":
             logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                "You are using a Dense Passage Retriever model with the %s function. "
                 "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
         # Init & Load Encoders
@@ -236,7 +243,7 @@ class DensePassageRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -479,7 +486,7 @@ class DensePassageRetriever(DenseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -499,7 +506,7 @@ class DensePassageRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -550,8 +557,9 @@ class DensePassageRetriever(DenseRetriever):
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -593,7 +601,7 @@ class DensePassageRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/dpr",
@@ -628,12 +636,10 @@ class DensePassageRetriever(DenseRetriever):
         :param epsilon: epsilon parameter of optimizer
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
@@ -649,6 +655,7 @@ class DensePassageRetriever(DenseRetriever):
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
         """
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
         self.processor.embed_title = embed_title
         self.processor.data_dir = Path(data_dir)
         self.processor.train_filename = train_filename
@@ -660,7 +667,7 @@ class DensePassageRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -674,7 +681,7 @@ class DensePassageRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -687,7 +694,6 @@ class DensePassageRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -715,7 +721,7 @@ class DensePassageRetriever(DenseRetriever):
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
         if len(self.devices) > 1 and not isinstance(self.model, DataParallel):
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -795,7 +801,7 @@ class TableTextRetriever(DenseRetriever):
         top_k: int = 10,
         use_gpu: bool = True,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         use_fast_tokenizers: bool = True,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
@@ -826,7 +832,8 @@ class TableTextRetriever(DenseRetriever):
                                   then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
-                                  (topic, entities etc.).
+                                  (topic, entities etc.). If no value is provided, a default will be created.
+                                  That default embeds name, section title and caption.
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
@@ -850,6 +857,8 @@ class TableTextRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name", "section_title", "caption"]
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -933,7 +942,7 @@ class TableTextRetriever(DenseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def retrieve(
         self,
@@ -1073,11 +1082,18 @@ class TableTextRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        query_embs: List[np.ndarray] = []
-        for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(queries=batch))
+        # embed_queries is already batched within by batch_size, so no need to batch the input here
+        query_embs: np.ndarray = self.embed_queries(queries=queries)
+        batched_query_embs: List[np.ndarray] = []
+        for i in range(0, len(query_embs), batch_size):
+            batched_query_embs.extend(query_embs[i : i + batch_size])
         documents = document_store.query_by_embedding_batch(
-            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+            query_embs=batched_query_embs,
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
         )
 
         return documents
@@ -1100,7 +1116,7 @@ class TableTextRetriever(DenseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
 
-        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, _ = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
@@ -1120,7 +1136,7 @@ class TableTextRetriever(DenseRetriever):
         with tqdm(
             total=len(data_loader) * self.batch_size,
             unit=" Docs",
-            desc=f"Create embeddings",
+            desc="Create embeddings",
             position=1,
             leave=False,
             disable=disable_tqdm,
@@ -1166,8 +1182,9 @@ class TableTextRetriever(DenseRetriever):
 
         if self.processor.num_hard_negatives != 0:
             logger.warning(
-                f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
-                f"not require any hard negatives. Setting num_hard_negatives to 0."
+                "'num_hard_negatives' is set to %s, but inference does "
+                "not require any hard negatives. Setting num_hard_negatives to 0.",
+                self.processor.num_hard_negatives,
             )
             self.processor.num_hard_negatives = 0
 
@@ -1225,7 +1242,7 @@ class TableTextRetriever(DenseRetriever):
         max_processes: int = 128,
         dev_split: float = 0,
         batch_size: int = 2,
-        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         num_hard_negatives: int = 1,
         num_positives: int = 1,
         n_epochs: int = 3,
@@ -1236,7 +1253,7 @@ class TableTextRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/mm_retrieval",
@@ -1260,7 +1277,7 @@ class TableTextRetriever(DenseRetriever):
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
         :param embed_meta_fields: Concatenate meta fields with each passage and table.
-                                  The default setting in official MMRetrieval embeds page title,
+                                  If no value is provided, a default will be created. That default embeds page title,
                                   section title and caption with the corresponding table and title with
                                   corresponding text passage.
         :param num_hard_negatives: Number of hard negative passages (passages which are
@@ -1273,12 +1290,10 @@ class TableTextRetriever(DenseRetriever):
         :param epsilon: Epsilon parameter of optimizer.
         :param weight_decay: Weight decay parameter of optimizer.
         :param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: What optimizer to use (default: TransformersAdamW).
         :param num_warmup_steps: Number of warmup steps.
         :param optimizer_correct_bias: Whether to correct bias in optimizer.
@@ -1292,6 +1307,9 @@ class TableTextRetriever(DenseRetriever):
         :param checkpoints_to_keep: The maximum number of train checkpoints to save.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
+        if embed_meta_fields is None:
+            embed_meta_fields = ["page_title", "section_title", "caption"]
 
         self.processor.embed_meta_fields = embed_meta_fields
         self.processor.data_dir = Path(data_dir)
@@ -1304,7 +1322,7 @@ class TableTextRetriever(DenseRetriever):
         self.processor.num_positives = num_positives
 
         if isinstance(self.model, DataParallel):
-            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)  # type: ignore [operator]
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
@@ -1314,7 +1332,7 @@ class TableTextRetriever(DenseRetriever):
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.model,
+            model=self.model,  # type: ignore [arg-type]
             learning_rate=learning_rate,
             optimizer_opts={
                 "name": optimizer_name,
@@ -1327,7 +1345,6 @@ class TableTextRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -1361,7 +1378,7 @@ class TableTextRetriever(DenseRetriever):
         self.table_tokenizer.save_pretrained(f"{save_dir}/{table_encoder_save_dir}")
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.model, device_ids=self.devices)  # type: ignore [assignment]
 
     def save(
         self,
@@ -1396,7 +1413,7 @@ class TableTextRetriever(DenseRetriever):
         max_seq_len_table: int = 256,
         use_gpu: bool = True,
         batch_size: int = 16,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: Optional[List[str]] = None,
         use_fast_tokenizers: bool = True,
         similarity_function: str = "dot_product",
         query_encoder_dir: str = "query_encoder",
@@ -1406,6 +1423,8 @@ class TableTextRetriever(DenseRetriever):
         """
         Load TableTextRetriever from the specified directory.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = ["name", "section_title", "caption"]
 
         load_dir = Path(load_dir)
         mm_retriever = cls(
@@ -1444,8 +1463,11 @@ class EmbeddingRetriever(DenseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = [],
+        embed_meta_fields: Optional[List[str]] = None,
         api_key: Optional[str] = None,
+        azure_api_version: str = "2022-12-01",
+        azure_base_url: Optional[str] = None,
+        azure_deployment_name: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1497,10 +1519,17 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
-
+        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
+        :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
+                               This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
+        :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
+                                     will not be used.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = []
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -1521,6 +1550,9 @@ class EmbeddingRetriever(DenseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.api_key = api_key
+        self.api_version = azure_api_version
+        self.azure_base_url = azure_base_url
+        self.azure_deployment_name = azure_deployment_name
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None
@@ -1538,10 +1570,11 @@ class EmbeddingRetriever(DenseRetriever):
             and model_format != "sentence_transformers"
         ):
             logger.warning(
-                f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
-                f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
-                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
-                f"'model_format' parameter at all."
+                "You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '%s'."
+                " You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                "As an alternative, you can let Haystack derive the format automatically by not setting the "
+                "'model_format' parameter at all.",
+                self.model_format,
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
@@ -1761,11 +1794,18 @@ class EmbeddingRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        query_embs: List[np.ndarray] = []
-        for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(queries=batch))
+        # embed_queries is already batched within by batch_size, so no need to batch the input here
+        query_embs: np.ndarray = self.embed_queries(queries=queries)
+        batched_query_embs: List[np.ndarray] = []
+        for i in range(0, len(query_embs), batch_size):
+            batched_query_embs.extend(query_embs[i : i + batch_size])
         documents = document_store.query_by_embedding_batch(
-            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+            query_embs=batched_query_embs,
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
         )
 
         return documents
@@ -1828,7 +1868,7 @@ class EmbeddingRetriever(DenseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(
+                hf_hub_download(  # type: ignore [call-arg]
                     repo_id=model_name_or_path,
                     filename="config_sentence_transformers.json",
                     use_auth_token=use_auth_token,
@@ -1852,10 +1892,13 @@ class EmbeddingRetriever(DenseRetriever):
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
-        train_loss: str = "mnrl",
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ) -> None:
         """
-        Trains/adapts the underlying embedding model.
+        Trains/adapts the underlying embedding model. We only support the training of sentence-transformer embedding models.
 
         Each training data example is a dictionary with the following keys:
 
@@ -1864,22 +1907,23 @@ class EmbeddingRetriever(DenseRetriever):
         * neg_doc: the negative document string
         * score: the score margin
 
-
-        :param training_data: The training data
-        :type training_data: List[Dict[str, Any]]
-        :param learning_rate: The learning rate
-        :type learning_rate: float
-        :param n_epochs: The number of epochs
-        :type n_epochs: int
-        :param num_warmup_steps: The number of warmup steps
-        :type num_warmup_steps: int
-        :param batch_size: The batch size to use for the training, defaults to 16
-        :type batch_size: int (optional)
+        :param training_data: The training data in a dictionary format.
+        :param learning_rate: The learning rate.
+        :param n_epochs: The number of epochs that you want the train for.
+        :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
+            increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
+            decreased linearly back to zero.
+        :param batch_size: The batch size to use for the training. The default values is 16.
         :param train_loss: The loss to use for training.
-                           If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+                           If you're using a sentence-transformer embedding_model (which is the only model that training is supported for),
                            possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
-        :type train_loss: str (optional)
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
+        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
+            reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
+            for a full list of keyword arguments.
         """
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
         self.embedding_encoder.train(
             training_data,
             learning_rate=learning_rate,
@@ -1887,6 +1931,9 @@ class EmbeddingRetriever(DenseRetriever):
             num_warmup_steps=num_warmup_steps,
             batch_size=batch_size,
             train_loss=train_loss,
+            num_workers=num_workers,
+            use_amp=use_amp,
+            **kwargs,
         )
 
     def save(self, save_dir: Union[Path, str]) -> None:
@@ -1925,7 +1972,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = [],
+        embed_meta_fields: Optional[List[str]] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1973,7 +2020,10 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+                                  If no value is provided, a default empty list will be created.
         """
+        if embed_meta_fields is None:
+            embed_meta_fields = []
         super().__init__(
             embedding_model=embedding_model,
             document_store=document_store,

@@ -1,0 +1,21 @@
+# If you change this name also do it in linting.yml and ci_metrics.yml
+name: Linting
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**.py"
+      - "**/pyproject.toml"
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip mypy
+        run: echo "Skipped mypy"
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip pylint
+        run: echo "Skipped pylint"

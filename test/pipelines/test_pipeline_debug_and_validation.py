@@ -21,8 +21,7 @@ class MockRetriever(BaseMockRetriever):
             raise ValueError("TEST ERROR!")
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_node_names_validation(document_store_with_docs, tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(
@@ -52,89 +51,87 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
     assert "top_k" not in exception_raised
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
-
-    es_retriever = BM25Retriever(document_store=document_store_with_docs)
+    bm25_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
-    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
+    pipeline.add_node(component=bm25_retriever, name="BM25Retriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="Reader", inputs=["BM25Retriever"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}, debug=True
+        query="Who lives in Berlin?", params={"BM25Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}, debug=True
     )
     assert "_debug" in prediction.keys()
-    assert "ESRetriever" in prediction["_debug"].keys()
+    assert "BM25Retriever" in prediction["_debug"].keys()
     assert "Reader" in prediction["_debug"].keys()
-    assert "input" in prediction["_debug"]["ESRetriever"].keys()
-    assert "output" in prediction["_debug"]["ESRetriever"].keys()
+    assert "input" in prediction["_debug"]["BM25Retriever"].keys()
+    assert "output" in prediction["_debug"]["BM25Retriever"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["BM25Retriever"].keys()
     assert "input" in prediction["_debug"]["Reader"].keys()
     assert "output" in prediction["_debug"]["Reader"].keys()
-    assert prediction["_debug"]["ESRetriever"]["input"]
-    assert prediction["_debug"]["ESRetriever"]["output"]
+    assert "exec_time_ms" in prediction["_debug"]["Reader"].keys()
+    assert prediction["_debug"]["BM25Retriever"]["input"]
+    assert prediction["_debug"]["BM25Retriever"]["output"]
+    assert prediction["_debug"]["BM25Retriever"]["exec_time_ms"] is not None
     assert prediction["_debug"]["Reader"]["input"]
     assert prediction["_debug"]["Reader"]["output"]
+    assert prediction["_debug"]["Reader"]["exec_time_ms"] is not None
 
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
-
-    es_retriever = BM25Retriever(document_store=document_store_with_docs)
+    bm25_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
-    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
+    pipeline.add_node(component=bm25_retriever, name="BM25Retriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="Reader", inputs=["BM25Retriever"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}}
+        query="Who lives in Berlin?", params={"BM25Retriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}}
     )
     assert "_debug" in prediction.keys()
-    assert "ESRetriever" in prediction["_debug"].keys()
+    assert "BM25Retriever" in prediction["_debug"].keys()
     assert "Reader" not in prediction["_debug"].keys()
-    assert "input" in prediction["_debug"]["ESRetriever"].keys()
-    assert "output" in prediction["_debug"]["ESRetriever"].keys()
-    assert prediction["_debug"]["ESRetriever"]["input"]
-    assert prediction["_debug"]["ESRetriever"]["output"]
+    assert "input" in prediction["_debug"]["BM25Retriever"].keys()
+    assert "output" in prediction["_debug"]["BM25Retriever"].keys()
+    assert prediction["_debug"]["BM25Retriever"]["input"]
+    assert prediction["_debug"]["BM25Retriever"]["output"]
 
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_debug_attributes_for_join_nodes(document_store_with_docs, tmp_path):
-
-    es_retriever_1 = BM25Retriever(document_store=document_store_with_docs)
-    es_retriever_2 = BM25Retriever(document_store=document_store_with_docs)
+    bm25_retriever_1 = BM25Retriever(document_store=document_store_with_docs)
+    bm25_retriever_2 = BM25Retriever(document_store=document_store_with_docs)
 
     pipeline = Pipeline()
-    pipeline.add_node(component=es_retriever_1, name="ESRetriever1", inputs=["Query"])
-    pipeline.add_node(component=es_retriever_2, name="ESRetriever2", inputs=["Query"])
-    pipeline.add_node(component=JoinDocuments(), name="JoinDocuments", inputs=["ESRetriever1", "ESRetriever2"])
+    pipeline.add_node(component=bm25_retriever_1, name="BM25Retriever1", inputs=["Query"])
+    pipeline.add_node(component=bm25_retriever_2, name="BM25Retriever2", inputs=["Query"])
+    pipeline.add_node(component=JoinDocuments(), name="JoinDocuments", inputs=["BM25Retriever1", "BM25Retriever2"])
 
     prediction = pipeline.run(query="Who lives in Berlin?", debug=True)
     assert "_debug" in prediction.keys()
-    assert "ESRetriever1" in prediction["_debug"].keys()
-    assert "ESRetriever2" in prediction["_debug"].keys()
+    assert "BM25Retriever1" in prediction["_debug"].keys()
+    assert "BM25Retriever2" in prediction["_debug"].keys()
     assert "JoinDocuments" in prediction["_debug"].keys()
-    assert "input" in prediction["_debug"]["ESRetriever1"].keys()
-    assert "output" in prediction["_debug"]["ESRetriever1"].keys()
-    assert "input" in prediction["_debug"]["ESRetriever2"].keys()
-    assert "output" in prediction["_debug"]["ESRetriever2"].keys()
+    assert "input" in prediction["_debug"]["BM25Retriever1"].keys()
+    assert "output" in prediction["_debug"]["BM25Retriever1"].keys()
+    assert "input" in prediction["_debug"]["BM25Retriever2"].keys()
+    assert "output" in prediction["_debug"]["BM25Retriever2"].keys()
     assert "input" in prediction["_debug"]["JoinDocuments"].keys()
     assert "output" in prediction["_debug"]["JoinDocuments"].keys()
-    assert prediction["_debug"]["ESRetriever1"]["input"]
-    assert prediction["_debug"]["ESRetriever1"]["output"]
-    assert prediction["_debug"]["ESRetriever2"]["input"]
-    assert prediction["_debug"]["ESRetriever2"]["output"]
+    assert prediction["_debug"]["BM25Retriever1"]["input"]
+    assert prediction["_debug"]["BM25Retriever1"]["output"]
+    assert prediction["_debug"]["BM25Retriever2"]["input"]
+    assert prediction["_debug"]["BM25Retriever2"]["output"]
     assert prediction["_debug"]["JoinDocuments"]["input"]
     assert prediction["_debug"]["JoinDocuments"]["output"]
 
@@ -142,38 +139,36 @@ def test_debug_attributes_for_join_nodes(document_store_with_docs, tmp_path):
     json.dumps(prediction, default=str)
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
-
-    es_retriever = BM25Retriever(document_store=document_store_with_docs)
+    bm25_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
-    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
+    pipeline.add_node(component=bm25_retriever, name="BM25Retriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="Reader", inputs=["BM25Retriever"])
 
     prediction = pipeline.run(
         query="Who lives in Berlin?",
-        params={"ESRetriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3, "debug": True}},
+        params={"BM25Retriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3, "debug": True}},
         debug=False,
     )
     assert "_debug" not in prediction.keys()
 
     prediction = pipeline.run(
         query="Who lives in Berlin?",
-        params={"ESRetriever": {"top_k": 10, "debug": False}, "Reader": {"top_k": 3, "debug": False}},
+        params={"BM25Retriever": {"top_k": 10, "debug": False}, "Reader": {"top_k": 3, "debug": False}},
         debug=True,
     )
     assert "_debug" in prediction.keys()
-    assert "ESRetriever" in prediction["_debug"].keys()
+    assert "BM25Retriever" in prediction["_debug"].keys()
     assert "Reader" in prediction["_debug"].keys()
-    assert "input" in prediction["_debug"]["ESRetriever"].keys()
-    assert "output" in prediction["_debug"]["ESRetriever"].keys()
+    assert "input" in prediction["_debug"]["BM25Retriever"].keys()
+    assert "output" in prediction["_debug"]["BM25Retriever"].keys()
     assert "input" in prediction["_debug"]["Reader"].keys()
     assert "output" in prediction["_debug"]["Reader"].keys()
-    assert prediction["_debug"]["ESRetriever"]["input"]
-    assert prediction["_debug"]["ESRetriever"]["output"]
+    assert prediction["_debug"]["BM25Retriever"]["input"]
+    assert prediction["_debug"]["BM25Retriever"]["output"]
     assert prediction["_debug"]["Reader"]["input"]
     assert prediction["_debug"]["Reader"]["output"]
 

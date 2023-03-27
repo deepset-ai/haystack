@@ -96,8 +96,9 @@ class TransformersSummarizer(BaseSummarizer):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s} inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         if tokenizer is None:
@@ -127,10 +128,10 @@ class TransformersSummarizer(BaseSummarizer):
         :return: List of Documents, where Document.meta["summary"] contains the summarization
         """
         if self.min_length > self.max_length:
-            raise AttributeError("min_length cannot be greater than max_length")
+            raise ValueError("min_length cannot be greater than max_length")
 
         if len(documents) == 0:
-            raise AttributeError("Summarizer needs at least one document to produce a summary.")
+            raise ValueError("Summarizer needs at least one document to produce a summary.")
 
         contexts: List[str] = [doc.content for doc in documents]
 
@@ -177,12 +178,12 @@ class TransformersSummarizer(BaseSummarizer):
         :param batch_size: Number of Documents to process at a time.
         """
         if self.min_length > self.max_length:
-            raise AttributeError("min_length cannot be greater than max_length")
+            raise ValueError("min_length cannot be greater than max_length")
 
         if len(documents) == 0 or (
             isinstance(documents[0], list) and all(len(docs) == 0 for docs in documents if isinstance(docs, list))
         ):
-            raise AttributeError("Summarizer needs at least one document to produce a summary.")
+            raise ValueError("Summarizer needs at least one document to produce a summary.")
 
         if batch_size is None:
             batch_size = self.batch_size

@@ -10,6 +10,7 @@ from tqdm.auto import tqdm
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
+from haystack.telemetry_2 import send_event
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, FilterType
 
 
@@ -153,7 +154,9 @@ class BaseRetriever(BaseComponent):
                              contains the keys "predictions" and "metrics".
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
-
+        send_event(
+            event_name="Evaluation", event_properties={"class": self.__class__.__name__, "function_name": "eval"}
+        )
         # Extract all questions for evaluation
         filters: Dict = {"origin": [label_origin]}
 
@@ -245,9 +248,8 @@ class BaseRetriever(BaseComponent):
         mean_avg_precision = summed_avg_precision / number_of_questions
 
         logger.info(
-            (
-                f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                f" the top-{top_k} candidate passages selected by the retriever."
+            "For {} out of {} questions ({:.2%}), the answer was in the top-{} candidate passages selected by the retriever.".format(
+                correct_retrievals, number_of_questions, recall, top_k
             )
         )
 

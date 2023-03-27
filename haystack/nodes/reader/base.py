@@ -64,7 +64,7 @@ class BaseReader(BaseComponent):
             context=None,
             offsets_in_context=[Span(start=0, end=0)],
             offsets_in_document=[Span(start=0, end=0)],
-            document_id=None,
+            document_ids=None,
             meta=None,
         )
 
@@ -77,10 +77,11 @@ class BaseReader(BaseComponent):
             answer.meta = {}
         # get meta from doc
         meta_from_doc = {}
-        for doc in documents:
-            if doc.id == answer.document_id:
-                meta_from_doc = deepcopy(doc.meta)
-                break
+        if answer.document_ids:
+            for doc in documents:
+                if doc.id in answer.document_ids:
+                    meta_from_doc = deepcopy(doc.meta)
+                    break
         # append to "own" meta
         answer.meta.update(meta_from_doc)
         return answer
@@ -103,7 +104,7 @@ class BaseReader(BaseComponent):
                     context=None,
                     offsets_in_context=[Span(start=0, end=0)],
                     offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
+                    document_ids=None,
                     meta=None,
                 )
                 results = {"answers": [no_ans_prediction]}
@@ -117,9 +118,15 @@ class BaseReader(BaseComponent):
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
-            relevant_documents = [label.document for label in labels.labels]
-            # Filter out empty documents
-            relevant_documents = [d for d in relevant_documents if d.content.strip() != ""]
+            # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID and
+            # filters out empty documents
+            relevant_documents = list(
+                {
+                    label.document.id: label.document
+                    for label in labels.labels
+                    if not isinstance(label.document.content, str) or label.document.content.strip() != ""
+                }.values()
+            )
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
@@ -173,10 +180,15 @@ class BaseReader(BaseComponent):
         if add_isolated_node_eval and labels is not None:
             relevant_documents = []
             for labelx in labels:
-                # Filter out empty documents
-                relevant_docs_labelx = [
-                    label.document for label in labelx.labels if label.document.content.strip() != ""
-                ]
+                # This dict comprehension deduplicates same Documents in a MultiLabel based on their Document ID
+                # and filters out empty documents
+                relevant_docs_labelx = list(
+                    {
+                        label.document.id: label.document
+                        for label in labelx.labels
+                        if not isinstance(label.document.content, str) or label.document.content.strip() != ""
+                    }.values()
+                )
                 relevant_documents.append(relevant_docs_labelx)
             results_label_input = predict_batch(queries=queries, documents=relevant_documents, top_k=top_k)
 
