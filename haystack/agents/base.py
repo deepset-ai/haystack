@@ -4,10 +4,15 @@ import logging
 import re
 from typing import List, Optional, Union, Dict, Any
 
+from events import Events
+
 from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.agents.agent_step import AgentStep
+from haystack.agents.types import Color
+from haystack.agents.utils import print_text
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
+from haystack.nodes.prompt.providers import TokenStreamingHandler
 from haystack.pipelines import (
     BaseStandardPipeline,
     ExtractiveQAPipeline,
@@ -59,7 +64,8 @@ class Tool:
             WebQAPipeline,
         ],
         description: str,
-        output_variable: Optional[str] = "results",
+        output_variable: str = "results",
+        logging_color: Color = Color.YELLOW,
     ):
         if re.search(r"\W", name):
             raise ValueError(
@@ -70,6 +76,7 @@ class Tool:
         self.pipeline_or_node = pipeline_or_node
         self.description = description
         self.output_variable = output_variable
+        self.logging_color = logging_color
 
     def run(self, tool_input: str, params: Optional[dict] = None) -> str:
         # We can only pass params to pipelines but not to nodes
@@ -146,6 +153,17 @@ class Agent:
         text the Agent generated.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
+        self.callback_manager = Events(
+            (
+                "on_tool_start",
+                "on_tool_finish",
+                "on_tool_error",
+                "on_agent_start",
+                "on_agent_step",
+                "on_agent_finish",
+                "on_new_token",
+            )
+        )
         self.prompt_node = prompt_node
         self.prompt_template = (
             prompt_node.get_prompt_template(prompt_template) if isinstance(prompt_template, str) else prompt_template
@@ -158,7 +176,30 @@ class Agent:
         self.max_steps = max_steps
         self.tool_pattern = tool_pattern
         self.final_answer_pattern = final_answer_pattern
+
+        self.add_default_logging_callbacks()
+
         send_custom_event(event=f"{type(self).__name__} initialized")
+
+    def add_default_logging_callbacks(self, agent_color: Color = Color.GREEN) -> None:
+        def on_tool_finish(
+            tool_output: str,
+            color: Optional[Color] = None,
+            observation_prefix: Optional[str] = None,
+            llm_prefix: Optional[str] = None,
+            **kwargs: Any,
+        ) -> None:
+            print_text(observation_prefix)  # type: ignore
+            print_text(tool_output, color=color)
+            print_text(f"\n{llm_prefix}")
+
+        def on_agent_start(**kwargs: Any) -> None:
+            agent_name = kwargs.pop("name", "react")
+            print_text(f"\nAgent {agent_name} started with {kwargs}\n")
+
+        self.callback_manager.on_tool_finish += on_tool_finish
+        self.callback_manager.on_agent_start += on_agent_start
+        self.callback_manager.on_new_token += lambda token, **kwargs: print_text(token, color=agent_color)
 
     def add_tool(self, tool: Tool):
         """
@@ -217,11 +258,13 @@ class Agent:
                 f"max_steps must be at least 2 to let the Agent use a tool once and then infer it knows the final "
                 f"answer. It was set to {max_steps}."
             )
-
+        self.callback_manager.on_agent_start(name=self.prompt_template.name, query=query, params=params)
         agent_step = self._create_first_step(query, max_steps)
-        while not agent_step.is_last():
-            agent_step = self._step(agent_step, params)
-
+        try:
+            while not agent_step.is_last():
+                agent_step = self._step(agent_step, params)
+        finally:
+            self.callback_manager.on_agent_finish(agent_step)
         return agent_step.final_answer(query=query)
 
     def _create_first_step(self, query: str, max_steps: int = 10):
@@ -235,11 +278,21 @@ class Agent:
         )
 
     def _step(self, current_step: AgentStep, params: Optional[dict] = None):
+        cm = self.callback_manager
+
+        class AgentTokenStreamingHandler(TokenStreamingHandler):
+            def __call__(self, token_received, **kwargs) -> str:
+                cm.on_new_token(token_received, **kwargs)
+                return token_received
+
         # plan next step using the LLM
-        prompt_node_response = self.prompt_node(current_step.prepare_prompt())
+        prompt_node_response = self.prompt_node(
+            current_step.prepare_prompt(), stream_handler=AgentTokenStreamingHandler()
+        )
 
         # from the LLM response, create the next step
         next_step = current_step.create_next_step(prompt_node_response)
+        self.callback_manager.on_agent_step(next_step)
 
         # run the tool selected by the LLM
         observation = self._run_tool(next_step, params) if not next_step.is_last() else None
@@ -288,7 +341,18 @@ class Agent:
                 "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
                 f"Agent Step::\n{next_step}"
             )
-        return self.tools[tool_name].run(tool_input, params)
+        tool_result: str = ""
+        tool: Tool = self.tools[tool_name]
+        try:
+            self.callback_manager.on_tool_start(tool_input, tool=tool)
+            tool_result = tool.run(tool_input, params)
+            self.callback_manager.on_tool_finish(
+                tool_result, observation_prefix="Observation: ", llm_prefix="Thought: ", color=tool.logging_color
+            )
+        except Exception as e:
+            self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
+            raise e
+        return tool_result
 
     def _get_initial_transcript(self, query: str):
         """

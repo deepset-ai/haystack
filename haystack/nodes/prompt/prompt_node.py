@@ -71,15 +71,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param prompt_params: Optional parameters that need to be filled in the prompt text. If you don't specify them, they're inferred from the prompt text. Any variable in prompt text in the format `$variablename` is interpreted as a prompt parameter.
         """
         super().__init__()
-        if not prompt_params:
+        if prompt_params:
+            self.prompt_params = prompt_params
+        else:
             # Define the regex pattern to match the strings after the $ character
             pattern = r"\$([a-zA-Z0-9_]+)"
-            prompt_params = re.findall(pattern, prompt_text)
+            self.prompt_params = re.findall(pattern, prompt_text)
 
-        if prompt_text.count("$") != len(prompt_params):
+        if prompt_text.count("$") != len(self.prompt_params):
             raise ValueError(
                 f"The number of parameters in prompt text {prompt_text} for prompt template {name} "
-                f"does not match the number of specified parameters {prompt_params}."
+                f"does not match the number of specified parameters {self.prompt_params}."
             )
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
@@ -87,16 +89,15 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         t = Template(prompt_text)
         try:
-            t.substitute(**{param: "" for param in prompt_params})
+            t.substitute(**{param: "" for param in self.prompt_params})
         except KeyError as e:
             raise ValueError(
                 f"Invalid parameter {e} in prompt text "
-                f"{prompt_text} for prompt template {name}, specified parameters are {prompt_params}"
+                f"{prompt_text} for prompt template {name}, specified parameters are {self.prompt_params}"
             )
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = prompt_params
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
