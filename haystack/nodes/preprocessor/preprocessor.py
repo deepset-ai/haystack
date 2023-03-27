@@ -483,21 +483,9 @@ class PreProcessor(BasePreProcessor):
                     splits_start_idxs.append(cur_start_idx)
 
                 if split_overlap:
-                    overlap = []
-                    word_count_overlap = 0
-                    current_slice_copy = deepcopy(current_slice)
-                    # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
-                    for idx, s in reversed(list(enumerate(current_slice))[1:]):
-                        sen_len = len(s.split())
-                        if word_count_overlap < split_overlap and sen_len < split_length:
-                            overlap.append(s)
-                            word_count_overlap += sen_len
-                            current_slice_copy.pop(idx)
-                        else:
-                            break
-                    processed_sents = current_slice_copy
-                    current_slice = list(reversed(overlap))
-                    word_count_slice = word_count_overlap
+                    processed_sents, current_slice, word_count_slice = self._get_overlap_from_slice(
+                        current_slice, split_length, split_overlap
+                    )
                 else:
                     processed_sents = current_slice
                     current_slice = []
@@ -530,6 +518,35 @@ class PreProcessor(BasePreProcessor):
                 text_splits.append(txt)
 
         return text_splits, splits_pages, splits_start_idxs
+
+    @staticmethod
+    def _get_overlap_from_slice(
+        current_slice: List[str], split_length: int, split_overlap: int
+    ) -> Tuple[List[str], List[str], int]:
+        """
+        Returns a tuple with the following elements:
+        - processed_sents: List of sentences that are not overlapping the with next slice (= completely processed sentences)
+        - next_slice: List of sentences that are overlapping with the next slice
+        - word_count_slice: Number of words in the next slice
+        """
+
+        overlap = []
+        word_count_overlap = 0
+        current_slice_copy = deepcopy(current_slice)
+        # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
+        for idx, s in reversed(list(enumerate(current_slice))[1:]):
+            sen_len = len(s.split())
+            if word_count_overlap < split_overlap and sen_len < split_length:
+                overlap.append(s)
+                word_count_overlap += sen_len
+                current_slice_copy.pop(idx)
+            else:
+                break
+        processed_sents = current_slice_copy
+        next_slice = list(reversed(overlap))
+        word_count_slice = word_count_overlap
+
+        return processed_sents, next_slice, word_count_slice
 
     def _split_into_units(self, text: str, split_by: str) -> Tuple[List[str], str]:
         if split_by == "passage":
@@ -605,21 +622,31 @@ class PreProcessor(BasePreProcessor):
             if split_overlap > 0:
                 doc.meta["_split_overlap"] = []
                 if i != 0:
+                    doc_start_idx = splits_start_idxs[i]
                     previous_doc = documents[i - 1]
-                    # Add split overlap information to previous Document regarding this Document
-                    overlapping_range = (splits_start_idxs[i] - splits_start_idxs[i - 1], len(previous_doc.content) - 1)
-                    if overlapping_range[0] < overlapping_range[1]:
-                        overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]
-                        if doc.content.startswith(overlapping_str):
-                            # Add split overlap information to previous Document regarding this Document
-                            previous_doc.meta["_split_overlap"].append({"doc_id": doc.id, "range": overlapping_range})
-                            # Add split overlap information to this Document regarding the previous Document
-                            overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
-                            doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": overlapping_range})
+                    previous_doc_start_idx = splits_start_idxs[i - 1]
+                    self._add_split_overlap_information(doc, doc_start_idx, previous_doc, previous_doc_start_idx)
 
             documents.append(doc)
 
         return documents
+
+    @staticmethod
+    def _add_split_overlap_information(
+        current_doc: Document, current_doc_start_idx: int, previous_doc: Document, previos_doc_start_idx: int
+    ):
+        """
+        Adds split overlap information to the current and previous Document's meta.
+        """
+        overlapping_range = (current_doc_start_idx - previos_doc_start_idx, len(previous_doc.content) - 1)
+        if overlapping_range[0] < overlapping_range[1]:
+            overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]
+            if current_doc.content.startswith(overlapping_str):
+                # Add split overlap information to previous Document regarding this Document
+                previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
+                # Add split overlap information to this Document regarding the previous Document
+                overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
+                current_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": overlapping_range})
 
     @staticmethod
     def _extract_relevant_headlines_for_split(
