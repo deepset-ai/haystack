@@ -23,7 +23,7 @@ from haystack.pipelines.config import (
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, MultiLabel
-from haystack.telemetry_2 import send_pipeline_run_event
+from haystack.telemetry import send_pipeline_run_event
 
 
 logger = logging.getLogger(__name__)
@@ -242,8 +242,8 @@ class RayPipeline(Pipeline):
                        from Python: https://docs.ray.io/en/main/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'FilterRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["FilterRetriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
@@ -423,7 +423,6 @@ class RayPipeline(Pipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        self.run_total += 1
         # Disabled due to issue https://github.com/deepset-ai/haystack/issues/3970
         # self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
