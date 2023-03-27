@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import datetime
 import itertools
-from datetime import timedelta
 from functools import partial
-from hashlib import sha1
 from time import time
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -53,9 +50,8 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
+from haystack.telemetry import send_pipeline_run_event, send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -75,15 +71,7 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
-        self.init_time = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime.now(datetime.timezone.utc)
-        self.event_time_interval = datetime.timedelta(hours=24)
-        self.event_run_total_threshold = 100
-        self.last_window_run_total = 0
-        self.run_total = 0
-        self.sent_event_in_window = False
         self.yaml_hash = False
-        self.last_run = None
 
     @property
     def root_node(self) -> Optional[str]:
@@ -606,8 +594,6 @@ class Pipeline:
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        self.run_total += 1
-        self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output
 
     def run_batch(  # type: ignore
@@ -771,15 +757,6 @@ class Pipeline:
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        # increase counter of how many queries/documents have been processed by the pipeline
-        if queries:
-            self.run_total += len(queries)
-        elif documents:
-            self.run_total += len(documents)
-        else:
-            self.run_total += 1
-
-        self.send_pipeline_event_if_needed()
         return node_output
 
     @classmethod
@@ -815,16 +792,6 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
-        send_event_2(
-            event_name=f"{cls.__name__}.eval_beir()",
-            event_properties={
-                "dataset": dataset,
-                "index_pipeline": index_pipeline.yaml_hash,
-                "query_pipeline": query_pipeline.yaml_hash,
-                "num_documents": num_documents,
-                "top_k_values": top_k_values,
-            },
-        )
 
         if index_params is None:
             index_params = {}
@@ -1193,7 +1160,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
@@ -1312,7 +1278,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval_batch(
         self,
         labels: List[MultiLabel],
@@ -2392,47 +2357,6 @@ class Pipeline:
         retrievers_used = retrievers if retrievers else "None"
         doc_stores_used = doc_stores if doc_stores else "None"
         return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
-
-    def uptime(self) -> timedelta:
-        """
-        Returns the uptime of the pipeline in timedelta.
-        """
-        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
-
-    def send_pipeline_event(self, is_indexing: bool = False):
-        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
-        fingerprint = sha1(json_repr.encode()).hexdigest()
-        send_custom_event(
-            "pipeline",
-            payload={
-                "fingerprint": fingerprint,
-                "type": "Indexing" if is_indexing else self.get_type(),
-                "uptime": int(self.uptime().total_seconds()),
-                "run_total": self.run_total,
-                "run_total_window": self.run_total - self.last_window_run_total,
-            },
-        )
-        now = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        self.last_window_run_total = self.run_total
-
-    def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        if is_telemetry_enabled():
-            should_send_event = (
-                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
-            )
-            if should_send_event and not self.sent_event_in_window:
-                self.send_pipeline_event(is_indexing)
-                self.sent_event_in_window = True
-            elif self._has_event_time_interval_exceeded():
-                self.sent_event_in_window = False
-
-    def _has_event_time_interval_exceeded(self):
-        now = datetime.datetime.now(datetime.timezone.utc)
-        return now - self.time_of_last_sent_event > self.event_time_interval
-
-    def _has_event_run_total_threshold_exceeded(self):
-        return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:

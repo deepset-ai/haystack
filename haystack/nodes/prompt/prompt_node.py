@@ -24,7 +24,7 @@ from haystack.nodes.other.shaper import (  # pylint: disable=unused-import
 )
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer, instruction_following_models
 from haystack.schema import Answer, Document
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +280,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = sorted(
+        self.prompt_params: List[str] = sorted(
             param for param in ast_validator.prompt_params if param not in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS
         )
         self.globals = {
