@@ -36,7 +36,6 @@ from haystack.nodes.retriever import (
     DensePassageRetriever,
     EmbeddingRetriever,
     BM25Retriever,
-    ElasticsearchRetriever,
     FilterRetriever,
     MultihopEmbeddingRetriever,
     ElasticsearchFilterOnlyRetriever,

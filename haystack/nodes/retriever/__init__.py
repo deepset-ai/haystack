@@ -10,7 +10,6 @@ from haystack.nodes.retriever.multimodal import MultiModalRetriever
 from haystack.nodes.retriever.sparse import (
     BM25Retriever,
     ElasticsearchFilterOnlyRetriever,
-    ElasticsearchRetriever,
     FilterRetriever,
     TfidfRetriever,
 )
