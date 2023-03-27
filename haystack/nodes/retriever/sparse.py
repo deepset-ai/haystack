@@ -27,7 +27,7 @@ class BM25Retriever(BaseRetriever):
         scale_score: bool = True,
     ):
         """
-        :param document_store: An instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore, OpenSearchDocumentStore, and OpenDistroElasticsearchDocumentStore.
+        :param document_store: An instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore and OpenSearchDocumentStore.
             If None, a document store must be passed to the retrieve method for this Retriever to work.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
@@ -366,18 +366,6 @@ class BM25Retriever(BaseRetriever):
         return documents
 
 
-class ElasticsearchRetriever(BM25Retriever):
-    def __init__(
-        self,
-        document_store: Optional[KeywordDocumentStore] = None,
-        top_k: int = 10,
-        all_terms_must_match: bool = False,
-        custom_query: Optional[str] = None,
-    ):
-        logger.warn("This class is now deprecated. Please use the BM25Retriever instead")
-        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
-
-
 class FilterRetriever(BM25Retriever):
     """
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
@@ -418,18 +406,6 @@ class FilterRetriever(BM25Retriever):
             index = document_store.index
         documents = document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
-
-
-class ElasticsearchFilterOnlyRetriever(FilterRetriever):
-    def __init__(
-        self,
-        document_store: Optional[KeywordDocumentStore] = None,
-        top_k: int = 10,
-        all_terms_must_match: bool = False,
-        custom_query: Optional[str] = None,
-    ):
-        logger.warn("This class is now deprecated. Please use the FilterRetriever instead")
-        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
 
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit

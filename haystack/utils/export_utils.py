@@ -7,8 +7,8 @@ from collections import defaultdict
 
 import pandas as pd
 
-from haystack.schema import Document, Answer, SpeechAnswer
-from haystack.document_stores.sql import DocumentORM
+from haystack.schema import Document, Answer
+from haystack.document_stores.sql import DocumentORM  #  type: ignore[attr-defined]
 
 
 logger = logging.getLogger(__name__)
@@ -24,14 +24,8 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     """
     # Defines the fields to keep in the Answer for each detail level
     fields_to_keep_by_level = {
-        "minimum": {
-            Answer: ["answer", "context"],
-            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio"],
-        },
-        "medium": {
-            Answer: ["answer", "context", "score"],
-            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio", "score"],
-        },
+        "minimum": {Answer: ["answer", "context"]},
+        "medium": {Answer: ["answer", "context", "score"]},
     }
 
     if not "answers" in results.keys():
@@ -41,37 +35,45 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
             "Try print_documents or print_questions."
         )
 
-    if "query" in results.keys():
-        print(f"\nQuery: {results['query']}\nAnswers:")
-
-    answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
 
-    # Filter the results by detail level
-    filtered_answers = []
-    if details in fields_to_keep_by_level.keys():
-        for ans in answers:
-            filtered_ans = {
-                field: getattr(ans, field)
-                for field in fields_to_keep_by_level[details][type(ans)]
-                if getattr(ans, field) is not None
-            }
-            filtered_answers.append(filtered_ans)
-    elif details == "all":
-        filtered_answers = answers
-    else:
-        valid_values = ", ".join(fields_to_keep_by_level.keys()) + " and 'all'"
-        logging.warn("print_answers received details='%s', which was not understood. ", details)
-        logging.warn("Valid values are %s. Using 'all'.", valid_values)
-        filtered_answers = answers
+    queries = []
+    if "query" in results.keys():  # results came from a `run` call
+        queries = [results["query"]]
+        answers_lists = [results["answers"]]
+    elif "queries" in results.keys():  # results came from a `run_batch` call
+        queries = results["queries"]
+        answers_lists = results["answers"]
 
-    # Shorten long text fields
-    if max_text_len is not None:
-        for ans in answers:
-            if getattr(ans, "context") and len(ans.context) > max_text_len:
-                ans.context = ans.context[:max_text_len] + "..."
+    for query_idx, answers in enumerate(answers_lists):
+        # Filter the results by detail level
+        filtered_answers = []
+        if details in fields_to_keep_by_level.keys():
+            for ans in answers:
+                filtered_ans = {
+                    field: getattr(ans, field)
+                    for field in fields_to_keep_by_level[details][type(ans)]
+                    if getattr(ans, field) is not None
+                }
+                filtered_answers.append(filtered_ans)
+        elif details == "all":
+            filtered_answers = answers
+        else:
+            valid_values = ", ".join(fields_to_keep_by_level.keys()) + " and 'all'"
+            logging.warn("print_answers received details='%s', which was not understood. ", details)
+            logging.warn("Valid values are %s. Using 'all'.", valid_values)
+            filtered_answers = answers
 
-    pp.pprint(filtered_answers)
+        # Shorten long text fields
+        if max_text_len is not None:
+            for ans in answers:
+                if getattr(ans, "context") and len(ans.context) > max_text_len:
+                    ans.context = ans.context[:max_text_len] + "..."
+
+        if len(queries) > 0:
+            pp.pprint(f"Query: {queries[query_idx]}")
+        pp.pprint("Answers:")
+        pp.pprint(filtered_answers)
 
 
 def print_documents(

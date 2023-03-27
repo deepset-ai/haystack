@@ -1,28 +1,29 @@
-from typing import List
-
-import os
-import sys
-from pathlib import Path
-import subprocess
 import csv
 import json
+import os
+import subprocess
+import sys
+import warnings
+from pathlib import Path
+from typing import List
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from haystack import Document
 from haystack.nodes import (
-    MarkdownConverter,
+    AzureConverter,
+    CsvTextConverter,
     DocxToTextConverter,
+    JsonConverter,
+    MarkdownConverter,
+    ParsrConverter,
     PDFToTextConverter,
     PDFToTextOCRConverter,
-    TikaConverter,
-    AzureConverter,
-    ParsrConverter,
-    TextConverter,
-    CsvTextConverter,
-    JsonConverter,
     PreProcessor,
+    TextConverter,
+    TikaConverter,
 )
 
 from ..conftest import SAMPLES_PATH, fail_at_version
@@ -182,6 +183,26 @@ def test_pdf_parallel_sort_by_position(Converter):
 
     assert pages[0] == "This is the page 1 of the document."
     assert pages[-1] == "This is the page 50 of the document."
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_parallel_ocr(Converter):
+    converter = Converter(multiprocessing=True, sort_by_position=True, ocr="full", ocr_language="eng")
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+
+    pages = document.content.split("\f")
+
+    assert pages[0] == "This is the page 1 of the document."
+    assert pages[-1] == "This is the page 50 of the document."
+
+
+@pytest.mark.unit
+@fail_at_version(1, 17)
+@patch("haystack.nodes.file_converter.image.ImageToTextConverter.__new__")
+def test_deprecated_ocr_node(mock):
+    with pytest.warns(DeprecationWarning):
+        PDFToTextOCRConverter()
 
 
 @fail_at_version(1, 17)

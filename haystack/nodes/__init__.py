@@ -36,22 +36,18 @@ from haystack.nodes.retriever import (
     DensePassageRetriever,
     EmbeddingRetriever,
     BM25Retriever,
-    ElasticsearchRetriever,
     FilterRetriever,
     MultihopEmbeddingRetriever,
-    ElasticsearchFilterOnlyRetriever,
     TfidfRetriever,
     Text2SparqlRetriever,
     TableTextRetriever,
     MultiModalRetriever,
 )
+
+from haystack.nodes.sampler import BaseSampler, TopPSampler
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
 
+from haystack.nodes.audio import WhisperTranscriber, WhisperModel
+
 Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
-AnswerToSpeech = safe_import(
-    "haystack.nodes.audio.answer_to_speech", "AnswerToSpeech", "audio"
-)  # Has optional dependencies
-DocumentToSpeech = safe_import(
-    "haystack.nodes.audio.document_to_speech", "DocumentToSpeech", "audio"
-)  # Has optional dependencies

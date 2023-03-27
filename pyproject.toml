@@ -67,6 +67,10 @@ dependencies = [
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
+  "sseclient-py",  # server side events for OpenAI streaming
+
+  # Web Retriever
+  "boilerpy3",
 
   # Preprocessing
   "more_itertools",  # for windowing
@@ -89,13 +93,19 @@ dependencies = [
   "elasticsearch>=7.7,<8",
 
   # OpenAI tokenizer
-  "tiktoken>=0.2.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
 
   # Schema validation
   "jsonschema",
+
+  # Preview
+  "canals",
+
+  # Agent events
+  "events"
 ]
 
 [project.optional-dependencies]
@@ -133,9 +143,11 @@ pinecone = [
 ]
 graphdb = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2", # GPL-2.0-only license issue
 ]
 inmemorygraph = [
   "SPARQLWrapper",
+  "rdflib!=6.3.2", # GPL-2.0-only license issue
 ]
 opensearch = [
   "opensearch-py>=2",
@@ -147,15 +159,7 @@ docstores-gpu = [
   "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 audio = [
-  "pyworld>=0.3.1; python_version >= '3.8'",
-  "pyworld<0.3.1; python_version < '3.8'",
-  "ffmpeg-python==0.2.0",
-  "espnet",
-  "espnet-model-zoo",
-  "pydub",
-  "protobuf<=3.20.1",
-  "soundfile< 0.12.0",
-  "numpy<1.24",  # Keep compatibility with latest numba
+  "openai-whisper"
 ]
 beir = [
   "beir; platform_system != 'Windows'",
@@ -187,8 +191,8 @@ onnx-gpu = [
   "onnxruntime_tools",
 ]
 ray = [
-  "ray>=1.9.1,<2; platform_system != 'Windows'",
-  "ray>=1.9.1,<2,!=1.12.0; platform_system == 'Windows'",  # Avoid 1.12.0 due to https://github.com/ray-project/ray/issues/24169 (fails on windows)
+  "ray[serve]>=1.9.1,<2; platform_system != 'Windows'",
+  "ray[serve]>=1.9.1,<2,!=1.12.0; platform_system == 'Windows'",  # Avoid 1.12.0 due to https://github.com/ray-project/ray/issues/24169 (fails on windows)
   "aiorwlock>=1.3.0,<2",
 ]
 colab = [
@@ -243,6 +247,9 @@ Homepage = "https://github.com/deepset-ai/haystack"
 [tool.hatch.version]
 path = "VERSION.txt"
 pattern = "(?P<version>.+)"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
 include = [

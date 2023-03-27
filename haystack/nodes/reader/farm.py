@@ -28,7 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -435,7 +435,7 @@ class FARMReader(BaseReader):
         :param max_query_length: Maximum length of the question in number of tokens.
         :return: None
         """
-        send_event("FARMReader.train()")
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -557,7 +557,10 @@ class FARMReader(BaseReader):
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
-        send_event("FARMReader.distil_prediction_layer_from()")
+        send_event(
+            event_name="Training",
+            event_properties={"class": self.__class__.__name__, "function_name": "distil_prediction_layer_from"},
+        )
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -680,7 +683,10 @@ class FARMReader(BaseReader):
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
-        send_event("FARMReader.distil_intermediate_layers_from()")
+        send_event(
+            event_name="Training",
+            event_properties={"class": self.__class__.__name__, "function_name": "distil_intermediate_layers_from"},
+        )
         return self._training_procedure(
             data_dir=data_dir,
             train_filename=train_filename,
@@ -944,7 +950,10 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-        send_event("FARMReader.eval_on_file()")
+        send_event(
+            event_name="Evaluation",
+            event_properties={"class": self.__class__.__name__, "function_name": "eval_on_file"},
+        )
         if device is None:
             device = self.devices[0]
         else:
@@ -1022,7 +1031,9 @@ class FARMReader(BaseReader):
             "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
             "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
         )
-        send_event("FARMReader.eval()")
+        send_event(
+            event_name="Evaluation", event_properties={"class": self.__class__.__name__, "function_name": "eval"}
+        )
         if device is None:
             device = self.devices[0]
         else:
