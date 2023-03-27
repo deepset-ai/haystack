@@ -109,4 +109,5 @@ hotpot_questions = [
 ]
 
 for question in hotpot_questions:
-    agent.run(query=question)
+    result = agent.run(query=question)
+    print(f"\n{result}")
