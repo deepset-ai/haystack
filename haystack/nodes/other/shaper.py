@@ -67,7 +67,7 @@ def join_strings(strings: List[str], delimiter: str = " ") -> Tuple[str]:
 
 def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[List[Document]]:
     """
-    Transforms a list of documents into a list containing a single Document. The content of this list
+    Transforms a list of documents into a list containing a single Document. The content of this document
     is the content of all original documents separated by the delimiter you specify.
 
     All metadata is dropped. (TODO: fix)
@@ -90,8 +90,8 @@ def join_documents(documents: List[Document], delimiter: str = " ") -> Tuple[Lis
 
 def join_documents_and_scores(documents: List[Document]) -> Tuple[List[Document]]:
     """
-    Transforms a list of documents into a list containing a single Document. The content of this list
-    is the content of all original documents separated by the delimiter you specify.
+    Transforms a list of documents with scores in their metadata into a list containing a single Document.
+    The content of this document contains the scores and contents of all original documents.
 
     All metadata is dropped. (TODO: fix)
 
