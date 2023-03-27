@@ -29,33 +29,28 @@ class SearchResult:
 
 class WebRetriever(BaseRetriever):
     """
-    WebRetriever is a retriever allowing users to query the web for relevant documents.
+    WebRetriever makes it possible to query the web for relevant documents. It downloads web page results returned by WebSearch, strips HTML, and extracts raw text, which is then
+    split into smaller documents using the optional PreProcessor.
 
     WebRetriever operates in two modes:
 
-    - snippets mode: WebRetriever will return a list of Documents, each Document being a snippet of the search result
-    - raw_documents mode: WebRetriever will return a list of Documents, each Document being a full HTML stripped document
-    of the search result
-    - preprocessed_documents mode: WebRetriever will return a list of Documents, each Document being a preprocessed split of the full HTML stripped page
-    of the search result
+    - snippets mode: WebRetriever returns a list of Documents. Each Document is a snippet of the search result.
+    - raw_documents mode: WebRetriever returns a list of Documents. Each Document is a full website returned by the search, stripped of HTML.
+    - preprocessed_documents mode: WebRetriever return a list of Documents. Each Document is a preprocessed split of the full website stripped of HTML.
 
-    In preprocessed_documents mode, given a user query passed via the run method, WebSearch first fetches the top k query relevant
-    URL results, which are in turn downloaded and processed. The processing involves stripping HTML tags and producing
-    clean raw text wrapped in Document(s). WebRetriever then splits raw text into Documents of the desired preprocessor
-    specified size. This step can be skipped by choosing the raw_documents mode.
-    Finally, WebRetriever returns at most top_k Documents.
+    In the preprocessed_documents mode, after WebSearch receives the query through the `run()` method, it fetches the top_k URLs relevant to the query. WebSearch then downloads and processes these URLs. 
+    The processing involves stripping HTML tags and producing
+    a clean, raw text wrapped in the Document objects. WebRetriever then splits raw text into Documents according to the PreProcessor settings. 
+    Finally, WebRetriever returns the top_k preprocessed Documents.
 
-    Finding the right balance between top_k and top_p is crucial to obtain high-quality and diverse results in document
-    mode. To explore a wide range of potential results, it's recommended to set top_k for WebSearch close to 10.
-    However, keep in mind that setting a high top_k value will result in fetching and processing many web pages.
+    Finding the right balance between top_k and top_p is crucial to obtain high-quality and diverse results in the document
+    mode. To explore potential results, we recommend that you set top_k for WebSearch close to 10.
+    However, keep in mind that setting a high top_k value results in fetching and processing numerous web pages and is heavier on the resources. 
 
-    WebRetriever downloads web page results returned by WebSearch, strips HTML, and extracts raw text, which is then
-    split into smaller documents using the optional PreProcessor.
-
-    The recommended approach is to use the default value for top_k and adjust it based on your specific
-    use case. The default value is 5. This means that WebRetriever will return at most
-    five of the most relevant processed documents, ensuring that the search results are diverse but still of high
-    quality. If you want to return more results, you can increase top_k.
+    We recommend you use the default value for top_k and adjust it based on your specific
+    use case. The default value is 5. This means WebRetriever returns at most
+    five of the most relevant processed documents, ensuring the search results are diverse but still of high
+    quality. To get more results, increase top_k.
     """
 
     def __init__(
@@ -73,8 +68,8 @@ class WebRetriever(BaseRetriever):
     ):
         """
         :param top_k: Top k documents to be returned by the retriever.
-        :param mode: Whether to return snippets, raw documents or preprocessed documents. Preprocessed documents are the default.
-        :param preprocessor: Optional Preprocessor to be used to split documents into paragraphs. If not provided, the default Preprocessor is used.
+        :param mode: Whether to return snippets, raw documents, or preprocessed documents. Preprocessed documents are the default.
+        :param preprocessor: Optional PreProcessor to be used to split documents into paragraphs. If not provided, the default PreProcessor is used.
         :param cache_document_store: DocumentStore to be used to cache search results.
         :param cache_index: Index name to be used to cache search results.
         :param cache_headers: Headers to be used to cache search results.
@@ -174,11 +169,11 @@ class WebRetriever(BaseRetriever):
     ) -> List[Document]:
         """
         Retrieve documents based on the list of URLs from the WebSearchEngine. The documents are scraped from the web
-        at real-time. You can then store the documents in a DocumentStore for later use. They can be cached in a
+        at real-time. You can then store the documents in a DocumentStore for later use. You can cache them in a
         DocumentStore to improve retrieval time.
-        :param query: The query string
+        :param query: The query string.
         :param top_k: The number of documents to be returned by the retriever. If None, the default value is used.
-        :param preprocessor: The preprocessor to be used to split documents into paragraphs.
+        :param preprocessor: The PreProcessor to be used to split documents into paragraphs.
         :param cache_document_store: The DocumentStore to cache the documents to.
         :param cache_index: The index name to save the documents to.
         :param cache_headers: The headers to save the documents to.
