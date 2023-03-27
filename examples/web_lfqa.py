@@ -16,7 +16,7 @@ prompt_text = """
 Synthesize a comprehensive answer from the following most relevant paragraphs and the given question.
 Provide a clear and concise response that summarizes the key points and information presented in the paragraphs.
 Your answer should be in your own words and be no longer than 50 words.
-\n\n Paragraphs: $documents \n\n Question: $query \n\n Answer:
+\n\n Paragraphs: {documents} \n\n Question: {query} \n\n Answer:
 """
 
 prompt_node = PromptNode(
