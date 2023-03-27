@@ -18,7 +18,6 @@ from haystack.pipelines import (
     TranslationWrapperPipeline,
     RetrieverQuestionGenerationPipeline,
 )
-from haystack.telemetry import send_custom_event
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +155,6 @@ class Agent:
         self.max_steps = max_steps
         self.tool_pattern = tool_pattern
         self.final_answer_pattern = final_answer_pattern
-        send_custom_event(event=f"{type(self).__name__} initialized")
 
     def add_tool(self, tool: Tool):
         """

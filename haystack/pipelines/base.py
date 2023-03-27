@@ -53,9 +53,8 @@ from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummariz
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event, send_custom_event, is_telemetry_enabled
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
-from haystack.telemetry_2 import send_pipeline_run_event, send_pipeline_event, send_event as send_event_2
+from haystack.telemetry import send_pipeline_run_event, send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -1193,7 +1192,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
@@ -1312,7 +1310,6 @@ class Pipeline:
 
         return eval_result
 
-    @send_event
     def eval_batch(
         self,
         labels: List[MultiLabel],
@@ -2398,41 +2395,6 @@ class Pipeline:
         Returns the uptime of the pipeline in timedelta.
         """
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
-
-    def send_pipeline_event(self, is_indexing: bool = False):
-        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
-        fingerprint = sha1(json_repr.encode()).hexdigest()
-        send_custom_event(
-            "pipeline",
-            payload={
-                "fingerprint": fingerprint,
-                "type": "Indexing" if is_indexing else self.get_type(),
-                "uptime": int(self.uptime().total_seconds()),
-                "run_total": self.run_total,
-                "run_total_window": self.run_total - self.last_window_run_total,
-            },
-        )
-        now = datetime.datetime.now(datetime.timezone.utc)
-        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        self.last_window_run_total = self.run_total
-
-    def send_pipeline_event_if_needed(self, is_indexing: bool = False):
-        if is_telemetry_enabled():
-            should_send_event = (
-                self._has_event_time_interval_exceeded() or self._has_event_run_total_threshold_exceeded()
-            )
-            if should_send_event and not self.sent_event_in_window:
-                self.send_pipeline_event(is_indexing)
-                self.sent_event_in_window = True
-            elif self._has_event_time_interval_exceeded():
-                self.sent_event_in_window = False
-
-    def _has_event_time_interval_exceeded(self):
-        now = datetime.datetime.now(datetime.timezone.utc)
-        return now - self.time_of_last_sent_event > self.event_time_interval
-
-    def _has_event_run_total_threshold_exceeded(self):
-        return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:

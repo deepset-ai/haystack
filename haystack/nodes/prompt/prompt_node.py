@@ -12,7 +12,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer, instruction_following_models
 
 from haystack.schema import Document
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 logger = logging.getLogger(__name__)
 

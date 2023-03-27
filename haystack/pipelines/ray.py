@@ -23,7 +23,7 @@ from haystack.pipelines.config import (
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, MultiLabel
-from haystack.telemetry_2 import send_pipeline_run_event
+from haystack.telemetry import send_pipeline_run_event
 
 
 logger = logging.getLogger(__name__)
