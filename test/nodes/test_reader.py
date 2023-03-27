@@ -416,7 +416,6 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
 
 
-@pytest.mark.integration
 def test_reader_training_returns_eval(tmp_path):
     max_seq_len = 16
     max_query_length = 8
@@ -445,7 +444,6 @@ def test_reader_training_returns_eval(tmp_path):
     assert reader.inferencer.model.training is False
 
 
-@pytest.mark.integration
 def test_reader_training(tmp_path):
     max_seq_len = 16
     max_query_length = 8
