@@ -79,7 +79,7 @@ Observation: Gainsville, Florida
 Thought: We've learned Gainsville, Florida is the city Jeremy McKinnon was born in. Now, we can answer the question.
 Final Answer: Gainsville, Florida
 ##
-Question: $query
+Question: {query}
 Thought:
 """
 few_shot_agent_template = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
@@ -109,5 +109,4 @@ hotpot_questions = [
 ]
 
 for question in hotpot_questions:
-    result = agent.run(query=question)
-    print(result)
+    agent.run(query=question)
