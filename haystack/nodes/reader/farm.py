@@ -28,7 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)

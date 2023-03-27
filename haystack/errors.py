@@ -2,8 +2,6 @@
 
 from typing import Optional
 
-from haystack.telemetry import send_custom_event
-
 
 class HaystackError(Exception):
     """
@@ -12,15 +10,12 @@ class HaystackError(Exception):
     This error wraps its source transparently in such a way that its attributes
     can be accessed directly: for example, if the original error has a `message` attribute,
     `HaystackError.message` will exist and have the expected content.
-    If send_message_in_event is set to True (default), the message will be sent as part of a telemetry event reporting the error.
     The messages of errors that might contain user-specific information will not be sent, e.g., DocumentStoreError or OpenAIError.
     """
 
     def __init__(
         self, message: Optional[str] = None, docs_link: Optional[str] = None, send_message_in_event: bool = True
     ):
-        payload = {"message": message} if send_message_in_event else {}
-        send_custom_event(event=f"{type(self).__name__} raised", payload=payload)
         super().__init__()
         if message:
             self.message = message
