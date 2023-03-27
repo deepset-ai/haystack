@@ -245,8 +245,8 @@ class RayPipeline(Pipeline):
                        from Python: https://docs.ray.io/en/main/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'FilterRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["FilterRetriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
