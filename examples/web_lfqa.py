@@ -1,8 +1,8 @@
 import os
 
-from haystack import Pipeline
-from haystack.nodes import PromptNode, PromptTemplate, Shaper
+from haystack.nodes import PromptNode, PromptTemplate, TopPSampler
 from haystack.nodes.retriever.web import WebRetriever
+from haystack.pipelines import WebQAPipeline
 
 search_key = os.environ.get("SERPERDEV_API_KEY")
 if not search_key:
@@ -11,9 +11,6 @@ if not search_key:
 openai_key = os.environ.get("OPENAI_API_KEY")
 if not search_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
-
-
-web_retriever = WebRetriever(api_key=search_key, mode="preprocessed_documents")
 
 prompt_text = """
 Synthesize a comprehensive answer from the following most relevant paragraphs and the given question.
@@ -28,19 +25,15 @@ prompt_node = PromptNode(
     api_key=openai_key,
     max_length=256,
 )
-# Shaper helps us concatenate most relevant docs that we want to use as the context for the generated answer
-shaper = Shaper(func="join_documents", inputs={"documents": "documents"}, outputs=["documents"])
 
-pipeline = Pipeline()
-pipeline.add_node(component=web_retriever, name="Retriever", inputs=["Query"])
-pipeline.add_node(component=shaper, name="Shaper", inputs=["Retriever"])
-pipeline.add_node(component=prompt_node, name="PromptNode", inputs=["Shaper"])
+web_retriever = WebRetriever(api_key=search_key, top_search_results=2, mode="preprocessed_documents")
+pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node, sampler=TopPSampler(top_p=0.95))
 
 # Long-Form QA requiring multiple context paragraphs for the synthesis of an elaborate generative answer
 questions = [
     "What are the advantages of EmbeddingRetriever in Haystack?",
     "What are the advantages of PromptNode in Haystack?",
-    "What PromptNode invocation layers are available in Haystack?",
+    "What PromptModelInvocationLayer implementations are available in Haystack?",
 ]
 
 for q in questions:
