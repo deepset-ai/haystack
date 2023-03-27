@@ -83,6 +83,7 @@ class Pipeline:
         self.run_total = 0
         self.sent_event_in_window = False
         self.yaml_hash = False
+        self.last_run = None
 
     @property
     def root_node(self) -> Optional[str]:
@@ -496,7 +497,8 @@ class Pipeline:
         """
         send_pipeline_run_event(
             pipeline=self,
-            event_name="Pipeline.run()",
+            classname=self.__class__.__name__,
+            function_name="run",
             query=query,
             file_paths=file_paths,
             labels=labels,
@@ -647,7 +649,8 @@ class Pipeline:
         """
         send_pipeline_run_event(
             pipeline=self,
-            event_name="Pipeline.run_batch()",
+            classname=self.__class__.__name__,
+            function_name="run_batch",
             queries=queries,
             file_paths=file_paths,
             labels=labels,
@@ -813,7 +816,7 @@ class Pipeline:
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
         send_event_2(
-            event_name="Pipeline.eval_beir()",
+            event_name=f"{cls.__name__}.eval_beir()",
             event_properties={
                 "dataset": dataset,
                 "index_pipeline": index_pipeline.yaml_hash,
@@ -1261,7 +1264,7 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name="Pipeline.eval()")
+        send_pipeline_event(pipeline=self, event_name="Evaluation", event_properties={"function_name": "eval"})
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1380,7 +1383,7 @@ class Pipeline:
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        send_pipeline_event(pipeline=self, event_name="Pipeline.eval_batch()")
+        send_pipeline_event(pipeline=self, event_name=f"{self.__class__.__name__}.eval_batch()")
 
         eval_result = EvaluationResult()
         if add_isolated_node_eval:

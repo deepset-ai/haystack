@@ -3,13 +3,14 @@ import logging
 import re
 from abc import ABC
 from string import Template
-from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type
+from typing import Dict, List, Optional, Tuple, Union, Any, Iterator, Type, overload
 
 import torch
 
 from haystack import MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.prompt.providers import PromptModelInvocationLayer
+from haystack.nodes.prompt.providers import PromptModelInvocationLayer, instruction_following_models
+
 from haystack.schema import Document
 from haystack.telemetry_2 import send_event
 
@@ -70,15 +71,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param prompt_params: Optional parameters that need to be filled in the prompt text. If you don't specify them, they're inferred from the prompt text. Any variable in prompt text in the format `$variablename` is interpreted as a prompt parameter.
         """
         super().__init__()
-        if not prompt_params:
+        if prompt_params:
+            self.prompt_params = prompt_params
+        else:
             # Define the regex pattern to match the strings after the $ character
             pattern = r"\$([a-zA-Z0-9_]+)"
-            prompt_params = re.findall(pattern, prompt_text)
+            self.prompt_params = re.findall(pattern, prompt_text)
 
-        if prompt_text.count("$") != len(prompt_params):
+        if prompt_text.count("$") != len(self.prompt_params):
             raise ValueError(
                 f"The number of parameters in prompt text {prompt_text} for prompt template {name} "
-                f"does not match the number of specified parameters {prompt_params}."
+                f"does not match the number of specified parameters {self.prompt_params}."
             )
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
@@ -86,16 +89,15 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         t = Template(prompt_text)
         try:
-            t.substitute(**{param: "" for param in prompt_params})
+            t.substitute(**{param: "" for param in self.prompt_params})
         except KeyError as e:
             raise ValueError(
                 f"Invalid parameter {e} in prompt text "
-                f"{prompt_text} for prompt template {name}, specified parameters are {prompt_params}"
+                f"{prompt_text} for prompt template {name}, specified parameters are {self.prompt_params}"
             )
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = prompt_params
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -164,7 +166,7 @@ class PromptModel(BaseComponent):
     """
     The PromptModel class is a component that uses a pre-trained model to perform tasks based on a prompt. Out of
     the box, it supports model invocation layers for:
-    - Hugging Face transformers (all text2text-generation models)
+    - Hugging Face transformers (all text2text-generation and text-generation models)
     - OpenAI InstructGPT models
     - Azure OpenAI InstructGPT models
 
@@ -215,6 +217,14 @@ class PromptModel(BaseComponent):
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
+        is_instruction_following: bool = any(m in model_name_or_path for m in instruction_following_models())
+        if not is_instruction_following:
+            logger.warning(
+                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
+                "Many of the default prompts and PromptTemplates will likely not work as intended. "
+                "Use custom prompts and PromptTemplates specific to the %s model",
+                model_name_or_path,
+            )
 
     def create_invocation_layer(
         self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]
@@ -245,7 +255,7 @@ class PromptModel(BaseComponent):
             "PromptModelInvocationLayer."
         )
 
-    def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
+    def invoke(self, prompt: Union[str, List[str], List[Dict[str, str]]], **kwargs) -> List[str]:
         """
         It takes in a prompt, and returns a list of responses using the underlying invocation layer.
 
@@ -256,7 +266,15 @@ class PromptModel(BaseComponent):
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
 
+    @overload
     def _ensure_token_limit(self, prompt: str) -> str:
+        ...
+
+    @overload
+    def _ensure_token_limit(self, prompt: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        ...
+
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
 
         :param prompt: Prompt text to be sent to the generative model.
@@ -383,7 +401,8 @@ class PromptNode(BaseComponent):
     additional custom model invocation layers.
 
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
-    LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
+    LLM does not "follow" prompt instructions well. The list of instructions following models increases every month,
+    and the current list includes: Flan, OpenAI InstructGPT, opt-iml, bloomz, and mt0 models.
 
     For more details, see  [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
@@ -402,6 +421,7 @@ class PromptNode(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
+        debug: Optional[bool] = False,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -434,6 +454,8 @@ class PromptNode(BaseComponent):
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
+        self.debug = debug
+
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
         ):
@@ -487,7 +509,7 @@ class PromptNode(BaseComponent):
         send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
-        prompt_collector: List[str] = kwargs.pop("prompt_collector", [])
+        prompt_collector: List[Union[str, List[Dict[str, str]]]] = kwargs.pop("prompt_collector", [])
         if isinstance(prompt_template, str) and not self.is_supported_template(prompt_template):
             raise ValueError(
                 f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()} "
@@ -663,11 +685,11 @@ class PromptNode(BaseComponent):
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
         invocation_context[self.output_variable] = results
-        final_result: Dict[str, Any] = {
-            self.output_variable: results,
-            "invocation_context": invocation_context,
-            "_debug": {"prompts_used": prompt_collector},
-        }
+        final_result: Dict[str, Any] = {self.output_variable: results, "invocation_context": invocation_context}
+
+        if self.debug:
+            final_result["_debug"] = {"prompts_used": prompt_collector}
+
         return final_result, "output_1"
 
     def run_batch(  # type: ignore
