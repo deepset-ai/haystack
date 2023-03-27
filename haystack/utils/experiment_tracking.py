@@ -217,6 +217,9 @@ class MLflowTrackingHead(BaseTrackingHead):
         mlflow.end_run()
 
 
+env_meta_data: Dict[str, Any] = {}
+
+
 def get_or_create_env_meta_data() -> Dict[str, Any]:
     """
     Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
