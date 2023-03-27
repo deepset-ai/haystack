@@ -260,13 +260,15 @@ def test_run_invalid_template(prompt_node):
 
 @pytest.mark.integration
 def test_invalid_prompting(prompt_node):
-    with pytest.raises(ValueError, match="Hey there, what is the best city in the worl"):
-        prompt_node.prompt(
-            "Hey there, what is the best city in the world?" "Hey there, what is the best city in the world?"
-        )
-
     with pytest.raises(ValueError, match="Hey there, what is the best city in the"):
         prompt_node.prompt(["Hey there, what is the best city in the world?", "Hey, answer me!"])
+
+
+@pytest.mark.integration
+def test_prompt_at_query_time(prompt_node: PromptNode):
+    results = prompt_node.prompt("Hey there, what is the best city in the world?")
+    assert len(results) == 1
+    assert isinstance(results[0], str)
 
 
 @pytest.mark.integration
@@ -496,6 +498,122 @@ def test_pipeline_with_qa_with_references(prompt_model):
         "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. If the documents do not contain the answer to the question, "
         "say that ‘answering is not possible given the available information.’\n\nDocument[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris \n "
         "Question: Who lives in Berlin?; Answer: "
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_prompt_text_at_query_time(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="1"),
+            Document("My name is Christelle and I live in Paris", id="2"),
+        ],
+        params={
+            "prompt_template": "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n{join(documents, delimiter=new_line+new_line, pattern='Document[$idx]: $content')}\n\nQuestion: {query}\n\nAnswer: "
+        },
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Document[number] notation.\n\n"
+        "Document[1]: My name is Carla and I live in Berlin\n\nDocument[2]: My name is Christelle and I live in Paris\n\n"
+        "Question: Who lives in Berlin?\n\nAnswer: "
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
+def test_pipeline_with_prompt_template_at_query_time(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
+    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+
+    prompt_template_yaml = """
+            name: "question-answering-with-references-custom"
+            prompt_text: 'Create a concise and informative answer (no more than 50 words) for
+                a given question based solely on the given documents. Cite the documents using Doc[number] notation.
+
+
+                {join(documents, delimiter=new_line+new_line, pattern=''Doc[$idx]: $content'')}
+
+
+                Question: {query}
+
+
+                Answer: '
+            output_parser:
+                type: AnswerParser
+                params:
+                    reference_pattern: Doc\\[([^\\]]+)\\]
+        """
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin", id="doc-1"),
+            Document("My name is Christelle and I live in Paris", id="doc-2"),
+        ],
+        params={"prompt_template": prompt_template_yaml},
+    )
+
+    assert len(result["answers"]) == 1
+    assert "carla" in result["answers"][0].answer.casefold()
+
+    assert result["answers"][0].document_ids == ["doc-1"]
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Create a concise and informative answer (no more than 50 words) for a given question based solely on the given documents. Cite the documents using Doc[number] notation.\n\n"
+        "Doc[1]: My name is Carla and I live in Berlin\n\nDoc[2]: My name is Christelle and I live in Paris\n\n"
+        "Question: Who lives in Berlin?\n\nAnswer: "
+    )
+
+
+@pytest.mark.integration
+def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: template_with_nested_shaper
+              type: PromptTemplate
+              params:
+                name: custom-template-with-nested-shaper
+                prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
+                output_parser:
+                  type: AnswerParser
+            - name: p1
+              params:
+                model_name_or_path: google/flan-t5-small
+                default_prompt_template: template_with_nested_shaper
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
+    result = pipeline.run(query="What is an amazing city?", documents=[Document("Berlin is an amazing city.")])
+    answer = result["answers"][0].answer
+    assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in answer.casefold())
+    assert (
+        result["answers"][0].meta["prompt"]
+        == "Given the context please answer the question. Context: Berlin is an amazing city.; Question: What is an amazing city?; Answer: "
     )
 
 
