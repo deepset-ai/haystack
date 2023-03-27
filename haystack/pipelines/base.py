@@ -795,16 +795,6 @@ class Pipeline:
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
         """
-        send_event_2(
-            event_name=f"{cls.__name__}.eval_beir()",
-            event_properties={
-                "dataset": dataset,
-                "index_pipeline": index_pipeline.yaml_hash,
-                "query_pipeline": query_pipeline.yaml_hash,
-                "num_documents": num_documents,
-                "top_k_values": top_k_values,
-            },
-        )
 
         if index_params is None:
             index_params = {}
