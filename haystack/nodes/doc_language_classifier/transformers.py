@@ -15,14 +15,13 @@ logger = logging.getLogger(__name__)
 
 class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     """
-    Transformer based model for document language classification using the HuggingFace's transformers framework
-    (https://github.com/huggingface/transformers).
+    Transformer-based model for classifying the document language using the Hugging Face's [transformers framework](https://github.com/huggingface/transformers).
     While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
     This node detects the language of Documents and adds the output to the Documents metadata.
     The meta field of the Document is a dictionary with the following format:
     ``'meta': {'name': '450_Baelor.txt', 'language': 'en'}``
-    - Using the document language classifier, you can directly get predictions via predict()
-    - You can flow the Documents to different branches depending on their language,
+    - Using the document language classifier, you can directly get predictions with the `predict()` method.
+    - You can route the Documents to different branches depending on their language
       by setting the `route_by_language` parameter to True and specifying the `languages_to_route` parameter.
     **Usage example**
     ```python
@@ -66,28 +65,27 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     ):
         """
         Load a language detection model from Transformers.
-        See https://huggingface.co/models for full list of available models.
-        Language detection models: https://huggingface.co/models?search=language%20detection
+        For a full list of available models, see [Hugging Face models](https://huggingface.co/models).
+        For language detection models, see [Language Detection models](https://huggingface.co/models?search=language%20detection) on Hugging Face.
 
-        :param route_by_language: whether to send Documents on a different output edge depending on their language.
-        :param languages_to_route: list of languages, each corresponding to a different output edge (for the list of the supported languages, see the model card of the chosen model).
-        :param labels_to_languages_mapping: some Transformers models do not return language names but generic labels. In this case, you can provide a mapping indicating a language for each label. For example: {"LABEL_1": "ar", "LABEL_2": "bg", ...}.
+        :param route_by_language: Sends Documents to a different output edge depending on their language.
+        :param languages_to_route: A list of languages, each corresponding to a different output edge (for the list of supported languages, see the model card of the chosen model).
+        :param labels_to_languages_mapping: Some Transformers models return generic labels instead of language names. In this case, you can provide a mapping indicating a language for each label. For example: {"LABEL_1": "ar", "LABEL_2": "bg", ...}.
 
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'papluca/xlm-roberta-base-language-detection'.
-        See https://huggingface.co/models for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param tokenizer: Name of the tokenizer (usually the same as model)
+        :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'papluca/xlm-roberta-base-language-detection'.
+        See [Hugging Face models](https://huggingface.co/models) for a full list of available models.
+        :param model_version: The version of the model to use from the Hugging Face model hub. Can be a tag name, a branch name, or a commit hash.
+        :param tokenizer: Name of the tokenizer (usually the same as model).
         :param use_gpu: Whether to use GPU (if available).
         :param batch_size: Number of Documents to be processed at a time.
         :param progress_bar: Whether to show a progress bar while processing.
-        :param use_auth_token: The API token used to download private models from Huggingface.
-                               If this parameter is set to `True`, then the token generated when running
-                               `transformers-cli login` (stored in ~/.huggingface) will be used.
-                               Additional information can be found here
-                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
-                        A list containing torch device objects and/or strings is supported (For example
-                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+        :param use_auth_token: The API token used to download private models from Hugging Face.
+                               If set to `True`, the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) is used.
+                               For more information, see [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained).
+        :param devices: List of torch devices (for example, cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects or strings is supported (for example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False`, the devices
                         parameter is not used and a single cpu device is used for inference.
 
         """
@@ -118,10 +116,10 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
-        Detect the languge of Documents and add the output to the Documents metadata.
-        :param documents: list of Documents to detect language.
+        Detect the language of Documents and add the output to the Documents metadata.
+        :param documents: A list of Documents whose language you want to detect.
         :param batch_size: The number of Documents to classify at a time.
-        :return: List of Documents, where Document.meta["language"] contains the predicted language
+        :return: A list of Documents, where Document.meta["language"] contains the predicted language.
         """
         if len(documents) == 0:
             raise ValueError(
@@ -148,9 +146,9 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
 
     def predict_batch(self, documents: List[List[Document]], batch_size: Optional[int] = None) -> List[List[Document]]:
         """
-        Detect the documents language and add the output to the document's meta data.
-        :param documents: list of lists of Documents to detect language.
-        :return: List of lists of Documents, where Document.meta["language"] contains the predicted language
+        Detect the Document's language and add the output to the Document's meta data.
+        :param documents: A list of lists of Documents whose language you want to detect.
+        :return: A list of lists of Documents where Document.meta["language"] contains the predicted language.
         """
         if len(documents) == 0 or all(len(docs_list) == 0 for docs_list in documents):
             raise ValueError(

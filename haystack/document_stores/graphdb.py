@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Union, Tuple
 
+import warnings
 from pathlib import Path
 
 import requests
@@ -39,6 +40,10 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param index: name of the index (also called repository) stored in the GraphDB instance
         :param prefixes: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
         """
+        warnings.warn(
+            "The GraphDBKnowledgeGraph component is deprecated and will be removed in future versions.",
+            category=DeprecationWarning,
+        )
         super().__init__()
 
         self.url = f"http://{host}:{port}"

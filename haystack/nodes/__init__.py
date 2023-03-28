@@ -25,7 +25,14 @@ from haystack.nodes.image_to_text import TransformersImageToText
 from haystack.nodes.label_generator import PseudoLabelGenerator
 from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers, DocumentMerger, Shaper
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
-from haystack.nodes.prompt import PromptNode, PromptTemplate, PromptModel, PromptModelInvocationLayer
+from haystack.nodes.prompt import (
+    PromptNode,
+    PromptTemplate,
+    PromptModel,
+    PromptModelInvocationLayer,
+    BaseOutputParser,
+    AnswerParser,
+)
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
@@ -36,15 +43,15 @@ from haystack.nodes.retriever import (
     DensePassageRetriever,
     EmbeddingRetriever,
     BM25Retriever,
-    ElasticsearchRetriever,
     FilterRetriever,
     MultihopEmbeddingRetriever,
-    ElasticsearchFilterOnlyRetriever,
     TfidfRetriever,
     Text2SparqlRetriever,
     TableTextRetriever,
     MultiModalRetriever,
 )
+
+from haystack.nodes.sampler import BaseSampler, TopPSampler
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
 

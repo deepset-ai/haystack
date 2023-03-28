@@ -20,7 +20,6 @@ from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from .. import conftest
@@ -51,7 +50,7 @@ def noop():
 
 
 def test_deprecation_previous_major_and_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.1"):
             fail_at_version(1, 1)(noop)()
 
@@ -65,7 +64,7 @@ def test_deprecation_previous_major_and_minor():
 
 
 def test_deprecation_previous_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.2"):
             fail_at_version(1, 2)(noop)()
 
@@ -79,7 +78,7 @@ def test_deprecation_previous_major_same_minor():
 
 
 def test_deprecation_previous_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.3"):
             fail_at_version(1, 3)(noop)()
 
@@ -93,7 +92,7 @@ def test_deprecation_previous_major_later_minor():
 
 
 def test_deprecation_same_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.1"):
             fail_at_version(2, 1)(noop)()
 
@@ -107,7 +106,7 @@ def test_deprecation_same_major_previous_minor():
 
 
 def test_deprecation_same_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.2"):
             fail_at_version(2, 2)(noop)()
 
@@ -121,7 +120,7 @@ def test_deprecation_same_major_same_minor():
 
 
 def test_deprecation_same_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(2, 3)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -132,7 +131,7 @@ def test_deprecation_same_major_later_minor():
 
 
 def test_deprecation_later_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 1)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -143,7 +142,7 @@ def test_deprecation_later_major_previous_minor():
 
 
 def test_deprecation_later_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 2)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -154,7 +153,7 @@ def test_deprecation_later_major_same_minor():
 
 
 def test_deprecation_later_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 3)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -1274,27 +1273,6 @@ def test_get_eval_run_results():
     first_result = node_results.iloc[0]
     assert first_result["exact_match"] == True
     assert first_result["answer"] == "This"
-
-
-def test_exponential_backoff():
-    # Test that the exponential backoff works as expected
-    # should raise exception, check the exception contains the correct message
-    with pytest.raises(Exception, match="retries \(2\)"):
-
-        @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=2)
-        def greet(name: str):
-            if random() < 1.1:
-                raise OpenAIRateLimitError("Too many requests")
-            return f"Hello {name}"
-
-        greet("John")
-
-    # this should not raise exception and should print "Hello John"
-    @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=1)
-    def greet2(name: str):
-        return f"Hello {name}"
-
-    assert greet2("John") == "Hello John"
 
 
 def test_secure_model_loading(monkeypatch, caplog):
