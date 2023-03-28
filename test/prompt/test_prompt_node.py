@@ -1400,6 +1400,21 @@ class TestPromptTemplateSyntax:
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
         assert prompts == expected_prompts
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "prompt_text, expected",
+        [
+            ("Please answer the question. Context: $documents; Question: $question; Answer:", True),
+            ("Please answer the question. Context: {documents}; Question: {question}; Answer:", False),
+            (
+                "Please answer the question. Context: {join(documents, pattern='$idx $content')}; Question: {question}; Answer:",
+                False,
+            ),
+        ],
+    )
+    def test_prompt_template_old_syntax_detection(self, prompt_text: str, expected: bool):
+        assert PromptTemplate._detect_old_syntax(prompt_text=prompt_text) == expected
+
 
 @pytest.mark.integration
 def test_chatgpt_direct_prompting(chatgpt_prompt_model):

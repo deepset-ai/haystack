@@ -268,6 +268,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
         for old, new in replacements.items():
             prompt_text = prompt_text.replace(old, new)
 
+        if self._detect_old_syntax(prompt_text):
+            logger.warning(
+                "Use only f-string syntax. It seems like you're using the PromptTemplate syntax, which is deprecated. "
+                "See [documentation](https://docs.haystack.deepset.ai/docs/prompt_node#migrating-from-previous-promptnode-versions) for migration instructions."
+            )
+
         self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
 
         ast_validator = _ValidationVisitor(prompt_template_name=name)
@@ -294,6 +300,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
             output_parser_type = output_parser["type"]
             output_parser_params = output_parser.get("params", {})
             self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
+
+    @staticmethod
+    def _detect_old_syntax(prompt_text):
+        return re.search(r"\$[_a-z][_a-z0-9]*", prompt_text) is not None and "{" not in prompt_text
 
     @property
     def output_variable(self) -> Optional[str]:
