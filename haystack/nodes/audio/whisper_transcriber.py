@@ -201,4 +201,9 @@ class WhisperTranscriber(BaseComponent):
         :param params: Ignored
         :param debug: Ignored
         """
+        if isinstance(file_paths[0], list):
+            all_files = []
+            for files_list in file_paths:
+                all_files += files_list
+            return self.run(file_paths=all_files)
         return self.run(file_paths=file_paths)
