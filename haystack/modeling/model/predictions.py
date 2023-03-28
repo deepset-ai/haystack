@@ -207,6 +207,7 @@ class QACandidate:
         # if the original text contained multiple consecutive whitespaces
         cleaned_final_text = final_text.strip()
         if not cleaned_final_text:
+            self.answer_type = "no_answer"
             return "", 0, 0
 
         # Adjust the offsets in case of whitespace at the beginning of the answer

@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
 
 try:
     from typing import Literal
@@ -23,15 +24,14 @@ from haystack.environment import (
     HAYSTACK_REMOTE_API_MAX_RETRIES,
     HAYSTACK_REMOTE_API_TIMEOUT_SEC,
 )
-from haystack.errors import CohereError
+from haystack.errors import CohereError, CohereUnauthorizedError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.reflection import retry_with_exponential_backoff
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 
 COHERE_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-COHERE_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
+COHERE_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 COHERE_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
@@ -200,7 +200,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
-        send_event("SentenceTransformersEmbeddingEncoder.train()")
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
@@ -380,14 +380,18 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
             "multilingual-22-12",
         )
 
-    @retry_with_exponential_backoff(
-        backoff_in_seconds=COHERE_BACKOFF, max_retries=COHERE_MAX_RETRIES, errors=(CohereError,)
+    @retry(
+        retry=retry_if_exception_type(CohereError),
+        wait=wait_exponential(multiplier=COHERE_BACKOFF),
+        stop=stop_after_attempt(COHERE_MAX_RETRIES),
     )
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "texts": text, "truncate": "END"}
         headers = {"Authorization": f"BEARER {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=COHERE_TIMEOUT)
         res = json.loads(response.text)
+        if response.status_code == 401:
+            raise CohereUnauthorizedError(f"Invalid Cohere API key. {response.text}")
         if response.status_code != 200:
             raise CohereError(response.text, status_code=response.status_code)
         generated_embeddings = [e for e in res["embeddings"]]

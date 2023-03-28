@@ -13,4 +13,5 @@ from haystack.pipelines.standard_pipelines import (
     ExtractiveQAPipeline,
     FAQPipeline,
     TextIndexingPipeline,
+    WebQAPipeline,
 )
