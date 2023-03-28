@@ -73,12 +73,13 @@ class DefaultTokenStreamingHandler(TokenStreamingHandler):
         return token_received
 
 
-class TokenLimitEnforcer:
+class HFTokenLimitEnforcer:
     """
-    TokenLimitEnforcer enforces the prompt and the model response to be within the token limit.
+    HFTokenLimitEnforcer enforces the prompt and the model response to be within the token limit
+    (using HF tokenizers).
 
-    Although for some models, we can very precisely estimate this number of tokens (we have access to their tokenizer)
-    for others - we can't. In this case we use one of the HuggingFace tokenizers to estimate the number of
+    Although for some models, we can very precisely estimate this number of tokens (we have access to their tokenizer),
+    for others, we can't. In this case we case use one of the HuggingFace tokenizers to estimate the number of
     tokens (e.g gpt2).
 
     """
@@ -302,7 +303,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
         # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
         self.max_length = max_length or self.pipe.model.config.max_length
-        self.token_limit_estimator = TokenLimitEnforcer(
+        self.token_limit_estimator = HFTokenLimitEnforcer(
             self.pipe.tokenizer, self.max_length, self.pipe.tokenizer.model_max_length
         )
 
@@ -752,7 +753,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         # Cohere API has a max token limit of 2048
         # Cohere doesn't provide tokenizer Python lib; they mention use BPE tokenizer (i.e GPT2, RoBERTa, XLM, etc.)
         # See https://docs.cohere.ai/reference/tokenize
-        self.token_enforcer = TokenLimitEnforcer(
+        self.token_enforcer = HFTokenLimitEnforcer(
             tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=self.max_length, model_max_length=2048
         )
         self.client = HTTPClient(

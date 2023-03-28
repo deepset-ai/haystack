@@ -11,7 +11,7 @@ from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt import PromptModelInvocationLayer
 from haystack.nodes.prompt.prompt_node import PromptTemplateValidationError
-from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler, TokenLimitEnforcer
+from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler, HFTokenLimitEnforcer
 from haystack.schema import Answer
 
 
@@ -147,11 +147,13 @@ def test_create_prompt_model_dtype():
 @pytest.mark.unit
 def test_token_enforcer():
     prompt = "This is a prompt text"
-    e = TokenLimitEnforcer(tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=10, model_max_length=100)
+    e = HFTokenLimitEnforcer(
+        tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=10, model_max_length=100
+    )
     result = e.process_prompt(prompt)
     assert result == prompt
 
-    e = TokenLimitEnforcer(tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=10, model_max_length=20)
+    e = HFTokenLimitEnforcer(tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=10, model_max_length=20)
     prompt = "This prompt is too long and will be truncated, because it is too long"
     result = e.process_prompt(prompt)
     assert result == "This prompt is too long and will be truncated"
