@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - massi/fix-multiarch
+      - massi-fix-multiarch
     tags:
       - "v[0-9].[0-9]+.[0-9]+*"
 
