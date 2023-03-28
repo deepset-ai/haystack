@@ -170,14 +170,14 @@ class WhisperTranscriber(BaseComponent):
         :param documents: Ignored
         :param meta: Ignored
         """
-        documents: List[Document] = []
+        transcribed_documents: List[Document] = []
         if file_paths:
             for file_path in file_paths:
                 transcription = self.transcribe(file_path)
                 d = Document.from_dict(transcription, field_map={"text": "content"})
-                documents.append(d)
+                transcribed_documents.append(d)
 
-        output = {"documents": documents}
+        output = {"documents": transcribed_documents}
         return output, "output_1"
 
     def run_batch(
@@ -201,7 +201,7 @@ class WhisperTranscriber(BaseComponent):
         :param params: Ignored
         :param debug: Ignored
         """
-        if isinstance(file_paths[0], list):
+        if file_paths and isinstance(file_paths[0], list):
             all_files = []
             for files_list in file_paths:
                 all_files += files_list
