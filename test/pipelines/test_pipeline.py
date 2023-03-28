@@ -2,7 +2,6 @@ import ssl
 import json
 import platform
 import sys
-import datetime
 from typing import Tuple
 from copy import deepcopy
 from unittest import mock
@@ -2048,3 +2047,31 @@ def test_fix_to_pipeline_execution_when_join_follows_join():
     res = pipeline.run(query="Alpha Beta Gamma Delta")
     documents = res["documents"]
     assert len(documents) == 4  # all four documents should be found
+
+
+@pytest.mark.unit
+def test_update_config_hash():
+    fake_configs = {
+        "version": "ignore",
+        "components": [
+            {
+                "name": "MyReader",
+                "type": "FARMReader",
+                "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+            }
+        ],
+        "pipelines": [
+            {
+                "name": "my_query_pipeline",
+                "nodes": [
+                    {"name": "MyRetriever", "inputs": ["Query"]},
+                    {"name": "MyReader", "inputs": ["MyRetriever"]},
+                ],
+            }
+        ],
+    }
+    with mock.patch("haystack.pipelines.base.Pipeline.get_config", return_value=fake_configs):
+        test_pipeline = Pipeline()
+        assert test_pipeline.config_hash == None
+        test_pipeline.update_config_hash()
+        assert test_pipeline.config_hash == "a30d3273de0d70e63e8cd91d915255b3"
