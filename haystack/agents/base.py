@@ -191,7 +191,8 @@ class Agent:
         See haystack/telemetry.py::send_event
         """
         try:
-            self.hash = md5(" ".join([tool.pipeline_or_node.__class__.__name__ for tool in self.tools.values()]))
+            tool_names = " ".join([tool.pipeline_or_node.__class__.__name__ for tool in self.tools.values()])
+            self.hash = md5(tool_names.encode()).hexdigest()
         except Exception as exc:
             logger.debug("Telemetry exception: %s", str(exc))
             self.hash = "[an exception occurred during hashing]"

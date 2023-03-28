@@ -438,7 +438,7 @@ class Pipeline:
             for comp in config_to_hash["components"]:
                 del comp["name"]
             config_hash = json.dumps(config_to_hash, default=str)
-            self.config_hash = md5(config_hash)
+            self.config_hash = md5(config_hash.encode()).hexdigest()
         except Exception as exc:
             logger.debug("Telemetry exception: %s", str(exc))
             self.config_hash = "[an exception occurred during hashing]"
