@@ -76,7 +76,6 @@ jobs:
           workdir: docker
           targets: ${{ matrix.target }}
           push: true
-          set: "*.platform=${{ matrix.platform }}"
 
       - name: Get latest version of Haystack
         id: latest-version
