@@ -14,7 +14,7 @@ env:
 
 jobs:
   build-and-push:
-    name: Build ${{ matrix.target }} image for ${{ matrix.platform }}
+    name: Build ${{ matrix.target }} images
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -57,7 +57,7 @@ jobs:
           targets: base-${{ matrix.target }}
           push: true
 
-      - name: Test base image
+      - name: Test base image for ${{ matrix.platform }}
         run: |
           EXPECTED_VERSION=$(cat VERSION.txt)
           TAG="base-${{ matrix.target }}-${{ steps.meta.outputs.version }}"
@@ -111,4 +111,3 @@ jobs:
           workdir: docker
           targets: ${{ matrix.target }}-latest
           push: true
-          set: "*.platform=${{ matrix.platform }}"
