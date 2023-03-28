@@ -6,10 +6,10 @@ import requests
 import torch
 from requests import PreparedRequest
 
+from haystack import MultiLabel, Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.base import BaseComponent
 from haystack.utils.import_utils import is_whisper_available
-
 
 WhisperModel = Literal["tiny", "small", "medium", "large", "large-v2"]
 
@@ -153,35 +153,52 @@ class WhisperTranscriber(BaseComponent):
 
             return transcription
 
-    def run(self, audio_file: Union[str, BinaryIO], language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
-        """
-        Transcribe audio file.
-
-        :param audio_file: Path to audio file or a binary file-like object.
-        :param language: Language of the audio file. If None, the language is automatically detected.
-        :param return_segments: If True, returns the transcription for each segment of the audio file.
-        :param translate: If True, translates the transcription to English.
-        """
-        document = self.transcribe(audio_file, language, return_segments, translate)
-
-        output = {"documents": [document]}
-
-        return output, "output_1"
-
-    def run_batch(self, audio_files: List[Union[str, BinaryIO]], language: Optional[str] = None, return_segments: bool = False, translate: bool = False):  # type: ignore
+    def run(
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+    ):  # type: ignore
         """
         Transcribe audio files.
 
-        :param audio_files: List of paths to audio files or binary file-like objects.
-        :param language: Language of the audio files. If None, the language is automatically detected.
-        :param return_segments: If True, returns the transcription for each segment of the audio files.
-        :param translate: If True, translates the transcription to English.
+        :param query: Ignored
+        :param file_paths: List of paths to audio files.
+        :param labels: Ignored
+        :param documents: Ignored
+        :param meta: Ignored
         """
-        documents = []
-        for audio in audio_files:
-            document = self.transcribe(audio, language, return_segments, translate)
-            documents.append(document)
+        documents: List[Document] = []
+        if file_paths:
+            for file_path in file_paths:
+                transcription = self.transcribe(file_path)
+                d = Document.from_dict(transcription, field_map={"text": "content"})
+                documents.append(d)
 
         output = {"documents": documents}
-
         return output, "output_1"
+
+    def run_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):  # type: ignore
+        """
+        Transcribe audio files.
+
+        :param queries: Ignored
+        :param file_paths: List of paths to audio files.
+        :param labels: Ignored
+        :param documents: Ignored
+        :param meta: Ignored
+        :param params: Ignored
+        :param debug: Ignored
+        """
+        return self.run(file_paths=file_paths)
