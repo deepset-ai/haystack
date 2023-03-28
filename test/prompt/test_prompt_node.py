@@ -4,13 +4,14 @@ from typing import Optional, Set, Type, Union, List, Dict, Any, Tuple
 
 import pytest
 import torch
+from transformers import AutoTokenizer
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt import PromptModelInvocationLayer
 from haystack.nodes.prompt.prompt_node import PromptTemplateValidationError
-from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler
+from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler, TokenLimitEnforcer
 from haystack.schema import Answer
 
 
@@ -134,12 +135,26 @@ def test_create_prompt_model():
         assert model.model_name_or_path == "google/flan-t5-small"
 
 
+@pytest.mark.unit
 def test_create_prompt_model_dtype():
     model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "auto"})
     assert model.model_name_or_path == "google/flan-t5-small"
 
     model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "torch.bfloat16"})
     assert model.model_name_or_path == "google/flan-t5-small"
+
+
+@pytest.mark.unit
+def test_token_enforcer():
+    prompt = "This is a prompt text"
+    e = TokenLimitEnforcer(tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=10, model_max_length=100)
+    result = e.process_prompt(prompt)
+    assert result == prompt
+
+    e = TokenLimitEnforcer(tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=10, model_max_length=20)
+    prompt = "This prompt is too long and will be truncated, because it is too long"
+    result = e.process_prompt(prompt)
+    assert result == "This prompt is too long and will be truncated"
 
 
 @pytest.mark.integration

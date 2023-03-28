@@ -5,7 +5,14 @@ from typing import Dict, List, Optional, Union, Type, cast
 
 import sseclient
 import torch
-from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import (
+    pipeline,
+    StoppingCriteriaList,
+    StoppingCriteria,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+    AutoTokenizer,
+)
 from transformers.pipelines import get_task
 
 from haystack.errors import OpenAIError, CohereError, CohereUnauthorizedError
@@ -66,6 +73,58 @@ class DefaultTokenStreamingHandler(TokenStreamingHandler):
         return token_received
 
 
+class TokenLimitEnforcer:
+    """
+    TokenLimitEnforcer enforces the prompt and the model response to be within the token limit.
+
+    Although for some models can very precisely estimate this number of tokens (we have access to their tokenizer) for
+    others we can't. In this case we use one of the HuggingFace tokenizers to estimate the number of tokens (e.g gpt2).
+
+    """
+
+    def __init__(self, tokenizer: PreTrainedTokenizer, answer_max_length: int = 32, model_max_length: int = 512):
+        """
+        Create a new TokenLimitEnforcer.
+        :param tokenizer: The tokenizer to use to estimate the number of tokens.
+        :param answer_max_length: The maximum length of the answer.
+        :param model_max_length: The maximum length of the model context window.
+        """
+        self.tokenizer = tokenizer
+        if answer_max_length >= model_max_length:
+            raise ValueError(
+                f"answer_max_length:{answer_max_length} must be less " f"than model_max_length:{model_max_length}"
+            )
+        self.answer_max_length = answer_max_length
+        self.max_length = model_max_length
+
+    def process_prompt(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+        """
+        Process the prompt to ensure it is within the token limit. If the prompt is too long, it will be truncated to
+        fit within the token limit.
+
+        :param prompt: The prompt to process.
+        :return: The processed prompt (potentially truncated).
+        """
+        tokenized_payload = self.tokenizer.tokenize(prompt)
+        n_prompt_tokens = len(tokenized_payload)
+        if (n_prompt_tokens + self.answer_max_length) <= self.max_length:
+            return prompt
+
+        logger.warning(
+            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "Shorten the prompt to prevent it from being cut off",
+            n_prompt_tokens,
+            self.max_length - self.answer_max_length,
+            self.answer_max_length,
+            self.max_length,
+        )
+
+        prompt_limit = self.max_length - self.answer_max_length
+        decoded_string = self.tokenizer.convert_tokens_to_string(tokenized_payload[:prompt_limit])
+        return decoded_string
+
+
 class PromptModelInvocationLayer:
     """
     PromptModelInvocationLayer implementations execute a prompt on an underlying model.
@@ -122,6 +181,7 @@ class PromptModelInvocationLayer:
         """Ensure that length of the prompt and answer is within the maximum token length of the PromptModel.
 
         :param prompt: Prompt text to be sent to the generative model.
+        :return: The processed (and potentially truncated) prompt.
         """
         pass
 
@@ -241,6 +301,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
         # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
         self.max_length = max_length or self.pipe.model.config.max_length
+        self.token_limit_estimator = TokenLimitEnforcer(
+            self.pipe.tokenizer, self.max_length, self.pipe.tokenizer.model_max_length
+        )
 
     def invoke(self, *args, **kwargs):
         """
@@ -303,26 +366,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
-        n_answer_tokens = self.max_length
-        if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
-            return prompt
-
-        logger.warning(
-            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
-            "answer length (%s tokens) fits within the max token limit (%s tokens). "
-            "Shorten the prompt to prevent it from being cut off",
-            n_prompt_tokens,
-            self.pipe.tokenizer.model_max_length - n_answer_tokens,
-            n_answer_tokens,
-            self.pipe.tokenizer.model_max_length,
-        )
-
-        tokenized_payload = self.pipe.tokenizer.tokenize(prompt)
-        decoded_string = self.pipe.tokenizer.convert_tokens_to_string(
-            tokenized_payload[: self.pipe.tokenizer.model_max_length - n_answer_tokens]
-        )
-        return decoded_string
+        return self.token_limit_estimator.process_prompt(prompt)
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
@@ -704,6 +748,12 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             for key in ["top_k", "top_p", "temperature", "stop_sequences", "max_tokens"]
             if key in kwargs
         }
+        # Cohere API has a max token limit of 2048
+        # Cohere doesn't provide tokenizer Python lib; they mention use BPE tokenizer (i.e GPT2, RoBERTa, XLM, etc.)
+        # See https://docs.cohere.ai/reference/tokenize
+        self.token_enforcer = TokenLimitEnforcer(
+            tokenizer=AutoTokenizer.from_pretrained("gpt2"), answer_max_length=self.max_length, model_max_length=2048
+        )
         self.client = HTTPClient(
             method="POST",
             url="https://api.cohere.ai/v1/generate",
@@ -751,7 +801,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         return remove_words(sentences, stop_words) if stop_words else sentences
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        return prompt
+        return self.token_enforcer.process_prompt(prompt)
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
