@@ -2,6 +2,7 @@
 
 from typing import Generator, Optional, Dict, List, Set, Union, Any
 
+import warnings
 import logging
 import collections
 from pathlib import Path
@@ -39,6 +40,13 @@ class BaseKnowledgeGraph(BaseComponent):
     """
     Base class for implementing Knowledge Graphs.
     """
+
+    def __init__(self):
+        warnings.warn(
+            "The BaseKnowledgeGraph component is deprecated and will be removed in future versions.",
+            category=DeprecationWarning,
+        )
+        super().__init__()
 
     outgoing_edges = 1
 

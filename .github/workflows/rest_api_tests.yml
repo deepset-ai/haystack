@@ -18,6 +18,8 @@ on:
       - "rest_api/pyproject.toml"
 
 env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
   PYTHON_VERSION: "3.8"
 
 jobs:
@@ -61,11 +63,30 @@ jobs:
             exit 1
           fi
 
-      - uses: act10ns/slack@v2
-        with:
-          status: ${{ job.status }}
-          channel: "#haystack"
+      - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
+        with:
+          payload: |
+            {
+              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
+                  }
+                }
+              ]
+            }
 
   rest_api:
     needs: black
@@ -94,10 +115,27 @@ jobs:
         run: |
           pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
-      - uses: act10ns/slack@v2
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        with:
-          status: ${{ job.status }}
-          channel: "#haystack"
+      - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
+        with:
+          payload: |
+            {
+              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
+                  }
+                }
+              ]
+            }

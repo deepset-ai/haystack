@@ -49,9 +49,9 @@ jobs:
       - name: Install release_docs.py dependencies
         run: pip install requests
 
-      # Note that patch versions all sync to the one readme minor version
-      # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Readme version
+        env:
+          RDME_API_KEY: ${{ secrets.README_API_KEY }}
         run: |
           git checkout main
-          python ./.github/utils/release_docs.py --version v${{ steps.versions.outputs.current_release_minor }} --key ${{ secrets.README_API_KEY }}
+          python ./.github/utils/release_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}

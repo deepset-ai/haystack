@@ -1,5 +1,6 @@
 from typing import Optional, List, Union
 
+import warnings
 import logging
 from transformers import BartForConditionalGeneration, BartTokenizer
 
@@ -38,6 +39,10 @@ class Text2SparqlRetriever(BaseGraphRetriever):
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        warnings.warn(
+            "The Text2SparqlRetriever component is deprecated and will be removed in future versions.",
+            category=DeprecationWarning,
+        )
         super().__init__()
 
         self.knowledge_graph = knowledge_graph

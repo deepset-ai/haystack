@@ -164,7 +164,7 @@ class Trainer:
         :return: Returns the model after training. When you do ``early_stopping``
             with a ``save_dir`` the best model is loaded and returned.
         """
-        send_event("Trainer.train()")
+        send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
         # connect the prediction heads with the right output from processor
         self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
         # Check that the tokenizer(s) fits the language model(s)
