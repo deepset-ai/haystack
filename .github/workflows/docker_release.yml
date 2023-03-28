@@ -21,9 +21,6 @@ jobs:
         target:
           - "cpu"
           - "gpu"
-        platform:
-          - "linux/amd64"
-          - "linux/arm64"
 
     steps:
       - name: Checkout
@@ -57,14 +54,19 @@ jobs:
           targets: base-${{ matrix.target }}
           push: true
 
-      - name: Test base image for ${{ matrix.platform }}
+      - name: Test base image
         run: |
           EXPECTED_VERSION=$(cat VERSION.txt)
           TAG="base-${{ matrix.target }}-${{ steps.meta.outputs.version }}"
-          PLATFORM="${{ matrix.platform }}"
 
+          PLATFORM="linux/amd64"
           VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"import haystack; print(haystack.__version__)")
           [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+
+          PLATFORM="linux/arm64"
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"import haystack; print(haystack.__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+
           # Remove image after test to avoid filling the GitHub runner and prevent its failure
           docker rmi "deepset/haystack:$TAG"
 
