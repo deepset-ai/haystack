@@ -25,10 +25,3 @@ from haystack.environment import set_pytorch_secure_model_loading
 
 pd.options.display.max_colwidth = 80
 set_pytorch_secure_model_loading()
-
-import os
-
-
-from haystack.telemetry_2 import send_event
-
-send_event(event_name="Haystack imported")

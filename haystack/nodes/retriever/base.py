@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, FilterType
 
 

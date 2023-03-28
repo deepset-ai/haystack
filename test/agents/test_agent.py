@@ -3,15 +3,16 @@ import os
 import re
 from typing import Tuple
 
+from test.conftest import MockRetriever, MockPromptNode
+from unittest import mock
 import pytest
 
-from haystack import BaseComponent, Answer, Document
+from haystack import BaseComponent, Answer
 from haystack.agents import Agent, AgentStep
 from haystack.agents.base import Tool
 from haystack.errors import AgentError
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, BaseStandardPipeline
-from test.conftest import MockRetriever, MockPromptNode
 
 
 @pytest.mark.unit
@@ -214,7 +215,7 @@ def test_tool_result_extraction(reader, retriever_with_docs):
     assert result == "Paris" or result == "Madrid"
 
     # PromptNode as a Tool
-    pt = PromptTemplate("test", "Here is a question: $query, Answer:")
+    pt = PromptTemplate("test", "Here is a question: {query}, Answer:")
     pn = PromptNode(default_prompt_template=pt)
 
     t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
@@ -253,8 +254,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
             "Word: Rome\nLength: 4\n"
             "Word: Arles\nLength: 5\n"
             "Word: Berlin\nLength: 6\n"
-            "Word: $query?\nLength: ",
-            prompt_params=["query"],
+            "Word: {query}?\nLength: ",
         ),
     )
 
@@ -304,8 +304,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
             "Word: Rome\nLength: 4\n"
             "Word: Arles\nLength: 5\n"
             "Word: Berlin\nLength: 6\n"
-            "Word: $query?\nLength: ",
-            prompt_params=["query"],
+            "Word: {query}\nLength: ",
         ),
     )
 
@@ -337,3 +336,30 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
     # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
     assert any(digit in results["answers"][0][0].answer for digit in ["5", "6", "five", "six"])
     assert any(digit in results["answers"][1][0].answer for digit in ["5", "6", "five", "six"])
+
+
+@pytest.mark.unit
+def test_update_hash():
+    agent = Agent(prompt_node=mock.Mock(), prompt_template=mock.Mock())
+    assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
+    agent.add_tool(
+        Tool(
+            name="Search",
+            pipeline_or_node=mock.Mock(),
+            description="useful for when you need to answer "
+            "questions about where people live. You "
+            "should ask targeted questions",
+            output_variable="answers",
+        )
+    )
+    assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
+    agent.add_tool(
+        Tool(
+            name="Count",
+            pipeline_or_node=mock.Mock(),
+            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
+        )
+    )
+    assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
+    agent.update_hash()
+    assert agent.hash == "5ac8eca2f92c9545adcce3682b80d4c5"
