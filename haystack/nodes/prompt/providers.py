@@ -690,7 +690,7 @@ class AzureChatGPTInvocationLayer(OpenAIInvocationLayer):
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
         self.api_version = api_version
-        self.max_length = max_length
+        self.max_length = max_length or 800
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -719,7 +719,7 @@ class AzureChatGPTInvocationLayer(OpenAIInvocationLayer):
         kwargs_with_defaults = self.model_input_kwargs
         payload = {
             "messages": messages,
-            "max_tokens": 800,
+            "max_tokens": self.max_length,
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 0.95),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
