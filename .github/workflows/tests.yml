@@ -80,27 +80,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
@@ -134,27 +114,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-elasticsearch:
     name: Integration / Elasticsearch / ${{ matrix.os }}
@@ -190,27 +151,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-sql:
     name: Integration / SQL / ${{ matrix.os }}
@@ -238,27 +180,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-opensearch:
     name: Integration / Opensearch / ${{ matrix.os }}
@@ -294,27 +217,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-dc:
     name: Integration / dC / ${{ matrix.os }}
@@ -342,27 +246,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-faiss:
     name: Integration / faiss / ${{ matrix.os }}
@@ -390,27 +275,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-weaviate:
     name: Integration / Weaviate / ${{ matrix.os }}
@@ -448,27 +314,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-pinecone:
     name: Integration / pinecone / ${{ matrix.os }}
@@ -498,27 +345,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-milvus:
     name: Integration / Milvus / ${{ matrix.os }}
@@ -557,27 +384,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-memory:
     name: Integration / memory / ${{ matrix.os }}
@@ -605,27 +412,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-promptnode:
     name: Integration / PromptNode / ${{ matrix.os }}
@@ -653,27 +441,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-agents:
     name: Integration / Agents / ${{ matrix.os }}
@@ -701,27 +470,8 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
 
 #
@@ -769,27 +519,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   unit-tests-windows:
     needs: black
@@ -828,27 +558,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-linux:
     needs:
@@ -939,27 +649,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-windows:
     needs:
@@ -1012,27 +702,7 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload: |
-          {
-            "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                }
-              }
-            ]
-          }
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   catch-all:
     name: Catch-all check
