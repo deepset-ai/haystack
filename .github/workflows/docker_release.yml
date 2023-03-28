@@ -47,7 +47,7 @@ jobs:
         with:
           images: $DOCKER_REPO_NAME
 
-      - name: Build base image
+      - name: Build base images
         uses: docker/bake-action@v2
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
@@ -68,7 +68,7 @@ jobs:
           # Remove image after test to avoid filling the GitHub runner and prevent its failure
           docker rmi "deepset/haystack:$TAG"
 
-      - name: Build api image
+      - name: Build api images
         uses: docker/bake-action@v2
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
