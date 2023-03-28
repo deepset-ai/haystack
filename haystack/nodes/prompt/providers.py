@@ -77,8 +77,9 @@ class TokenLimitEnforcer:
     """
     TokenLimitEnforcer enforces the prompt and the model response to be within the token limit.
 
-    Although for some models can very precisely estimate this number of tokens (we have access to their tokenizer) for
-    others we can't. In this case we use one of the HuggingFace tokenizers to estimate the number of tokens (e.g gpt2).
+    Although for some models, we can very precisely estimate this number of tokens (we have access to their tokenizer)
+    for others - we can't. In this case we use one of the HuggingFace tokenizers to estimate the number of
+    tokens (e.g gpt2).
 
     """
 
