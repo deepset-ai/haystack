@@ -14,7 +14,7 @@ env:
 jobs:
   build-and-push:
     name: Build ${{ matrix.target }} images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     strategy:
       matrix:
         target:
@@ -56,6 +56,9 @@ jobs:
       - name: Test base image
         run: |
           EXPECTED_VERSION=$(cat VERSION.txt)
+          if [[ $EXPECTED_VERSION == *"-"* ]]; then
+            EXPECTED_VERSION=$(cut -d '-' -f 1 < VERSION.txt)$(cut -d '-' -f 2 < VERSION.txt)
+          fi
           TAG="base-${{ matrix.target }}-${{ steps.meta.outputs.version }}"
 
           PLATFORM="linux/amd64"
