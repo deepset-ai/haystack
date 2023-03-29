@@ -22,7 +22,7 @@ from haystack.modeling.model.optimization import get_scheduler, WrappedDataParal
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.utils.early_stopping import EarlyStopping
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)

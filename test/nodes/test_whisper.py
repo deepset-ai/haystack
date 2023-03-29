@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+from haystack import Pipeline
 from haystack.nodes.audio import WhisperTranscriber
 from haystack.utils.import_utils import is_whisper_available
 from ..conftest import SAMPLES_PATH
@@ -54,3 +55,14 @@ def transcribe_test_helper(whisper, **kwargs):
     audio_path_transcript = whisper.transcribe(audio_file=file_path, **kwargs)
     assert "answer" in audio_path_transcript["text"].lower()
     return audio_object_transcript, audio_path_transcript
+
+
+@pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OpenAI API key not found")
+@pytest.mark.integration
+def test_whisper_pipeline():
+    w = WhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
+    pipeline = Pipeline()
+    pipeline.add_node(component=w, name="whisper", inputs=["File"])
+    res = pipeline.run(file_paths=[str(SAMPLES_PATH / "audio" / "answer.wav")])
+    assert res["documents"] and len(res["documents"]) == 1
+    assert "answer" in res["documents"][0].content.lower()

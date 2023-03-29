@@ -229,7 +229,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
         _check_openai_finish_reason(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
-        answers = self._create_answers(generated_answers, input_docs)
+        answers = self._create_answers(generated_answers, input_docs, prompt=prompt)
         result = {"query": query, "answers": answers}
         return result
 

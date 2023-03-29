@@ -8,7 +8,6 @@ from pydantic import BaseConfig
 from fastapi import FastAPI, APIRouter
 import haystack
 from haystack import Pipeline
-from haystack.telemetry import send_event_if_public_demo
 
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
@@ -59,7 +58,6 @@ def query(request: QueryRequest):
         return result
 
 
-@send_event_if_public_demo
 def _process_request(pipeline, request) -> Dict[str, Any]:
     start_time = time.time()
 

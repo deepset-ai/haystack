@@ -24,7 +24,7 @@ from haystack.nodes.other.shaper import (  # pylint: disable=unused-import
 )
 from haystack.nodes.prompt.providers import PromptModelInvocationLayer, instruction_following_models
 from haystack.schema import Answer, Document
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +280,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self.name = name
         self.prompt_text = prompt_text
-        self.prompt_params = sorted(
+        self.prompt_params: List[str] = sorted(
             param for param in ast_validator.prompt_params if param not in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS
         )
         self.globals = {
@@ -561,6 +561,17 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]"),
         ),
         PromptTemplate(
+            name="question-answering-with-document-scores",
+            prompt_text="Answer the following question using the paragraphs below as sources. "
+            "An answer should be short, a few words at most.\n"
+            "Paragraphs:\n{documents}\n"
+            "Question: {query}\n\n"
+            "Instructions: Consider all the paragraphs above and their corresponding scores to generate "
+            "the answer. While a single paragraph may have a high score, it's important to consider all "
+            "paragraphs for the same answer candidate to answer accurately.\n\n"
+            "After having considered all possibilities, the final answer is:\n",
+        ),
+        PromptTemplate(
             name="question-generation",
             prompt_text="Given the context please generate a question. Context: {documents}; Question:",
         ),
@@ -694,7 +705,13 @@ class PromptNode(BaseComponent):
         These parameters should be supplied in the `model_kwargs` dictionary.
 
         """
-        send_event("PromptNode initialized")
+        send_event(
+            event_name="PromptNode",
+            event_properties={
+                "llm.model_name_or_path": model_name_or_path,
+                "llm.default_prompt_template": default_prompt_template,
+            },
+        )
         super().__init__()
         self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
@@ -755,7 +772,6 @@ class PromptNode(BaseComponent):
         :param prompt_template: The name or object of the optional PromptTemplate to use.
         :return: A list of strings as model responses.
         """
-        send_event("PromptNode.prompt()", event_properties={"template": str(prompt_template)})
         results = []
         # we pop the prompt_collector kwarg to avoid passing it to the model
         prompt_collector: List[Union[str, List[Dict[str, str]]]] = kwargs.pop("prompt_collector", [])

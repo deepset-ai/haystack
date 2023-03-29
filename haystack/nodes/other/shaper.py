@@ -91,7 +91,7 @@ def join_documents(
     str_replace: Optional[Dict[str, str]] = None,
 ) -> List[Document]:
     """
-    Transforms a list of documents into a list containing a single Document. The content of this list
+    Transforms a list of documents into a list containing a single Document. The content of this document
     is the joined result of all original documents separated by the delimiter you specify.
     How each document is represented is controlled by the pattern parameter.
     You can use the following placeholders:
@@ -118,6 +118,27 @@ def join_documents(
     ```
     """
     return [Document(content=join_documents_to_string(documents, delimiter, pattern, str_replace))]
+
+
+def join_documents_and_scores(documents: List[Document]) -> Tuple[List[Document]]:
+    """
+    Transforms a list of documents with scores in their metadata into a list containing a single Document.
+    The content of this document contains the scores and contents of all original documents.
+    All metadata is dropped. (TODO: fix)
+    Example:
+    ```python
+    assert join_documents_and_scores(
+        documents=[
+            Document(content="first", meta={"score": 0.9}),
+            Document(content="second", meta={"score": 0.7}),
+            Document(content="third", meta={"score": 0.5})
+        ],
+        delimiter=" - "
+    ) == ([Document(content="-[0.9] first\n -[0.7] second\n -[0.5] third")], )
+    ```
+    """
+    content = "\n".join([f"-[{round(float(doc.meta['score']),2)}] {doc.content}" for doc in documents])
+    return ([Document(content=content)],)
 
 
 def format_document(
@@ -527,6 +548,7 @@ REGISTERED_FUNCTIONS: Dict[str, Callable[..., Any]] = {
     "join_lists": join_lists,
     "join_strings": join_strings,
     "join_documents": join_documents,
+    "join_documents_and_scores": join_documents_and_scores,
     "strings_to_answers": strings_to_answers,
     "answers_to_strings": answers_to_strings,
     "strings_to_documents": strings_to_documents,
