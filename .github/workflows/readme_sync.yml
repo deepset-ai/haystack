@@ -1,7 +1,9 @@
 name: Sync docs with Readme
 
 on:
-  workflow_dispatch:
+  pull_request:
+    paths:
+      - "docs/pydoc/**"
   push:
     branches:
       - main
@@ -35,6 +37,7 @@ jobs:
 
       - name: Get current version
         id: current-version
+        if: github.event_name == 'push'
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: echo "minor=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
@@ -43,7 +46,7 @@ jobs:
         # Instead of putting more logic into the previous step, let's just assume that commits on `main`
         # will always be synced to the current `X.Y-unstable` version on Readme
         id: sync-main
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && github.event_name == 'push'
         uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
@@ -54,7 +57,7 @@ jobs:
         # Mutually exclusive with the previous one, this step is supposed to only run on version branches.
         # Sync the current Haystack version `X.Y.Z` with its corresponding Readme version `X.Y`.
         # See https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context for the condition used
-        if: steps.sync-main.outcome == 'skipped'
+        if: steps.sync-main.outcome == 'skipped' && github.event_name == 'push'
         uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}

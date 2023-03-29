@@ -64,7 +64,9 @@ class BaseGenerator(BaseComponent):
                 flat_docs_dict[k].append(v)
         return flat_docs_dict
 
-    def _create_answers(self, generated_answers: List[str], documents: List[Document]) -> List[Answer]:
+    def _create_answers(
+        self, generated_answers: List[str], documents: List[Document], prompt: Optional[str] = None
+    ) -> List[Answer]:
         flat_docs_dict = self._flatten_docs(documents)
         answers: List[Any] = []
         for generated_answer in generated_answers:
@@ -78,6 +80,7 @@ class BaseGenerator(BaseComponent):
                         "content": flat_docs_dict.get("content"),
                         "titles": [d.get("name", "") for d in flat_docs_dict.get("meta", [])],
                         "doc_metas": flat_docs_dict.get("meta"),
+                        "prompt": prompt,
                     },
                 )
             )

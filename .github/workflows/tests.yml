@@ -21,9 +21,9 @@ on:
       - "!rest_api/**/*.py"
 
 env:
-  HAYSTACK_TELEMETRY_VERSION: "0"  # Disables telemetry
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
   SUITES_EXCLUDED_FROM_WINDOWS:
     --ignore=test/pipelines/test_ray.py
     --ignore=test/document_stores/test_knowledge_graph.py
@@ -32,6 +32,7 @@ env:
     --ignore=test/nodes/test_summarizer.py
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+  PYTHON_VERSION: "3.8"
 
 jobs:
 
@@ -42,6 +43,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Black
       run: |
@@ -74,11 +77,10 @@ jobs:
           exit 1
         fi
 
-    - uses: act10ns/slack@v2
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
+    - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
+      with:
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
@@ -89,30 +91,31 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-latest
         topic:
           - document_stores
           - nodes
           - agents
-          - v2
+          - preview
+          - prompt
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,alfalfa]
+        run: pip install .[all]
 
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-elasticsearch:
     name: Integration / Elasticsearch / ${{ matrix.os }}
@@ -134,21 +137,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-sql:
     name: Integration / SQL / ${{ matrix.os }}
@@ -157,26 +161,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[sql]
+        run: pip install .[dev,sql]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-opensearch:
     name: Integration / Opensearch / ${{ matrix.os }}
@@ -198,21 +203,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-dc:
     name: Integration / dC / ${{ matrix.os }}
@@ -221,26 +227,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-faiss:
     name: Integration / faiss / ${{ matrix.os }}
@@ -249,26 +256,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[faiss,dev]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_faiss.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-weaviate:
     name: Integration / Weaviate / ${{ matrix.os }}
@@ -292,21 +300,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install .[dev,docstores]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_weaviate.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-pinecone:
     name: Integration / pinecone / ${{ matrix.os }}
@@ -315,16 +324,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .[pinecone]
+      run: pip install .[dev,pinecone]
 
     - name: Run tests
       env:
@@ -332,11 +342,10 @@ jobs:
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_pinecone.py
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-milvus:
     name: Integration / Milvus / ${{ matrix.os }}
@@ -351,8 +360,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Haystack
+      run: pip install .[all]
 
     - name: Setup Milvus
       run: |
@@ -362,17 +375,16 @@ jobs:
         sudo docker-compose ps
 
     - name: Install Haystack
-      run: pip install .[milvus]
+      run: pip install .[dev,milvus]
 
     - name: Run tests
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_milvus.py
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-memory:
     name: Integration / memory / ${{ matrix.os }}
@@ -381,26 +393,56 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest,macos-latest,windows-latest]
+        os: [ubuntu-latest,windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
+
+  integration-tests-promptnode:
+    name: Integration / PromptNode / ${{ matrix.os }}
+    needs:
+      - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest,windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install .[dev]
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "integration" test/prompt
+
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
+        with:
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
   integration-tests-agents:
     name: Integration / Agents / ${{ matrix.os }}
@@ -414,21 +456,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install -U .
+        run: pip install .[dev]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "integration" test/agents
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload-file-path: .github/config/failure-message-slack-payload.json
+
 
 
 #
@@ -452,17 +495,18 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # TODO evaluate if tests that need these libraries are really unit tests
     - name: Install audio libraries
       run: |
         sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
+        sudo apt-get install ffmpeg
 
     - name: Install Haystack
-      run: pip install .[audio]
+      run: pip install .[all]
 
     - name: Run tests
       env:
@@ -472,11 +516,10 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   unit-tests-windows:
     needs: black
@@ -495,15 +538,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
 
     - name: Run tests
       env:
@@ -513,11 +555,10 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-linux:
     needs:
@@ -533,27 +574,14 @@ jobs:
           - "modeling"
           - "others"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Cache HF models
-      id: cache-hf-models
-      uses: actions/cache@v3
+    - uses: actions/setup-python@v4
       with:
-        path: ~/.cache/huggingface/transformers/
-        key: hf-models
-      env:
-        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
-
-    - name: Download models
-      if: steps.cache-hf-models.outputs.cache-hit != 'true'
-      run: |
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Run Elasticsearch
       run: |
@@ -590,7 +618,21 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
+
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
 
     - name: Run tests
       env:
@@ -604,11 +646,10 @@ jobs:
       if: failure()
       uses: jwalton/gh-docker-logs@v1
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   integration-tests-windows:
     needs:
@@ -643,13 +684,12 @@ jobs:
       run: |
         echo "C:\Program Files\Tesseract-OCR\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
       with:
-        prefix: windows
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[all]
 
     - name: Run tests
       env:
@@ -659,11 +699,10 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload-file-path: .github/config/failure-message-slack-payload.json
 
   catch-all:
     name: Catch-all check
