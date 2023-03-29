@@ -177,11 +177,11 @@ def test_openai_answer_generator_max_token(haystack_openai_config, docs, caplog)
 
 # mock tokenizer that splits the string
 class MockTokenizer:
-    def encode(self, *a, **k):
-        return str.split(*a, **k)
+    def encode(self, *args, **kwargs):
+        return str.split(*args, **kwargs)
 
-    def tokenize(self, *a, **k):
-        return str.split(*a, **k)
+    def tokenize(self, *args, **kwargs):
+        return str.split(*args, **kwargs)
 
 
 @pytest.mark.unit
