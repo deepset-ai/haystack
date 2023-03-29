@@ -93,7 +93,7 @@ def join_documents(
     """
     Transforms a list of documents into a list containing a single document. The content of this document
     is the joined result of all original documents, separated by the delimiter you specify.
-    Use regex in the `pattern` parameter to control how each document is represented. 
+    Use regex in the `pattern` parameter to control how each document is represented.
     You can use the following placeholders:
     - $content: The content of the document.
     - $idx: The index of the document in the list.
