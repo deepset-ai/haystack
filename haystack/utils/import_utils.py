@@ -1,4 +1,6 @@
-from typing import Optional, Dict, Union, Tuple
+from typing import Optional, Dict, Union, Tuple, List
+from datasets import load_dataset, load_dataset_builder
+from haystack.schema import Document
 
 import io
 import gzip
@@ -60,6 +62,28 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
         "to install the required dependencies and make this component available.\n"
         f"(Original error: {str(source_error)})"
     ) from source_error
+
+
+def load_documents_from_remote(dataset_name: str, split: Optional[str] = "train") -> List[Document]:
+    """
+    Load a list of Haystack Documents from a remote Hugging Face dataset.
+
+    :param dataset_name: A Hugging Face dataset containing Haystack Documents
+    :param split: Optional parameter. The split of the Hugging Face dataset to load from. By default this is set to "train".
+    :return a List of Documents
+    """
+    try:
+        dataset = load_dataset_builder(dataset_name)
+        document_keys = set(["content", "content_type"])
+        if not document_keys.issubset(dataset.info.features.keys()):
+            raise Exception("This dataset does not conntain Haystack Documents.")
+    except FileNotFoundError as e:
+        print(e)
+        return None
+
+    remote_dataset = load_dataset(dataset_name, split=split)
+
+    return remote_dataset
 
 
 def fetch_archive_from_http(
