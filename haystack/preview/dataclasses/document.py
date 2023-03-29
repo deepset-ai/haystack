@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 try:
     from numpy import ndarray
 except ImportError as exc2:
-    logging.debug("numpy can't be imported. You won't be able to use embeddings.")
-    ndarray = None
+    logger.debug("numpy can't be imported. You won't be able to use embeddings.")
+    ndarray = None  # type: ignore
 
 try:
     from pandas import DataFrame
 except ImportError as exc3:
-    logging.debug("pandas can't be imported. You won't be able to use table related features.")
-    DataFrame = None
+    logger.debug("pandas can't be imported. You won't be able to use table related features.")
+    DataFrame = None  # type: ignore
 
 
 ContentTypes = Literal["text", "table", "image"]
