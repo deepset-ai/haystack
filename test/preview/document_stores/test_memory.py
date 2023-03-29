@@ -5,6 +5,10 @@ from test.preview.document_stores._base import DocumentStoreBaseTests
 
 
 class TestMemoryDocumentStore(DocumentStoreBaseTests):
+    """
+    Test MemoryDocumentStore's specific features
+    """
+
     @pytest.fixture
     def docstore(self):
         return MemoryDocumentStore()

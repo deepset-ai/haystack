@@ -34,7 +34,7 @@ class Document:
     Can contain text snippets, tables, file paths to images.
     Documents can be sorted by score, serialized to/from dictionary and JSON, and are immutable.
 
-    Note that `id_hash_keys` are referring to keys in the metadata: `content` is always included in the id hash.
+    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the id hash.
     """
 
     id: str = field(default_factory=str)
