@@ -28,7 +28,7 @@ class WhisperTranscriber(BaseComponent):
     To use the API implementation, provide an api_key. You can get one by signing up
     for an [OpenAI account](https://beta.openai.com/).
 
-    For the supported audio formats, languages, and other parameters, see the 
+    For the supported audio formats, languages, and other parameters, see the
     [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
     [github repo](https://github.com/openai/whisper).
     """
