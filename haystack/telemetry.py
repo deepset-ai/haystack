@@ -101,6 +101,14 @@ class Telemetry:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
+def tutorial_running(tutorial_id: int):
+    """
+    Can be called when a tutorial is executed so that the tutorial_id is used to identify the tutorial and send an event.
+    :param tutorial_id: ID number of the tutorial
+    """
+    send_event(event_name="Tutorial", event_properties={"tutorial.id": tutorial_id})
+
+
 def send_pipeline_event(  # type: ignore
     pipeline: "Pipeline",  # type: ignore
     query: Optional[str] = None,
