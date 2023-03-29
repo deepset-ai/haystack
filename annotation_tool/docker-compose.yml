@@ -3,15 +3,16 @@ services:
   backend:
     image: deepset/haystack-annotation:latest
     environment:
-      DEFAULT_ADMIN_EMAIL: "example@example.com"
-      DEFAULT_ADMIN_PASSWORD: "DEMO_PASSWORD"
       NODE_ENV: "production"
       DB_HOSTNAME: "db"
       DB_NAME: "databasename"
       DB_USERNAME: "somesafeuser"
       DB_PASSWORD: "somesafepassword"
-      COOKIE_KEYS: "somesafecookiekeys"
-      JWT_SECRET: "somesafesecret"
+      # IMPORTANT: please configure credentials with secure strings.
+      # DEFAULT_ADMIN_EMAIL: "example@example.com"
+      # DEFAULT_ADMIN_PASSWORD: "DEMO_PASSWORD"
+      # COOKIE_KEYS: "somesafecookiekeys"
+      # JWT_SECRET: "somesafesecret"
     ports:
       - "7001:7001"
     links:
