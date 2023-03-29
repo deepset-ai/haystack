@@ -66,27 +66,7 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
 
   rest_api:
     needs: black
@@ -118,24 +98,4 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload: |
-            {
-              "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": ":x: Job ${{ env.GITHUB_JOB }} failed for ${{ github.ref_type }} ${{ github.ref_name }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Click *<https://github.com/${{ env.GITHUB_REPOSITORY }}/actions/runs/${{ env.GITHUB_RUN_ID }}|here>* for more details "
-                  }
-                }
-              ]
-            }
+          payload-file-path: .github/config/failure-message-slack-payload.json
