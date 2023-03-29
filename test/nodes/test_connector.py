@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import hashlib
 import os
+from unittest.mock import patch
 
 import pytest
 
@@ -54,9 +55,12 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
     return sum(content_match(crawler, url, path) for path in results) == expected_matches_count
 
 
-#
-# Integration
-#
+@pytest.mark.unit
+@patch("haystack.nodes.connector.crawler.webdriver")
+def test_crawler_url_none_exception(webdriver):
+    crawler = Crawler()
+    with pytest.raises(ValueError):
+        crawler.crawl()
 
 
 @pytest.mark.integration
@@ -82,19 +86,7 @@ def test_crawler(tmp_path):
             assert file_content["content"] == document.content
 
 
-#
-# Unit tests
-#
-
-
-@pytest.mark.unit
-def test_crawler_url_none_exception(tmp_path):
-    crawler = Crawler()
-    with pytest.raises(ValueError):
-        crawler.crawl()
-
-
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_depth_0_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, crawler_depth=0, file_path_meta_field_name="file_path")
     documents = crawler.crawl(urls=[test_url + "/index.html"])
@@ -102,7 +94,7 @@ def test_crawler_depth_0_single_url(test_url, tmp_path):
     assert content_match(crawler, test_url + "/index.html", documents[0].meta["file_path"])
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_depth_0_many_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     _urls = [test_url + "/index.html", test_url + "/page1.html"]
@@ -113,7 +105,7 @@ def test_crawler_depth_0_many_urls(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page1.html", paths)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_depth_1_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=1)
@@ -124,7 +116,7 @@ def test_crawler_depth_1_single_url(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page2.html", paths)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_output_file_structure(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
@@ -139,7 +131,7 @@ def test_crawler_output_file_structure(test_url, tmp_path):
         assert len(data["content"].split()) > 2
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_filter_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
 
@@ -154,7 +146,7 @@ def test_crawler_filter_urls(test_url, tmp_path):
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google.com"], crawler_depth=1)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_extract_hidden_text(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     documents, _ = crawler.run(urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=True, crawler_depth=0)
@@ -166,7 +158,7 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
     assert "hidden text" not in crawled_content
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_loading_wait_time(test_url, tmp_path):
     loading_wait_time = 3
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
@@ -197,7 +189,7 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page2.html", paths)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_default_naming_function(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
 
@@ -213,7 +205,7 @@ def test_crawler_default_naming_function(test_url, tmp_path):
     assert path == Path(expected_crawled_file_path)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_naming_function(test_url, tmp_path):
     crawler = Crawler(
         output_dir=tmp_path,
@@ -231,14 +223,14 @@ def test_crawler_naming_function(test_url, tmp_path):
     assert path == expected_crawled_file_path
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_not_save_file(test_url):
     crawler = Crawler()
     documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     assert documents[0].meta.get("file_path", None) is None
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_crawler_custom_meta_file_path_name(test_url, tmp_path):
     crawler = Crawler()
     documents = crawler.crawl(

@@ -59,14 +59,9 @@ from haystack.nodes import (
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.prompt import PromptNode, PromptModel
+from haystack.nodes.sampler.top_p_sampler import TopPSampler
 from haystack.schema import Document, FilterType
 from haystack.utils.import_utils import _optional_component_not_installed
-
-try:
-    from elasticsearch import Elasticsearch
-    import weaviate
-except (ImportError, ModuleNotFoundError) as ie:
-    _optional_component_not_installed("test", "test", ie)
 
 from .mocks import pinecone as pinecone_mock
 
@@ -384,28 +379,28 @@ class MockPromptNode(PromptNode):
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]
 
-    def get_prompt_template(self, prompt_template_name: str) -> PromptTemplate:
-        if prompt_template_name == "think-step-by-step":
+    def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
+        if prompt_template == "think-step-by-step":
             return PromptTemplate(
                 name="think-step-by-step",
                 prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
                 "correctly, you have access to the following tools:\n\n"
-                "$tool_names_with_descriptions\n\n"
+                "{tool_names_with_descriptions}\n\n"
                 "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
                 "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
                 "for a final answer, respond with the `Final Answer:`\n\n"
                 "Use the following format:\n\n"
                 "Question: the question to be answered\n"
                 "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
-                "Tool: [$tool_names]\n"
+                "Tool: [{tool_names}]\n"
                 "Tool Input: the input for the tool\n"
                 "Observation: the tool will respond with the result\n"
                 "...\n"
                 "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
                 "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
                 "---\n\n"
-                "Question: $query\n"
-                "Thought: Let's think step-by-step, I first need to $generated_text",
+                "Question: {query}\n"
+                "Thought: Let's think step-by-step, I first need to {generated_text}",
             )
         else:
             return PromptTemplate(name="", prompt_text="")
@@ -613,6 +608,11 @@ def ranker_two_logits():
 @pytest.fixture
 def ranker():
     return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+
+
+@pytest.fixture
+def top_p_sampler():
+    return TopPSampler()
 
 
 @pytest.fixture
@@ -998,6 +998,14 @@ def prompt_model(request):
         return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])
+
+
+@pytest.fixture
+def chatgpt_prompt_model():
+    api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
+    if api_key is None or api_key == "":
+        api_key = "KEY_NOT_FOUND"
+    return PromptModel("gpt-3.5-turbo", api_key=api_key)
 
 
 @pytest.fixture
