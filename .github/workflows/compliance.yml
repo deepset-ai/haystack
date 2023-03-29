@@ -3,14 +3,14 @@ name: License Compliance Checks
 on:
   pull_request:
     paths:
-      - '**/pyproject.toml'
+      - "**/pyproject.toml"
   schedule:
-    - cron: '0 0 * * *'  # every day at midnight
+    - cron: "0 0 * * *" # every day at midnight
 
 env:
-  GH_ACCESS_TOKEN:  ${{ secrets.GH_ACCESS_TOKEN }}
+  GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  SLACK_ALERT_CHANNEL: "#haystack"
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
 jobs:
   check-license-compliance-cpu:
@@ -49,12 +49,10 @@ jobs:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
           run-tests: true
 
-      - name: Send Slack notification if license check failed
-        uses: act10ns/slack@v2
-        if: failure() && github.ref == 'refs/heads/master'
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: ${{ env.SLACK_ALERT_CHANNEL }}
+          payload-file-path: .github/config/failure-message-slack-payload.json
 
   check-license-compliance-gpu:
     if: ${{ !github.event.pull_request.head.repo.fork }}
@@ -91,9 +89,7 @@ jobs:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
           run-tests: true
 
-      - name: Send Slack notification if license check failed
-        uses: act10ns/slack@v2
-        if: failure() && github.ref == 'refs/heads/master'
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: ${{ env.SLACK_ALERT_CHANNEL }}
+          payload-file-path: .github/config/failure-message-slack-payload.json

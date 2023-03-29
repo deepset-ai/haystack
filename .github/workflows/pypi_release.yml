@@ -1,4 +1,3 @@
-# If you change this name also do it in docker_release.yml
 name: Project release on PyPi
 
 on:
