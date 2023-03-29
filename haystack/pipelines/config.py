@@ -109,7 +109,7 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
     yml_env_var_prefix = re.compile(r"\$\{([^}^{]+)\}")
 
     for id, component in enumerate(pipeline_config["components"]):
-        for key, value in component.items():
+        for key, value in component["params"].items():
             detect_var = yml_env_var_prefix.match(str(value))
             if detect_var:
                 env_variable = detect_var.group()[2:-1]
