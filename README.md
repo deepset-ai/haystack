@@ -35,7 +35,7 @@
     </a>
 </p>
 
-[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build NLP applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision making and query resolition, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case
+[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build NLP applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision making and query resolution, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case
 
 ## Core Concepts
 
