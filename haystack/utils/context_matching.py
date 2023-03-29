@@ -15,7 +15,7 @@ try:
     from rapidfuzz import fuzz
 except ImportError as exc:
     logger.debug("rapidfuzz could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
-    fuzz = None
+    fuzz = None  # type: ignore
 
 
 _CandidateScore = namedtuple("_CandidateScore", ["context_id", "candidate_id", "score"])
