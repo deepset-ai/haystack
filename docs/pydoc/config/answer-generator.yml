@@ -17,7 +17,7 @@ renderer:
   category_slug: haystack-classes
   title: Answer Generator API
   slug: answer-generator-api
-  order: 0
+  order: 5
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
