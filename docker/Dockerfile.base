@@ -6,11 +6,22 @@ FROM $build_image AS build-image
 ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
 ARG haystack_extras
+ARG xpdf_version
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    git
+    git \
+    curl \
+    cmake
+
+# Install PDF converter
+RUN curl -O https://dl.xpdfreader.com/xpdf-${xpdf_version}.tar.gz && \
+    tar -xvf xpdf-${xpdf_version}.tar.gz && \
+    cd xpdf-${xpdf_version} && \
+    cmake . && \
+    make && \
+    cp xpdf/pdftotext /opt
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
@@ -28,6 +39,9 @@ RUN pip install --upgrade pip && \
 FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
+COPY --from=build-image /opt/pdftotext /usr/local/bin
+# pdftotext requires fontconfig runtime
+RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"
 
