@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Union, Tuple, List
 from datasets import load_dataset, load_dataset_builder
+from haystack.errors import HaystackError
 from haystack.schema import Document
 
 import io
@@ -64,7 +65,7 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
     ) from source_error
 
 
-def load_documents_from_remote(dataset_name: str, split: Optional[str] = "train") -> List[Document]:
+def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "train") -> List[Document]:
     """
     Load a list of Haystack Documents from a remote Hugging Face dataset.
 
@@ -72,14 +73,9 @@ def load_documents_from_remote(dataset_name: str, split: Optional[str] = "train"
     :param split: Optional parameter. The split of the Hugging Face dataset to load from. By default this is set to "train".
     :return a List of Documents
     """
-    try:
-        dataset = load_dataset_builder(dataset_name)
-        document_keys = set(["content", "content_type"])
-        if not document_keys.issubset(dataset.info.features.keys()):
-            raise Exception("This dataset does not conntain Haystack Documents.")
-    except FileNotFoundError as e:
-        print(e)
-        return None
+    dataset = load_dataset_builder(dataset_name)
+    if "content" not in dataset.info.features.keys():
+        raise HaystackError(f"Dataset does not contain a content field which is required by Haystack Documents")
 
     remote_dataset = load_dataset(dataset_name, split=split)
 
