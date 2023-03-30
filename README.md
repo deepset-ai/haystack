@@ -39,30 +39,30 @@
 
 ## Core Concepts
 
-🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that can connect to your data and perform an NLP task on it, that you define. ****A Pipeline is a structure where data flows from one Node to the next where you define how Nodes interact with each other, and how one Node pushes data to the next.
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that can connect to your data and perform on it NLP tasks that you define.. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
 
-An example pipeline would consist of one `Retriever` Node and one `Reader` Node. When the pipeline is run with a query, the Retriever will first retrieve the relevant documents to the query, and then, the Reader will extract a final answer.
+An example pipeline would consist of one `Retriever` Node and one `Reader` Node. When the pipeline runs with a query, the Retriever first retrieves the documents relevant to the query and then the Reader extracts the final answer.
 
-⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
+⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
 
-🕵️ **[Agent](https://docs.haystack.deepset.ai/v1.15/docs/agent):** (since of v1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It is able to make decisions on what the next best course of action is so as to get to the result of a query. It does so by making use of Tools that are available to it. An Agent is a higher level component than a pipeline. Where a pipeline has a clear start and end, an Agent is able to decide whether the query has resolved or not. It may also make use of a Pipeline that can do something really well, as a Tool.
+🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has resolved or not. It may also make use of a Pipeline as a Tool.
 
-🛠️ **[Tools](https://docs.haystack.deepset.ai/v1.15/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/v1.15/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
+🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/v1.15/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
 
-**[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStore, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
+**[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
 ## What to Build with Haystack
 
--   Question Answering **in natural language** to find granular answers in your documents.
+-   Perform Question Answering **in natural language** to find granular answers in your documents.
 -   **Generate answers or content** with the use of LLM such as articles, tweets, product descriptions and more, the sky is the limit 🚀
 -   Perform **semantic search** and retrieve documents according to meaning.
--   Build applications that are able to do complex decision making steps to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
+-   Build applications that can do complex decisions making to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
 -   Use **off-the-shelf models** or **fine-tune** them to your data.
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
 ## Features
 
--   **Latest models**: Haystack allows you to use and compare models available from OpenAI, Cohere and HuggingFace, as well as your own local models. Use the latest LLMs or Transformer-based models (for example: BERT, RoBERTa, MiniLM).
+-   **Latest models**: Haystack allows you to use and compare models available from OpenAI, Cohere and Hugging Face, as well as your own local models. Use the latest LLMs or Transformer-based models (for example: BERT, RoBERTa, MiniLM).
 -   **Modular**: Multiple choices to fit your tech stack and use case. A wide choice of DocumentStores to store your data, file conversion tools and more
 -   **Open**: Integrated with Hugging Face's model hub, OpenAI, Cohere and various A“Azure services.
 -   **Scalable**: Scale to millions of docs using retrievers and production-scale components like Elasticsearch and a fastAPI REST API.
@@ -88,7 +88,7 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 ## 💾 Installation
 
-For a detailed installation guide see [the official documentation](https://docs.haystack.deepset.ai/docs/installation). There you’ll find instructions for custom installations and to handle Windows and Apple Silicon.
+For a detailed installation guide see [the official documentation](https://docs.haystack.deepset.ai/docs/installation). There you’ll find instructions for custom installations handling Windows and Apple Silicon.
 
 **Basic Installation**
 
