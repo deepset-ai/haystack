@@ -173,7 +173,7 @@ class ParsrConverter(BaseConverter):
             headlines = []
             for page_idx, page in enumerate(parsr_output["pages"]):
                 for elem_idx, element in enumerate(page["elements"]):
-                    if element["type"] in ["paragraph", "heading", "table-of-contents"]:
+                    if element["type"] in ["paragraph", "heading", "table-of-contents", "list"]:
                         current_paragraph = self._convert_text_element(element)
                         if current_paragraph:
                             if element["type"] == "heading" and extract_headlines:
@@ -242,6 +242,10 @@ class ParsrConverter(BaseConverter):
             else:
                 current_paragraph = "\n".join([self._get_paragraph_string(elem) for elem in element["content"]])
                 return current_paragraph
+
+        if element["type"] == "list":
+            current_paragraph = "\n".join([self._get_paragraph_string(elem) for elem in element["content"]])
+            return current_paragraph
 
         current_paragraph = self._get_paragraph_string(element)
         return current_paragraph
