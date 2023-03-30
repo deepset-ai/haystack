@@ -25,4 +25,4 @@ PDFToTextOCRConverter = safe_import(
 try:
     from haystack.nodes.file_converter.pdf import PDFToTextConverter
 except ImportError:
-    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter
+    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore
