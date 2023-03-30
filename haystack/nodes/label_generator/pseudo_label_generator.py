@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 from sentence_transformers import CrossEncoder
