@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Union
 
 import logging
 from collections.abc import Callable
