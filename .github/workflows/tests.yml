@@ -80,7 +80,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
@@ -114,7 +163,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-elasticsearch:
@@ -151,7 +249,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-sql:
@@ -180,7 +327,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-opensearch:
@@ -217,7 +413,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-dc:
@@ -246,7 +491,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-faiss:
@@ -275,7 +569,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-weaviate:
@@ -314,7 +657,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-pinecone:
@@ -345,7 +737,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-milvus:
     name: Integration / Milvus / ${{ matrix.os }}
@@ -384,7 +825,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-memory:
     name: Integration / memory / ${{ matrix.os }}
@@ -412,7 +902,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-promptnode:
@@ -441,7 +980,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
   integration-tests-agents:
@@ -470,7 +1058,56 @@ jobs:
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
         with:
-          payload-file-path: .github/config/failure-message-slack-payload.json
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
 
 
@@ -519,7 +1156,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   unit-tests-windows:
     needs: black
@@ -558,7 +1244,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-linux:
     needs:
@@ -649,7 +1384,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-windows:
     needs:
@@ -702,7 +1486,56 @@ jobs:
     - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
       with:
-        payload-file-path: .github/config/failure-message-slack-payload.json
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   catch-all:
     name: Catch-all check
