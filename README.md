@@ -35,48 +35,60 @@
     </a>
 </p>
 
-[Haystack](https://haystack.deepset.ai) is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
-Whether you want to perform question answering (QA) or semantic document search, you can use the state-of-the-art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
-Haystack is built in a modular fashion so that you can combine the best technology from other open source projects, like Hugging Face's transformers, Elasticsearch, or Milvus.
+[Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build NLP applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision making and query resolution, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/main_example.gif"></p>
+## Core Concepts
+
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that can connect to your data and perform on it NLP tasks that you define. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
+
+An example pipeline would consist of one `Retriever` Node and one `Reader` Node. When the pipeline runs with a query, the Retriever first retrieves the documents relevant to the query and then the Reader extracts the final answer.
+
+⚛️ **[Nodes](https://docs.haystack.deepset.ai/docs/nodes_overview):** Each Node achieves one thing. Such as preprocessing documents, retrieving documents, using language models to answer questions and so on.
+
+🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has resolved or not. It may also make use of a Pipeline as a Tool.
+
+🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
+
+**[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
 ## What to Build with Haystack
 
-- **Ask questions in natural language** and find granular answers in your documents.
-- Perform **semantic search** and retrieve documents according to meaning, not keywords.
-- Use **off-the-shelf models** or **fine-tune** them to your domain.
-- Use **user feedback** to evaluate, benchmark, and continuously improve your live models.
-- Leverage existing **knowledge bases** and better handle the long tail of queries that **chatbots** receive.
-- **Automate processes** by automatically applying a list of questions to new documents and using the extracted answers.
+-   Perform Question Answering **in natural language** to find granular answers in your documents.
+-   **Generate answers or content** with the use of LLM such as articles, tweets, product descriptions and more, the sky is the limit 🚀
+-   Perform **semantic search** and retrieve documents according to meaning.
+-   Build applications that can do complex decisions making to answer complex queries: such as systems that can resolve complex customer queries, do knowledge search on many disconnected resources and so on.
+-   Use **off-the-shelf models** or **fine-tune** them to your data.
+-   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
-## Core Features
+## Features
 
-- **Latest models**: Utilize all latest transformer-based models (for example, BERT, RoBERTa, MiniLM) for extractive QA, generative QA, and document retrieval.
-- **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter, or modeling framework.
-- **Pipelines**: Use the Node and Pipeline design of Haystack to route queries to only the relevant components.
-- **Open**: 100% compatible with Hugging Face's model hub. Tight interfaces to other frameworks (for example, transformers, FARM, sentence-transformers).
-- **Scalable**: Scale to millions of docs using retrievers, production-ready backends like Elasticsearch / FAISS, and a fastAPI REST API.
-- **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, and more.
-- **Developer friendly**: Easy to debug, extend, and modify.
-- **Customizable**: Fine-tune models to your domain or implement your custom DocumentStore.
-- **Continuous Learning**: Collect new training data from user feedback in production & improve your models continuously.
+-   **Latest models**: Haystack allows you to use and compare models available from OpenAI, Cohere and Hugging Face, as well as your own local models. Use the latest LLMs or Transformer-based models (for example: BERT, RoBERTa, MiniLM).
+-   **Modular**: Multiple choices to fit your tech stack and use case. A wide choice of DocumentStores to store your data, file conversion tools and more
+-   **Open**: Integrated with Hugging Face's model hub, OpenAI, Cohere and various A“Azure services.
+-   **Scalable**: Scale to millions of docs using retrievers and production-scale components like Elasticsearch and a fastAPI REST API.
+-   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, and more.
+-   **Customizable**: Fine-tune models to your domain or implement your custom Nodes.
+-   **Continuous Learning**: Collect new training data from user feedback in production & improve your models continuously.
 
+## Resources
 |                                                                                               |                                                                                                                                                                                                                                                   |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| :ledger: [Docs](https://docs.haystack.deepset.ai)                                             | Components, Pipeline Nodes, Guides, API Reference                                                                                                                                                                                                 |
-| :floppy_disk: [Installation](https://github.com/deepset-ai/haystack#floppy_disk-installation) | How to install Haystack                                                                                                                                                                                                                           |
-| :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack#mortar_board-tutorials)     | See what Haystack can do with our Notebooks & Scripts                                                                                                                                                                                             |
-| :beginner: [Quick Demo](https://github.com/deepset-ai/haystack#beginner-quick-demo)           | Deploy a Haystack application with Docker Compose and a REST API                                                                                                                                                                                  |
-| :vulcan_salute: [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community)   | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
-| :heart: [Contributing](https://github.com/deepset-ai/haystack#heart-contributing)             | We welcome all contributions!                                                                                                                                                                                                                     |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/)                             | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
-| :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap)                           | Public roadmap of Haystack                                                                                                                                                                                                                        |
-| :newspaper: [Blog](https://medium.com/deepset-ai)                                             | Read our articles on Medium                                                                                                                                                                                                                       |
-| :phone: [Jobs](https://www.deepset.ai/jobs)                                                   | We're hiring! Have a look at our open positions                                                                                                                                                                                                   |
+| 📒 [Docs](https://docs.haystack.deepset.ai)                                             | Components, Pipeline Nodes, Guides, API Reference                                                                                                                                                                                                 |
+| 💾 [Installation](https://github.com/deepset-ai/haystack#floppy_disk-installation) | How to install Haystack                                                                                                                                                                                                                           |
+| 🎓 [Tutorials](https://github.com/deepset-ai/haystack#mortar_board-tutorials)     | See what Haystack can do with our Notebooks & Scripts                                                                                                                                                                                             |
+| 🎉 [Haystack Extras](https://github.com/deepset-ai/haystack-extras)               | A repository that lists extra Haystack packages and components that can be installed separately.                                                                                                                                                                                             |
+| 🔰 [Demos](https://github.com/deepset-ai/haystack-demos)           | A repository containing Haystack demo applications with Docker Compose and a REST API                                                                                                                                                                                  |
+| 🖖 [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community)   | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
+| 💙 [Contributing](https://github.com/deepset-ai/haystack#heart-contributing)             | We welcome all contributions!                                                                                                                                                                                                                     |
+| 📊 [Benchmarks](https://haystack.deepset.ai/benchmarks/)                             | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
+| 🔭 [Roadmap](https://haystack.deepset.ai/overview/roadmap)                           | Public roadmap of Haystack                                                                                                                                                                                                                        |
+| 📰 [Blog](https://haystack.deepset.ai/bloh)                                             | Learn about the latest with Haystack and NLP                                                                                                                                                                   |
+| ☎️ [Jobs](https://www.deepset.ai/jobs)                                                   | We're hiring! Have a look at our open positions                                                                                                                                                                                                   |
 
 
-## :floppy_disk: Installation
+## 💾 Installation
+
+For a detailed installation guide see [the official documentation](https://docs.haystack.deepset.ai/docs/installation). There you’ll find instructions for custom installations handling Windows and Apple Silicon.
 
 **Basic Installation**
 
@@ -93,120 +105,52 @@ This command installs everything needed for basic Pipelines that use an Elastics
 To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the latest version of Haystack and all its dependencies from the main branch:
 
 ```
-git clone https://github.com/deepset-ai/haystack.git
-cd haystack
 pip install --upgrade pip
-pip install -e '.[all]' ## or 'all-gpu' for the GPU-enabled dependencies
+pip install 'farm-haystack[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
-**Custom Installation**
-You can choose the dependencies you want to install. To do so, specify them in the `pip install` command:
-
-```
-pip install 'farm-haystack[DEPENDENCY_OPTION]'
-```
-You can find a full list of dependency options at [haystack/pyproject.toml](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml#L96).
-
-If you're running pip version earlier than 21.3, you can't install dependency groups that reference other groups. Instead, you can only specify groups that contain direct package references:
-
-```
-# instead of '[all]'
-pip install 'farm-haystack[sql,only-faiss,only-milvus1,weaviate,pinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx,ray,dev]'
-
-# instead of '[all-gpu]'
-pip install 'farm-haystack[sql,only-faiss-gpu,only-milvus1,weaviatepinecone,opensearch,graphdb,inmemorygraph,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'
-```
-
-**Installing the REST API**
-Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
+**Installing the REST API** Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
 
 ```
 pip install rest_api/
 ```
 
-**Other Operating Systems**
-
-**Windows**
-We recommend installing [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to use Haystack on Windows:
-
-```
-pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
-```
-
-**Apple Silicon (M1)**
-
-Macs with an M1 processor require some extra dependencies to install Haystack:
-
-```
-# some additional dependencies needed on m1 mac
-brew install postgresql
-brew install cmake
-brew install rust
-
-# haystack installation
-GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai/haystack.git
-```
-
-**Learn More**
-
-See our [installation guide](https://docs.haystack.deepset.ai/docs/installation) for more options.
 You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/).
 
-## :mortar_board: Tutorials
+## 🔰Demos
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/concepts_haystack_handdrawn.png)
+You can find some of our hosted demos with instructions to run them locally too on our [haystack-demos](https://github.com/deepset-ai/haystack-demos) repository
 
-Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system)
-to set up a question answering system using Python and start performing queries!
-Explore [the rest of our tutorials](https://haystack.deepset.ai/tutorials)
-to learn how to tweak pipelines, train models, and perform evaluation.
+🐥 **[Should I follow?](https://huggingface.co/spaces/deepset/should-i-follow) - Twitter demo**
 
-## :beginner: Quick Demo
+🌎 **[Explore The World](https://haystack-demo.deepset.ai/) demo**
 
-**Hosted**
+### 🖖 Community
 
-Try out our hosted [Explore The World](https://haystack-demo.deepset.ai/) live demo here!
-Ask any question on countries or capital cities and let Haystack return the answers to you.
+If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues). We regularly check these and you can expect a quick response. If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community). We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
-**Local**
+### 💙 Contributing
 
-To run the Explore The World demo on your own machine and customize it to your needs, check out the instructions on [Explore the World repository](https://github.com/deepset-ai/haystack-demos/tree/main/explore_the_world) on GitHub.
-
-## :vulcan_salute: Community
-
-There is a very vibrant and active community around Haystack which we are regularly interacting with!
-If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues).
-We regularly check these and you can expect a quick response.
-If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project,
-you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community).
-We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
-
-
-## :heart: Contributing
-
-We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature!
-You don't need to be a Haystack expert to provide meaningful improvements.
-To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
 You can also find instructions to run the tests locally there.
 
 Thanks so much to all those who have contributed to our project!
 
-<a href="https://github.com/deepset-ai/haystack/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=deepset-ai/haystack" />
-</a>
-
+<a href="[](https://github.com/deepset-ai/haystack/graphs/contributors)[https://github.com/deepset-ai/haystack/graphs/contributors](https://github.com/deepset-ai/haystack/graphs/contributors)"> <img src="[](https://contrib.rocks/image?repo=deepset-ai/haystack)[https://contrib.rocks/image?repo=deepset-ai/haystack](https://contrib.rocks/image?repo=deepset-ai/haystack)" /> </a>
 
 ## Who Uses Haystack
 
-Here's a list of organizations that use Haystack. Don't hesitate to send a PR to let the world know that you use Haystack. Join our growing community!
+Here's a list of organizations that we know about from our community. Don't hesitate to send a PR to let the world know that you use Haystack. Join our growing community!
 
-- [Airbus](https://www.airbus.com/en)
-- [Alcatel-Lucent](https://www.al-enterprise.com/)
-- [BetterUp](https://www.betterup.com/)
-- [Deepset](https://deepset.ai/)
-- [Etalab](https://www.etalab.gouv.fr/)
-- [Infineon](https://www.infineon.com/)
-- [Intelijus](https://www.intelijus.ai/)
-- [LEGO](https://www.lego.com/)
-- [Sooth.ai](https://sooth.ai/)
+-   [Airbus](https://www.airbus.com/en)
+-   [Alcatel-Lucent](https://www.al-enterprise.com/)
+-   [BetterUp](https://www.betterup.com/)
+-   [Databricks](https://www.databricks.com/)
+-   [Deepset](https://deepset.ai/)
+-   [Etalab](https://www.etalab.gouv.fr/)
+-   [Infineon](https://www.infineon.com/)
+-   [LEGO](https://www.lego.com/)
+-   [Nvidia](https://www.nvidia.com/en-us/)
+-   [Rakuten](https://www.rakuten.com/)
+-   [Sooth.ai](https://sooth.ai/)
