@@ -39,7 +39,7 @@
 
 ## Core Concepts
 
-🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that can connect to your data and perform on it NLP tasks that you define.. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
+🏃‍♀️ **[Pipelines](https://docs.haystack.deepset.ai/docs/pipelines):** This is the standard Haystack structure that can connect to your data and perform on it NLP tasks that you define. The data in a Pipeline flows from one Node to the next. You define how Nodes interact with each other, and how one Node pushes data to the next.
 
 An example pipeline would consist of one `Retriever` Node and one `Reader` Node. When the pipeline runs with a query, the Retriever first retrieves the documents relevant to the query and then the Reader extracts the final answer.
 
@@ -47,7 +47,7 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 🕵️ **[Agent](https://docs.haystack.deepset.ai/docs/agent):** (since 1.15) An Agent is a component that is powered by an LLM, such as GPT-3. It can decide on the next best course of action so as to get to the result of a query. It uses the Tools available to it to achieve this. While a pipeline has a clear start and end, an Agent is able to decide whether the query has resolved or not. It may also make use of a Pipeline as a Tool.
 
-🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/v1.15/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
+🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
 
 **[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
