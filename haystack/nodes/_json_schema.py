@@ -22,7 +22,6 @@ from pydantic.schema import (
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.retriever.base import BaseRetriever
 
 
 logger = logging.getLogger(__name__)
