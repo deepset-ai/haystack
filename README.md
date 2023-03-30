@@ -64,7 +64,7 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 -   **Latest models**: Haystack allows you to use and compare models available from OpenAI, Cohere and Hugging Face, as well as your own local models. Use the latest LLMs or Transformer-based models (for example: BERT, RoBERTa, MiniLM).
 -   **Modular**: Multiple choices to fit your tech stack and use case. A wide choice of DocumentStores to store your data, file conversion tools and more
--   **Open**: Integrated with Hugging Face's model hub, OpenAI, Cohere and various A“Azure services.
+-   **Open**: Integrated with Hugging Face's model hub, OpenAI, Cohere and various Azure services.
 -   **Scalable**: Scale to millions of docs using retrievers and production-scale components like Elasticsearch and a fastAPI REST API.
 -   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, and more.
 -   **Customizable**: Fine-tune models to your domain or implement your custom Nodes.
