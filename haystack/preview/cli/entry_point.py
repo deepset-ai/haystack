@@ -1,7 +1,6 @@
 import click
 
 from haystack import __version__
-from haystack.preview.cli.rest_api import rest_api, serve
 
 
 @click.group()
@@ -13,5 +12,3 @@ def main_cli(ctx):
 
 def main():
     main_cli()
-    rest_api.add_command(serve)
-    rest_api()
