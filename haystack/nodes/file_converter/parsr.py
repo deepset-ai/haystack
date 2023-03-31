@@ -236,14 +236,9 @@ class ParsrConverter(BaseConverter):
             return ""
         if self.remove_page_footers and "isFooter" in element["properties"]:
             return ""
-        if element["type"] == "table-of-contents":
-            if self.remove_table_of_contents:
+        if element["type"] in ["table-of-contents", "list"]:
+            if self.remove_table_of_contents and element["type"] == "table-of-contents":
                 return ""
-            else:
-                current_paragraph = "\n".join([self._get_paragraph_string(elem) for elem in element["content"]])
-                return current_paragraph
-
-        if element["type"] == "list":
             current_paragraph = "\n".join([self._get_paragraph_string(elem) for elem in element["content"]])
             return current_paragraph
 

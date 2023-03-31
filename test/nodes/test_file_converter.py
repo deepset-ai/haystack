@@ -396,6 +396,7 @@ def test_parsr_converter_headline_extraction():
                 assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
 def test_parsr_converter_list_mapping():
     # This exact line(without line break characters) only exists in the list object we want to make sure it's being mapped correctly
