@@ -105,7 +105,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
                 "You need to import it before loading the pipelines."
             )
 
-    node_classes = _find_decorated_classes(modules_to_search=schema["dependencies"])
+    classes = _find_decorated_classes(modules_to_search=schema["dependencies"])
     pipelines = {}
     node_instances: Dict[str, object] = {}
     for pipeline_name, pipeline_schema in schema["pipelines"].items():
@@ -125,7 +125,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
                     parameters=node_schema.get("run_parameters", {}),
                 )
             else:
-                node_instance = node_classes[node_schema["type"]](**node_schema.get("init_parameters", {}))
+                node_instance = classes[node_schema["type"]](**node_schema.get("init_parameters", {}))
                 node_instances[f"{pipeline_name}.{node_name}"] = node_instance
                 pipe.add_node(name=node_name, instance=node_instance, parameters=node_schema.get("run_parameters", {}))
 
@@ -171,43 +171,14 @@ def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__ca
 
         logger.debug("Searching under %s...", module)
 
-        duplicate_names = []
         for _, entity in getmembers(sys.modules[module], isclass):
             if hasattr(entity, decorator):
-                # It's a node
+                # It's a decorated class
                 if getattr(entity, decorator) in node_classes:
-                    if node_classes[getattr(entity, decorator)] == entity:
-                        logger.debug("'%s' was imported more than once", getattr(entity, decorator))
-                        continue
-
-                    # Two nodes were discovered with the same name - namespace them
-                    other_entity = node_classes[getattr(entity, decorator)]
-                    other_source_module = getattr(other_entity, decorator)
-                    logger.info(
-                        "An class with the same name was found in two separate modules!\n"
-                        " - Class name: %s\n - Found in modules: '%s' and '%s'\n"
-                        "They both are going to be loaded, but you will need to use a namespace "
-                        "path (%s.%s and %s.%s respectively) to identify them.",
-                        getattr(entity, decorator),
-                        other_source_module,
-                        module,
-                        other_source_module,
-                        getattr(entity, decorator),
-                        module,
-                        getattr(entity, decorator),
-                    )
-                    # Add both nodes as namespaced
-                    node_classes[f"{other_source_module}.{getattr(entity, decorator)}"] = other_entity
-                    node_classes[f"{module}.{getattr(entity, decorator)}"] = entity
-                    # Do not remove the non-namespaced one, so in the case of a third collision
-                    # it gets detected properly
-                    duplicate_names.append(getattr(entity, decorator))
+                    logger.debug("'%s.%s' was imported more than once", module, getattr(entity, decorator))
+                    continue
 
                 node_classes[getattr(entity, decorator)] = entity
                 logger.debug(" * Found class: %s", entity)
-
-    # Now delete all remaining duplicates
-    for duplicate in duplicate_names:
-        del node_classes[duplicate]
 
     return node_classes
