@@ -5,8 +5,7 @@ from haystack import __version__
 
 @click.group()
 @click.version_option(__version__)
-@click.pass_context
-def main_cli(ctx):
+def main_cli():
     pass
 
 
