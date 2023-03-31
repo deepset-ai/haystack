@@ -28,6 +28,10 @@ RUN pip install --upgrade pip && \
 FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
+COPY --from=deepset/xpdf:latest /opt/pdftotext /usr/local/bin
+
+# pdftotext requires fontconfig runtime
+RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"
 
