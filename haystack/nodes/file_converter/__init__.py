@@ -20,6 +20,9 @@ ImageToTextConverter = safe_import(
 PDFToTextOCRConverter = safe_import(
     "haystack.nodes.file_converter.pdf_ocr", "PDFToTextOCRConverter", "ocr"
 )  # Has optional dependencies
-PDFToTextConverter = safe_import(
-    "haystack.nodes.file_converter.pdf", "PDFToTextConverter", "pdf"
-)  # Has optional dependencies
+
+# Try to use PyMuPDF, if not available fall back to xpdf
+try:
+    from haystack.nodes.file_converter.pdf import PDFToTextConverter
+except ImportError:
+    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore
