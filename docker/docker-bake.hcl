@@ -44,7 +44,6 @@ target "base-cpu" {
   args = {
     build_image = "python:3.10-slim"
     base_image = "python:3.10-slim"
-    xpdf_version = "4.04"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores,crawler,preprocessing,ocr,onnx,beir]"
   }
@@ -59,7 +58,6 @@ target "base-gpu" {
 
     build_image = "pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime"
     base_image = "pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime"
-    xpdf_version = "4.04"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu]"
   }
