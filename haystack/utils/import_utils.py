@@ -1,7 +1,3 @@
-from typing import Optional, Dict, Union, Tuple, List
-from haystack.errors import HaystackError
-from haystack.schema import Document
-
 import io
 import gzip
 import tarfile
@@ -10,9 +6,12 @@ import logging
 import importlib
 import importlib.util
 from pathlib import Path
+from typing import Optional, Dict, Union, Tuple, List
 
 import requests
 from datasets import load_dataset, load_dataset_builder
+from haystack.errors import HaystackError
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,7 @@ def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "trai
     """
     dataset = load_dataset_builder(dataset_name)
     if "content" not in dataset.info.features.keys():
-        raise HaystackError(f"Dataset does not contain a content field which is required by Haystack Documents")
+        raise HaystackError("Dataset does not contain a content field which is required by Haystack Documents")
 
     remote_dataset = load_dataset(dataset_name, split=split)
     return remote_dataset
