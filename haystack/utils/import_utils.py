@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Optional, Dict, Union, Tuple, List
 
 import requests
-from datasets import load_dataset, load_dataset_builder
 from haystack.errors import HaystackError
 from haystack.schema import Document
 
@@ -69,9 +68,15 @@ def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "trai
     Load a list of Haystack Documents from a remote Hugging Face dataset.
 
     :param dataset_name: A Hugging Face dataset containing Haystack Documents
-    :param split: Optional parameter. The split of the Hugging Face dataset to load from. By default this is set to "train".
-    :return a List of Documents
+    :param split: The split of the Hugging Face dataset to load from. By default, this is set to "train".
+    :return: a List of Haystack Documents
     """
+    try:
+        from datasets import load_dataset, load_dataset_builder
+    except ImportError:
+        raise ImportError("Failed to import `datasets`, Run 'pip install datasets>=2.6.0' "
+                          "to install the datasets library to use this function.")
+
     dataset = load_dataset_builder(dataset_name)
     if "content" not in dataset.info.features.keys():
         raise HaystackError("Dataset does not contain a content field which is required by Haystack Documents")
