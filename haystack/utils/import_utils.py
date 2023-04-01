@@ -71,6 +71,7 @@ def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "trai
     :param split: The split of the Hugging Face dataset to load from. By default, this is set to "train".
     :return: a List of Haystack Documents
     """
+    documents = []
     try:
         from datasets import load_dataset, load_dataset_builder
     except ImportError:
@@ -84,7 +85,9 @@ def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "trai
         raise HaystackError("Dataset does not contain a content field which is required by Haystack Documents")
 
     remote_dataset = load_dataset(dataset_name, split=split)
-    return remote_dataset
+    for document in remote_dataset:
+        documents.append(Document.from_dict(document))
+    return documents
 
 
 def fetch_archive_from_http(
