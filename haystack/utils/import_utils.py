@@ -74,8 +74,10 @@ def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "trai
     try:
         from datasets import load_dataset, load_dataset_builder
     except ImportError:
-        raise ImportError("Failed to import `datasets`, Run 'pip install datasets>=2.6.0' "
-                          "to install the datasets library to use this function.")
+        raise ImportError(
+            "Failed to import `datasets`, Run 'pip install datasets>=2.6.0' "
+            "to install the datasets library to use this function."
+        )
 
     dataset = load_dataset_builder(dataset_name)
     if "content" not in dataset.info.features.keys():
