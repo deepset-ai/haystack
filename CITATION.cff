@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "Haystack: an end-to-end NLP framework"
+date-released: 2019-11-14
+url: "https://github.com/deepset-ai/haystack"
+authors:
+- family-names: ""
+  given-names: ""
