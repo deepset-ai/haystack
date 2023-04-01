@@ -9,7 +9,7 @@ from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt import PromptModelInvocationLayer
-from haystack.nodes.prompt.prompt_node import PromptTemplateValidationError
+from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError
 from haystack.nodes.prompt.providers import HFLocalInvocationLayer, TokenStreamingHandler
 from haystack.schema import Answer
 
