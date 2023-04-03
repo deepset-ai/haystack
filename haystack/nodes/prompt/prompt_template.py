@@ -8,7 +8,7 @@ from uuid import uuid4
 from haystack.errors import NodeError
 from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.prompt.shapers import (
+from haystack.nodes.prompt.shapers import (  # pylint: disable=unused-import
     BaseOutputParser,
     AnswerParser,
     to_strings,
