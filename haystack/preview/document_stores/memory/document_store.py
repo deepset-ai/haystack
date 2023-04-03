@@ -3,7 +3,8 @@ from typing import Literal, Any, Dict, List, Optional, Iterable
 import logging
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores._utils import DuplicateDocumentError, MissingDocumentError
+from haystack.preview.document_stores.filters import LogicalFilterClause
+from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,9 @@ class MemoryDocumentStore:
 
         :param filters: the filters to apply to the document list.
         """
-        # TODO apply filters
+        if filters:
+            parsed_filter = LogicalFilterClause.parse(filters)
+            return list(filter(lambda doc: parsed_filter.evaluate(doc.metadata), self.storage.values()))
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:

@@ -10,7 +10,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     """
 
     @pytest.fixture
-    def docstore(self):
+    def docstore(self) -> MemoryDocumentStore:
         return MemoryDocumentStore()
 
     def direct_access(self, docstore, doc_id):
