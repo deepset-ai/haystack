@@ -6,40 +6,33 @@ import logging
 from pathlib import Path
 from dataclasses import asdict, dataclass, field
 
+from haystack.preview.utils.import_utils import optional_import
+
+ndarray = optional_import("numpy", "ndarray", "You won't be able to use embeddings.", __name__)
+DataFrame = optional_import("pandas", "DataFrame", "You won't be able to use table related features.", __name__)
+
+
 logger = logging.getLogger(__name__)
-
-try:
-    from numpy import ndarray
-except ImportError as exc2:
-    logger.debug("numpy can't be imported. You won't be able to use embeddings.")
-    ndarray = None  # type: ignore
-
-try:
-    from pandas import DataFrame
-except ImportError as exc3:
-    logger.debug("pandas can't be imported. You won't be able to use table related features.")
-    DataFrame = None  # type: ignore
-
-
-ContentTypes = Literal["text", "table", "image"]
-
-
-CONTENT_TYPES: Dict[ContentTypes, type] = {"text": str, "table": DataFrame, "image": Path}
+ContentType = Literal["text", "table", "image"]
+PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {"text": str, "table": DataFrame, "image": Path, "audio": Path}
 
 
 @dataclass(frozen=True)
 class Document:
     """
     Base data class containing some data to be queried.
-    Can contain text snippets, tables, file paths to images.
+    Can contain text snippets, tables, file paths to files like images or audios.
     Documents can be sorted by score, serialized to/from dictionary and JSON, and are immutable.
 
     Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the id hash.
+    In case of file-based documents (images, audios), the content that is hashed is the file paths,
+    so if the file is moved, the hash is different, but if the file is modified without renaming it, the has will
+    not differ.
     """
 
     id: str = field(default_factory=str)
     content: Any = field(default_factory=lambda: None)
-    content_type: ContentTypes = "text"
+    content_type: ContentType = "text"
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
     score: Optional[float] = field(default=None, compare=True)
@@ -54,10 +47,10 @@ class Document:
         matches the actual type of content.
         """
         # Validate content_type
-        if not isinstance(self.content, CONTENT_TYPES[self.content_type]):
+        if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
             raise ValueError(
                 f"The type of content ({type(self.content)}) does not match the "
-                f"content type: '{self.content_type}' expects '{CONTENT_TYPES[self.content_type]}'."
+                f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
             )
         # Check if id_hash_keys are all present in the meta
         for key in self.id_hash_keys:
