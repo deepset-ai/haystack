@@ -3,7 +3,6 @@ import logging
 from typing import Optional, Set, Type, Union, List, Dict, Any, Tuple
 
 import pytest
-import torch
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.errors import OpenAIError
@@ -58,88 +57,12 @@ def get_api_key(request):
 
 
 @pytest.mark.unit
-def test_prompt_templates():
-    p = PromptTemplate("t1", "Here is some fake template with variable {foo}")
-    assert set(p.prompt_params) == {"foo"}
-
-    p = PromptTemplate("t3", "Here is some fake template with variable {foo} and {bar}")
-    assert set(p.prompt_params) == {"foo", "bar"}
-
-    p = PromptTemplate("t4", "Here is some fake template with variable {foo1} and {bar2}")
-    assert set(p.prompt_params) == {"foo1", "bar2"}
-
-    p = PromptTemplate("t4", "Here is some fake template with variable {foo_1} and {bar_2}")
-    assert set(p.prompt_params) == {"foo_1", "bar_2"}
-
-    p = PromptTemplate("t4", "Here is some fake template with variable {Foo_1} and {Bar_2}")
-    assert set(p.prompt_params) == {"Foo_1", "Bar_2"}
-
-    p = PromptTemplate("t4", "'Here is some fake template with variable {baz}'")
-    assert set(p.prompt_params) == {"baz"}
-    # strip single quotes, happens in YAML as we need to use single quotes for the template string
-    assert p.prompt_text == "Here is some fake template with variable {baz}"
-
-    p = PromptTemplate("t4", '"Here is some fake template with variable {baz}"')
-    assert set(p.prompt_params) == {"baz"}
-    # strip double quotes, happens in YAML as we need to use single quotes for the template string
-    assert p.prompt_text == "Here is some fake template with variable {baz}"
-
-
-@pytest.mark.unit
-def test_prompt_template_repr():
-    p = PromptTemplate("t", "Here is variable {baz}")
-    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable {baz}, prompt_params=['baz'])"
-    assert repr(p) == desired_repr
-    assert str(p) == desired_repr
-
-
-@pytest.mark.unit
 def test_prompt_node_with_custom_invocation_layer():
     model = PromptModel("fake_model")
     pn = PromptNode(model_name_or_path=model)
     output = pn("Some fake invocation")
 
     assert output == ["fake_response"]
-
-
-@pytest.mark.integration
-def test_create_prompt_model():
-    model = PromptModel("google/flan-t5-small")
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    model = PromptModel()
-    assert model.model_name_or_path == "google/flan-t5-base"
-
-    with pytest.raises(OpenAIError):
-        # davinci selected but no API key provided
-        model = PromptModel("text-davinci-003")
-
-    model = PromptModel("text-davinci-003", api_key="no need to provide a real key")
-    assert model.model_name_or_path == "text-davinci-003"
-
-    with pytest.raises(ValueError, match="Model some-random-model is not supported"):
-        PromptModel("some-random-model")
-
-    # we can also pass model kwargs to the PromptModel
-    model = PromptModel("google/flan-t5-small", model_kwargs={"model_kwargs": {"torch_dtype": torch.bfloat16}})
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    # we can also pass kwargs directly, see HF Pipeline constructor
-    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": torch.bfloat16})
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    # we can't use device_map auto without accelerate library installed
-    with pytest.raises(ImportError, match="requires Accelerate: `pip install accelerate`"):
-        model = PromptModel("google/flan-t5-small", model_kwargs={"device_map": "auto"})
-        assert model.model_name_or_path == "google/flan-t5-small"
-
-
-def test_create_prompt_model_dtype():
-    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "auto"})
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "torch.bfloat16"})
-    assert model.model_name_or_path == "google/flan-t5-small"
 
 
 @pytest.mark.integration
