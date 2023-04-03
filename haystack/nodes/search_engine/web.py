@@ -1,7 +1,8 @@
 import pydoc
 from typing import List, Dict, Any, Optional, Union, Tuple, Type
 
-from haystack import BaseComponent, MultiLabel, Document
+from haystack.nodes.base import BaseComponent
+from haystack import MultiLabel, Document
 from haystack.nodes.search_engine.base import SearchEngine
 
 
