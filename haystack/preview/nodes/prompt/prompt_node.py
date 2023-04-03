@@ -1,11 +1,29 @@
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Literal
 
 from haystack.preview import node
 from haystack.preview.nodes.prompt.providers.base import get_model
 
 
 logger = logging.getLogger(__name__)
+
+
+PromptTemplates = Literal[
+    "question-answering",
+    "question-generation",
+    "conditioned-question-generation",
+    "summarization",
+    "question-answering-check",
+    "sentiment-analysis",
+    "multiple-choice-question-answering",
+    "topic-classification",
+    "language-detection",
+    "translation",
+    "zero-shot-react",
+]
+
+
+PROVIDER_MODULES = ["haystack.preview"]
 
 
 PREDEFINED_TEMPLATES = {
@@ -62,9 +80,6 @@ class PromptNode:
     - OpenAI InstructGPT models
     - Azure OpenAI InstructGPT models
 
-    However, users are not limited to above-mentioned models only as there is a built-in ability to register
-    additional custom model invocation layers.
-
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
 
@@ -73,46 +88,70 @@ class PromptNode:
 
     def __init__(
         self,
-        inputs: List[str],
-        outputs: List[str],
-        template: str,
-        model_name: str = "google/flan-t5-base",
+        template: Optional[PromptTemplates] = None,
+        custom_template: Optional[str] = None,
+        inputs: Optional[List[str]] = None,
+        output: Optional[str] = "answers",
+        model_name_or_path: str = "google/flan-t5-base",
         model_provider: Optional[str] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
+        provider_modules: Optional[List[str]] = None,
     ):
         """
         Creates a PromptNode instance.
 
+        NOTE: the variables that the template accepts must match with the variables you list in the `inputs` variable of
+        this PromptNode. For example, if your prompt expects `$query` and `$documents`, make sure to initialize this node
+        with `inputs=['query', 'documents']`. If you don't specify any inputs, they are automatically inferred from the
+        template text.
+
         :param inputs: the inputs that this PromptNode expects.
         :param outputs: the outputs that this PromptNode will generate.
-        :param template: The prompt to use for the model. Might be the name of a predefined prompt template or your own template.
-            NOTE: the variables that the template accepts must match with the variables you list in the `inputs` variable of
-            this PromptNode. For example, if your prompt expects `$query` and `$documents`, make sure to initialize this node
-            with `inputs=['query', 'documents']`.
+        :param template: The template of the prompt to use for the model. Must be the name of a predefined prompt template.
+            To provide a custom template, use `custom_template`.
+        :param custom_template: A custom template of the prompt to use for the model.
+            To use Haystack's pre-defined templates, use `template`.
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
         :param model_provider: force a specific provider for the model. If not given, Haystack will find a provider for your model automatically.
+        :param model_kwargs: Kwargs to be passed to the model provider, like API keys, init parameters, etc.
+        :param provider_modules: if you have external model providers, add the module where they are, like `haystack.preview`
         """
-        self.inputs = inputs
-        self.outputs = outputs
-        # TODO make a real prompt library system out of this.
-        self.template = PREDEFINED_TEMPLATES[template] if template in PREDEFINED_TEMPLATES.keys() else template
+        if template:
+            self.template = PREDEFINED_TEMPLATES[template]
+        elif custom_template:
+            self.template = custom_template
+        else:
+            raise ValueError("Provide either a template or a custom_template for this PromptNode.")
+
+        if inputs:
+            validate_inputs(self.template, inputs)
+            self.inputs = inputs
+        else:
+            self.inputs = find_inputs(self.template)
+
+        self.outputs = [output]
         self.model = None
-        self.model_name = model_name
+        self.model_name_or_path = model_name_or_path
         self.model_provider = model_provider
         self.model_kwargs = model_kwargs
+        self.provider_modules = provider_modules or PROVIDER_MODULES
         self.init_parameters = {
             "inputs": inputs,
-            "outputs": outputs,
+            "output": output,
             "template": template,
-            "model_name": model_name,
+            "custom_template": custom_template,
+            "model_name_or_path": model_name_or_path,
             "model_kwargs": model_kwargs,
-            "mode_provider": model_provider,
+            "model_provider": model_provider,
         }
 
     def warm_up(self):
         if not self.model:
             self.model = get_model(
-                model_name_or_path=self.model_name, model_provider=self.model_provider, model_kwargs=self.model_kwargs
+                model_name_or_path=self.model_name_or_path,
+                model_provider=self.model_provider,
+                model_kwargs=self.model_kwargs,
+                modules_to_search=self.provider_modules,
             )
 
     def run(
@@ -129,13 +168,13 @@ class PromptNode:
         output = self.prompt(**data, **parameters.get(name, {}))
         return ({self.outputs[0]: output}, parameters)
 
-    def prompt(self, **kwargs):
+    def prompt(self, prompt: Optional[str] = None, **kwargs) -> List[str]:
         """
-        It takes in a prompt, and returns a list of responses using the underlying invocation layer.
+        It takes in a prompt, and returns a list of responses using the underlying model.
 
-        :param prompt: The prompt to use for the invocation. It can be a single prompt or a list of prompts.
-        :param kwargs: Additional keyword arguments to pass to the invocation layer.
-        :return: A list of model generated responses for the prompt or prompts.
+        :param prompt: The prompt to use for the invocation.
+        :param kwargs: Additional keyword arguments to pass to the model.
+        :return: A list of model generated responses for the prompt.
         """
         self.warm_up()
         prompt = self._render_prompt(**kwargs)
@@ -147,7 +186,48 @@ class PromptNode:
         values found in **kwargs. If **kwargs comes from run(), it will contain
         both data and parameters.
         """
+        validate_inputs(self.template, list(kwargs.keys()))
         prompt = self.template
         for key, value in kwargs.items():
             prompt = prompt.replace(f"${key}", str(value))
         return prompt
+
+
+def validate_inputs(template: str, inputs: List[str]) -> None:
+    """
+    Make sure the template variables and the input variables match.
+
+    :param template: the template to validate the inputs against
+    :param inputs: the inputs to validate
+    :raises ValueError if the template is using variables that are not found
+        in the inputs list.
+    """
+    missing_inputs = []
+    for word in template.split():
+        if word.startswith("$"):
+            if word[1:] not in inputs:
+                missing_inputs.append(word[1:])
+            else:
+                inputs.remove(word[1:])
+    if missing_inputs:
+        raise ValueError(
+            f"The template of this PromptNode ({template}) requires some inputs that are not given: "
+            f"{missing_inputs}. Connect this node to another node that outputs these variables, "
+            "or change template."
+        )
+    if inputs:
+        raise ValueError(
+            f"The template of this PromptNode ({template}) received some inputs that it did not expect: "
+            f"{inputs} are unused in the template. Remove these inputs from the PromptNode "
+            "or change template."
+        )
+
+
+def find_inputs(template: str) -> List[str]:
+    """
+    Find out which inputs this template requires.
+
+    :param template: the template to infer the required variables from.
+    :returns: a list of strings corresponding to the variables found in the template.
+    """
+    return [word for word in template.split() if word.startswith("$")]
