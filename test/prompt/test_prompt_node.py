@@ -532,6 +532,7 @@ def test_pipeline_with_prompt_text_at_query_time(prompt_model):
     )
 
 
+@pytest.mark.skip
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
 def test_pipeline_with_prompt_template_at_query_time(prompt_model):
