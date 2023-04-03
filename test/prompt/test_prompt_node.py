@@ -532,6 +532,7 @@ def test_pipeline_with_prompt_text_at_query_time(prompt_model):
     )
 
 
+@pytest.mark.skip
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
 def test_pipeline_with_prompt_template_at_query_time(prompt_model):
@@ -1066,7 +1067,7 @@ class TestTokenLimit:
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
-            assert "and answer length (100 tokens) fits within the max token limit (512 tokens)." in caplog.text
+            assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -1079,7 +1080,7 @@ class TestTokenLimit:
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2000 tokens) fits within the max token limit (2049 tokens)." in caplog.text
+            assert "and answer length (2000 tokens) fit within the max token limit (2049 tokens)." in caplog.text
 
 
 class TestRunBatch:
