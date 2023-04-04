@@ -1,22 +1,28 @@
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Any, Callable
 from abc import ABC, abstractmethod
-from collections import defaultdict
 
 
-def nested_defaultdict() -> defaultdict:
+CLAUSE = {
+    "$not": lambda fields, conditions: not any(condition.evaluate(fields) for condition in conditions),
+    "$and": lambda fields, conditions: all(condition.evaluate(fields) for condition in conditions),
+    "$or": lambda fields, conditions: any(condition.evaluate(fields) for condition in conditions),
+}
+
+OPERATOR = {
+    "$eq": lambda fields, field_name, value: fields[field_name] == value if field_name in fields else False,
+    "$in": lambda fields, field_name, value: fields[field_name] in value if field_name in fields else False,
+    "$ne": lambda fields, field_name, value: fields[field_name] != value if field_name in fields else True,
+    "$nin": lambda fields, field_name, value: fields[field_name] not in value if field_name in fields else True,
+    "$gt": lambda fields, field_name, value: fields[field_name] > value if field_name in fields else False,
+    "$gte": lambda fields, field_name, value: fields[field_name] >= value if field_name in fields else False,
+    "$lt": lambda fields, field_name, value: fields[field_name] < value if field_name in fields else False,
+    "$lte": lambda fields, field_name, value: fields[field_name] <= value if field_name in fields else False,
+}
+
+
+class FilterClause(ABC):
     """
-    Data structure that recursively adds a dictionary as value if a key does not exist. Advantage: In nested dictionary
-    structures, we don't need to check if a key already exists (which can become hard to maintain in nested
-    dictionaries with many levels) but access the existing value if a key exists and create an empty dictionary if a
-    key does not exist.
-    """
-    return defaultdict(nested_defaultdict)
-
-
-class LogicalFilterClause(ABC):
-    """
-    Class that is able to parse a filter and convert it to the format that the underlying databases of our
-    DocumentStores require.
+    Class that is able to parse a filter and convert it to the format that the underlying document store.
 
     Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
     operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`, `"$gte"`, `"$lt"`,
@@ -81,21 +87,34 @@ class LogicalFilterClause(ABC):
 
     """
 
-    def __init__(self, conditions: List[Union["LogicalFilterClause", "ComparisonOperation"]]):
+    def __init__(self, conditions: List["FilterClause"]):
         self.conditions = conditions
+        self.operations_for_keyword = {
+            "$not": self.not_operation,
+            "$and": self.and_operation,
+            "$or": self.or_operation,
+            "$eq": self.eq_operation,
+            "$in": self.in_operation,
+            "$ne": self.ne_operation,
+            "$nin": self.nin_operation,
+            "$gt": self.gt_operation,
+            "$gte": self.gte_operation,
+            "$lt": self.lt_operation,
+            "$lte": self.lte_operation,
+        }
 
-    @abstractmethod
-    def evaluate(self, fields) -> bool:
-        pass
+    # @abstractmethod
+    # def evaluate(self, fields) -> bool:
+    #     pass
 
     @classmethod
-    def parse(cls, filter_term: Union[dict, List[dict]]) -> Union["LogicalFilterClause", "ComparisonOperation"]:
+    def parse(cls, filter_term: Union[dict, List[dict]]) -> "FilterClause":
         """
         Parses a filter dictionary/list and returns a LogicalFilterClause instance.
 
         :param filter_term: Dictionary or list that contains the filter definition.
         """
-        conditions: List[Union[LogicalFilterClause, ComparisonOperation]] = []
+        conditions: List[Union[FilterClause, ComparisonOperation]] = []
 
         if isinstance(filter_term, dict):
             filter_term = [filter_term]
@@ -111,7 +130,7 @@ class LogicalFilterClause(ABC):
                 else:
                     conditions.extend(ComparisonOperation.parse(key, value))
 
-        if cls == LogicalFilterClause:
+        if cls == FilterClause:
             if len(conditions) == 1:
                 return conditions[0]
             else:
@@ -121,6 +140,10 @@ class LogicalFilterClause(ABC):
 
 
 class ComparisonOperation(ABC):
+    """
+    Class implementing a comparison operation, like equals, in, greaterthan, etc..,
+    """
+
     def __init__(self, field_name: str, comparison_value: Union[str, int, float, bool, List]):
         self.field_name = field_name
         self.comparison_value = comparison_value
