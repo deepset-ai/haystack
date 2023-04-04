@@ -1,6 +1,6 @@
-import os
 import sys
 from typing import List
+from unittest.mock import patch
 
 import pytest
 
@@ -173,3 +173,27 @@ def test_openai_answer_generator_max_token(haystack_openai_config, docs, caplog)
         assert "Skipping all of the provided Documents" in caplog.text
         assert len(prediction["answers"]) == 1
         # Can't easily check content of answer since it is generative and can change between runs
+
+
+# mock tokenizer that splits the string
+class MockTokenizer:
+    def encode(self, *args, **kwargs):
+        return str.split(*args, **kwargs)
+
+    def tokenize(self, *args, **kwargs):
+        return str.split(*args, **kwargs)
+
+
+@pytest.mark.unit
+def test_build_prompt_within_max_length():
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer") as mock_load_tokenizer:
+        mock_load_tokenizer.return_value = MockTokenizer()
+
+        generator = OpenAIAnswerGenerator(api_key="fake_key", max_tokens=50)
+        generator.MAX_TOKENS_LIMIT = 92
+        query = "query"
+        documents = [Document("most relevant document"), Document("less relevant document")]
+        prompt_str, prompt_docs = generator._build_prompt_within_max_length(query=query, documents=documents)
+
+        assert len(prompt_docs) == 1
+        assert prompt_docs[0] == documents[0]
