@@ -49,11 +49,17 @@ from haystack.nodes.retriever import (
     Text2SparqlRetriever,
     TableTextRetriever,
     MultiModalRetriever,
+    WebRetriever,
 )
 
 from haystack.nodes.sampler import BaseSampler, TopPSampler
+from haystack.nodes.search_engine import WebSearch
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
+from haystack.nodes.doc_language_classifier import (
+    LangdetectDocumentLanguageClassifier,
+    TransformersDocumentLanguageClassifier,
+)
 
 from haystack.nodes.audio import WhisperTranscriber, WhisperModel
 
