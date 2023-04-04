@@ -16,14 +16,6 @@ def test_whisper_api_transcribe():
     assert "segments" not in audio_object_transcript and "segments" not in audio_path_transcript
 
 
-@pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OpenAI API key not found")
-@pytest.mark.integration
-def test_whisper_api_transcribe_with_params():
-    w = WhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
-    audio_object_transcript, audio_path_transcript = transcribe_test_helper(w)
-    assert "segments" not in audio_object_transcript and "segments" not in audio_path_transcript
-
-
 @pytest.mark.skip("Fails on CI cause it fills up memory")
 @pytest.mark.integration
 @pytest.mark.skipif(not is_whisper_available(), reason="Whisper is not installed")
