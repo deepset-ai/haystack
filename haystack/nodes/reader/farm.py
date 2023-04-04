@@ -229,7 +229,7 @@ class FARMReader(BaseReader):
         devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)  # type: ignore [arg-type]
 
         if not save_dir:
-            save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+            save_dir = f"./saved_models/{self.inferencer.model.language_model.name}"
             if tinybert:
                 save_dir += "_tinybert_stage_1"
 

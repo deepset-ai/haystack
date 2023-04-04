@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Optional, Any
 import importlib
 import logging
 
 
-def optional_import(import_path: str, import_target: Optional[str], error_msg: str, importer_module: str):
+def optional_import(import_path: str, import_target: Optional[str], error_msg: str, importer_module: str) -> Any:
     """
     Imports an optional dependency. Emits a DEBUG log if the dependency is missing.
     """
@@ -14,6 +14,11 @@ def optional_import(import_path: str, import_target: Optional[str], error_msg: s
         return module
     except ImportError as exc:
         logging.getLogger(importer_module).debug(
-            f"{import_path}{'.' if import_target else ''}{import_target} can't be imported. {error_msg} Error raised: {exc}"
+            "%s%s%s can't be imported: %s Error raised: %s",
+            import_path,
+            "." if import_target else "",
+            import_target,
+            error_msg,
+            exc,
         )
         return None
