@@ -28,7 +28,7 @@ class SerpAPI(SearchEngine):
         :param top_k: Number of results to return.
         :param engine: Search engine to use, for example google, bing, baidu, duckduckgo, yahoo, yandex.
         See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported engines.
-        :param kwargs: Additional parameters passed to the SerperDev API. For example, you can set 'lr' to 'lang_en'
+        :param search_engine_kwargs: Additional parameters passed to the SerperDev API. For example, you can set 'lr' to 'lang_en'
         to limit the search to English.
         See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported parameters.
         """
@@ -128,7 +128,7 @@ class SerperDev(SearchEngine):
         """
         :param api_key: API key for the SerperDev API.
         :param top_k: Number of documents to return.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param search_engine_kwargs: Additional parameters passed to the SerperDev API.
         For example, you can set 'num' to 20 to increase the number of search results.
         """
         super().__init__()
