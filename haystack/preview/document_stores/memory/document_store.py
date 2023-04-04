@@ -23,7 +23,7 @@ class MemoryDocumentStore:
         :param bm25_parameters: parameters for rank_bm25.
         :param devices: which devices to use for embedding retrieval. Leave empty to support embedding retrieval on CPU only.
         """
-        self.storage: Dict[str, Document] = {}
+        self.storage = {}
 
     def count_documents(self) -> int:
         """

@@ -1,4 +1,4 @@
-from typing import List, Any, Dict, Literal, Optional
+from typing import List, Any, Dict, Literal, Optional, TYPE_CHECKING
 
 import json
 import hashlib
@@ -8,12 +8,17 @@ from dataclasses import asdict, dataclass, field
 
 from haystack.preview.utils.import_utils import optional_import
 
-ndarray = optional_import("numpy", "ndarray", "You won't be able to use embeddings.", __name__)
+# We need to do this dance because ndarray is an optional dependency used as a type by dataclass
+if TYPE_CHECKING:
+    from numpy import ndarray
+else:
+    ndarray = optional_import("numpy", "ndarray", "You won't be able to use embeddings.", __name__)
+
 DataFrame = optional_import("pandas", "DataFrame", "You won't be able to use table related features.", __name__)
 
 
 logger = logging.getLogger(__name__)
-ContentType = Literal["text", "table", "image"]
+ContentType = Literal["text", "table", "image", "audio"]
 PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {"text": str, "table": DataFrame, "image": Path, "audio": Path}
 
 
