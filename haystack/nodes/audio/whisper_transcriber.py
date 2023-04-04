@@ -80,8 +80,9 @@ class WhisperTranscriber(BaseComponent):
 
         :param audio_file: Path to the audio file or a binary file-like object.
         :param language: Language of the audio file. If None, the language is automatically detected.
-        :param return_segments: If True, returns the transcription for each segment of the audio file.
-        :param translate: If True, translates the transcription into English.
+        :param return_segments: If True, returns the transcription for each segment of the audio file. Supported with
+        local installation of whisper only.
+        :param translate: If True, translates the transcription to English.
 
         """
         transcript: Dict[str, Any] = {}
