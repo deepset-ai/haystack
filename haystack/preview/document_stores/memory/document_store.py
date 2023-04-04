@@ -3,12 +3,16 @@ from typing import Literal, Any, Dict, List, Optional, Iterable
 import logging
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.filters import LogicalFilterClause
+from haystack.preview.document_stores.filters import DocumentStoreFilters
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 
 
 logger = logging.getLogger(__name__)
 DuplicatePolicy = Literal["skip", "overwrite", "fail"]
+
+
+class MemoryDocumentStoreFilters(DocumentStoreFilters):
+    pass
 
 
 class MemoryDocumentStore:
@@ -39,8 +43,10 @@ class MemoryDocumentStore:
         :param filters: the filters to apply to the document list.
         """
         if filters:
-            parsed_filter = LogicalFilterClause.parse(filters)
-            return list(filter(lambda doc: parsed_filter.evaluate(doc.metadata), self.storage.values()))
+            filter_solver = MemoryDocumentStoreFilters()
+            return list(
+                filter(lambda doc: filter_solver.match(conditions=filters, document=doc), self.storage.values())
+            )
         return list(self.storage.values())
 
     def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:
