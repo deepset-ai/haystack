@@ -1542,7 +1542,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            time.sleep(2)
+            self.client.indices.refresh(index=index)
 
     def delete_labels(
         self,
