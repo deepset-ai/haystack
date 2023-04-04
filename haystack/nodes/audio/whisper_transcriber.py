@@ -18,19 +18,18 @@ class WhisperTranscriber(BaseComponent):
     """
     Transcribes audio files using OpenAI's Whisper. This class supports two underlying implementations:
 
-    - API (default): Uses the OpenAI API and requires an API key. See blog
-    [post](https://beta.openai.com/docs/api-reference/whisper for more details.) for more details.
-    - Local (requires installation of whisper): Uses the local installation
-    of [whisper](https://github.com/openai/whisper).
+    - API (default): Uses the OpenAI API and requires an API key. See the [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper for more details.
+    - Local (requires installing Whisper): Uses the local installation
+    of [Whisper](https://github.com/openai/whisper).
 
-    If you are using local installation of whisper, install whisper following the instructions available on
-    the Whisper [github repo](https://github.com/openai/whisper) and omit the api_key parameter.
+    To use Whisper locally, install it following the instructions on
+    the Whisper [GitHub repo](https://github.com/openai/whisper) and omit the `api_key` parameter.
 
-    If you are using the API implementation, you need to provide an api_key. You can get one by signing up
-    for an OpenAI account [here](https://beta.openai.com/).
+    To use the API implementation, provide an api_key. You can get one by signing up
+    for an [OpenAI account](https://beta.openai.com/).
 
-    For the supported audio formats, languages and other parameters, see the Whisper API
-    [documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
+    For the supported audio formats, languages, and other parameters, see the
+    [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
     [github repo](https://github.com/openai/whisper).
     """
 
@@ -46,12 +45,11 @@ class WhisperTranscriber(BaseComponent):
         """
         Creates a WhisperTranscriber instance.
 
-        :param api_key: OpenAI API key. If None, local installation of whisper is used.
-        :param model_name_or_path: Name of the model to use. If using local installation of whisper, this
-        value has to be one of the following: "tiny", "small", "medium", "large", "large-v2". If using
-        the API, this value has to be "whisper-1" (default).
-        :param device: Device to use for inference. This parameter is only used if you are using local
-        installation of whisper. If None, the device is automatically selected.
+        :param api_key: OpenAI API key. If None, a local installation of Whisper is used.
+        :param model_name_or_path: Name of the model to use. If using a local installation of Whisper, set this to one of the following values: "tiny", "small", "medium", "large", "large-v2". If using
+        the API, set thsi value to: "whisper-1" (default).
+        :param device: Device to use for inference. Only used if you're using a local
+        installation of Whisper. If None, the device is automatically selected.
         """
         super().__init__()
         self.api_key = api_key
@@ -65,8 +63,8 @@ class WhisperTranscriber(BaseComponent):
         else:
             if api_key is None:
                 raise ValueError(
-                    "Please provide a valid api_key for OpenAI API. Alternatively, "
-                    "install OpenAI whisper (see https://github.com/openai/whisper for more details)."
+                    "Provide a valid api_key for OpenAI API. Alternatively, "
+                    "install OpenAI Whisper (see [Whisper](https://github.com/openai/whisper) for more details)."
                 )
 
     def transcribe(
@@ -78,9 +76,9 @@ class WhisperTranscriber(BaseComponent):
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Transcribe audio file.
+        Transcribe an audio file.
 
-        :param audio_file: Path to audio file or a binary file-like object.
+        :param audio_file: Path to the audio file or a binary file-like object.
         :param language: Language of the audio file. If None, the language is automatically detected.
         :param return_segments: If True, returns the transcription for each segment of the audio file. Supported with
         local installation of whisper only.
