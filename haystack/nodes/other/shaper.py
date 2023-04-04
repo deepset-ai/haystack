@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def rename(value: Any) -> Any:
     """
-    Identity function. Can be used to rename values in the invocation context without changing them.
+    An identity function. You can use it to rename values in the invocation context without changing them.
 
     Example:
 
@@ -41,7 +41,7 @@ def value_to_list(value: Any, target_list: List[Any]) -> List[Any]:
 
 def join_lists(lists: List[List[Any]]) -> List[Any]:
     """
-    Joins the passed lists into a single one.
+    Joins the lists you pass to it into a single list.
 
     Example:
 
@@ -58,7 +58,7 @@ def join_lists(lists: List[List[Any]]) -> List[Any]:
 def join_strings(strings: List[str], delimiter: str = " ", str_replace: Optional[Dict[str, str]] = None) -> str:
     """
     Transforms a list of strings into a single string. The content of this string
-    is the content of all original strings separated by the delimiter you specify.
+    is the content of all of the original strings separated by the delimiter you specify.
 
     Example:
 
@@ -72,7 +72,7 @@ def join_strings(strings: List[str], delimiter: str = " ", str_replace: Optional
 
 def format_string(string: str, str_replace: Optional[Dict[str, str]] = None) -> str:
     """
-    Transforms a string using a substitution dict.
+    Replaces strings.
 
     Example:
 
@@ -91,14 +91,14 @@ def join_documents(
     str_replace: Optional[Dict[str, str]] = None,
 ) -> List[Document]:
     """
-    Transforms a list of documents into a list containing a single Document. The content of this document
-    is the joined result of all original documents separated by the delimiter you specify.
-    How each document is represented is controlled by the pattern parameter.
+    Transforms a list of documents into a list containing a single document. The content of this document
+    is the joined result of all original documents, separated by the delimiter you specify.
+    Use regex in the `pattern` parameter to control how each document is represented.
     You can use the following placeholders:
-    - $content: the content of the document
-    - $idx: the index of the document in the list
-    - $id: the id of the document
-    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+    - $content: The content of the document.
+    - $idx: The index of the document in the list.
+    - $id: The ID of the document.
+    - $META_FIELD: The value of the metadata field called 'META_FIELD'.
 
     All metadata is dropped. (TODO: fix)
 
@@ -122,8 +122,8 @@ def join_documents(
 
 def join_documents_and_scores(documents: List[Document]) -> Tuple[List[Document]]:
     """
-    Transforms a list of documents with scores in their metadata into a list containing a single Document.
-    The content of this document contains the scores and contents of all original documents.
+    Transforms a list of documents with scores in their metadata into a list containing a single document.
+    The resulting document contains the scores and the contents of all the original documents.
     All metadata is dropped. (TODO: fix)
     Example:
     ```python
@@ -149,12 +149,12 @@ def format_document(
 ) -> str:
     """
     Transforms a document into a single string.
-    How the document is represented is controlled by the pattern parameter.
+    Use regex in the `pattern` parameter to control how the document is represented.
     You can use the following placeholders:
-    - $content: the content of the document
-    - $idx: the index of the document in the list
-    - $id: the id of the document
-    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+    - $content: The content of the document.
+    - $idx: The index of the document in the list.
+    - $id: The ID of the document.
+    - $META_FIELD: The value of the metadata field called 'META_FIELD'.
 
     Example:
 
@@ -198,11 +198,11 @@ def format_answer(
 ) -> str:
     """
     Transforms an answer into a single string.
-    How the answer is represented is controlled by the pattern parameter.
+    Use regex in the `pattern` parameter to control how the answer is represented.
     You can use the following placeholders:
-    - $answer: the answer text of the answer
-    - $idx: the index of the answer in the list
-    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+    - $answer: The answer text.
+    - $idx: The index of the answer in the list.
+    - $META_FIELD: The value of the metadata field called 'META_FIELD'.
 
     Example:
 
@@ -244,12 +244,12 @@ def join_documents_to_string(
     """
     Transforms a list of documents into a single string. The content of this string
     is the joined result of all original documents separated by the delimiter you specify.
-    How each document is represented is controlled by the pattern parameter.
+    Use regex in the `pattern` parameter to control how the documents are represented.
     You can use the following placeholders:
-    - $content: the content of the document
-    - $idx: the index of the document in the list
-    - $id: the id of the document
-    - $META_FIELD: the value of the metadata field of name 'META_FIELD'
+    - $content: The content of the document.
+    - $idx: The index of the document in the list.
+    - $id: The ID of the document.
+    - $META_FIELD: The value of the metadata field called 'META_FIELD'.
 
     Example:
 
@@ -282,7 +282,7 @@ def strings_to_answers(
     reference_meta_field: Optional[str] = None,
 ) -> List[Answer]:
     """
-    Transforms a list of strings into a list of Answers.
+    Transforms a list of strings into a list of answers.
     Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the strings.
 
     :param strings: The list of strings to transform.
@@ -299,7 +299,7 @@ def strings_to_answers(
     :param reference_mode: The mode used to reference documents. Supported modes are:
         - index: the document references are the one-based index of the document in the list of documents.
             Example: "this is an answer[1]" will reference the first document in the list of documents.
-        - id: the document references are the document ids.
+        - id: the document references are the document IDs.
             Example: "this is an answer[123]" will reference the document with id "123".
         - meta: the document references are the value of a metadata field of the document.
             Example: "this is an answer[123]" will reference the document with the value "123" in the metadata field specified by reference_meta_field.
@@ -338,14 +338,14 @@ def strings_to_answers(
         elif len(prompts) > 1 and len(strings) % len(prompts) == 0:
             # one prompt per string/document
             if documents is not None and len(documents) != len(prompts):
-                raise ValueError("The number of documents must match the number of prompts")
+                raise ValueError("The number of documents must match the number of prompts.")
             string_multiplier = len(strings) // len(prompts)
             documents_per_string = (
                 [[doc] for doc in documents for _ in range(string_multiplier)] if documents else [None] * len(strings)
             )
             prompt_per_string = [prompt for prompt in prompts for _ in range(string_multiplier)]
         else:
-            raise ValueError("The number of prompts must be one or a multiple of the number of strings")
+            raise ValueError("The number of prompts must be one or a multiple of the number of strings.")
     else:
         documents_per_string = [documents] * len(strings)
         prompt_per_string = [None] * len(strings)
@@ -375,7 +375,7 @@ def string_to_answer(
     reference_meta_field: Optional[str] = None,
 ) -> Answer:
     """
-    Transforms a string into an Answer.
+    Transforms a string into an answer.
     Specify `reference_pattern` to populate the answer's `document_ids` by extracting document references from the string.
 
     :param string: The string to transform.
@@ -392,7 +392,7 @@ def string_to_answer(
     :param reference_mode: The mode used to reference documents. Supported modes are:
         - index: the document references are the one-based index of the document in the list of documents.
             Example: "this is an answer[1]" will reference the first document in the list of documents.
-        - id: the document references are the document ids.
+        - id: the document references are the document IDs.
             Example: "this is an answer[123]" will reference the document with id "123".
         - meta: the document references are the value of a metadata field of the document.
             Example: "this is an answer[123]" will reference the document with the value "123" in the metadata field specified by reference_meta_field.
@@ -437,15 +437,15 @@ def parse_references(
     string: str, reference_pattern: Optional[str] = None, candidates: Optional[Dict[str, str]] = None
 ) -> Optional[List[str]]:
     """
-    Parses an answer string for document references and returns the document ids of the referenced documents.
+    Parses an answer string for document references and returns the document IDs of the referenced documents.
 
     :param string: The string to parse.
     :param reference_pattern: The regex pattern to use for parsing the document references.
         Example: `\\[(\\d+)\\]` will find "1" in string "this is an answer[1]".
-        If None, no parsing is done and all candidate document ids are returned.
-    :param candidates: A dictionary of candidates to choose from. The keys are the reference strings and the values are the document ids.
+        If None, no parsing is done and all candidate document IDs are returned.
+    :param candidates: A dictionary of candidates to choose from. The keys are the reference strings and the values are the document IDs.
         If None, no parsing is done and None is returned.
-    :return: A list of document ids.
+    :return: A list of document IDs.
     """
     if not candidates:
         return None
@@ -460,7 +460,7 @@ def answers_to_strings(
     answers: List[Answer], pattern: Optional[str] = None, str_replace: Optional[Dict[str, str]] = None
 ) -> List[str]:
     """
-    Extracts the content field of Documents and returns a list of strings.
+    Extracts the content field of answers and returns a list of strings.
 
     Example:
 
@@ -485,10 +485,10 @@ def strings_to_documents(
     id_hash_keys: Optional[List[str]] = None,
 ) -> List[Document]:
     """
-    Transforms a list of strings into a list of Documents. If you pass the metadata in a single
-    dictionary, all Documents get the same metadata. If you pass the metadata as a list, the length of this list
-    must be the same as the length of the list of strings, and each Document gets its own metadata.
-    You can specify `id_hash_keys` only once and it gets assigned to all Documents.
+    Transforms a list of strings into a list of documents. If you pass the metadata in a single
+    dictionary, all documents get the same metadata. If you pass the metadata as a list, the length of this list
+    must be the same as the length of the list of strings, and each document gets its own metadata.
+    You can specify `id_hash_keys` only once and it gets assigned to all documents.
 
     Example:
 
@@ -523,7 +523,7 @@ def documents_to_strings(
     documents: List[Document], pattern: Optional[str] = None, str_replace: Optional[Dict[str, str]] = None
 ) -> List[str]:
     """
-    Extracts the content field of Documents and returns a list of strings.
+    Extracts the content field of documents and returns a list of strings. Use regext in the `pattern` parameter to control how the documents are represented.
 
     Example:
 
@@ -577,20 +577,28 @@ class Shaper(BaseComponent):
                 target_list: documents
             output: [questions]
     ```
-    Shaper component is initialized with a directive to invoke function expand on the variable query and to store
+    the Shaper component is initialized with a directive to invoke function expand on the variable query and to store
     the result in the invocation context variable questions. All other invocation context variables are passed down
     the pipeline as they are.
 
-    Shaper is especially useful for pipelines with PromptNodes, where we need to modify the invocation
-    context to match the templates of PromptNodes.
-
     You can use multiple Shaper components in a pipeline to modify the invocation context as needed.
 
-    `Shaper` supports the current functions:
+    Currently, `Shaper` supports the following functions:
 
+    - `rename`
     - `value_to_list`
+    - `join_lists`
     - `join_strings`
+    - `format_string`
     - `join_documents`
+    - `join_documents_and_scores`
+    - `format_document`
+    - `format_answer`
+    - `join_documents_to_string`
+    - `strings_to_answers`
+    - `string_to_answer`
+    - `parse_references`
+    - `answers_to_strings`
     - `join_lists`
     - `strings_to_documents`
     - `documents_to_strings`
