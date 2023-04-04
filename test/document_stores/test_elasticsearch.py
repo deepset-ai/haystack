@@ -215,8 +215,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
         settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
 
-        client.indices.create(index="haystack_existing_alias_1", body=settings)
-        client.indices.create(index="haystack_existing_alias_2", body=settings)
+        client.indices.create(index="haystack_existing_alias_1", **settings)
+        client.indices.create(index="haystack_existing_alias_2", **settings)
 
         client.indices.put_alias(
             index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
@@ -235,8 +235,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         right_settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
         wrong_settings = {"mappings": {"properties": {"content": {"type": "histogram"}}}}
 
-        client.indices.create(index="haystack_existing_alias_1", body=right_settings)
-        client.indices.create(index="haystack_existing_alias_2", body=wrong_settings)
+        client.indices.create(index="haystack_existing_alias_1", **right_settings)
+        client.indices.create(index="haystack_existing_alias_2", **wrong_settings)
         client.indices.put_alias(
             index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
         )
