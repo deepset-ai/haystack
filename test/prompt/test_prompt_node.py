@@ -237,6 +237,14 @@ def test_open_ai_warn_if_max_tokens_is_too_short(prompt_model, caplog):
 def test_stop_words(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
+    # test single stop word for both HF and OpenAI
+    # set stop words in PromptNode
+    node = PromptNode(prompt_model, stop_words=["capital"])
+
+    # with default prompt template and stop words set in PN
+    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    assert r[0] == "What is the" or r[0] == "What city is the"
+
     # test stop words for both HF and OpenAI
     # set stop words in PromptNode
     node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
