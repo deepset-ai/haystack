@@ -121,7 +121,7 @@ class TransformersSummarizer(BaseSummarizer):
         Produce the summarization from the supplied documents.
         The documents can come from the Retriever.
 
-        :param documents: Related documents (for example, coming from a Retriever) that the answer is conditioned on.
+        :param documents: A list of Documents (for example, coming from a Retriever) to summarize individually.
         :return: List of Documents, where Document.meta["summary"] contains the summarization.
         """
         if self.min_length > self.max_length:
@@ -170,8 +170,8 @@ class TransformersSummarizer(BaseSummarizer):
         Summarize supplied documents in batches.
         These documents can come from the Retriever.
 
-        :param documents: Single list of related documents or list of lists of related documents
-                          (for example, coming from a Retriever) that the answer is conditioned on.
+        :param documents: A single list of documents or a list of lists of documents
+                          (for example, coming from a Retriever) to summarize.
         :param batch_size: Number of Documents to process at a time.
         """
         if self.min_length > self.max_length:
