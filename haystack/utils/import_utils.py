@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Dict, Union, Tuple, List
 
 import requests
-from haystack.errors import HaystackError
+from haystack.errors import DatasetsError
 from haystack.schema import Document
 
 
@@ -63,7 +63,7 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
     ) from source_error
 
 
-def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "train") -> List[Document]:
+def load_documents_from_hf_datasets(dataset_name: str, split: Optional[str] = "train") -> List[Document]:
     """
     Load a list of Haystack Documents from a remote Hugging Face dataset.
 
@@ -81,7 +81,10 @@ def load_documents_from_datasets(dataset_name: str, split: Optional[str] = "trai
 
     dataset = load_dataset_builder(dataset_name)
     if "content" not in dataset.info.features.keys():
-        raise HaystackError("Dataset does not contain a content field which is required by Haystack Documents")
+        raise DatasetsError(
+            f"{dataset_name} does not contain a `content` field which is required by Haystack to "
+            f"create `Document` objects."
+        )
 
     remote_dataset = load_dataset(dataset_name, split=split)
     documents = [Document.from_dict(document) for document in remote_dataset]
