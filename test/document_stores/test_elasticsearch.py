@@ -31,9 +31,11 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             host=os.environ.get("ELASTICSEARCH_HOST", "localhost"),
             create_index=True,
         )
+        ds.delete_documents()
+        ds.delete_labels()
         yield ds
-        ds.delete_index(self.index_name)
-        ds.delete_index(labels_index_name)
+        ds.delete_documents()
+        ds.delete_labels()
 
     @pytest.fixture
     def mocked_elastic_search_init(self, monkeypatch):
