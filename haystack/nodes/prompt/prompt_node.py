@@ -163,10 +163,7 @@ class PromptNode(BaseComponent):
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
         template_to_fill = self.get_prompt_template(prompt_template)
 
-        if template_to_fill:
-            prompts = template_to_fill.fill(*args, **kwargs)
-        else:
-            prompts = list(args)
+        prompts = template_to_fill.fill(*args, **kwargs) if template_to_fill else list(args)
 
         for prompt in prompts:
             kwargs_copy = copy.copy(kwargs)
