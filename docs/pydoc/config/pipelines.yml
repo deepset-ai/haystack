@@ -5,7 +5,7 @@ loaders:
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
-    expression:
+    expression: "name not in ['_HaystackBeirRetrieverAdapter', '_RayDeploymentWrapper']"
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
