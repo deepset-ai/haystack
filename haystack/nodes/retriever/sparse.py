@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
 except ImportError as exc:
-    logger.debug("sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue.")
+    logger.debug("sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
     TfidfVectorizer = None
 
 
@@ -437,7 +437,7 @@ class TfidfRetriever(BaseRetriever):
         """
         if not TfidfVectorizer:
             raise ImportError(
-                "sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+                "sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
             )
         super().__init__()
 

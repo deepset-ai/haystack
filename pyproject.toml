@@ -53,6 +53,7 @@ dependencies = [
   "nltk",
   "pandas",
   "rank_bm25",
+  "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
@@ -177,11 +178,8 @@ onnx-gpu = [
   "onnxruntime-gpu",
   "onnxruntime_tools",
 ]
-stats = [  # for stats in run_classifier
-  "scipy>=1.3.2",
-  "scikit-learn>=1.0.0",
-]
 metrics = [  # for metrics
+  "scipy>=1.3.2",
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
   "seqeval",
   "mlflow",

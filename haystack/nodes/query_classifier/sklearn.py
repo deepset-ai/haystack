@@ -16,7 +16,7 @@ try:
     from sklearn.ensemble._gb_losses import BinomialDeviance
     from sklearn.ensemble._gb import GradientBoostingClassifier
 except ImportError as exc:
-    logger.debug("sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue.")
+    logger.debug("sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
     BinomialDeviance = None
     GradientBoostingClassifier = None
 
@@ -84,7 +84,7 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         """
         if not BinomialDeviance and not GradientBoostingClassifier:
             raise ImportError(
-                "sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+                "sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
             )
 
         if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (

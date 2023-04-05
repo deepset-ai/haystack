@@ -17,7 +17,7 @@ try:
     from sklearn.metrics import classification_report, f1_score, matthews_corrcoef, mean_squared_error, r2_score
     from sklearn.metrics.pairwise import cosine_similarity
 except ImportError as exc:
-    logger.debug("scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue.")
+    logger.debug("scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
     pearsonr = None
     spearmanr = None
     classification_report = None
@@ -73,7 +73,7 @@ def simple_accuracy(preds, labels):
 def acc_and_f1(preds, labels):
     if not f1_score:
         raise ImportError(
-            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
         )
     acc = simple_accuracy(preds, labels)
     f1 = f1_score(y_true=labels, y_pred=preds)
@@ -83,7 +83,7 @@ def acc_and_f1(preds, labels):
 def f1_macro(preds, labels):
     if not f1_score:
         raise ImportError(
-            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
         )
     return {"f1_macro": f1_score(y_true=labels, y_pred=preds, average="macro")}
 
@@ -91,7 +91,7 @@ def f1_macro(preds, labels):
 def pearson_and_spearman(preds, labels):
     if not pearsonr or not spearmanr:
         raise ImportError(
-            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
         )
     pearson_corr = pearsonr(preds, labels)[0]
     spearman_corr = spearmanr(preds, labels)[0]
@@ -130,7 +130,7 @@ def compute_metrics(metric: str, preds, labels):
             or (metric == "r2" and not r2_score)
         ):
             raise ImportError(
-                "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+                "scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
             )
         return FUNCTION_FOR_METRIC[metric](preds, labels)
     elif isinstance(metric, list):
@@ -155,7 +155,7 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
     elif head.ph_output_type == "per_sequence":
         if not classification_report:
             raise ImportError(
-                "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+                "scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
             )
         report_fn = classification_report
     elif head.ph_output_type == "per_token_squad":
@@ -453,7 +453,7 @@ def semantic_answer_similarity(
     """
     if not cosine_similarity:
         raise ImportError(
-            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[stats]' to fix this issue."
+            "scipy or sklearn could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
         )
 
     assert len(predictions) == len(gold_labels)
