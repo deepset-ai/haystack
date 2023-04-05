@@ -16,7 +16,6 @@ import torch
 from tqdm.auto import tqdm
 import rank_bm25
 import pandas as pd
-from scipy.special import expit
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
@@ -27,6 +26,20 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever.dense import DenseRetriever
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
+
+    def njit(f):
+        return f
+
+
+@njit  # (fastmath=True)
+def expit(x: float) -> float:
+    return 1 / (1 + np.exp(-x))
 
 
 class InMemoryDocumentStore(KeywordDocumentStore):
