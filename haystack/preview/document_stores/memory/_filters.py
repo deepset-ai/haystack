@@ -195,18 +195,16 @@ def match(conditions: Any, document: Document, _current_key: Optional[str] = Non
 
         if field_key in LOGICAL_STATEMENTS.keys():
             # It's a nested logical statement (AND, OR, NOT)
-            # Resolve the nested operator
             return LOGICAL_STATEMENTS[field_key](
                 conditions=_conditions_as_list(field_value), document=document, _current_key=_current_key
             )
         if field_key in OPERATORS.keys():
             # It's a comparison operator (EQ, IN, GTE, ...)
-            # Make sure the field to apply this operation on was specified.
             if not _current_key:
                 raise ValueError(
-                    "Filters can't start with an operator like $eq and $in, you have to specify which field to use first."
+                    "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
+                    "See the examples in the documentation."
                 )
-            # Evaluate the operator
             return OPERATORS[field_key](fields=document.metadata, field_name=_current_key, value=field_value)
 
         if isinstance(field_value, list):
@@ -218,7 +216,7 @@ def match(conditions: Any, document: Document, _current_key: Optional[str] = Non
 
     if not _current_key:
         # If we reached here it means that conditions was neither a dict nor a list.
-        raise ValueError("Filters must be dictionaries or lists.")
+        raise ValueError("Filters must be dictionaries or lists. See the examples in the documentation.")
     return eq_operation(fields=document.metadata, field_name=_current_key, value=field_value)
 
 
