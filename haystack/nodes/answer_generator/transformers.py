@@ -286,24 +286,19 @@ class RAGenerator(BaseGenerator):
 class Seq2SeqGenerator(BaseGenerator):
 
     """
-    A generic sequence-to-sequence generator based on HuggingFace's transformers.
+    A generic sequence-to-sequence generator based on Hugging Face's transformers.
 
-    This generator supports all [Text2Text](https://huggingface.co/models?pipeline_tag=text2text-generation) models
-    from the Hugging Face hub. If the primary interface for the model specified by `model_name_or_path` constructor
-    parameter is AutoModelForSeq2SeqLM from Hugging Face, then you can use it in this Generator.
+    We recommend that you use the [bart-eli5](https://huggingface.co/yjernite/bart_eli5) and [bart_lfqa](https://huggingface.co/vblagoje/bart_lfqa) models
+    from the Hugging Face hub with this generator.
 
-    Moreover, as language models prepare model input in their specific encoding, each model
-    specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
-    accompanying model input converter that takes care of prefixes, separator tokens etc.
-    By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5).
+    As language models prepare model input in their specific encoding, each model
+    you specify in the `model_name_or_path` parameter in this Seq2SeqGenerator should have an
+    accompanying model input converter that takes care of prefixes, separator tokens, and so on.
+    By default, we provide model input converters for a few well-known seq2seq language models (for example ELI5).
     It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter
     is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
 
-    For mode details on custom model input converters refer to _BartEli5Converter
-
-    For a list of all text2text-generation models, see
-    the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2text-generation)
-
+    For mode details on custom model input converters refer to _BartEli5Converter (check the code).
 
     **Example**
 
@@ -351,12 +346,12 @@ class Seq2SeqGenerator(BaseGenerator):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
-        :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
-        :param input_converter: an optional Callable to prepare model input for the underlying language model
-                                specified in model_name_or_path parameter. The required __call__ method signature for
-                                the Callable is:
-                                __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
-                                top_k: Optional[int] = None) -> BatchEncoding:
+        :param model_name_or_path: A Hugging Face model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5, and so on.
+        :param input_converter: An optional callable to prepare model input for the underlying language model
+                                specified in the `model_name_or_path` parameter. The required `__call__` method signature for
+                                the callable is:
+                                `__call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                                top_k: Optional[int] = None) -> BatchEncoding:`.
         :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text

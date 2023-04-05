@@ -92,12 +92,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 PromptTemplate(
                     name="question-answering-with-examples",
                     prompt_text="Please answer the question according to the above context."
-                                "\n===\nContext: $examples_context\n===\n$examples\n\n"
-                                "===\nContext: $context\n===\n$query",
-                    prompt_params=["examples_context", "examples", "context", "query"],
+                                "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
+                                "===\nContext: {context}\n===\n{query}",
                 )
             ```
-            To learn how variables, such as'$context', are substituted in the `prompt_text`, see
+            To learn how variables, such as'{context}', are substituted in the `prompt_text`, see
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
@@ -118,9 +117,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             prompt_template = PromptTemplate(
                 name="question-answering-with-examples",
                 prompt_text="Please answer the question according to the above context."
-                "\n===\nContext: $examples_context\n===\n$examples\n\n"
-                "===\nContext: $context\n===\n$query",
-                prompt_params=["examples_context", "examples", "context", "query"],
+                "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
+                "===\nContext: {context}\n===\n{query}",
             )
         else:
             # Check for required prompts
@@ -231,7 +229,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
         _check_openai_finish_reason(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
-        answers = self._create_answers(generated_answers, input_docs)
+        answers = self._create_answers(generated_answers, input_docs, prompt=prompt)
         result = {"query": query, "answers": answers}
         return result
 
@@ -275,15 +273,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
         skipped_docs = 0
         # If leftover_token_len is negative we have gone past the MAX_TOKENS_LIMIT and the prompt must be trimmed
         if leftover_token_len < 0:
-            n_docs_tokens = [count_openai_tokens(text=doc.content, tokenizer=self._tokenizer) for doc in documents]
-            logger.debug("Number of tokens in documents: %s", n_docs_tokens)
-
-            # Reversing the order of documents b/c we want to throw away less relevant docs first
-            rev_n_docs_tokens = reversed(n_docs_tokens)
             n_skipped_tokens = 0
-            for doc_token_len in rev_n_docs_tokens:
-                n_skipped_tokens += doc_token_len
+            # Reversing the order of documents b/c we want to throw away less relevant docs first
+            for doc in reversed(documents):
                 skipped_docs += 1
+                n_skipped_tokens += count_openai_tokens(text=doc.content, tokenizer=self._tokenizer)
                 # Only skip enough tokens to fit within the MAX_TOKENS_LIMIT
                 if n_skipped_tokens >= abs(leftover_token_len):
                     break

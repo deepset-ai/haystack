@@ -6,15 +6,8 @@ from typing import Dict, List, Optional, Union, Type, cast
 
 import sseclient
 import torch
-from transformers import (
-    pipeline,
-    AutoConfig,
-    StoppingCriteriaList,
-    StoppingCriteria,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
-from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
+from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers.pipelines import get_task
 
 from haystack.errors import OpenAIError
 from haystack.modeling.utils import initialize_device_settings
@@ -108,7 +101,7 @@ class PromptModelInvocationLayer:
         Checks if the given model is supported by this invocation layer.
 
         :param model_name_or_path: The name or path of the model.
-        :param kwargs: additional keyword arguments passed to the underlying model which might be used to determine
+        :param kwargs: Additional keyword arguments passed to the underlying model which might be used to determine
         if the model is supported.
         :return: True if this invocation layer supports the model, False otherwise.
         """
@@ -123,17 +116,26 @@ class PromptModelInvocationLayer:
         pass
 
 
+def instruction_following_models() -> List[str]:
+    return ["flan", "mt0", "bloomz", "davinci", "opt-iml"]
+
+
 class StopWordsCriteria(StoppingCriteria):
     """
     Stops text generation if any one of the stop words is generated.
     """
 
-    def __init__(self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stop_words: List[str]):
+    def __init__(
+        self,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        stop_words: List[str],
+        device: Union[str, torch.device] = "cpu",
+    ):
         super().__init__()
-        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
+        self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        return any(torch.isin(input_ids[-1], self.stop_words[-1]))
+        return any(torch.isin(input_ids[-1], self.stop_words["input_ids"]))
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -223,9 +225,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         if len(model_input_kwargs) > 0:
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
-
+        self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
         self.pipe = pipeline(
-            "text2text-generation",
             model=model_name_or_path,
             device=self.devices[0] if "device_map" not in model_input_kwargs else None,
             use_auth_token=self.use_auth_token,
@@ -238,11 +239,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     def invoke(self, *args, **kwargs):
         """
-        It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
-        :return: A list of generated text.
+        It takes a prompt and returns a list of generated texts using the local Hugging Face transformers model
+        :return: A list of generated texts.
 
-        Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face as model_input_kwargs.
-        Other kwargs are ignored.
+        Note: Only kwargs relevant to Text2TextGenerationPipeline and TextGenerationPipeline are passed to
+        Hugging Face as model_input_kwargs. Other kwargs are ignored.
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
@@ -250,21 +251,40 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
-            # Consider only Text2TextGenerationPipeline relevant, ignore others
-            # For more details refer to Hugging Face Text2TextGenerationPipeline documentation
+            # Consider only Text2TextGenerationPipeline and TextGenerationPipeline relevant, ignore others
+            # For more details refer to Hugging Face Text2TextGenerationPipeline and TextGenerationPipeline
+            # documentation
             # TODO resolve these kwargs from the pipeline signature
             model_input_kwargs = {
                 key: kwargs[key]
-                for key in ["return_tensors", "return_text", "clean_up_tokenization_spaces", "truncation"]
+                for key in [
+                    "return_tensors",
+                    "return_text",
+                    "return_full_text",
+                    "clean_up_tokenization_spaces",
+                    "truncation",
+                ]
                 if key in kwargs
             }
+            is_text_generation = "text-generation" == self.task_name
+            # Prefer return_full_text is False for text-generation (unless explicitly set)
+            # Thus only generated text is returned (excluding prompt)
+            if is_text_generation and "return_full_text" not in model_input_kwargs:
+                model_input_kwargs["return_full_text"] = False
+                model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
-                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
+                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             if top_k:
                 model_input_kwargs["num_return_sequences"] = top_k
                 model_input_kwargs["num_beams"] = top_k
-            output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
+            # max_new_tokens is used for text-generation and max_length for text2text-generation
+            if is_text_generation:
+                model_input_kwargs["max_new_tokens"] = self.max_length
+            else:
+                model_input_kwargs["max_length"] = self.max_length
+
+            output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
         if stop_words:
@@ -287,8 +307,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             return prompt
 
         logger.warning(
-            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
-            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+            "answer length (%s tokens) fit within the max token limit (%s tokens). "
             "Shorten the prompt to prevent it from being cut off",
             n_prompt_tokens,
             self.pipe.tokenizer.model_max_length - n_answer_tokens,
@@ -304,22 +324,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        task_name: Optional[str] = None
         try:
-            config = AutoConfig.from_pretrained(model_name_or_path)
-        except OSError:
-            # This is needed so OpenAI models are skipped over
+            task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
+        except RuntimeError:
+            # This will fail for all non-HF models
             return False
 
-        if not all(m in model_name_or_path for m in ["flan", "t5"]):
-            logger.warning(
-                "PromptNode has been potentially initialized with a language model not fine-tuned on instruction following tasks. "
-                "Many of the default prompts and PromptTemplates will likely not work as intended. "
-                "Use custom prompts and PromptTemplates specific to the %s model",
-                model_name_or_path,
-            )
-
-        supported_models = list(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES.values())
-        return config.architectures[0] in supported_models
+        return task_name in ["text2text-generation", "text-generation"]
 
 
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
@@ -480,8 +492,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             return prompt
 
         logger.warning(
-            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
-            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+            "answer length (%s tokens) fit within the max token limit (%s tokens). "
             "Reduce the length of the prompt to prevent it from being cut off.",
             n_prompt_tokens,
             self.max_tokens_limit - n_answer_tokens,
@@ -510,8 +522,8 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
     Azure OpenAI Invocation Layer
 
     This layer is used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIInvocationLayer
-    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
-    endpoint and the azure_deployment_name is the name of the deployment.
+    with additional two parameters: `azure_base_url` and `azure_deployment_name`. The `azure_base_url` is the URL of the Azure OpenAI
+    endpoint and the `azure_deployment_name` is the name of the deployment.
     """
 
     def __init__(
@@ -540,7 +552,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
-        Ensures Azure OpenAI Invocation Layer is selected when azure_base_url and azure_deployment_name are provided in
+        Ensures Azure OpenAI Invocation Layer is selected when `azure_base_url` and `azure_deployment_name` are provided in
         addition to a list of supported models.
         """
         valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)

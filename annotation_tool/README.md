@@ -19,14 +19,17 @@ The credentials should match in database image and application configuration.
     DEFAULT_ADMIN_EMAIL: "example@example.com"
     DEFAULT_ADMIN_PASSWORD: "DEMO-PASSWORD"
 
-    PROD_DB_NAME: "databasename"
-    PROD_DB_USERNAME: "somesafeuser"
-    PROD_DB_PASSWORD: "somesafepassword"
-
+    DB_HOSTNAME: "db"
+    DB_NAME: "databasename"
+    DB_USERNAME: "somesafeuser"
+    DB_PASSWORD: "somesafepassword"
 
     POSTGRES_USER: "somesafeuser"
     POSTGRES_PASSWORD: "somesafepassword"
     POSTGRES_DB: "databasename"
+    
+    COOKIE_KEYS: "somesafecookiekeys"
+    JWT_SECRET: "somesafesecret"
 
 
 2. Run docker-compose by executing `docker-compose up`.

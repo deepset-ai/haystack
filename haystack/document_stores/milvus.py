@@ -16,7 +16,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "milvus2", ie)
 
 from haystack.schema import Document, FilterType
-from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.nodes.retriever import DenseRetriever
 
@@ -128,6 +128,11 @@ class MilvusDocumentStore(SQLDocumentStore):
             lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
             be recreated.
         """
+        warnings.warn(
+            "The MilvusDocumentStore node is deprecated and will be removed in future versions.",
+            category=DeprecationWarning,
+        )
+
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
