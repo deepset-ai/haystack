@@ -240,7 +240,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,docstores]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
@@ -318,7 +318,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,sql]
+        run: pip install .[dev,sql,preprocessing]
 
       - name: Run tests
         run: |
@@ -404,7 +404,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,docstores]
+        run: pip install .[dev,opensearch,preprocessing]
 
       - name: Run tests
         run: |
@@ -482,7 +482,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
@@ -560,7 +560,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[faiss,dev]
+        run: pip install .[faiss,dev,preprocessing]
 
       - name: Run tests
         run: |
@@ -648,7 +648,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,docstores]
+        run: pip install .[dev,weaviate,preprocessing]
 
       - name: Run tests
         run: |
@@ -726,7 +726,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .[dev,pinecone]
+      run: pip install .[dev,pinecone,preprocessing]
 
     - name: Run tests
       env:
@@ -805,9 +805,6 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install Haystack
-      run: pip install .[all]
-
     - name: Setup Milvus
       run: |
         cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
@@ -816,7 +813,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Install Haystack
-      run: pip install .[dev,milvus]
+      run: pip install .[dev,milvus,preprocessing]
 
     - name: Run tests
       run: |
@@ -893,7 +890,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
@@ -953,7 +950,6 @@ jobs:
             }
 
 
-
   integration-tests-promptnode:
     name: Integration / PromptNode / ${{ matrix.os }}
     needs:
@@ -971,7 +967,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
@@ -1049,7 +1045,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |

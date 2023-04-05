@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    import tika
+    from tika import parser as tika_parser
 except ImportError as exc:
     logger.debug(
         "tika could not be imported. "
         "Run 'pip install farm-haystack[file-conversion]' or 'pip install tika' to fix this issue."
     )
-    tika = None
+    tika_parser = None
 
 
 TIKA_CONTAINER_NAME = "tika"
@@ -107,7 +107,7 @@ class TikaConverter(BaseConverter):
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
         """
-        if not tika:
+        if not tika_parser:
             raise ImportError(
                 "tika could not be imported. "
                 "Run 'pip install farm-haystack[file-conversion]' or 'pip install tika' to fix this issue."
@@ -162,7 +162,7 @@ class TikaConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        parsed = tika.parser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
+        parsed = tika_parser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
         parser = TikaXHTMLParser()
         parser.feed(parsed["content"])
 

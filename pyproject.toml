@@ -162,10 +162,10 @@ crawler = [
 ]
 preprocessing = [
   "nltk",
+  "langdetect",  # for language classification
 ]
 file-conversion = [
   "python-docx",
-  "langdetect",  # for PDF conversions
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
