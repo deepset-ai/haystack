@@ -7,10 +7,26 @@ from functools import wraps
 from time import perf_counter
 
 import numpy as np
-from scipy.special import expit
 
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
+
+
+logger = logging.getLogger(__name__)
+
+
+try:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
+
+    def njit(f):
+        return f
+
+
+@njit  # (fastmath=True)
+def expit(x: float) -> float:
+    return 1 / (1 + np.exp(-x))
 
 
 class BaseReader(BaseComponent):

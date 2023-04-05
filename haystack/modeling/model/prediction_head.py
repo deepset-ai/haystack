@@ -10,7 +10,6 @@ from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
 from transformers import AutoModelForQuestionAnswering
-from scipy.special import expit
 
 from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.predictions import QACandidate, QAPred
@@ -18,6 +17,20 @@ from haystack.modeling.utils import try_get, all_gather_list
 
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
+
+    def njit(f):
+        return f
+
+
+@njit  # (fastmath=True)
+def expit(x: float) -> float:
+    return 1 / (1 + np.exp(-x))
 
 
 class PredictionHead(nn.Module):

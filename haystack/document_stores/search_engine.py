@@ -10,7 +10,6 @@ import time
 from string import Template
 
 import numpy as np
-from scipy.special import expit
 from tqdm.auto import tqdm
 from pydantic.error_wrappers import ValidationError
 
@@ -23,6 +22,20 @@ from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
+
+    def njit(f):
+        return f
+
+
+@njit  # (fastmath=True)
+def expit(x: float) -> float:
+    return 1 / (1 + np.exp(-x))
 
 
 def prepare_hosts(host, port):
