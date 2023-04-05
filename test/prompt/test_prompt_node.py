@@ -996,12 +996,13 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 
 class TestTokenLimit:
     @pytest.mark.integration
-    def test_hf_token_limit_warning(self, prompt_node, caplog):
+    def test_hf_token_limit_warning(self, caplog):
         prompt_template = PromptTemplate(
             name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:"
         )
         with caplog.at_level(logging.WARNING):
-            _ = prompt_node.prompt(prompt_template, documents=["Berlin is an amazing city."])
+            node = PromptNode("google/flan-t5-small", devices=["cpu"])
+            node.prompt(prompt_template, documents=["Berlin is an amazing city."])
             assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
             assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
 
