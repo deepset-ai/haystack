@@ -4,6 +4,7 @@ import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce
+from itertools import chain
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
