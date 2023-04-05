@@ -101,6 +101,7 @@ dependencies = [
 
   # Preview
   "canals",
+  "jinja2",  # PromptNode
 
   # Agent events
   "events"

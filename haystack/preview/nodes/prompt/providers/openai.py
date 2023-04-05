@@ -52,25 +52,37 @@ class OpenAIProvider:
 
     def __init__(
         self,
-        api_key: str,
         model_name_or_path: str = "text-davinci-003",
+        api_key: Optional[str] = None,
         max_length: Optional[int] = 100,
-        model_kwargs: Optional[Dict[str, Any]] = None,
+        default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-         Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
+        Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of the output text.
-        :param api_key: The OpenAI API key.
-        :param model_kwargs: Additional keyword arguments passed to the underlying model. The list of OpenAI-relevant
-        kwargs includes: `suffix`, `temperature`, `top_p`, `presence_penalty`, `frequency_penalty`, `best_of`, `n`, `max_tokens`,
-        `logit_bias`, `stop`, `echo`, and `logprobs`. For more details about these kwargs, see OpenAI
+        :param api_key: The OpenAI API key. If empty, Haystack also check if an environment variable called
+            `OPENAI_API_KEY` is set and read it from there.
+        :param default_model_params: Additional parameters to pass to the underlying model. Relevant parameters include:
+            - `suffix`
+            - `temperature`
+            - `top_p`
+            - `presence_penalty`
+            - `frequency_penalty`
+            - `best_of`
+            - `n`
+            - `max_tokens`
+            - `logit_bias`
+            - `stop`
+            - `echo`
+            - `logprobs`
+        For more details about these parameters, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
         """
+        self.api_key = self._check_api_key(api_key)
         self.model_name_or_path = model_name_or_path
-        self.max_length = max_length
-        self.default_model_kwargs = {
+        self.default_model_params = {
             "max_tokens": max_length,
             "temperature": 0.7,
             "top_p": 1,
@@ -81,57 +93,112 @@ class OpenAIProvider:
             "frequency_penalty": 0,
             "best_of": 1,
             "logit_bias": {},
-            **model_kwargs,
+            **default_model_params,
         }
-        if not isinstance(api_key, str) or len(api_key) == 0:
-            raise ValueError(f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one.")
-        self.api_key = api_key
+        self.url = "https://api.openai.com/v1/completions"
+        self.headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+
+        if "davinci" in model_name_or_path:
+            self.max_tokens_limit = 4000
+            self._tokenizer = tiktoken.get_encoding(MODEL_TO_ENCODING.get(model_name_or_path, "p50k_base"))
+        else:
+            self.max_tokens_limit = 2048
+            self._tokenizer = tiktoken.get_encoding(MODEL_TO_ENCODING.get("gpt2", "p50k_base"))
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.
         # max_length must be set otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
         self.max_length = max_length or 16
 
-        tokenizer_name, max_tokens_limit = self._openai_text_completion_tokenization_details(
-            model_name=self.model_name_or_path
-        )
-        self.max_tokens_limit = max_tokens_limit
-        self._tokenizer = tiktoken.get_encoding(tokenizer_name=tokenizer_name)
-
-    @property
-    def url(self) -> str:
-        return "https://api.openai.com/v1/completions"
-
-    @property
-    def headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+        valid_model = any(m for m in ["ada", "babbage", "curie", "davinci"] if m in model_name_or_path)
         return valid_model and kwargs.get("azure_base_url") is None
 
-    def invoke(self, prompt: str, model_kwargs: Optional[Dict[str, Any]] = None):
+    @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
+    def invoke(self, prompt: str, model_params: Optional[Dict[str, Any]] = None):
         """
-        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
+        Invokes a prompt on the model. It takes in a prompt and returns a list of responses.
 
         :return: The responses from the model.
         """
-        kwargs = self.default_model_kwargs
-        if model_kwargs:
-            # we use keyword stop_words but OpenAI uses stop
-            if "stop_words" in model_kwargs.keys() and not "stop" in model_kwargs.keys():
-                model_kwargs["stop"] = model_kwargs.pop("stop_words")
-            if "top_k" in model_kwargs:
-                top_k = model_kwargs.pop("top_k")
-                model_kwargs["n"] = top_k
-                model_kwargs["best_of"] = top_k
-        kwargs.update(model_kwargs)
-        payload = {"model": self.model_name_or_path, "prompt": prompt, **kwargs}
-        res = self.openai_request(url=self.url, headers=self.headers, payload=payload)
-        self._check_openai_text_completion_answers(result=res, payload=payload)
-        responses = [ans["text"].strip() for ans in res["choices"]]
+        if not REQUESTS_IMPORTED:
+            raise ImportError(
+                "requests could not be imported. OpenAI and Azure models won't work. "
+                "Run 'pip install requests' in your virtualenv to fix the issue."
+            )
+
+        all_params = self.default_model_params
+        if model_params:
+            all_params.update(self._translate_model_parameters(model_params))
+        payload = {"model": self.model_name_or_path, "prompt": prompt, **all_params}
+
+        response = requests.post(url=self.url, headers=self.headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
+        if response.status_code != 200:
+            openai_error: OpenAIError
+            if response.status_code == 429:
+                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+            else:
+                openai_error = OpenAIError(
+                    f"OpenAI returned an error.\n"
+                    f"Status code: {response.status_code}\n"
+                    f"Response body: {response.text}",
+                    status_code=response.status_code,
+                )
+            raise openai_error
+        res = response.json()
+        self._check_truncated_answers(result=res, expected_answers_count=all_params["n"])
+
+        responses = [ans["text"] for ans in res["choices"]]
         return responses
+
+    def _check_api_key(self, api_key) -> None:
+        """
+        Tries to load the API key and lightly validates it.
+
+        :param api_key: the API key given in `__init__`, if any.
+        :raises ValueError: if no valid key could be found.
+        :returns: the api key to use.
+        """
+        if not api_key:
+            api_key = os.environ.get("OPENAI_API_KEY", None)
+        if not isinstance(api_key, str) or len(api_key) == 0:
+            raise ValueError(
+                "No valid OpenAI API key found. You can provide one by either setting an environment variable "
+                "called `OPENAI_API_KEY`, or by passing one to the constructor of this class. Visit "
+                "https://openai.com/api/ to get a key if you don't have one."
+            )
+        return api_key
+
+    def _translate_model_parameters(self, model_params: Dict[str, Any]):
+        """
+        Some parameter names might need to be converted to be understood by OpenAI models.
+        For example, we use 'stop_words' but OpenAI uses 'stop'
+        """
+        if "stop_words" in model_params.keys() and not "stop" in model_params.keys():
+            model_params["stop"] = model_params.pop("stop_words")
+        if "top_k" in model_params:
+            top_k = model_params.pop("top_k")
+            model_params["n"] = top_k
+            model_params["best_of"] = top_k
+        return model_params
+
+    def _check_truncated_answers(self, result: Dict, expected_answers_count: int) -> None:
+        """
+        Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is
+        `length`, log a warning to the user.
+
+        :param result: The result returned from the OpenAI API.
+        :param payload: The payload sent to the OpenAI API.
+        """
+        number_of_truncated_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "length")
+        if number_of_truncated_completions > 0:
+            logger.warning(
+                "%s out of the %s completions have been truncated before reaching a natural stopping point. "
+                "Increase the `max_tokens` parameter to allow for longer completions.",
+                number_of_truncated_completions,
+                expected_answers_count,
+            )
 
     def _ensure_token_limit(self, prompt: str) -> str:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
@@ -159,77 +226,12 @@ class OpenAIProvider:
 
         return decoded_string
 
-    def _openai_text_completion_tokenization_details(self, model_name: str):
-        """Return the tokenizer name and max tokens limit for a given OpenAI `model_name`.
-
-        :param model_name: Name of the OpenAI model.
-        """
-        tokenizer_name = "gpt2"
-        if "davinci" in model_name:
-            max_tokens_limit = 4000
-            tokenizer_name = MODEL_TO_ENCODING.get(model_name, "p50k_base")
-        else:
-            max_tokens_limiapi_keyt = 2048
-        return tokenizer_name, max_tokens_limit
-
-    @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
-    def openai_request(
-        self, url: str, headers: Dict, payload: Dict, timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT
-    ):
-        """Make a request to the OpenAI API given a `url`, `headers`, `payload`, and `timeout`.
-
-        :param url: The URL of the OpenAI API.
-        :param headers: Dictionary of HTTP Headers to send with the :class:`Request`.
-        :param payload: The payload to send with the request.
-        :param timeout: The timeout length of the request. The default is 30s.
-        """
-        if not REQUESTS_IMPORTED:
-            raise ImportError(
-                "requests could not be imported. OpenAI and Azure models won't work. "
-                "Run 'pip install requests' in your virtualenv to fix the issue."
-            )
-
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout)
-        res = json.loads(response.text)
-
-        if response.status_code != 200:
-            openai_error: OpenAIError
-            if response.status_code == 429:
-                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            else:
-                openai_error = OpenAIError(
-                    f"OpenAI returned an error.\n"
-                    f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}",
-                    status_code=response.status_code,
-                )
-            raise openai_error
-
-        return res
-
-    def _check_openai_text_completion_answers(self, result: Dict, payload: Dict) -> None:
-        """
-        Check the `finish_reason` the answers returned by OpenAI completions endpoint. If the `finish_reason` is `length`,
-        log a warning to the user.
-
-        :param result: The result returned from the OpenAI API.
-        :param payload: The payload sent to the OpenAI API.
-        """
-        number_of_truncated_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "length")
-        if number_of_truncated_completions > 0:
-            logger.warning(
-                "%s out of the %s completions have been truncated before reaching a natural stopping point. "
-                "Increase the max_tokens parameter to allow for longer completions.",
-                number_of_truncated_completions,
-                payload["n"],
-            )
-
 
 class AzureOpenAIProvider(OpenAIProvider):
     """
     Used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIProvider
-    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
-    endpoint and the azure_deployment_name is the name of the deployment.
+    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure
+    OpenAI endpoint and the azure_deployment_name is the name of the deployment.
     """
 
     def __init__(

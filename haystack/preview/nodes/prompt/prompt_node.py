@@ -1,6 +1,8 @@
 import logging
 from typing import Dict, List, Optional, Tuple, Any, Literal
 
+from jinja2 import Template as JinjaTemplate, Environment as JinjaEnvironment, meta as JinjaMeta
+
 from haystack.preview import node
 from haystack.preview.nodes.prompt.providers.base import get_model
 
@@ -27,34 +29,41 @@ PROVIDER_MODULES = ["haystack.preview"]
 
 
 PREDEFINED_TEMPLATES = {
-    "question-answering": "Given the context please answer the question. Context: $documents; Question: $question; Answer:",
-    "question-generation": "Given the context please generate a question. Context: $documents; Question:",
-    "conditioned-question-generation": "Please come up with a question for the given context and the answer. Context: $documents; Answer: $answers; Question:",
-    "summarization": "Summarize this document: $documents Summary:",
-    "question-answering-check": "Does the following context contain the answer to the question? Context: $documents; Question: $questions; Please answer yes or no! Answer:",
-    "sentiment-analysis": "Please give a sentiment for this context. Answer with positive, negative or neutral. Context: $documents; Answer:",
-    "multiple-choice-question-answering": "Question:$questions ; Choose the most suitable option to answer the above question. Options: $options; Answer:",
-    "topic-classification": "Categories: $options; What category best describes: $documents; Answer:",
-    "language-detection": "Detect the language in the following context and answer with the name of the language. Context: $documents; Answer:",
-    "translation": "Translate the following context to $target_language. Context: $documents; Translation:",
-    "zero-shot-react": "You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
-    "correctly, you have access to the following tools:\n\n"
-    "$tool_names_with_descriptions\n\n"
-    "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
-    "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
-    "for a final answer, respond with the `Final Answer:`\n\n"
-    "Use the following format:\n\n"
-    "Question: the question to be answered\n"
-    "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
-    "Tool: pick one of $tool_names \n"
-    "Tool Input: the input for the tool\n"
-    "Observation: the tool will respond with the result\n"
-    "...\n"
-    "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
-    "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
-    "---\n\n"
-    "Question: $query\n"
-    "Thought: Let's think step-by-step, I first need to ",
+    "question-answering": "Given the context please answer the question. Context: {{ documents }}; Question: {{ question }}; Answer:",
+    "question-generation": "Given the context please generate a question. Context: {{ documents }}; Question:",
+    "conditioned-question-generation": "Please come up with a question for the given context and the answer. Context: {{ documents }}; Answer: $answers; Question:",
+    "summarization": "Summarize this document: {{ documents }} Summary:",
+    "question-answering-check": "Does the following context contain the answer to the question? Context: {{ documents }}; Question: {{ question }}s; Please answer yes or no! Answer:",
+    "sentiment-analysis": "Please give a sentiment for this context. Answer with positive, negative or neutral. Context: {{ documents }}; Answer:",
+    "multiple-choice-question-answering": "Question:{{ question }}s ; Choose the most suitable option to answer the above question. Options: $options; Answer:",
+    "topic-classification": "Categories: {{ options }}; What category best describes: {{ documents }}; Answer:",
+    "language-detection": "Detect the language in the following context and answer with the name of the language. Context: {{ documents }}; Answer:",
+    "translation": "Translate the following context to {{ target_language }}. Context: {{ documents }}; Translation:",
+    "zero-shot-react": """
+You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions
+correctly, you have access to the following tools:
+
+{{ tool_names_with_descriptions }}
+
+To answer questions, you'll need to go through multiple steps involving step-by-step thinking and
+selecting appropriate tools and their inputs; tools will respond with observations. When you are ready
+for a final answer, respond with the `Final Answer:`
+
+Use the following format:
+
+Question: the question to be answered
+Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.
+Tool: pick one of $tool_names
+Tool Input: the input for the tool
+Observation: the tool will respond with the result
+...
+Final Answer: the final answer to the question, make it short (1-5 words)
+
+Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass
+---
+
+Question: {{ question }}
+Thought: Let's think step-by-step, I first need to """,
 }
 
 
@@ -90,7 +99,6 @@ class PromptNode:
         self,
         template: Optional[PromptTemplates] = None,
         custom_template: Optional[str] = None,
-        inputs: Optional[List[str]] = None,
         output: Optional[str] = "answers",
         model_name_or_path: str = "google/flan-t5-base",
         model_provider: Optional[str] = None,
@@ -101,21 +109,22 @@ class PromptNode:
         Creates a PromptNode instance.
 
         NOTE: the variables that the template accepts must match with the variables you list in the `inputs` variable of
-        this PromptNode. For example, if your prompt expects `$query` and `$documents`, make sure to initialize this node
-        with `inputs=['query', 'documents']`. If you don't specify any inputs, they are automatically inferred from the
-        template text.
+        this PromptNode. For example, if your prompt expects `{{ documents }}` and `{{ documents }}`, the inputs need to
+        be `['question', 'documents']`. Inputs are automatically inferred from the template text.
 
-        :param inputs: the inputs that this PromptNode expects.
         :param outputs: the outputs that this PromptNode will generate.
-        :param template: The template of the prompt to use for the model. Must be the name of a predefined prompt template.
-            To provide a custom template, use `custom_template`.
+        :param template: The template of the prompt to use for the model. Must be the name of a predefined prompt
+            template. To provide a custom template, use `custom_template`.
         :param custom_template: A custom template of the prompt to use for the model.
             To use Haystack's pre-defined templates, use `template`.
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
-        :param model_provider: force a specific provider for the model. If not given, Haystack will find a provider for your model automatically.
+        :param model_provider: force a specific provider for the model. If not given, Haystack will find a provider for
+            your model automatically.
         :param model_kwargs: Kwargs to be passed to the model provider, like API keys, init parameters, etc.
-        :param provider_modules: if you have external model providers, add the module where they are, like `haystack.preview`
+        :param provider_modules: if you have external model providers, add the module where they are, like
+            `haystack.preview`
         """
+        self.jinja_env = JinjaEnvironment()
         if template:
             self.template = PREDEFINED_TEMPLATES[template]
         elif custom_template:
@@ -123,12 +132,7 @@ class PromptNode:
         else:
             raise ValueError("Provide either a template or a custom_template for this PromptNode.")
 
-        if inputs:
-            validate_inputs(self.template, inputs)
-            self.inputs = inputs
-        else:
-            self.inputs = find_inputs(self.template)
-
+        self.inputs = self.find_inputs()
         self.outputs = [output]
         self.model = None
         self.model_name_or_path = model_name_or_path
@@ -136,7 +140,6 @@ class PromptNode:
         self.model_kwargs = model_kwargs
         self.provider_modules = provider_modules or PROVIDER_MODULES
         self.init_parameters = {
-            "inputs": inputs,
             "output": output,
             "template": template,
             "custom_template": custom_template,
@@ -165,10 +168,14 @@ class PromptNode:
         :return: A list of model generated responses for the prompt or prompts.
         """
         data = {key: value for key, value in data}
-        output = self.prompt(**data, **parameters.get(name, {}))
+        params = parameters.get(name, {})
+        model_params = params.pop("model_params", {})
+        output = self.prompt(validate_inputs=False, model_params=model_params, **data, **params)
         return ({self.outputs[0]: output}, parameters)
 
-    def prompt(self, prompt: Optional[str] = None, **kwargs) -> List[str]:
+    def prompt(
+        self, validate_inputs: bool = True, model_params: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> List[str]:
         """
         It takes in a prompt, and returns a list of responses using the underlying model.
 
@@ -177,57 +184,32 @@ class PromptNode:
         :return: A list of model generated responses for the prompt.
         """
         self.warm_up()
-        prompt = self._render_prompt(**kwargs)
-        return self.model.invoke(prompt=prompt)
+        if validate_inputs:
+            self.validate_inputs(given_inputs=list(kwargs.keys()))
+        prompt = JinjaTemplate(self.template).render(**kwargs)
+        return self.model.invoke(prompt=prompt, model_params=model_params or {})
 
-    def _render_prompt(self, **kwargs) -> str:
+    def find_inputs(self) -> List[str]:
         """
-        Replaces all variables ($query, $documents, etc) with the respective
-        values found in **kwargs. If **kwargs comes from run(), it will contain
-        both data and parameters.
+        Find out which inputs this template requires.
+
+        :param template: the template to infer the required variables from.
+        :returns: a list of strings corresponding to the variables found in the template.
         """
-        validate_inputs(self.template, list(kwargs.keys()))
-        prompt = self.template
-        for key, value in kwargs.items():
-            prompt = prompt.replace(f"${key}", str(value))
-        return prompt
+        parsed_content = self.jinja_env.parse(self.template)
+        return JinjaMeta.find_undeclared_variables(parsed_content)
 
+    def validate_inputs(self, given_inputs: List[str]) -> None:
+        """
+        Make sure the template variables and the input variables match.
 
-def validate_inputs(template: str, inputs: List[str]) -> None:
-    """
-    Make sure the template variables and the input variables match.
-
-    :param template: the template to validate the inputs against
-    :param inputs: the inputs to validate
-    :raises ValueError if the template is using variables that are not found
-        in the inputs list.
-    """
-    missing_inputs = []
-    for word in template.split():
-        if word.startswith("$"):
-            if word[1:] not in inputs:
-                missing_inputs.append(word[1:])
-            else:
-                inputs.remove(word[1:])
-    if missing_inputs:
-        raise ValueError(
-            f"The template of this PromptNode ({template}) requires some inputs that are not given: "
-            f"{missing_inputs}. Connect this node to another node that outputs these variables, "
-            "or change template."
-        )
-    if inputs:
-        raise ValueError(
-            f"The template of this PromptNode ({template}) received some inputs that it did not expect: "
-            f"{inputs} are unused in the template. Remove these inputs from the PromptNode "
-            "or change template."
-        )
-
-
-def find_inputs(template: str) -> List[str]:
-    """
-    Find out which inputs this template requires.
-
-    :param template: the template to infer the required variables from.
-    :returns: a list of strings corresponding to the variables found in the template.
-    """
-    return [word for word in template.split() if word.startswith("$")]
+        :param given_inputs: the inputs to validate
+        :raises ValueError if the template is using variables that are not found
+            in the inputs list or vice versa.
+        """
+        if sorted(self.inputs) != sorted(given_inputs):
+            raise ValueError(
+                "The values given to this PromptNode do not match the variables it expects:\n- Expected variables: "
+                f"{self.inputs}\n- Given variables: {given_inputs}\nConnect this node to another node that outputs "
+                "these variables, pass this value to `PromptNode.prompt()`, or change template."
+            )
