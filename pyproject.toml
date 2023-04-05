@@ -50,7 +50,6 @@ dependencies = [
   "pydantic",
   "transformers[torch]==4.25.1",
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
-  "nltk",
   "pandas",
   "rank_bm25",
 
@@ -66,15 +65,10 @@ dependencies = [
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
+  "more_itertools",  # utilities
 
   # Web Retriever
   "boilerpy3",
-
-  # Preprocessing
-  "more_itertools",  # for windowing
-  "python-docx",
-  "langdetect",  # for PDF conversions
-  "tika",  # Apache Tika (text & metadata extractor)
 
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",
@@ -167,6 +161,12 @@ crawler = [
   "webdriver-manager",
 ]
 preprocessing = [
+  "nltk",
+]
+file-conversion = [
+  "python-docx",
+  "langdetect",  # for PDF conversions
+  "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
   "python-frontmatter",
