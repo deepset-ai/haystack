@@ -1,5 +1,6 @@
-import itertools
 from typing import List, Optional, Sequence, Tuple, Union
+import itertools
+import logging
 
 from abc import abstractmethod
 from copy import deepcopy
