@@ -56,8 +56,9 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
 
 
 @pytest.mark.unit
+@patch("haystack.nodes.connector.crawler.ChromeDriverManager")
 @patch("haystack.nodes.connector.crawler.webdriver")
-def test_crawler_url_none_exception(webdriver):
+def test_crawler_url_none_exception(webdriver, manager):
     crawler = Crawler()
     with pytest.raises(ValueError):
         crawler.crawl()
