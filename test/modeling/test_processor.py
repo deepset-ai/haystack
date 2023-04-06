@@ -4,11 +4,9 @@ from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.processor import SquadProcessor
 
-from ..conftest import SAMPLES_PATH
-
 
 # during inference (parameter return_baskets = False) we do not convert labels
-def test_dataset_from_dicts_qa_inference(caplog=None):
+def test_dataset_from_dicts_qa_inference(samples_path, caplog=None):
     if caplog:
         caplog.set_level(logging.CRITICAL)
 
@@ -26,7 +24,7 @@ def test_dataset_from_dicts_qa_inference(caplog=None):
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:
-            dicts = processor.file_to_dicts(SAMPLES_PATH / "qa" / f"{sample_type}.json")
+            dicts = processor.file_to_dicts(samples_path / "qa" / f"{sample_type}.json")
             dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(
                 dicts, indices=[1], return_baskets=True
             )
@@ -235,7 +233,7 @@ def test_batch_encoding_flatten_rename():
         pass
 
 
-def test_dataset_from_dicts_qa_labelconversion(caplog=None):
+def test_dataset_from_dicts_qa_labelconversion(samples_path, caplog=None):
     if caplog:
         caplog.set_level(logging.CRITICAL)
 
@@ -253,7 +251,7 @@ def test_dataset_from_dicts_qa_labelconversion(caplog=None):
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:
-            dicts = processor.file_to_dicts(SAMPLES_PATH / "qa" / f"{sample_type}.json")
+            dicts = processor.file_to_dicts(samples_path / "qa" / f"{sample_type}.json")
             dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(
                 dicts, indices=[1], return_baskets=False
             )
@@ -298,7 +296,3 @@ def test_dataset_from_dicts_qa_labelconversion(caplog=None):
                         12,
                         12,
                     ], f"Processing labels for {model} has changed."
-
-
-if __name__ == "__main__":
-    test_dataset_from_dicts_qa_labelconversion()

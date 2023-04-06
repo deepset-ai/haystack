@@ -5,7 +5,6 @@ import pytest
 from haystack import Pipeline
 from haystack.nodes.audio import WhisperTranscriber
 from haystack.utils.import_utils import is_whisper_available
-from ..conftest import SAMPLES_PATH
 
 
 @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OpenAI API key not found")
@@ -34,9 +33,9 @@ def test_whisper_local_transcribe_with_params():
     assert len(audio_object["segments"]) == 1 and len(audio_path["segments"]) == 1
 
 
-def transcribe_test_helper(whisper, **kwargs):
+def transcribe_test_helper(whisper, samples_path, **kwargs):
     # this file is 1 second long and contains the word "answer"
-    file_path = str(SAMPLES_PATH / "audio" / "answer.wav")
+    file_path = str(samples_path / "audio" / "answer.wav")
 
     # using audio object
     with open(file_path, mode="rb") as audio_file:
@@ -51,10 +50,10 @@ def transcribe_test_helper(whisper, **kwargs):
 
 @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OpenAI API key not found")
 @pytest.mark.integration
-def test_whisper_pipeline():
+def test_whisper_pipeline(samples_path):
     w = WhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
     pipeline = Pipeline()
     pipeline.add_node(component=w, name="whisper", inputs=["File"])
-    res = pipeline.run(file_paths=[str(SAMPLES_PATH / "audio" / "answer.wav")])
+    res = pipeline.run(file_paths=[str(samples_path / "audio" / "answer.wav")])
     assert res["documents"] and len(res["documents"]) == 1
     assert "answer" in res["documents"][0].content.lower()

@@ -14,8 +14,6 @@ from haystack.pipelines import (
 from haystack.nodes import EmbeddingRetriever, PromptNode
 from haystack.schema import Document
 
-from ..conftest import SAMPLES_PATH
-
 
 def test_faq_pipeline():
     documents = [
@@ -124,15 +122,15 @@ def test_most_similar_documents_pipeline_with_filters():
             assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
-def test_query_and_indexing_pipeline():
+def test_query_and_indexing_pipeline(samples_path):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
+        samples_path / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
     )
-    pipeline.run(file_paths=SAMPLES_PATH / "pipelines" / "sample_pdf_1.pdf")
+    pipeline.run(file_paths=samples_path / "pipelines" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+        samples_path / "pipelines" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"Retriever": {"top_k": 2}, "Reader": {"top_k": 1}}

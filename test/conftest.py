@@ -801,3 +801,8 @@ def haystack_openai_config(request, haystack_azure_conf):
         return haystack_azure_conf
 
     return {}
+
+
+@pytest.fixture
+def samples_path():
+    return Path(__file__).parent / "samples"
