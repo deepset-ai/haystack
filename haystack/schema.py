@@ -43,7 +43,7 @@ FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 @dataclass
 class Document:
     id: str
-    content: Union[str, pd.DataFrame, List[List]]
+    content: Union[str, pd.DataFrame, List[List[str]]]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     id_hash_keys: List[str] = Field(default=["content"])
@@ -56,7 +56,7 @@ class Document:
     # don't need to passed by the user in init and are rather initialized automatically in the init
     def __init__(
         self,
-        content: Union[str, pd.DataFrame, List[List]],
+        content: Union[str, pd.DataFrame, List[List[str]]],
         content_type: ContentTypes = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
@@ -355,7 +355,7 @@ class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
-    context: Optional[Union[str, pd.DataFrame, List[List]]] = None
+    context: Optional[Union[str, pd.DataFrame, List[List[str]]]] = None
     offsets_in_document: Optional[Union[List[Span], List[TableCell]]] = None
     offsets_in_context: Optional[Union[List[Span], List[TableCell]]] = None
     document_ids: Optional[List[str]] = None
