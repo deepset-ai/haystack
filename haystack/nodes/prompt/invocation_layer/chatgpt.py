@@ -2,7 +2,7 @@ from typing import Optional, List, Dict, Union
 import logging
 
 from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
-from haystack.nodes.prompt.invocation_layer import OpenAIInvocationLayer
+from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
 
 logger = logging.getLogger(__name__)
 

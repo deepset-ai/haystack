@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from haystack.nodes.prompt.invocation_layer import OpenAIInvocationLayer
+from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
 
 
 class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):

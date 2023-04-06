@@ -13,11 +13,8 @@ from haystack.utils.openai_utils import (
     _check_openai_finish_reason,
     count_openai_tokens,
 )
-from haystack.nodes.prompt.invocation_layer import (
-    PromptModelInvocationLayer,
-    TokenStreamingHandler,
-    DefaultTokenStreamingHandler,
-)
+from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
 
 logger = logging.getLogger(__name__)
 
