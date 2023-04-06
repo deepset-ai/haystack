@@ -262,8 +262,6 @@ class Crawler(BaseComponent):
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
 
         documents: List[Document] = []
-
-        # Start by crawling the initial list of urls
         uncrawled_urls = {base_url: {base_url} for base_url in urls}
         crawled_urls = set()
         for current_depth in range(crawler_depth + 1):
