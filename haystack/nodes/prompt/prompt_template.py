@@ -2,6 +2,7 @@ from typing import Optional, List, Union, Tuple, Dict, Iterator, Any
 import logging
 import os
 import ast
+import json
 from abc import ABC
 from uuid import uuid4
 
@@ -21,7 +22,7 @@ from haystack.schema import Document, MultiLabel
 
 logger = logging.getLogger(__name__)
 
-PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = ast.literal_eval(
+PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = json.loads(
     os.environ.get(HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "to_strings", "replace", "enumerate", "str"]')
 )
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}

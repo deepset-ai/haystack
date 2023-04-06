@@ -1,7 +1,8 @@
 import pydoc
 from typing import List, Dict, Any, Optional, Union, Tuple, Type
 
-from haystack import BaseComponent, MultiLabel, Document
+from haystack.nodes.base import BaseComponent
+from haystack import MultiLabel, Document
 from haystack.nodes.search_engine.base import SearchEngine
 
 
@@ -25,13 +26,13 @@ class WebSearch(BaseComponent):
         api_key: str,
         top_k: Optional[int] = 10,
         search_engine_provider: Union[str, SearchEngine] = "SerperDev",
-        **kwargs,
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param api_key: API key for the search engine provider.
         :param search_engine_provider: Name of the search engine provider class, see `providers.py` for a list of
         supported providers.
-        :param kwargs: Additional parameters to pass to the search engine provider.
+        :param search_engine_kwargs: Additional parameters to pass to the search engine provider.
         """
         super().__init__()
         if isinstance(search_engine_provider, str):
@@ -46,7 +47,7 @@ class WebSearch(BaseComponent):
                 )
             if not issubclass(klass, SearchEngine):
                 raise ValueError(f"Class {search_engine_provider} is not a subclass of SearchEngine.")
-            self.search_engine = klass(api_key=api_key, top_k=top_k, **kwargs)  # type: ignore
+            self.search_engine = klass(api_key=api_key, top_k=top_k, search_engine_kwargs=search_engine_kwargs)  # type: ignore
         elif isinstance(search_engine_provider, SearchEngine):
             self.search_engine = search_engine_provider
         else:
