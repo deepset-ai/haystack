@@ -15,7 +15,7 @@ from haystack.nodes.connector.crawler import Crawler
 from haystack.schema import Document
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def test_url(samples_path):
     return (samples_path / "crawler").absolute().as_uri()
 
