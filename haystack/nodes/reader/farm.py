@@ -1060,7 +1060,7 @@ class FARMReader(BaseReader):
                 continue
             if label.document.content_type == "table":
                 logger.warning(
-                    "Label with a table document is not compatible with the FARMReader. " "Skipping label with id %s.",
+                    "Label with a table document is not compatible with the FARMReader. Skipping label with id %s.",
                     label.id,
                 )
                 continue
