@@ -678,7 +678,7 @@ class MultiLabel:
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
         self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
-        self._contexts = [l.document.to_dict()["content"] for l in self._labels if not l.no_answer]
+        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
 
     @property
     def labels(self):
