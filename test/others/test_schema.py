@@ -487,7 +487,7 @@ def test_multilabel_with_doc_containing_dataframes():
     )
     multilabel = MultiLabel(labels=[label])
     assert len(multilabel.contexts) == 1
-    assert isinstance(multilabel.contexts[0], list)
+    assert isinstance(multilabel.contexts[0], str)
     assert multilabel.offsets_in_documents[0] == {"row": 0, "col": 0}
     assert multilabel.offsets_in_contexts[0] == {"row": 0, "col": 0}
 
