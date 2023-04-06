@@ -251,6 +251,7 @@ class DensePassageRetriever(DenseRetriever):
         filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
+        namespace: Optional[srt] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
@@ -326,7 +327,8 @@ class DensePassageRetriever(DenseRetriever):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param namespace: Optional namespace to retrieve documents from.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -345,7 +347,7 @@ class DensePassageRetriever(DenseRetriever):
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
         documents = document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score, namespace=namespace
         )
         return documents
 
@@ -355,6 +357,7 @@ class DensePassageRetriever(DenseRetriever):
         filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
+        namespace: Optional[srt] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: Optional[bool] = None,
@@ -435,7 +438,8 @@ class DensePassageRetriever(DenseRetriever):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param namespace: Optional namespace to retrieve documents from.
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -464,7 +468,7 @@ class DensePassageRetriever(DenseRetriever):
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(queries=batch))
         documents = document_store.query_by_embedding_batch(
-            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+            query_embs=query_embs, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score, namespace=namespace
         )
 
         return documents
