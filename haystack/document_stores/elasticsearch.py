@@ -28,6 +28,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         port: Union[int, List[int]] = 9200,
         username: str = "",
         password: str = "",
+        cloud_id: Optional[str] = None,
         api_key_id: Optional[str] = None,
         api_key: Optional[str] = None,
         aws4auth=None,
@@ -68,6 +69,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         :param port: port(s) of elasticsearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
+        :param cloud_id: ID of cloud services (cloud FAAS authentication)
         :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
         :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
         :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
@@ -135,6 +137,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             port=port,
             username=username,
             password=password,
+            cloud_id=cloud_id,
             api_key=api_key,
             api_key_id=api_key_id,
             aws4auth=aws4auth,
@@ -187,6 +190,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         port: Union[int, List[int]],
         username: str,
         password: str,
+        cloud_id: Optional[str],
         api_key_id: Optional[str],
         api_key: Optional[str],
         aws4auth,
@@ -198,14 +202,21 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     ) -> Elasticsearch:
         hosts = prepare_hosts(host, port)
 
-        if (api_key or api_key_id) and not (api_key and api_key_id):
-            raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+        if (api_key or api_key_id or cloud_id) and not (api_key and (api_key_id or cloud_id)):
+            raise ValueError("You must provide either both or none of `api_key_id` and `api_key` or `cloud_id` and `api_key`")
 
         connection_class: Type[Connection] = Urllib3HttpConnection
         if use_system_proxy:
             connection_class = RequestsHttpConnection
 
-        if api_key:
+        if cloud_id:
+            # cloud FAAS:
+            # see https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/connecting.html#connecting-faas
+            client = Elasticsearch(
+                cloud_id=cloud_id,
+                api_key=api_key,
+            )
+        elif api_key_id:
             # api key authentication
             client = Elasticsearch(
                 hosts=hosts,
