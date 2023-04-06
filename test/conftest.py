@@ -955,11 +955,6 @@ def bert_base_squad2(request):
     return model
 
 
-@pytest.fixture
-def prompt_node():
-    return PromptNode("google/flan-t5-small", devices=["cpu"])
-
-
 def haystack_azure_conf():
     api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
     azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)

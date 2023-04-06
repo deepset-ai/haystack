@@ -1,45 +1,38 @@
+from unittest.mock import patch, Mock
+
 import pytest
-import torch
 
-from haystack.errors import OpenAIError
 from haystack.nodes.prompt.prompt_model import PromptModel
+from haystack.nodes.prompt.providers import PromptModelInvocationLayer
+
+from .conftest import create_mock_layer_that_supports
 
 
-@pytest.mark.integration
-def test_create_prompt_model():
-    model = PromptModel("google/flan-t5-small")
-    assert model.model_name_or_path == "google/flan-t5-small"
+@pytest.mark.unit
+def test_constructor_with_default_model():
+    mock_layer = create_mock_layer_that_supports("google/flan-t5-base")
+    another_layer = create_mock_layer_that_supports("another-model")
 
-    model = PromptModel()
-    assert model.model_name_or_path == "google/flan-t5-base"
+    with patch.object(PromptModelInvocationLayer, "invocation_layer_providers", new=[mock_layer, another_layer]):
+        model = PromptModel()
+        mock_layer.assert_called_once()
+        another_layer.assert_not_called()
+        model.model_invocation_layer.model_name_or_path = "google/flan-t5-base"
 
-    with pytest.raises(OpenAIError):
-        # davinci selected but no API key provided
-        model = PromptModel("text-davinci-003")
 
-    model = PromptModel("text-davinci-003", api_key="no need to provide a real key")
-    assert model.model_name_or_path == "text-davinci-003"
+@pytest.mark.unit
+def test_construtor_with_custom_model():
+    mock_layer = create_mock_layer_that_supports("some-model")
+    another_layer = create_mock_layer_that_supports("another-model")
 
+    with patch.object(PromptModelInvocationLayer, "invocation_layer_providers", new=[mock_layer, another_layer]):
+        model = PromptModel("another-model")
+        mock_layer.assert_not_called()
+        another_layer.assert_called_once()
+        model.model_invocation_layer.model_name_or_path = "another-model"
+
+
+@pytest.mark.unit
+def test_constructor_with_no_supported_model():
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptModel("some-random-model")
-
-    # we can also pass model kwargs to the PromptModel
-    model = PromptModel("google/flan-t5-small", model_kwargs={"model_kwargs": {"torch_dtype": torch.bfloat16}})
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    # we can also pass kwargs directly, see HF Pipeline constructor
-    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": torch.bfloat16})
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    # we can't use device_map auto without accelerate library installed
-    with pytest.raises(ImportError, match="requires Accelerate: `pip install accelerate`"):
-        model = PromptModel("google/flan-t5-small", model_kwargs={"device_map": "auto"})
-        assert model.model_name_or_path == "google/flan-t5-small"
-
-
-def test_create_prompt_model_dtype():
-    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "auto"})
-    assert model.model_name_or_path == "google/flan-t5-small"
-
-    model = PromptModel("google/flan-t5-small", model_kwargs={"torch_dtype": "torch.bfloat16"})
-    assert model.model_name_or_path == "google/flan-t5-small"
