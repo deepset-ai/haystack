@@ -390,7 +390,7 @@ class Answer:
     """
 
     def __post_init__(self):
-        # In case offsets are passed as dicts rather than Span objects we convert them here
+        # In case offsets are passed as dicts rather than Span or TableCell objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
             offsets_in_document = []

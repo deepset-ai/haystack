@@ -5,64 +5,84 @@ import pandas as pd
 
 from ..conftest import SAMPLES_PATH, fail_at_version
 
-LABELS = [
-    Label(
-        query="some",
-        answer=Answer(
-            answer="an answer",
-            type="extractive",
-            score=0.1,
-            document_ids=["123"],
-            offsets_in_document=[Span(start=1, end=3)],
+
+@pytest.fixture
+def text_labels():
+    return [
+        Label(
+            query="some",
+            answer=Answer(
+                answer="an answer",
+                type="extractive",
+                score=0.1,
+                document_ids=["123"],
+                offsets_in_document=[Span(start=1, end=3)],
+            ),
+            document=Document(content="some text", content_type="text"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="user-feedback",
         ),
-        document=Document(content="some text", content_type="text"),
-        is_correct_answer=True,
-        is_correct_document=True,
-        origin="user-feedback",
-    ),
-    Label(
-        query="some",
-        answer=Answer(answer="annother answer", type="extractive", score=0.1, document_ids=["123"]),
-        document=Document(content="some text", content_type="text"),
-        is_correct_answer=True,
-        is_correct_document=True,
-        origin="user-feedback",
-    ),
-    Label(
-        query="some",
-        answer=Answer(
-            answer="an answer",
-            type="extractive",
-            score=0.1,
-            document_ids=["123"],
-            offsets_in_document=[Span(start=1, end=3)],
+        Label(
+            query="some",
+            answer=Answer(answer="annother answer", type="extractive", score=0.1, document_ids=["123"]),
+            document=Document(content="some text", content_type="text"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="user-feedback",
         ),
-        document=Document(content="some text", content_type="text"),
-        is_correct_answer=True,
-        is_correct_document=True,
-        origin="user-feedback",
-    ),
-]
+        Label(
+            query="some",
+            answer=Answer(
+                answer="an answer",
+                type="extractive",
+                score=0.1,
+                document_ids=["123"],
+                offsets_in_document=[Span(start=1, end=3)],
+            ),
+            document=Document(content="some text", content_type="text"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="user-feedback",
+        ),
+    ]
 
 
-def test_document_from_dict():
-    doc = Document(
-        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+@pytest.fixture
+def text_answer():
+    return Answer(
+        answer="an answer",
+        type="extractive",
+        score=0.1,
+        context="abc",
+        offsets_in_document=[Span(start=1, end=10)],
+        offsets_in_context=[Span(start=3, end=5)],
+        document_ids=["123"],
     )
-    assert doc == Document.from_dict(doc.to_dict())
 
 
-def test_table_document_from_dict():
+@pytest.fixture
+def table_doc():
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
         "age": [58, 47, 60],
         "number of movies": [87, 53, 69],
         "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
     }
-    doc = Document(
-        content=pd.DataFrame(data), meta={"some": "meta"}, id_hash_keys=["content", "meta"], content_type="table"
+    return Document(content=pd.DataFrame(data), content_type="table", id="doc1")
+
+
+@pytest.fixture
+def table_doc_with_embedding():
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": [58, 47, 60],
+        "number of movies": [87, 53, 69],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    return Document(
+        content=pd.DataFrame(data), content_type="table", id="doc2", embedding=np.random.rand(768).astype(np.float32)
     )
-    assert doc == Document.from_dict(doc.to_dict())
 
 
 def test_no_answer_label():
@@ -107,21 +127,27 @@ def test_no_answer_label():
     assert labels[3].no_answer == False
 
 
-def test_equal_label():
-    assert LABELS[2] == LABELS[0]
-    assert LABELS[1] != LABELS[0]
+def test_equal_label(text_labels):
+    assert text_labels[2] == text_labels[0]
+    assert text_labels[1] != text_labels[0]
 
 
-def test_answer_to_json():
-    a = Answer(
-        answer="an answer",
-        type="extractive",
-        score=0.1,
-        context="abc",
-        offsets_in_document=[Span(start=1, end=10)],
-        offsets_in_context=[Span(start=3, end=5)],
-        document_ids=["123"],
-    )
+def test_label_to_json(text_labels):
+    j0 = text_labels[0].to_json()
+    l_new = Label.from_json(j0)
+    assert l_new == text_labels[0]
+    assert l_new.answer.offsets_in_document[0].start == 1
+
+
+def test_label_to_dict(text_labels):
+    j0 = text_labels[0].to_dict()
+    l_new = Label.from_dict(j0)
+    assert l_new == text_labels[0]
+    assert l_new.answer.offsets_in_document[0].start == 1
+
+
+def test_answer_to_json(text_answer):
+    a = text_answer
     j = a.to_json()
     assert type(j) == str
     assert len(j) > 30
@@ -130,16 +156,8 @@ def test_answer_to_json():
     assert a_new == a
 
 
-def test_answer_to_dict():
-    a = Answer(
-        answer="an answer",
-        type="extractive",
-        score=0.1,
-        context="abc",
-        offsets_in_document=[Span(start=1, end=10)],
-        offsets_in_context=[Span(start=3, end=5)],
-        document_ids=["123"],
-    )
+def test_answer_to_dict(text_answer):
+    a = text_answer
     j = a.to_dict()
     assert type(j) == dict
     a_new = Answer.from_dict(j)
@@ -147,24 +165,15 @@ def test_answer_to_dict():
     assert a_new == a
 
 
-def test_label_to_json():
-    j0 = LABELS[0].to_json()
-    l_new = Label.from_json(j0)
-    assert l_new == LABELS[0]
+def test_document_from_dict():
+    doc = Document(
+        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
+    )
+    assert doc == Document.from_dict(doc.to_dict())
 
 
-def test_label_to_json():
-    j0 = LABELS[0].to_json()
-    l_new = Label.from_json(j0)
-    assert l_new == LABELS[0]
-    assert l_new.answer.offsets_in_document[0].start == 1
-
-
-def test_label_to_dict():
-    j0 = LABELS[0].to_dict()
-    l_new = Label.from_dict(j0)
-    assert l_new == LABELS[0]
-    assert l_new.answer.offsets_in_document[0].start == 1
+def test_table_document_from_dict(table_doc):
+    assert table_doc == Document.from_dict(table_doc.to_dict())
 
 
 def test_doc_to_json():
@@ -195,10 +204,28 @@ def test_doc_to_json():
     assert d == d_new
 
 
+def test_table_doc_to_json(table_doc, table_doc_with_embedding):
+    # With embedding
+    j0 = table_doc_with_embedding.to_json()
+    d_new = Document.from_json(j0)
+    assert table_doc_with_embedding == d_new
+
+    # No embedding
+    j0 = table_doc.to_json()
+    d_new = Document.from_json(j0)
+    assert table_doc == d_new
+
+
 def test_answer_postinit():
     a = Answer(answer="test", offsets_in_document=[{"start": 10, "end": 20}])
     assert a.meta == {}
     assert isinstance(a.offsets_in_document[0], Span)
+
+
+def test_table_answer_postinit():
+    a = Answer(answer="test", offsets_in_document=[{"row": 1, "col": 2}])
+    assert a.meta == {}
+    assert isinstance(a.offsets_in_document[0], TableCell)
 
 
 def test_generate_doc_id_using_text():
