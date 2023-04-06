@@ -67,7 +67,7 @@ def prompt_model_provider(class_):
 def get_model(
     model_name_or_path: str,
     model_provider: Optional[Type] = None,
-    model_kwargs: Optional[Dict[str, Any]] = None,
+    model_params: Optional[Dict[str, Any]] = None,
     modules_to_search: Optional[List[str]] = ["haystack.preview"],
 ) -> object:
     """
@@ -81,12 +81,12 @@ def get_model(
     """
     providers = _find_decorated_classes(modules_to_search=modules_to_search, decorator="__haystack_prompt_model__")
     if model_provider:
-        return model_provider(model_name_or_path=model_name_or_path, **(model_kwargs or {}))
+        return model_provider(model_name_or_path=model_name_or_path, **(model_params or {}))
     # search all providers and find the first one that supports the model,
     # then create an instance of a mode with that provider.
     for provider in providers.values():
-        if provider.supports(model_name_or_path, **(model_kwargs or {})):
-            return provider(model_name_or_path=model_name_or_path, **(model_kwargs or {}))
+        if provider.supports(model_name_or_path, **(model_params or {})):
+            return provider(model_name_or_path=model_name_or_path, **(model_params or {}))
     raise ValueError(
         f"Model '{model_name_or_path}' is not supported - no matching providers found. "
         f"Currently supported providers are: {', '.join([provider for provider in providers.keys()])} "

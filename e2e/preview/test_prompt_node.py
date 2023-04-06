@@ -17,7 +17,7 @@ def test_prompt_node_openai_provider(model):
     pn = PromptNode(
         template="question-answering",
         model_name_or_path=model,
-        model_kwargs={"api_key": os.environ.get("OPENAI_API_KEY", None)},
+        model_params={"api_key": os.environ.get("OPENAI_API_KEY", None)},
     )
     output = pn.prompt(question="What's the capital of France?", documents=["The capital of France is Paris."])
     assert "Paris" in output[0]

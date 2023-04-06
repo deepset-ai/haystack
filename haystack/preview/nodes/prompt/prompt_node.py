@@ -102,7 +102,7 @@ class PromptNode:
         output: Optional[str] = "answers",
         model_name_or_path: str = "google/flan-t5-base",
         model_provider: Optional[str] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
+        model_params: Optional[Dict[str, Any]] = None,
         provider_modules: Optional[List[str]] = None,
     ):
         """
@@ -120,7 +120,7 @@ class PromptNode:
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
         :param model_provider: force a specific provider for the model. If not given, Haystack will find a provider for
             your model automatically.
-        :param model_kwargs: Kwargs to be passed to the model provider, like API keys, init parameters, etc.
+        :param model_params: Parameters to be passed to the model provider, like API keys, init parameters, etc.
         :param provider_modules: if you have external model providers, add the module where they are, like
             `haystack.preview`
         """
@@ -137,14 +137,14 @@ class PromptNode:
         self.model = None
         self.model_name_or_path = model_name_or_path
         self.model_provider = model_provider
-        self.model_kwargs = model_kwargs
+        self.model_params = model_params
         self.provider_modules = provider_modules or PROVIDER_MODULES
         self.init_parameters = {
             "output": output,
             "template": template,
             "custom_template": custom_template,
             "model_name_or_path": model_name_or_path,
-            "model_kwargs": model_kwargs,
+            "model_kwargs": model_params,
             "model_provider": model_provider,
         }
 
@@ -153,7 +153,7 @@ class PromptNode:
             self.model = get_model(
                 model_name_or_path=self.model_name_or_path,
                 model_provider=self.model_provider,
-                model_kwargs=self.model_kwargs,
+                model_params=self.model_params,
                 modules_to_search=self.provider_modules,
             )
 
