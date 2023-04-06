@@ -203,7 +203,9 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id or cloud_id) and not (api_key and (api_key_id or cloud_id)):
-            raise ValueError("You must provide either both or none of `api_key_id` and `api_key` or `cloud_id` and `api_key`")
+            raise ValueError(
+                "You must provide either both or none of `api_key_id` and `api_key` or `cloud_id` and `api_key`"
+            )
 
         connection_class: Type[Connection] = Urllib3HttpConnection
         if use_system_proxy:
@@ -212,10 +214,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if cloud_id:
             # cloud FAAS:
             # see https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/connecting.html#connecting-faas
-            client = Elasticsearch(
-                cloud_id=cloud_id,
-                api_key=api_key,
-            )
+            client = Elasticsearch(cloud_id=cloud_id, api_key=api_key)
         elif api_key_id:
             # api key authentication
             client = Elasticsearch(
