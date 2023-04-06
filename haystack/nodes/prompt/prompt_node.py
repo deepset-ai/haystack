@@ -162,25 +162,28 @@ class PromptNode(BaseComponent):
         # kwargs override model kwargs
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
         template_to_fill = self.get_prompt_template(prompt_template)
-
         if template_to_fill:
-            prompts = template_to_fill.fill(*args, **kwargs)
-        else:
-            prompts = list(args)
+            # prompt template used, yield prompts from inputs args
+            for prompt in template_to_fill.fill(*args, **kwargs):
+                kwargs_copy = copy.copy(kwargs)
+                # and pass the prepared prompt and kwargs copy to the model
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                results.extend(output)
 
-        for prompt in prompts:
-            kwargs_copy = copy.copy(kwargs)
-            # and pass the prepared prompt and kwargs copy to the model
-            prompt = self.prompt_model._ensure_token_limit(prompt)
-            prompt_collector.append(prompt)
-            logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
-            output = self.prompt_model.invoke(prompt, **kwargs_copy)
-            results.extend(output)
-
-        if template_to_fill:
             kwargs["prompts"] = prompt_collector
             results = template_to_fill.post_process(results, **kwargs)
-
+        else:
+            # straightforward prompt, no templates used
+            for prompt in list(args):
+                kwargs_copy = copy.copy(kwargs)
+                prompt = self.prompt_model._ensure_token_limit(prompt)
+                prompt_collector.append(prompt)
+                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
+                output = self.prompt_model.invoke(prompt, **kwargs_copy)
+                results.extend(output)
         return results
 
     def add_prompt_template(self, prompt_template: PromptTemplate) -> None:
