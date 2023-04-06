@@ -18,6 +18,8 @@ on:
       - "rest_api/pyproject.toml"
 
 env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
   PYTHON_VERSION: "3.8"
 
 jobs:
@@ -61,11 +63,58 @@ jobs:
             exit 1
           fi
 
-      - uses: act10ns/slack@v2
-        with:
-          status: ${{ job.status }}
-          channel: "#haystack"
+      - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
 
   rest_api:
     needs: black
@@ -94,10 +143,55 @@ jobs:
         run: |
           pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
-      - uses: act10ns/slack@v2
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        with:
-          status: ${{ job.status }}
-          channel: "#haystack"
+      - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }

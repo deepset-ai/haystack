@@ -101,7 +101,7 @@ class PromptModelInvocationLayer:
         Checks if the given model is supported by this invocation layer.
 
         :param model_name_or_path: The name or path of the model.
-        :param kwargs: additional keyword arguments passed to the underlying model which might be used to determine
+        :param kwargs: Additional keyword arguments passed to the underlying model which might be used to determine
         if the model is supported.
         :return: True if this invocation layer supports the model, False otherwise.
         """
@@ -125,12 +125,17 @@ class StopWordsCriteria(StoppingCriteria):
     Stops text generation if any one of the stop words is generated.
     """
 
-    def __init__(self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stop_words: List[str]):
+    def __init__(
+        self,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        stop_words: List[str],
+        device: Union[str, torch.device] = "cpu",
+    ):
         super().__init__()
-        self.stop_words = tokenizer.encode(stop_words, add_special_tokens=False, return_tensors="pt")
+        self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        return any(torch.isin(input_ids[-1], self.stop_words[-1]))
+        return any(torch.isin(input_ids[-1], self.stop_words["input_ids"]))
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -234,8 +239,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     def invoke(self, *args, **kwargs):
         """
-        It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
-        :return: A list of generated text.
+        It takes a prompt and returns a list of generated texts using the local Hugging Face transformers model
+        :return: A list of generated texts.
 
         Note: Only kwargs relevant to Text2TextGenerationPipeline and TextGenerationPipeline are passed to
         Hugging Face as model_input_kwargs. Other kwargs are ignored.
@@ -268,7 +273,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 model_input_kwargs["return_full_text"] = False
                 model_input_kwargs["max_new_tokens"] = self.max_length
             if stop_words:
-                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words)
+                sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
             if top_k:
                 model_input_kwargs["num_return_sequences"] = top_k
@@ -302,8 +307,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             return prompt
 
         logger.warning(
-            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
-            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+            "answer length (%s tokens) fit within the max token limit (%s tokens). "
             "Shorten the prompt to prevent it from being cut off",
             n_prompt_tokens,
             self.pipe.tokenizer.model_max_length - n_answer_tokens,
@@ -487,8 +492,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             return prompt
 
         logger.warning(
-            "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
-            "answer length (%s tokens) fits within the max token limit (%s tokens). "
+            "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+            "answer length (%s tokens) fit within the max token limit (%s tokens). "
             "Reduce the length of the prompt to prevent it from being cut off.",
             n_prompt_tokens,
             self.max_tokens_limit - n_answer_tokens,
@@ -517,8 +522,8 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
     Azure OpenAI Invocation Layer
 
     This layer is used to invoke the OpenAI API on Azure. It is essentially the same as the OpenAIInvocationLayer
-    with additional two parameters: azure_base_url and azure_deployment_name. The azure_base_url is the URL of the Azure OpenAI
-    endpoint and the azure_deployment_name is the name of the deployment.
+    with additional two parameters: `azure_base_url` and `azure_deployment_name`. The `azure_base_url` is the URL of the Azure OpenAI
+    endpoint and the `azure_deployment_name` is the name of the deployment.
     """
 
     def __init__(
@@ -547,7 +552,7 @@ class AzureOpenAIInvocationLayer(OpenAIInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
-        Ensures Azure OpenAI Invocation Layer is selected when azure_base_url and azure_deployment_name are provided in
+        Ensures Azure OpenAI Invocation Layer is selected when `azure_base_url` and `azure_deployment_name` are provided in
         addition to a list of supported models.
         """
         valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)

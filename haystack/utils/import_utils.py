@@ -1,5 +1,3 @@
-from typing import Optional, Dict, Union, Tuple
-
 import io
 import gzip
 import tarfile
@@ -8,8 +6,11 @@ import logging
 import importlib
 import importlib.util
 from pathlib import Path
+from typing import Optional, Dict, Union, Tuple, List
 
 import requests
+from haystack.errors import DatasetsError
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,35 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
         "to install the required dependencies and make this component available.\n"
         f"(Original error: {str(source_error)})"
     ) from source_error
+
+
+def load_documents_from_hf_datasets(dataset_name: str, split: Optional[str] = "train") -> List[Document]:
+    """
+    Load a list of Haystack Documents from a remote Hugging Face dataset.
+
+    :param dataset_name: A Hugging Face dataset containing Haystack Documents
+    :param split: The split of the Hugging Face dataset to load from. By default, this is set to "train".
+    :return: a List of Haystack Documents
+    """
+    try:
+        from datasets import load_dataset, load_dataset_builder
+    except ImportError:
+        raise ImportError(
+            "Failed to import `datasets`, Run 'pip install datasets>=2.6.0' "
+            "to install the datasets library to use this function."
+        )
+
+    dataset = load_dataset_builder(dataset_name)
+    if "content" not in dataset.info.features.keys():
+        raise DatasetsError(
+            f"{dataset_name} does not contain a `content` field which is required by Haystack to "
+            f"create `Document` objects."
+        )
+
+    remote_dataset = load_dataset(dataset_name, split=split)
+    documents = [Document.from_dict(document) for document in remote_dataset]
+
+    return documents
 
 
 def fetch_archive_from_http(

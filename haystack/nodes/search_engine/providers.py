@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Any
 
 import requests
 
@@ -16,20 +16,26 @@ class SerpAPI(SearchEngine):
     Amazon, and similar. See the [SerpAPI website](https://serpapi.com/) for more details.
     """
 
-    def __init__(self, api_key: str, top_k: Optional[int] = 10, engine: Optional[str] = "google", **kwargs):
+    def __init__(
+        self,
+        api_key: str,
+        top_k: Optional[int] = 10,
+        engine: Optional[str] = "google",
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param api_key: API key for SerpAPI.
         :param top_k: Number of results to return.
         :param engine: Search engine to use, for example google, bing, baidu, duckduckgo, yahoo, yandex.
         See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported engines.
-        :param kwargs: Additional parameters passed to the SerperDev API. For example, you can set 'lr' to 'lang_en'
+        :param search_engine_kwargs: Additional parameters passed to the SerperDev API. For example, you can set 'lr' to 'lang_en'
         to limit the search to English.
         See the [SerpAPI documentation](https://serpapi.com/search-api) for the full list of supported parameters.
         """
         super().__init__()
         self.params_dict: Dict[str, Union[str, int, float]] = {}
         self.api_key = api_key
-        self.kwargs = kwargs
+        self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
         self.engine = engine
         self.top_k = top_k
 
@@ -118,17 +124,17 @@ class SerperDev(SearchEngine):
     Search engine using SerperDev API. See the [Serper Dev website](https://serper.dev/) for more details.
     """
 
-    def __init__(self, api_key: str, top_k: Optional[int] = 10, **kwargs):
+    def __init__(self, api_key: str, top_k: Optional[int] = 10, search_engine_kwargs: Optional[Dict[str, Any]] = None):
         """
         :param api_key: API key for the SerperDev API.
         :param top_k: Number of documents to return.
-        :param kwargs: Additional parameters passed to the SerperDev API.
+        :param search_engine_kwargs: Additional parameters passed to the SerperDev API.
         For example, you can set 'num' to 20 to increase the number of search results.
         """
         super().__init__()
         self.api_key = api_key
         self.top_k = top_k
-        self.kwargs = kwargs
+        self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
 
     def search(self, query: str, **kwargs) -> List[Document]:
         """
@@ -205,16 +211,16 @@ class BingAPI(SearchEngine):
     Search engine using the Bing API. See [Bing Web Search API](https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/overview) for more details.
     """
 
-    def __init__(self, api_key: str, top_k: Optional[int] = 10, **kwargs):
+    def __init__(self, api_key: str, top_k: Optional[int] = 10, search_engine_kwargs: Optional[Dict[str, Any]] = None):
         """
         :param api_key: API key for the Bing API.
         :param top_k: Number of documents to return.
-        :param kwargs: Additional parameters passed to the SerperDev API. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
+        :param search_engine_kwargs: Additional parameters passed to the SerperDev API. As an example, you can pass the market parameter to specify the market to use for the query: 'mkt':'en-US'.
         """
         super().__init__()
         self.api_key = api_key
         self.top_k = top_k
-        self.kwargs = kwargs
+        self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
 
     def search(self, query: str, **kwargs) -> List[Document]:
         """

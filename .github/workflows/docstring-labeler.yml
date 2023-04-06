@@ -35,6 +35,8 @@ jobs:
 
       - name: Checkout HEAD commit
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Get docstrings
         id: head-docstrings
