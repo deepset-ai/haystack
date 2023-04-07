@@ -2,12 +2,15 @@ import hashlib
 import json
 import logging
 import os
+import copy
 import re
 import sys
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
+
+import joblib
 
 try:
     from selenium import webdriver
@@ -58,6 +61,7 @@ class Crawler(BaseComponent):
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
+        num_processes: Optional[int] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -99,29 +103,16 @@ class Crawler(BaseComponent):
                     This option enables remote debug over HTTP.
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
             If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
+        :param num_processes: Optional ability to spawn more than 1 process when downloading urls. This will significantly increase memory usage as each process spawns a separate Chrome driver.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
-        IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
-        IN_WINDOWS = sys.platform in ["win32", "cygwin"]
-        IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
-
-        if webdriver_options is None:
-            webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
-        webdriver_options.append("--headless")
-        if IS_ROOT or IN_WINDOWS:
-            webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
-        if IN_COLAB or IN_AZUREML:
-            webdriver_options.append("--disable-dev-shm-usage")
-
-        options = Options()
-        for option in set(webdriver_options):
-            options.add_argument(option)
+        self.options = _get_webdriver_system_options(webdriver_options)
 
         if IN_COLAB:
             try:
-                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
+                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=self.options)
             except WebDriverException as exc:
                 raise NodeError(
                     """
@@ -162,7 +153,7 @@ class Crawler(BaseComponent):
                 ) from exc
         else:
             logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=self.options)
         self.urls = urls
         self.crawler_depth = crawler_depth
         self.filter_urls = filter_urls
@@ -173,9 +164,11 @@ class Crawler(BaseComponent):
         self.crawler_naming_function = crawler_naming_function
         self.output_dir = output_dir
         self.file_path_meta_field_name = file_path_meta_field_name
+        self.num_processes = num_processes or 1
 
     def __del__(self):
-        self.driver.quit()
+        if hasattr(self, "driver"):
+            self.driver.quit()
 
     def crawl(
         self,
@@ -189,6 +182,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         file_path_meta_field_name: Optional[str] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        num_processes: Optional[int] = None,
     ) -> List[Document]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -219,6 +213,7 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param num_processes: Optional ability to spawn more than 1 process when downloading urls. This will significantly increase memory usage as each process spawns a separate Chrome driver.
 
         :return: List of Documents that were created during crawling
         """
@@ -243,6 +238,8 @@ class Crawler(BaseComponent):
             file_path_meta_field_name = self.file_path_meta_field_name
         if crawler_naming_function is None:
             crawler_naming_function = self.crawler_naming_function
+        if num_processes is None:
+            num_processes = self.num_processes
 
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -261,34 +258,14 @@ class Crawler(BaseComponent):
             else:
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
 
-        documents: List[Document] = []
-
         # Start by crawling the initial list of urls
         if filter_urls:
             pattern = re.compile("|".join(filter_urls))
-            for url in urls:
-                if pattern.search(url):
-                    documents += self._crawl_urls(
-                        [url],
-                        extract_hidden_text=extract_hidden_text,
-                        loading_wait_time=loading_wait_time,
-                        id_hash_keys=id_hash_keys,
-                        output_dir=output_dir,
-                        overwrite_existing_files=overwrite_existing_files,
-                        file_path_meta_field_name=file_path_meta_field_name,
-                        crawler_naming_function=crawler_naming_function,
-                    )
-        else:
-            documents += self._crawl_urls(
-                urls,
-                extract_hidden_text=extract_hidden_text,
-                loading_wait_time=loading_wait_time,
-                id_hash_keys=id_hash_keys,
-                output_dir=output_dir,
-                overwrite_existing_files=overwrite_existing_files,
-                file_path_meta_field_name=file_path_meta_field_name,
-                crawler_naming_function=crawler_naming_function,
-            )
+            urls = [url for url in urls if pattern.search(url)]
+
+        documents: List[Document] = []
+        base_urls: List[Optional[str]] = [None] * len(urls)
+        urls_to_search: List[str] = copy.deepcopy(urls)
 
         # follow one level of sublinks if requested
         if crawler_depth == 1:
@@ -303,10 +280,34 @@ class Crawler(BaseComponent):
                         loading_wait_time=loading_wait_time,
                     )
                 )
-            for url, extracted_sublink in sub_links.items():
-                documents += self._crawl_urls(
-                    extracted_sublink,
-                    base_url=url,
+                base_urls.extend([url_] * len(sub_links[url_]))
+                urls_to_search.extend(sub_links[url_])
+
+        if urls_to_search and base_urls:
+            if 1 < num_processes:
+                delayed_funcs = [
+                    joblib.delayed(_crawl_urls)(
+                        None,
+                        webdriver_options=self.options,
+                        urls=[_url],
+                        base_urls=[_base_url],
+                        extract_hidden_text=extract_hidden_text,
+                        loading_wait_time=loading_wait_time,
+                        id_hash_keys=id_hash_keys,
+                        output_dir=output_dir,
+                        overwrite_existing_files=overwrite_existing_files,
+                        file_path_meta_field_name=file_path_meta_field_name,
+                        crawler_naming_function=crawler_naming_function,
+                    )
+                    for _url, _base_url in zip(urls, base_urls)
+                ]
+                documents += joblib.Parallel(n_jobs=num_processes, backend="loky", batch_size="auto")(delayed_funcs)[0]
+            else:
+                documents += _crawl_urls(
+                    self.driver,
+                    webdriver_options=self.options,
+                    urls=urls_to_search,
+                    base_urls=base_urls,
                     extract_hidden_text=extract_hidden_text,
                     loading_wait_time=loading_wait_time,
                     id_hash_keys=id_hash_keys,
@@ -315,110 +316,6 @@ class Crawler(BaseComponent):
                     file_path_meta_field_name=file_path_meta_field_name,
                     crawler_naming_function=crawler_naming_function,
                 )
-
-        return documents
-
-    def _create_document(
-        self, url: str, text: str, base_url: Optional[str] = None, id_hash_keys: Optional[List[str]] = None
-    ) -> Document:
-        """
-        Create a Document object from the given url and text.
-        :param url: The current url of the webpage.
-        :param text: The text content of the webpage.
-        :param base_url: The original url where we started to crawl.
-        :param id_hash_keys: The fields that should be used to generate the document id.
-        """
-
-        data: Dict[str, Any] = {}
-        data["meta"] = {"url": url}
-        if base_url:
-            data["meta"]["base_url"] = base_url
-        data["content"] = text
-        if id_hash_keys:
-            data["id_hash_keys"] = id_hash_keys
-
-        return Document.from_dict(data)
-
-    def _write_file(
-        self,
-        document: Document,
-        output_dir: Path,
-        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        overwrite_existing_files: Optional[bool] = None,
-        file_path_meta_field_name: Optional[str] = None,
-    ) -> Path:
-        url = document.meta["url"]
-        if crawler_naming_function is not None:
-            file_name_prefix = crawler_naming_function(url, document.content)  # type: ignore
-        else:
-            file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", url[:129])
-            file_name_hash = hashlib.md5(f"{url}".encode("utf-8")).hexdigest()
-            file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
-
-        file_path = output_dir / f"{file_name_prefix}.json"
-
-        if file_path_meta_field_name:
-            document.meta[file_path_meta_field_name] = str(file_path)
-
-        try:
-            if overwrite_existing_files or not file_path.exists():
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(document.to_dict(), f)
-            else:
-                logger.debug(
-                    "File '%s' already exists. Set 'overwrite_existing_files=True' to overwrite it.", file_path
-                )
-        except Exception:
-            logger.exception(
-                "Crawler can't save the content of '%s' under '%s'. "
-                "This webpage will be skipped, but links from this page will still be crawled. "
-                "Make sure the path above is accessible and the file name is valid. "
-                "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
-                url,
-                file_path,
-            )
-
-        return file_path
-
-    def _crawl_urls(
-        self,
-        urls: List[str],
-        extract_hidden_text: bool,
-        base_url: Optional[str] = None,
-        id_hash_keys: Optional[List[str]] = None,
-        loading_wait_time: Optional[int] = None,
-        overwrite_existing_files: Optional[bool] = False,
-        output_dir: Optional[Path] = None,
-        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
-        file_path_meta_field_name: Optional[str] = None,
-    ) -> List[Document]:
-        documents: List[Document] = []
-        for link in urls:
-            logger.info("Scraping contents from '%s'", link)
-            self.driver.get(link)
-            if loading_wait_time is not None:
-                time.sleep(loading_wait_time)
-            el = self.driver.find_element(by=By.TAG_NAME, value="body")
-            if extract_hidden_text:
-                text = el.get_attribute("textContent")
-            else:
-                text = el.text
-
-            document = self._create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
-
-            if output_dir:
-                file_path = self._write_file(
-                    document,
-                    output_dir,
-                    crawler_naming_function,
-                    file_path_meta_field_name=file_path_meta_field_name,
-                    overwrite_existing_files=overwrite_existing_files,
-                )
-                logger.debug("Saved content to '%s'", file_path)
-
-            documents.append(document)
-
-        logger.debug("Crawler results: %s Documents", len(documents))
 
         return documents
 
@@ -434,6 +331,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         file_path_meta_field_name: Optional[str] = None,
+        num_processes: Optional[int] = None,
     ) -> Tuple[Dict[str, List[Document]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -463,6 +361,7 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param num_processes: Optional ability to spawn more than 1 process when downloading urls. This will significantly increase memory usage as each process spawns a separate Chrome driver.
 
         :return: Tuple({"documents": List of Documents, ...}, Name of output edge)
         """
@@ -478,6 +377,7 @@ class Crawler(BaseComponent):
             id_hash_keys=id_hash_keys,
             file_path_meta_field_name=file_path_meta_field_name,
             crawler_naming_function=crawler_naming_function,
+            num_processes=num_processes,
         )
         results = {"documents": documents}
 
@@ -495,6 +395,7 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         file_path_meta_field_name: Optional[str] = None,
+        num_processes: Optional[int] = None,
     ):
         return self.run(
             output_dir=output_dir,
@@ -507,6 +408,7 @@ class Crawler(BaseComponent):
             loading_wait_time=loading_wait_time,
             crawler_naming_function=crawler_naming_function,
             file_path_meta_field_name=file_path_meta_field_name,
+            num_processes=num_processes,
         )
 
     @staticmethod
@@ -556,3 +458,149 @@ class Crawler(BaseComponent):
                         sub_links.add(sub_link)
 
         return sub_links
+
+
+def _create_document(
+    url: str, text: str, base_url: Optional[str] = None, id_hash_keys: Optional[List[str]] = None
+) -> Document:
+    """
+    Create a Document object from the given url and text.
+    :param url: The current url of the webpage.
+    :param text: The text content of the webpage.
+    :param base_url: The original url where we started to crawl.
+    :param id_hash_keys: The fields that should be used to generate the document id.
+    """
+
+    data: Dict[str, Any] = {}
+    data["meta"] = {"url": url}
+    if base_url:
+        data["meta"]["base_url"] = base_url
+    data["content"] = text
+    if id_hash_keys:
+        data["id_hash_keys"] = id_hash_keys
+
+    return Document.from_dict(data)
+
+
+def _write_file(
+    document: Document,
+    output_dir: Path,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+    overwrite_existing_files: Optional[bool] = None,
+    file_path_meta_field_name: Optional[str] = None,
+) -> Path:
+    url = document.meta["url"]
+    if crawler_naming_function is not None:
+        file_name_prefix = crawler_naming_function(url, document.content)  # type: ignore
+    else:
+        file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", url[:129])
+        file_name_hash = hashlib.md5(f"{url}".encode("utf-8")).hexdigest()
+        file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
+
+    file_path = output_dir / f"{file_name_prefix}.json"
+
+    if file_path_meta_field_name:
+        document.meta[file_path_meta_field_name] = str(file_path)
+
+    try:
+        if overwrite_existing_files or not file_path.exists():
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(document.to_dict(), f)
+        else:
+            logger.debug("File '%s' already exists. Set 'overwrite_existing_files=True' to overwrite it.", file_path)
+    except Exception:
+        logger.exception(
+            "Crawler can't save the content of '%s' under '%s'. "
+            "This webpage will be skipped, but links from this page will still be crawled. "
+            "Make sure the path above is accessible and the file name is valid. "
+            "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+            url,
+            file_path,
+        )
+
+    return file_path
+
+
+def _crawl_urls(
+    driver: webdriver.Chrome,
+    webdriver_options: Options,
+    urls: List[str],
+    extract_hidden_text: bool,
+    base_urls: List[Optional[str]],
+    id_hash_keys: Optional[List[str]] = None,
+    loading_wait_time: Optional[int] = None,
+    overwrite_existing_files: Optional[bool] = False,
+    output_dir: Optional[Path] = None,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+    file_path_meta_field_name: Optional[str] = None,
+) -> List[Document]:
+    # if using multiprocessing we need to create a Chrome driver per process
+    driver = driver if driver else _create_webdriver(webdriver_options)
+
+    documents: List[Document] = []
+    if base_urls and len(base_urls) != len(urls):
+        logger.error("Must have the same number of base urls and urls to search.")
+
+    for link, base_url in zip(urls, base_urls):
+        logger.info("Scraping contents from '%s'", link)
+        driver.get(link)
+        if loading_wait_time is not None:
+            time.sleep(loading_wait_time)
+        el = driver.find_element(by=By.TAG_NAME, value="body")
+        if extract_hidden_text:
+            text = el.get_attribute("textContent")
+        else:
+            text = el.text
+
+        document = _create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
+
+        if output_dir:
+            file_path = _write_file(
+                document,
+                output_dir,
+                crawler_naming_function,
+                file_path_meta_field_name=file_path_meta_field_name,
+                overwrite_existing_files=overwrite_existing_files,
+            )
+            logger.debug("Saved content to '%s'", file_path)
+
+        documents.append(document)
+
+    logger.debug("Crawler results: %s Documents", len(documents))
+
+    return documents
+
+
+def _create_webdriver(webdriver_options: Options) -> webdriver.Chrome:
+    """
+    Create a webdriver Chrome driver with certain options
+    :param: Options for a webdriver.Chrome
+    :return: A webdriver Chrome driver
+    """
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=webdriver_options)
+
+
+def _get_webdriver_system_options(webdriver_options: Optional[List[str]] = None) -> Options:
+    """
+    Method to get the correct webdriver options from the system environment
+    :param webdriver_options: Optional webdriver options aside from defaults
+    :return: Options for a webdriver.Chrome
+    """
+    IN_COLAB = "google.colab" in sys.modules
+    IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
+    IN_WINDOWS = sys.platform in ["win32", "cygwin"]
+    IS_ROOT = not IN_WINDOWS and os.geteuid() == 0  # type: ignore   # This is a mypy issue of sorts, that fails on Windows.
+
+    if webdriver_options is None:
+        webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
+    webdriver_options.append("--headless")
+    if IS_ROOT or IN_WINDOWS:
+        webdriver_options.extend(["--no-sandbox", "--remote-debugging-port=9222"])
+    if IN_COLAB or IN_AZUREML:
+        webdriver_options.append("--disable-dev-shm-usage")
+
+    options = Options()
+    for option in set(webdriver_options):
+        options.add_argument(option)
+
+    return options
