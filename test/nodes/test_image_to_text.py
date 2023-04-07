@@ -9,7 +9,7 @@ from haystack.errors import ImageToTextError
 @pytest.fixture
 def image_file_paths(samples_path):
     image_file_names = ["apple.jpg", "car.jpg", "cat.jpg", "galaxy.jpg", "paris.jpg"]
-    return [samples_path / "images" / file_name for file_name in image_file_names]
+    return [str(samples_path / "images" / file_name) for file_name in image_file_names]
 
 
 @pytest.fixture
