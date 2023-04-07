@@ -9,27 +9,27 @@ from haystack.utils.import_utils import is_whisper_available
 
 @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OpenAI API key not found")
 @pytest.mark.integration
-def test_whisper_api_transcribe():
+def test_whisper_api_transcribe(samples_path):
     w = WhisperTranscriber(api_key=os.environ.get("OPENAI_API_KEY"))
-    audio_object_transcript, audio_path_transcript = transcribe_test_helper(w)
+    audio_object_transcript, audio_path_transcript = transcribe_test_helper(w, samples_path=samples_path)
     assert "segments" not in audio_object_transcript and "segments" not in audio_path_transcript
 
 
 @pytest.mark.skip("Fails on CI cause it fills up memory")
 @pytest.mark.integration
 @pytest.mark.skipif(not is_whisper_available(), reason="Whisper is not installed")
-def test_whisper_local_transcribe():
+def test_whisper_local_transcribe(samples_path):
     w = WhisperTranscriber()
-    audio_object_transcript, audio_path_transcript = transcribe_test_helper(w, language="en")
+    audio_object_transcript, audio_path_transcript = transcribe_test_helper(w, samples_path=samples_path, language="en")
     assert "segments" not in audio_object_transcript and "segments" not in audio_path_transcript
 
 
 @pytest.mark.skip("Fails on CI cause it fills up memory")
 @pytest.mark.integration
 @pytest.mark.skipif(not is_whisper_available(), reason="Whisper is not installed")
-def test_whisper_local_transcribe_with_params():
+def test_whisper_local_transcribe_with_params(samples_path):
     w = WhisperTranscriber()
-    audio_object, audio_path = transcribe_test_helper(w, language="en", return_segments=True)
+    audio_object, audio_path = transcribe_test_helper(w, samples_path=samples_path, language="en", return_segments=True)
     assert len(audio_object["segments"]) == 1 and len(audio_path["segments"]) == 1
 
 
