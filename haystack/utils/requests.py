@@ -1,3 +1,5 @@
+from typing import Optional, List
+
 import logging
 
 from tenacity import retry, wait_exponential, retry_if_exception_type, stop_after_attempt, before_log, after_log
@@ -6,7 +8,9 @@ import requests
 logger = logging.getLogger(__file__)
 
 
-def request_with_retry(attempts=3, status_codes=[408, 418, 429], **kwargs) -> requests.Response:
+def request_with_retry(
+    attempts: Optional[int] = None, status_codes: Optional[List[int]] = None, **kwargs
+) -> requests.Response:
     """
     request_with_retry is a simple wrapper function that executes an HTTP request
     with a configurable exponential backoff retry on failures.
@@ -57,6 +61,12 @@ def request_with_retry(attempts=3, status_codes=[408, 418, 429], **kwargs) -> re
     :param **kwargs: Optional arguments that ``request`` takes.
     :return: :class:`Response <Response>` object
     """
+
+    if attempts is None:
+        attempts = 3
+
+    if status_codes is None:
+        status_codes = [408, 418, 429]
 
     @retry(
         reraise=True,
