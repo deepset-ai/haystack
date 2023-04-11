@@ -14,12 +14,10 @@ from selenium.webdriver.common.by import By
 from haystack.nodes.connector.crawler import Crawler
 from haystack.schema import Document
 
-from ..conftest import SAMPLES_PATH
 
-
-@pytest.fixture(scope="session")
-def test_url():
-    return (SAMPLES_PATH / "crawler").absolute().as_uri()
+@pytest.fixture()
+def test_url(samples_path):
+    return (samples_path / "crawler").absolute().as_uri()
 
 
 def content_match(crawler: Crawler, url: str, crawled_page: Path):
@@ -160,7 +158,7 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
 
 
 @pytest.mark.integration
-def test_crawler_loading_wait_time(test_url, tmp_path):
+def test_crawler_loading_wait_time(test_url, tmp_path, samples_path):
     loading_wait_time = 3
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(
@@ -171,7 +169,7 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
 
     paths = [doc.meta["file_path"] for doc in documents]
 
-    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
+    with open(f"{samples_path.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
         dynamic_result_text = dynamic_result.readlines()
         for path in paths:
             with open(path, "r") as crawled_file:
