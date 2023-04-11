@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Dict
+from typing import Optional, Dict, Union, List
 import logging
 
 from transformers.pipelines import get_task
@@ -116,12 +116,15 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
         return generated_texts
 
-    def _ensure_token_limit(self, prompt: str) -> str:
+    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
+        # TODO: new implementation incoming for all layers, let's omit this for now
         return prompt
 
     @staticmethod
     def is_inference_endpoint(model_name_or_path: str) -> bool:
-        return model_name_or_path and all(token in model_name_or_path for token in ["https://", "endpoints"])
+        return model_name_or_path is not None and all(
+            token in model_name_or_path for token in ["https://", "endpoints"]
+        )
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
