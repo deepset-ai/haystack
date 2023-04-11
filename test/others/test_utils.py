@@ -12,8 +12,6 @@ from responses import matchers
 
 import _pytest
 
-from haystack.errors import OpenAIRateLimitError
-from haystack.environment import set_pytorch_secure_model_loading
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils import print_answers
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
@@ -23,7 +21,7 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from .. import conftest
-from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture, fail_at_version
+from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, deepset_cloud_fixture, fail_at_version
 
 TEST_CONTEXT = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
@@ -163,16 +161,16 @@ def test_deprecation_later_major_later_minor():
         assert fail_at_version(3, 3)(noop)()
 
 
-def test_convert_files_to_docs():
+def test_convert_files_to_docs(samples_path):
     documents = convert_files_to_docs(
-        dir_path=(SAMPLES_PATH).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
+        dir_path=(samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
     )
     assert documents and len(documents) > 0
 
 
 @pytest.mark.tika
-def test_tika_convert_files_to_docs():
-    documents = tika_convert_files_to_docs(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True)
+def test_tika_convert_files_to_docs(samples_path):
+    documents = tika_convert_files_to_docs(dir_path=samples_path, clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
 
 
@@ -345,7 +343,7 @@ def _insert_noise(input: str, ratio):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_file_to_deepset_cloud(caplog):
+def test_upload_file_to_deepset_cloud(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -370,9 +368,9 @@ def test_upload_file_to_deepset_cloud(caplog):
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     file_paths = [
-        SAMPLES_PATH / "docx/sample_docx.docx",
-        SAMPLES_PATH / "pdf/sample_pdf_1.pdf",
-        SAMPLES_PATH / "docs/doc_1.txt",
+        samples_path / "docx/sample_docx.docx",
+        samples_path / "pdf/sample_pdf_1.pdf",
+        samples_path / "docs/doc_1.txt",
     ]
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
@@ -382,7 +380,7 @@ def test_upload_file_to_deepset_cloud(caplog):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_file_to_deepset_cloud_file_fails(caplog):
+def test_upload_file_to_deepset_cloud_file_fails(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -407,9 +405,9 @@ def test_upload_file_to_deepset_cloud_file_fails(caplog):
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     file_paths = [
-        SAMPLES_PATH / "docx/sample_docx.docx",
-        SAMPLES_PATH / "pdf/sample_pdf_1.pdf",
-        SAMPLES_PATH / "docs/doc_1.txt",
+        samples_path / "docx/sample_docx.docx",
+        samples_path / "pdf/sample_pdf_1.pdf",
+        samples_path / "docs/doc_1.txt",
     ]
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
@@ -1118,7 +1116,7 @@ def test_delete_eval_run():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_eval_set(caplog):
+def test_upload_eval_set(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -1129,14 +1127,14 @@ def test_upload_eval_set(caplog):
 
     client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     with caplog.at_level(logging.INFO):
-        client.upload_evaluation_set(file_path=SAMPLES_PATH / "dc/matching_test_1.csv")
+        client.upload_evaluation_set(file_path=samples_path / "dc/matching_test_1.csv")
         assert f"Successfully uploaded evaluation set file" in caplog.text
         assert f"You can access it now under evaluation set 'matching_test_1.csv'." in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_existing_eval_set(caplog):
+def test_upload_existing_eval_set(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -1147,7 +1145,7 @@ def test_upload_existing_eval_set(caplog):
 
     client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     with caplog.at_level(logging.INFO):
-        client.upload_evaluation_set(file_path=SAMPLES_PATH / "dc/matching_test_1.csv")
+        client.upload_evaluation_set(file_path=samples_path / "dc/matching_test_1.csv")
         assert f"Successfully uploaded evaluation set file" not in caplog.text
         assert f"You can access it now under evaluation set 'matching_test_1.csv'." not in caplog.text
         assert "Evaluation set with the same name already exists." in caplog.text

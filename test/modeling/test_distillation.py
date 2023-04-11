@@ -3,8 +3,6 @@ from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.processor import UnlabeledTextProcessor
 import torch
 
-from ..conftest import SAMPLES_PATH
-
 
 def create_checkpoint(model):
     weights = []
@@ -19,7 +17,7 @@ def assert_weight_change(weights, new_weights):
     assert not any(torch.equal(old_weight, new_weight) for old_weight, new_weight in zip(weights, new_weights))
 
 
-def test_prediction_layer_distillation():
+def test_prediction_layer_distillation(samples_path):
     student = FARMReader(model_name_or_path="prajjwal1/bert-mini", num_processes=0)
     teacher = FARMReader(model_name_or_path="prajjwal1/bert-small", num_processes=0)
 
@@ -30,7 +28,7 @@ def test_prediction_layer_distillation():
 
     student_weights.pop(-2)  # pooler is not updated due to different attention head
 
-    student.distil_prediction_layer_from(teacher, data_dir=SAMPLES_PATH / "squad", train_filename="tiny.json")
+    student.distil_prediction_layer_from(teacher, data_dir=samples_path / "squad", train_filename="tiny.json")
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
@@ -43,7 +41,7 @@ def test_prediction_layer_distillation():
     assert_weight_change(student_weights, new_student_weights)
 
 
-def test_intermediate_layer_distillation():
+def test_intermediate_layer_distillation(samples_path):
     student = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_4L_312D")
     teacher = FARMReader(model_name_or_path="bert-base-uncased")
 
@@ -56,7 +54,7 @@ def test_intermediate_layer_distillation():
     student_weights.pop(-1)  # pooler is not updated due to different attention head
 
     student.distil_intermediate_layers_from(
-        teacher_model=teacher, data_dir=SAMPLES_PATH / "squad", train_filename="tiny.json"
+        teacher_model=teacher, data_dir=samples_path / "squad", train_filename="tiny.json"
     )
 
     # create new checkpoint
@@ -71,7 +69,7 @@ def test_intermediate_layer_distillation():
     assert_weight_change(student_weights, new_student_weights)
 
 
-def test_intermediate_layer_distillation_from_scratch():
+def test_intermediate_layer_distillation_from_scratch(samples_path):
     student = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_4L_312D")
     teacher = FARMReader(model_name_or_path="bert-base-uncased")
 
@@ -87,10 +85,10 @@ def test_intermediate_layer_distillation_from_scratch():
         tokenizer=teacher.inferencer.processor.tokenizer,
         max_seq_len=128,
         train_filename="doc_2.txt",
-        data_dir=SAMPLES_PATH / "docs",
+        data_dir=samples_path / "docs",
     )
     student.distil_intermediate_layers_from(
-        teacher_model=teacher, data_dir=SAMPLES_PATH / "squad", train_filename="tiny.json", processor=processor
+        teacher_model=teacher, data_dir=samples_path / "squad", train_filename="tiny.json", processor=processor
     )
 
     # create new checkpoint

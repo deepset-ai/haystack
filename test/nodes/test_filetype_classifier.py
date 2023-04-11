@@ -6,8 +6,6 @@ import pytest
 import haystack
 from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT_TYPES
 
-from ..conftest import SAMPLES_PATH
-
 
 @pytest.mark.unit
 def test_filetype_classifier_single_file(tmp_path):
@@ -66,10 +64,10 @@ def test_filetype_classifier_duplicate_custom_extensions():
 
 @pytest.mark.unit
 @pytest.mark.skipif(platform.system() in ["Windows", "Darwin"], reason="python-magic not available")
-def test_filetype_classifier_text_files_without_extension():
+def test_filetype_classifier_text_files_without_extension(samples_path):
     tested_types = ["docx", "html", "odt", "pdf", "pptx", "txt"]
     node = FileTypeClassifier(supported_types=tested_types)
-    test_files = [SAMPLES_PATH / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]
+    test_files = [samples_path / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]
 
     for edge_index, test_file in enumerate(test_files):
         output, edge = node.run(test_file)
@@ -79,10 +77,10 @@ def test_filetype_classifier_text_files_without_extension():
 
 @pytest.mark.unit
 @pytest.mark.skipif(platform.system() in ["Windows", "Darwin"], reason="python-magic not available")
-def test_filetype_classifier_other_files_without_extension():
+def test_filetype_classifier_other_files_without_extension(samples_path):
     tested_types = ["gif", "jpg", "mp3", "png", "wav", "zip"]
     node = FileTypeClassifier(supported_types=tested_types)
-    test_files = [SAMPLES_PATH / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]
+    test_files = [samples_path / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]
 
     for edge_index, test_file in enumerate(test_files):
         output, edge = node.run(test_file)
@@ -91,7 +89,7 @@ def test_filetype_classifier_other_files_without_extension():
 
 
 @pytest.mark.unit
-def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, caplog):
+def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, caplog, samples_path):
     try:
         monkeypatch.delattr(haystack.nodes.file_classifier.file_type, "magic")
     except AttributeError:
@@ -101,5 +99,5 @@ def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, 
     node = FileTypeClassifier(supported_types=[""])
 
     with caplog.at_level(logging.ERROR):
-        node.run(SAMPLES_PATH / "extensionless_files" / f"pdf_file")
+        node.run(samples_path / "extensionless_files" / f"pdf_file")
         assert "'python-magic' is not installed" in caplog.text

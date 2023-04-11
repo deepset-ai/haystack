@@ -3,8 +3,6 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from ..conftest import SAMPLES_PATH, fail_at_version
-
 LABELS = [
     Label(
         query="some",

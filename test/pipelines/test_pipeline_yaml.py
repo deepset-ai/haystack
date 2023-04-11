@@ -17,7 +17,7 @@ from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError, DocumentStoreError
 from haystack.nodes.base import BaseComponent
 
-from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
+from ..conftest import MockNode, MockDocumentStore, MockReader, MockRetriever
 from .. import conftest
 
 
@@ -59,8 +59,8 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
-def test_load_and_save_from_yaml(tmp_path):
-    config_path = SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml"
+def test_load_and_save_from_yaml(tmp_path, samples_path):
+    config_path = samples_path / "pipeline" / "test.haystack-pipeline.yml"
 
     # Test the indexing pipeline:
     # Load it
@@ -69,7 +69,7 @@ def test_load_and_save_from_yaml(tmp_path):
     # Check if it works
     indexing_pipeline.get_document_store().delete_documents()
     assert indexing_pipeline.get_document_store().get_document_count() == 0
-    indexing_pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
+    indexing_pipeline.run(file_paths=samples_path / "pdf" / "sample_pdf_1.pdf")
     assert indexing_pipeline.get_document_store().get_document_count() > 0
 
     # Save it
@@ -181,9 +181,9 @@ def test_load_yaml_elasticsearch_not_responding(tmp_path):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="indexing_pipeline")
 
 
-def test_load_yaml_non_existing_file():
+def test_load_yaml_non_existing_file(samples_path):
     with pytest.raises(FileNotFoundError):
-        Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "I_dont_exist.yml")
+        Pipeline.load_from_yaml(path=samples_path / "pipeline" / "I_dont_exist.yml")
 
 
 def test_load_yaml_invalid_yaml(tmp_path):
@@ -1138,8 +1138,8 @@ def test_save_yaml_overwrite(tmp_path):
 
 
 @pytest.mark.parametrize("pipeline_file", ["ray.simple.haystack-pipeline.yml", "ray.advanced.haystack-pipeline.yml"])
-def test_load_yaml_ray_args_in_pipeline(tmp_path, pipeline_file):
+def test_load_yaml_ray_args_in_pipeline(samples_path, pipeline_file):
     with pytest.raises(PipelineConfigError) as e:
         pipeline = Pipeline.load_from_yaml(
-            SAMPLES_PATH / "pipeline" / pipeline_file, pipeline_name="ray_query_pipeline"
+            samples_path / "pipeline" / pipeline_file, pipeline_name="ray_query_pipeline"
         )
