@@ -102,12 +102,19 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 top_k = kwargs.pop("top_k")
                 kwargs["num_return_sequences"] = top_k
             kwargs_with_defaults.update(kwargs)
-        params = {
-            "temperature": kwargs_with_defaults.get("temperature", 0.7),
-            "top_p": kwargs_with_defaults.get("top_p", 0.99),
-            "do_sample": kwargs_with_defaults.get("do_sample", True),
-            "num_return_sequences": kwargs_with_defaults.get("top_k", 1),
-        }
+        # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
+        accepted_params = [
+            "top_p",
+            "top_k",
+            "temperature",
+            "repetition_penalty",
+            "max_new_tokens",
+            "max_time",
+            "return_full_text",
+            "num_return_sequences",
+            "do_sample",
+        ]
+        params = {key: kwargs_with_defaults.get(key) for key in accepted_params if key in kwargs_with_defaults}
         json_data = {"inputs": prompt, "parameters": params}
         response = request_with_retry(
             method="POST", url=self.url, headers=self.headers, json=json_data, timeout=HF_TIMEOUT
