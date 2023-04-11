@@ -55,13 +55,13 @@ def request_with_retry(attempts: int = 3, status_codes: Optional[List[int]] = No
     res = request_with_retry(method="GET", url="https://example.com", status_codes=list(range(500, 600)))
 
     :param attempts: Maximum number of attempts to retry the request, defaults to 3
-    :param status_codes: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429]
+    :param status_codes: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429, 503]
     :param **kwargs: Optional arguments that ``request`` takes.
     :return: :class:`Response <Response>` object
     """
 
     if status_codes is None:
-        status_codes = [408, 418, 429]
+        status_codes = [408, 418, 429, 503]
 
     @retry(
         reraise=True,
