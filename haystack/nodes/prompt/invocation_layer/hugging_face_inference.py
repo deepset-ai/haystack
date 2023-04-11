@@ -95,6 +95,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide prompt in kwargs."
             )
+        stop_words = kwargs.pop("stop_words", None)
 
         kwargs_with_defaults = self.model_input_kwargs
         if kwargs:
@@ -121,6 +122,15 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         )
         output = json.loads(response.text)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        if stop_words:
+            for idx, _ in enumerate(generated_texts):
+                earliest_stop_word_idx = len(generated_texts[idx])
+                for stop_word in stop_words:
+                    stop_word_idx = generated_texts[idx].find(stop_word)
+                    if stop_word_idx != -1:
+                        earliest_stop_word_idx = min(earliest_stop_word_idx, stop_word_idx)
+                generated_texts[idx] = generated_texts[idx][:earliest_stop_word_idx]
+
         return generated_texts
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
