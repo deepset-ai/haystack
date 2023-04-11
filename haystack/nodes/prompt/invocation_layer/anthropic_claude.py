@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Union, Optional, cast
+from typing import Dict, List, Union, Optional
 import json
 import logging
 
@@ -10,7 +10,6 @@ from haystack.errors import AnthropicError, AnthropicRateLimitError, AnthropicUn
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
 from haystack.utils.requests import request_with_retry
-from haystack.utils.openai_utils import USE_TIKTOKEN
 from haystack.environment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
 
 ANTHROPIC_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
@@ -66,19 +65,10 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
-        tokenizer_name = "gpt2"
         # Number of max tokens is based on the official Anthropic model pricing from:
         # https://cdn2.assets-servd.host/anthropic-website/production/images/FINAL-PRICING.pdf
         self.max_tokens_limit = 9000
-        self._tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer_name)
-
-    @property
-    def url(self) -> str:
-        return "https://api.anthropic.com/v1/complete"
-
-    @property
-    def headers(self) -> Dict[str, str]:
-        return {"x-api-key": self.api_key, "Content-Type": "application/json"}
+        self._tokenizer: GPT2TokenizerFast = GPT2TokenizerFast.from_pretrained("gpt2")
 
     def invoke(self, *args, **kwargs):
         """
@@ -160,14 +150,9 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             self.max_tokens_limit,
         )
 
-        if USE_TIKTOKEN:
-            tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
-        else:
-            tokenized_payload = self._tokenizer.tokenize(prompt)
-            decoded_string = self._tokenizer.convert_tokens_to_string(
-                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
-            )
+        tokenized_payload = self._tokenizer.tokenize(prompt)
+        token_limit = self.max_tokens_limit - n_answer_tokens
+        decoded_string = self._tokenizer.convert_tokens_to_string(tokenized_payload[:token_limit])
         return decoded_string
 
     def _post(
@@ -179,7 +164,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         **kwargs,
     ):
         """
-        Post data to Anthropic using this invocation layer url and headers.
+        Post data to Anthropic.
         Retries request in case it fails with any code in status_codes
         or with timeout.
         All kwargs will be passed to ``requests.request``, so it accepts the same arguments.
@@ -200,8 +185,8 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             attempts=attempts,
             status_codes=status_codes,
             method="POST",
-            url=self.url,
-            headers=self.headers,
+            url="https://api.anthropic.com/v1/complete",
+            headers={"x-api-key": self.api_key, "Content-Type": "application/json"},
             data=data,
             timeout=timeout,
             **kwargs,
