@@ -98,6 +98,8 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         stop_words = kwargs.pop("stop_words", None)
 
         kwargs_with_defaults = self.model_input_kwargs
+        if "max_new_tokens" not in kwargs_with_defaults:
+            kwargs_with_defaults["max_new_tokens"] = self.max_length
         if kwargs:
             if "top_k" in kwargs:
                 top_k = kwargs.pop("top_k")
