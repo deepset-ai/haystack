@@ -66,11 +66,11 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
-        (tokenizer_name, max_tokens_limit) = _anthropic_text_completion_tokenization_details(
-            model_name=self.model_name_or_path
-        )
-        self.max_tokens_limit = max_tokens_limit
-        self._tokenizer = load_anthropic_tokenizer(tokenizer_name=tokenizer_name)
+        tokenizer_name = "gpt2"
+        # Number of max tokens is based on the official Anthropic model pricing from:
+        # https://cdn2.assets-servd.host/anthropic-website/production/images/FINAL-PRICING.pdf
+        self.max_tokens_limit = 9000
+        self._tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer_name)
 
     @property
     def url(self) -> str:
@@ -145,7 +145,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         If needed, truncate the prompt text so that it fits within the limit.
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = count_anthropic_tokens(cast(str, prompt), self._tokenizer)
+        n_prompt_tokens = len(self._tokenizer.tokenize(prompt))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
@@ -232,52 +232,3 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             "claude-instant-v1",
             "claude-instant-v1.0",
         ]
-
-
-def load_anthropic_tokenizer(tokenizer_name: str):
-    """Load the GPT2TokenizerFast from the transformers library.
-
-    :param tokenizer_name: The name of the tokenizer to load.
-    """
-    logger.debug("Using GPT2TokenizerFast tokenizer")
-    tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer_name)
-    return tokenizer
-
-
-def count_anthropic_tokens(text: str, tokenizer) -> int:
-    """Count the number of tokens in `text` based on the `tokenizer`.
-
-    :param text: A string to be tokenized.
-    :param tokenizer: An OpenAI tokenizer.
-    """
-    return len(tokenizer.tokenize(text))
-
-
-def count_anthropic_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> int:
-    """Count the number of tokens in `messages` based on the `tokenizer` provided.
-
-    :param messages: The messages to be tokenized.
-    :param tokenizer: An tokenizer.
-    """
-    num_tokens = 0
-    for message in messages:
-        num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
-        for key, value in message.items():
-            num_tokens += len(tokenizer.tokenize(value))
-            if key == "name":  # if there's a name, the role is omitted
-                num_tokens += -1  # role is always required and always 1 token
-    num_tokens += 2  # every reply is primed with <im_start>assistant
-    return num_tokens
-
-
-def _anthropic_text_completion_tokenization_details(model_name: str):
-    """Return the tokenizer name and max tokens limit for a given Anthropic `model_name`.
-
-    :param model_name: Name of the Anthropic model.
-    """
-    tokenizer_name = "gpt2"
-    max_tokens_limit = (
-        9000  # Based on this ref: https://cdn2.assets-servd.host/anthropic-website/production/images/FINAL-PRICING.pdf
-    )
-
-    return tokenizer_name, max_tokens_limit
