@@ -225,12 +225,13 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         Ensures Anthropic Claude Invocation Layer is selected only when Claude models are specified in
         the model name.
         """
-        valid_model = any(
-            m
-            for m in ["claude-v1", "claude-v1.0", "claude-v1.2", "claude-instant-v1", "claude-instant-v1.0"]
-            if m in model_name_or_path
-        )
-        return valid_model
+        return model_name_or_path in [
+            "claude-v1",
+            "claude-v1.0",
+            "claude-v1.2",
+            "claude-instant-v1",
+            "claude-instant-v1.0",
+        ]
 
 
 def load_anthropic_tokenizer(tokenizer_name: str):
