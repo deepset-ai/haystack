@@ -7,7 +7,7 @@ import pytest
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
-from haystack.nodes.prompt.providers import HFLocalInvocationLayer
+from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
 
 
 def skip_test_for_invalid_key(prompt_model):

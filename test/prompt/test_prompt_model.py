@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 import pytest
 
 from haystack.nodes.prompt.prompt_model import PromptModel
-from haystack.nodes.prompt.providers import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 
 from .conftest import create_mock_layer_that_supports
 
