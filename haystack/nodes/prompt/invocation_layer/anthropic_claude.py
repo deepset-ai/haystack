@@ -97,23 +97,19 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             )
 
         kwargs_with_defaults = self.model_input_kwargs
-        if kwargs:
-            # we use keyword stop_words but Anthropic uses stop_sequences
-            if "stop_words" in kwargs:
-                kwargs["stop_sequences"] = kwargs.pop("stop_words")
-            if "max_tokens" in kwargs:
-                kwargs["max_tokens_to_sample"] = kwargs.pop("max_tokens")
-            kwargs_with_defaults.update(kwargs)
+
+        # we use keyword stop_words but Anthropic uses stop_sequences
+        if "stop_words" in kwargs:
+            kwargs["stop_sequences"] = kwargs.pop("stop_words")
+        if "max_tokens" in kwargs:
+            kwargs["max_tokens_to_sample"] = kwargs.pop("max_tokens")
+        kwargs_with_defaults.update(kwargs)
 
         # either stream is True (will use default handler) or stream_handler is provided
         stream = (
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
-        # check if stop_sequences is None, and if so, set it to default
-        if kwargs["stop_sequences"] is None:
-            stop_sequences = ["\n\nHuman: "]
-        else:
-            stop_sequences = kwargs["stop_sequences"]
+        stop_sequences = kwargs.get("stop_sequences", ["\n\nHuman: "])
 
         data = {
             "model": self.model_name_or_path,
@@ -129,21 +125,20 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         if not stream:
             res = self._post(data=data)
             return [res.json()["completion"].strip()]
-        else:
-            res = self._post(data=data, stream=True)
 
-            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            client = sseclient.SSEClient(res)
-            tokens: List[str] = []
-            try:
-                for event in client.events():
-                    if event.data != TokenStreamingHandler.DONE_MARKER:
-                        ed = json.loads(event.data)
-                        token: str = ed["choices"][0]["text"]
-                        tokens.append(handler(token, event_data=ed["completion"]))
-            finally:
-                client.close()
-            return ["".join(tokens)]  # return a list of strings just like non-streaming
+        res = self._post(data=data, stream=True)
+        handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+        client = sseclient.SSEClient(res)
+        tokens: List[str] = []
+        try:
+            for event in client.events():
+                if event.data != TokenStreamingHandler.DONE_MARKER:
+                    ed = json.loads(event.data)
+                    token: str = ed["choices"][0]["text"]
+                    tokens.append(handler(token, event_data=ed["completion"]))
+        finally:
+            client.close()
+        return ["".join(tokens)]  # return a list of strings just like non-streaming
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
