@@ -26,14 +26,14 @@ from haystack.nodes import (
     TikaConverter,
 )
 
-from ..conftest import SAMPLES_PATH, fail_at_version
+from ..conftest import fail_at_version
 
 
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter])
-def test_convert(Converter):
+def test_convert(Converter, samples_path):
     converter = Converter()
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]["documents"][0]
+    document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_1.pdf")[0]["documents"][0]
     pages = document.content.split("\f")
 
     assert (
@@ -52,12 +52,12 @@ def test_convert(Converter):
 # Marked as integration because it uses poppler, which is not installed in the unit tests suite
 @pytest.mark.integration
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Poppler not installed on Windows CI")
-def test_pdftoppm_command_format():
+def test_pdftoppm_command_format(samples_path):
     # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
     # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
     # This test runs pdftoppm directly to check whether pdftoppm accepts the command format that pdf2image uses in Haystack
     proc = subprocess.Popen(
-        ["pdftoppm", f"{SAMPLES_PATH}/pdf/sample_pdf_1.pdf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ["pdftoppm", f"{samples_path}/pdf/sample_pdf_1.pdf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     out, err = proc.communicate()
     # If usage info of pdftoppm is sent to stderr then it's because Haystack's pdf2image uses an incompatible command format
@@ -68,10 +68,10 @@ def test_pdftoppm_command_format():
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_command_whitespaces(Converter):
+def test_pdf_command_whitespaces(Converter, samples_path):
     converter = Converter()
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample pdf file with spaces on file name.pdf")[0][
+    document = converter.run(file_paths=samples_path / "pdf" / "sample pdf file with spaces on file name.pdf")[0][
         "documents"
     ][0]
     assert "ɪ" in document.content
@@ -79,41 +79,41 @@ def test_pdf_command_whitespaces(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_encoding(Converter):
+def test_pdf_encoding(Converter, samples_path):
     converter = Converter()
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_5.pdf")[0]["documents"][0]
+    document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_5.pdf")[0]["documents"][0]
     assert "Ж" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
+    document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
     assert "ɪ" in document.content
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_sort_by_position(Converter):
+def test_pdf_sort_by_position(Converter, samples_path):
     converter = Converter(sort_by_position=True)
 
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_3.pdf")[0]
     assert str(document.content).startswith("This is the second test sentence.")
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_ligatures(Converter):
+def test_pdf_ligatures(Converter, samples_path):
     converter = Converter()
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
+    document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
     assert "ﬀ" not in document.content
     assert "ɪ" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={})[0]["documents"][
+    document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_2.pdf", known_ligatures={})[0]["documents"][
         0
     ]
     assert "ﬀ" in document.content
     assert "ɪ" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={"ɪ": "i"})[0][
+    document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_2.pdf", known_ligatures={"ɪ": "i"})[0][
         "documents"
     ][0]
     assert "ﬀ" in document.content
@@ -122,9 +122,9 @@ def test_pdf_ligatures(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_page_range(Converter):
+def test_pdf_page_range(Converter, samples_path):
     converter = Converter()
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
     pages = document.content.split("\f")
 
     assert (
@@ -137,9 +137,9 @@ def test_pdf_page_range(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_page_range_numbers(Converter):
+def test_pdf_page_range_numbers(Converter, samples_path):
     converter = Converter()
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", start_page=2)[0]
 
     preprocessor = PreProcessor(
         split_by="word", split_length=5, split_overlap=0, split_respect_sentence_boundary=False, add_page_number=True
@@ -151,9 +151,9 @@ def test_pdf_page_range_numbers(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_parallel(Converter):
+def test_pdf_parallel(Converter, samples_path):
     converter = Converter(multiprocessing=True)
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_6.pdf")[0]
 
     pages = document.content.split("\f")
 
@@ -163,9 +163,9 @@ def test_pdf_parallel(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_parallel_page_range(Converter):
+def test_pdf_parallel_page_range(Converter, samples_path):
     converter = Converter(multiprocessing=True)
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf", start_page=2)[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_6.pdf", start_page=2)[0]
 
     pages = document.content.split("\f")
 
@@ -175,9 +175,9 @@ def test_pdf_parallel_page_range(Converter):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_parallel_sort_by_position(Converter):
+def test_pdf_parallel_sort_by_position(Converter, samples_path):
     converter = Converter(multiprocessing=True, sort_by_position=True)
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_6.pdf")[0]
 
     pages = document.content.split("\f")
 
@@ -187,9 +187,9 @@ def test_pdf_parallel_sort_by_position(Converter):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
-def test_pdf_parallel_ocr(Converter):
+def test_pdf_parallel_ocr(Converter, samples_path):
     converter = Converter(multiprocessing=True, sort_by_position=True, ocr="full", ocr_language="eng")
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_6.pdf")[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_6.pdf")[0]
 
     pages = document.content.split("\f")
 
@@ -212,10 +212,10 @@ def test_deprecated_encoding():
 
 
 @fail_at_version(1, 17)
-def test_deprecated_encoding_in_convert_method():
+def test_deprecated_encoding_in_convert_method(samples_path):
     converter = PDFToTextConverter()
     with pytest.warns(DeprecationWarning):
-        converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
+        converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
 
 
 @fail_at_version(1, 17)
@@ -225,17 +225,17 @@ def test_deprecated_keep_physical_layout():
 
 
 @fail_at_version(1, 17)
-def test_deprecated_keep_physical_layout_in_convert_method():
+def test_deprecated_keep_physical_layout_in_convert_method(samples_path):
     converter = PDFToTextConverter()
     with pytest.warns(DeprecationWarning):
-        converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf", keep_physical_layout=True)
+        converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", keep_physical_layout=True)
 
 
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-def test_table_removal(Converter):
+def test_table_removal(Converter, samples_path):
     converter = Converter(remove_numeric_tables=True)
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf")[0]
     pages = document.content.split("\f")
     # assert numeric rows are removed from the table.
     assert "324" not in pages[0]
@@ -244,33 +244,33 @@ def test_table_removal(Converter):
 
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-def test_language_validation(Converter, caplog):
+def test_language_validation(Converter, caplog, samples_path):
     converter = Converter(valid_languages=["en"])
-    converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
+    converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf")
     assert "sample_pdf_1.pdf is not one of ['en']." not in caplog.text
 
     converter = Converter(valid_languages=["de"])
-    converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
+    converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf")
     assert "sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
 @pytest.mark.unit
-def test_docx_converter():
+def test_docx_converter(samples_path):
     converter = DocxToTextConverter()
-    document = converter.convert(file_path=SAMPLES_PATH / "docx" / "sample_docx.docx")[0]
+    document = converter.convert(file_path=samples_path / "docx" / "sample_docx.docx")[0]
     assert document.content.startswith("Sample Docx File")
 
 
 @pytest.mark.unit
-def test_markdown_converter():
+def test_markdown_converter(samples_path):
     converter = MarkdownConverter()
-    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    document = converter.convert(file_path=samples_path / "markdown" / "sample.md")[0]
     assert document.content.startswith("\nWhat to build with Haystack")
     assert "# git clone https://github.com/deepset-ai/haystack.git" not in document.content
 
 
 @pytest.mark.unit
-def test_markdown_converter_headline_extraction():
+def test_markdown_converter_headline_extraction(samples_path):
     expected_headlines = [
         ("What to build with Haystack", 1),
         ("Core Features", 1),
@@ -280,7 +280,7 @@ def test_markdown_converter_headline_extraction():
     ]
 
     converter = MarkdownConverter(extract_headlines=True, remove_code_snippets=False)
-    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    document = converter.convert(file_path=samples_path / "markdown" / "sample.md")[0]
 
     # Check if correct number of headlines are extracted
     assert len(document.meta["headlines"]) == 5
@@ -296,21 +296,21 @@ def test_markdown_converter_headline_extraction():
 
 
 @pytest.mark.unit
-def test_markdown_converter_frontmatter_to_meta():
+def test_markdown_converter_frontmatter_to_meta(samples_path):
     converter = MarkdownConverter(add_frontmatter_to_meta=True)
-    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    document = converter.convert(file_path=samples_path / "markdown" / "sample.md")[0]
     assert document.meta["type"] == "intro"
     assert document.meta["date"] == "1.1.2023"
 
 
 @pytest.mark.unit
-def test_markdown_converter_remove_code_snippets():
+def test_markdown_converter_remove_code_snippets(samples_path):
     converter = MarkdownConverter(remove_code_snippets=False)
-    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+    document = converter.convert(file_path=samples_path / "markdown" / "sample.md")[0]
     assert document.content.startswith("pip install farm-haystack")
 
 
-def test_azure_converter():
+def test_azure_converter(samples_path):
     # Check if Form Recognizer endpoint and credential key in environment variables
     if "AZURE_FORMRECOGNIZER_ENDPOINT" in os.environ and "AZURE_FORMRECOGNIZER_KEY" in os.environ:
         converter = AzureConverter(
@@ -319,7 +319,7 @@ def test_azure_converter():
             save_json=True,
         )
 
-        docs = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
+        docs = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf")
         assert len(docs) == 2
         assert docs[0].content_type == "table"
         assert docs[0].content.shape[0] == 4  # number of rows
@@ -340,10 +340,10 @@ def test_azure_converter():
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
-def test_parsr_converter():
+def test_parsr_converter(samples_path):
     converter = ParsrConverter()
 
-    docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf").absolute()))
+    docs = converter.convert(file_path=str((samples_path / "pdf" / "sample_pdf_1.pdf").absolute()))
     assert len(docs) == 2
     assert docs[0].content_type == "table"
     assert docs[0].content.shape[0] == 4  # number of rows
@@ -365,7 +365,7 @@ def test_parsr_converter():
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
-def test_parsr_converter_headline_extraction():
+def test_parsr_converter_headline_extraction(samples_path):
     expected_headlines = [
         [("Lorem ipsum", 1), ("Cras fringilla ipsum magna, in fringilla dui commodo\na.", 2)],
         [
@@ -380,7 +380,7 @@ def test_parsr_converter_headline_extraction():
 
     converter = ParsrConverter()
 
-    docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_4.pdf").absolute()))
+    docs = converter.convert(file_path=str((samples_path / "pdf" / "sample_pdf_4.pdf").absolute()))
     assert len(docs) == 2
 
     for doc, expectation in zip(docs, expected_headlines):
@@ -397,8 +397,8 @@ def test_parsr_converter_headline_extraction():
 
 
 @pytest.mark.unit
-def test_id_hash_keys_from_pipeline_params():
-    doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
+def test_id_hash_keys_from_pipeline_params(samples_path):
+    doc_path = samples_path / "docs" / "doc_1.txt"
     meta_1 = {"key": "a"}
     meta_2 = {"key": "b"}
     meta = [meta_1, meta_2]
