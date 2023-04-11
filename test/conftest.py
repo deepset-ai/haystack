@@ -2,7 +2,6 @@ import warnings
 from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
-from uuid import UUID
 import gc
 import logging
 from pathlib import Path
@@ -16,7 +15,6 @@ from sqlalchemy import create_engine, text
 import posthog
 
 import numpy as np
-import psutil
 import pytest
 
 from haystack import Answer, BaseComponent, __version__ as haystack_version
@@ -33,15 +31,11 @@ from haystack.document_stores import (
 from haystack.nodes import (
     BaseReader,
     BaseRetriever,
-    OpenAIAnswerGenerator,
     BaseGenerator,
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
-    Seq2SeqGenerator,
     RAGenerator,
-    SentenceTransformersRanker,
-    TransformersDocumentClassifier,
     FilterRetriever,
     BM25Retriever,
     TfidfRetriever,
@@ -53,22 +47,17 @@ from haystack.nodes import (
     TransformersReader,
     TableReader,
     RCIReader,
-    TransformersSummarizer,
     QuestionGenerator,
     PromptTemplate,
 )
-from haystack.modeling.infer import Inferencer, QAInferencer
-from haystack.nodes.prompt import PromptNode, PromptModel
-from haystack.nodes.sampler.top_p_sampler import TopPSampler
+from haystack.nodes.prompt import PromptNode
 from haystack.schema import Document, FilterType
-from haystack.utils.import_utils import _optional_component_not_installed
 
 from .mocks import pinecone as pinecone_mock
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-SAMPLES_PATH = Path(__file__).parent / "samples"
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
@@ -406,6 +395,11 @@ class MockPromptNode(PromptNode):
             return PromptTemplate(name="", prompt_text="")
 
 
+@pytest.fixture
+def test_rootdir() -> Path:
+    return Path(__file__).parent.absolute()
+
+
 #
 # Document collections
 #
@@ -446,43 +440,6 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
 @pytest.fixture
 def docs(docs_all_formats) -> List[Document]:
     return [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs_all_formats]
-
-
-@pytest.fixture
-def docs_with_ids(docs) -> List[Document]:
-    # Should be already sorted
-    uuids = [
-        UUID("190a2421-7e48-4a49-a639-35a86e202dfb"),
-        UUID("20ff1706-cb55-4704-8ae8-a3459774c8dc"),
-        UUID("5078722f-07ae-412d-8ccb-b77224c4bacb"),
-        UUID("81d8ca45-fad1-4d1c-8028-d818ef33d755"),
-        UUID("f985789f-1673-4d8f-8d5f-2b8d3a9e8e23"),
-    ]
-    uuids.sort()
-    for doc, uuid in zip(docs, uuids):
-        doc.id = str(uuid)
-    return docs
-
-
-@pytest.fixture
-def docs_with_random_emb(docs) -> List[Document]:
-    for doc in docs:
-        doc.embedding = np.random.random([768])
-    return docs
-
-
-@pytest.fixture
-def docs_with_true_emb():
-    return [
-        Document(
-            content="The capital of Germany is the city state of Berlin.",
-            embedding=np.loadtxt(SAMPLES_PATH / "embeddings" / "embedding_1.txt"),
-        ),
-        Document(
-            content="Berlin is the capital and largest city of Germany by both area and population.",
-            embedding=np.loadtxt(SAMPLES_PATH / "embeddings" / "embedding_2.txt"),
-        ),
-    ]
 
 
 @pytest.fixture(autouse=True)
@@ -530,39 +487,8 @@ def rag_generator():
 
 
 @pytest.fixture
-def openai_generator():
-    azure_conf = haystack_azure_conf()
-    if azure_conf:
-        return OpenAIAnswerGenerator(
-            api_key=azure_conf["api_key"],
-            azure_base_url=azure_conf["azure_base_url"],
-            azure_deployment_name=azure_conf["azure_deployment_name"],
-            model="text-babbage-001",
-            top_k=1,
-        )
-    else:
-        return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
-
-
-@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
-
-
-@pytest.fixture
-def lfqa_generator(request):
-    return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
-
-
-@pytest.fixture
-def reader_without_normalized_scores():
-    return FARMReader(
-        model_name_or_path="deepset/bert-medium-squad2-distilled",
-        use_gpu=False,
-        top_k_per_sample=5,
-        num_processes=0,
-        use_confidence_scores=False,
-    )
 
 
 @pytest.fixture(params=["farm", "transformers"], scope="module")
@@ -598,55 +524,6 @@ def table_reader_and_param(request):
             ),
             request.param,
         )
-
-
-@pytest.fixture
-def ranker_two_logits():
-    return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
-
-
-@pytest.fixture
-def ranker():
-    return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-
-
-@pytest.fixture
-def top_p_sampler():
-    return TopPSampler()
-
-
-@pytest.fixture
-def document_classifier():
-    return TransformersDocumentClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, top_k=2
-    )
-
-
-@pytest.fixture
-def zero_shot_document_classifier():
-    return TransformersDocumentClassifier(
-        model_name_or_path="cross-encoder/nli-distilroberta-base",
-        use_gpu=False,
-        task="zero-shot-classification",
-        labels=["negative", "positive"],
-    )
-
-
-@pytest.fixture
-def batched_document_classifier():
-    return TransformersDocumentClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, batch_size=16
-    )
-
-
-@pytest.fixture
-def indexing_document_classifier():
-    return TransformersDocumentClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-        use_gpu=False,
-        batch_size=16,
-        classification_field="class_field",
-    )
 
 
 @pytest.fixture(params=["es_filter_only", "bm25", "dpr", "embedding", "tfidf", "table_text_retriever"])
@@ -779,27 +656,6 @@ def document_store(request, tmp_path, monkeypatch: pytest.MonkeyPatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "pinecone"])
-def document_store_dot_product(request, tmp_path, monkeypatch):
-    if request.param == "pinecone":
-        mock_pinecone(monkeypatch)
-
-    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(
-        document_store_type=request.param,
-        embedding_dim=embedding_dim.args[0],
-        similarity="dot_product",
-        tmp_path=tmp_path,
-    )
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
-@pytest.fixture
-def sql_url(tmp_path):
-    return get_sql_url(tmp_path)
-
-
 def get_sql_url(tmp_path):
     if SQL_TYPE == "postgres":
         return "postgresql://postgres:postgres@127.0.0.1/postgres"
@@ -807,6 +663,7 @@ def get_sql_url(tmp_path):
         return f"sqlite:///{tmp_path}/haystack_test.db"
 
 
+# TODO: Verify this is still necessary as it's called by no one
 def setup_postgres():
     # status = subprocess.run(["docker run --name postgres_test -d -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres"], shell=True)
     # if status.returncode:
@@ -824,6 +681,7 @@ def setup_postgres():
         connection.execute(text('SET SESSION idle_in_transaction_session_timeout = "1s";'))
 
 
+# TODO: Verify this is still necessary as it's called by no one
 def teardown_postgres():
     engine = create_engine("postgresql://postgres:postgres@127.0.0.1/postgres", isolation_level="AUTOCOMMIT")
     with engine.connect() as connection:
@@ -921,40 +779,6 @@ def get_document_store(
 
 
 @pytest.fixture
-def adaptive_model_qa(num_processes):
-    """
-    PyTest Fixture for a Question Answering Inferencer based on PyTorch.
-    """
-
-    model = Inferencer.load(
-        "deepset/bert-medium-squad2-distilled",
-        task_type="question_answering",
-        batch_size=16,
-        num_processes=num_processes,
-        gpu=False,
-    )
-    yield model
-
-    # check if all workers (sub processes) are closed
-    current_process = psutil.Process()
-    children = current_process.children()
-    if len(children) != 0:
-        logging.error("Not all the subprocesses are closed! %s are still running.", len(children))
-
-
-@pytest.fixture
-def bert_base_squad2(request):
-    model = QAInferencer.load(
-        "deepset/minilm-uncased-squad2",
-        task_type="question_answering",
-        batch_size=4,
-        num_processes=0,
-        multithreading_rust=False,
-        use_fast=True,  # TODO parametrize this to test slow as well
-    )
-    return model
-
-
 def haystack_azure_conf():
     api_key = os.environ.get("AZURE_OPENAI_API_KEY", None)
     azure_base_url = os.environ.get("AZURE_OPENAI_BASE_URL", None)
@@ -966,7 +790,7 @@ def haystack_azure_conf():
 
 
 @pytest.fixture
-def haystack_openai_config(request):
+def haystack_openai_config(request, haystack_azure_conf):
     if request.param == "openai":
         api_key = os.environ.get("OPENAI_API_KEY", None)
         if not api_key:
@@ -974,48 +798,11 @@ def haystack_openai_config(request):
         else:
             return {"api_key": api_key, "embedding_model": "text-embedding-ada-002"}
     elif request.param == "azure":
-        return haystack_azure_conf()
+        return haystack_azure_conf
 
     return {}
 
 
 @pytest.fixture
-def prompt_model(request):
-    if request.param == "openai":
-        api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
-        if api_key is None or api_key == "":
-            api_key = "KEY_NOT_FOUND"
-        return PromptModel("text-davinci-003", api_key=api_key)
-    elif request.param == "azure":
-        api_key = os.environ.get("AZURE_OPENAI_API_KEY", "KEY_NOT_FOUND")
-        if api_key is None or api_key == "":
-            api_key = "KEY_NOT_FOUND"
-        return PromptModel("text-davinci-003", api_key=api_key, model_kwargs=haystack_azure_conf())
-    else:
-        return PromptModel("google/flan-t5-base", devices=["cpu"])
-
-
-@pytest.fixture
-def chatgpt_prompt_model():
-    api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
-    if api_key is None or api_key == "":
-        api_key = "KEY_NOT_FOUND"
-    return PromptModel("gpt-3.5-turbo", api_key=api_key)
-
-
-@pytest.fixture
-def azure_conf():
-    return haystack_azure_conf()
-
-
-@pytest.fixture(autouse=True)
-def request_blocker(request: pytest.FixtureRequest, monkeypatch):
-    """
-    This fixture is applied automatically to all tests.
-    Those that are marked as unit will have the requests module
-    monkeypatched to avoid making HTTP requests by mistake.
-    """
-    marker = request.node.get_closest_marker("unit")
-    if marker is None:
-        return
-    monkeypatch.delattr("requests.sessions.Session")
+def samples_path():
+    return Path(__file__).parent / "samples"
