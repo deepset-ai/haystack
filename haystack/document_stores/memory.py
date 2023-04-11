@@ -24,22 +24,10 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever.dense import DenseRetriever
+from haystack.utils.scipy_utils import expit
+
 
 logger = logging.getLogger(__name__)
-
-
-try:
-    from numba import njit  # pylint: disable=import-error
-except (ImportError, ModuleNotFoundError):
-    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
-
-    def njit(f):
-        return f
-
-
-@njit  # (fastmath=True)
-def expit(x: float) -> float:
-    return 1 / (1 + np.exp(-x))
 
 
 class InMemoryDocumentStore(KeywordDocumentStore):

@@ -17,23 +17,10 @@ from haystack.errors import DuplicateDocumentError, DocumentStoreError, Haystack
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.utils.labels import aggregate_labels
+from haystack.utils.scipy_utils import expit
 
 
 logger = logging.getLogger(__name__)
-
-
-try:
-    from numba import njit  # pylint: disable=import-error
-except (ImportError, ModuleNotFoundError):
-    logger.debug("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
-
-    def njit(f):
-        return f
-
-
-@njit  # (fastmath=True)
-def expit(x: float) -> float:
-    return 1 / (1 + np.exp(-x))
 
 
 class BaseKnowledgeGraph(BaseComponent):
