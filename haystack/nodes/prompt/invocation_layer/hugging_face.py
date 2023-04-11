@@ -204,7 +204,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             # This will fail for all non-HF models
             return False
         # if we are using an api_key it could be HF inference point
-        using_api_key = "api_key" in kwargs
+        using_api_key = kwargs.get("api_key", None) is not None
         return not using_api_key and task_name in ["text2text-generation", "text-generation"]
 
 
