@@ -1,22 +1,20 @@
 import os
-from typing import Dict, List, Tuple, Union, Optional, cast
+from typing import Dict, List, Union, Optional, cast
 import json
 import logging
 
 import sseclient
-import requests
-from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
 from transformers import GPT2TokenizerFast
 
 from haystack.errors import AnthropicError, AnthropicRateLimitError, AnthropicUnauthorizedError
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
+from haystack.utils.requests import request_with_retry
 from haystack.utils.openai_utils import USE_TIKTOKEN
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-)
+from haystack.environment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
+
+ANTHROPIC_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
+ANTHROPIC_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +115,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         else:
             stop_sequences = kwargs["stop_sequences"]
 
-        payload = {
+        data = {
             "model": self.model_name_or_path,
             "prompt": "{} {} {}".format(human_prompt, prompt, assitant_prompt),
             "max_tokens_to_sample": kwargs_with_defaults.get("max_tokens_to_sample", self.max_tokens_to_sample),
@@ -127,18 +125,15 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             "stream": stream,
             "stop_sequences": stop_sequences,
         }
+
         if not stream:
-            res = anthropic_request(url=self.url, headers=self.headers, payload=payload)
-            # _check_openai_finish_reason(result=res, payload=payload)
-            responses = [res["completion"].strip()]
-            return responses
+            res = self._post(data=data)
+            return [res.json()["completion"].strip()]
         else:
-            response = anthropic_request(
-                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
-            )
+            res = self._post(data=data, stream=True)
 
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            client = sseclient.SSEClient(response)
+            client = sseclient.SSEClient(res)
             tokens: List[str] = []
             try:
                 for event in client.events():
@@ -180,6 +175,55 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             )
         return decoded_string
 
+    def _post(
+        self,
+        data: Dict,
+        attempts: int = ANTHROPIC_MAX_RETRIES,
+        status_codes: Optional[List[int]] = None,
+        timeout: float = ANTHROPIC_TIMEOUT,
+        **kwargs,
+    ):
+        """
+        Post data to Anthropic using this invocation layer url and headers.
+        Retries request in case it fails with any code in status_codes
+        or with timeout.
+        All kwargs will be passed to ``requests.request``, so it accepts the same arguments.
+        Returns a ``requests.Response`` object.
+
+        :param data: Object to send in the body of the request
+        :param attempts: Number of times to attempt request in case of failures, defaults to 5
+        :param timeout: How many seconds to wait for the server to send data before giving up, defaults to 30
+        :raises AnthropicRateLimitError: Raised if requests fails with 429 status code
+        :raises AnthropicUnauthorizedError: Raised if requests fail with 401 status code
+        :raises AnthropicError: Raised if requests fail for any other reason
+        :return: :class:`Response <Response>` object
+        """
+        if status_codes is None:
+            status_codes = [429]
+
+        res = request_with_retry(
+            attempts=attempts,
+            status_codes=status_codes,
+            method="POST",
+            url=self.url,
+            headers=self.headers,
+            data=data,
+            timeout=timeout,
+            **kwargs,
+        )
+
+        if res.status_code == 429:
+            raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")
+        if res.status_code == 401:
+            raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")
+        if not res.ok:
+            raise AnthropicError(
+                f"Anthropic returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
+                status_code=res.status_code,
+            )
+
+        return res
+
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
@@ -192,11 +236,6 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             if m in model_name_or_path
         )
         return valid_model
-
-
-ANTHROPIC_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-ANTHROPIC_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
-ANTHROPIC_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 def load_anthropic_tokenizer(tokenizer_name: str):
@@ -246,48 +285,3 @@ def _anthropic_text_completion_tokenization_details(model_name: str):
     )
 
     return tokenizer_name, max_tokens_limit
-
-
-@retry(
-    retry=retry_if_exception_type(AnthropicRateLimitError),
-    wait=wait_exponential(multiplier=ANTHROPIC_BACKOFF),
-    stop=stop_after_attempt(ANTHROPIC_MAX_RETRIES),
-)
-def anthropic_request(
-    url: str,
-    headers: Dict,
-    payload: Dict,
-    timeout: Union[float, Tuple[float, float]] = ANTHROPIC_TIMEOUT,
-    read_response: Optional[bool] = True,
-    **kwargs,
-):
-    """Make a request to the Anthropic API given a `url`, `headers`, `payload`, and `timeout`.
-
-    :param url: The URL of the OpenAI API.
-    :param headers: Dictionary of HTTP Headers to send with the :class:`Request`.
-    :param payload: The payload to send with the request.
-    :param timeout: The timeout length of the request. The default is 30s.
-    :param read_response: Whether to read the response as JSON. The default is True.
-    """
-    response = requests.request("POST", url, headers=headers, data=json.dumps(payload), timeout=timeout, **kwargs)
-    if read_response:
-        json_response = json.loads(response.text)
-
-    if response.status_code != 200:
-        openai_error: AnthropicError
-        if response.status_code == 429:
-            openai_error = AnthropicRateLimitError(f"API rate limit exceeded: {response.text}")
-        elif response.status_code == 401:
-            openai_error = AnthropicUnauthorizedError(f"API key is invalid: {response.text}")
-        else:
-            openai_error = AnthropicError(
-                f"Anthropic returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}",
-                status_code=response.status_code,
-            )
-        raise openai_error
-    if read_response:
-        return json_response
-    else:
-        return response
