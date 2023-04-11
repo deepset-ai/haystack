@@ -203,8 +203,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         except RuntimeError:
             # This will fail for all non-HF models
             return False
-
-        return task_name in ["text2text-generation", "text-generation"]
+        # if we are using an api_key it could be HF inference point
+        using_api_key = "api_key" in kwargs
+        return not using_api_key and task_name in ["text2text-generation", "text-generation"]
 
 
 class StopWordsCriteria(StoppingCriteria):
