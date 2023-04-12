@@ -11,7 +11,6 @@ from functools import wraps
 
 import requests_cache
 import responses
-from sqlalchemy import create_engine, text
 import posthog
 
 import numpy as np
@@ -670,6 +669,8 @@ def setup_postgres():
     #     logging.warning("Tried to start PostgreSQL through Docker but this failed. It is likely that there is already an existing instance running.")
     # else:
     #     sleep(5)
+    from sqlalchemy import create_engine, text
+
     engine = create_engine("postgresql://postgres:postgres@127.0.0.1/postgres", isolation_level="AUTOCOMMIT")
 
     with engine.connect() as connection:
@@ -683,6 +684,8 @@ def setup_postgres():
 
 # TODO: Verify this is still necessary as it's called by no one
 def teardown_postgres():
+    from sqlalchemy import create_engine, text
+
     engine = create_engine("postgresql://postgres:postgres@127.0.0.1/postgres", isolation_level="AUTOCOMMIT")
     with engine.connect() as connection:
         connection.execute(text("DROP SCHEMA public CASCADE"))
