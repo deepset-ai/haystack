@@ -71,7 +71,7 @@ class AddValue:
         return ({self.outputs[0]: value}, parameters)
 
 
-@node
+@component
 class Double:
     def __init__(self, input_connection: str = "value"):
         self.init_parameters = {"input_connection": input_connection}
@@ -97,13 +97,13 @@ pipeline = Pipeline()
 # These instances can be added to the Pipeline in several places.
 addition = AddValue(add=1)
 
-# Components are added with a name and an node. Note the lack of references to
-# any other node. Components can store default parameters per node.
+# Components are added with a name and an component. Note the lack of references to
+# any other component. Components can store default parameters per component.
 pipeline.add_component("first_addition", addition, parameters={"add": 3})
 pipeline.add_component("second_addition", addition)  # Instances can be reused
 pipeline.add_component("double", Double())
 
-# Components are the connected as input node: [list of output components]
+# Components are the connected as input component: [list of output components]
 pipeline.connect(connect_from="first_addition", connect_to="double")
 pipeline.connect(connect_from="double", connect_to="second_addition")
 
@@ -315,10 +315,10 @@ pipeline.connect('component_a', 'component_a')
 pipeline.connect('component_b', 'component_a')
 # Traceback (most recent call last):
 #   File "/home/me/projects/canals/example.py", line 29, in <module>
-#     pipeline.connect('component_b', 'node_a')
+#     pipeline.connect('component_b', 'component_a')
 #   File "/home/me/projects/canals/canals/pipeline/pipeline.py", line 224, in connect
 #     raise PipelineConnectError(
-# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'component_b' with 'component_a' with an edge named 'output': their declared inputs and outputs do not match.
+# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'component_b' with 'component_a' with a connection named 'output': their declared inputs and outputs do not match.
 # Upstream component 'component_b' declared these outputs:
 #  - output (free)
 # Downstream component 'component_a' declared these inputs:
@@ -327,7 +327,7 @@ pipeline.connect('component_b', 'component_a')
 
 This type of error reporting was found especially useful for components that declare a variable number and name of inputs and outputs depending on their initialization parameters (think of classifiers, for example).
 
-One shortcoming is that currently Pipeline "trusts" the components to respect their own declarations. So if a component states that it will output `intermediate_value`, but outputs something else once run, Pipeline will fail. We accept this failure as a "contract breach": the node should fix its behavior and Pipeline should not try to prevent such scenarios.
+One shortcoming is that currently Pipeline "trusts" the components to respect their own declarations. So if a component states that it will output `intermediate_value`, but outputs something else once run, Pipeline will fail. We accept this failure as a "contract breach": the component should fix its behavior and Pipeline should not try to prevent such scenarios.
 
 
 ## Parameters hierarchy
@@ -336,7 +336,7 @@ Parameters can be passed to components at several stages, and they have differen
 
 - Components's default `__init__` parameters: components's `__init__` can provide defaults. Those are used only if no other parameters are passed at any stage.
 
-- Components's `__init__` parameters: at initialization, nodes might be given values for their parameters. These are stored within the component instance and, if the instance is reused in the pipeline several times, they will be the same on all of them.
+- Components's `__init__` parameters: at initialization, components might be given values for their parameters. These are stored within the component instance and, if the instance is reused in the pipeline several times, they will be the same on all of them.
 
 - Pipeline's `add_component()`: When added to the pipeline, users can specify some parameters that have to be given only to that component specifically. They will override the component instance's parameters, but they will be applied only in that specific location of the pipeline and not be applied to other instances of the same component anywhere else in the graph.
 
@@ -354,7 +354,7 @@ component = Component(value_2=2, value_3=2, value_4=2)
 pipeline = Pipeline()
 pipeline.add_component("component", component, parameters={"value_3": 3, "value_4": 3})
 ...
-pipeline.run(data={...}, parameters={"node": {"value_4": 4}})
+pipeline.run(data={...}, parameters={"component": {"value_4": 4}})
 
 # Component will receive {"value_1": 1, "value_2": 2, "value_3": 3,"value_4": 4}
 ```
@@ -404,16 +404,16 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
 ```python
 {
     # A list of "dependencies" for the application.
-    # Used to ensure all external nodes are present when loading.
+    # Used to ensure all external components are present when loading.
     "dependencies" : [
         "haystack == 2.0.0",
-        "my_custom_node_module == 0.0.1",
+        "my_custom_component_module == 0.0.1",
     ],
 
     # Stores are defined here, outside single pipeline graphs.
     # All pipelines have access to all these docstores.
     "stores": {
-        # Nodes will be able to access them by the name defined here,
+        # Components will be able to access them by the name defined here,
         # in this case `my_first_store` (see the retrievers below).
         "my_first_store": {
             # class_name is mandatory
@@ -427,16 +427,16 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
         }
     },
 
-    # Nodes are defined here, outside single pipeline graphs as well.
-    # All pipelines can use these nodes. Instances are re-used across
-    # Pipelines if they happen to share a node.
-    "nodes": {
-        # In order to reuse an instance across multiple nodes, instead
-        # of a `class_name` there should be a pointer to another node.
+    # Componentss are defined here, outside single pipeline graphs as well.
+    # All pipelines can use these components. Instances are re-used across
+    # Pipelines if they happen to share a component.
+    "components": {
+        # In order to reuse an instance across multiple components, instead
+        # of a `class_name` there should be a pointer to another component.
         "my_sparse_retriever": {
-            # class_name is mandatory, unless it's a pointer to another node.
+            # class_name is mandatory, unless it's a pointer to another component.
             "class_name": "BM25Retriever",
-            # Then come all the additional init parameters for the node
+            # Then come all the additional init parameters for the component
             "store_name": "my_first_store",
             "top_k": 5
         },
@@ -458,15 +458,15 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
         }
     },
 
-    # Pipelines are defined here. They can reference all nodes above.
+    # Pipelines are defined here. They can reference all components above.
     # All pipelines will get access to all docstores
     "pipelines": {
         "sparse_question_answering": {
-            # Mandatory list of edges. Same syntax as for `Pipeline.connect()`
-            "edges": [
+            # Mandatory list of connections. Same syntax as for `Pipeline.connect()`
+            "connections": [
                 ("my_sparse_retriever", ["reader"])
             ],
-            # To pass some parameters at the `Pipeline.add_node()` stage, add them here.
+            # To pass some parameters at the `Pipeline.add_component()` stage, add them here.
             "parameters": {
                 "my_sparse_retriever": {
                     "top_k": 10
@@ -482,7 +482,7 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
             "max_allowed_loops": 10,
         },
         "dense_question_answering": {
-            "edges": [
+            "connections": [
                 ("my_dense_retriever", ["reader"])
             ],
             "metadata": {
@@ -492,7 +492,7 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
             }
         },
         "hybrid_question_answering": {
-            "edges": [
+            "connections": [
                 ("my_sparse_retriever", ["ranker"]),
                 ("my_dense_retriever", ["ranker"]),
                 ("ranker", ["reader"]),
