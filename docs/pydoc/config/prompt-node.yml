@@ -10,7 +10,7 @@ processors:
     do_not_filter_modules: false
     skip_empty_modules: true
   - type: filter
-    expression: "name not in ['PromptModelInvocationLayer', 'StopWordsCriteria', 'HFLocalInvocationLayer', 'OpenAIInvocationLayer']"
+    expression: "name not in ['PromptModelInvocationLayer', 'StopWordsCriteria', 'HFLocalInvocationLayer', 'OpenAIInvocationLayer', 'ValidationVisitor', 'FstringParamsTransformer']"
   - type: smart
   - type: crossref
 renderer:

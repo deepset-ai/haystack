@@ -4,6 +4,7 @@ import io
 import dataclasses
 import typing as t
 import base64
+import warnings
 from pathlib import Path
 
 import requests
@@ -68,7 +69,8 @@ class ReadmeRenderer(Renderer):
         """
         README_API_KEY = os.getenv("README_API_KEY")
         if not README_API_KEY:
-            sys.exit("README_API_KEY env var is not set")
+            warnings.warn("README_API_KEY env var is not set, using a placeholder category ID")
+            return {"haystack-classes": "ID"}
 
         token = base64.b64encode(f"{README_API_KEY}:".encode()).decode()
         headers = {"authorization": f"Basic {token}", "x-readme-version": version}

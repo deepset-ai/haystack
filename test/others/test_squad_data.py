@@ -1,14 +1,13 @@
 import pandas as pd
 from haystack.utils.squad_data import SquadData
 from haystack.utils.augment_squad import augment_squad
-from ..conftest import SAMPLES_PATH
 from haystack.schema import Document, Label, Answer
 
 
-def test_squad_augmentation():
-    input_ = SAMPLES_PATH / "squad" / "tiny.json"
-    output = SAMPLES_PATH / "squad" / "tiny_augmented.json"
-    glove_path = SAMPLES_PATH / "glove" / "tiny.txt"  # dummy glove file, will not even be use when augmenting tiny.json
+def test_squad_augmentation(samples_path):
+    input_ = samples_path / "squad" / "tiny.json"
+    output = samples_path / "squad" / "tiny_augmented.json"
+    glove_path = samples_path / "glove" / "tiny.txt"  # dummy glove file, will not even be use when augmenting tiny.json
     multiplication_factor = 5
     augment_squad(
         model="distilbert-base-uncased",

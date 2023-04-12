@@ -12,7 +12,7 @@ DEFAULT_LANGUAGES = ["en", "de", "es", "cs", "nl"]
 
 class BaseDocumentLanguageClassifier(BaseComponent):
     """
-    Abstract class for Document Language Classifiers
+    Abstract class for Document Language Classifiers.
     """
 
     outgoing_edges = len(DEFAULT_LANGUAGES)
@@ -27,8 +27,8 @@ class BaseDocumentLanguageClassifier(BaseComponent):
 
     def __init__(self, route_by_language: bool = True, languages_to_route: Optional[List[str]] = None):
         """
-        :param route_by_language: whether to send Documents on a different output edge depending on their language.
-        :param languages_to_route: list of languages, each corresponding to a different output edge (ISO code, see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
+        :param route_by_language: Routes Documents to a different output edge depending on their language.
+        :param languages_to_route: A list of languages in ISO code, each corresponding to a different output edge (see [langdetect documentation](https://github.com/Mimino666/langdetect#languages)).
         """
         super().__init__()
 
@@ -36,13 +36,12 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             languages_to_route = DEFAULT_LANGUAGES
             if route_by_language is True:
                 logger.info(
-                    "languages_to_route list has not been defined. The default list will be used: %s",
-                    languages_to_route,
+                    "The languages_to_route list is not defined. The default list will be used: %s", languages_to_route
                 )
 
         if len(set(languages_to_route)) != len(languages_to_route):
             duplicates = {lang for lang in languages_to_route if languages_to_route.count(lang) > 1}
-            raise ValueError(f"languages_to_route parameter can't contain duplicate values ({duplicates}).")
+            raise ValueError(f"The languages_to_route parameter can't contain duplicate values ({duplicates}).")
 
         self.route_by_language = route_by_language
         self.languages_to_route = languages_to_route
@@ -62,7 +61,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         """
         Run language document classifier on a list of documents.
 
-        :param documents: list of documents to detect language.
+        :param documents: A list of documents whose language you want to detect.
         """
         docs_with_languages = self.predict(documents=documents)
         output = {"documents": docs_with_languages}
@@ -75,7 +74,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         unique_languages = list(set(languages))
         if len(unique_languages) > 1:
             raise ValueError(
-                f"If route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
+                f"If the route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
                 "If you want to route documents by language, you can call Pipeline.run() once for each Document."
             )
         language = unique_languages[0]
@@ -97,7 +96,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
         """
         Run language document classifier on batches of documents.
 
-        :param documents: list of lists of documents to detect language.
+        :param documents: A list of lists of documents whose language you want to detect.
         """
         docs_lists_with_languages = self.predict_batch(documents=documents, batch_size=batch_size)
 
@@ -115,13 +114,13 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             unique_languages = list(set(languages))
             if len(unique_languages) > 1:
                 raise ValueError(
-                    f"If route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
+                    f"If the route_by_language parameter is True, Documents of multiple languages ({unique_languages}) are not allowed together. "
                     "If you want to route documents by language, you can call Pipeline.run() once for each Document."
                 )
             if unique_languages[0] is None:
                 logger.warning(
                     "The model cannot detect the language of some of the documents."
-                    "The first language in the list of supported languages will be used to route the document: %s",
+                    "The first language in the list of supported languages will be used to route the documents: %s",
                     self.languages_to_route[0],
                 )
                 language: Optional[str] = self.languages_to_route[0]
@@ -129,7 +128,7 @@ class BaseDocumentLanguageClassifier(BaseComponent):
             if language not in self.languages_to_route:
                 raise ValueError(
                     f"'{language}' is not in the list of languages to route ({', '.join(self.languages_to_route)})."
-                    f"You should specify them when initializing the node, using the parameter languages_to_route."
+                    f"Specify them when initializing the node, using the parameter languages_to_route."
                 )
 
             edge_name = self._get_edge_from_language(str(language))

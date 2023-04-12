@@ -17,12 +17,11 @@ logger = logging.getLogger(__name__)
 
 class TransformersSummarizer(BaseSummarizer):
     """
-    Transformer based model to summarize the documents using the HuggingFace's transformers framework
+     Summarizes documents using the Hugging Face's transformers framework.
 
-    You can use any model that has been fine-tuned on a summarization task. For example:
+    You can use any model fine-tuned on a summarization task. For example:
     '`bart-large-cnn`', '`t5-small`', '`t5-base`', '`t5-large`', '`t5-3b`', '`t5-11b`'.
-    See the up-to-date list of available models on
-    `huggingface.co/models <https://huggingface.co/models?filter=summarization>`__
+    See the up-to-date list of available models in [Hugging Face Documentattion](https://huggingface.co/models?filter=summarization).
 
     **Example**
 
@@ -66,30 +65,28 @@ class TransformersSummarizer(BaseSummarizer):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
-        Load a Summarization model from Transformers.
-        See the up-to-date list of available models at
-        https://huggingface.co/models?filter=summarization
+        Load a summarization model from transformers.
+        See the up-to-date list of available models at [Hugging Face](https://huggingface.co/models?filter=summarization).
 
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
+        :param model_name_or_path: The path to the locally saved model or the name of a public model, for example
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
-                                   See https://huggingface.co/models?filter=summarization for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param max_length: Maximum length of summarized text
-        :param min_length: Minimum length of summarized text
+                                   See [Hugging Face](https://huggingface.co/models?filter=summarization) for a full list of available models.
+        :param model_version: The version of the model to use from the Hugging Face model hub. Can be a tag name, a branch name, or a commit hash.
+        :param tokenizer: Name of the tokenizer (usually the same as model).
+        :param max_length: Maximum length of the summarized text.
+        :param min_length: Minimum length of the summarized text.
         :param use_gpu: Whether to use GPU (if available).
-        :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
+        :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output.
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
-        :param use_auth_token: The API token used to download private models from Huggingface.
-                               If this parameter is set to `True`, then the token generated when running
-                               `transformers-cli login` (stored in ~/.huggingface) will be used.
-                               Additional information can be found here
-                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
-                        A list containing torch device objects and/or strings is supported (For example
-                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
-                        parameter is not used and a single cpu device is used for inference.
+        :param use_auth_token: The API token used to download private models from Hugging Face.
+                               If set to `True`, the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) is used.
+                               More information at [Hugging Face](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained).
+        :param devices: List of torch devices (for example, cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects or strings is supported (for example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). If you specify `use_gpu=False`, the devices
+                        parameter is not used and a single CPU device is used for inference.
         """
         super().__init__()
 
@@ -122,10 +119,10 @@ class TransformersSummarizer(BaseSummarizer):
     def predict(self, documents: List[Document]) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
-        These document can for example be retrieved via the Retriever.
+        The documents can come from the Retriever.
 
-        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :return: List of Documents, where Document.meta["summary"] contains the summarization
+        :param documents: A list of Documents (for example, coming from a Retriever) to summarize individually.
+        :return: List of Documents, where Document.meta["summary"] contains the summarization.
         """
         if self.min_length > self.max_length:
             raise ValueError("min_length cannot be greater than max_length")
@@ -170,11 +167,11 @@ class TransformersSummarizer(BaseSummarizer):
         self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         """
-        Produce the summarization from the supplied documents.
-        These documents can for example be retrieved via the Retriever.
+        Summarize supplied documents in batches.
+        These documents can come from the Retriever.
 
-        :param documents: Single list of related documents or list of lists of related documents
-                          (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param documents: A single list of documents or a list of lists of documents
+                          (for example, coming from a Retriever) to summarize.
         :param batch_size: Number of Documents to process at a time.
         """
         if self.min_length > self.max_length:
