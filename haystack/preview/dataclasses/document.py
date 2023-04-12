@@ -30,6 +30,8 @@ def _create_id(
     """
     content_to_hash = f"{classname}:{content}"
     if id_hash_keys:
+        if not metadata:
+            raise ValueError("If 'id_hash_keys' is provided, you must provide 'metadata' too.")
         content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
