@@ -14,7 +14,7 @@ from haystack.agents.types import Color
 from haystack.agents.utils import print_text
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
-from haystack.nodes.prompt.providers import TokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer import TokenStreamingHandler
 from haystack.pipelines import (
     BaseStandardPipeline,
     ExtractiveQAPipeline,
