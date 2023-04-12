@@ -1,4 +1,4 @@
-from typing import List, Any, Optional
+from typing import List, Any
 
 from haystack.preview.dataclasses import Document
 
