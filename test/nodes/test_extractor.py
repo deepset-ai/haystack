@@ -8,8 +8,6 @@ from haystack import Document
 
 from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
 
-from ..conftest import SAMPLES_PATH
-
 
 @pytest.fixture
 def tiny_reader():
@@ -98,8 +96,8 @@ def test_extractor_output_simplifier(document_store_with_docs, tiny_reader, ner_
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_extractor_indexing(document_store):
-    doc_path = SAMPLES_PATH / "docs" / "doc_2.txt"
+def test_extractor_indexing(document_store, samples_path):
+    doc_path = samples_path / "docs" / "doc_2.txt"
 
     text_converter = TextConverter()
     ner = EntityExtractor(
