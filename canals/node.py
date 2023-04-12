@@ -128,6 +128,15 @@ def node(class_):
 
     The second item of the tuple is the `parameters` dictionary. This allows node to
     propagate downstream any change they might have done to the `parameters` dictionary.
+
+    Args:
+        class_: the class that Canals should use as a node.
+
+    Returns:
+        A class that can be recognized by Canals as a node.
+
+    Raises:
+        NodeError: if the class provided has no `run()` method.
     """
     logger.debug("Registering %s as a node", class_)
 

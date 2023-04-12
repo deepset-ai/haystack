@@ -48,6 +48,12 @@ class PipelineMaxLoops(PipelineError):
 def locate_pipeline_input_nodes(graph) -> List[str]:
     """
     Collect the nodes with no input edges: they receive directly the pipeline inputs.
+
+    Args:
+        graph: the pipeline graph.
+
+    Returns:
+        A list of nodes that should directly receive the user's inputs.
     """
     return [node for node in graph.nodes if not graph.in_edges(node) or graph.nodes[node]["input_node"]]
 
@@ -55,6 +61,12 @@ def locate_pipeline_input_nodes(graph) -> List[str]:
 def locate_pipeline_output_nodes(graph) -> List[str]:
     """
     Collect the nodes with no output edges: these define the output of the pipeline.
+
+    Args:
+        graph: the pipeline graph.
+
+    Returns:
+        A list of nodes whose output goes back to the user.
     """
     return [node for node in graph.nodes if not graph.out_edges(node) or graph.nodes[node]["output_node"]]
 
@@ -74,19 +86,18 @@ class Pipeline:
         """
         Creates the Pipeline.
 
-        :param metadata: arbitrary dictionary to store metadata about this pipeline. Make sure
-            all the values contained in this dictionary can be serialized and deserialized if you wish to save this
-            pipeline to file with `save_pipelines()/load_pipelines()`.
-        :param max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
+        Args:
+            metadata: arbitrary dictionary to store metadata about this pipeline. Make sure all the values contained in
+                this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
+                `save_pipelines()/load_pipelines()`.
+            max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
         """
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.DiGraph()
 
     def __eq__(self, other) -> bool:
-        """
-        Equal pipelines share all nodes and metadata instances.
-        """
+        # Equal pipelines share all nodes and metadata instances.
         if not isinstance(other, type(self)):
             return False
         return (
@@ -109,16 +120,22 @@ class Pipeline:
 
         Node names must be unique, but node instances can be reused if needed.
 
-        :param name: the name of the node.
-        :param instance: the node instance.
-        :param parameters: default parameters to pass to this node's instance only then this
-            specific node is executed. These parameters are NOT shared across nodes that use
-            the same instance.
-        :param input_node: whether this node should receive the input data given to
-            `Pipeline.run()` directly, regardless of its location in the Pipeline.
-        :param output_node: whether the output of this node should be returned as output,
-            regardless of its location in the Pipeline.
-        :returns: None
+        Args:
+            name: the name of the node.
+            instance: the node instance.
+            parameters: default parameters to pass to this node's instance only then this specific node is executed.
+                These parameters are NOT shared across nodes that use the same instance.
+            input_node: whether this node should receive the input data given to `Pipeline.run()` directly, regardless
+                of its location in the Pipeline.
+            output_node: whether the output of this node should be returned as output, regardless of its location in
+                the Pipeline.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: if a node with the same name already exists or `parameters` is not a dictionary
+            PipelineValidationError: if the given instance is not a Canals node
         """
         # Node names are unique
         if name in self.graph.nodes:
@@ -150,10 +167,17 @@ class Pipeline:
         Connect nodes together. All nodes to connect must exist in the pipeline.
         If connecting to an node that has several output edges, specify its name with 'node_name.edge_name'.
 
-        :param connect_from: the node that deliver the values. This can be either a single node name or
-            can be in the format `node_name.edge_name` if the node has multiple outputs.
-        :param connect_to: the node that receives the values. This is always just the node name.
-        :returns: None
+        Args:
+            connect_from: the node that deliver the values. This can be either a single node name or can be in the
+                format `node_name.edge_name` if the node has multiple outputs.
+            connect_to: the node that receives the values. This is always just the node name.
+
+        Returns:
+            None
+
+        Raises:
+            PipelineConnectError: if the two nodes cannot be connected (for example if one of the nodes is not present
+                in the pipeline, or the edges don't match, and so on).
         """
         upstream_node_name = connect_from
         downstream_node_name = connect_to
@@ -246,8 +270,14 @@ class Pipeline:
         """
         Returns all the data associated with a node.
 
-        :param name: the name of the node
-        :returns: a dictionary containing all data that was given to `add_node()` (except for `name`)
+        Args:
+            name: the name of the node
+
+        Returns:
+            A dictionary containing all data that was given to `add_node()` (except for `name`)
+
+        Raises:
+            ValueError: if a node with that name is not present in the pipeline.
         """
         candidates = [node for node in self.graph.nodes if node == name]
         if not candidates:
@@ -259,7 +289,14 @@ class Pipeline:
         Draws the pipeline. Requires `pygraphviz`.
         Run `pip install canals[draw]` to install missing dependencies.
 
-        :param path: where to save the drawing.
+        Args:
+            path: where to save the drawing.
+
+        Returns:
+            None
+
+        Raises:
+            ImportError: if pygraphviz is not installed.
         """
         if not PYGRAPHVIZ_IMPORTED:
             raise ImportError(
@@ -309,10 +346,16 @@ class Pipeline:
         """
         Runs the pipeline.
 
-        :param data: the inputs to give to the input nodes of the Pipeline.
-        :param parameters: a dictionary with all the parameters of all the nodes, namespaced by node.
-        :param debug: whether to collect and return debug information.
-        :returns: a dictionary with the outputs of the output nodes of the Pipeline.
+        Args:
+            data: the inputs to give to the input nodes of the Pipeline.
+            parameters: a dictionary with all the parameters of all the nodes, namespaced by node.
+            debug: whether to collect and return debug information.
+
+        Returns:
+            A dictionary with the outputs of the output nodes of the Pipeline.
+
+        Raises:
+            PipelineRuntimeError: if the any of the nodes fail or return unexpected output.
         """
         parameters = self._validate_parameters(parameters=parameters)
         self.warm_up()

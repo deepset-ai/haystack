@@ -1,3 +1,15 @@
 site_name: Canals
+site_url: https://deepset-ai.github.io/canals/
+
+plugins:
+  - mkdocstrings
 theme:
   name: material
+
+nav:
+    - Get Started: index.md
+    - How-Tos:
+      - Node: how-tos/node.md
+    - API Docs:
+      - Node: api-docs/node.md
+      - Pipeline: api-docs/pipeline.md
