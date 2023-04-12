@@ -404,7 +404,7 @@ def test_parsr_converter_list_mapping():
 
     converter = ParsrConverter()
 
-    docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_4.pdf").absolute()))
+    docs = converter.convert(file_path=str((samples_path / "pdf" / "sample_pdf_4.pdf").absolute()))
     assert len(docs) == 2
     assert docs[1].content_type == "text"
     assert expected_list_line in docs[1].content
