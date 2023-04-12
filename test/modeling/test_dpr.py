@@ -22,6 +22,8 @@ from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 from haystack.utils.early_stopping import EarlyStopping
 
+from ..conftest import SAMPLES_PATH
+
 
 def test_dpr_modules(caplog=None):
     if caplog:
@@ -976,7 +978,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
 
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_training(document_store, tmp_path, samples_path):
+def test_dpr_training(document_store, tmp_path):
     retriever = DensePassageRetriever(
         document_store=document_store,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -987,7 +989,7 @@ def test_dpr_training(document_store, tmp_path, samples_path):
 
     save_dir = f"{tmp_path}/test_dpr_training"
     retriever.train(
-        data_dir=str(samples_path / "dpr"),
+        data_dir=str(SAMPLES_PATH / "dpr"),
         train_filename="sample.json",
         dev_filename="sample.json",
         test_filename="sample.json",
@@ -1003,7 +1005,7 @@ def test_dpr_training(document_store, tmp_path, samples_path):
 
 
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_training_with_earlystopping(document_store, tmp_path, samples_path):
+def test_dpr_training_with_earlystopping(document_store, tmp_path):
     retriever = DensePassageRetriever(
         document_store=document_store,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -1014,7 +1016,7 @@ def test_dpr_training_with_earlystopping(document_store, tmp_path, samples_path)
 
     save_dir = f"{tmp_path}/test_dpr_training"
     retriever.train(
-        data_dir=str(samples_path / "dpr"),
+        data_dir=str(SAMPLES_PATH / "dpr"),
         train_filename="sample.json",
         dev_filename="sample.json",
         test_filename="sample.json",

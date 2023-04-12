@@ -12,6 +12,11 @@ from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
+from ..conftest import SAMPLES_PATH
+
+
+NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
+
 
 TEXT = """
 This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in
@@ -99,7 +104,7 @@ def test_preprocess_sentence_split(split_length_and_results):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
-def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_and_results, samples_path):
+def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
 
     document = Document(content=TEXT)
@@ -108,7 +113,7 @@ def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_
         split_overlap=0,
         split_by="sentence",
         split_respect_sentence_boundary=False,
-        tokenizer_model_folder=samples_path / "preprocessor" / "nltk_models" / "wrong",
+        tokenizer_model_folder=NLTK_TEST_MODELS / "wrong",
         language="en",
     )
     documents = preprocessor.process(document)
@@ -134,7 +139,7 @@ def test_preprocess_sentence_split_custom_models_non_default_language(split_leng
 
 @pytest.mark.unit
 @pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
-def test_preprocess_sentence_split_custom_models(split_length_and_results, samples_path):
+def test_preprocess_sentence_split_custom_models(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
 
     document = Document(content=LEGAL_TEXT_PT)
@@ -144,7 +149,7 @@ def test_preprocess_sentence_split_custom_models(split_length_and_results, sampl
         split_by="sentence",
         split_respect_sentence_boundary=False,
         language="pt",
-        tokenizer_model_folder=samples_path / "preprocessor" / "nltk_models",
+        tokenizer_model_folder=NLTK_TEST_MODELS,
     )
     documents = preprocessor.process(document)
     assert len(documents) == expected_documents_count
@@ -192,10 +197,10 @@ def test_preprocess_passage_split(split_length_and_results):
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
-def test_clean_header_footer(samples_path):
+def test_clean_header_footer():
     converter = PDFToTextConverter()
     document = converter.convert(
-        file_path=Path(samples_path / "pdf" / "sample_pdf_2.pdf")
+        file_path=Path(SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")
     )  # file contains header/footer
 
     preprocessor = PreProcessor(clean_header_footer=True, split_by=None)

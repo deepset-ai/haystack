@@ -27,6 +27,8 @@ from haystack.pipelines.standard_pipelines import (
 from haystack.nodes.translator.transformers import TransformersTranslator
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
+from ..conftest import SAMPLES_PATH
+
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
@@ -89,10 +91,10 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
-def test_add_eval_data(document_store, batch_size, samples_path):
+def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=samples_path / "squad" / "small.json",
+        filename=SAMPLES_PATH / "squad" / "small.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         batch_size=batch_size,
@@ -137,10 +139,10 @@ def test_add_eval_data(document_store, batch_size, samples_path):
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
-def test_eval_reader(reader, document_store, use_confidence_scores, samples_path):
+def test_eval_reader(reader, document_store, use_confidence_scores):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=samples_path / "squad" / "tiny.json",
+        filename=SAMPLES_PATH / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -171,10 +173,10 @@ def test_eval_reader(reader, document_store, use_confidence_scores, samples_path
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_eval_elastic_retriever(document_store, open_domain, retriever, samples_path):
+def test_eval_elastic_retriever(document_store, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=samples_path / "squad" / "tiny.json",
+        filename=SAMPLES_PATH / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -193,10 +195,10 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever, samples_
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_eval_pipeline(document_store, reader, retriever, samples_path):
+def test_eval_pipeline(document_store, reader, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=samples_path / "squad" / "tiny.json",
+        filename=SAMPLES_PATH / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -227,7 +229,7 @@ def test_eval_pipeline(document_store, reader, retriever, samples_path):
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
-def test_eval_data_split_word(document_store, samples_path):
+def test_eval_data_split_word(document_store):
     # splitting by word
     preprocessor = PreProcessor(
         clean_empty_lines=False,
@@ -240,7 +242,7 @@ def test_eval_data_split_word(document_store, samples_path):
     )
 
     document_store.add_eval_data(
-        filename=samples_path / "squad" / "tiny.json",
+        filename=SAMPLES_PATH / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         preprocessor=preprocessor,
@@ -252,7 +254,7 @@ def test_eval_data_split_word(document_store, samples_path):
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
-def test_eval_data_split_passage(document_store, samples_path):
+def test_eval_data_split_passage(document_store):
     # splitting by passage
     preprocessor = PreProcessor(
         clean_empty_lines=False,
@@ -265,7 +267,7 @@ def test_eval_data_split_passage(document_store, samples_path):
     )
 
     document_store.add_eval_data(
-        filename=samples_path / "squad" / "tiny_passages.json",
+        filename=SAMPLES_PATH / "squad" / "tiny_passages.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         preprocessor=preprocessor,

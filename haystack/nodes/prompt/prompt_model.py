@@ -4,14 +4,10 @@ import logging
 import torch
 
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
+from haystack.nodes.prompt.providers import PromptModelInvocationLayer, instruction_following_models
 from haystack.schema import Document, MultiLabel
 
 logger = logging.getLogger(__name__)
-
-
-def instruction_following_models() -> List[str]:
-    return ["flan", "mt0", "bloomz", "davinci", "opt-iml"]
 
 
 class PromptModel(BaseComponent):

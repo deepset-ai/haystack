@@ -46,6 +46,7 @@ from ..conftest import (
     DC_API_ENDPOINT,
     DC_API_KEY,
     DC_TEST_INDEX,
+    SAMPLES_PATH,
     MockDocumentStore,
     MockSeq2SegGenerator,
     MockRetriever,
@@ -141,12 +142,12 @@ class JoinNode(RootNode):
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
-def test_to_code_creates_same_pipelines(samples_path):
+def test_to_code_creates_same_pipelines():
     index_pipeline = Pipeline.load_from_yaml(
-        samples_path / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
     )
     query_pipeline = Pipeline.load_from_yaml(
-        samples_path / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
     index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
@@ -803,9 +804,9 @@ def test_pipeline_classify_type(tmp_path):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_load_from_deepset_cloud_query(samples_path):
+def test_load_from_deepset_cloud_query():
     if MOCK_DC:
-        with open(samples_path / "dc" / "pipeline_config.json", "r") as f:
+        with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:
             pipeline_config_yaml_response = json.load(f)
 
         responses.add(
@@ -841,9 +842,9 @@ def test_load_from_deepset_cloud_query(samples_path):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_load_from_deepset_cloud_indexing(caplog, samples_path):
+def test_load_from_deepset_cloud_indexing(caplog):
     if MOCK_DC:
-        with open(samples_path / "dc" / "pipeline_config.json", "r") as f:
+        with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:
             pipeline_config_yaml_response = json.load(f)
 
         responses.add(
@@ -860,7 +861,7 @@ def test_load_from_deepset_cloud_indexing(caplog, samples_path):
     assert isinstance(document_store, DeepsetCloudDocumentStore)
 
     with caplog.at_level(logging.INFO):
-        indexing_pipeline.run(file_paths=[samples_path / "docs" / "doc_1.txt"])
+        indexing_pipeline.run(file_paths=[SAMPLES_PATH / "docs" / "doc_1.txt"])
         assert "Note that DeepsetCloudDocumentStore does not support write operations." in caplog.text
         assert "Input to write_documents: {" in caplog.text
 
@@ -875,7 +876,7 @@ def test_list_pipelines_on_deepset_cloud():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_save_to_deepset_cloud(samples_path):
+def test_save_to_deepset_cloud():
     if MOCK_DC:
         responses.add(
             method=responses.GET,
@@ -914,7 +915,7 @@ def test_save_to_deepset_cloud(samples_path):
             status=404,
         )
 
-        with open(samples_path / "dc" / "pipeline_config.json", "r") as f:
+        with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:
             pipeline_config_yaml_response = json.load(f)
 
         responses.add(
@@ -1955,9 +1956,9 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_batch_querying_single_query(document_store_with_docs, samples_path):
+def test_batch_querying_single_query(document_store_with_docs):
     query_pipeline = Pipeline.load_from_yaml(
-        samples_path / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
     result = query_pipeline.run_batch(queries=["Who lives in Berlin?"])
@@ -1969,9 +1970,9 @@ def test_batch_querying_single_query(document_store_with_docs, samples_path):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_batch_querying_multiple_queries(document_store_with_docs, samples_path):
+def test_batch_querying_multiple_queries(document_store_with_docs):
     query_pipeline = Pipeline.load_from_yaml(
-        samples_path / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
     result = query_pipeline.run_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])

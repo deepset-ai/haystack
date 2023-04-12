@@ -12,6 +12,8 @@ from haystack.schema import Document, Answer, Label, MultiLabel, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes import FARMReader, TransformersReader
 
+from ..conftest import SAMPLES_PATH
+
 
 def _joinpath(rootdir, targetdir):
     return os.path.join(os.sep, rootdir + os.sep, targetdir)
@@ -435,7 +437,7 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
 
 
-def test_reader_training(tmp_path, samples_path):
+def test_reader_training(tmp_path):
     max_seq_len = 16
     max_query_length = 8
     reader = FARMReader(
@@ -449,7 +451,7 @@ def test_reader_training(tmp_path, samples_path):
 
     save_dir = f"{tmp_path}/test_dpr_training"
     reader.train(
-        data_dir=str(samples_path / "squad"),
+        data_dir=str(SAMPLES_PATH / "squad"),
         train_filename="tiny.json",
         dev_filename="tiny.json",
         test_filename="tiny.json",
