@@ -49,7 +49,7 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
 
-**[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
+🗂️ **[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
 ## What to Build with Haystack
 
@@ -145,12 +145,15 @@ Here's a list of organizations that we know about from our community. Don't hesi
 
 -   [Airbus](https://www.airbus.com/en)
 -   [Alcatel-Lucent](https://www.al-enterprise.com/)
+-   [Apple](https://www.apple.com/)
 -   [BetterUp](https://www.betterup.com/)
 -   [Databricks](https://www.databricks.com/)
 -   [Deepset](https://deepset.ai/)
 -   [Etalab](https://www.etalab.gouv.fr/)
 -   [Infineon](https://www.infineon.com/)
+-   [Intelijus](https://www.intelijus.ai/)
 -   [LEGO](https://www.lego.com/)
+-   [Netflix](https://netflix.com)
 -   [Nvidia](https://www.nvidia.com/en-us/)
 -   [Rakuten](https://www.rakuten.com/)
 -   [Sooth.ai](https://sooth.ai/)
