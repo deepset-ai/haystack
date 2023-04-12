@@ -42,6 +42,9 @@ dev = [
   "pytest",
   "coverage",
 ]
+docs = [
+  "mkdocs-material"
+]
 all = ["canals[draw,dev]"]
 
 
