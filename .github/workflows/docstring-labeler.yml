@@ -37,6 +37,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.ref }}
+          # This must be set to correctly checkout a fork
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Get docstrings
         id: head-docstrings
