@@ -261,3 +261,248 @@ propagate downstream any change they might have done to the `parameters` diction
 
 Canals supports a variety of different pipeline topologies. Check the pipeline's test suite for some examples:
 these are only representations of the graphs that those pipelines generate.
+
+TODO
+
+## Validation
+
+Pipeline performs validation on the connection name level: when calling `Pipeline.connect()`, it uses the values of the components' `self.inputs` and `self.outputs` to make sure that the connection is possible.
+
+Components are required, by contract, to explicitly define their inputs and outputs, and these values are used by the connect method to validate the connection, and by the run method to route values.
+
+For example, let's imagine we have two components with the following I/O declared:
+
+```python
+@component
+class ComponentA:
+
+    def __init__(self):
+        self.inputs = ["input"]
+        self.outputs = ["intermediate_value"]
+
+    def run(self):
+        pass
+
+@component
+class ComponentB:
+
+    def __init__(self):
+        self.inputs = ["intermediate_value"]
+        self.outputs = ["output"]
+
+    def run(self):
+        pass
+```
+
+This is the behavior of `Pipeline.connect()`:
+
+```python
+pipeline.connect('component_a', 'component_b')
+# Succeeds: no output
+
+pipeline.connect('component_a', 'component_a')
+# Traceback (most recent call last):
+#   File "/home/me/projects/canals/example.py", line 29, in <module>
+#     pipeline.connect('component_a', 'component_a')
+#   File "/home/me/projects/canals/canals/pipeline/pipeline.py", line 224, in connect
+#     raise PipelineConnectError(
+# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'component_a' with 'component_a' with a connection named 'intermediate_value': their declared inputs and outputs do not match.
+# Upstream component 'component_a' declared these outputs:
+#  - intermediate_value (free)
+# Downstream component 'component_a' declared these inputs:
+#  - input (free)
+
+pipeline.connect('component_b', 'component_a')
+# Traceback (most recent call last):
+#   File "/home/me/projects/canals/example.py", line 29, in <module>
+#     pipeline.connect('component_b', 'node_a')
+#   File "/home/me/projects/canals/canals/pipeline/pipeline.py", line 224, in connect
+#     raise PipelineConnectError(
+# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'component_b' with 'component_a' with an edge named 'output': their declared inputs and outputs do not match.
+# Upstream component 'component_b' declared these outputs:
+#  - output (free)
+# Downstream component 'component_a' declared these inputs:
+#  - input (free)
+```
+
+This type of error reporting was found especially useful for components that declare a variable number and name of inputs and outputs depending on their initialization parameters (think of classifiers, for example).
+
+One shortcoming is that currently Pipeline "trusts" the components to respect their own declarations. So if a component states that it will output `intermediate_value`, but outputs something else once run, Pipeline will fail. We accept this failure as a "contract breach": the node should fix its behavior and Pipeline should not try to prevent such scenarios.
+
+
+## Parameters hierarchy
+
+Parameters can be passed to components at several stages, and they have different priorities. Here they're listed from least priority to top priority.
+
+- Components's default `__init__` parameters: components's `__init__` can provide defaults. Those are used only if no other parameters are passed at any stage.
+
+- Components's `__init__` parameters: at initialization, nodes might be given values for their parameters. These are stored within the component instance and, if the instance is reused in the pipeline several times, they will be the same on all of them.
+
+- Pipeline's `add_component()`: When added to the pipeline, users can specify some parameters that have to be given only to that component specifically. They will override the component instance's parameters, but they will be applied only in that specific location of the pipeline and not be applied to other instances of the same component anywhere else in the graph.
+
+- Pipeline's `run()`: `run()` also accepts a dictionary of parameters that will override all conflicting parameters set at any level below.
+
+Example:
+
+```python
+@component
+class Component:
+    def __init__(self, value_1: int = 1, value_2: int = 1, value_3: int = 1, value_4: int = 1):
+        ...
+
+component = Component(value_2=2, value_3=2, value_4=2)
+pipeline = Pipeline()
+pipeline.add_component("component", component, parameters={"value_3": 3, "value_4": 3})
+...
+pipeline.run(data={...}, parameters={"node": {"value_4": 4}})
+
+# Component will receive {"value_1": 1, "value_2": 2, "value_3": 3,"value_4": 4}
+```
+
+
+## Pipeline save and load
+
+Pipelines can be serialized to Python dictionaries, that can be then dumped to JSON or to any other suitable format, like YAML, TOML, HCL, etc.
+
+These pipelines can then be loaded back.
+
+Here is an example of Pipeline marshalling and unmarshalling:
+
+```python
+from haystack.pipelines import Pipeline, save_pipelines, load_pipelines
+
+query_pipeline = Pipeline()
+indexing_pipeline = Pipeline()
+# .. assemble the pipelines ...
+
+# Save the pipelines
+save_pipelines(
+    pipelines={
+        "query": query_pipeline,
+        "indexing": indexing_pipeline,
+    },
+    path="my_pipelines.json",
+    _writer=json.dumps
+)
+
+# Load the pipelines
+new_pipelines = load_pipelines(
+    path="my_pipelines.json",
+    _reader=json.loads
+)
+
+assert new_pipelines["query"] == query_pipeline
+assert new_pipelines["indexing"] == indexing_pipeline
+```
+
+Note how the save/load functions accept a `_writer`/`_reader` function: this choice frees us from committing strongly to a specific template language, and although a default will be set (be it YAML, TOML, HCL or anything else) the decision can be overridden by passing another explicit reader/writer function to the `save_pipelines`/`load_pipelines` functions.
+
+This is how the resulting file will look like, assuming a JSON writer was chosen.
+
+`my_pipeline.json`
+
+```python
+{
+    # A list of "dependencies" for the application.
+    # Used to ensure all external nodes are present when loading.
+    "dependencies" : [
+        "haystack == 2.0.0",
+        "my_custom_node_module == 0.0.1",
+    ],
+
+    # Stores are defined here, outside single pipeline graphs.
+    # All pipelines have access to all these docstores.
+    "stores": {
+        # Nodes will be able to access them by the name defined here,
+        # in this case `my_first_store` (see the retrievers below).
+        "my_first_store": {
+            # class_name is mandatory
+            "class_name": "InMemoryDocumentStore",
+            # Then come all the additional parameters for the store
+            "use_bm25": true
+        },
+        "my_second_store": {
+            "class_name": "InMemoryDocumentStore",
+            "use_bm25": false
+        }
+    },
+
+    # Nodes are defined here, outside single pipeline graphs as well.
+    # All pipelines can use these nodes. Instances are re-used across
+    # Pipelines if they happen to share a node.
+    "nodes": {
+        # In order to reuse an instance across multiple nodes, instead
+        # of a `class_name` there should be a pointer to another node.
+        "my_sparse_retriever": {
+            # class_name is mandatory, unless it's a pointer to another node.
+            "class_name": "BM25Retriever",
+            # Then come all the additional init parameters for the node
+            "store_name": "my_first_store",
+            "top_k": 5
+        },
+        "my_dense_retriever": {
+            "class_name": "EmbeddingRetriever",
+            "model_name": "deepset-ai/a-model-name",
+            "store_name": "my_second_store",
+            "top_k": 5
+        },
+        "my_ranker": {
+            "class_name": "Ranker",
+            "inputs": ["documents", "documents"],
+            "outputs": ["documents"],
+        },
+        "my_reader": {
+            "class_name": "Reader",
+            "model_name": "deepset-ai/another-model-name",
+            "top_k": 3
+        }
+    },
+
+    # Pipelines are defined here. They can reference all nodes above.
+    # All pipelines will get access to all docstores
+    "pipelines": {
+        "sparse_question_answering": {
+            # Mandatory list of edges. Same syntax as for `Pipeline.connect()`
+            "edges": [
+                ("my_sparse_retriever", ["reader"])
+            ],
+            # To pass some parameters at the `Pipeline.add_node()` stage, add them here.
+            "parameters": {
+                "my_sparse_retriever": {
+                    "top_k": 10
+                }
+            },
+            # Metadata can be very valuable for dC and to organize larger Applications
+            "metadata": {
+                "type": "question_answering",
+                "description": "A test pipeline to evaluate Sparse QA.",
+                "author": "ZanSara"
+            },
+            # Other `Pipeline.__init__()` parameters
+            "max_allowed_loops": 10,
+        },
+        "dense_question_answering": {
+            "edges": [
+                ("my_dense_retriever", ["reader"])
+            ],
+            "metadata": {
+                "type": "question_answering",
+                "description": "A test pipeline to evaluate Sparse QA.",
+                "author": "an_intern"
+            }
+        },
+        "hybrid_question_answering": {
+            "edges": [
+                ("my_sparse_retriever", ["ranker"]),
+                ("my_dense_retriever", ["ranker"]),
+                ("ranker", ["reader"]),
+            ],
+            "metadata": {
+                "type": "question_answering",
+                "description": "A test pipeline to evaluate Hybrid QA.",
+                "author": "the_boss"
+            }
+        }
+    }
+}
+```
