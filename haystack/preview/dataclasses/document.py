@@ -22,10 +22,15 @@ ContentType = Literal["text", "table", "image", "audio"]
 PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {"text": str, "table": DataFrame, "image": Path, "audio": Path}
 
 
-def _create_id(content_to_hash: str):
+def _create_id(
+    classname: str, content: Any, metadata: Optional[Dict[str, Any]] = None, id_hash_keys: Optional[List[str]] = None
+):
     """
     Creates a hash of the content given that acts as the document's ID.
     """
+    content_to_hash = f"{classname}:{content}"
+    if id_hash_keys:
+        content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
@@ -77,14 +82,12 @@ class Document:
                     f"'{key}' must be present in the metadata of the Document if you want to use it to generate the ID."
                 )
         # Generate the ID
-        content_to_hash = ":".join(
-            [
-                self.__class__.__name__,
-                str(self.content),
-                *[str(self.metadata.get(key, "")) for key in self.id_hash_keys],
-            ]
+        hashed_content = _create_id(
+            classname=self.__class__.__name__,
+            content=str(self.content),
+            metadata=self.metadata,
+            id_hash_keys=self.id_hash_keys,
         )
-        hashed_content = _create_id(content_to_hash=content_to_hash)
 
         # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
         object.__setattr__(self, "id", hashed_content)
