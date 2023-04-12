@@ -398,7 +398,7 @@ def test_parsr_converter_headline_extraction(samples_path):
 
 @pytest.mark.integration
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
-def test_parsr_converter_list_mapping():
+def test_parsr_converter_list_mapping(samples_path):
     # This exact line(without line break characters) only exists in the list object we want to make sure it's being mapped correctly
     expected_list_line = "Maecenas tincidunt est efficitur ligula euismod, sit amet ornare est vulputate."
 
