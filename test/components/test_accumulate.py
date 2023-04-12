@@ -3,28 +3,28 @@ import sys
 import builtins
 from importlib import import_module
 
-from canals import node
+from canals import component
 
 
-@node
+@component
 class Accumulate:
     """
-    Accumulates the value flowing through the edge into an internal attribute.
+    Accumulates the value flowing through the connection into an internal attribute.
 
     Example of how to deal with serialization when some of the parameters
     are not directly serializable.
 
-    Stateful, single input, single output node.
+    Stateful, single input, single output component.
 
-    :param edge: the edge to read the value from.
+    :param connection: the connection to read the value from.
     :param function: the function to use to accumulate the values.
         The function must take exactly two values.
         If it's a callable, it's used as it is.
-        If it's a string, the node will look for it in sys.modules and
+        If it's a string, the component will look for it in sys.modules and
         import it at need. This is also a parameter.
     """
 
-    def __init__(self, edge: str, function: Optional[Union[Callable, str]] = None):
+    def __init__(self, connection: str, function: Optional[Union[Callable, str]] = None):
         self.state = 0
 
         if function is None:
@@ -32,9 +32,12 @@ class Accumulate:
         else:
             self.function = self._load_function(function)
 
-        self.init_parameters = {"edge": edge, "function": self._save_function(function) if function else None}
-        self.inputs = [edge]
-        self.outputs = [edge]
+        self.init_parameters = {
+            "connection": connection,
+            "function": self._save_function(function) if function else None,
+        }
+        self.inputs = [connection]
+        self.outputs = [connection]
 
     def _load_function(self, function: Union[Callable, str]):
         """
@@ -71,11 +74,11 @@ class Accumulate:
 
 
 def test_accumulate_default():
-    node = Accumulate(edge="test")
-    results = node.run(name="test_node", data=[("test", 10)], parameters={})
+    component = Accumulate(connection="test")
+    results = component.run(name="test_component", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
-    assert node.state == 10
-    assert node.init_parameters == {"edge": "test", "function": None}
+    assert component.state == 10
+    assert component.init_parameters == {"connection": "test", "function": None}
 
 
 def my_subtract(first, second):
@@ -83,16 +86,22 @@ def my_subtract(first, second):
 
 
 def test_accumulate_callable():
-    node = Accumulate(edge="test", function=my_subtract)
-    results = node.run(name="test_node", data=[("test", 10)], parameters={})
+    component = Accumulate(connection="test", function=my_subtract)
+    results = component.run(name="test_component", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
-    assert node.state == -10
-    assert node.init_parameters == {"edge": "test", "function": "test.nodes.test_accumulate.my_subtract"}
+    assert component.state == -10
+    assert component.init_parameters == {
+        "connection": "test",
+        "function": "test.components.test_accumulate.my_subtract",
+    }
 
 
 def test_accumulate_string():
-    node = Accumulate(edge="test", function="test.nodes.test_accumulate.my_subtract")
-    results = node.run(name="test_node", data=[("test", 10)], parameters={})
+    component = Accumulate(connection="test", function="test.components.test_accumulate.my_subtract")
+    results = component.run(name="test_component", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
-    assert node.state == -10
-    assert node.init_parameters == {"edge": "test", "function": "test.nodes.test_accumulate.my_subtract"}
+    assert component.state == -10
+    assert component.init_parameters == {
+        "connection": "test",
+        "function": "test.components.test_accumulate.my_subtract",
+    }

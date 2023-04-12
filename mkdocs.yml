@@ -8,8 +8,9 @@ theme:
 
 nav:
     - Get Started: index.md
+    - Basic Concepts: concepts.md
     - How-Tos:
-      - Node: how-tos/node.md
+      - Component: how-tos/component.md
     - API Docs:
-      - Node: api-docs/node.md
+      - Component: api-docs/component.md
       - Pipeline: api-docs/pipeline.md

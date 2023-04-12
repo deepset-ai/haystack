@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.nodes import AddValue, Sum
+from test.components import AddValue, Sum
 
 import logging
 
@@ -15,11 +15,11 @@ def test_pipeline(tmp_path):
     make_the_sum = Sum(inputs=["value"] * 2)
 
     pipeline = Pipeline()
-    pipeline.add_node("first_addition", add_two)
-    pipeline.add_node("second_addition", add_two)
-    pipeline.add_node("third_addition", add_two)
-    pipeline.add_node("sum", make_the_sum)
-    pipeline.add_node("fourth_addition", AddValue(add=1, input="sum"))
+    pipeline.add_component("first_addition", add_two)
+    pipeline.add_component("second_addition", add_two)
+    pipeline.add_component("third_addition", add_two)
+    pipeline.add_component("sum", make_the_sum)
+    pipeline.add_component("fourth_addition", AddValue(add=1, input="sum"))
 
     pipeline.connect("first_addition", "second_addition")
     pipeline.connect("second_addition", "sum")

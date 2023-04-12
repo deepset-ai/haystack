@@ -11,7 +11,7 @@
 
 <br>
 
-Canals is a **node orchestration engine**. Nodes are Python objects that can execute a task, like reading a file, performing calculations, or making API calls. Canals connects these objects together: it builds a graph of nodes and takes care of managing their execution order, making sure that each object receives the input it expects from the other nodes of the pipeline.
+Canals is a **component orchestration engine**. Components are Python objects that can execute a task, like reading a file, performing calculations, or making API calls. Canals connects these objects together: it builds a graph of components and takes care of managing their execution order, making sure that each object receives the input it expects from the other components of the pipeline.
 
 Canals powers version 2.0 of [Haystack](https://github.com/deepset-ai/haystack).
 

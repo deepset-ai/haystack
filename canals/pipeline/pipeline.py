@@ -45,37 +45,37 @@ class PipelineMaxLoops(PipelineError):
     pass
 
 
-def locate_pipeline_input_nodes(graph) -> List[str]:
+def locate_pipeline_input_components(graph) -> List[str]:
     """
-    Collect the nodes with no input edges: they receive directly the pipeline inputs.
+    Collect the components with no input connections: they receive directly the pipeline inputs.
 
     Args:
         graph: the pipeline graph.
 
     Returns:
-        A list of nodes that should directly receive the user's inputs.
+        A list of components that should directly receive the user's inputs.
     """
-    return [node for node in graph.nodes if not graph.in_edges(node) or graph.nodes[node]["input_node"]]
+    return [node for node in graph.nodes if not graph.in_edges(node) or graph.nodes[node]["input_component"]]
 
 
-def locate_pipeline_output_nodes(graph) -> List[str]:
+def locate_pipeline_output_components(graph) -> List[str]:
     """
-    Collect the nodes with no output edges: these define the output of the pipeline.
+    Collect the components with no output connections: these define the output of the pipeline.
 
     Args:
         graph: the pipeline graph.
 
     Returns:
-        A list of nodes whose output goes back to the user.
+        A list of components whose output goes back to the user.
     """
-    return [node for node in graph.nodes if not graph.out_edges(node) or graph.nodes[node]["output_node"]]
+    return [node for node in graph.nodes if not graph.out_edges(node) or graph.nodes[node]["output_component"]]
 
 
 class Pipeline:
     """
-    Nodes orchestration engine.
+    Components orchestration engine.
 
-    Builds a graph of nodes and orchestrates their execution according to the execution graph.
+    Builds a graph of components and orchestrates their execution according to the execution graph.
     """
 
     def __init__(
@@ -106,83 +106,84 @@ class Pipeline:
             and self.graph == other.graph
         )
 
-    def add_node(
+    def add_component(
         self,
         name: str,
         instance: Any,
         parameters: Optional[Dict[str, Any]] = None,
-        input_node: bool = False,
-        output_node: bool = False,
+        input_component: bool = False,
+        output_output: bool = False,
     ) -> None:
         """
-        Create a node for the given node. Nodes are not connected to anything by default:
-        use `Pipeline.connect()` to connect nodes together.
+        Create a component for the given component. Components are not connected to anything by default:
+        use `Pipeline.connect()` to connect components together.
 
-        Node names must be unique, but node instances can be reused if needed.
+        Component names must be unique, but component instances can be reused if needed.
 
         Args:
-            name: the name of the node.
-            instance: the node instance.
-            parameters: default parameters to pass to this node's instance only then this specific node is executed.
-                These parameters are NOT shared across nodes that use the same instance.
-            input_node: whether this node should receive the input data given to `Pipeline.run()` directly, regardless
+            name: the name of the component.
+            instance: the component instance.
+            parameters: default parameters to pass to this component's instance only then this specific component is
+                executed. These parameters are NOT shared across components that use the same instance.
+            input_component: whether this component should receive the input data given to `Pipeline.run()` directly, regardless
                 of its location in the Pipeline.
-            output_node: whether the output of this node should be returned as output, regardless of its location in
-                the Pipeline.
+            output_component: whether the output of this component should be returned as output, regardless of its
+                location in the Pipeline.
 
         Returns:
             None
 
         Raises:
-            ValueError: if a node with the same name already exists or `parameters` is not a dictionary
-            PipelineValidationError: if the given instance is not a Canals node
+            ValueError: if a component with the same name already exists or `parameters` is not a dictionary
+            PipelineValidationError: if the given instance is not a Canals component
         """
-        # Node names are unique
+        # Component names are unique
         if name in self.graph.nodes:
-            raise ValueError(f"Node named '{name}' already exists: choose another name.")
+            raise ValueError(f"Component named '{name}' already exists: choose another name.")
 
-        # Node instances must be nodes
-        if not hasattr(instance, "__canals_node__"):
+        # Component instances must be components
+        if not hasattr(instance, "__canals_component__"):
             raise PipelineValidationError(
-                f"'{type(instance)}' doesn't seem to be a node. Is this class decorated with @node?"
+                f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
         # Params must be a dict
         if parameters and not isinstance(parameters, dict):
             raise ValueError("'parameters' must be a dictionary.")
 
-        # Add node to the graph, disconnected
-        logger.debug("Adding node '%s' (%s)", name, instance)
+        # Add component to the graph, disconnected
+        logger.debug("Adding component '%s' (%s)", name, instance)
         self.graph.add_node(
             name,
             instance=instance,
             visits=0,
             parameters=parameters,
-            input_node=input_node,
-            output_node=output_node,
+            input_component=input_component,
+            output_component=output_output,
         )
 
     def connect(self, connect_from: str, connect_to: str) -> None:
         """
-        Connect nodes together. All nodes to connect must exist in the pipeline.
-        If connecting to an node that has several output edges, specify its name with 'node_name.edge_name'.
+        Connect components together. All components to connect must exist in the pipeline.
+        If connecting to an component that has several output connections, specify its name with
+        'component_name.connections_name'.
 
         Args:
-            connect_from: the node that deliver the values. This can be either a single node name or can be in the
-                format `node_name.edge_name` if the node has multiple outputs.
-            connect_to: the node that receives the values. This is always just the node name.
+            connect_from: the component that deliver the values. This can be either a single component name or can be
+                in the format `component_name.connection_name` if the component has multiple outputs.
+            connect_to: the component that receives the values. This is always just the component name.
 
         Returns:
             None
 
         Raises:
-            PipelineConnectError: if the two nodes cannot be connected (for example if one of the nodes is not present
-                in the pipeline, or the edges don't match, and so on).
+            PipelineConnectError: if the two components cannot be connected (for example if one of the components is
+                not present in the pipeline, or the connections don't match, and so on).
         """
         upstream_node_name = connect_from
         downstream_node_name = connect_to
 
-        # Find out the name of the edge
+        # Find out the name of the connection
         edge_name = None
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         # Specify the edge name for the upstream node only.
@@ -195,7 +196,7 @@ class Pipeline:
             if len(upstream_node.outputs) != 1:
                 raise PipelineConnectError(
                     f"Please specify which output of '{upstream_node_name}' "
-                    f"'{downstream_node_name}' should connect to. Node '{upstream_node_name}' has the following "
+                    f"'{downstream_node_name}' should connect to. Component '{upstream_node_name}' has the following "
                     f"outputs: {upstream_node.outputs}"
                 )
             edge_name = upstream_node.outputs[0]
@@ -216,7 +217,7 @@ class Pipeline:
             for edge in self.graph.edges.data(nbunch=upstream_node_name)
         ):
             logger.info(
-                "An edge called '%s' connecting node '%s' and node '%s' already exists: skipping.",
+                "A connection called '%s' between component '%s' and component '%s' already exists: skipping.",
                 edge_name,
                 upstream_node_name,
                 downstream_node_name,
@@ -252,36 +253,36 @@ class Pipeline:
             )
             raise PipelineConnectError(
                 f"Cannot connect '{upstream_node_name}' with '{downstream_node_name}' "
-                f"with an edge named '{edge_name}': "
+                f"with an connection named '{edge_name}': "
                 f"their declared inputs and outputs do not match.\n"
-                f"Upstream node '{upstream_node_name}' declared these outputs:\n{outputs_string}\n"
-                f"Downstream node '{downstream_node_name}' declared these inputs:\n{inputs_string}\n"
+                f"Upstream component '{upstream_node_name}' declared these outputs:\n{outputs_string}\n"
+                f"Downstream component '{downstream_node_name}' declared these inputs:\n{inputs_string}\n"
             )
-        # Create the edge
+        # Create the connection
         logger.debug(
-            "Connecting node '%s' to node '%s' along edge '%s'",
+            "Connecting component '%s' to component '%s' with connection name '%s'",
             upstream_node_name,
             downstream_node_name,
             edge_name,
         )
         self.graph.add_edge(upstream_node_name, downstream_node_name, label=edge_name)
 
-    def get_node(self, name: str) -> Dict[str, Any]:
+    def get_component(self, name: str) -> Dict[str, Any]:
         """
-        Returns all the data associated with a node.
+        Returns all the data associated with a component.
 
         Args:
-            name: the name of the node
+            name: the name of the component
 
         Returns:
-            A dictionary containing all data that was given to `add_node()` (except for `name`)
+            A dictionary containing all data that was given to `add_component()` (except for `name`)
 
         Raises:
-            ValueError: if a node with that name is not present in the pipeline.
+            ValueError: if a nocomponentde with that name is not present in the pipeline.
         """
         candidates = [node for node in self.graph.nodes if node == name]
         if not candidates:
-            raise ValueError(f"Node named {name} not found.")
+            raise ValueError(f"Component named {name} not found.")
         return self.graph.nodes[candidates[0]]
 
     def draw(self, path: Path) -> None:
@@ -306,8 +307,8 @@ class Pipeline:
             )
         graph = deepcopy(self.graph)
 
-        input_nodes = locate_pipeline_input_nodes(graph)
-        output_nodes = locate_pipeline_output_nodes(graph)
+        input_nodes = locate_pipeline_input_components(graph)
+        output_nodes = locate_pipeline_output_components(graph)
 
         # Draw the input
         graph.add_node("input", shape="plain")
@@ -347,15 +348,15 @@ class Pipeline:
         Runs the pipeline.
 
         Args:
-            data: the inputs to give to the input nodes of the Pipeline.
-            parameters: a dictionary with all the parameters of all the nodes, namespaced by node.
+            data: the inputs to give to the input components of the Pipeline.
+            parameters: a dictionary with all the parameters of all the components, namespaced by component.
             debug: whether to collect and return debug information.
 
         Returns:
-            A dictionary with the outputs of the output nodes of the Pipeline.
+            A dictionary with the outputs of the output components of the Pipeline.
 
         Raises:
-            PipelineRuntimeError: if the any of the nodes fail or return unexpected output.
+            PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
         parameters = self._validate_parameters(parameters=parameters)
         self.warm_up()
@@ -388,7 +389,7 @@ class Pipeline:
         logger.info("Pipeline execution started.")
         inputs_buffer: OrderedDict = OrderedDict()
 
-        for node_name in locate_pipeline_input_nodes(self.graph):
+        for node_name in locate_pipeline_input_components(self.graph):
             # NOTE: We allow users to pass dictionaries just for convenience.
             # The real input format is List[Tuple[str, Any]], to allow several input edges to have the same name.
             if isinstance(data, dict):
@@ -400,7 +401,7 @@ class Pipeline:
         # inputs buffer. If the key exists, the node might be ready to run.
         pipeline_results: Dict[str, List[Dict[str, Any]]] = {}
         while inputs_buffer:
-            logger.debug("> Current node queue: %s", inputs_buffer.keys())
+            logger.debug("> Current component queue: %s", inputs_buffer.keys())
 
             node_name, node_inputs = inputs_buffer.popitem(last=False)  # FIFO
 
@@ -408,7 +409,7 @@ class Pipeline:
             self._check_max_loops(node_name)
 
             ready_to_run, inputs_buffer = self._ready_to_run(
-                node_name=node_name, node_inputs=node_inputs, inputs_buffer=inputs_buffer
+                component_name=node_name, component_inputs=node_inputs, inputs_buffer=inputs_buffer
             )
             if not ready_to_run:
                 continue
@@ -461,9 +462,9 @@ class Pipeline:
                 or not isinstance(node_results[1], dict)
                 or not all(isinstance(params, dict) for params in node_results[1].values())
             ):
-                logger.debug("Node output is malformed!\n%s", node_results)
+                logger.debug("Component's output is malformed:\n%s", node_results)
                 raise PipelineRuntimeError(
-                    f"The node '{node_name}' did not return proper output. Check out the '@node' docstring."
+                    f"The component '{node_name}' did not return proper output. Check out the '@component' docstring."
                 )
 
             # Process the output of the node
@@ -496,54 +497,56 @@ class Pipeline:
 
         if any(node not in self.graph.nodes for node in parameters.keys()):
             logging.warning(
-                "You passed parameters for one or more node(s) that do not exist in the pipeline: %s",
+                "You passed parameters for one or more component(s) that do not exist in the pipeline: %s",
                 [node for node in parameters.keys() if node not in self.graph.nodes],
             )
         return parameters
 
     def _validate_pipeline(self):
         """
-        Make sure the pipeline has at least one input node and one output node.
+        Make sure the pipeline has at least one input component and one output component.
         """
-        if not locate_pipeline_input_nodes(self.graph):
-            raise ValueError("This pipeline has no input nodes!")
+        if not locate_pipeline_input_components(self.graph):
+            raise ValueError("This pipeline has no input components!")
 
-        if not locate_pipeline_output_nodes(self.graph):
-            raise ValueError("This pipeline has no output nodes!")
+        if not locate_pipeline_output_components(self.graph):
+            raise ValueError("This pipeline has no output components!")
 
-    def _check_max_loops(self, node_name: str):
+    def _check_max_loops(self, component_name: str):
         """
-        Verify whether this node run too many times.
+        Verify whether this component run too many times.
         """
-        if self.graph.nodes[node_name]["visits"] > self.max_loops_allowed:
-            raise PipelineMaxLoops(f"Maximum loops count ({self.max_loops_allowed}) exceeded for node '{node_name}'.")
+        if self.graph.nodes[component_name]["visits"] > self.max_loops_allowed:
+            raise PipelineMaxLoops(
+                f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{component_name}'."
+            )
 
     def _ready_to_run(
-        self, node_name: str, node_inputs: Dict[str, Any], inputs_buffer: OrderedDict
+        self, component_name: str, component_inputs: Dict[str, Any], inputs_buffer: OrderedDict
     ) -> Tuple[bool, OrderedDict]:
         """
-        Verify whether a node is ready to run.
+        Verify whether a component is ready to run.
 
-        Returns true if the node should run, false otherwise, and the updated inputs buffer.
+        Returns true if the component should run, false otherwise, and the updated inputs buffer.
         """
         # List all the inputs the current node should be waiting for.
-        inputs_received = [i[0] for i in node_inputs["data"]]
+        inputs_received = [i[0] for i in component_inputs["data"]]
 
         # We should be wait on all edges except for the downstream ones, to support loops.
         # This downstream check is enabled only for nodes taking more than one input
         # (the "entrance" of the loop).
-        is_merge_node = len(self.graph.in_edges(node_name)) != 1
+        is_merge_node = len(self.graph.in_edges(component_name)) != 1
         data_to_wait_for = [
             (e[0], e[2]["label"])  # the node and the edge label
-            for e in self.graph.in_edges(node_name, data=True)  # for all input edges
+            for e in self.graph.in_edges(component_name, data=True)  # for all input edges
             # if there's a path in the graph leading back from the current node to the
             # input node, in case of multiple input nodes.
-            if not is_merge_node or not nx.has_path(self.graph, node_name, e[0])
+            if not is_merge_node or not nx.has_path(self.graph, component_name, e[0])
         ]
 
         if not data_to_wait_for:
             # This is an input node, so it's ready to run.
-            logger.debug("'%s' is an input node and it's ready to run.")
+            logger.debug("'%s' is an input component and it's ready to run.")
             return (True, inputs_buffer)
 
         # Do we have all the inputs we expect?
@@ -559,12 +562,12 @@ class Pipeline:
             logger.debug(
                 "Putting '%s' back in the queue, some inputs are missing "
                 "(inputs to wait for: %s, inputs_received: %s)",
-                node_name,
+                component_name,
                 inputs_to_wait_for,
                 inputs_received,
             )
             # Put back the node in the inputs buffer at the back...
-            inputs_buffer[node_name] = node_inputs
+            inputs_buffer[component_name] = component_inputs
             # ... and do not run this node (yet)
             return (False, inputs_buffer)
 
@@ -575,16 +578,16 @@ class Pipeline:
             # ALL upstream nodes have been skipped.
             #
             # Let's skip this node and add all downstream nodes to the queue.
-            self.graph.nodes[node_name]["visits"] += 1
+            self.graph.nodes[component_name]["visits"] += 1
             logger.debug(
-                "Skipping '%s', all input nodes were skipped and no inputs were received "
-                "(skipped nodes: %s, inputs: %s)",
-                node_name,
+                "Skipping '%s', all input components were skipped and no inputs were received "
+                "(skipped components: %s, inputs: %s)",
+                component_name,
                 nodes_to_wait_for,
                 inputs_to_wait_for,
             )
             # Put all downstream nodes in the inputs buffer...
-            downstream_nodes = [e[1] for e in self.graph.out_edges(node_name)]
+            downstream_nodes = [e[1] for e in self.graph.out_edges(component_name)]
             for downstream_node in downstream_nodes:
                 if not downstream_node in inputs_buffer:
                     inputs_buffer[downstream_node] = {
@@ -616,12 +619,12 @@ class Pipeline:
             if input_expected in inputs_received:
                 inputs_to_wait_for.pop(inputs_to_wait_for.index(input_expected))
         logger.debug(
-            "Some nodes upstream of '%s' were skipped, so some inputs will be None (missing inputs: %s)",
-            node_name,
+            "Some components upstream of '%s' were skipped, so some inputs will be None (missing inputs: %s)",
+            component_name,
             inputs_to_wait_for,
         )
         for missing_input in inputs_to_wait_for:
-            node_inputs["data"].append((missing_input, None))
+            component_inputs["data"].append((missing_input, None))
 
         return (True, inputs_buffer)
 
@@ -632,7 +635,7 @@ class Pipeline:
         inputs_buffer: OrderedDict,
     ) -> OrderedDict:
         """
-        Distrubute the outputs of the node into the input buffer of downstream nodes.
+        Distrubute the outputs of the component into the input buffer of downstream components.
 
         Returns the updated inputs buffer.
         """
@@ -677,14 +680,14 @@ class Pipeline:
         """
         Simplifies the output of simple Pipelines:
 
-        - if the resuklt contains output of a single node, unwraps the dictionary to return the list only
+        - if the resuklt contains output of a single component, unwraps the dictionary to return the list only
         - if the resulting list is only composed of one dictionary, returns the internal dictionary only.
 
         So the output of `Pipeline.run()` might look like:
 
-        - Multi-node output: `{node: [{key: value, ... }, ... ], ... }`
-        - Single-node, repeated output: `[{key: value, ... }, ... ]`
-        - Single-node, single output: `{key: value, ... }`
+        - Multi-component output: `{component: [{key: value, ... }, ... ], ... }`
+        - Single-component, repeated output: `[{key: value, ... }, ... ]`
+        - Single-component, single output: `{key: value, ... }`
         """
         if len(pipeline_results.keys()) == 1:
             pipeline_results = pipeline_results[list(pipeline_results.keys())[0]]  # type: ignore

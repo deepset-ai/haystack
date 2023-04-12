@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.nodes import Accumulate, AddValue, Below, Merge, Sum
+from test.components import Accumulate, AddValue, Below, Merge, Sum
 
 import logging
 
@@ -11,15 +11,15 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_pipeline(tmp_path):
-    accumulator = Accumulate(edge="value")
+    accumulator = Accumulate(connection="value")
 
     pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_node("merge", Merge(), input_node=True)
-    pipeline.add_node("sum", Sum(inputs=["value", "value"]), input_node=True)
-    pipeline.add_node("below_10", Below(threshold=10))
-    pipeline.add_node("add_one", AddValue(add=1, input="below"))
-    pipeline.add_node("counter", accumulator)
-    pipeline.add_node("add_two", AddValue(add=2, input="above"))
+    pipeline.add_component("merge", Merge(), input_component=True)
+    pipeline.add_component("sum", Sum(inputs=["value", "value"]), input_component=True)
+    pipeline.add_component("below_10", Below(threshold=10))
+    pipeline.add_component("add_one", AddValue(add=1, input="below"))
+    pipeline.add_component("counter", accumulator)
+    pipeline.add_component("add_two", AddValue(add=2, input="above"))
 
     pipeline.connect("merge", "below_10")
     pipeline.connect("below_10.below", "add_one")

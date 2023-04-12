@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.nodes import AddValue, Remainder, Double, Sum
+from test.components import AddValue, Remainder, Double, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -12,13 +12,13 @@ def test_pipeline(tmp_path):
     add_one = AddValue(add=1, input="value")
 
     pipeline = Pipeline()
-    pipeline.add_node("add_one", add_one)
-    pipeline.add_node("remainder", Remainder(input="value", divisor=3))
-    pipeline.add_node("add_ten", AddValue(add=10, input="0"))
-    pipeline.add_node("double", Double(input="1", output="value"))
-    pipeline.add_node("add_three", AddValue(add=3, input="2"))
-    pipeline.add_node("add_one_again", add_one)
-    pipeline.add_node("sum", Sum(inputs=["value"] * 4), input_node=True)
+    pipeline.add_component("add_one", add_one)
+    pipeline.add_component("remainder", Remainder(input="value", divisor=3))
+    pipeline.add_component("add_ten", AddValue(add=10, input="0"))
+    pipeline.add_component("double", Double(input="1", output="value"))
+    pipeline.add_component("add_three", AddValue(add=3, input="2"))
+    pipeline.add_component("add_one_again", add_one)
+    pipeline.add_component("sum", Sum(inputs=["value"] * 4), input_component=True)
 
     pipeline.connect("add_one", "remainder")
     pipeline.connect("remainder.0", "add_ten")

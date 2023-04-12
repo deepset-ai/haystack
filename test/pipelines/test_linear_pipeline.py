@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.nodes import AddValue, Double
+from test.components import AddValue, Double
 
 import logging
 
@@ -11,9 +11,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_pipeline(tmp_path):
     pipeline = Pipeline()
-    pipeline.add_node("first_addition", AddValue(add=2))
-    pipeline.add_node("second_addition", AddValue(add=1))
-    pipeline.add_node("double", Double(input="value"))
+    pipeline.add_component("first_addition", AddValue(add=2))
+    pipeline.add_component("second_addition", AddValue(add=1))
+    pipeline.add_component("double", Double(input="value"))
     pipeline.connect("first_addition", "double")
     pipeline.connect("double", "second_addition")
 

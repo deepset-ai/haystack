@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.nodes import AddValue, Repeat, Double
+from test.components import AddValue, Repeat, Double
 
 import logging
 
@@ -13,12 +13,12 @@ def test_pipeline(tmp_path):
     add_one = AddValue(add=1, input="value")
 
     pipeline = Pipeline()
-    pipeline.add_node("add_one", add_one)
-    pipeline.add_node("enumerate", Repeat(input="value", outputs=["0", "1", "2"]))
-    pipeline.add_node("add_ten", AddValue(add=10, input="0"))
-    pipeline.add_node("double", Double(input="1", output="value"))
-    pipeline.add_node("add_three", AddValue(add=3, input="2"))
-    pipeline.add_node("add_one_again", add_one)
+    pipeline.add_component("add_one", add_one)
+    pipeline.add_component("enumerate", Repeat(input="value", outputs=["0", "1", "2"]))
+    pipeline.add_component("add_ten", AddValue(add=10, input="0"))
+    pipeline.add_component("double", Double(input="1", output="value"))
+    pipeline.add_component("add_three", AddValue(add=3, input="2"))
+    pipeline.add_component("add_one_again", add_one)
 
     pipeline.connect("add_one", "enumerate.1")
     pipeline.connect("enumerate.0", "add_ten")

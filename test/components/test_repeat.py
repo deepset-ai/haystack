@@ -1,18 +1,18 @@
 from typing import Dict, Any, List, Tuple, Set
 
-from canals import node
+from canals import component
 
 
-@node
+@component
 class Repeat:
     """
     Repeats the input value on all outputs.
 
-    Single input, multi output node. Order of outputs is irrelevant.
+    Single input, multi output component. Order of outputs is irrelevant.
     Doesn't accept parameters.
 
-    :param input: the name of the input edge.
-    :param outputs: the list of the output edges.
+    :param input: the name of the input connection.
+    :param outputs: the list of the output connections.
     """
 
     def __init__(self, input: str = "value", outputs: Set[str] = {"first", "second"}):
@@ -28,14 +28,14 @@ class Repeat:
 
 
 def test_repeat_default():
-    node = Repeat()
-    results = node.run(name="test_node", data=[("value", 10)], parameters={})
+    component = Repeat()
+    results = component.run(name="test_component", data=[("value", 10)], parameters={})
     assert results == ({"first": 10, "second": 10}, {})
-    assert node.init_parameters == {"input": "value", "outputs": {"first", "second"}}
+    assert component.init_parameters == {"input": "value", "outputs": {"first", "second"}}
 
 
 def test_repeat_init_params():
-    node = Repeat(input="test", outputs={"one", "two"})
-    results = node.run(name="test_node", data=[("test", 10)], parameters={})
+    component = Repeat(input="test", outputs={"one", "two"})
+    results = component.run(name="test_component", data=[("test", 10)], parameters={})
     assert results == ({"one": 10, "two": 10}, {})
-    assert node.init_parameters == {"input": "test", "outputs": {"one", "two"}}
+    assert component.init_parameters == {"input": "test", "outputs": {"one", "two"}}

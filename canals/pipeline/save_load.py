@@ -65,42 +65,49 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
     schema: Dict[str, Any] = {}
 
     # Summarize pipeline configuration
-    nodes: List[Tuple[str, str, object]] = []
+    components: List[Tuple[str, str, object]] = []
     schema["pipelines"] = {}
     for pipeline_name, pipeline in pipelines.items():
         pipeline_repr: Dict[str, Any] = {}
         pipeline_repr["metadata"] = pipeline.metadata
         pipeline_repr["max_loops_allowed"] = pipeline.max_loops_allowed
 
-        # Collect nodes
-        pipeline_repr["nodes"] = {}
-        for node_name in pipeline.graph.nodes:
+        # Collect components
+        pipeline_repr["components"] = {}
+        for component_name in pipeline.graph.nodes:
 
             # Check if we saved the same instance twice (or more times) and replace duplicates with references.
-            node_instance = pipeline.graph.nodes[node_name]["instance"]
-            for existing_node_pipeline, existing_node_name, existing_node in nodes:
-                if node_instance == existing_node:
+            component_instance = pipeline.graph.nodes[component_name]["instance"]
+            for existing_component_pipeline, existing_component_name, existing_components in components:
+                if component_instance == existing_components:
                     # Build the pointer - done this way to support languages with no pointer syntax (e.g. JSON)
-                    pipeline_repr["nodes"][node_name] = {"refer_to": f"{existing_node_pipeline}.{existing_node_name}"}
+                    pipeline_repr["components"][component_name] = {
+                        "refer_to": f"{existing_component_pipeline}.{existing_component_name}"
+                    }
                     break
 
             # If no pointer was made in the previous step
-            if not node_name in pipeline_repr["nodes"]:
-                # Save the node in the global nodes list
-                nodes.append((pipeline_name, node_name, node_instance))
-                # Serialize the node
-                node_repr = {"type": node_instance.__class__.__name__, "init_parameters": node_instance.init_parameters}
-                pipeline_repr["nodes"][node_name] = node_repr
+            if not component_name in pipeline_repr["components"]:
+                # Save the components in the global components list
+                components.append((pipeline_name, component_name, component_instance))
+                # Serialize the components
+                component_repr = {
+                    "type": component_instance.__class__.__name__,
+                    "init_parameters": component_instance.init_parameters,
+                }
+                pipeline_repr["components"][component_name] = component_repr
 
             # Check for run parameters
-            if pipeline.graph.nodes[node_name]["parameters"]:
-                pipeline_repr["nodes"][node_name]["run_parameters"] = pipeline.graph.nodes[node_name]["parameters"]
+            if pipeline.graph.nodes[component_name]["parameters"]:
+                pipeline_repr["components"][component_name]["run_parameters"] = pipeline.graph.nodes[component_name][
+                    "parameters"
+                ]
 
-        pipeline_repr["edges"] = list(pipeline.graph.edges)
+        pipeline_repr["connections"] = list(pipeline.graph.edges)
         schema["pipelines"][pipeline_name] = pipeline_repr
 
     # Collect the dependencies
-    schema["dependencies"] = _discover_dependencies(nodes=[node[2] for node in nodes])
+    schema["dependencies"] = _discover_dependencies(components=[component[2] for component in components])
     return schema
 
 
@@ -127,7 +134,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
 
     classes = _find_decorated_classes(modules_to_search=schema["dependencies"])
     pipelines = {}
-    node_instances: Dict[str, object] = {}
+    component_instances: Dict[str, object] = {}
     for pipeline_name, pipeline_schema in schema["pipelines"].items():
 
         # Create the Pipeline object
@@ -136,20 +143,25 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
             pipe_args["max_loops_allowed"] = pipeline_schema["max_loops_allowed"]
         pipe = Pipeline(**pipe_args)
 
-        # Create the nodes or fish them from the buffer
-        for node_name, node_schema in pipeline_schema["nodes"].items():
-            if "refer_to" in node_schema.keys():
-                pipe.add_node(
-                    name=node_name,
-                    instance=node_instances[node_schema["refer_to"]],
-                    parameters=node_schema.get("run_parameters", {}),
+        # Create the components or fish them from the buffer
+        for component_name, component_schema in pipeline_schema["components"].items():
+            if "refer_to" in component_schema.keys():
+                pipe.add_component(
+                    name=component_name,
+                    instance=component_instances[component_schema["refer_to"]],
+                    parameters=component_schema.get("run_parameters", {}),
                 )
             else:
-                node_instance = classes[node_schema["type"]](**node_schema.get("init_parameters", {}))
-                node_instances[f"{pipeline_name}.{node_name}"] = node_instance
-                pipe.add_node(name=node_name, instance=node_instance, parameters=node_schema.get("run_parameters", {}))
+                component_class = classes[component_schema["type"]]
+                component_instance = component_class(**component_schema.get("init_parameters", {}))
+                component_instances[f"{pipeline_name}.{component_name}"] = component_instance
+                pipe.add_component(
+                    name=component_name,
+                    instance=component_instance,
+                    parameters=component_schema.get("run_parameters", {}),
+                )
 
-        for edge in pipeline_schema["edges"]:
+        for edge in pipeline_schema["connections"]:
             pipe.connect(*edge)
 
         pipelines[pipeline_name] = pipe
@@ -157,27 +169,27 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
     return pipelines
 
 
-def _discover_dependencies(nodes: List[object]) -> List[str]:
+def _discover_dependencies(components: List[object]) -> List[str]:
     """
-    Given a list of nodes, it returns a list of all the modules that one needs to import to
+    Given a list of components, it returns a list of all the modules that one needs to import to
     make this pipeline work.
     """
-    module_names = [getmodule(node) for node in nodes]
+    module_names = [getmodule(component) for component in components]
     if any(not module_name for module_name in module_names):
         logger.error(
-            "Can't identify the import module of some of your nodes. Your Pipelines might be unable to load back."
+            "Can't identify the import module of some of your components. Your Pipelines might be unable to load back."
         )
     return list({module.__name__.split(".")[0] for module in module_names if module is not None}) + ["canals"]
 
 
-def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__canals_node__") -> Dict[str, type]:
+def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__canals_component__") -> Dict[str, type]:
     """
-    Finds all classes decorated with `@node` in all the modules listed in `modules_to_search`.
-    Returns a dictionary with the node class name and the node classes.
+    Finds all classes decorated with `@components` in all the modules listed in `modules_to_search`.
+    Returns a dictionary with the component class name and the component classes.
 
     Note: can be used for other decorators as well by setting the `decorator` parameter.
     """
-    node_classes: Dict[str, type] = {}
+    component_classes: Dict[str, type] = {}
 
     # Collect all modules
     for module in modules_to_search:
@@ -194,11 +206,11 @@ def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__ca
         for _, entity in getmembers(sys.modules[module], isclass):
             if hasattr(entity, decorator):
                 # It's a decorated class
-                if getattr(entity, decorator) in node_classes:
+                if getattr(entity, decorator) in component_classes:
                     logger.debug("'%s.%s' was imported more than once", module, getattr(entity, decorator))
                     continue
 
-                node_classes[getattr(entity, decorator)] = entity
+                component_classes[getattr(entity, decorator)] = entity
                 logger.debug(" * Found class: %s", entity)
 
-    return node_classes
+    return component_classes

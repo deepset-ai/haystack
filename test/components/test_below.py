@@ -1,9 +1,9 @@
 from typing import Dict, Any, List, Tuple
 
-from canals import node
+from canals import component
 
 
-@node
+@component
 class Below:
     def __init__(
         self,
@@ -13,15 +13,15 @@ class Below:
         output_below: str = "below",
     ):
         """
-        Redirects the value, unchanged, along a different edge whether the value is above
+        Redirects the value, unchanged, along a different connection whether the value is above
         or below the given threshold.
 
-        Single input, double output decision node.
+        Single input, double output decision component.
 
         :param threshold: the number to compare the input value against. This is also a parameter.
-        :param input: the name of the input edge.
-        :param output_above: the name of the output edge if the value is above the threshold.
-        :param output_below: the name of the output edge if the value is below the threshold.
+        :param input: the name of the input connection.
+        :param output_above: the name of the output connection if the value is above the threshold.
+        :param output_below: the name of the output connection if the value is below the threshold.
         """
         self.threshold = threshold
         self.output_above = output_above
@@ -45,14 +45,14 @@ class Below:
 
 
 def test_below_default():
-    node = Below(threshold=10)
-    results = node.run(name="test_node", data=[("value", 5)], parameters={})
+    component = Below(threshold=10)
+    results = component.run(name="test_component", data=[("value", 5)], parameters={})
     assert results == ({"below": 5}, {})
 
-    results = node.run(name="test_node", data=[("value", 15)], parameters={})
+    results = component.run(name="test_component", data=[("value", 15)], parameters={})
     assert results == ({"above": 15}, {})
 
-    assert node.init_parameters == {
+    assert component.init_parameters == {
         "threshold": 10,
         "input": "value",
         "output_above": "above",
@@ -61,14 +61,14 @@ def test_below_default():
 
 
 def test_below_init_parameters():
-    node = Below(threshold=10, input="test", output_above="higher", output_below="lower")
-    results = node.run(name="test_node", data=[("test", 5)], parameters={})
+    component = Below(threshold=10, input="test", output_above="higher", output_below="lower")
+    results = component.run(name="test_component", data=[("test", 5)], parameters={})
     assert results == ({"lower": 5}, {})
 
-    results = node.run(name="test_node", data=[("test", 15)], parameters={})
+    results = component.run(name="test_component", data=[("test", 15)], parameters={})
     assert results == ({"higher": 15}, {})
 
-    assert node.init_parameters == {
+    assert component.init_parameters == {
         "threshold": 10,
         "input": "test",
         "output_above": "higher",
@@ -77,14 +77,16 @@ def test_below_init_parameters():
 
 
 def test_below_run_parameters():
-    node = Below(threshold=10, input="test", output_above="higher", output_below="lower")
-    results = node.run(name="test_node", data=[("test", 5)], parameters={"test_node": {"threshold": 1}})
-    assert results == ({"higher": 5}, {"test_node": {"threshold": 1}})
+    component = Below(threshold=10, input="test", output_above="higher", output_below="lower")
+    results = component.run(name="test_component", data=[("test", 5)], parameters={"test_component": {"threshold": 1}})
+    assert results == ({"higher": 5}, {"test_component": {"threshold": 1}})
 
-    results = node.run(name="test_node", data=[("test", 15)], parameters={"test_node": {"threshold": 100}})
-    assert results == ({"lower": 15}, {"test_node": {"threshold": 100}})
+    results = component.run(
+        name="test_component", data=[("test", 15)], parameters={"test_component": {"threshold": 100}}
+    )
+    assert results == ({"lower": 15}, {"test_component": {"threshold": 100}})
 
-    assert node.init_parameters == {
+    assert component.init_parameters == {
         "threshold": 10,
         "input": "test",
         "output_above": "higher",

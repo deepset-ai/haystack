@@ -1,9 +1,9 @@
 from typing import Dict, Any, List, Tuple
 
-from canals import node
+from canals import component
 
 
-@node
+@component
 class Merge:
     def __init__(
         self,
@@ -11,13 +11,13 @@ class Merge:
         output: str = "value",
     ):
         """
-        Takes several input nodes and returns the first one that is not None.
-        If no input edges received any value, returns None as well.
+        Takes several input components and returns the first one that is not None.
+        If no input connections received any value, returns None as well.
 
-        Multi input, single output node. Doesn't take any parameter.
+        Multi input, single output component. Doesn't take any parameter.
 
         :param inputs: the inputs to expect.
-        :param output: the name of the output edge.
+        :param output: the name of the output connection.
         """
         self.output = output
         self.init_parameters = {
@@ -34,16 +34,16 @@ class Merge:
 
 
 def test_merge_default():
-    node = Merge()
-    results = node.run(name="test_node", data=[("value", 5)], parameters={})
+    component = Merge()
+    results = component.run(name="test_component", data=[("value", 5)], parameters={})
     assert results == ({"value": 5}, {})
-    assert node.init_parameters == {
+    assert component.init_parameters == {
         "inputs": ["value"],
         "output": "value",
     }
 
 
 def test_merge_init_parameters():
-    node = Merge(inputs=["test1", "test2", "test3"], output="test")
-    results = node.run(name="test_node", data=[("test1", None), ("test2", 5), ("test3", 10)], parameters={})
+    component = Merge(inputs=["test1", "test2", "test3"], output="test")
+    results = component.run(name="test_component", data=[("test1", None), ("test2", 5), ("test3", 10)], parameters={})
     assert results == ({"test": 5}, {})

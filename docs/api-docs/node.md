@@ -1,3 +1,0 @@
-# Node
-
-::: canals.node
