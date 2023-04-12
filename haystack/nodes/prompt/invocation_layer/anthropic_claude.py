@@ -24,9 +24,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
     This layer is used to invoke the Claude API provided by Anthropic.
     """
 
-    def __init__(
-        self, api_key: str, model_name_or_path: str = "claude-v1", max_tokens_to_sample: Optional[int] = 200, **kwargs
-    ):
+    def __init__(self, api_key: str, model_name_or_path: str = "claude-v1", max_length=200, **kwargs):
         """
          Creates an instance of PromptModelInvocation Layer for Anthropic's Claude models.
         :param model_name_or_path: The name or path of the underlying model.
@@ -42,33 +40,18 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid Anthropic key. Visit https://console.anthropic.com/account/keys to get one."
             )
         self.api_key = api_key
-        self.max_tokens_to_sample = max_tokens_to_sample
-
-        # 200 is the default length for answers from Anthropic
-        # max_tokens_to_sample must be set otherwise AnthropicInvocationLayer._ensure_token_limit will fail.
-        self.max_length = max_tokens_to_sample or 200
+        self.max_length = max_length
 
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
         # For more details refer to Anthropic documentation
-        self.model_input_kwargs = {
-            key: kwargs[key]
-            for key in [
-                "max_tokens_to_sample",
-                "temperature",
-                "top_p",
-                "top_k",
-                "stop_sequences",
-                "stream",
-                "stream_handler",
-            ]
-            if key in kwargs
-        }
+        supported_kwargs = ["temperature", "top_p", "top_k", "stop_sequences", "stream", "stream_handler"]
+        self.model_input_kwargs = {k: v for (k, v) in kwargs.items() if k in supported_kwargs}
 
         # Number of max tokens is based on the official Anthropic model pricing from:
         # https://cdn2.assets-servd.host/anthropic-website/production/images/FINAL-PRICING.pdf
         self.max_tokens_limit = 9000
-        self._tokenizer: GPT2TokenizerFast = GPT2TokenizerFast.from_pretrained("gpt2")
+        self.tokenizer: GPT2TokenizerFast = GPT2TokenizerFast.from_pretrained("gpt2")
 
     def invoke(self, *args, **kwargs):
         """
@@ -92,7 +75,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         if "stop_words" in kwargs:
             kwargs["stop_sequences"] = kwargs.pop("stop_words")
         if "max_tokens" in kwargs:
-            kwargs["max_tokens_to_sample"] = kwargs.pop("max_tokens")
+            kwargs["max_length"] = kwargs.pop("max_length")
         kwargs_with_defaults.update(kwargs)
 
         # either stream is True (will use default handler) or stream_handler is provided
@@ -104,7 +87,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         data = {
             "model": self.model_name_or_path,
             "prompt": "{} {} {}".format(human_prompt, prompt, assitant_prompt),
-            "max_tokens_to_sample": kwargs_with_defaults.get("max_tokens_to_sample", self.max_tokens_to_sample),
+            "max_tokens_to_sample": kwargs_with_defaults.get("max_length", self.max_length),
             "temperature": kwargs_with_defaults.get("temperature", 1),
             "top_p": kwargs_with_defaults.get("top_p", -1),
             "top_k": kwargs_with_defaults.get("top_k", -1),
@@ -135,7 +118,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         If needed, truncate the prompt text so that it fits within the limit.
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = len(self._tokenizer.tokenize(prompt))
+        n_prompt_tokens = len(self.tokenizer.tokenize(prompt))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
@@ -150,9 +133,9 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             self.max_tokens_limit,
         )
 
-        tokenized_payload = self._tokenizer.tokenize(prompt)
+        tokenized_payload = self.tokenizer.tokenize(prompt)
         token_limit = self.max_tokens_limit - n_answer_tokens
-        decoded_string = self._tokenizer.convert_tokens_to_string(tokenized_payload[:token_limit])
+        decoded_string = self.tokenizer.convert_tokens_to_string(tokenized_payload[:token_limit])
         return decoded_string
 
     def _post(
