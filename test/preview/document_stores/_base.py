@@ -111,8 +111,10 @@ class DocumentStoreBaseTests:
 
     def test_incorrect_filter_nesting(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"year": "2020"}})
-        assert len(result) == 0
+        with pytest.raises(ValueError, match="malformed"):
+            docstore.filter_documents(filters={"number": {"year": "2020"}})
+        with pytest.raises(ValueError, match="malformed"):
+            docstore.filter_documents(filters={"number": {"year": {"month": "01"}}})
 
     def test_eq_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
