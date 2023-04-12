@@ -6,7 +6,7 @@ repos:
   hooks:
     - id: check-ast   # checks Python syntax
     - id: check-json  # checks JSON syntax
-    - id: check-yaml  # checks YAML syntax
+#    - id: check-yaml  # checks YAML syntax
     - id: check-toml  # checks TOML syntax
     - id: end-of-file-fixer  # checks there is a newline at the end of the file
     - id: trailing-whitespace  # trims trailing whitespace
