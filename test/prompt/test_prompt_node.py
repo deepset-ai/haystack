@@ -209,19 +209,20 @@ def test_generation_kwargs_from_prompt_node_init():
     node = PromptNode(model_kwargs={"generation_kwargs": {"do_sample": True}})
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
         node(the_question)
-        mock_call.assert_called_with(the_question, {}, {"do_sample": True,
-                                                        "num_return_sequences": 1, "num_beams": 1,
-                                                        "max_length": 100},
-                                     {})
+        mock_call.assert_called_with(
+            the_question, {}, {"do_sample": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100}, {}
+        )
 
     # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     node = PromptNode(model_kwargs={"generation_kwargs": GenerationConfig(do_sample=True, top_p=0.9)})
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
         node(the_question)
-        mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9,
-                                                        "num_return_sequences": 1, "num_beams": 1,
-                                                        "max_length": 100},
-                                     {})
+        mock_call.assert_called_with(
+            the_question,
+            {},
+            {"do_sample": True, "top_p": 0.9, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
+            {},
+        )
 
 
 @pytest.mark.integration
@@ -231,19 +232,20 @@ def test_generation_kwargs_from_prompt_node_call():
     node = PromptNode()
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
         node(the_question, generation_kwargs={"do_sample": True})
-        mock_call.assert_called_with(the_question, {}, {"do_sample": True,
-                                                        "num_return_sequences": 1, "num_beams": 1,
-                                                        "max_length": 100},
-                                     {})
+        mock_call.assert_called_with(
+            the_question, {}, {"do_sample": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100}, {}
+        )
 
     # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
     node = PromptNode()
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
         node(the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
-        mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9,
-                                                        "num_return_sequences": 1, "num_beams": 1,
-                                                        "max_length": 100},
-                                     {})
+        mock_call.assert_called_with(
+            the_question,
+            {},
+            {"do_sample": True, "top_p": 0.9, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
+            {},
+        )
 
 
 @pytest.mark.integration

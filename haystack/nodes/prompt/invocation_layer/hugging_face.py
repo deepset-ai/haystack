@@ -2,8 +2,14 @@ from typing import Optional, Union, List, Dict
 import logging
 
 import torch
-from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast, \
-    GenerationConfig
+from transformers import (
+    pipeline,
+    StoppingCriteriaList,
+    StoppingCriteria,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+    GenerationConfig,
+)
 from transformers.pipelines import get_task
 
 from haystack.modeling.utils import initialize_device_settings
