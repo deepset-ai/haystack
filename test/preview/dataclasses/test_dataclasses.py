@@ -4,11 +4,12 @@ import pandas as pd
 import numpy as np
 
 from haystack.preview import Document
+from haystack.preview.dataclasses.document import _create_id
 
 
 def test_default_text_document_to_dict():
     assert Document(content="test content").to_dict() == {
-        "id": hashlib.sha256(":".join([Document.__name__, "test content"]).encode("utf-8")).hexdigest(),
+        "id": _create_id(content_to_hash=":".join([Document.__name__, "test content"])),
         "content": "test content",
         "content_type": "text",
         "metadata": {},
@@ -21,7 +22,7 @@ def test_default_text_document_to_dict():
 def test_default_text_document_from_dict():
     assert Document.from_dict(
         {
-            "id": hashlib.sha256(":".join([Document.__name__, "test content"]).encode("utf-8")).hexdigest(),
+            "id": _create_id(":".join([Document.__name__, "test content"])),
             "content": "test content",
             "content_type": "text",
             "metadata": {},
@@ -40,7 +41,7 @@ def test_default_table_document_to_dict():
     assert dataframe.equals(df)
 
     assert dictionary == {
-        "id": hashlib.sha256(":".join([Document.__name__, str(df)]).encode("utf-8")).hexdigest(),
+        "id": _create_id(":".join([Document.__name__, str(df)])),
         "content_type": "table",
         "metadata": {},
         "id_hash_keys": [],
@@ -53,7 +54,7 @@ def test_default_table_document_from_dict():
     df = pd.DataFrame([1, 2])
     assert Document.from_dict(
         {
-            "id": hashlib.sha256(":".join([Document.__name__, str(df)]).encode("utf-8")).hexdigest(),
+            "id": _create_id(":".join([Document.__name__, str(df)])),
             "content": df,
             "content_type": "table",
             "metadata": {},
@@ -67,7 +68,7 @@ def test_default_table_document_from_dict():
 def test_default_image_document_to_dict():
     path = Path(__file__).parent / "test_files" / "apple.jpg"
     assert Document(content=path, content_type="image").to_dict() == {
-        "id": hashlib.sha256(":".join([Document.__name__, str(path)]).encode("utf-8")).hexdigest(),
+        "id": _create_id(":".join([Document.__name__, str(path)])),
         "content": path,
         "content_type": "image",
         "metadata": {},
@@ -81,7 +82,7 @@ def test_default_image_document_from_dict():
     path = Path(__file__).parent / "test_files" / "apple.jpg"
     assert Document.from_dict(
         {
-            "id": hashlib.sha256(":".join([Document.__name__, str(path)]).encode("utf-8")).hexdigest(),
+            "id": _create_id(":".join([Document.__name__, str(path)])),
             "content": path,
             "content_type": "image",
             "metadata": {},
@@ -110,7 +111,7 @@ def test_document_with_most_attributes_to_dict():
     assert (embedding == np.zeros([10, 10])).all()
 
     assert dictionary == {
-        "id": hashlib.sha256(":".join([Document.__name__, "test content", "10"]).encode("utf-8")).hexdigest(),
+        "id": _create_id(":".join([Document.__name__, "test content", "10"])),
         "content": "test content",
         "content_type": "text",
         "metadata": {"some": "values", "test": 10},
@@ -123,7 +124,7 @@ def test_document_with_most_attributes_from_dict():
     embedding = np.zeros([10, 10])
     assert Document.from_dict(
         {
-            "id": hashlib.sha256(":".join([Document.__name__, "test content", "10"]).encode("utf-8")).hexdigest(),
+            "id": _create_id(":".join([Document.__name__, "test content", "10"])),
             "content": "test content",
             "content_type": "text",
             "metadata": {"some": "values", "test": 10},

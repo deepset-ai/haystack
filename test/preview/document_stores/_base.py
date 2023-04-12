@@ -11,24 +11,6 @@ class DocumentStoreBaseTests:
     def docstore(self):
         raise NotImplementedError()
 
-    def direct_access(self, docstore, doc_id):
-        """
-        Bypass `filter_documents()`
-        """
-        raise NotImplementedError()
-
-    def direct_write(self, docstore, documents):
-        """
-        Bypass `write_documents()`
-        """
-        raise NotImplementedError()
-
-    def direct_delete(self, docstore, ids):
-        """
-        Bypass `delete_documents()`
-        """
-        raise NotImplementedError()
-
     @pytest.fixture
     def filterable_docs(self):
         documents = []

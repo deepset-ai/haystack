@@ -22,12 +22,25 @@ ContentType = Literal["text", "table", "image", "audio"]
 PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {"text": str, "table": DataFrame, "image": Path, "audio": Path}
 
 
+def _create_id(content_to_hash: str):
+    """
+    Creates a hash of the content given that acts as the document's ID.
+    """
+    return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class Document:
     """
     Base data class containing some data to be queried.
     Can contain text snippets, tables, file paths to files like images or audios.
     Documents can be sorted by score, serialized to/from dictionary and JSON, and are immutable.
+
+    Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
+    the ID should change.  To avoid keeping IDs in sync with the content by using properties, and asking docstores to
+    be aware of this corner case, we decide to make Documents immutable and remove the issue. If you need to modify a
+    Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
+    `Document.from_dict()`.
 
     Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the id hash.
     In case of file-based documents (images, audios), the content that is hashed is the file paths,
@@ -71,7 +84,9 @@ class Document:
                 *[str(self.metadata.get(key, "")) for key in self.id_hash_keys],
             ]
         )
-        hashed_content = hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
+        hashed_content = _create_id(content_to_hash=content_to_hash)
+
+        # Note: we need to set the id this way because the dataclass is frozen. See the docstring.
         object.__setattr__(self, "id", hashed_content)
 
     def to_dict(self):
