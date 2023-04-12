@@ -1,13 +1,8 @@
 # Canals
 
 <p align="center" float="left">
-  <img alt="" src="https://raw.githubusercontent.com/deepset-ai/canals/main/images/canals-logo.png" width="30%"/>
-</p>
-
-<p align="center" float="left">
-  <img alt="" src="https://raw.githubusercontent.com/deepset-ai/.github/main/deepset-logo-colored.png" width="30%"/>
-  <img alt="" src="https://raw.githubusercontent.com/deepset-ai/.github/main/haystack-logo-colored-on-dark.png#gh-dark-mode-only" width="30%"/>
-  <img alt="" src="https://raw.githubusercontent.com/deepset-ai/.github/main/haystack-logo-colored.png#gh-light-mode-only" width="30%"/>
+  <img alt="" src="https://raw.githubusercontent.com/deepset-ai/canals/main/images/canals-logo-light.png#gh-dark-mode-only"/>
+  <img alt="" src="https://raw.githubusercontent.com/deepset-ai/canals/main/images/canals-logo-dark.png#gh-light-mode-only"/>
 </p>
 
 [![PyPI - Version](https://img.shields.io/pypi/v/canals.svg)](https://pypi.org/project/canals)
