@@ -396,6 +396,20 @@ def test_parsr_converter_headline_extraction(samples_path):
                 assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
 
 
+@pytest.mark.integration
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
+def test_parsr_converter_list_mapping(samples_path):
+    # This exact line(without line break characters) only exists in the list object we want to make sure it's being mapped correctly
+    expected_list_line = "Maecenas tincidunt est efficitur ligula euismod, sit amet ornare est vulputate."
+
+    converter = ParsrConverter()
+
+    docs = converter.convert(file_path=str((samples_path / "pdf" / "sample_pdf_4.pdf").absolute()))
+    assert len(docs) == 2
+    assert docs[1].content_type == "text"
+    assert expected_list_line in docs[1].content
+
+
 @pytest.mark.unit
 def test_id_hash_keys_from_pipeline_params(samples_path):
     doc_path = samples_path / "docs" / "doc_1.txt"
