@@ -46,6 +46,7 @@ def upload_file(
     files: List[UploadFile] = File(...),
     # JSON serialized string
     meta: Optional[str] = Form("null"),  # type: ignore
+    additional_params: Optional[str] = Form("null"),  # type: ignore
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),  # type: ignore
     preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),  # type: ignore
 ):
@@ -75,11 +76,12 @@ def upload_file(
         finally:
             file.file.close()
 
+    params = json.loads(additional_params) or {}  # type: ignore
+
     # Find nodes names
     converters = indexing_pipeline.get_nodes_by_class(BaseConverter)
     preprocessors = indexing_pipeline.get_nodes_by_class(PreProcessor)
 
-    params = {}
     for converter in converters:
         params[converter.name] = fileconverter_params.dict()
     for preprocessor in preprocessors:

@@ -11,7 +11,6 @@ import opensearchpy
 from haystack.document_stores.opensearch import (
     OpenSearch,
     OpenSearchDocumentStore,
-    OpenDistroElasticsearchDocumentStore,
     RequestsHttpConnection,
     Urllib3HttpConnection,
     RequestError,
@@ -1240,20 +1239,3 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             ]
             mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
             assert mocked_bulk.call_count == 5
-
-
-class TestOpenDistroElasticsearchDocumentStore:
-    @pytest.mark.unit
-    def test_deprecation_notice(self, monkeypatch, caplog):
-        klass = OpenDistroElasticsearchDocumentStore
-        monkeypatch.setattr(klass, "_init_client", MagicMock())
-        monkeypatch.setattr(klass, "_validate_and_adjust_document_index", MagicMock())
-        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
-            klass()
-        assert caplog.record_tuples == [
-            (
-                "haystack.document_stores.opensearch",
-                logging.WARN,
-                "Open Distro for Elasticsearch has been replaced by OpenSearch! See https://opensearch.org/faq/ for details. We recommend using the OpenSearchDocumentStore instead.",
-            )
-        ]

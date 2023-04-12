@@ -1,4 +1,3 @@
-import os
 import pytest
 
 from haystack import Document
@@ -7,12 +6,16 @@ from haystack.nodes.image_to_text.base import BaseImageToText
 from haystack.errors import ImageToTextError
 
 
-from ..conftest import SAMPLES_PATH
+@pytest.fixture
+def image_file_paths(samples_path):
+    image_file_names = ["apple.jpg", "car.jpg", "cat.jpg", "galaxy.jpg", "paris.jpg"]
+    return [str(samples_path / "images" / file_name) for file_name in image_file_names]
 
 
-IMAGE_FILE_NAMES = ["apple.jpg", "car.jpg", "cat.jpg", "galaxy.jpg", "paris.jpg"]
-IMAGE_FILE_PATHS = [os.path.join(SAMPLES_PATH, "images", file_name) for file_name in IMAGE_FILE_NAMES]
-IMAGE_DOCS = [Document(content=image_path, content_type="image") for image_path in IMAGE_FILE_PATHS]
+@pytest.fixture
+def image_docs(image_file_paths):
+    return [Document(content=image_path, content_type="image") for image_path in image_file_paths]
+
 
 EXPECTED_CAPTIONS = [
     "a red apple is sitting on a pile of hay",
@@ -33,37 +36,37 @@ def image_to_text():
 
 
 @pytest.mark.integration
-def test_image_to_text_from_files(image_to_text):
+def test_image_to_text_from_files(image_to_text, image_file_paths):
     assert isinstance(image_to_text, BaseImageToText)
 
-    results = image_to_text.run(file_paths=IMAGE_FILE_PATHS)
+    results = image_to_text.run(file_paths=image_file_paths)
     image_paths = [doc.meta["image_path"] for doc in results[0]["documents"]]
-    assert image_paths == IMAGE_FILE_PATHS
+    assert image_paths == image_file_paths
     generated_captions = [doc.content for doc in results[0]["documents"]]
     assert generated_captions == EXPECTED_CAPTIONS
 
 
 @pytest.mark.integration
-def test_image_to_text_from_documents(image_to_text):
-    results = image_to_text.run(documents=IMAGE_DOCS)
+def test_image_to_text_from_documents(image_to_text, image_file_paths, image_docs):
+    results = image_to_text.run(documents=image_docs)
     image_paths = [doc.meta["image_path"] for doc in results[0]["documents"]]
-    assert image_paths == IMAGE_FILE_PATHS
+    assert image_paths == image_file_paths
     generated_captions = [doc.content for doc in results[0]["documents"]]
     assert generated_captions == EXPECTED_CAPTIONS
 
 
 @pytest.mark.integration
-def test_image_to_text_from_files_and_documents(image_to_text):
-    results = image_to_text.run(file_paths=IMAGE_FILE_PATHS[:3], documents=IMAGE_DOCS[3:])
+def test_image_to_text_from_files_and_documents(image_to_text, image_file_paths, image_docs):
+    results = image_to_text.run(file_paths=image_file_paths[:3], documents=image_docs[3:])
     image_paths = [doc.meta["image_path"] for doc in results[0]["documents"]]
-    assert image_paths == IMAGE_FILE_PATHS
+    assert image_paths == image_file_paths
     generated_captions = [doc.content for doc in results[0]["documents"]]
     assert generated_captions == EXPECTED_CAPTIONS
 
 
 @pytest.mark.integration
-def test_image_to_text_invalid_image(image_to_text):
-    markdown_path = str(SAMPLES_PATH / "markdown" / "sample.md")
+def test_image_to_text_invalid_image(image_to_text, samples_path):
+    markdown_path = str(samples_path / "markdown" / "sample.md")
     with pytest.raises(ImageToTextError, match="cannot identify image file"):
         image_to_text.run(file_paths=[markdown_path])
 
