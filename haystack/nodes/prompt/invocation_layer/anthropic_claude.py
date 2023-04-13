@@ -72,28 +72,33 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
 
         kwargs_with_defaults = self.model_input_kwargs
 
-        # we use keyword stop_words but Anthropic uses stop_sequences
-        if "stop_words" in kwargs:
-            kwargs["stop_sequences"] = kwargs.pop("stop_words")
-        if "max_tokens" in kwargs:
-            kwargs["max_length"] = kwargs.pop("max_length")
+        if "stop_sequence" in kwargs:
+            kwargs["stop_words"] = kwargs.pop("stop_sequence")
+        if "max_tokens_to_sample" in kwargs:
+            kwargs["max_length"] = kwargs.pop("max_tokens_to_sample")
+
         kwargs_with_defaults.update(kwargs)
 
-        # either stream is True (will use default handler) or stream_handler is provided
+        # Stream the response either in explicitly specified or if a custom handler is set
         stream = (
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
-        stop_sequences = kwargs.get("stop_sequences", ["\n\nHuman: "])
+        stop_words = kwargs_with_defaults.get("stop_words", [human_prompt])
+
+        # As specified by Anthropic the prompt must contain both
+        # the human and assistant prompt to be valid:
+        # https://console.anthropic.com/docs/prompt-design#what-is-a-prompt-
+        prompt = f"{human_prompt}{prompt}{assitant_prompt}"
 
         data = {
             "model": self.model_name_or_path,
-            "prompt": "{} {} {}".format(human_prompt, prompt, assitant_prompt),
+            "prompt": prompt,
             "max_tokens_to_sample": kwargs_with_defaults.get("max_length", self.max_length),
             "temperature": kwargs_with_defaults.get("temperature", 1),
             "top_p": kwargs_with_defaults.get("top_p", -1),
             "top_k": kwargs_with_defaults.get("top_k", -1),
             "stream": stream,
-            "stop_sequences": stop_sequences,
+            "stop_sequences": stop_words,
         }
 
         if not stream:
