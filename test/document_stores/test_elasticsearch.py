@@ -328,3 +328,20 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
                 username="", aws4auth="foo", **_init_client_remaining_kwargs
             )
         assert len(caplog.records) == 0
+
+    @pytest.mark.unit
+    def test_get_document_by_id_return_embedding_false(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.unit
+    def test_get_document_by_id_excluded_meta_data_has_no_influence(self, mocked_document_store):
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is not affected by the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
