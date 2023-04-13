@@ -3,6 +3,7 @@ from typing import Dict, List, Union, Optional
 import json
 import logging
 
+import requests
 import sseclient
 from transformers import GPT2TokenizerFast
 
@@ -164,22 +165,24 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         if status_codes is None:
             status_codes = [429]
 
-        res = request_with_retry(
-            attempts=attempts,
-            status_codes=status_codes,
-            method="POST",
-            url="https://api.anthropic.com/v1/complete",
-            headers={"x-api-key": self.api_key, "Content-Type": "application/json"},
-            data=data,
-            timeout=timeout,
-            **kwargs,
-        )
+        try:
+            res = request_with_retry(
+                attempts=attempts,
+                status_codes=status_codes,
+                method="POST",
+                url="https://api.anthropic.com/v1/complete",
+                headers={"x-api-key": self.api_key, "Content-Type": "application/json"},
+                data=json.dumps(data),
+                timeout=timeout,
+                **kwargs,
+            )
+        except requests.HTTPError as err:
+            res = err.response
+            if res.status_code == 429:
+                raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")
+            if res.status_code == 401:
+                raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")
 
-        if res.status_code == 429:
-            raise AnthropicRateLimitError(f"API rate limit exceeded: {res.text}")
-        if res.status_code == 401:
-            raise AnthropicUnauthorizedError(f"API key is invalid: {res.text}")
-        if not res.ok:
             raise AnthropicError(
                 f"Anthropic returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
                 status_code=res.status_code,
