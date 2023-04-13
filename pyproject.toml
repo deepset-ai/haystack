@@ -49,7 +49,7 @@ dependencies = [
   "requests",
   "pydantic",
   "transformers[torch]==4.25.1",
-  "git+https://github.com/huggingface/huggingface_hub@1385-fix-symlinks-on-different-volumes",
+  "huggingface_hub @ git+https://github.com/huggingface/huggingface_hub@1385-fix-symlinks-on-different-volumes",
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
