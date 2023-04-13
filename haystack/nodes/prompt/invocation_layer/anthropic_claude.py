@@ -103,16 +103,19 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         res = self._post(data=data, stream=True)
         handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
         client = sseclient.SSEClient(res)
-        tokens: List[str] = []
+        tokens = ""
         try:
             for event in client.events():
-                if event.data != TokenStreamingHandler.DONE_MARKER:
-                    ed = json.loads(event.data)
-                    token: str = ed["choices"][0]["text"]
-                    tokens.append(handler(token, event_data=ed["completion"]))
+                if event.data == TokenStreamingHandler.DONE_MARKER:
+                    continue
+                ed = json.loads(event.data)
+                # Anthropic streamed response always includes the whole
+                # string that has been streamed until that point, so
+                # we can just store the last received event
+                tokens = handler(ed["completion"])
         finally:
             client.close()
-        return ["".join(tokens)]  # return a list of strings just like non-streaming
+        return [tokens.strip()]  # return a list of strings just like non-streaming
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
