@@ -612,8 +612,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         # Weaviate requires dates to be in RFC3339 format
         date_fields = self._get_date_properties(index)
         for date_field in date_fields:
-            if isinstance(meta[date_field], str):
-                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
+            if date_field in meta:
+                if isinstance(meta[date_field], str):
+                    meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 

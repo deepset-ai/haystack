@@ -2,7 +2,14 @@ from typing import Optional, Union, List, Dict
 import logging
 
 import torch
-from transformers import pipeline, StoppingCriteriaList, StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import (
+    pipeline,
+    StoppingCriteriaList,
+    StoppingCriteria,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+    GenerationConfig,
+)
 from transformers.pipelines import get_task
 
 from haystack.modeling.utils import initialize_device_settings
@@ -71,6 +78,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 "use_fast",
                 "torch_dtype",
                 "device_map",
+                "generation_kwargs",
             ]
             if key in kwargs
         }
@@ -78,6 +86,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if "model_kwargs" in model_input_kwargs:
             mkwargs = model_input_kwargs.pop("model_kwargs")
             model_input_kwargs.update(mkwargs)
+
+        # save generation_kwargs for pipeline invocation
+        self.generation_kwargs = model_input_kwargs.pop("generation_kwargs", {})
 
         torch_dtype = model_input_kwargs.get("torch_dtype")
         if torch_dtype is not None:
@@ -136,9 +147,18 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     "return_full_text",
                     "clean_up_tokenization_spaces",
                     "truncation",
+                    "generation_kwargs",
                 ]
                 if key in kwargs
             }
+            generation_kwargs = model_input_kwargs.pop("generation_kwargs", self.generation_kwargs)
+            if isinstance(generation_kwargs, dict):
+                model_input_kwargs.update(generation_kwargs)
+            elif isinstance(generation_kwargs, GenerationConfig):
+                gen_dict = generation_kwargs.to_diff_dict()
+                gen_dict.pop("transformers_version", None)
+                model_input_kwargs.update(gen_dict)
+
             is_text_generation = "text-generation" == self.task_name
             # Prefer return_full_text is False for text-generation (unless explicitly set)
             # Thus only generated text is returned (excluding prompt)
