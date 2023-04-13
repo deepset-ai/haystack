@@ -1,13 +1,9 @@
-import json
-from typing import Optional, List, Dict, Union, Any
 import logging
-
-import sseclient
+from typing import Optional, List, Dict, Union, Any
 
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
-
-from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
+from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
 
 logger = logging.getLogger(__name__)
 
