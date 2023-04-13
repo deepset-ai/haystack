@@ -79,6 +79,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 "torch_dtype",
                 "device_map",
                 "generation_kwargs",
+                "model_max_length",
             ]
             if key in kwargs
         }
@@ -89,6 +90,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         # save generation_kwargs for pipeline invocation
         self.generation_kwargs = model_input_kwargs.pop("generation_kwargs", {})
+        model_max_length = model_input_kwargs.pop("model_max_length", None)
 
         torch_dtype = model_input_kwargs.get("torch_dtype")
         if torch_dtype is not None:
@@ -120,6 +122,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
         # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
         self.max_length = max_length or self.pipe.model.config.max_length
+
+        # we allow users to override the model's max_length because models like T5 have relative positional
+        # embeddings and can accept sequences of more than 512 tokens
+        self.model_max_length = model_max_length or self.pipe.tokenizer.model_max_length
 
     def invoke(self, *args, **kwargs):
         """
@@ -196,7 +202,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
         n_answer_tokens = self.max_length
-        if (n_prompt_tokens + n_answer_tokens) <= self.pipe.tokenizer.model_max_length:
+        if (n_prompt_tokens + n_answer_tokens) <= self.model_max_length:
             return prompt
 
         logger.warning(
@@ -204,14 +210,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             "answer length (%s tokens) fit within the max token limit (%s tokens). "
             "Shorten the prompt to prevent it from being cut off",
             n_prompt_tokens,
-            self.pipe.tokenizer.model_max_length - n_answer_tokens,
+            max(0, self.model_max_length - n_answer_tokens),
             n_answer_tokens,
-            self.pipe.tokenizer.model_max_length,
+            self.model_max_length,
         )
 
         tokenized_payload = self.pipe.tokenizer.tokenize(prompt)
         decoded_string = self.pipe.tokenizer.convert_tokens_to_string(
-            tokenized_payload[: self.pipe.tokenizer.model_max_length - n_answer_tokens]
+            tokenized_payload[: self.model_max_length - n_answer_tokens]
         )
         return decoded_string
 

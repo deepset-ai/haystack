@@ -303,6 +303,20 @@ def test_stop_words(prompt_model):
 
 
 @pytest.mark.unit
+def test_prompt_node_model_max_length(caplog):
+    """
+    Tests that PromptNode passes model_max_length to HFInvocationLayer.
+    """
+    node = PromptNode(model_kwargs={"model_max_length": 10})
+    assert node.prompt_model.model_invocation_layer.model_max_length == 10
+
+    prompt = "This is a prompt " * 5
+    with caplog.at_level(logging.WARNING):
+        node.prompt(prompt)
+        assert "The prompt has been truncated from 26 tokens to 0 tokens" in caplog.text
+
+
+@pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_prompt_node_streaming_handler_on_call(mock_model):
     """
