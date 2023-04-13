@@ -40,7 +40,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         Creates an instance of HFLocalInvocationLayer used to invoke local Hugging Face models.
 
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of the output text.
+        :param max_length: The maximum number of tokens the output text can have.
         :param use_auth_token: The token to use as HTTP bearer authorization for remote files.
         :param use_gpu: Whether to use GPU for inference.
         :param device: The device to use for inference.
