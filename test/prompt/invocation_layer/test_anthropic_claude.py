@@ -1,5 +1,6 @@
 from unittest.mock import patch, Mock, call
 import json
+import os
 
 import pytest
 
@@ -89,7 +90,7 @@ def test_invoke_with_kwargs(mock_request: Mock):
         "stop_sequences": ["stop", "here"],
     }
     mock_request.assert_called_once()
-    assert mock_request.call_args.kwargs["data"] == expected_data
+    assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)
 
 
 @pytest.mark.unit
@@ -99,20 +100,21 @@ def test_invoke_with_stream(mock_request):
 
     # Create a fake streamed response
     def mock_iter(self):
-        fake_data = json.dumps({"choices": [{"text": "some"}], "completion": "some_data"})
+        fake_data = json.dumps({"completion": " The sky appears"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"choices": [{"text": " "}], "completion": "some_data"})
+        fake_data = json.dumps({"completion": " The sky appears blue to"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"choices": [{"text": "result"}], "completion": "some_data"})
+        fake_data = json.dumps({"completion": " The sky appears blue to us due to how"})
         yield f"data: {fake_data}\n\n".encode()
+        yield "data: [DONE]\n\n".encode()
 
-    mock_response = Mock(**{"status_code": 200, "ok": True, "__iter__": mock_iter})
+    mock_response = Mock(**{"__iter__": mock_iter})
     mock_request.return_value = mock_response
 
     # Verifies expected result is returned
     res = layer.invoke(prompt="Some prompt", stream=True)
     assert len(res) == 1
-    assert res[0] == "some result"
+    assert res[0] == "The sky appears blue to us due to how"
 
 
 @pytest.mark.unit
@@ -127,27 +129,28 @@ def test_invoke_with_custom_stream_handler(mock_request):
 
     # Create a fake streamed response
     def mock_iter(self):
-        fake_data = json.dumps({"choices": [{"text": "some"}], "completion": "some_data"})
+        fake_data = json.dumps({"completion": " The sky appears"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"choices": [{"text": " "}], "completion": "some_data"})
+        fake_data = json.dumps({"completion": " The sky appears blue to"})
         yield f"data: {fake_data}\n\n".encode()
-        fake_data = json.dumps({"choices": [{"text": "result"}], "completion": "some_data"})
+        fake_data = json.dumps({"completion": " The sky appears blue to us due to how"})
         yield f"data: {fake_data}\n\n".encode()
+        yield "data: [DONE]\n\n".encode()
 
-    mock_response = Mock(**{"status_code": 200, "ok": True, "__iter__": mock_iter})
+    mock_response = Mock(**{"__iter__": mock_iter})
     mock_request.return_value = mock_response
 
     res = layer.invoke(prompt="Some prompt")
     assert len(res) == 1
     # This is not the real result but the values returned by the mock handler
-    assert res[0] == "tokentokentoken"
+    assert res[0] == "token"
 
     # Verifies the handler has been called the expected times with the expected args
     assert mock_stream_handler.call_count == 3
     expected_call_list = [
-        call("some", event_data="some_data"),
-        call(" ", event_data="some_data"),
-        call("result", event_data="some_data"),
+        call(" The sky appears"),
+        call(" The sky appears blue to"),
+        call(" The sky appears blue to us due to how"),
     ]
     assert mock_stream_handler.call_args_list == expected_call_list
 
@@ -185,3 +188,27 @@ def test_supports():
     assert layer.supports("claude-v1.2")
     assert layer.supports("claude-instant-v1")
     assert layer.supports("claude-instant-v1.0")
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(os.environ.get("ANTHROPIC_CLAUDE_API_KEY", "") == "", reason="Anthropic Claude API key not found")
+def test_invoke_non_streamed():
+    api_key = os.environ.get("ANTHROPIC_CLAUDE_API_KEY")
+    layer = AnthropicClaudeInvocationLayer(api_key=api_key)
+
+    res = layer.invoke(prompt="Why is the sky blue?")
+
+    # Verifies answer has been received
+    assert len(res) == 1
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(os.environ.get("ANTHROPIC_CLAUDE_API_KEY", "") == "", reason="Anthropic Claude API key not found")
+def test_invoke_streamed():
+    api_key = os.environ.get("ANTHROPIC_CLAUDE_API_KEY")
+    layer = AnthropicClaudeInvocationLayer(api_key=api_key)
+
+    res = layer.invoke(prompt="Why is the sky blue?", stream=True)
+
+    # Verifies answer has been received
+    assert len(res) == 1
