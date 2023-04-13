@@ -9,8 +9,8 @@ from tqdm.auto import tqdm
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class PseudoLabelGenerator(BaseComponent):
     def __init__(
         self,
         question_producer: Union[QuestionGenerator, List[Dict[str, str]]],
-        retriever: BaseRetriever,
+        retriever,
         cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         max_questions_per_document: int = 3,
         top_k: int = 50,

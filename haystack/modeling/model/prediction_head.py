@@ -10,11 +10,11 @@ from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
 from transformers import AutoModelForQuestionAnswering
-from scipy.special import expit
 
 from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.predictions import QACandidate, QAPred
 from haystack.modeling.utils import try_get, all_gather_list
+from haystack.utils.scipy_utils import expit
 
 
 logger = logging.getLogger(__name__)
