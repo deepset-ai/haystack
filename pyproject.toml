@@ -54,6 +54,7 @@ dependencies = [
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
+  "generalimport", # Optional imports
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
@@ -74,7 +75,7 @@ dependencies = [
   # Preprocessing
   "more_itertools",  # for windowing
   "python-docx",
-  "langdetect",  # for PDF conversions
+  # "langdetect",  # for PDF conversions
   "tika",  # Apache Tika (text & metadata extractor)
 
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder

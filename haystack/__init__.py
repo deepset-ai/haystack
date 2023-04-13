@@ -1,19 +1,74 @@
-# pylint: disable=wrong-import-position,wrong-import-order
+from generalimport import generalimport
 
-from typing import Union
-from types import ModuleType
+generalimport(
+    # "pydantic",  # necessary for dataclasses
+    # "pandas",  # necessary for dataclasses
+    # "requests", # Used in dcdocumentstore, probably can be removed with some work
+    # "transformers",  # Used in feature_extraction.py, can be removed too with some work
+    # "tenacity",  # Probably needed because it's a decorator, to be evaluated
+    # "PIL", # something tricky going on with transformers :(
+    "yaml",
+    "torch",
+    "protobuf",
+    "nltk",
+    "rank_bm25",
+    "sklearn",
+    "dill",
+    "tqdm",
+    "networkx",
+    "mmh3",
+    "quantulum3",
+    "posthog",
+    "azure",
+    "huggingface_hub",
+    "tenacity",
+    "sseclient",
+    "boilerpy3",
+    "more_itertools",
+    "docx",
+    "langdetect",
+    "tika",
+    "sentence_transformers",
+    "elasticsearch",
+    "tiktoken",
+    "jsonschema",
+    "canals",
+    "events" "sqlalchemy",
+    "psycopg2",
+    "faiss",
+    "pymilvus",
+    "weaviate",
+    "pinecone",
+    "SPARQLWrapper",
+    "rdflib",
+    "opensearchpy",
+    "whisper" "beir",
+    "selenium",
+    "webdriver_manager",
+    "beautifulsoup4",
+    "markdown",
+    "frontmatter",
+    "magic",
+    "fitz",
+    "pytesseract",
+    "pdf2image",
+    "onnxruntime",
+    "onnxruntime_tools",
+    "scipy",
+    "rapidfuzz",
+    "seqeval",
+    "mlflow",
+    "ray",
+    "ray",
+    "aiorwlock",
+)
 
-try:
-    from importlib import metadata
-except (ModuleNotFoundError, ImportError):
-    # Python <= 3.7
-    import importlib_metadata as metadata  # type: ignore
+
+from importlib import metadata
 
 __version__: str = str(metadata.version("farm-haystack"))
 
-
 # Logging is not configured here on purpose, see https://github.com/deepset-ai/haystack/issues/2485
-import logging
 
 import pandas as pd
 
