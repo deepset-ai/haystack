@@ -228,17 +228,19 @@ def test_generation_kwargs_from_prompt_node_init():
 @pytest.mark.integration
 def test_generation_kwargs_from_prompt_node_call():
     the_question = "What does 42 mean?"
-    # test that generation_kwargs are passed to the underlying HF model
+    # default node with local HF model
     node = PromptNode()
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        # test that generation_kwargs are passed to the underlying HF model
         node(the_question, generation_kwargs={"do_sample": True})
         mock_call.assert_called_with(
             the_question, {}, {"do_sample": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100}, {}
         )
 
-    # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
+    # default node with local HF model
     node = PromptNode()
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
         node(the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
         mock_call.assert_called_with(
             the_question,
