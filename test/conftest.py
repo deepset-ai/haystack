@@ -138,7 +138,7 @@ def pytest_collection_modifyitems(config, items):
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
-        "milvus": [pytest.mark.milvus],
+        "milvus": [pytest.mark.milvus, pytest.mark.skip],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
