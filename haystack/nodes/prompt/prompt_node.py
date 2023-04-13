@@ -73,7 +73,7 @@ class PromptNode(BaseComponent):
         :param default_prompt_template: The default prompt template to use for the model.
         :param output_variable: The name of the output variable in which you want to store the inference results.
             If not set, PromptNode uses PromptTemplate's output_variable. If PromptTemplate's output_variable is not set, the default name is `results`.
-        :param max_length: The maximum length of the generated text output.
+        :param max_length: The maximum number of tokens the generated text output can have.
         :param api_key: The API key to use for the model.
         :param use_auth_token: The authentication token to use for the model.
         :param use_gpu: Whether to use GPU or not.
