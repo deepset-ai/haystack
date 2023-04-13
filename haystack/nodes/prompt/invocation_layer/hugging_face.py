@@ -2,6 +2,8 @@ from typing import Optional, Union, List, Dict
 import logging
 
 import torch
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, HFTokenStreamingHandler
+
 from transformers import (
     pipeline,
     StoppingCriteriaList,
@@ -13,7 +15,7 @@ from transformers import (
 from transformers.pipelines import get_task
 
 from haystack.modeling.utils import initialize_device_settings
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +164,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
         top_k = kwargs.pop("top_k", None)
+        # either stream is True (will use default handler) or stream_handler is provided for custom handler
+        stream = kwargs.get("stream", False) or kwargs.get("stream_handler", None) is not None
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -209,6 +213,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 model_input_kwargs["max_new_tokens"] = self.max_length
             else:
                 model_input_kwargs["max_length"] = self.max_length
+
+            if stream:
+                stream_handler: TokenStreamingHandler = kwargs.pop("stream_handler", DefaultTokenStreamingHandler())
+                model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
 
             output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
