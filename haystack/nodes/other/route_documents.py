@@ -78,14 +78,15 @@ class RouteDocuments(BaseComponent):
             split_documents[output_route].append(doc)
 
         if not self.return_remaining and len(split_documents["output_3"]) > 0:
-            # TODO Figure out how to trigger calc of other_content_types only if logging level is high enough
-            other_content_types = {x.content_type for x in split_documents["output_3"]}
-            logger.warning(
-                "%s documents were skipped because they have content type(s) '%s'. Only the content "
-                "types 'text' and 'table' are routed.",
-                len(split_documents["output_3"]),
-                other_content_types,
-            )
+            # Used to avoid unnecessarily calculating other_content_types depending on logging level
+            if logger.isEnabledFor(logging.WARNING):
+                other_content_types = {x.content_type for x in split_documents["output_3"]}
+                logger.warning(
+                    "%s document(s) were skipped because they have content type(s) %s. Only the content "
+                    "types 'text' and 'table' are routed.",
+                    len(split_documents["output_3"]),
+                    other_content_types,
+                )
             del split_documents["output_3"]
 
         return split_documents
