@@ -107,11 +107,11 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         kwargs_with_defaults = self.model_input_kwargs
         if "max_new_tokens" not in kwargs_with_defaults:
             kwargs_with_defaults["max_new_tokens"] = self.max_length
-        if kwargs:
-            if "top_k" in kwargs:
-                top_k = kwargs.pop("top_k")
-                kwargs["num_return_sequences"] = top_k
-            kwargs_with_defaults.update(kwargs)
+
+        if "top_k" in kwargs:
+            top_k = kwargs.pop("top_k")
+            kwargs["num_return_sequences"] = top_k
+        kwargs_with_defaults.update(kwargs)
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         accepted_params = [
             "top_p",
