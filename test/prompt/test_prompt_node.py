@@ -302,7 +302,7 @@ def test_stop_words(prompt_model):
     assert "capital" in r[0] or "Germany" in r[0]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_prompt_node_model_max_length(caplog):
     prompt = "This is a prompt " * 5  # (26 tokens with t5 flan tokenizer)
 
