@@ -160,10 +160,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         try:
             for event in client.events():
                 if event.data != TokenStreamingHandler.DONE_MARKER:
-                    ed = json.loads(event.data)
-                    token: str = self._extract_token(ed)
+                    event_data = json.loads(event.data)
+                    token: str = self._extract_token(event_data)
                     if token:
-                        tokens.append(stream_handler(token, event_data=ed["choices"]))
+                        tokens.append(stream_handler(token, event_data=event_data["choices"]))
         finally:
             client.close()
         return ["".join(tokens)]  # return a list of strings just like non-streaming
