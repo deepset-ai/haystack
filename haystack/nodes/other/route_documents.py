@@ -66,26 +66,30 @@ class RouteDocuments(BaseComponent):
         return 2
 
     def _split_by_content_type(self, documents: List[Document]) -> Dict[str, List[Document]]:
-        split_documents: Dict[str, List[Document]] = {"output_1": [], "output_2": []}
+        mapping = {"text": "output_1", "table": "output_2"}
+        split_documents: Dict[str, List[Document]] = {"output_1": [], "output_2": [], "output_3": []}
         for doc in documents:
-            if doc.content_type == "text":
-                split_documents["output_1"].append(doc)
-            elif doc.content_type == "table":
-                split_documents["output_2"].append(doc)
-            else:
-                if self.return_remaining:
-                    split_documents["output_3"].append(doc)
-                else:
-                    logger.warning(
-                        "Document with id %s was skipped because it has content type '%s'. Only the content "
-                        "types 'text' and 'table' are routed.",
-                        doc.id,
-                        doc.content_type,
-                    )
+            output_route = mapping.get(doc.content_type, "output_3")
+            split_documents[output_route].append(doc)
+
+        if not self.return_remaining and len(split_documents["output_3"]) > 0:
+            # TODO Figure out how to trigger calc of other_content_types only if logging level is high enough
+            other_content_types = {x.content_type for x in split_documents["output_3"]}
+            logger.warning(
+                "%s documents were skipped because they have content type(s) '%s'. Only the content "
+                "types 'text' and 'table' are routed.",
+                len(split_documents["output_3"]),
+                other_content_types,
+            )
+            del split_documents["output_3"]
+
         return split_documents
 
     def _split_by_metadata_values(self, documents: List[Document]) -> Dict[str, List[Document]]:
         split_documents = {f"output_{i + 1}": [] for i in range(len(self.metadata_values))}
+        if self.return_remaining:
+            split_documents[f"output_{len(self.metadata_values)}"] = []
+
         for doc in documents:
             current_metadata_value = doc.meta.get(self.split_by, None)
             # Disregard current document if it does not contain the provided metadata field

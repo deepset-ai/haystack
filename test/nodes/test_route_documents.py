@@ -43,3 +43,18 @@ def test_routedocuments_by_metafield(docs):
     assert result["output_1"][0].meta["meta_field"] == "test1"
     assert result["output_2"][0].meta["meta_field"] == "test3"
     assert result["output_3"][0].meta["meta_field"] == "test5"
+
+
+# @pytest.mark.unit
+# def test_routedocuments_by_metafield_return_remaning(docs):
+#     route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"], return_remaining=True)
+#     assert route_documents.outgoing_edges == 4
+#     result, _ = route_documents.run(docs)
+#     assert len(result["output_1"]) == 1
+#     assert len(result["output_2"]) == 1
+#     assert len(result["output_3"]) == 1
+#     assert len(result["output_4"]) == 2
+#     assert result["output_1"][0].meta["meta_field"] == "test1"
+#     assert result["output_2"][0].meta["meta_field"] == "test3"
+#     assert result["output_3"][0].meta["meta_field"] == "test5"
+#     assert result["output_4"][0].meta["meta_field"] == "test2"
