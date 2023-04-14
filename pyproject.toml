@@ -50,7 +50,6 @@ dependencies = [
   "pydantic",
   "transformers[torch]==4.25.1",
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
-  "nltk",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
@@ -67,15 +66,10 @@ dependencies = [
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
+  "more_itertools",  # utilities
 
   # Web Retriever
   "boilerpy3",
-
-  # Preprocessing
-  "more_itertools",  # for windowing
-  "python-docx",
-  "langdetect",  # for PDF conversions
-  "tika",  # Apache Tika (text & metadata extractor)
 
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",
@@ -157,6 +151,12 @@ crawler = [
   "webdriver-manager",
 ]
 preprocessing = [
+  "nltk",
+  "langdetect",  # for language classification
+]
+file-conversion = [
+  "python-docx",
+  "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
   "python-frontmatter",
@@ -224,11 +224,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx,beir,metrics]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,dev,onnx,beir,metrics]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx-gpu,metrics]",
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,dev,onnx-gpu,metrics]",
 ]
 
 [project.scripts]
