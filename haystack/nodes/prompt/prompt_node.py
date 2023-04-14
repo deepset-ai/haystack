@@ -162,29 +162,22 @@ class PromptNode(BaseComponent):
 
         # kwargs override model kwargs
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
-        template_to_fill = self.get_prompt_template(prompt_template)
-        if template_to_fill:
-            # prompt template used, yield prompts from inputs args
-            for prompt in template_to_fill.fill(*args, **kwargs):
-                kwargs_copy = copy.copy(kwargs)
-                # and pass the prepared prompt and kwargs copy to the model
-                prompt = self.prompt_model._ensure_token_limit(prompt)
-                prompt_collector.append(prompt)
-                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
-                output = self.prompt_model.invoke(prompt, **kwargs_copy)
-                results.extend(output)
+        template = self.get_prompt_template(prompt_template)
 
+        prompts = template.fill(*args, **kwargs) if template else list(args)
+        for prompt in prompts:
+            kwargs_copy = copy.copy(kwargs)
+            # and pass the prepared prompt and kwargs copy to the model
+            prompt = self.prompt_model._ensure_token_limit(prompt)
+            prompt_collector.append(prompt)
+            logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
+            output = self.prompt_model.invoke(prompt, **kwargs_copy)
+            results.extend(output)
+
+        if template:
             kwargs["prompts"] = prompt_collector
-            results = template_to_fill.post_process(results, **kwargs)
-        else:
-            # straightforward prompt, no templates used
-            for prompt in list(args):
-                kwargs_copy = copy.copy(kwargs)
-                prompt = self.prompt_model._ensure_token_limit(prompt)
-                prompt_collector.append(prompt)
-                logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
-                output = self.prompt_model.invoke(prompt, **kwargs_copy)
-                results.extend(output)
+            results = template.post_process(results, **kwargs)
+
         return results
 
     def add_prompt_template(self, prompt_template: PromptTemplate) -> None:
