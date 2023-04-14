@@ -126,14 +126,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         else:
             self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
 
-        # validate task_name
-        if self.supports(model_name_or_path, **kwargs):
-            logger.info("Using task %s for model %s", self.task_name, model_name_or_path)
-        else:
-            raise ValueError(
-                f"Task {self.task_name} is not supported for {self.__class__.__name__}."
-            )
-
         self.pipe = pipeline(
             task=self.task_name, # task_name is used to determine the pipeline type
             model=model_name_or_path,
@@ -256,8 +248,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        if 'task_name' in kwargs:
-            return kwargs['task_name'] in ["text2text-generation", "text-generation"]
         task_name: Optional[str] = None
         try:
             task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
