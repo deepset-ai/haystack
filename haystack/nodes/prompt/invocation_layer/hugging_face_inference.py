@@ -1,16 +1,23 @@
 import json
 import os
-from typing import Optional, Dict, Union, List
+from typing import Optional, Dict, Union, List, Any
 import logging
 
+import requests
 from transformers.pipelines import get_task
 
-from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
+from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
+from haystack.errors import (
+    HuggingFaceInferenceLimitError,
+    HuggingFaceInferenceUnauthorizedError,
+    HuggingFaceInferenceError,
+)
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.utils.requests import request_with_retry
 
 logger = logging.getLogger(__name__)
-HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 20))
+HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
+HF_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
@@ -118,12 +125,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             "do_sample",
         ]
         params = {key: kwargs_with_defaults.get(key) for key in accepted_params if key in kwargs_with_defaults}
-        json_data = {"inputs": prompt, "parameters": params}
-        response = request_with_retry(
-            method="POST", url=self.url, headers=self.headers, json=json_data, timeout=HF_TIMEOUT
-        )
-        output = json.loads(response.text)
-        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        generated_texts = self._post(data={"inputs": prompt, "parameters": params}, **kwargs)
         if stop_words:
             for idx, _ in enumerate(generated_texts):
                 earliest_stop_word_idx = len(generated_texts[idx])
@@ -133,6 +135,50 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                         earliest_stop_word_idx = min(earliest_stop_word_idx, stop_word_idx)
                 generated_texts[idx] = generated_texts[idx][:earliest_stop_word_idx]
 
+        return generated_texts
+
+    def _post(
+        self,
+        data: Dict[str, Any],
+        attempts: int = HF_RETRIES,
+        status_codes: Optional[List[int]] = None,
+        timeout: float = HF_TIMEOUT,
+        **kwargs,
+    ) -> List[str]:
+        """
+        Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST invocation.
+        :param data: The data to be sent to the model.
+        :param attempts: The number of attempts to make.
+        :param status_codes: The status codes to retry on.
+        :param timeout: The timeout for the request.
+        :return: The responses are being returned.
+        """
+        generated_texts: List[str] = []
+        if status_codes is None:
+            status_codes = [429]
+        try:
+            response = request_with_retry(
+                method="POST",
+                status_codes=status_codes,
+                attempts=attempts,
+                url=self.url,
+                headers=self.headers,
+                json=data,
+                timeout=timeout,
+            )
+            output = json.loads(response.text)
+            generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        except requests.HTTPError as err:
+            res = err.response
+            if res.status_code == 429:
+                raise HuggingFaceInferenceLimitError(f"API rate limit exceeded: {res.text}")
+            if res.status_code == 401:
+                raise HuggingFaceInferenceUnauthorizedError(f"API key is invalid: {res.text}")
+
+            raise HuggingFaceInferenceError(
+                f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
+                status_code=res.status_code,
+            )
         return generated_texts
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
