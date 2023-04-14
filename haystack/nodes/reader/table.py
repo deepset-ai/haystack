@@ -114,12 +114,21 @@ class TableReader(BaseReader):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         :param return_table_cell: Whether to return the offsets (`offsets_in_document` and `offsets_in_context`) that indicate
-                                  the cells that answer the question using the TableCell schema. The TableCell schema returns the row
+                                  the table cells that answer the question using the TableCell schema. The TableCell schema returns the row
                                   and column indices of the table cells selected in the Answer. Otherwise, the offsets
                                   are returned as Span objects which are start and end indices when counting through the
                                   table in a linear fashion i.e. first cell is top left and last cell is bottom right.
         """
         super().__init__()
+
+        if not return_table_cell:
+            logger.warning(
+                "The support for returning offsets in answer predictions in a linear fashion is being deprecated."
+                " Set return_table_cell=True to use the new offsets format which returns the row and column indices"
+                " of the table cells selected in the answer."
+                " In the future return_table_cell=True will become default and return_table_cell=False will no "
+                " longer be supported."
+            )
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -714,6 +723,15 @@ class RCIReader(BaseReader):
                                   table in a linear fashion i.e. first cell is top left and last cell is bottom right.
         """
         super().__init__()
+
+        if not return_table_cell:
+            logger.warning(
+                "The support for returning offsets in answer predictions in a linear fashion is being deprecated."
+                " Set return_table_cell=True to use the new offsets format which returns the row and column indices"
+                " of the table cells selected in the answer."
+                " In the future return_table_cell=True will become default and return_table_cell=False will no "
+                " longer be supported."
+            )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
