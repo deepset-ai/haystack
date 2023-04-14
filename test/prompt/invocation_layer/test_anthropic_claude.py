@@ -81,7 +81,7 @@ def test_invoke_with_kwargs(mock_request: Mock):
 
     expected_data = {
         "model": "claude-v1",
-        "prompt": "\n\nHuman:  Some prompt \n\nAssistant: ",
+        "prompt": "\n\nHuman: Some prompt\n\nAssistant: ",
         "max_tokens_to_sample": 300,
         "temperature": 1,
         "top_p": -1,
