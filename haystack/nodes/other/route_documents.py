@@ -51,10 +51,8 @@ class RouteDocuments(BaseComponent):
         self.metadata_values = metadata_values
         self.return_remaining = return_remaining
 
-        if self.split_by != "content_type":
-            assert isinstance(
-                self.metadata_values, list
-            ), "You need to provide metadata_values if you want to split a list of Documents by a metadata field."
+        if self.split_by != "content_type" and not isinstance(self.metadata_values, list):
+            raise ValueError("Provide metadata_values if you want to split a list of Documents by a metadata field.")
 
     @classmethod
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
@@ -97,11 +95,14 @@ class RouteDocuments(BaseComponent):
         if self.return_remaining:
             split_documents[f"output_{len(self.metadata_values)}"] = []
 
+        # TODO Simplify for loop and if statements.
+        #      Support return_remaining
         for doc in documents:
             current_metadata_value = doc.meta.get(self.split_by, None)
             # Disregard current document if it does not contain the provided metadata field
             if current_metadata_value is not None:
                 try:
+                    # TODO Calculate index properly for list of lists
                     index = self.metadata_values.index(current_metadata_value)
                 except ValueError:
                     # Disregard current document if current_metadata_value is not in the provided metadata_values
