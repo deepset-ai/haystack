@@ -23,7 +23,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     def __init__(
         self,
         model_name_or_path: str = "google/flan-t5-base",
-        max_length: Optional[int] = 100,
+        max_length: int = 100,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
