@@ -33,7 +33,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
 
     """
 
-    def __init__(self, api_key: str, model_name_or_path: str, max_length: Optional[int] = 500, **kwargs):
+    def __init__(self, api_key: str, model_name_or_path: str, max_length: Optional[int] = 100, **kwargs):
         """
          Creates an instance of HFInferenceEndpointInvocationLayer
         :param model_name_or_path: can be either:
@@ -56,7 +56,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 f"model_name_or_path {model_name_or_path} must be a valid Hugging Face inference endpoint URL."
             )
         self.api_key = api_key
-        self.max_length = max_length or 16
+        self.max_length = max_length
 
         # See https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         # for a list of supported parameters
