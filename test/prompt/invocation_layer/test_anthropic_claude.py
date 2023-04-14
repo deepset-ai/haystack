@@ -186,8 +186,12 @@ def test_supports():
     assert layer.supports("claude-v1")
     assert layer.supports("claude-v1.0")
     assert layer.supports("claude-v1.2")
+    assert layer.supports("claude-v1.3")
+    assert not layer.supports("claude-v2.0")
     assert layer.supports("claude-instant-v1")
     assert layer.supports("claude-instant-v1.0")
+    assert layer.supports("claude-instant-v1.1")
+    assert not layer.supports("claude-instant-v2.0")
 
 
 @pytest.mark.integration
