@@ -28,6 +28,7 @@ from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
+VALID_PROPERTY_TYPES = ["string", "string[]", "int", "number", "text", "date", "boolean"]
 
 
 class WeaviateDocumentStoreError(DocumentStoreError):
@@ -391,13 +392,15 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
     def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
         """
-        Get all the existing properties in the schema.
+        Get all the existing properties in the schema, excluding those of type cross-reference
         """
         index = self._sanitize_index_name(index) or self.index
         cur_properties = []
         for class_item in self.weaviate_client.schema.get()["classes"]:
             if class_item["class"] == index:
-                cur_properties = [item["name"] for item in class_item["properties"]]
+                cur_properties = [
+                    item["name"] for item in class_item["properties"] if item["dataType"][0] in VALID_PROPERTY_TYPES
+                ]
 
         return cur_properties
 
