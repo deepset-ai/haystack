@@ -5,6 +5,16 @@ from haystack.schema import Document
 from haystack.nodes import RouteDocuments
 
 
+@pytest.fixture
+def docs_with_meta():
+    docs = [
+        Document(content="text document 1", content_type="text", meta={"meta_field": "test1"}),
+        Document(content="text document 2", content_type="text", meta={"meta_field": "test2"}),
+        Document(content="text document 3", content_type="text", meta={"meta_field": "test3"}),
+    ]
+    return docs
+
+
 @pytest.mark.unit
 def test_routedocuments_by_content_type():
     docs = [

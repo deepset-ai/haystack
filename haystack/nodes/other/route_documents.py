@@ -1,8 +1,11 @@
 from typing import Any, List, Tuple, Dict, Optional, Union
 from collections import defaultdict
+import logging
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+
+logger = logging.getLogger(__name__)
 
 
 class RouteDocuments(BaseComponent):
@@ -14,7 +17,12 @@ class RouteDocuments(BaseComponent):
     # By default (split_by == "content_type"), the node has two outgoing edges.
     outgoing_edges = 2
 
-    def __init__(self, split_by: str = "content_type", metadata_values: Optional[List[str]] = None):
+    def __init__(
+        self,
+        split_by: str = "content_type",
+        metadata_values: Optional[Union[List[str], List[List[str]]]] = None,
+        return_remaining: bool = False,
+    ):
         """
         :param split_by: Field to split the documents by, either `"content_type"` or a metadata field name.
             If this parameter is set to `"content_type"`, the list of `Document`s will be split into a list containing
@@ -26,6 +34,9 @@ class RouteDocuments(BaseComponent):
             of values to group the `Document`s to. `Document`s whose metadata field is equal to the first value of the
             provided list will be routed to `"output_1"`, `Document`s whose metadata field is equal to the second
             value of the provided list will be routed to `"output_2"`, etc.
+        :param return_remaining: Whether to return all remaining documents that don't match the `split_by` or
+            `metadata_values` into an additional output route. This additional output route will at the end of the previous
+             output routes.
         """
 
         if split_by != "content_type" and metadata_values is None:
@@ -38,6 +49,12 @@ class RouteDocuments(BaseComponent):
 
         self.split_by = split_by
         self.metadata_values = metadata_values
+        self.return_remaining = return_remaining
+
+        if self.split_by != "content_type":
+            assert isinstance(
+                self.metadata_values, list
+            ), "You need to provide metadata_values if you want to split a list of Documents by a metadata field."
 
     @classmethod
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
@@ -48,33 +65,55 @@ class RouteDocuments(BaseComponent):
             return len(metadata_values)
         return 2
 
+    def _split_by_content_type(self, documents: List[Document]) -> Dict[str, List[Document]]:
+        split_documents: Dict[str, List[Document]] = {"output_1": [], "output_2": []}
+        for doc in documents:
+            if doc.content_type == "text":
+                split_documents["output_1"].append(doc)
+            elif doc.content_type == "table":
+                split_documents["output_2"].append(doc)
+            else:
+                if self.return_remaining:
+                    split_documents["output_3"].append(doc)
+                else:
+                    logger.warning(
+                        "Document with id %s was skipped because it has content type '%s'. Only the content "
+                        "types 'text' and 'table' are routed.",
+                        doc.id,
+                        doc.content_type,
+                    )
+        return split_documents
+
+    def _split_by_metadata_values(self, documents: List[Document]) -> Dict[str, List[Document]]:
+        split_documents = {f"output_{i + 1}": [] for i in range(len(self.metadata_values))}
+        for doc in documents:
+            current_metadata_value = doc.meta.get(self.split_by, None)
+            # Disregard current document if it does not contain the provided metadata field
+            if current_metadata_value is not None:
+                try:
+                    index = self.metadata_values.index(current_metadata_value)
+                except ValueError:
+                    # Disregard current document if current_metadata_value is not in the provided metadata_values
+                    logger.warning(
+                        "Document with id %s was skipped because the meta data value '%s' is not included in `metadata_values`.",
+                        doc.id,
+                        current_metadata_value,
+                    )
+                    continue
+                split_documents[f"output_{index + 1}"].append(doc)
+            else:
+                logger.warning(
+                    "Document with id %s was skipped because it does not have the metadata field '%s'.",
+                    doc.id,
+                    self.split_by,
+                )
+        return split_documents
+
     def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
-            split_documents: Dict[str, List[Document]] = {"output_1": [], "output_2": []}
-
-            for doc in documents:
-                if doc.content_type == "text":
-                    split_documents["output_1"].append(doc)
-                elif doc.content_type == "table":
-                    split_documents["output_2"].append(doc)
-
+            split_documents = self._split_by_content_type(documents)
         else:
-            assert isinstance(self.metadata_values, list), (
-                "You need to provide metadata_values if you want to split" " a list of Documents by a metadata field."
-            )
-            split_documents = {f"output_{i+1}": [] for i in range(len(self.metadata_values))}
-            for doc in documents:
-                current_metadata_value = doc.meta.get(self.split_by, None)
-                # Disregard current document if it does not contain the provided metadata field
-                if current_metadata_value is not None:
-                    try:
-                        index = self.metadata_values.index(current_metadata_value)
-                    except ValueError:
-                        # Disregard current document if current_metadata_value is not in the provided metadata_values
-                        continue
-
-                    split_documents[f"output_{index+1}"].append(doc)
-
+            split_documents = self._split_by_metadata_values(documents)
         return split_documents, "split"
 
     def run_batch(self, documents: Union[List[Document], List[List[Document]]]) -> Tuple[Dict, str]:  # type: ignore
@@ -86,5 +125,4 @@ class RouteDocuments(BaseComponent):
                 results, _ = self.run(documents=doc_list)  # type: ignore
                 for key in results:
                     split_documents[key].append(results[key])
-
             return split_documents, "split"
