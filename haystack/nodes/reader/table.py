@@ -310,7 +310,7 @@ class _TapasEncoder:
 class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
     """Modified from transformers TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects."""
 
-    def __init__(self, return_table_cell: bool = False, *args, **kwargs):
+    def __init__(self, *args, return_table_cell: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.return_table_cell = return_table_cell
 
