@@ -1,9 +1,10 @@
 import os
 import logging
 from typing import Optional, Union, List, Dict, Any, Tuple
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 import pytest
+from transformers import AutoTokenizer, GenerationConfig
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
@@ -199,6 +200,54 @@ def test_invalid_template_params():
     node = PromptNode("google/flan-t5-small", devices=["cpu"])
     with pytest.raises(ValueError, match="Expected prompt parameters"):
         node.prompt("question-answering-per-document", {"some_crazy_key": "Berlin is the capital of Germany."})
+
+
+@pytest.mark.integration
+def test_generation_kwargs_from_prompt_node_init():
+    the_question = "What does 42 mean?"
+    # test that generation_kwargs are passed to the underlying HF model
+    node = PromptNode(model_kwargs={"generation_kwargs": {"do_sample": True}})
+    with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        node(the_question)
+        mock_call.assert_called_with(
+            the_question, {}, {"do_sample": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100}, {}
+        )
+
+    # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
+    node = PromptNode(model_kwargs={"generation_kwargs": GenerationConfig(do_sample=True, top_p=0.9)})
+    with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        node(the_question)
+        mock_call.assert_called_with(
+            the_question,
+            {},
+            {"do_sample": True, "top_p": 0.9, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
+            {},
+        )
+
+
+@pytest.mark.integration
+def test_generation_kwargs_from_prompt_node_call():
+    the_question = "What does 42 mean?"
+    # default node with local HF model
+    node = PromptNode()
+    with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        # test that generation_kwargs are passed to the underlying HF model
+        node(the_question, generation_kwargs={"do_sample": True})
+        mock_call.assert_called_with(
+            the_question, {}, {"do_sample": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100}, {}
+        )
+
+    # default node with local HF model
+    node = PromptNode()
+    with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        # test that generation_kwargs in the form of GenerationConfig are passed to the underlying HF model
+        node(the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
+        mock_call.assert_called_with(
+            the_question,
+            {},
+            {"do_sample": True, "top_p": 0.9, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
+            {},
+        )
 
 
 @pytest.mark.integration

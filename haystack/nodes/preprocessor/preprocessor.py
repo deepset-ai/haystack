@@ -1,21 +1,16 @@
+from typing import List, Optional, Generator, Set, Union, Tuple, Dict, Literal
+
 import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set, Union, Tuple, Dict
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
 
-import nltk
-from more_itertools import windowed
 from tqdm.auto import tqdm
+from more_itertools import windowed
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
@@ -23,6 +18,16 @@ from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    import nltk
+except ImportError as exc:
+    logger.debug(
+        "nltk could not be imported. "
+        "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
+    )
+    nltk = None
 
 
 iso639_to_nltk = {
@@ -105,10 +110,12 @@ class PreProcessor(BasePreProcessor):
         super().__init__()
 
         try:
-            nltk.data.find("tokenizers/punkt")
+            if nltk:
+                nltk.data.find("tokenizers/punkt")
         except LookupError:
             try:
-                nltk.download("punkt")
+                if nltk:
+                    nltk.download("punkt")
             except FileExistsError as error:
                 logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
@@ -805,7 +812,12 @@ class PreProcessor(BasePreProcessor):
         sentences = sentence_tokenizer.tokenize(text)
         return sentences
 
-    def _load_sentence_tokenizer(self, language_name: Optional[str]) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
+    def _load_sentence_tokenizer(self, language_name: Optional[str]) -> "nltk.tokenize.punkt.PunktSentenceTokenizer":
+        if not nltk:
+            raise ImportError(
+                "nltk could not be imported. "
+                "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
+            )
         # Try to load a custom model from 'tokenizer_model_path'
         if self.tokenizer_model_folder is not None:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
