@@ -310,6 +310,10 @@ class _TapasEncoder:
 class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
     """Modified from transformers TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects."""
 
+    def __init__(self, return_table_cell: bool = False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.return_table_cell = return_table_cell
+
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
     ) -> List[Optional[np.ndarray]]:
@@ -427,7 +431,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                     if self.return_table_cell:
                         answer_offsets = _calculate_answer_offsets(ans_coordinates_per_table)
                     else:
-                        answer_offsets = _calculate_answer_offsets(ans_coordinates_per_table)
+                        answer_offsets = _calculate_answer_offsets_span(ans_coordinates_per_table, string_table)
                     answer = Answer(
                         answer=answer_str,
                         type="extractive",
