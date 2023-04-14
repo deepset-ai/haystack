@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 class MilvusDocumentStore(SQLDocumentStore):
     """
+    MilvusDocumentStore is deprecated and will be removed from Haystack starting with version 1.17!
+
     Limitations:
     Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
     Therefore, delete_documents() and update_embeddings() won't work yet.
