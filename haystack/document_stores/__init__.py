@@ -1,5 +1,3 @@
-import os
-import importlib
 from haystack.utils.import_utils import safe_import
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, KeywordDocumentStore
 

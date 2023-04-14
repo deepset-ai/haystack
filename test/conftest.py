@@ -296,6 +296,38 @@ class MockRetriever(BaseRetriever):
         return [[]]
 
 
+class MockBaseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
+    ):
+        return [self.mock_document]
+
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ):
+        return [[self.mock_document] for _ in range(len(queries))]
+
+    def embed_documents(self, documents: List[Document]):
+        return np.full((len(documents), 768), 0.5)
+
+
 class MockSeq2SegGenerator(BaseGenerator):
     def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
         pass
