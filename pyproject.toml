@@ -75,7 +75,7 @@ dependencies = [
   "sentence-transformers>=2.2.0",
 
   # Elasticsearch
-  "elasticsearch>=7.7,<8",
+  "elasticsearch>=7.17,<8",
 
   # OpenAI tokenizer
   "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
