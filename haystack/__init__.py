@@ -1,3 +1,10 @@
+# pylint: disable=wrong-import-position
+# Logging is not configured here on purpose, see https://github.com/deepset-ai/haystack/issues/2485
+
+from importlib import metadata
+
+__version__: str = str(metadata.version("farm-haystack"))
+
 from generalimport import generalimport
 
 generalimport(
@@ -33,7 +40,8 @@ generalimport(
     "tiktoken",
     "jsonschema",
     "canals",
-    "events" "sqlalchemy",
+    "events",
+    "sqlalchemy",
     "psycopg2",
     "faiss",
     "pymilvus",
@@ -63,20 +71,12 @@ generalimport(
     "aiorwlock",
 )
 
-
-from importlib import metadata
-
-__version__: str = str(metadata.version("farm-haystack"))
-
-# Logging is not configured here on purpose, see https://github.com/deepset-ai/haystack/issues/2485
-
-import pandas as pd
-
 from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationResult
 from haystack.nodes.base import BaseComponent
 from haystack.pipelines.base import Pipeline
 from haystack.environment import set_pytorch_secure_model_loading
 
 
-pd.options.display.max_colwidth = 80
+# Enables torch's secure model loading through setting an env var.
+# Does not use torch.
 set_pytorch_secure_model_loading()
