@@ -556,6 +556,7 @@ class _TapasScoredEncoder:
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = string_table.iat[current_answer_span[:2]]
+            answer_offsets: Union[List[Span], List[TableCell]]
             if self.return_table_cell:
                 answer_offsets = _calculate_answer_offsets([current_answer_span[:2]])
             else:
@@ -822,18 +823,19 @@ class RCIReader(BaseReader):
                     cell_scores_table[-1].append(current_cell_score)
 
                     answer_str = string_table.iloc[row_idx, col_idx]
+                    answer_offsets: Union[List[Span], List[TableCell]]
                     if self.return_table_cell:
-                        answer_offsets = TableCell(row=row_idx, col=col_idx)
+                        answer_offsets = [TableCell(row=row_idx, col=col_idx)]
                     else:
-                        answer_offsets = self._calculate_answer_offsets_span(row_idx, col_idx, string_table)
+                        answer_offsets = [self._calculate_answer_offsets_span(row_idx, col_idx, string_table)]
                     current_answers.append(
                         Answer(
                             answer=answer_str,
                             type="extractive",
                             score=current_cell_score,
                             context=string_table,
-                            offsets_in_document=[answer_offsets],
-                            offsets_in_context=[answer_offsets],
+                            offsets_in_document=answer_offsets,
+                            offsets_in_context=answer_offsets,
                             document_ids=[document.id],
                         )
                     )
