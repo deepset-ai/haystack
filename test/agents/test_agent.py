@@ -340,7 +340,7 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
 
 @pytest.mark.unit
 def test_update_hash():
-    agent = Agent(prompt_node=mock.Mock(), prompt_template=mock.Mock())
+    agent = Agent(prompt_node=MockPromptNode(), prompt_template=mock.Mock())
     assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
     agent.add_tool(
         Tool(

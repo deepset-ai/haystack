@@ -30,7 +30,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     def __init__(
         self,
         model_name_or_path: str = "google/flan-t5-base",
-        max_length: Optional[int] = 100,
+        max_length: int = 100,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
@@ -247,8 +247,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         except RuntimeError:
             # This will fail for all non-HF models
             return False
-
-        return task_name in ["text2text-generation", "text-generation"]
+        # if we are using an api_key it could be HF inference point
+        using_api_key = kwargs.get("api_key", None) is not None
+        return not using_api_key and task_name in ["text2text-generation", "text-generation"]
 
 
 class StopWordsCriteria(StoppingCriteria):
