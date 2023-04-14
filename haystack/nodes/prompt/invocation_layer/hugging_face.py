@@ -48,6 +48,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         all PromptModelInvocationLayer instances, this instance of HFLocalInvocationLayer might receive some unrelated
         kwargs. Only kwargs relevant to the HFLocalInvocationLayer are considered. The list of supported kwargs
         includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
+        For more details about pipeline kwargs in general, see
+        Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
 
         This layer supports two additional kwargs: generation_kwargs and model_max_length.
 
@@ -56,9 +58,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         for more details.
 
         The model_max_length is used to specify the custom sequence length for the underlying pipeline.
-
-        For more details about pipeline kwargs in general, see
-        Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
         """
         super().__init__(model_name_or_path)
         self.use_auth_token = use_auth_token
