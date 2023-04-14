@@ -75,7 +75,7 @@ dependencies = [
   # Preprocessing
   "more_itertools",  # for windowing
   "python-docx",
-  # "langdetect",  # for PDF conversions
+  "langdetect",  # for PDF conversions
   "tika",  # Apache Tika (text & metadata extractor)
 
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
