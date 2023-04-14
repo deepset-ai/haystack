@@ -28,7 +28,20 @@ from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
-VALID_PROPERTY_TYPES = {"string", "string[]", "int", "number", "text", "date", "boolean"}
+SUPPORTED_PROPERTY_TYPES = {
+    "string",
+    "string[]",
+    "int",
+    "int[]",
+    "boolean",
+    "boolean[]",
+    "number",
+    "number[]",
+    "date",
+    "date[]",
+    "text",
+    "text[]",
+}
 
 
 class WeaviateDocumentStoreError(DocumentStoreError):
@@ -392,7 +405,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
     def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
         """
-        Get all the existing properties in the schema, excluding those of type cross-reference
+        Get all the existing properties in the schema, excluding those with complex types
+        like cross-reference
         """
         index = self._sanitize_index_name(index) or self.index
         cur_properties = []
@@ -404,7 +418,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     # dataType should be always there and contain only one item unless
                     # it's a cross-reference but here we try to be defensive against
                     # unexpected schemas
-                    if set(item.get("dataType", [])).issubset(VALID_PROPERTY_TYPES)
+                    if set(item.get("dataType", [])).issubset(SUPPORTED_PROPERTY_TYPES)
                 ]
 
         return cur_properties
