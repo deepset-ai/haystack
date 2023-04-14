@@ -2,19 +2,21 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable
 from hashlib import md5
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any, Tuple, Callable
 
 from events import Events
 
 from haystack import Pipeline, BaseComponent, Answer, Document
+from haystack.agents.memory import Memory, NoMemory, ConversationMemory
+from haystack.agents.answer_parsers import AgentAnswerParser, RegexAnswerParser, BasicAnswerParser
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
-from haystack.agents.types import Color
+from haystack.agents.types import Color, AgentTokenStreamingHandler, PromptParametersResolver
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
-from haystack.nodes.prompt.invocation_layer import TokenStreamingHandler
 from haystack.pipelines import (
     BaseStandardPipeline,
     ExtractiveQAPipeline,
@@ -112,6 +114,139 @@ class Tool:
                 return str(result)
 
 
+class ToolsManager:
+    """
+    The ToolsManager manages tools for an Agent.
+    """
+
+    def __init__(
+        self,
+        tools: Optional[List[Tool]] = None,
+        tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
+    ):
+        """
+        :param tools: A list of tools to add to the ToolManager. Each tool must have a unique name.
+        :param tool_pattern: A regular expression pattern that matches the text that the Agent generates to invoke a
+        """
+        self.tools = {tool.name: tool for tool in tools} if tools else {}
+        self.tool_pattern = tool_pattern
+        self.callback_manager = Events(("on_tool_start", "on_tool_finish", "on_tool_error"))
+
+    def add_tool(self, tool: Tool):
+        """
+        Add a tool to the Agent. This also updates the PromptTemplate for the Agent's PromptNode with the tool name.
+
+        :param tool: The tool to add to the Agent. Any previously added tool with the same name will be overwritten.
+        Example:
+        `agent.add_tool(
+            Tool(
+                name="Calculator",
+                pipeline_or_node=calculator
+                description="Useful when you need to answer questions about math"
+            )
+        )
+        """
+        self.tools[tool.name] = tool
+
+    def get_tool_names(self):
+        return ", ".join(self.tools.keys())
+
+    def get_tools(self):
+        return self.tools.values()
+
+    def get_tool_names_with_descriptions(self):
+        return "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools.values()])
+
+    def has_tools(self):
+        return len(self.tools) > 0
+
+    def has_tool(self, tool_name: str):
+        """
+        Check whether the Agent has a tool with the name you provide.
+
+        :param tool_name: The name of the tool for which you want to check whether the Agent has it.
+        """
+        return tool_name in self.tools
+
+    def run_tool(self, llm_response: str, params: Optional[Dict[str, Any]] = None) -> str:
+        tool_result: str = ""
+        if self.has_tools():
+            tool_name, tool_input = self.extract_tool_name_and_tool_input(llm_response)
+            if tool_name is None or tool_input is None:
+                raise AgentError(
+                    f"Could not identify the next tool or input for that tool from Agent's output. "
+                    f"Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
+                    f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
+                    f"# llm_response:\n{llm_response}"
+                )
+            if not self.has_tool(tool_name):
+                raise AgentError(
+                    f"The tool {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
+                    "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
+                    f"llm_response :\n{llm_response}"
+                )
+            tool: Tool = self.tools[tool_name]
+            try:
+                self.callback_manager.on_tool_start(tool_input, tool=tool)
+                tool_result = tool.run(tool_input, params)
+                self.callback_manager.on_tool_finish(
+                    tool_result, observation_prefix="Observation: ", llm_prefix="Thought: ", color=tool.logging_color
+                )
+            except Exception as e:
+                self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
+                raise e
+        return tool_result
+
+    def extract_tool_name_and_tool_input(self, llm_response: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Parse the tool name and the tool input from the PromptNode response.
+        :param llm_response: The PromptNode response.
+        :return: A tuple containing the tool name and the tool input.
+        """
+        tool_match = re.search(self.tool_pattern, llm_response)
+        if tool_match:
+            tool_name = tool_match.group(1)
+            tool_input = tool_match.group(3)
+            return tool_name.strip('" []\n').strip(), tool_input.strip('" \n')
+        return None, None
+
+
+class ReActResolver(PromptParametersResolver):
+    """
+    A ReActResolver is a PromptParametersResolver that resolve parameters for ReAct prompts.
+    """
+
+    def resolve(self, query: str, **kwargs) -> Dict[str, Any]:
+        agent = kwargs.get("agent")
+        agent_step = kwargs.get("agent_step")
+        return {
+            "query": query,
+            "tool_names": agent.tm.get_tool_names(),
+            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
+            "transcript": agent_step.transcript,
+        }
+
+
+class CallableResolver(PromptParametersResolver):
+    """
+    A CallableResolver is a PromptParametersResolver that uses a callable to resolve the parameters.
+    """
+
+    def __init__(self, prompt_callable: Callable):
+        """
+        :param prompt_callable: The callable that resolves the parameters.
+        """
+        self.callable = prompt_callable
+
+    def resolve(self, query: str, **kwargs) -> Dict[str, Any]:
+        """
+        :param query: The query to resolve the parameters for.
+        :param kwargs: Additional parameters to pass to the callable.
+        :return: The resolved parameters via callable
+        """
+        return self.callable(query, **kwargs)
+
+
 class Agent:
     """
     An Agent answers queries using the tools you give to it. The tools are pipelines or nodes. The Agent uses a large
@@ -132,10 +267,11 @@ class Agent:
         self,
         prompt_node: PromptNode,
         prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
-        tools: Optional[List[Tool]] = None,
         max_steps: int = 8,
-        tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
-        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
+        tools_manager: Optional[ToolsManager] = None,
+        memory: Optional[Memory] = None,
+        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
     ):
         """
          Creates an Agent instance.
@@ -145,41 +281,34 @@ class Agent:
         :param prompt_template: The name of a PromptTemplate for the PromptNode. It's used for generating thoughts and
         choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a
         new template in a similar format.
-        :param tools: A list of tools the Agent can run. If you don't specify any tools here, you must add them
-        with `add_tool()` before running the Agent.
         :param max_steps: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
             Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer.
             The default is 5.
-        :param tool_pattern: A regular expression to extract the name of the tool and the corresponding input from the
-        text the Agent generated.
+        :param tools_manager: The ToolManager that manages the tools the Agent uses to answer queries.
+        :param memory: The Memory that the Agent uses in its decision making process.
+        :param prompt_parameters_resolver: A PromptParametersResolver that resolves the parameters for the Agent's
+        prompt template.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
-        self.callback_manager = Events(
-            (
-                "on_tool_start",
-                "on_tool_finish",
-                "on_tool_error",
-                "on_agent_start",
-                "on_agent_step",
-                "on_agent_finish",
-                "on_new_token",
-            )
-        )
+        self.max_steps = max_steps
+        self.tm = tools_manager if tools_manager else ToolsManager()
+        self.memory = memory if memory else NoMemory()
+        self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
         self.prompt_node = prompt_node
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
         if not resolved_prompt_template:
             raise ValueError(
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
-        self.prompt_template = resolved_prompt_template
-        self.tools = {tool.name: tool for tool in tools} if tools else {}
-        self.tool_names = ", ".join(self.tools.keys())
-        self.tool_names_with_descriptions = "\n".join(
-            [f"{tool.name}: {tool.description}" for tool in self.tools.values()]
+        self.prompt_parameters_resolver = (
+            CallableResolver(prompt_parameters_resolver)
+            if isinstance(prompt_parameters_resolver, Callable)
+            else (prompt_parameters_resolver if prompt_parameters_resolver else ReActResolver())
         )
-        self.max_steps = max_steps
-        self.tool_pattern = tool_pattern
-        self.final_answer_pattern = final_answer_pattern
+        self.prompt_template = resolved_prompt_template
+        self.final_answer_parser = (
+            RegexAnswerParser(final_answer_pattern) if isinstance(final_answer_pattern, str) else final_answer_pattern
+        )
         # Resolve model name to check if it's a streaming model
         if isinstance(self.prompt_node.model_name_or_path, str):
             model_name = self.prompt_node.model_name_or_path
@@ -196,7 +325,7 @@ class Agent:
         See haystack/telemetry.py::send_event
         """
         try:
-            tool_names = " ".join([tool.pipeline_or_node.__class__.__name__ for tool in self.tools.values()])
+            tool_names = " ".join([tool.pipeline_or_node.__class__.__name__ for tool in self.tm.get_tools()])
             self.hash = md5(tool_names.encode()).hexdigest()
         except Exception as exc:
             logger.debug("Telemetry exception: %s", str(exc))
@@ -218,7 +347,7 @@ class Agent:
             agent_name = kwargs.pop("name", "react")
             print_text(f"\nAgent {agent_name} started with {kwargs}\n")
 
-        self.callback_manager.on_tool_finish += on_tool_finish
+        self.tm.callback_manager.on_tool_finish += on_tool_finish
         self.callback_manager.on_agent_start += on_agent_start
 
         if streaming:
@@ -242,11 +371,7 @@ class Agent:
             )
         )
         """
-        self.tools[tool.name] = tool
-        self.tool_names = ", ".join(self.tools.keys())
-        self.tool_names_with_descriptions = "\n".join(
-            [f"{tool.name}: {tool.description}" for tool in self.tools.values()]
-        )
+        self.tm.add_tool(tool)
 
     def has_tool(self, tool_name: str):
         """
@@ -254,7 +379,13 @@ class Agent:
 
         :param tool_name: The name of the tool for which you want to check whether the Agent has it.
         """
-        return tool_name in self.tools
+        return self.tm.has_tool(tool_name)
+
+    def has_tools(self):
+        """
+        Check whether the Agent has any tools.
+        """
+        return self.tm.has_tools()
 
     def run(
         self, query: str, max_steps: Optional[int] = None, params: Optional[dict] = None
@@ -280,130 +411,129 @@ class Agent:
         except Exception as exc:
             logger.debug("Telemetry exception: %s", exc)
 
-        if not self.tools:
-            raise AgentError(
-                "An Agent needs tools to run. Add at least one tool using `add_tool()` or set the parameter `tools` "
-                "when initializing the Agent."
-            )
-        if max_steps is None:
-            max_steps = self.max_steps
-        if max_steps < 2:
-            raise AgentError(
-                f"max_steps must be at least 2 to let the Agent use a tool once and then infer it knows the final "
-                f"answer. It was set to {max_steps}."
-            )
         self.callback_manager.on_agent_start(name=self.prompt_template.name, query=query, params=params)
-        agent_step = self._create_first_step(query, max_steps)
+        agent_step = self.create_agent_step()
         try:
             while not agent_step.is_last():
-                agent_step = self._step(agent_step, params)
+                agent_step = self._step(query, agent_step, params)
         finally:
             self.callback_manager.on_agent_finish(agent_step)
         return agent_step.final_answer(query=query)
 
-    def _create_first_step(self, query: str, max_steps: int = 10):
-        transcript = self._get_initial_transcript(query=query)
-        return AgentStep(
-            current_step=1,
-            max_steps=max_steps,
-            final_answer_pattern=self.final_answer_pattern,
-            prompt_node_response="",  # no LLM response for the first step
-            transcript=transcript,
-        )
-
-    def _step(self, current_step: AgentStep, params: Optional[dict] = None):
-        cm = self.callback_manager
-
-        class AgentTokenStreamingHandler(TokenStreamingHandler):
-            def __call__(self, token_received, **kwargs) -> str:
-                cm.on_new_token(token_received, **kwargs)
-                return token_received
-
+    def _step(self, query: str, current_step: AgentStep, params: Optional[dict] = None):
         # plan next step using the LLM
-        prompt_node_response = self.prompt_node(
-            current_step.prepare_prompt(), stream_handler=AgentTokenStreamingHandler()
-        )
+        prompt_node_response = self._plan(query, current_step)
 
         # from the LLM response, create the next step
         next_step = current_step.create_next_step(prompt_node_response)
         self.callback_manager.on_agent_step(next_step)
 
         # run the tool selected by the LLM
-        observation = self._run_tool(next_step, params) if not next_step.is_last() else None
+        observation = self.tm.run_tool(next_step.prompt_node_response, params) if not next_step.is_last() else None
+
+        # save the input, output and observation to memory (if memory is enabled)
+        memory_data = self.prepare_data_for_memory(input=query, output=prompt_node_response, observation=observation)
+        self.memory.save(data=memory_data)
 
         # update the next step with the observation
         next_step.completed(observation)
         return next_step
 
-    def run_batch(
-        self, queries: List[str], max_steps: Optional[int] = None, params: Optional[dict] = None
-    ) -> Dict[str, str]:
-        """
-        Runs the Agent in a batch mode.
+    def _plan(self, query, current_step):
+        # first resolve prompt template params
+        template_params = self.prompt_parameters_resolver.resolve(query=query, agent=self, agent_step=current_step)
 
-        :param queries: List of search queries.
-        :param max_steps: The number of times the Agent can run a tool +1 to infer it knows the final answer.
-            If you want to set it, make it at least 2 so that the Agent can run a tool once and then infer it knows
-            the final answer.
-        :param params: A dictionary of parameters you want to pass to the tools that are pipelines.
-                       To pass a parameter to all nodes in those pipelines, use the format: `{"top_k": 10}`.
-                       To pass a parameter to targeted nodes in those pipelines, use the format:
-                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}`.
-                        You can only pass parameters to tools that are pipelines but not nodes.
-        """
-        try:
-            if not self.hash == self.last_hash:
-                self.last_hash = self.hash
-                send_event(event_name="Agent", event_properties={"llm.agent_hash": self.hash})
-        except Exception as exc:
-            logger.debug("Telemetry exception: %s", exc)
-
-        results: Dict = {"queries": [], "answers": [], "transcripts": []}
-        for query in queries:
-            result = self.run(query=query, max_steps=max_steps, params=params)
-            results["queries"].append(result["query"])
-            results["answers"].append(result["answers"])
-            results["transcripts"].append(result["transcript"])
-
-        return results
-
-    def _run_tool(self, next_step: AgentStep, params: Optional[Dict[str, Any]] = None) -> str:
-        tool_name, tool_input = next_step.extract_tool_name_and_tool_input(self.tool_pattern)
-        if tool_name is None or tool_input is None:
-            raise AgentError(
-                f"Could not identify the next tool or input for that tool from Agent's output. "
-                f"Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
-                f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
-                f"# Agent Step:\n{next_step}"
+        # if prompt node has no default prompt template, use agent's prompt template
+        if self.prompt_node.default_prompt_template is None:
+            prepared_prompt = next(self.prompt_template.fill(**template_params))
+            prompt_node_response = self.prompt_node(
+                prepared_prompt, stream_handler=AgentTokenStreamingHandler(self.callback_manager)
             )
-        if not self.has_tool(tool_name):
-            raise AgentError(
-                f"The tool {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
-                "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
-                f"Agent Step::\n{next_step}"
+        # otherwise, if prompt node has default prompt template, use it
+        else:
+            prompt_node_response = self.prompt_node(
+                stream_handler=AgentTokenStreamingHandler(self.callback_manager), **template_params
             )
-        tool_result: str = ""
-        tool: Tool = self.tools[tool_name]
-        try:
-            self.callback_manager.on_tool_start(tool_input, tool=tool)
-            tool_result = tool.run(tool_input, params)
-            self.callback_manager.on_tool_finish(
-                tool_result, observation_prefix="Observation: ", llm_prefix="Thought: ", color=tool.logging_color
-            )
-        except Exception as e:
-            self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
-            raise e
-        return tool_result
+        return prompt_node_response
 
-    def _get_initial_transcript(self, query: str):
+    def create_agent_step(self) -> AgentStep:
         """
-        Fills the Agent's PromptTemplate with the query, tool names, and descriptions.
+        Create an AgentStep object. Override this method to customize the AgentStep class used by the Agent.
+        """
+        return AgentStep(max_steps=self.max_steps, final_answer_parser=self.final_answer_parser)
 
-        :param query: The search query.
+    def prepare_data_for_memory(self, **kwargs) -> dict:
         """
-        return next(
-            self.prompt_template.fill(
-                query=query, tool_names=self.tool_names, tool_names_with_descriptions=self.tool_names_with_descriptions
+        Prepare data for saving to the Agent's memory. Override this method to customize the data saved to the memory.
+        """
+        return {
+            k: v if isinstance(v, str) else next(iter(v)) for k, v in kwargs.items() if isinstance(v, (str, Iterable))
+        }
+
+
+class ConversationalAgent(Agent):
+    """
+    A conversational agent that can be used to build a conversational chat applications.
+
+    Here is an example of how you can create a simple chat application:
+    ```
+    import os
+
+    from haystack.agents.base import ConversationalAgent
+    from haystack.agents.memory import ConversationSummaryMemory
+    from haystack.nodes import PromptNode
+
+    pn = PromptNode("gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
+    agent = ConversationalAgent(pn, memory=ConversationSummaryMemory(pn))
+
+    while True:
+        user_input = input("Human (type 'exit' or 'quit' to quit): ")
+        if user_input.lower() == "exit" or user_input.lower() == "quit":
+            break
+        elif user_input.lower() == "memory":
+            print("\nMemory:\n", agent.memory.load())
+        else:
+            assistant_response = agent.run(user_input)
+            print("\nAssistant:", assistant_response)
+
+    ```
+    """
+
+    def __init__(
+        self,
+        prompt_node: PromptNode,
+        tools_manager: Optional[ToolsManager] = None,
+        memory: Memory = None,
+        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        final_answer_pattern: Union[str, AgentAnswerParser] = None,
+    ):
+        """
+        Creates ConversationalAgent
+
+        :param prompt_node: A PromptNode used to communicate with LLM.
+        :type prompt_node: PromptNode
+        :param tools_manager: An optional manager for handling additional tools, defaults to None.
+        :type tools_manager: Optional[ToolsManager]
+        :param memory: A memory object for storing conversation history and other relevant data, defaults to None.
+        :type memory: Memory
+        :param prompt_parameters_resolver: An optional resolver or callable for resolving prompt template parameters,
+        defaults to None.
+        :type prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]]
+        :param final_answer_pattern: A pattern for parsing the agent's final answer, defaults to None.
+        :type final_answer_pattern: Union[str, AgentAnswerParser]
+        """
+        super().__init__(
+            prompt_node=prompt_node,
+            prompt_template=prompt_node.default_prompt_template
+            if prompt_node.default_prompt_template is not None
+            else "conversational-agent",
+            tools_manager=tools_manager,
+            max_steps=2,
+            memory=memory if memory else ConversationMemory(),
+            prompt_parameters_resolver=prompt_parameters_resolver
+            if prompt_parameters_resolver
+            else CallableResolver(
+                lambda query, agent, **kwargs: {"query": query, "history": agent.memory.load(keys=["history"])}
             ),
-            "",
+            final_answer_pattern=final_answer_pattern if final_answer_pattern else BasicAnswerParser(),
         )

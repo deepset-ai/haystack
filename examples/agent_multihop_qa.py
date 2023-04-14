@@ -1,6 +1,6 @@
 import os
 
-from haystack.agents import Agent, Tool
+from haystack.agents.base import Agent, Tool, ToolsManager
 from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
@@ -15,7 +15,7 @@ if not search_key:
 
 
 pn = PromptNode(
-    "text-davinci-003",
+    "gpt-3.5-turbo",
     api_key=openai_key,
     max_length=256,
     default_prompt_template="question-answering-with-document-scores",
@@ -26,7 +26,7 @@ pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
 few_shot_prompt = """
 You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions correctly, you have access to the following tools:
 
-Search: useful for when you need to Google questions. You should ask targeted questions, for example, Who is Anthony Dirrell's brother?
+{tool_names_with_descriptions}
 
 To answer questions, you'll need to go through multiple steps involving step-by-step thinking and selecting appropriate tools and their inputs; tools will respond with observations. When you are ready for a final answer, respond with the `Final Answer:`
 Examples:
@@ -81,10 +81,11 @@ Final Answer: Gainsville, Florida
 ##
 Question: {query}
 Thought:
+{transcript}
 """
-few_shot_agent_template = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
+few_shot_multihop = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
 prompt_node = PromptNode(
-    "text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
+    "gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256, stop_words=["Observation:"]
 )
 
 web_qa_tool = Tool(
@@ -95,10 +96,7 @@ web_qa_tool = Tool(
 )
 
 agent = Agent(
-    prompt_node=prompt_node,
-    prompt_template=few_shot_agent_template,
-    tools=[web_qa_tool],
-    final_answer_pattern=r"Final Answer\s*:\s*(.*)",
+    prompt_node=prompt_node, prompt_template=few_shot_multihop, tools_manager=ToolsManager(tools=[web_qa_tool])
 )
 
 hotpot_questions = [
