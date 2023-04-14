@@ -141,10 +141,10 @@ opensearch = [
   "opensearch-py>=2",
 ]
 docstores = [
-  "farm-haystack[faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 docstores-gpu = [
-  "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 audio = [
   "openai-whisper"
