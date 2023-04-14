@@ -311,7 +311,7 @@ def test_prompt_node_model_max_length(caplog):
     # the model max length minus the length of the output
     # no warning is raised
     node = PromptNode(model_kwargs={"model_max_length": 1024})
-    assert node.prompt_model.model_invocation_layer.model_max_length == 1024
+    assert node.prompt_model.model_invocation_layer.pipe.tokenizer.model_max_length == 1024
     with caplog.at_level(logging.WARNING):
         node.prompt(prompt)
         assert len(caplog.text) <= 0
@@ -320,7 +320,7 @@ def test_prompt_node_model_max_length(caplog):
     # test that model truncates the prompt if it is longer than the max length (10 tokens)
     # a warning is raised
     node = PromptNode(model_kwargs={"model_max_length": 10})
-    assert node.prompt_model.model_invocation_layer.model_max_length == 10
+    assert node.prompt_model.model_invocation_layer.pipe.tokenizer.model_max_length == 10
     with caplog.at_level(logging.WARNING):
         node.prompt(prompt)
         assert "The prompt has been truncated from 26 tokens to 0 tokens" in caplog.text
