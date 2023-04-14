@@ -303,6 +303,30 @@ def test_stop_words(prompt_model):
 
 
 @pytest.mark.unit
+def test_prompt_node_model_max_length(caplog):
+    prompt = "This is a prompt " * 5  # (26 tokens with t5 flan tokenizer)
+
+    # test that model_max_length is set to 1024
+    # test that model doesn't truncate the prompt if it is shorter than
+    # the model max length minus the length of the output
+    # no warning is raised
+    node = PromptNode(model_kwargs={"model_max_length": 1024})
+    assert node.prompt_model.model_invocation_layer.pipe.tokenizer.model_max_length == 1024
+    with caplog.at_level(logging.WARNING):
+        node.prompt(prompt)
+        assert len(caplog.text) <= 0
+
+    # test that model_max_length is set to 10
+    # test that model truncates the prompt if it is longer than the max length (10 tokens)
+    # a warning is raised
+    node = PromptNode(model_kwargs={"model_max_length": 10})
+    assert node.prompt_model.model_invocation_layer.pipe.tokenizer.model_max_length == 10
+    with caplog.at_level(logging.WARNING):
+        node.prompt(prompt)
+        assert "The prompt has been truncated from 26 tokens to 0 tokens" in caplog.text
+
+
+@pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_prompt_node_streaming_handler_on_call(mock_model):
     """
