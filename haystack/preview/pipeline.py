@@ -21,7 +21,7 @@ class Pipeline(CanalsPipeline):
 
     def __init__(self):
         super().__init__()
-        self.stores: Dict[str, object] = {}
+        self.stores = {}
 
     def add_store(self, name: str, store: object) -> None:
         """

@@ -9,6 +9,7 @@ from haystack.testing import DocumentStoreBaseTestAbstract
 from ..conftest import fail_at_version
 
 
+@pytest.mark.skip("MilvusDocumentStore is deprecated")
 class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.fixture
     def ds(self, tmp_path):

@@ -1,12 +1,21 @@
 import logging
 from typing import List, Optional
 
-from langdetect import LangDetectException, detect
 
 from haystack.nodes.base import Document
 from haystack.nodes.doc_language_classifier.base import BaseDocumentLanguageClassifier
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    import langdetect
+except ImportError as exc:
+    logger.debug(
+        "langdetect could not be imported. "
+        "Run 'pip install farm-haystack[file-conversion]' or 'pip install langdetect' to fix this issue."
+    )
+    langdetect = None
 
 
 class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
@@ -47,8 +56,14 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
     def __init__(self, route_by_language: bool = True, languages_to_route: Optional[List[str]] = None):
         """
         :param route_by_language: Sends Documents to a different output edge depending on their language.
-        :param languages_to_route: A list of languages in ISO code, each corresponding to a different output edge (see [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
+        :param languages_to_route: A list of languages in ISO code, each corresponding to a different output edge (see
+        [langdetect` documentation](https://github.com/Mimino666/langdetect#languages)).
         """
+        if not langdetect:
+            raise ImportError(
+                "langdetect could not be imported. "
+                "Run 'pip install farm-haystack[file-conversion]' or 'pip install langdetect' to fix this issue."
+            )
         super().__init__(route_by_language=route_by_language, languages_to_route=languages_to_route)
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
@@ -69,8 +84,8 @@ class LangdetectDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         documents_with_language = []
         for document in documents:
             try:
-                language = detect(document.content)
-            except LangDetectException:
+                language = langdetect.detect(document.content)
+            except langdetect.LangDetectException:
                 logger.warning("Langdetect cannot detect the language of document: %s", document)
                 language = None
             document.meta["language"] = language

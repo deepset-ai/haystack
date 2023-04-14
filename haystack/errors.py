@@ -62,6 +62,17 @@ class PipelineError(HaystackError):
         super().__init__(message=message, docs_link=docs_link)
 
 
+class DatasetsError(HaystackError):
+    """Exception for issues raised within a dataset"""
+
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/documents_answers_labels#document",
+    ):
+        super().__init__(message=message, docs_link=docs_link)
+
+
 class PipelineSchemaError(PipelineError):
     """Exception for issues arising when reading/building the JSON schema of pipelines"""
 

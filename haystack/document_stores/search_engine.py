@@ -10,7 +10,6 @@ import time
 from string import Template
 
 import numpy as np
-from scipy.special import expit
 from tqdm.auto import tqdm
 from pydantic.error_wrappers import ValidationError
 
@@ -20,6 +19,7 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.utils.scipy_utils import expit
 
 
 logger = logging.getLogger(__name__)
