@@ -80,9 +80,6 @@ dependencies = [
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",
 
-  # Elasticsearch
-  "elasticsearch>=7.7,<8",
-
   # OpenAI tokenizer
   "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
@@ -97,6 +94,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+elasticsearch = [
+  "elasticsearch>=7.7,<8",
+]
 sql = [
   "sqlalchemy>=1.4.2,<2",
   "sqlalchemy_utils",
