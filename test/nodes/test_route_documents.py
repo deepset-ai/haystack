@@ -26,10 +26,32 @@ def test_routedocuments_by_content_type():
     ]
     route_documents = RouteDocuments()
     result, _ = route_documents.run(documents=docs)
+    assert route_documents.outgoing_edges == 2
     assert len(result["output_1"]) == 1
     assert len(result["output_2"]) == 1
     assert result["output_1"][0].content_type == "text"
     assert result["output_2"][0].content_type == "table"
+
+
+@pytest.mark.unit
+def test_routedocuments_by_content_type_return_remaining():
+    docs = [
+        Document(content="text document", content_type="text"),
+        Document(
+            content=pd.DataFrame(columns=["col 1", "col 2"], data=[["row 1", "row 1"], ["row 2", "row 2"]]),
+            content_type="table",
+        ),
+        Document(content="image/path", content_type="image"),
+    ]
+    route_documents = RouteDocuments(return_remaining=True)
+    result, _ = route_documents.run(documents=docs)
+    assert route_documents.outgoing_edges == 3
+    assert len(result["output_1"]) == 1
+    assert len(result["output_2"]) == 1
+    assert len(result["output_3"]) == 1
+    assert result["output_1"][0].content_type == "text"
+    assert result["output_2"][0].content_type == "table"
+    assert result["output_3"][0].content_type == "image"
 
 
 @pytest.mark.unit

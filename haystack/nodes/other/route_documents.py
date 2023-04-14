@@ -60,10 +60,17 @@ class RouteDocuments(BaseComponent):
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
         split_by = component_params.get("split_by", "content_type")
         metadata_values = component_params.get("metadata_values", None)
+        return_remaining = component_params.get("return_remaining", False)
+
         # If we split list of Documents by a metadata field, number of outgoing edges might change
         if split_by != "content_type" and metadata_values is not None:
-            return len(metadata_values)
-        return 2
+            num_edges = len(metadata_values)
+        else:
+            num_edges = 2
+
+        if return_remaining:
+            num_edges += 1
+        return num_edges
 
     def _split_by_content_type(self, documents: List[Document]) -> Dict[str, List[Document]]:
         mapping = {"text": "output_1", "table": "output_2"}
