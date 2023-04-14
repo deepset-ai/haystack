@@ -136,6 +136,14 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # embeddings and can accept sequences of more than 512 tokens
         self.model_max_length = model_max_length or self.pipe.tokenizer.model_max_length
 
+        if self.max_length > self.model_max_length:
+            logger.warning(
+                "The max_length %s is greater than model_max_length %s. This might result in truncation of the "
+                "generated text. Please lower the max_length (number of answer tokens) parameter!",
+                self.max_length,
+                self.model_max_length,
+            )
+
     def invoke(self, *args, **kwargs):
         """
         It takes a prompt and returns a list of generated texts using the local Hugging Face transformers model
