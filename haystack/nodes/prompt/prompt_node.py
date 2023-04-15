@@ -81,6 +81,7 @@ class PromptNode(BaseComponent):
         :param top_k: The number of independently generated texts to return per prompt. For example, if you set top_k=3, the model will generate three answers to the query.
         :param stop_words: Stops text generation if any of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
+        :param debug: Whether to include the used prompts as debug information in the output under the key _debug.
 
         Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (the URL for the
         Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
