@@ -22,7 +22,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
     @pytest.fixture
     def ds(self):
         """
-        This fixture provides a working document store and takes care of removing the indices when done
+        This fixture provides a working document store and takes care of keeping the
+        ES cluster used in the tests clean.
         """
         labels_index_name = f"{self.index_name}_labels"
         ds = ElasticsearchDocumentStore(
@@ -31,9 +32,14 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             host=os.environ.get("ELASTICSEARCH_HOST", "localhost"),
             create_index=True,
         )
+
+        # delete existing data, useful when re-using the same ES instance for local development
         ds.delete_documents()
         ds.delete_labels()
+
         yield ds
+
+        # clean up the indices
         ds.delete_documents()
         ds.delete_labels()
 
