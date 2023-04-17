@@ -1,4 +1,5 @@
 from typing import Set, Type, List
+from unittest.mock import patch
 
 import pytest
 
@@ -47,16 +48,15 @@ def test_prompt_template_repr():
 
 
 @pytest.mark.unit
-def test_prompt_template_deserialization():
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_template_deserialization(mock_prompt_model):
     custom_prompt_template = PromptTemplate(
         name="custom-question-answering",
         prompt_text="Given the context please answer the question. Context: {context}; Question: {query}; Answer:",
         output_parser=AnswerParser(),
     )
 
-    prompt_node = PromptNode(
-        model_name_or_path="text-davinci-003", default_prompt_template=custom_prompt_template, api_key="fake-key"
-    )
+    prompt_node = PromptNode(default_prompt_template=custom_prompt_template)
 
     pipe = Pipeline()
     pipe.add_node(component=prompt_node, name="Generator", inputs=["Query"])
