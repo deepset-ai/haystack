@@ -31,17 +31,10 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             label_index=labels_index_name,
             host=os.environ.get("ELASTICSEARCH_HOST", "localhost"),
             create_index=True,
+            recreate_index=True,
         )
 
-        # delete existing data, useful when re-using the same ES instance for local development
-        ds.delete_documents()
-        ds.delete_labels()
-
         yield ds
-
-        # clean up the indices
-        ds.delete_documents()
-        ds.delete_labels()
 
     @pytest.fixture
     def mocked_elastic_search_init(self, monkeypatch):
