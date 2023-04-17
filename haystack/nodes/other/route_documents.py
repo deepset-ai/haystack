@@ -77,9 +77,9 @@ class RouteDocuments(BaseComponent):
             output_route = mapping.get(doc.content_type, "output_3")
             split_documents[output_route].append(doc)
 
-        if not self.return_remaining and len(split_documents["output_3"]) > 0:
+        if not self.return_remaining:
             # Used to avoid unnecessarily calculating other_content_types depending on logging level
-            if logger.isEnabledFor(logging.WARNING):
+            if logger.isEnabledFor(logging.WARNING) and len(split_documents["output_3"]) > 0:
                 other_content_types = {x.content_type for x in split_documents["output_3"]}
                 logger.warning(
                     "%s document(s) were skipped because they have content type(s) %s. Only the content "
@@ -103,8 +103,8 @@ class RouteDocuments(BaseComponent):
                 index = len(self.metadata_values)
             split_documents[f"output_{index + 1}"].append(doc)
 
-        if not self.return_remaining and len(split_documents[remaining_key]) > 0:
-            if logger.isEnabledFor(logging.WARNING):
+        if not self.return_remaining:
+            if logger.isEnabledFor(logging.WARNING) and len(split_documents[remaining_key]) > 0:
                 logger.warning(
                     "%s documents were skipped because they were either missing the metadata field '%s' or the"
                     " corresponding metadata value is not included in `metadata_values`.",
@@ -114,34 +114,6 @@ class RouteDocuments(BaseComponent):
             del split_documents[remaining_key]
 
         return split_documents
-
-    # def _split_by_metadata_values(self, documents: List[Document]) -> Dict[str, List[Document]]:
-    #     split_documents = {f"output_{i + 1}": [] for i in range(len(self.metadata_values))}
-    #     if self.return_remaining:
-    #         split_documents[f"output_{len(self.metadata_values)}"] = []
-    #
-    #     for doc in documents:
-    #         current_metadata_value = doc.meta.get(self.split_by, None)
-    #         # Disregard current document if it does not contain the provided metadata field
-    #         if current_metadata_value is not None:
-    #             try:
-    #                 index = self.metadata_values.index(current_metadata_value)
-    #             except ValueError:
-    #                 # Disregard current document if current_metadata_value is not in the provided metadata_values
-    #                 logger.warning(
-    #                     "Document with id %s was skipped because the meta data value '%s' is not included in `metadata_values`.",
-    #                     doc.id,
-    #                     current_metadata_value,
-    #                 )
-    #                 continue
-    #             split_documents[f"output_{index + 1}"].append(doc)
-    #         else:
-    #             logger.warning(
-    #                 "Document with id %s was skipped because it does not have the metadata field '%s'.",
-    #                 doc.id,
-    #                 self.split_by,
-    #             )
-    #     return split_documents
 
     def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
