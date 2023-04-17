@@ -127,7 +127,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
 
         self.pipe = pipeline(
-            task=self.task_name, # task_name is used to determine the pipeline type
+            task=self.task_name,  # task_name is used to determine the pipeline type
             model=model_name_or_path,
             device=self.devices[0] if "device_map" not in model_input_kwargs else None,
             use_auth_token=self.use_auth_token,
