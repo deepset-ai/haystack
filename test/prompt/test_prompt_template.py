@@ -54,10 +54,12 @@ def test_prompt_template_deserialization():
         output_parser=AnswerParser(),
     )
 
-    generator = PromptNode(model_name_or_path="text-davinci-003", default_prompt_template=custom_prompt_template)
+    prompt_node = PromptNode(
+        model_name_or_path="text-davinci-003", default_prompt_template=custom_prompt_template, api_key="fake-key"
+    )
 
     pipe = Pipeline()
-    pipe.add_node(component=generator, name="Generator", inputs=["Query"])
+    pipe.add_node(component=prompt_node, name="Generator", inputs=["Query"])
 
     config = pipe.get_config()
     loaded_pipe = Pipeline.load_from_config(config)
