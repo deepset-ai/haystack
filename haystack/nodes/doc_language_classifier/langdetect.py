@@ -13,7 +13,7 @@ try:
 except (ImportError, ModuleNotFoundError) as exc:
     logger.debug(
         "langdetect could not be imported. "
-        "Run 'pip install farm-haystack[file-conversion]' or 'pip install langdetect' to fix this issue."
+        "Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect' to fix this issue."
     )
     langdetect = None
 
