@@ -27,6 +27,9 @@ try:
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship, sessionmaker, aliased
     from sqlalchemy.sql import case, null
+
+    Base = declarative_base()  # type: Any  # pylint: disable
+
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -38,7 +41,6 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
 logger = logging.getLogger(__name__)
-Base = declarative_base()  # type: Any
 
 
 class ArrayType(TypeDecorator):
