@@ -93,16 +93,23 @@ class RouteDocuments(BaseComponent):
 
         return split_documents
 
+    def _get_index(self, metadata_values: Union[List[str], List[List[str]]], value: str) -> int:
+        for idx, item in enumerate(metadata_values):
+            if isinstance(item, list):
+                if value in item:
+                    return idx
+            else:
+                if value == item:
+                    return idx
+        return len(metadata_values)
+
     def _split_by_metadata_values(self, documents: List[Document]) -> Dict[str, List[Document]]:
-        split_documents = {f"output_{i + 1}": [] for i in range(len(self.metadata_values) + 1)}
+        split_documents = {f"output_{i + 1}": [] for i in range(len(self.metadata_values) + 2)}
         remaining_key = f"output_{len(self.metadata_values) + 1}"
 
         for doc in documents:
             current_metadata_value = doc.meta.get(self.split_by, remaining_key)
-            try:
-                index = self.metadata_values.index(current_metadata_value)
-            except ValueError:
-                index = len(self.metadata_values)
+            index = self._get_index(self.metadata_values, current_metadata_value)
             split_documents[f"output_{index + 1}"].append(doc)
 
         if not self.return_remaining:
