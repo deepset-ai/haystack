@@ -112,7 +112,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                             For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
                             See https://milvus.io/docs/v2.0.x/index.md
         :param search_param: Configuration parameters for the chose index_type needed at query time
-                             For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
+                             For example: {"params": {"nprobe": 10}} as the number of cluster units to query for index_type IVF_FLAT.
                              See https://milvus.io/docs/v2.0.x/index.md
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
@@ -171,7 +171,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}
-        self.search_param = search_param or {"nprobe": 10}
+        self.search_param = search_param or {"params": {"nprobe": 10}}
         self.index = index
         self.embedding_field = embedding_field
         self.id_field = id_field
