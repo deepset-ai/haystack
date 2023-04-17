@@ -35,8 +35,10 @@ class RouteDocuments(BaseComponent):
             provided list will be routed to `"output_1"`, `Document`s whose metadata field is equal to the second
             value of the provided list will be routed to `"output_2"`, etc.
         :param return_remaining: Whether to return all remaining documents that don't match the `split_by` or
-            `metadata_values` into an additional output route. This additional output route will at the end of the previous
-             output routes.
+            `metadata_values` into an additional output route. This additional output route will be indexed to plus one
+             of the previous last output route. For example, if there would normally be `"output_1"` and `"output_2"`
+             when return_remaining  is False, then when return_remaining is True the additional output route would be
+             `"output_3"`.
         """
 
         if split_by != "content_type" and metadata_values is None:
