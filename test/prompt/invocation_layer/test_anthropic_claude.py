@@ -10,13 +10,13 @@ from haystack.nodes.prompt.invocation_layer import AnthropicClaudeInvocationLaye
 
 @pytest.mark.unit
 def test_default_costuctor():
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 200
     assert layer.max_tokens_limit == 9000
     assert layer.model_input_kwargs == {}
-    assert layer.tokenizer is not None
 
 
 @pytest.mark.unit
@@ -30,7 +30,8 @@ def test_ignored_kwargs_are_filtered_in_init():
         "stream_handler": DefaultTokenStreamingHandler(),
         "unkwnown_args": "this will be filtered out",
     }
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", **kwargs)
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", **kwargs)
 
     # Verify unexpected kwargs are filtered out
     assert len(layer.model_input_kwargs) == 6
@@ -45,7 +46,8 @@ def test_ignored_kwargs_are_filtered_in_init():
 
 @pytest.mark.unit
 def test_invoke_with_no_kwargs():
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     with pytest.raises(ValueError) as e:
         layer.invoke()
@@ -55,7 +57,8 @@ def test_invoke_with_no_kwargs():
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry")
 def test_invoke_with_prompt_only(mock_request):
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
@@ -67,15 +70,15 @@ def test_invoke_with_prompt_only(mock_request):
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry")
-def test_invoke_with_kwargs(mock_request: Mock):
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_kwargs():
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    mock_request.return_value = mock_response
-
-    res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=["stop", "here"])
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
+        mock_request.return_value = mock_response
+        res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=["stop", "here"])
     assert len(res) == 1
     assert res[0] == "some_result"
 
@@ -94,9 +97,9 @@ def test_invoke_with_kwargs(mock_request: Mock):
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry")
-def test_invoke_with_stream(mock_request):
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+def test_invoke_with_stream():
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake streamed response
     def mock_iter(self):
@@ -109,23 +112,25 @@ def test_invoke_with_stream(mock_request):
         yield "data: [DONE]\n\n".encode()
 
     mock_response = Mock(**{"__iter__": mock_iter})
-    mock_request.return_value = mock_response
 
     # Verifies expected result is returned
-    res = layer.invoke(prompt="Some prompt", stream=True)
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
+        mock_request.return_value = mock_response
+        res = layer.invoke(prompt="Some prompt", stream=True)
+
     assert len(res) == 1
     assert res[0] == "The sky appears blue to us due to how"
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry")
-def test_invoke_with_custom_stream_handler(mock_request):
+def test_invoke_with_custom_stream_handler():
     # Create a mock stream handler that always return the same token when called
     mock_stream_handler = Mock()
     mock_stream_handler.return_value = "token"
 
     # Create a layer with a mocked stream handler
-    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", stream_handler=mock_stream_handler)
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", stream_handler=mock_stream_handler)
 
     # Create a fake streamed response
     def mock_iter(self):
@@ -138,9 +143,11 @@ def test_invoke_with_custom_stream_handler(mock_request):
         yield "data: [DONE]\n\n".encode()
 
     mock_response = Mock(**{"__iter__": mock_iter})
-    mock_request.return_value = mock_response
 
-    res = layer.invoke(prompt="Some prompt")
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
+        mock_request.return_value = mock_response
+        res = layer.invoke(prompt="Some prompt")
+
     assert len(res) == 1
     # This is not the real result but the values returned by the mock handler
     assert res[0] == "token"
@@ -155,26 +162,36 @@ def test_invoke_with_custom_stream_handler(mock_request):
     assert mock_stream_handler.call_args_list == expected_call_list
 
 
-@pytest.mark.unit
-def test_ensure_token_limit_with_small_max_length():
+@pytest.mark.integration
+def test_ensure_token_limit_with_small_max_length(caplog):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=10)
     res = layer._ensure_token_limit(prompt="Short prompt")
 
     assert res == "Short prompt"
+    assert not caplog.records
 
-    res = layer._ensure_token_limit(prompt="This is a very much longer prompt")
-    assert res == "This is a very much longer prompt"
+    res = layer._ensure_token_limit(prompt="This is a very very very very very much longer prompt")
+    assert res == "This is a very very very very very much longer prompt"
+    assert not caplog.records
 
 
-@pytest.mark.unit
-def test_ensure_token_limit_with_huge_max_length():
+@pytest.mark.integration
+def test_ensure_token_limit_with_huge_max_length(caplog):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=8990)
     res = layer._ensure_token_limit(prompt="Short prompt")
 
     assert res == "Short prompt"
+    assert not caplog.records
 
     res = layer._ensure_token_limit(prompt="This is a very very very very very much longer prompt")
     assert res == "This is a very very very very very much longer"
+    assert len(caplog.records) == 1
+    expected_message_log = (
+        "The prompt has been truncated from 11 tokens to 10 tokens such that the prompt length and "
+        "answer length (8990 tokens) fits within the max token limit (9000 tokens). "
+        "Reduce the length of the prompt to prevent it from being cut off."
+    )
+    assert caplog.records[0].message == expected_message_log
 
 
 @pytest.mark.unit
