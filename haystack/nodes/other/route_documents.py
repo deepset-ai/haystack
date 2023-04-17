@@ -130,6 +130,9 @@ class RouteDocuments(BaseComponent):
         if self.split_by == "content_type":
             split_documents = self._split_by_content_type(documents)
         else:
+            assert isinstance(
+                self.metadata_values, list
+            ), "Provide metadata_values if you want to split a list of Documents by a metadata field."
             split_documents = self._split_by_metadata_values(self.metadata_values, documents)
         return split_documents, "split"
 
