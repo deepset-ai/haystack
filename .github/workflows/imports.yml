@@ -1,7 +1,6 @@
 name: Dependency checker
 
 on:
-  workflow_dispatch: # Activate this workflow manually
   push:
     branches:
       - main
@@ -18,6 +17,7 @@ on:
       - "pyproject.toml"
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
+      - "!test/*"
 
 env:
   PYTHON_VERSION: "3.8"
