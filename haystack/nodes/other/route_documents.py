@@ -93,7 +93,7 @@ class RouteDocuments(BaseComponent):
 
         return split_documents
 
-    def _get_index(self, metadata_values: Union[List[str], List[List[str]]], value: str) -> int:
+    def _get_metadata_values_index(self, metadata_values: Union[List[str], List[List[str]]], value: str) -> int:
         for idx, item in enumerate(metadata_values):
             if isinstance(item, list):
                 if value in item:
@@ -103,13 +103,15 @@ class RouteDocuments(BaseComponent):
                     return idx
         return len(metadata_values)
 
-    def _split_by_metadata_values(self, documents: List[Document]) -> Dict[str, List[Document]]:
-        split_documents = {f"output_{i + 1}": [] for i in range(len(self.metadata_values) + 2)}
-        remaining_key = f"output_{len(self.metadata_values) + 1}"
+    def _split_by_metadata_values(
+        self, metadata_values: Union[List, List[List]], documents: List[Document]
+    ) -> Dict[str, List[Document]]:
+        split_documents: Dict[str, List] = {f"output_{i + 1}": [] for i in range(len(metadata_values) + 2)}
+        remaining_key = f"output_{len(metadata_values) + 1}"
 
         for doc in documents:
             current_metadata_value = doc.meta.get(self.split_by, remaining_key)
-            index = self._get_index(self.metadata_values, current_metadata_value)
+            index = self._get_metadata_values_index(metadata_values, current_metadata_value)
             split_documents[f"output_{index + 1}"].append(doc)
 
         if not self.return_remaining:
@@ -128,7 +130,7 @@ class RouteDocuments(BaseComponent):
         if self.split_by == "content_type":
             split_documents = self._split_by_content_type(documents)
         else:
-            split_documents = self._split_by_metadata_values(documents)
+            split_documents = self._split_by_metadata_values(self.metadata_values, documents)
         return split_documents, "split"
 
     def run_batch(self, documents: Union[List[Document], List[List[Document]]]) -> Tuple[Dict, str]:  # type: ignore
