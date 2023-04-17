@@ -22,8 +22,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
     @pytest.fixture
     def ds(self):
         """
-        This fixture provides a working document store and takes care of keeping the
-        ES cluster used in the tests clean.
+        This fixture provides a working document store and takes care of keeping clean
+        the ES cluster used in the tests.
         """
         labels_index_name = f"{self.index_name}_labels"
         ds = ElasticsearchDocumentStore(

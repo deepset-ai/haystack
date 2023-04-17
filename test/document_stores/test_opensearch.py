@@ -32,7 +32,8 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     @pytest.fixture
     def ds(self):
         """
-        This fixture provides a working document store and takes care of removing the indices when done
+        This fixture provides a working document store and takes care of keeping clean the
+        OS cluster used in the tests.
         """
         labels_index_name = f"{self.index_name}_labels"
         ds = OpenSearchDocumentStore(
@@ -40,10 +41,10 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             label_index=labels_index_name,
             host=os.environ.get("OPENSEARCH_HOST", "localhost"),
             create_index=True,
+            recreate_index=True,
         )
+
         yield ds
-        ds.delete_index(self.index_name)
-        ds.delete_index(labels_index_name)
 
     @pytest.fixture
     def mocked_document_store(self, existing_index):
