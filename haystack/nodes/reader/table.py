@@ -117,7 +117,7 @@ class TableReader(BaseReader):
                                   the table cells that answer the question using the TableCell schema. The TableCell schema returns the row
                                   and column indices of the table cells selected in the Answer. Otherwise, the offsets
                                   are returned as Span objects which are start and end indices when counting through the
-                                  table in a linear fashion i.e. first cell is top left and last cell is bottom right.
+                                  table in a linear fashion, which means the first cell is top left and the last cell is bottom right.
         """
         super().__init__()
 
@@ -126,7 +126,7 @@ class TableReader(BaseReader):
                 "The support for returning offsets in answer predictions in a linear fashion is being deprecated."
                 " Set return_table_cell=True to use the new offsets format which returns the row and column indices"
                 " of the table cells selected in the answer."
-                " In the future return_table_cell=True will become default and return_table_cell=False will no "
+                " In the future, return_table_cell=True will become default and return_table_cell=False will no "
                 " longer be supported."
             )
 
@@ -720,7 +720,7 @@ class RCIReader(BaseReader):
                                   the cells that answer the question using the TableCell schema. The TableCell schema returns the row
                                   and column indices of the table cells selected in the Answer. Otherwise, the offsets
                                   are returned as Span objects which are start and end indices when counting through the
-                                  table in a linear fashion i.e. first cell is top left and last cell is bottom right.
+                                  table in a linear fashion, which means the first cell is top left and the last cell is bottom right.
         """
         super().__init__()
 
@@ -729,7 +729,7 @@ class RCIReader(BaseReader):
                 "The support for returning offsets in answer predictions in a linear fashion is being deprecated."
                 " Set return_table_cell=True to use the new offsets format which returns the row and column indices"
                 " of the table cells selected in the answer."
-                " In the future return_table_cell=True will become default and return_table_cell=False will no "
+                " In the future, return_table_cell=True will become default and return_table_cell=False will no "
                 " longer be supported."
             )
 
