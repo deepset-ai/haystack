@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 import pytest
 
-from haystack.preview import Pipeline, node, NoSuchStoreError
+from haystack.preview import Pipeline, component, NoSuchStoreError
 
 
 class MockStore:
@@ -31,8 +31,8 @@ def test_pipeline_stores_in_params():
     store_1 = MockStore()
     store_2 = MockStore()
 
-    @node
-    class MockNode:
+    @component
+    class MockComponent:
         def __init__(self):
             self.inputs = ["value"]
             self.outputs = ["value"]
@@ -45,7 +45,7 @@ def test_pipeline_stores_in_params():
             return ({"value": None}, parameters or {})
 
     pipe = Pipeline()
-    pipe.add_node("node", MockNode())
+    pipe.add_component("component", MockComponent())
 
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
