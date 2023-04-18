@@ -1352,9 +1352,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         Get values associated with a metadata key. The output is in the format:
             [{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
 
-        :param key: the meta key name to get the values for.
-        :param query: narrow down the scope to documents matching the query string.
-        :param filters: Narrow down the scope to documents that match the given filters.
+        :param key: The meta key name to get the values for.
+        :param query: Narrow down the scope to documents matching the query string.
+        :param filters: Narrow down the scope to documents matching the given filters.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -1380,10 +1380,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                 }
                             }
                             ```
-        :param index: search index where the meta values should be searched. If not supplied,
-                      self.index will be used.
-        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param index: The search index to search for the meta values. If not supplied,
+                      self.index is used.
+        :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
         """
         body: dict = {
             "size": 0,
@@ -1426,17 +1426,17 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
-        Fetch documents by specifying a list of text id strings.
+        Fetch documents by specifying a list of text ID strings.
 
-        :param ids: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
-        :param index: search index where the documents are stored. If not supplied,
-                      self.index will be used.
+        :param ids: List of document IDs. Be aware that passing a large number of IDs might lead to performance issues.
+        :param index: The search index where the documents are stored. If not supplied,
+                      self.index is used.
         :param batch_size: Maximum number of results for each query.
                            Limited to 10,000 documents by default.
-                           To reduce the pressure on the cluster, you can lower this limit, at the expense
+                           To reduce the pressure on the cluster, you can lower this limit at the expense
                            of longer retrieval times.
-        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-                        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                        Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
         """
         index = index or self.index
         documents = []
@@ -1453,7 +1453,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         self, id: str, meta: Dict[str, str], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ):
         """
-        Update the metadata dictionary of a document by specifying its string id
+        Update the metadata dictionary of a document by specifying its ID string.
         """
         if not index:
             index = self.index
