@@ -25,9 +25,9 @@ class BaseGenerator(BaseComponent):
         Abstract method to generate answers.
 
         :param query: Query
-        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param top_k: Number of returned answers
-        :param max_tokens: Maximum number of tokens in the generated answer
+        :param documents: Related documents (for example, coming from a retriever) the answer should be based on.
+        :param top_k: Number of returned answers.
+        :param max_tokens: THe maximum number of tokens the generated answer can have.
         :return: Generated answers plus additional infos in a dict
         """
         pass
@@ -125,11 +125,11 @@ class BaseGenerator(BaseComponent):
               and the Answers will be aggregated per query-Document pair.
 
         :param queries: List of queries.
-        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param documents: Related documents (for example, coming from a retriever) the answer should be based on.
                           Can be a single list of Documents or a list of lists of Documents.
         :param top_k: Number of returned answers per query.
         :param batch_size: Not applicable.
-        :param max_tokens: Maximum number of tokens in the generated answer
+        :param max_tokens: The maximum number of tokens the generated answer can have.
         :return: Generated answers plus additional infos in a dict like this:
 
          ```python
