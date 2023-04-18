@@ -6,7 +6,7 @@ import sys
 import json
 from typing import Dict, Union, Tuple, Optional, List
 import requests
-from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
+import tenacity as tc
 from transformers import GPT2TokenizerFast
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
@@ -123,10 +123,10 @@ def _openai_text_completion_tokenization_details(model_name: str):
     return tokenizer_name, max_tokens_limit
 
 
-@retry(
-    retry=retry_if_exception_type(OpenAIRateLimitError),
-    wait=wait_exponential(multiplier=OPENAI_BACKOFF),
-    stop=stop_after_attempt(OPENAI_MAX_RETRIES),
+@tc.retry(
+    retry=tc.retry_if_exception_type(OpenAIRateLimitError),
+    wait=tc.wait_exponential(multiplier=OPENAI_BACKOFF),
+    stop=tc.stop_after_attempt(OPENAI_MAX_RETRIES),
 )
 def openai_request(
     url: str,

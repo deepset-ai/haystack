@@ -31,16 +31,12 @@ from pydantic.json import pydantic_encoder
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
-# Swap these once the version in haystack/__init__.py is removed
-# from generalimport import is_imported
-from haystack import is_imported
+from generalimport import is_imported
 
 
 logger = logging.getLogger(__name__)
 
 
-if not is_imported("numpy"):
-    ndarray = object
 if not is_imported("pandas"):
     DataFrame = object
 

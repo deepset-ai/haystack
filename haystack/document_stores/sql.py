@@ -33,9 +33,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "sql", ie)
 
-# Swap these once the version in haystack/__init__.py is removed
-# from generalimport import is_imported
-from haystack import is_imported
+from generalimport import is_imported
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore, FilterType
@@ -50,6 +48,7 @@ if not is_imported("sqlalchemy"):
     MetaDocumentORM = object
     LabelORM = object
     MetaLabelORM = object
+
 else:
     Base = declarative_base()  # type: Any
 
