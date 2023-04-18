@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/retriever]
-    modules: ["base", "sparse", "dense", "text2sparql", "multimodal/retriever"]
+    modules: ["base", "sparse", "dense", "text2sparql", "multimodal/retriever", "web"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
