@@ -24,6 +24,25 @@ env:
 
 jobs:
 
+  no-deps-install:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Haystack with no dependencies
+      run: |
+        pip install git+https://github.com/ZanSara/generalimport.git@handling-classes
+        pip install pydantic tenacity pandas
+        pip install --no-deps .
+
+    - name: Import Haystack
+      run: python -c 'import haystack'
+
   base-install:
     runs-on: ubuntu-latest
     steps:
@@ -35,10 +54,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack with no extras
-      run: |
-        pip install git+https://github.com/ZanSara/generalimport.git@handling-classes
-        pip install pydantic tenacity pandas
-        pip install --no-deps .
+      run: pip install .
 
-    - name: Try to import
+    - name: Import Haystack
       run: python -c 'import haystack'
