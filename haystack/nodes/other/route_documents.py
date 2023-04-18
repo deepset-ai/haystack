@@ -123,7 +123,7 @@ class RouteDocuments(BaseComponent):
             split_documents[output].append(doc)
 
         if not self.return_remaining:
-            if logger.isEnabledFor(logging.WARNING) and len(split_documents[remaining_key]) > 0:
+            if len(split_documents[remaining_key]) > 0:
                 logger.warning(
                     "%s documents were skipped because they were either missing the metadata field '%s' or the"
                     " corresponding metadata value is not included in `metadata_values`.",
