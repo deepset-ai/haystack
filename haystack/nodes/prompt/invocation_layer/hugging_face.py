@@ -267,4 +267,5 @@ class StopWordsCriteria(StoppingCriteria):
         self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        # TODO: Update relative test in test_hugging_face.py when this is fixed
         return any(torch.isin(input_ids[-1], self.stop_words["input_ids"]))

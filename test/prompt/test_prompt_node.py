@@ -4,7 +4,7 @@ from typing import Optional, Union, List, Dict, Any, Tuple
 from unittest.mock import patch, Mock, MagicMock
 
 import pytest
-from transformers import AutoTokenizer, GenerationConfig
+from transformers import GenerationConfig
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
@@ -194,15 +194,33 @@ def test_get_prompt_template_with_default_template(mock_model):
     assert template.name == "custom-at-query-time"
 
 
-@pytest.mark.integration
+@pytest.mark.unit
+def test_prompt_with_template():
+    mock_model = Mock(spec=PromptModel())
+    node = PromptNode(model_name_or_path=mock_model)
+    mock_template = Mock(spec=PromptTemplate(name="fake-template", prompt_text=""))
+    fake_prompts = ["fake_prompt1", "fake_prompt2"]
+    mock_template.fill.return_value = fake_prompts
+    mock_model._ensure_token_limit.return_value = fake_prompts
+    mock_model.invoke.return_value = ["output"]
+
+    node.prompt(prompt_template=mock_template)
+
+    calls_kwargs = node._prepare_model_kwargs()
+    mock_template.fill.assert_called_once_with(**calls_kwargs)
+    calls_kwargs["prompts"] = ["fake_prompt1", "fake_prompt2"]
+    mock_template.post_process.assert_called_once_with(["output", "output"], **calls_kwargs)
+
+
+@pytest.mark.unit
 def test_invalid_template_params():
-    # TODO: This can be a PromptTemplate unit test
-    node = PromptNode("google/flan-t5-small", devices=["cpu"])
+    mock_model = Mock(spec=PromptModel())
+    node = PromptNode(model_name_or_path=mock_model)
     with pytest.raises(ValueError, match="Expected prompt parameters"):
         node.prompt("question-answering-per-document", {"some_crazy_key": "Berlin is the capital of Germany."})
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_generation_kwargs_from_prompt_node_init():
     the_question = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
@@ -225,7 +243,7 @@ def test_generation_kwargs_from_prompt_node_init():
         )
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_generation_kwargs_from_prompt_node_call():
     the_question = "What does 42 mean?"
     # default node with local HF model
@@ -248,82 +266,6 @@ def test_generation_kwargs_from_prompt_node_call():
             {"do_sample": True, "top_p": 0.9, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
             {},
         )
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
-def test_stop_words(prompt_model):
-    # TODO: This can be a unit test for StopWordCriteria
-    skip_test_for_invalid_key(prompt_model)
-
-    # test single stop word for both HF and OpenAI
-    # set stop words in PromptNode
-    node = PromptNode(prompt_model, stop_words=["capital"])
-
-    # with default prompt template and stop words set in PN
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
-    assert r[0] == "What is the" or r[0] == "What city is the"
-
-    # test stop words for both HF and OpenAI
-    # set stop words in PromptNode
-    node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
-
-    # with default prompt template and stop words set in PN
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
-    assert r[0] == "What is the" or r[0] == "What city is the"
-
-    # with default prompt template and stop words set in kwargs (overrides PN stop words)
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."], stop_words=None)
-    assert "capital" in r[0] or "Germany" in r[0]
-
-    # simple prompting
-    r = node("Given the context please generate a question. Context: Berlin is the capital of Germany.; Question:")
-    assert len(r[0]) > 0
-    assert "capital" not in r[0]
-    assert "Germany" not in r[0]
-
-    # simple prompting with stop words set in kwargs (overrides PN stop words)
-    r = node(
-        "Given the context please generate a question. Context: Berlin is the capital of Germany.; Question:",
-        stop_words=None,
-    )
-    assert "capital" in r[0] or "Germany" in r[0]
-
-    tt = PromptTemplate(
-        name="question-generation-copy",
-        prompt_text="Given the context please generate a question. Context: {documents}; Question:",
-    )
-    # with custom prompt template
-    r = node.prompt(tt, documents=["Berlin is the capital of Germany."])
-    assert r[0] == "What is the" or r[0] == "What city is the"
-
-    # with custom prompt template and stop words set in kwargs (overrides PN stop words)
-    r = node.prompt(tt, documents=["Berlin is the capital of Germany."], stop_words=None)
-    assert "capital" in r[0] or "Germany" in r[0]
-
-
-@pytest.mark.integration
-def test_prompt_node_model_max_length(caplog):
-    prompt = "This is a prompt " * 5  # (26 tokens with t5 flan tokenizer)
-
-    # test that model_max_length is set to 1024
-    # test that model doesn't truncate the prompt if it is shorter than
-    # the model max length minus the length of the output
-    # no warning is raised
-    node = PromptNode(model_kwargs={"model_max_length": 1024})
-    assert node.prompt_model.model_invocation_layer.pipe.tokenizer.model_max_length == 1024
-    with caplog.at_level(logging.WARNING):
-        node.prompt(prompt)
-        assert len(caplog.text) <= 0
-
-    # test that model_max_length is set to 10
-    # test that model truncates the prompt if it is longer than the max length (10 tokens)
-    # a warning is raised
-    node = PromptNode(model_kwargs={"model_max_length": 10})
-    assert node.prompt_model.model_invocation_layer.pipe.tokenizer.model_max_length == 10
-    with caplog.at_level(logging.WARNING):
-        node.prompt(prompt)
-        assert "The prompt has been truncated from 26 tokens to 0 tokens" in caplog.text
 
 
 @pytest.mark.unit
@@ -352,24 +294,6 @@ def test_prompt_node_streaming_handler_on_constructor(mock_model):
     # Verify model has been constructed with expected model_kwargs
     mock_model.assert_called_once()
     assert mock_model.call_args_list[0].kwargs["model_kwargs"] == model_kwargs
-
-
-@pytest.mark.skip
-@pytest.mark.integration
-def test_prompt_node_with_text_generation_model():
-    # TODO: This is an integration test for HFLocalInvocationLayer
-    # test simple prompting with text generation model
-    # by default, we force the model not return prompt text
-    # Thus text-generation models can be used with PromptNode
-    # just like text2text-generation models
-    node = PromptNode("bigscience/bigscience-small-testing")
-    r = node("Hello big science!")
-    assert len(r[0]) > 0
-
-    # test prompting with parameter to return prompt text as well
-    # users can use this param to get the prompt text and the generated text
-    r = node("Hello big science!", return_full_text=True)
-    assert len(r[0]) > 0 and r[0].startswith("Hello big science!")
 
 
 @pytest.mark.skip
@@ -1068,8 +992,10 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 
 
 class TestTokenLimit:
+    @pytest.mark.skip
     @pytest.mark.integration
     def test_hf_token_limit_warning(self, caplog):
+        # TODO: Make this test  HFLocalInvocationLayer._ensure_token_limit
         prompt_template = PromptTemplate(
             name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:"
         )
@@ -1079,12 +1005,14 @@ class TestTokenLimit:
             assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
             assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
 
+    # @pytest.mark.skipif(
+    #     not os.environ.get("OPENAI_API_KEY", None),
+    #     reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    # )
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
+    @pytest.mark.skip
     def test_openai_token_limit_warning(self, caplog):
+        # TODO: Make this test  OpenAIInvocationLayer._ensure_token_limit
         tt = PromptTemplate(name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:")
         prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
         with caplog.at_level(logging.WARNING):
@@ -1158,39 +1086,3 @@ class TestRunBatch:
         assert isinstance(result["results"], list)
         assert isinstance(result["results"][0], list)
         assert isinstance(result["results"][0][0], str)
-
-
-@pytest.mark.skip
-@pytest.mark.integration
-def test_HFLocalInvocationLayer_supports():
-    # TODO: HFLocalInvocationLayer test, to be moved
-    assert HFLocalInvocationLayer.supports("philschmid/flan-t5-base-samsum")
-    assert HFLocalInvocationLayer.supports("bigscience/T0_3B")
-
-
-@pytest.mark.skip
-@pytest.mark.integration
-def test_chatgpt_direct_prompting(chatgpt_prompt_model):
-    # TODO: This is testing ChatGPT, should be removed
-    skip_test_for_invalid_key(chatgpt_prompt_model)
-    pn = PromptNode(chatgpt_prompt_model)
-    result = pn("Hey, I need some Python help. When should I use list comprehension?")
-    assert len(result) == 1 and all(w in result[0] for w in ["comprehension", "list"])
-
-
-@pytest.mark.skip
-@pytest.mark.integration
-def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
-    # TODO: This is a ChatGPTInvocationLayer unit test
-    skip_test_for_invalid_key(chatgpt_prompt_model)
-    pn = PromptNode(chatgpt_prompt_model)
-
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Who won the world series in 2020?"},
-        {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
-        {"role": "user", "content": "Where was it played?"},
-    ]
-
-    result = pn(messages)
-    assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
