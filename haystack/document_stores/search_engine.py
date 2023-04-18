@@ -166,7 +166,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if self.client.indices.exists_alias(name=index_name):
                 logger.debug("Index name %s is an alias.", index_name)
 
-        return self.client.indices.exists(index_name, headers=headers)
+        return self.client.indices.exists(index=index_name, headers=headers)
 
     @abstractmethod
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
@@ -281,7 +281,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
             if not self.return_embedding and self.embedding_field:
                 query["_source"] = {"excludes": [self.embedding_field]}
-            result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
+            result = self.client.search(index=index, **query, headers=headers)["hits"]["hits"]
             documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
@@ -344,7 +344,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
-        result = self.client.search(body=body, index=index, headers=headers)
+        result = self.client.search(**body, index=index, headers=headers)
 
         values = []
         current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
@@ -355,7 +355,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         # Only 10 results get returned at a time, so apply pagination
         while after_key:
             body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
-            result = self.client.search(body=body, index=index, headers=headers)
+            result = self.client.search(**body, index=index, headers=headers)
             current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
             after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
             for bucket in current_buckets:
@@ -521,7 +521,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not index:
             index = self.index
         body = {"doc": meta}
-        self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
+        self.client.update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(
         self,
@@ -908,7 +908,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
+        result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
@@ -1542,7 +1542,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            time.sleep(2)
+            self.client.indices.refresh(index=index)
 
     def delete_labels(
         self,
