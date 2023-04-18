@@ -1,0 +1,23 @@
+FROM ubuntu:bionic
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    gcc \
+    git \
+    libtesseract-dev \
+    poppler-utils \
+    tesseract-ocr
+
+ARG xpdf_version
+RUN curl -O https://dl.xpdfreader.com/xpdf-${xpdf_version}.tar.gz && \
+    tar -xvf xpdf-${xpdf_version}.tar.gz && \
+    cd xpdf-${xpdf_version} && \
+    cmake . && \
+    make && \
+    cp xpdf/pdftotext /opt && \
+    cd .. \
+    rm -rf xpdf-${xpdf_version}

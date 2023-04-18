@@ -6,7 +6,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
 from urllib.parse import urlparse
 
 try:
@@ -262,51 +262,18 @@ class Crawler(BaseComponent):
                 logger.info("Fetching from %s to `%s`", urls, output_dir)
 
         documents: List[Document] = []
-
-        # Start by crawling the initial list of urls
-        if filter_urls:
-            pattern = re.compile("|".join(filter_urls))
-            for url in urls:
-                if pattern.search(url):
-                    documents += self._crawl_urls(
-                        [url],
-                        extract_hidden_text=extract_hidden_text,
-                        loading_wait_time=loading_wait_time,
-                        id_hash_keys=id_hash_keys,
-                        output_dir=output_dir,
-                        overwrite_existing_files=overwrite_existing_files,
-                        file_path_meta_field_name=file_path_meta_field_name,
-                        crawler_naming_function=crawler_naming_function,
-                    )
-        else:
-            documents += self._crawl_urls(
-                urls,
-                extract_hidden_text=extract_hidden_text,
-                loading_wait_time=loading_wait_time,
-                id_hash_keys=id_hash_keys,
-                output_dir=output_dir,
-                overwrite_existing_files=overwrite_existing_files,
-                file_path_meta_field_name=file_path_meta_field_name,
-                crawler_naming_function=crawler_naming_function,
-            )
-
-        # follow one level of sublinks if requested
-        if crawler_depth == 1:
-            sub_links: Dict[str, List] = {}
-            for url_ in urls:
-                already_found_links: List = list(sum(list(sub_links.values()), []))
-                sub_links[url_] = list(
-                    self._extract_sublinks_from_url(
-                        base_url=url_,
-                        filter_urls=filter_urls,
-                        already_found_links=already_found_links,
-                        loading_wait_time=loading_wait_time,
+        uncrawled_urls = {base_url: {base_url} for base_url in urls}
+        crawled_urls = set()
+        for current_depth in range(crawler_depth + 1):
+            for base_url, uncrawled_urls_for_base in uncrawled_urls.items():
+                urls_to_crawl = list(
+                    filter(
+                        lambda u: (not filter_urls or re.search("|".join(filter_urls), u)) and u not in crawled_urls,
+                        uncrawled_urls_for_base,
                     )
                 )
-            for url, extracted_sublink in sub_links.items():
-                documents += self._crawl_urls(
-                    extracted_sublink,
-                    base_url=url,
+                crawled_documents = self._crawl_urls(
+                    urls_to_crawl,
                     extract_hidden_text=extract_hidden_text,
                     loading_wait_time=loading_wait_time,
                     id_hash_keys=id_hash_keys,
@@ -315,7 +282,19 @@ class Crawler(BaseComponent):
                     file_path_meta_field_name=file_path_meta_field_name,
                     crawler_naming_function=crawler_naming_function,
                 )
-
+                documents += crawled_documents
+                crawled_urls.update(urls_to_crawl)
+                if current_depth < crawler_depth:
+                    uncrawled_urls[base_url] = set()
+                    for url_ in urls_to_crawl:
+                        uncrawled_urls[base_url].update(
+                            self._extract_sublinks_from_url(
+                                base_url=url_,
+                                filter_urls=filter_urls,
+                                already_found_links=list(crawled_urls),
+                                loading_wait_time=loading_wait_time,
+                            )
+                        )
         return documents
 
     def _create_document(
@@ -527,7 +506,7 @@ class Crawler(BaseComponent):
         filter_urls: Optional[List] = None,
         already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
-    ) -> set:
+    ) -> Set[str]:
         self.driver.get(base_url)
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)

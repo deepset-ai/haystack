@@ -1502,17 +1502,25 @@ class EvaluationResult:
             "gold_answers",
             "gold_documents_id_match",
             "gold_offsets_in_documents",
+            "gold_offsets_in_contexts",
             "gold_answers_exact_match",
             "gold_answers_f1",
             "gold_answers_sas",
             "gold_answers_match",
             "gold_contexts_similarity",
             "offsets_in_document",
+            "offsets_in_context",
             "document_ids",
             "custom_document_ids",
             "gold_document_contents",
         ]
-        converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
+
+        def safe_literal_eval(x: str) -> Any:
+            if x == "":
+                return None
+            return ast.literal_eval(x)
+
+        converters = dict.fromkeys(cols_to_convert, safe_literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
         read_csv_kwargs = {**default_read_csv_kwargs, **read_csv_kwargs}
         node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}

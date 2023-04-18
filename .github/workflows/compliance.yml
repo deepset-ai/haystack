@@ -3,14 +3,14 @@ name: License Compliance Checks
 on:
   pull_request:
     paths:
-      - '**/pyproject.toml'
+      - "**/pyproject.toml"
   schedule:
-    - cron: '0 0 * * *'  # every day at midnight
+    - cron: "0 0 * * *" # every day at midnight
 
 env:
-  GH_ACCESS_TOKEN:  ${{ secrets.GH_ACCESS_TOKEN }}
+  GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  SLACK_ALERT_CHANNEL: "#haystack"
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
 jobs:
   check-license-compliance-cpu:
@@ -49,12 +49,58 @@ jobs:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
           run-tests: true
 
-      - name: Send Slack notification if license check failed
-        uses: act10ns/slack@v2
-        if: failure() && github.ref == 'refs/heads/master'
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: ${{ env.SLACK_ALERT_CHANNEL }}
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
 
   check-license-compliance-gpu:
     if: ${{ !github.event.pull_request.head.repo.fork }}
@@ -91,9 +137,55 @@ jobs:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
           run-tests: true
 
-      - name: Send Slack notification if license check failed
-        uses: act10ns/slack@v2
-        if: failure() && github.ref == 'refs/heads/master'
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: ${{ env.SLACK_ALERT_CHANNEL }}
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }

@@ -14,12 +14,10 @@ from selenium.webdriver.common.by import By
 from haystack.nodes.connector.crawler import Crawler
 from haystack.schema import Document
 
-from ..conftest import SAMPLES_PATH
 
-
-@pytest.fixture(scope="session")
-def test_url():
-    return (SAMPLES_PATH / "crawler").absolute().as_uri()
+@pytest.fixture()
+def test_url(samples_path):
+    return (samples_path / "crawler").absolute().as_uri()
 
 
 def content_match(crawler: Crawler, url: str, crawled_page: Path):
@@ -56,8 +54,9 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
 
 
 @pytest.mark.unit
+@patch("haystack.nodes.connector.crawler.ChromeDriverManager")
 @patch("haystack.nodes.connector.crawler.webdriver")
-def test_crawler_url_none_exception(webdriver):
+def test_crawler_url_none_exception(webdriver, manager):
     crawler = Crawler()
     with pytest.raises(ValueError):
         crawler.crawl()
@@ -139,12 +138,6 @@ def test_crawler_filter_urls(test_url, tmp_path):
     assert len(documents) == 1
     assert content_match(crawler, test_url + "/index.html", documents[0].meta["file_path"])
 
-    # Note: filter_urls can exclude pages listed in `urls` as well
-    documents = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
-    assert len(documents) == 1
-    assert content_match(crawler, test_url + "/page1.html", documents[0].meta["file_path"])
-    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google.com"], crawler_depth=1)
-
 
 @pytest.mark.integration
 def test_crawler_extract_hidden_text(test_url, tmp_path):
@@ -159,7 +152,7 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
 
 
 @pytest.mark.integration
-def test_crawler_loading_wait_time(test_url, tmp_path):
+def test_crawler_loading_wait_time(test_url, tmp_path, samples_path):
     loading_wait_time = 3
     crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
     documents = crawler.crawl(
@@ -170,7 +163,7 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
 
     paths = [doc.meta["file_path"] for doc in documents]
 
-    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
+    with open(f"{samples_path.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
         dynamic_result_text = dynamic_result.readlines()
         for path in paths:
             with open(path, "r") as crawled_file:
@@ -237,3 +230,32 @@ def test_crawler_custom_meta_file_path_name(test_url, tmp_path):
         urls=[test_url + "/index.html"], crawler_depth=0, output_dir=tmp_path, file_path_meta_field_name="custom"
     )
     assert documents[0].meta.get("custom", None) is not None
+
+
+@pytest.mark.integration
+def test_crawler_depth_2_single_url(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
+    documents = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=2)
+    assert len(documents) == 6
+    paths = [doc.meta["file_path"] for doc in documents]
+    assert content_in_results(crawler, test_url + "/index.html", paths)
+    assert content_in_results(crawler, test_url + "/page1.html", paths)
+    assert content_in_results(crawler, test_url + "/page2.html", paths)
+    assert content_in_results(crawler, test_url + "/page1_subpage1.html", paths)
+    assert content_in_results(crawler, test_url + "/page1_subpage2.html", paths)
+    assert content_in_results(crawler, test_url + "/page2_subpage1.html", paths)
+
+
+@pytest.mark.integration
+def test_crawler_depth_2_multiple_urls(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path, file_path_meta_field_name="file_path")
+    _urls = [test_url + "/index.html", test_url + "/page1.html"]
+    documents = crawler.crawl(urls=_urls, crawler_depth=2)
+    assert len(documents) == 6
+    paths = [doc.meta["file_path"] for doc in documents]
+    assert content_in_results(crawler, test_url + "/index.html", paths)
+    assert content_in_results(crawler, test_url + "/page1.html", paths)
+    assert content_in_results(crawler, test_url + "/page2.html", paths)
+    assert content_in_results(crawler, test_url + "/page1_subpage1.html", paths)
+    assert content_in_results(crawler, test_url + "/page1_subpage2.html", paths)
+    assert content_in_results(crawler, test_url + "/page2_subpage1.html", paths)

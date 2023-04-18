@@ -1339,3 +1339,123 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     progress_bar.update(batch_size)
         finally:
             opensearch_logger.setLevel(original_log_level)
+
+    def get_metadata_values_by_key(
+        self,
+        key: str,
+        query: Optional[str] = None,
+        filters: Optional[FilterType] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[dict]:
+        """
+        Get values associated with a metadata key. The output is in the format:
+            [{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+
+        :param key: The meta key name to get the values for.
+        :param query: Narrow down the scope to documents matching the query string.
+        :param filters: Narrow down the scope to documents matching the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
+        :param index: The search index to search for the meta values. If not supplied,
+                      self.index is used.
+        :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
+        """
+        body: dict = {
+            "size": 0,
+            "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
+        }
+        if query:
+            body["query"] = {
+                "bool": {
+                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+                }
+            }
+        if filters:
+            if not body.get("query"):
+                body["query"] = {"bool": {}}
+            body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
+        result = self.client.search(body=body, index=index, headers=headers)
+
+        values = []
+        current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
+        after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
+        for bucket in current_buckets:
+            values.append({"value": bucket["key"][key], "count": bucket["doc_count"]})
+
+        # Only 10 results get returned at a time, so apply pagination
+        while after_key:
+            body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
+            result = self.client.search(body=body, index=index, headers=headers)
+            current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
+            after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
+            for bucket in current_buckets:
+                values.append({"value": bucket["key"][key], "count": bucket["doc_count"]})
+
+        return values
+
+    def get_documents_by_id(
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
+        """
+        Fetch documents by specifying a list of text ID strings.
+
+        :param ids: List of document IDs. Be aware that passing a large number of IDs might lead to performance issues.
+        :param index: The search index where the documents are stored. If not supplied,
+                      self.index is used.
+        :param batch_size: Maximum number of results for each query.
+                           Limited to 10,000 documents by default.
+                           To reduce the pressure on the cluster, you can lower this limit at the expense
+                           of longer retrieval times.
+        :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                        Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
+        """
+        index = index or self.index
+        documents = []
+        for i in range(0, len(ids), batch_size):
+            ids_for_batch = ids[i : i + batch_size]
+            query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
+            if not self.return_embedding and self.embedding_field:
+                query["_source"] = {"excludes": [self.embedding_field]}
+            result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
+            documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
+        return documents
+
+    def update_document_meta(
+        self, id: str, meta: Dict[str, str], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+    ):
+        """
+        Update the metadata dictionary of a document by specifying its ID string.
+        """
+        if not index:
+            index = self.index
+        body = {"doc": meta}
+        self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
