@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Optional, cast
+from typing import List, Union, Dict, Optional, cast, Any
 import json
 import logging
 
@@ -151,19 +151,25 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             response = openai_request(
                 url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
             )
-
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            client = sseclient.SSEClient(response)
-            tokens: List[str] = []
-            try:
-                for event in client.events():
-                    if event.data != TokenStreamingHandler.DONE_MARKER:
-                        ed = json.loads(event.data)
-                        token: str = ed["choices"][0]["text"]
-                        tokens.append(handler(token, event_data=ed["choices"]))
-            finally:
-                client.close()
-            return ["".join(tokens)]  # return a list of strings just like non-streaming
+            return self._process_streaming_response(response=response, stream_handler=handler)
+
+    def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
+        client = sseclient.SSEClient(response)
+        tokens: List[str] = []
+        try:
+            for event in client.events():
+                if event.data != TokenStreamingHandler.DONE_MARKER:
+                    event_data = json.loads(event.data)
+                    token: str = self._extract_token(event_data)
+                    if token:
+                        tokens.append(stream_handler(token, event_data=event_data["choices"]))
+        finally:
+            client.close()
+        return ["".join(tokens)]  # return a list of strings just like non-streaming
+
+    def _extract_token(self, event_data: Dict[str, Any]):
+        return event_data["choices"][0]["text"]
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.

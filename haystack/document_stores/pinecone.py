@@ -997,6 +997,8 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
+        if index not in self.all_ids:
+            self.all_ids[index] = set()
         if ids is None and pinecone_syntax_filter is None:
             # If no filters or IDs we delete everything
             self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)

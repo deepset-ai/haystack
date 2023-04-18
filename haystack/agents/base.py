@@ -11,7 +11,7 @@ from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color
-from haystack.agents.utils import print_text
+from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.nodes.prompt.invocation_layer import TokenStreamingHandler
@@ -180,7 +180,12 @@ class Agent:
         self.max_steps = max_steps
         self.tool_pattern = tool_pattern
         self.final_answer_pattern = final_answer_pattern
-        self.add_default_logging_callbacks()
+        # Resolve model name to check if it's a streaming model
+        if isinstance(self.prompt_node.model_name_or_path, str):
+            model_name = self.prompt_node.model_name_or_path
+        else:
+            model_name = self.prompt_node.model_name_or_path.model_name_or_path
+        self.add_default_logging_callbacks(streaming=any(m for m in STREAMING_CAPABLE_MODELS if m in model_name))
         self.hash = None
         self.last_hash = None
         self.update_hash()
@@ -197,7 +202,7 @@ class Agent:
             logger.debug("Telemetry exception: %s", str(exc))
             self.hash = "[an exception occurred during hashing]"
 
-    def add_default_logging_callbacks(self, agent_color: Color = Color.GREEN) -> None:
+    def add_default_logging_callbacks(self, agent_color: Color = Color.GREEN, streaming: bool = False) -> None:
         def on_tool_finish(
             tool_output: str,
             color: Optional[Color] = None,
@@ -215,7 +220,13 @@ class Agent:
 
         self.callback_manager.on_tool_finish += on_tool_finish
         self.callback_manager.on_agent_start += on_agent_start
-        self.callback_manager.on_new_token += lambda token, **kwargs: print_text(token, color=agent_color)
+
+        if streaming:
+            self.callback_manager.on_new_token += lambda token, **kwargs: print_text(token, color=agent_color)
+        else:
+            self.callback_manager.on_agent_step += lambda agent_step: print_text(
+                agent_step.prompt_node_response, color=agent_color
+            )
 
     def add_tool(self, tool: Tool):
         """
