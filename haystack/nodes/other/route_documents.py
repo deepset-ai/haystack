@@ -30,10 +30,14 @@ class RouteDocuments(BaseComponent):
             type `"table"` (will be routed to `"output_2"`).
             If this parameter is set to a metadata field name, you need to specify the parameter `metadata_values` as
             well.
-        :param metadata_values: If the parameter `split_by` is set to a metadata field name, you need to provide a list
-            of values to group the `Document`s to. `Document`s whose metadata field is equal to the first value of the
-            provided list will be routed to `"output_1"`, `Document`s whose metadata field is equal to the second
-            value of the provided list will be routed to `"output_2"`, etc.
+         :param metadata_values: A list of values to group `Document`s by metadata field. If the parameter `split_by`
+            is set to a metadata field name, you must provide a list of values (or a list of lists of values) to
+            group the `Document`s by.
+            If `metadata_values` is a list of strings, then the `Document`s whose metadata field is equal to the
+            corresponding value will be routed to the output with the same index.
+            If `metadata_values` is a list of lists, then the `Document`s whose metadata field is equal to the first
+            value of the provided sublist will be routed to `"output_1"`, the `Document`s whose metadata field is equal
+            to the second value of the provided sublist will be routed to `"output_2"`, and so on.
         :param return_remaining: Whether to return all remaining documents that don't match the `split_by` or
             `metadata_values` into an additional output route. This additional output route will be indexed to plus one
              of the previous last output route. For example, if there would normally be `"output_1"` and `"output_2"`
