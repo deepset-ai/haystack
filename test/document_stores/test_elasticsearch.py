@@ -22,7 +22,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
     @pytest.fixture
     def ds(self):
         """
-        This fixture provides a working document store and takes care of removing the indices when done
+        This fixture provides a working document store and takes care of keeping clean
+        the ES cluster used in the tests.
         """
         labels_index_name = f"{self.index_name}_labels"
         ds = ElasticsearchDocumentStore(
@@ -30,10 +31,10 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             label_index=labels_index_name,
             host=os.environ.get("ELASTICSEARCH_HOST", "localhost"),
             create_index=True,
+            recreate_index=True,
         )
+
         yield ds
-        ds.delete_index(self.index_name)
-        ds.delete_index(labels_index_name)
 
     @pytest.fixture
     def mocked_elastic_search_init(self, monkeypatch):
@@ -213,8 +214,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
         settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
 
-        client.indices.create(index="haystack_existing_alias_1", body=settings)
-        client.indices.create(index="haystack_existing_alias_2", body=settings)
+        client.indices.create(index="haystack_existing_alias_1", **settings)
+        client.indices.create(index="haystack_existing_alias_2", **settings)
 
         client.indices.put_alias(
             index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
@@ -233,8 +234,8 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         right_settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
         wrong_settings = {"mappings": {"properties": {"content": {"type": "histogram"}}}}
 
-        client.indices.create(index="haystack_existing_alias_1", body=right_settings)
-        client.indices.create(index="haystack_existing_alias_2", body=wrong_settings)
+        client.indices.create(index="haystack_existing_alias_1", **right_settings)
+        client.indices.create(index="haystack_existing_alias_2", **wrong_settings)
         client.indices.put_alias(
             index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
         )
@@ -326,3 +327,20 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
                 username="", aws4auth="foo", **_init_client_remaining_kwargs
             )
         assert len(caplog.records) == 0
+
+    @pytest.mark.unit
+    def test_get_document_by_id_return_embedding_false(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.unit
+    def test_get_document_by_id_excluded_meta_data_has_no_influence(self, mocked_document_store):
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is not affected by the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["_source"] == {"excludes": ["embedding"]}
