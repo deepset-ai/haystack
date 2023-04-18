@@ -44,13 +44,6 @@ class RouteDocuments(BaseComponent):
              when return_remaining  is False, then when return_remaining is True the additional output route would be
              `"output_3"`.
         """
-
-        if split_by != "content_type" and metadata_values is None:
-            raise ValueError(
-                "If split_by is set to the name of a metadata field, you must provide metadata_values "
-                "to group the documents to."
-            )
-
         super().__init__()
 
         self.split_by = split_by
@@ -60,7 +53,8 @@ class RouteDocuments(BaseComponent):
         if self.split_by != "content_type":
             if self.metadata_values is None or len(self.metadata_values) == 0:
                 raise ValueError(
-                    "Provide metadata_values if you want to split a list of Documents by a metadata field."
+                    "If split_by is set to the name of a metadata field, provide metadata_values if you want to split "
+                    "a list of Documents by a metadata field."
                 )
 
     @classmethod
@@ -140,11 +134,13 @@ class RouteDocuments(BaseComponent):
     def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
             split_documents = self._split_by_content_type(documents)
-        else:
-            assert isinstance(
-                self.metadata_values, list
-            ), "Provide metadata_values if you want to split a list of Documents by a metadata field."
+        elif self.metadata_values:
             split_documents = self._split_by_metadata_values(self.metadata_values, documents)
+        else:
+            raise ValueError(
+                "If split_by is set to the name of a metadata field, provide metadata_values if you want to split "
+                "a list of Documents by a metadata field."
+            )
         return split_documents, "split"
 
     def run_batch(self, documents: Union[List[Document], List[List[Document]]]) -> Tuple[Dict, str]:  # type: ignore
