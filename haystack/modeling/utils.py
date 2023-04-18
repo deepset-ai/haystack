@@ -11,6 +11,7 @@ from itertools import islice
 
 import numpy as np
 import torch
+from torch import device
 import torch.distributed as dist
 from torch import multiprocessing as mp
 

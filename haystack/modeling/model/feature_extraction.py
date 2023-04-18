@@ -29,6 +29,10 @@ from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, Auto
 from transformers.models.auto.feature_extraction_auto import FEATURE_EXTRACTOR_MAPPING_NAMES
 from transformers.models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES
 
+# Swap these once the version in haystack/__init__.py is removed
+# from generalimport import is_imported
+from haystack import is_imported
+
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
 
@@ -39,24 +43,27 @@ logger = logging.getLogger(__name__)
 #: Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
+if is_imported("transformers"):
+    FEATURE_EXTRACTORS = {
+        **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
+        **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
+    }
 
-FEATURE_EXTRACTORS = {
-    **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
-    **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
-}
+    DEFAULT_EXTRACTION_PARAMS = {
+        AutoTokenizer: {
+            "max_length": 256,
+            "add_special_tokens": True,
+            "truncation": True,
+            "truncation_strategy": "longest_first",
+            "padding": "max_length",
+            "return_token_type_ids": True,
+        },
+        AutoFeatureExtractor: {"return_tensors": "pt"},
+    }
 
-
-DEFAULT_EXTRACTION_PARAMS = {
-    AutoTokenizer: {
-        "max_length": 256,
-        "add_special_tokens": True,
-        "truncation": True,
-        "truncation_strategy": "longest_first",
-        "padding": "max_length",
-        "return_token_type_ids": True,
-    },
-    AutoFeatureExtractor: {"return_tensors": "pt"},
-}
+else:
+    FEATURE_EXTRACTORS = {}
+    DEFAULT_EXTRACTION_PARAMS = {}
 
 
 class FeatureExtractor:

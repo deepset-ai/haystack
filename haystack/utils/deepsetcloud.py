@@ -18,6 +18,10 @@ import requests
 import yaml
 from tqdm.auto import tqdm
 
+# Swap these once the version in haystack/__init__.py is removed
+# from generalimport import is_imported
+from haystack import is_imported
+
 from haystack.schema import Answer, Document, EvaluationResult, FilterType, Label
 
 DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
@@ -73,13 +77,17 @@ PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineSta
 logger = logging.getLogger(__name__)
 
 
-class BearerAuth(requests.auth.AuthBase):
-    def __init__(self, token):
-        self.token = token
+if not is_imported("requests"):
+    BearerAuth = object
+else:
 
-    def __call__(self, r):
-        r.headers["authorization"] = "Bearer " + self.token
-        return r
+    class BearerAuth(requests.auth.AuthBase):
+        def __init__(self, token):
+            self.token = token
+
+        def __call__(self, r):
+            r.headers["authorization"] = "Bearer " + self.token
+            return r
 
 
 class DeepsetCloudError(Exception):
