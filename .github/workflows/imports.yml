@@ -37,6 +37,7 @@ jobs:
     - name: Install Haystack with no extras
       run: |
         pip install git+https://github.com/ZanSara/generalimport.git@handling-classes
+        pip install pydantic tenacity
         pip install --no-deps .
 
     - name: Try to import
