@@ -106,13 +106,18 @@ class RouteDocuments(BaseComponent):
     def _split_by_metadata_values(
         self, metadata_values: Union[List, List[List]], documents: List[Document]
     ) -> Dict[str, List[Document]]:
-        split_documents: Dict[str, List] = {f"output_{i + 1}": [] for i in range(len(metadata_values) + 2)}
-        remaining_key = f"output_{len(metadata_values) + 1}"
+        # We need also to keep track of the excluded documents so
+        # we add 2 to the number of metadata_values
+        output_keys = [f"output_{i}" for i in range(1, len(metadata_values) + 2)]
+        split_documents = {k: [] for k in output_keys}
+        # This is the key used for excluded documents
+        remaining_key = output_keys[-1]
 
         for doc in documents:
             current_metadata_value = doc.meta.get(self.split_by, remaining_key)
             index = self._get_metadata_values_index(metadata_values, current_metadata_value)
-            split_documents[f"output_{index + 1}"].append(doc)
+            output = output_keys[index]
+            split_documents[output].append(doc)
 
         if not self.return_remaining:
             if logger.isEnabledFor(logging.WARNING) and len(split_documents[remaining_key]) > 0:
