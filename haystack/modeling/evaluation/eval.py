@@ -12,7 +12,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import WrappedDataParallel
 from haystack.utils.experiment_tracking import Tracker as tracker
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 from haystack.modeling.visual import BUSH_SEP
 
 

@@ -21,9 +21,9 @@ on:
       - "!rest_api/**/*.py"
 
 env:
-  HAYSTACK_TELEMETRY_VERSION: "0"  # Disables telemetry
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
   SUITES_EXCLUDED_FROM_WINDOWS:
     --ignore=test/pipelines/test_ray.py
     --ignore=test/document_stores/test_knowledge_graph.py
@@ -77,11 +77,59 @@ jobs:
           exit 1
         fi
 
-    - uses: act10ns/slack@v2
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
+    - uses: slackapi/slack-github-action@v1.23.0
       if: failure() && github.ref == 'refs/heads/main'
+      with:
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
@@ -112,11 +160,60 @@ jobs:
       - name: Run
         run: pytest -m "unit" test/${{ matrix.topic }}
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-elasticsearch:
     name: Integration / Elasticsearch / ${{ matrix.os }}
@@ -143,17 +240,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,docstores]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-sql:
     name: Integration / SQL / ${{ matrix.os }}
@@ -172,17 +318,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,sql]
+        run: pip install .[dev,sql,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-opensearch:
     name: Integration / Opensearch / ${{ matrix.os }}
@@ -209,17 +404,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,docstores]
+        run: pip install .[dev,opensearch,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-dc:
     name: Integration / dC / ${{ matrix.os }}
@@ -238,17 +482,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-faiss:
     name: Integration / faiss / ${{ matrix.os }}
@@ -267,17 +560,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[faiss,dev]
+        run: pip install .[faiss,dev,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_faiss.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-weaviate:
     name: Integration / Weaviate / ${{ matrix.os }}
@@ -306,17 +648,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,docstores]
+        run: pip install .[dev,weaviate,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_weaviate.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-pinecone:
     name: Integration / pinecone / ${{ matrix.os }}
@@ -335,7 +726,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack
-      run: pip install .[dev,pinecone]
+      run: pip install .[dev,pinecone,preprocessing]
 
     - name: Run tests
       env:
@@ -343,51 +734,59 @@ jobs:
       run: |
         pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_pinecone.py
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
 
-  integration-tests-milvus:
-    name: Integration / Milvus / ${{ matrix.os }}
-    needs:
-     - unit-tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install Haystack
-      run: pip install .[all]
-
-    - name: Setup Milvus
-      run: |
-        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-        sudo docker-compose up -d
-        sudo docker-compose ps
-
-    - name: Install Haystack
-      run: pip install .[dev,milvus]
-
-    - name: Run tests
-      run: |
-        pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_milvus.py
-
-    - uses: act10ns/slack@v2
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   integration-tests-memory:
     name: Integration / memory / ${{ matrix.os }}
@@ -406,17 +805,65 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_memory.py
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-promptnode:
     name: Integration / PromptNode / ${{ matrix.os }}
@@ -435,17 +882,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "integration" test/prompt
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
   integration-tests-agents:
     name: Integration / Agents / ${{ matrix.os }}
@@ -464,17 +960,66 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev]
+        run: pip install .[dev,preprocessing]
 
       - name: Run tests
         run: |
           pytest --maxfail=5 -m "integration" test/agents
 
-      - uses: act10ns/slack@v2
+      - uses: slackapi/slack-github-action@v1.23.0
+        if: failure() && github.ref == 'refs/heads/main'
         with:
-          status: ${{ job.status }}
-          channel: '#haystack'
-        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
+
 
 
 #
@@ -519,11 +1064,59 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   unit-tests-windows:
     needs: black
@@ -559,11 +1152,59 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-linux:
     needs:
@@ -590,18 +1231,11 @@ jobs:
 
     - name: Run Elasticsearch
       run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.17.6
 
     - name: Run Opensearch
       run: |
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.3.5
-
-    - name: Run Milvus
-      run: |
-        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-        sudo docker-compose up -d
-        sudo docker-compose ps
 
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.17.2
@@ -651,11 +1285,59 @@ jobs:
       if: failure()
       uses: jwalton/gh-docker-logs@v1
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   integration-tests-windows:
     needs:
@@ -705,11 +1387,59 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
 
-    - uses: act10ns/slack@v2
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
       with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+        payload: |
+            {
+              "blocks": [
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                      "alt_text": "Actor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                      "alt_text": "Github logo"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+
 
   catch-all:
     name: Catch-all check
@@ -726,7 +1456,6 @@ jobs:
       - integration-tests-faiss
       - integration-tests-weaviate
       - integration-tests-pinecone
-      - integration-tests-milvus
       - integration-tests-memory
       - integration-tests-linux
       - integration-tests-windows

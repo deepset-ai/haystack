@@ -373,7 +373,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         )
 
         try:
-            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+            result = self.client.search(index=index, **body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
                 count_documents = self.get_document_count(index=index, headers=headers)
                 if count_documents == 0:
@@ -454,7 +454,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 }
 
         try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+            self.client.indices.create(index=index_name, **mapping, headers=headers)
         except self._RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -483,7 +483,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             }
         }
         try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+            self.client.indices.create(index=index_name, **mapping, headers=headers)
         except self._RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -496,7 +496,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         """
         Validates an existing document index. If there's no embedding field, we'll add it.
         """
-        indices = self.client.indices.get(index_name, headers=headers)
+        indices = self.client.indices.get(index=index_name, headers=headers)
 
         if not any(indices):
             logger.warning(

@@ -43,7 +43,7 @@ from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
 from haystack.modeling.utils import initialize_device_settings
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)

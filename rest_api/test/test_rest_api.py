@@ -12,6 +12,7 @@ import pandas as pd
 
 import pytest
 from fastapi.testclient import TestClient
+import posthog
 from haystack import Document, Answer, Pipeline
 import haystack
 from haystack.nodes import BaseReader, BaseRetriever
@@ -23,6 +24,8 @@ from haystack.nodes.file_converter import BaseConverter
 from rest_api.pipeline import _load_pipeline
 from rest_api.utils import get_app
 
+# Disable telemetry reports when running tests
+posthog.disabled = True
 
 TEST_QUERY = "Who made the PDF specification?"
 

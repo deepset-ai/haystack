@@ -31,7 +31,7 @@ from haystack.modeling.infer import Inferencer
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
-from haystack.telemetry_2 import send_event
+from haystack.telemetry import send_event
 
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
 
