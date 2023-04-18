@@ -823,3 +823,4 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     if marker is None:
         return
     monkeypatch.delattr("requests.sessions.Session")
+    monkeypatch.delattr("requests_cache.session.CachedSession")
