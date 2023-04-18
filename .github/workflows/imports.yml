@@ -35,7 +35,9 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install Haystack with no extras
-      run: pip install .
+      run: |
+        pip install git+https://github.com/ZanSara/generalimport.git@handling-classes
+        pip install --no-deps .
 
     - name: Try to import
       run: python -c 'import haystack'
