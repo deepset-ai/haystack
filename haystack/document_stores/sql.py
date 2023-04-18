@@ -8,6 +8,8 @@ from uuid import uuid4
 
 import numpy as np
 
+from generalimport import is_imported
+
 try:
     from sqlalchemy import (
         and_,
@@ -33,7 +35,6 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "sql", ie)
 
-from generalimport import is_imported
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore, FilterType
