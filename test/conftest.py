@@ -395,6 +395,7 @@ class MockReader(BaseReader):
 class MockPromptNode(PromptNode):
     def __init__(self):
         self.default_prompt_template = None
+        self.model_name_or_path = ""
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]
@@ -841,3 +842,16 @@ def haystack_openai_config(request, haystack_azure_conf):
 @pytest.fixture
 def samples_path():
     return Path(__file__).parent / "samples"
+
+
+@pytest.fixture(autouse=True)
+def request_blocker(request: pytest.FixtureRequest, monkeypatch):
+    """
+    This fixture is applied automatically to all tests.
+    Those that are marked as unit will have the requests module
+    monkeypatched to avoid making HTTP requests by mistake.
+    """
+    marker = request.node.get_closest_marker("unit")
+    if marker is None:
+        return
+    monkeypatch.delattr("requests.sessions.Session")
