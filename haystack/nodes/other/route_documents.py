@@ -109,10 +109,9 @@ class RouteDocuments(BaseComponent):
     def _split_by_metadata_values(
         self, metadata_values: Union[List, List[List]], documents: List[Document]
     ) -> Dict[str, List[Document]]:
-        # We need also to keep track of the excluded documents so
-        # we add 2 to the number of metadata_values
+        # We need also to keep track of the excluded documents so we add 2 to the number of metadata_values
         output_keys = [f"output_{i}" for i in range(1, len(metadata_values) + 2)]
-        split_documents = {k: [] for k in output_keys}
+        split_documents: Dict[str, List[Document]] = {k: [] for k in output_keys}
         # This is the key used for excluded documents
         remaining_key = output_keys[-1]
 
