@@ -393,28 +393,10 @@ class Answer:
         # In case offsets are passed as dicts rather than Span or TableCell objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
-            offsets_in_document = []
-            for e in self.offsets_in_document:
-                if isinstance(e, dict):
-                    if "row" in e:  # is a TableCell
-                        offsets_in_document.append(TableCell(**e))
-                    else:
-                        offsets_in_document.append(Span(**e))
-                else:
-                    offsets_in_document.append(e)
-            self.offsets_in_document = offsets_in_document
+            self.offsets_in_document = self._convert_offsets(self.offsets_in_document)
 
         if self.offsets_in_context is not None:
-            offsets_in_context = []
-            for e in self.offsets_in_context:
-                if isinstance(e, dict):
-                    if "row" in e:  # is a TableCell
-                        offsets_in_context.append(TableCell(**e))
-                    else:
-                        offsets_in_context.append(Span(**e))
-                else:
-                    offsets_in_context.append(e)
-            self.offsets_in_context = offsets_in_context
+            self.offsets_in_context = self._convert_offsets(self.offsets_in_context)
 
         if self.meta is None:
             self.meta = {}
@@ -453,6 +435,19 @@ class Answer:
         if type(data) == str:
             data = json.loads(data)
         return cls.from_dict(data)
+
+    @staticmethod
+    def _convert_offsets(offsets):
+        converted_offsets = []
+        for e in offsets:
+            if isinstance(e, dict):
+                if "row" in e:  # is a TableCell
+                    converted_offsets.append(TableCell(**e))
+                else:
+                    converted_offsets.append(Span(**e))
+            else:
+                converted_offsets.append(e)
+        return converted_offsets
 
 
 @dataclass
