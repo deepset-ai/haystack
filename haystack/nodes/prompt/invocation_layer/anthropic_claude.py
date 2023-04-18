@@ -28,12 +28,12 @@ CLAUDE_TOKENIZER_REMOTE_FILE = "https://public-json-tokenization-0d8763e8-0d7e-4
 class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
     """
     Anthropic Claude Invocation Layer
-    This layer is used to invoke the Claude API provided by Anthropic.
+    This layer invokes the Claude API provided by Anthropic.
     """
 
     def __init__(self, api_key: str, model_name_or_path: str = "claude-v1", max_length=200, **kwargs):
         """
-         Creates an instance of PromptModelInvocation Layer for Anthropic's Claude models.
+         Creates an instance of PromptModelInvocation Layer for Claude models by Anthropic.
         :param model_name_or_path: The name or path of the underlying model.
         :param max_tokens_to_sample: The maximum length of the output text.
         :param api_key: The Anthropic API key.
@@ -138,7 +138,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         return [tokens.strip()]  # return a list of strings just like non-streaming
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
+        """Make sure the length of the prompt and answer is within the max tokens limit of the model.
         If needed, truncate the prompt text so that it fits within the limit.
         :param prompt: Prompt text to be sent to the generative model.
         """
@@ -154,7 +154,7 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         # overflowing is the list of tokens that have been truncated
         if encoded_prompt.overflowing:
             logger.warning(
-                "The prompt has been truncated from %s tokens to %s tokens such that the prompt length and "
+                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
                 "answer length (%s tokens) fits within the max token limit (%s tokens). "
                 "Reduce the length of the prompt to prevent it from being cut off.",
                 len(encoded_prompt.ids) + len(encoded_prompt.overflowing),
@@ -177,15 +177,15 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         Post data to Anthropic.
         Retries request in case it fails with any code in status_codes
         or with timeout.
-        All kwargs will be passed to ``requests.request``, so it accepts the same arguments.
+        All kwargs are passed to ``requests.request``, so it accepts the same arguments.
         Returns a ``requests.Response`` object.
 
-        :param data: Object to send in the body of the request
-        :param attempts: Number of times to attempt request in case of failures, defaults to 5
-        :param timeout: How many seconds to wait for the server to send data before giving up, defaults to 30
-        :raises AnthropicRateLimitError: Raised if requests fails with 429 status code
-        :raises AnthropicUnauthorizedError: Raised if requests fail with 401 status code
-        :raises AnthropicError: Raised if requests fail for any other reason
+        :param data: Object to send in the body of the request.
+        :param attempts: Number of times to attempt a request in case of failures, defaults to 5.
+        :param timeout: Number of seconds to wait for the server to send data before giving up, defaults to 30.
+        :raises AnthropicRateLimitError: Raised if a request fails with the 429 status code.
+        :raises AnthropicUnauthorizedError: Raised if a request fails with the 401 status code.
+        :raises AnthropicError: Raised if requests fail for any other reason.
         :return: :class:`Response <Response>` object
         """
         if status_codes is None:
