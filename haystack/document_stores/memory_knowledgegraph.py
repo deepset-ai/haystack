@@ -19,6 +19,8 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
 
     def __init__(self, index: str = "document"):
         """
+        The InMemoryKnowledgeGraph component is deprecated and will be removed in future versions.
+
         Init the in memory knowledge graph
 
         :param index: name of the index
