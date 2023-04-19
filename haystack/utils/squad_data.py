@@ -15,7 +15,7 @@ from haystack.modeling.data_handler.processor import _read_squad_file
 logger = logging.getLogger(__name__)
 
 
-if is_imported("pandas"):
+if is_imported("pandas") and is_imported("tqdm"):
     tqdm.pandas()
 
 
