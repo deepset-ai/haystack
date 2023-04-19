@@ -6,12 +6,17 @@ import random
 import pandas as pd
 from tqdm.auto import tqdm
 import mmh3
+from generalimport import is_imported
 
 from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
 
 logger = logging.getLogger(__name__)
+
+
+if is_imported("pandas"):
+    tqdm.pandas()
 
 
 COLUMN_NAMES = ["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"]
@@ -267,8 +272,6 @@ class SquadData:
 
 
 if __name__ == "__main__":
-    tqdm.pandas()
-
     # Download the SQuAD dataset if it isn't at target directory
     _read_squad_file("../data/squad20/train-v2.0.json")
 
