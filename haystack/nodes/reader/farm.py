@@ -1058,6 +1058,12 @@ class FARMReader(BaseReader):
             if not label.document.id:
                 logger.error("Label does not contain a document id")
                 continue
+            if label.document.content_type == "table":
+                logger.warning(
+                    "Label with a table document is not compatible with the FARMReader. Skipping label with id %s.",
+                    label.id,
+                )
+                continue
             aggregated_per_doc[label.document.id].append(label)
 
         # Create squad style dicts
@@ -1101,7 +1107,7 @@ class FARMReader(BaseReader):
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(
-                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}
+                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}  # type: ignore [union-attr]
                         )
                         aggregated_per_question[aggregation_key]["is_impossible"] = False
                     # create new one
@@ -1121,7 +1127,7 @@ class FARMReader(BaseReader):
                                 "answers": [
                                     {
                                         "text": label.answer.answer,
-                                        "answer_start": label.answer.offsets_in_document[0].start,
+                                        "answer_start": label.answer.offsets_in_document[0].start,  # type: ignore [union-attr]
                                     }
                                 ],
                                 "is_impossible": False,
