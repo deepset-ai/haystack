@@ -652,9 +652,11 @@ class MultiLabel:
             self._offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
-                    self._offsets_in_documents.extend(self._to_dict_offsets(answer))
+                    for span in answer.offsets_in_document:
+                        self._offsets_in_documents.append(self._to_dict_offsets(span))
                 if answer.offsets_in_context is not None:
-                    self._offsets_in_contexts.extend(self._to_dict_offsets(answer))
+                    for span in answer.offsets_in_context:
+                        self._offsets_in_contexts.append(self._to_dict_offsets(span))
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -668,14 +670,11 @@ class MultiLabel:
         self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
 
     @staticmethod
-    def _to_dict_offsets(answer: Answer) -> List[Dict]:
-        converted_offsets = []
-        for span in answer.offsets_in_document:
-            if isinstance(span, TableCell):
-                converted_offsets.append({"row": span.row, "col": span.col})
-            else:
-                converted_offsets.append({"start": span.start, "end": span.end})
-        return converted_offsets
+    def _to_dict_offsets(offset: Union[Span, TableCell]) -> Dict:
+        if isinstance(offset, TableCell):
+            return {"row": offset.row, "col": offset.col}
+        else:
+            return {"start": offset.start, "end": offset.end}
 
     @property
     def labels(self):

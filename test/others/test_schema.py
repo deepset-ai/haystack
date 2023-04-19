@@ -374,7 +374,11 @@ def test_multilabel_preserve_order_w_duplicates():
         Label(
             id="0",
             query="question",
-            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            answer=Answer(
+                answer="answer1",
+                offsets_in_document=[Span(start=12, end=18)],
+                offsets_in_context=[Span(start=1, end=7)],
+            ),
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
@@ -383,7 +387,11 @@ def test_multilabel_preserve_order_w_duplicates():
         Label(
             id="1",
             query="question",
-            answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+            answer=Answer(
+                answer="answer2",
+                offsets_in_document=[Span(start=10, end=16)],
+                offsets_in_context=[Span(start=0, end=6)],
+            ),
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
@@ -392,7 +400,11 @@ def test_multilabel_preserve_order_w_duplicates():
         Label(
             id="2",
             query="question",
-            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            answer=Answer(
+                answer="answer3",
+                offsets_in_document=[Span(start=14, end=20)],
+                offsets_in_context=[Span(start=2, end=8)],
+            ),
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
@@ -401,7 +413,11 @@ def test_multilabel_preserve_order_w_duplicates():
         Label(
             id="0",
             query="question",
-            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            answer=Answer(
+                answer="answer1",
+                offsets_in_document=[Span(start=12, end=18)],
+                offsets_in_context=[Span(start=1, end=7)],
+            ),
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
@@ -410,7 +426,11 @@ def test_multilabel_preserve_order_w_duplicates():
         Label(
             id="2",
             query="question",
-            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            answer=Answer(
+                answer="answer3",
+                offsets_in_document=[Span(start=14, end=20)],
+                offsets_in_context=[Span(start=2, end=8)],
+            ),
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
@@ -426,9 +446,10 @@ def test_multilabel_preserve_order_w_duplicates():
     assert multilabel.contexts == ["some", "some", "some other"]
     assert multilabel.offsets_in_documents == [
         {"start": 12, "end": 18},
-        {"start": 12, "end": 18},
-        {"start": 12, "end": 18},
+        {"start": 10, "end": 16},
+        {"start": 14, "end": 20},
     ]
+    assert multilabel.offsets_in_contexts == [{"start": 1, "end": 7}, {"start": 0, "end": 6}, {"start": 2, "end": 8}]
 
     for i in range(0, 3):
         assert multilabel.labels[i].id == str(i)
