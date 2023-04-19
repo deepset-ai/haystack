@@ -420,7 +420,15 @@ def test_multilabel_preserve_order_w_duplicates():
 
     multilabel = MultiLabel(labels=labels)
 
-    assert len(multilabel.document_ids) == 3
+    assert multilabel.query == "question"
+    assert multilabel.answers == ["answer1", "answer2", "answer3"]
+    assert multilabel.document_ids == ["123", "123", "333"]
+    assert multilabel.contexts == ["some", "some", "some other"]
+    assert multilabel.offsets_in_documents == [
+        {"start": 12, "end": 18},
+        {"start": 12, "end": 18},
+        {"start": 12, "end": 18},
+    ]
 
     for i in range(0, 3):
         assert multilabel.labels[i].id == str(i)
@@ -484,10 +492,12 @@ def test_multilabel_with_doc_containing_dataframes():
         ),
     )
     multilabel = MultiLabel(labels=[label])
-    assert len(multilabel.contexts) == 1
-    assert isinstance(multilabel.contexts[0], str)
-    assert multilabel.offsets_in_documents[0] == {"row": 0, "col": 0}
-    assert multilabel.offsets_in_contexts[0] == {"row": 0, "col": 0}
+    assert multilabel.query == "A question"
+    assert multilabel.contexts == ["   col1  col2\n0     1     3\n1     2     4"]
+    assert multilabel.answers == ["1"]
+    assert multilabel.document_ids == ["table1"]
+    assert multilabel.offsets_in_documents == [{"row": 0, "col": 0}]
+    assert multilabel.offsets_in_contexts == [{"row": 0, "col": 0}]
 
 
 def test_multilabel_serialization():

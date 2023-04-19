@@ -393,10 +393,10 @@ class Answer:
         # In case offsets are passed as dicts rather than Span or TableCell objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
-            self.offsets_in_document = self._convert_offsets(self.offsets_in_document)
+            self.offsets_in_document = self._from_dict_offsets(self.offsets_in_document)
 
         if self.offsets_in_context is not None:
-            self.offsets_in_context = self._convert_offsets(self.offsets_in_context)
+            self.offsets_in_context = self._from_dict_offsets(self.offsets_in_context)
 
         if self.meta is None:
             self.meta = {}
@@ -437,7 +437,7 @@ class Answer:
         return cls.from_dict(data)
 
     @staticmethod
-    def _convert_offsets(offsets):
+    def _from_dict_offsets(offsets):
         converted_offsets = []
         for e in offsets:
             if isinstance(e, dict):
@@ -652,17 +652,9 @@ class MultiLabel:
             self._offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
-                    for span in answer.offsets_in_document:
-                        if isinstance(span, TableCell):
-                            self._offsets_in_documents.append({"row": span.row, "col": span.col})
-                        else:
-                            self._offsets_in_documents.append({"start": span.start, "end": span.end})
+                    self._offsets_in_documents.extend(self._to_dict_offsets(answer))
                 if answer.offsets_in_context is not None:
-                    for span in answer.offsets_in_context:
-                        if isinstance(span, TableCell):
-                            self._offsets_in_contexts.append({"row": span.row, "col": span.col})
-                        else:
-                            self._offsets_in_contexts.append({"start": span.start, "end": span.end})
+                    self._offsets_in_contexts.extend(self._to_dict_offsets(answer))
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -674,6 +666,16 @@ class MultiLabel:
         # Hence, we exclude them here as well.
         self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
         self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
+
+    @staticmethod
+    def _to_dict_offsets(answer: Answer) -> List[Dict]:
+        converted_offsets = []
+        for span in answer.offsets_in_document:
+            if isinstance(span, TableCell):
+                converted_offsets.append({"row": span.row, "col": span.col})
+            else:
+                converted_offsets.append({"start": span.start, "end": span.end})
+        return converted_offsets
 
     @property
     def labels(self):
