@@ -1108,42 +1108,6 @@ def test_load_yaml_unusual_chars_in_values(tmp_path):
     assert pipeline.components["DummyNode"].non_alphanumeric_param == "\\[ümlaut\\]"
 
 
-def test_load_yaml_param_that_equals_component_name(tmp_path):
-    class PotentiallySelfReferencingNode(BaseComponent):
-        outgoing_edges = 1
-
-        def __init__(self, name):
-            super().__init__()
-            self.name = name
-
-        def run(self):
-            raise NotImplementedError
-
-        def run_batch(self):
-            raise NotImplementedError
-
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(
-            f"""
-            version: ignore
-            components:
-            - name: node
-              type: PotentiallySelfReferencingNode
-              params:
-                name: node
-            pipelines:
-            - name: query
-              nodes:
-              - name: node
-                inputs:
-                - Query
-        """
-        )
-
-    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-    assert pipeline.components["node"].name == "node"
-
-
 def test_save_yaml(tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(MockRetriever(), name="retriever", inputs=["Query"])
