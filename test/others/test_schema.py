@@ -240,6 +240,9 @@ def test_answer_to_dict(text_answer):
     assert a_new == a
 
 
+# TODO Test table answer to dict and to json
+
+
 def test_document_from_dict():
     doc = Document(
         content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
