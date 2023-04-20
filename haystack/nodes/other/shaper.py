@@ -100,7 +100,7 @@ def join_documents(
     - $id: The ID of the document.
     - $META_FIELD: The value of the metadata field called 'META_FIELD'.
 
-    All metadata is dropped. (TODO: fix)
+    All metadata is dropped.
 
     Example:
 
@@ -124,7 +124,7 @@ def join_documents_and_scores(documents: List[Document]) -> Tuple[List[Document]
     """
     Transforms a list of documents with scores in their metadata into a list containing a single document.
     The resulting document contains the scores and the contents of all the original documents.
-    All metadata is dropped. (TODO: fix)
+    All metadata is dropped.
     Example:
     ```python
     assert join_documents_and_scores(
