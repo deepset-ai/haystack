@@ -424,15 +424,17 @@ class Answer:
             dict = dict.copy()
             document_id = dict.pop("document_id")
             dict["document_ids"] = [document_id] if document_id is not None else None
-
+        if "context" in dict and isinstance(dict["context"], list):
+            dict = dict.copy()
+            dict["context"] = pd.DataFrame(columns=dict["context"][0], data=dict["context"][1:])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=ExtraEncoders)
 
     @classmethod
     def from_json(cls, data):
-        if type(data) == str:
+        if isinstance(data, str):
             data = json.loads(data)
         return cls.from_dict(data)
 
@@ -448,6 +450,23 @@ class Answer:
             else:
                 converted_offsets.append(e)
         return converted_offsets
+
+    def __eq__(self, other):
+        context = getattr(other, "context", None)
+        if isinstance(context, pd.DataFrame):
+            is_content_equal = context.equals(self.context)
+        else:
+            is_content_equal = context == self.context
+        return (
+            isinstance(other, self.__class__)
+            and is_content_equal
+            and getattr(other, "type", None) == self.type
+            and getattr(other, "score", None) == self.score
+            and getattr(other, "offsets_in_document", None) == self.offsets_in_document
+            and getattr(other, "offsets_in_context", None) == self.offsets_in_context
+            and getattr(other, "document_ids", None) == self.document_ids
+            and getattr(other, "meta", None) == self.meta
+        )
 
 
 @dataclass
@@ -569,7 +588,7 @@ class Label:
 
     @classmethod
     def from_json(cls, data):
-        if type(data) == str:
+        if isinstance(data, str):
             data = json.loads(data)
         return cls.from_dict(data)
 

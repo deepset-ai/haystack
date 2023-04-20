@@ -102,6 +102,19 @@ def text_answer():
 
 
 @pytest.fixture
+def table_answer():
+    return Answer(
+        answer="text_2",
+        type="extractive",
+        score=0.1,
+        context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+        offsets_in_document=[TableCell(row=1, col=0)],
+        offsets_in_context=[TableCell(row=1, col=0)],
+        document_ids=["123"],
+    )
+
+
+@pytest.fixture
 def table_doc():
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -224,7 +237,22 @@ def test_answer_to_dict(text_answer):
     assert a_new == a
 
 
-# TODO Test table answer to dict and to json
+# TODO Fix
+def test_table_answer_to_json(table_answer):
+    json_ans = table_answer.to_json()
+    assert isinstance(json_ans, str)
+    a_new = Answer.from_json(json_ans)
+    assert isinstance(a_new.offsets_in_document[0], TableCell)
+    assert a_new == table_answer
+
+
+# TODO Fix
+def test_table_answer_to_dict(table_answer):
+    dict_ans = table_answer.to_dict()
+    assert isinstance(dict_ans, dict)
+    a_new = Answer.from_dict(dict_ans)
+    assert isinstance(a_new.offsets_in_document[0], TableCell)
+    assert a_new == table_answer
 
 
 def test_document_from_dict():
