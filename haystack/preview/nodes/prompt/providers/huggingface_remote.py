@@ -80,7 +80,9 @@ class HFRemoteProvider:
             # Inference API
             self.url = f"https://api-inference.huggingface.co/models/{model_name_or_path}"
 
-        self.headers = {"Authorization": f"Bearer {self._check_api_key(api_key)}", "Content-Type": "application/json"}
+        if not api_key:
+            api_key = os.environ.get("HF_INFERENCE_API_KEY", None)
+        self.headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
         default_model_params = default_model_params or {}
         if "max_new_tokens" not in default_model_params:
@@ -151,26 +153,12 @@ class HFRemoteProvider:
         # TODO
         return prompt
 
-    def _check_api_key(self, api_key: Optional[str]) -> str:
-        """
-        Tries to load the API key and lightly validates it.
-
-        :param api_key: the API key given in `__init__`, if any.
-        :raises ValueError: if no valid key could be found.
-        :returns: the api key to use.
-        """
-        if not api_key:
-            api_key = os.environ.get("HF_INFERENCE_API_KEY", None)
-        # if not isinstance(api_key, str):
-        #     raise ValueError(
-        #         "No valid HuggingFace Inference API key found. You can provide one by either setting an environment "
-        #         "variable called `HF_INFERENCE_API_KEY`, or by passing one to the constructor of this class."
-        #     )
-        return api_key
-
 
 def _is_inference_endpoint(model_name_or_path: str):
     """
-    HF Inference Endpoints look like https://o3x2xh3o4m47mxny.us-east-1.aws.endpoints.huggingface.cloud
+    HF Inference Endpoints look like https://o3x2xh3o4m47mxny.us-east-1.aws.endpoints.huggingface.cloud or
+    https://api-inference.huggingface.co/models/<model-identifier>
     """
-    return all(token in model_name_or_path for token in ["https://", "huggingface"])
+    return all(
+        token in model_name_or_path for token in ["https://", "endpoints" "huggingface"]
+    ) or model_name_or_path.startswith("https://api-inference.huggingface.co/models/")
