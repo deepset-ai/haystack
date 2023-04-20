@@ -240,7 +240,7 @@ class Document:
         if not field_map:
             field_map = {}
         dictionary = self.to_dict(field_map=field_map)
-        return json.dumps(dictionary, cls=NumpyEncoder)
+        return json.dumps(dictionary, cls=ExtraEncoders)
 
     @classmethod
     def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
@@ -418,7 +418,7 @@ class Answer:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: "dict"):
         # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
         if "document_id" in dict:
             dict = dict.copy()
@@ -552,16 +552,20 @@ class Label:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: "dict"):
         # backward compatibility for old labels using answers with document_id instead of document_ids
         answer = dict.get("answer")
         if answer and "document_id" in answer:
             dict = dict.copy()
             dict["answer"] = Answer.from_dict(dict["answer"])
+        # convert content of table Documents into Pandas DataFrames
+        doc = dict.get("document")
+        if doc.get("content_type", None) == "table" and isinstance(doc["content"], list):
+            dict["document"]["content"] = pd.DataFrame(columns=doc["content"][0], data=doc["content"][1:])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=ExtraEncoders)
 
     @classmethod
     def from_json(cls, data):
@@ -732,7 +736,7 @@ class MultiLabel:
         return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: "dict"):
         # exclude extra arguments
         return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
@@ -758,7 +762,7 @@ class MultiLabel:
         return f"<MultiLabel: {self.to_dict()}>"
 
 
-def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
+def _pydantic_dataclass_from_dict(dict: "dict", pydantic_dataclass_type) -> Any:
     """
     Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
     This allows simple de-serialization of pydantic dataclasses from json.
@@ -777,10 +781,12 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     return dataclass_object
 
 
-class NumpyEncoder(json.JSONEncoder):
+class ExtraEncoders(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        if isinstance(obj, pd.DataFrame):
+            return [obj.columns.tolist()] + obj.values.tolist()
         return json.JSONEncoder.default(self, obj)
 
 
