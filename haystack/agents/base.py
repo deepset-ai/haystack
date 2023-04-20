@@ -210,7 +210,7 @@ class Agent:
             llm_prefix: Optional[str] = None,
             **kwargs: Any,
         ) -> None:
-            print_text(observation_prefix)  # type: ignore
+            print_text(f"\n{observation_prefix}")  # type: ignore
             print_text(tool_output, color=color)
             print_text(f"\n{llm_prefix}")
 
