@@ -301,6 +301,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             "host": "host",
             "port": 443,
             "password": "pass",
+            "cloud_id": None,
             "api_key_id": None,
             "api_key": None,
             "scheme": "https",

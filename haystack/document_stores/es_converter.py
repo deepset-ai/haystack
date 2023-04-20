@@ -25,6 +25,7 @@ def open_search_index_to_document_store(
     port: Union[int, List[int]] = 9200,
     username: str = "admin",
     password: str = "admin",
+    cloud_id: Optional[str] = None,
     api_key_id: Optional[str] = None,
     api_key: Optional[str] = None,
     aws4auth=None,
@@ -69,6 +70,7 @@ def open_search_index_to_document_store(
     :param port: Ports(s) of OpenSearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
+    :param cloud_id: ID of the cloud service (FAAS authentication).
     :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
     :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
     :param aws4auth: Authentication for usage with AWS OpenSearch
@@ -97,6 +99,7 @@ def open_search_index_to_document_store(
         port=port,
         username=username,
         password=password,
+        cloud_id=cloud_id,
         api_key_id=api_key_id,
         api_key=api_key,
         aws4auth=aws4auth,
@@ -124,6 +127,7 @@ def elasticsearch_index_to_document_store(
     port: Union[int, List[int]] = 9200,
     username: str = "",
     password: str = "",
+    cloud_id: Optional[str] = None,
     api_key_id: Optional[str] = None,
     api_key: Optional[str] = None,
     aws4auth=None,
@@ -168,6 +172,7 @@ def elasticsearch_index_to_document_store(
     :param port: Ports(s) of Elasticsearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
+    :param cloud_id: ID of the cloud service (FAAS authentication).
     :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
     :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
     :param aws4auth: Authentication for usage with AWS Elasticsearch
@@ -188,6 +193,7 @@ def elasticsearch_index_to_document_store(
         port=port,
         username=username,
         password=password,
+        cloud_id=cloud_id,
         api_key=api_key,
         api_key_id=api_key_id,
         aws4auth=aws4auth,
