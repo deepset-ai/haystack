@@ -1028,7 +1028,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
                     .with_limit(top_k)
-                    .with_bm25({"query": query, "properties": self.content_field})
+                    .with_bm25(query=query, properties=[self.content_field])
                     .with_where(filter_dict)
                     .build()
                 )
@@ -1037,7 +1037,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
                     .with_limit(top_k)
-                    .with_bm25({"query": query, "properties": self.content_field})
+                    .with_bm25(query=query, properties=[self.content_field])
                     .build()
                 )
 
