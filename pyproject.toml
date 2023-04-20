@@ -53,6 +53,7 @@ dependencies = [
   "nltk",
   "pandas",
   "rank_bm25",
+  "generalimport",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization

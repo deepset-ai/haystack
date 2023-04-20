@@ -4,40 +4,17 @@ import os
 import json
 import logging
 
+import requests
+from tenacity import retry, wait_exponential, retry_if_not_result
+from tiktoken import get_encoding
+from tiktoken.model import MODEL_TO_ENCODING
+from generalimport import is_imported
+
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
 
 
 logger = logging.getLogger(__name__)
-
-
-TIKTOKEN_IMPORTED = False
-try:
-    import tiktoken
-    from tiktoken.model import MODEL_TO_ENCODING
-
-    TIKTOKEN_IMPORTED = True
-except ImportError as exc:
-    logger.debug("tiktoken could not be imported. OpenAI and Azure models won't work.")
-
-
-REQUESTS_IMPORTED = False
-try:
-    import requests
-
-    REQUESTS_IMPORTED = True
-except ImportError as exc2:
-    logger.debug("requests could not be imported. OpenAI and Azure models won't work.")
-
-
-try:
-    from tenacity import retry, wait_exponential, retry_if_not_result
-except ImportError as exc3:
-    logger.debug("tenacity could not be imported. Requests to OpenAI won't be attempted again if they fail.")
-
-    # No-op retry decorator in case 'tenacity' is not installed.
-    def retry(func):
-        return func
 
 
 OPENAI_TIMEOUT = float(os.environ.get("HAYSTACK_OPENAI_TIMEOUT_SEC", 30))
@@ -124,6 +101,9 @@ class GPT3Provider:
         :param **kwargs: any other argument needed to load this model.
         :returns: True if the model is compatible with this provider, False otherwise.
         """
+        if not is_imported("requests") or not is_imported("tiktoken"):
+            logger.debug("Either 'requests' or 'tiktoken' could not be imported. OpenAI GPT-3 models can't be invoked.")
+            return False
         return any(m for m in ["ada", "babbage", "curie", "davinci"] if m in model_name_or_path)
 
     @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
@@ -135,17 +115,12 @@ class GPT3Provider:
         :param model_params: any other parameter needed to invoke this model.
         :return: The responses from the model.
         """
-        if not REQUESTS_IMPORTED:
-            raise ImportError(
-                "requests could not be imported. OpenAI and Azure models won't work. "
-                "Run 'pip install requests' in your virtualenv to fix the issue."
-            )
         prompt = self.ensure_token_limit(prompt=prompt)
 
         all_params = self.default_model_params
         if model_params:
             all_params.update(self._translate_model_parameters(model_params))
-        payload = self._build_payload(prompt=prompt, params=all_params)
+        payload = {"model": self.model_name_or_path, "prompt": prompt, **all_params}
 
         response = requests.post(url=self.url, headers=self.headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
         if response.status_code != 200:
@@ -161,7 +136,8 @@ class GPT3Provider:
                 )
             raise openai_error
 
-        return self._parse_output(response=response.json(), params=all_params)
+        self._check_truncated_answers(result=response.json())
+        return [ans["text"] for ans in response["choices"]]
 
     def ensure_token_limit(self, prompt: str) -> str:
         """
@@ -230,9 +206,9 @@ class GPT3Provider:
         Returns the proper tokenizer and maximum token count for the given model name. Heuristic based.
         """
         if "davinci" in model:
-            return (tiktoken.get_encoding(MODEL_TO_ENCODING.get(model, "p50k_base")), 4000)
+            return (get_encoding(MODEL_TO_ENCODING.get(model, "p50k_base")), 4000)
         else:
-            return (tiktoken.get_encoding("gpt2"), 2048)
+            return (get_encoding("gpt2"), 2048)
 
     def _translate_model_parameters(self, model_params: Dict[str, Any]):
         """
@@ -246,19 +222,6 @@ class GPT3Provider:
             model_params["n"] = top_k
             model_params["best_of"] = top_k
         return model_params
-
-    def _build_payload(self, prompt: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Prepares the payload to send to OpenAI.
-        """
-        return {"model": self.model_name_or_path, "prompt": prompt, **params}
-
-    def _parse_output(self, response: Dict[str, Any], params: Dict[str, Any]) -> List[str]:
-        """
-        Parses the reply obtained from OpenAI.
-        """
-        self._check_truncated_answers(result=response)
-        return [ans["text"] for ans in response["choices"]]
 
     def _check_truncated_answers(self, result: Dict[str, Any]) -> None:
         """

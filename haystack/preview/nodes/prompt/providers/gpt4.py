@@ -4,6 +4,10 @@ import os
 import json
 import logging
 
+import requests
+from tenacity import retry, wait_exponential, retry_if_not_result
+from generalimport import is_imported
+
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
 from haystack.preview.nodes.prompt.providers.gpt3 import GPT3Provider
@@ -12,8 +16,23 @@ from haystack.preview.nodes.prompt.providers.gpt3 import GPT3Provider
 logger = logging.getLogger(__name__)
 
 
+OPENAI_TIMEOUT = float(os.environ.get("HAYSTACK_OPENAI_TIMEOUT_SEC", 30))
+
+
+DEFAULT_MODEL_PARAMS = {
+    "temperature": 0.7,
+    "top_p": 1,
+    "n": 1,
+    "echo": False,
+    "presence_penalty": 0,
+    "frequency_penalty": 0,
+    "best_of": 1,
+    "logit_bias": {},
+}
+
+
 @prompt_model_provider
-class GPT4Provider(GPT3Provider):
+class GPT4Provider:
     """
     OUsed for OpenAI's GPT-3.5 and GPT-4 models. Invocations are made using REST API.
     See [OpenAI GPT-4](https://platform.openai.com/docs/models/gpt-4) for more details.
@@ -57,15 +76,19 @@ class GPT4Provider(GPT3Provider):
             For more details about these parameters, see OpenAI
             [documentation](https://platform.openai.com/docs/api-reference/completions/create).
         """
-        super().__init__(
-            model_name_or_path=model_name_or_path,
-            api_key=api_key,
-            max_length=max_length,
-            azure_base_url=azure_base_url,
-            azure_deployment=azure_deployment,
-            api_version=api_version,
-            default_model_params=default_model_params,
+        self.api_key = self._check_api_key(api_key)
+        self.model_name_or_path = model_name_or_path
+        self.tokenizer, self.max_tokens_limit = self._configure_tokenizer(model=model_name_or_path)
+        self.url, self.headers = self._compile_url_and_headers(
+            azure_base_url=azure_base_url, azure_deployment=azure_deployment, api_version=api_version
         )
+        # 16 is the default length for answers from OpenAI shown in the docs
+        # here, https://platform.openai.com/docs/api-reference/completions/create.
+        # max_length must be set otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
+        self.max_length = max_length or 16
+        self.default_model_params = {**DEFAULT_MODEL_PARAMS, **(default_model_params or {})}
+        self.default_model_params["max_tokens"] = self.max_length
+        self.default_model_params["stream"] = False  # No support for streaming
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
@@ -76,7 +99,42 @@ class GPT4Provider(GPT3Provider):
         :param **kwargs: any other argument needed to load this model.
         :returns: True if the model is compatible with this provider, False otherwise.
         """
+        if not is_imported("requests"):
+            logger.debug("'requests' could not be imported. OpenAI GPT-3.5 and GPT-4 models can't be invoked.")
+            return False
         return any(m for m in ["gpt-3.5", "gpt-4"] if m in model_name_or_path)
+
+    @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
+    def invoke(self, prompt: str, model_params: Optional[Dict[str, Any]] = None):
+        """
+        Sends a prompt the model.
+
+        :param prompt: the prompt to send to the model
+        :param model_params: any other parameter needed to invoke this model.
+        :return: The responses from the model.
+        """
+        prompt = self.ensure_token_limit(prompt=prompt)
+
+        all_params = self.default_model_params
+        if model_params:
+            all_params.update(self._translate_model_parameters(model_params))
+        payload = self._build_payload(prompt=prompt, params=all_params)
+
+        response = requests.post(url=self.url, headers=self.headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
+        if response.status_code != 200:
+            openai_error: OpenAIError
+            if response.status_code == 429:
+                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+            else:
+                openai_error = OpenAIError(
+                    f"OpenAI returned an error.\n"
+                    f"Status code: {response.status_code}\n"
+                    f"Response body: {response.text}",
+                    status_code=response.status_code,
+                )
+            raise openai_error
+
+        return self._parse_output(result=response.json(), params=all_params)
 
     def _build_payload(self, prompt: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """

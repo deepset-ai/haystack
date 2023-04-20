@@ -1,28 +1,22 @@
 import logging
 from typing import Dict, List, Optional, Union, Any
 
+import torch
+from transformers import (
+    pipeline,
+    AutoConfig,
+    StoppingCriteriaList,
+    StoppingCriteria,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
+from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
+from generalimport import is_imported
+
 from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
 
 
 logger = logging.getLogger(__name__)
-
-
-TRANSFORMERS_IMPORTED = False
-try:
-    import torch
-    from transformers import (
-        pipeline,
-        AutoConfig,
-        StoppingCriteriaList,
-        StoppingCriteria,
-        PreTrainedTokenizer,
-        PreTrainedTokenizerFast,
-    )
-    from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
-
-    TRANSFORMERS_IMPORTED = True
-except ImportError as exc:
-    logger.debug("Either tranformers or torch could not be imported. HuggingFace models will fail to initialize.")
 
 
 @prompt_model_provider
@@ -60,12 +54,6 @@ class HFLocalProvider:
             For more details about these parameters, see Hugging Face
             [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
         """
-        if not TRANSFORMERS_IMPORTED:
-            raise ImportError(
-                "Either tranformers or torch could not be imported. "
-                "HuggingFace models cannot be used without these dependencies. "
-                "Run 'pip install transformers[torch]' to fix this issue."
-            )
         self.model_name_or_path = model_name_or_path
         self.use_auth_token = use_auth_token
         self.device: torch.device = torch.device(device) if device else torch.device("cpu")
@@ -98,7 +86,7 @@ class HFLocalProvider:
         :param **kwargs: any other argument needed to load this model.
         :returns: True if the model is compatible with this provider, False otherwise.
         """
-        if not TRANSFORMERS_IMPORTED:
+        if not is_imported("transformers"):
             logger.debug("Either tranformers or torch could not be imported. HuggingFace models can't run.")
             return False
         try:
