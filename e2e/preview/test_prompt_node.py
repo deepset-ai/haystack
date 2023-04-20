@@ -5,8 +5,16 @@ import pytest
 from haystack.preview.nodes.prompt import PromptNode
 
 
-@pytest.mark.integration
-def test_prompt_node_huggingface_provider():
+def test_prompt_node_huggingface_remote_provider():
+    pn = PromptNode(
+        template="question-answering",
+        model_name_or_path="https://api-inference.huggingface.co/models/google/flan-t5-base",
+    )
+    output = pn.prompt(question="What's the capital of France?", documents=["The capital of France is Paris."])
+    assert "Paris" in output[0]
+
+
+def test_prompt_node_huggingface_local_provider():
     pn = PromptNode(template="question-answering", model_name_or_path="google/flan-t5-base")
     output = pn.prompt(question="What's the capital of France?", documents=["The capital of France is Paris."])
     assert "Paris" in output[0]

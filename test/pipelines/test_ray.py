@@ -5,8 +5,6 @@ import ray
 
 from haystack.pipelines import RayPipeline
 
-from ..conftest import SAMPLES_PATH
-
 
 @pytest.fixture(autouse=True)
 def shutdown_ray():
@@ -23,9 +21,9 @@ def shutdown_ray():
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("serve_detached", [True, False])
-def test_load_pipeline(document_store_with_docs, serve_detached):
+def test_load_pipeline(document_store_with_docs, serve_detached, samples_path):
     pipeline = RayPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "ray.simple.haystack-pipeline.yml",
+        samples_path / "pipeline" / "ray.simple.haystack-pipeline.yml",
         pipeline_name="ray_query_pipeline",
         ray_args={"num_cpus": 8},
         serve_args={"detached": serve_detached},
@@ -45,9 +43,9 @@ def test_load_pipeline(document_store_with_docs, serve_detached):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_load_advanced_pipeline(document_store_with_docs):
+def test_load_advanced_pipeline(document_store_with_docs, samples_path):
     pipeline = RayPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "ray.advanced.haystack-pipeline.yml",
+        samples_path / "pipeline" / "ray.advanced.haystack-pipeline.yml",
         pipeline_name="ray_query_pipeline",
         ray_args={"num_cpus": 8},
         serve_args={"detached": True},
@@ -73,9 +71,9 @@ def test_load_advanced_pipeline(document_store_with_docs):
 @pytest.mark.asyncio
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-async def test_load_advanced_pipeline_async(document_store_with_docs):
+async def test_load_advanced_pipeline_async(document_store_with_docs, samples_path):
     pipeline = RayPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "ray.advanced.haystack-pipeline.yml",
+        samples_path / "pipeline" / "ray.advanced.haystack-pipeline.yml",
         pipeline_name="ray_query_pipeline",
         ray_args={"num_cpus": 8},
         serve_args={"detached": True},

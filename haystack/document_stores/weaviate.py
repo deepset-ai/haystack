@@ -28,6 +28,20 @@ from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
+SUPPORTED_PROPERTY_TYPES = {
+    "string",
+    "string[]",
+    "int",
+    "int[]",
+    "boolean",
+    "boolean[]",
+    "number",
+    "number[]",
+    "date",
+    "date[]",
+    "text",
+    "text[]",
+}
 
 
 class WeaviateDocumentStoreError(DocumentStoreError):
@@ -391,13 +405,21 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
     def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
         """
-        Get all the existing properties in the schema.
+        Get all the existing properties in the schema, excluding those with complex types
+        like cross-reference
         """
         index = self._sanitize_index_name(index) or self.index
         cur_properties = []
         for class_item in self.weaviate_client.schema.get()["classes"]:
             if class_item["class"] == index:
-                cur_properties = [item["name"] for item in class_item["properties"]]
+                cur_properties = [
+                    item["name"]
+                    for item in class_item.get("properties", [])
+                    # dataType should be always there and contain only one item unless
+                    # it's a cross-reference but here we try to be defensive against
+                    # unexpected schemas
+                    if set(item.get("dataType", [])).issubset(SUPPORTED_PROPERTY_TYPES)
+                ]
 
         return cur_properties
 
@@ -612,8 +634,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         # Weaviate requires dates to be in RFC3339 format
         date_fields = self._get_date_properties(index)
         for date_field in date_fields:
-            if isinstance(meta[date_field], str):
-                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
+            if date_field in meta:
+                if isinstance(meta[date_field], str):
+                    meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
@@ -1005,7 +1028,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
                     .with_limit(top_k)
-                    .with_bm25({"query": query, "properties": self.content_field})
+                    .with_bm25(query=query, properties=[self.content_field])
                     .with_where(filter_dict)
                     .build()
                 )
@@ -1014,7 +1037,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
                     .with_limit(top_k)
-                    .with_bm25({"query": query, "properties": self.content_field})
+                    .with_bm25(query=query, properties=[self.content_field])
                     .build()
                 )
 

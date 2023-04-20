@@ -6,6 +6,8 @@ import logging
 
 import requests
 from tenacity import retry, wait_exponential, retry_if_not_result
+from tiktoken import get_encoding
+from tiktoken.model import MODEL_TO_ENCODING
 from generalimport import is_imported
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
@@ -34,7 +36,7 @@ DEFAULT_MODEL_PARAMS = {
 @prompt_model_provider
 class GPT4Provider:
     """
-    OUsed for OpenAI's GPT-3.5 and GPT-4 models. Invocations are made using REST API.
+    Used for OpenAI's GPT-3.5 and GPT-4 models. Invocations are made using REST API.
     See [OpenAI GPT-4](https://platform.openai.com/docs/models/gpt-4) for more details.
     """
 
@@ -49,11 +51,11 @@ class GPT4Provider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3.5 and GPT-4 models.
+        Creates a model provider for OpenAI's GPT-3.5 and GPT-4 models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param api_key: The OpenAI API key. If empty, Haystack also check if an environment variable called
-            `OPENAI_API_KEY` is set and read it from there.
+            `OPENAI_API_KEY` is set and reads the key from there.
         :param max_length: The maximum length of the output text.
         :param azure_base_url: [Optional for Azure OpenAI] the URL of the Azure OpenAI endpoint.
         :param azure_deployment: [Optional for Azure OpenAI] the name of the deployment.
@@ -122,7 +124,6 @@ class GPT4Provider:
 
         response = requests.post(url=self.url, headers=self.headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
         if response.status_code != 200:
-            openai_error: OpenAIError
             if response.status_code == 429:
                 openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
             else:
@@ -154,15 +155,15 @@ class GPT4Provider:
         params.pop("echo", None)
         return {"model": self.model_name_or_path, "messages": messages, **params}
 
-    def _parse_output(self, response: Dict[str, Any], params: Dict[str, Any]) -> List[str]:
+    def _parse_output(self, result: Dict[str, Any], params: Dict[str, Any]) -> List[str]:
         """
         Parses the reply obtained from OpenAI.
         """
-        self._check_truncated_answers(result=response)
-        assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
+        self._check_truncated_answers(result=result)
+        assistant_response = [choice["message"]["content"].strip() for choice in result["choices"]]
 
         # Although ChatGPT generates text until stop words are encountered, unfortunately it includes the stop word
-        # We want to exclude it to be consistent with other invocation layers
+        # We want to exclude it to be consistent with other providers
         if "stop" in params and params["stop"] is not None:
             for idx, _ in enumerate(assistant_response):
                 for stop_word in params["stop"]:
@@ -184,7 +185,7 @@ class GPT4Provider:
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
-        # TODO: support truncation as in the ensure_token_limit() methods for other invocation layers
+        # TODO: support truncation as in the ensure_token_limit() methods for other providers
         raise ValueError(
             f"The prompt or the messages are too long ({n_prompt_tokens} tokens). The length of the prompt or messages "
             f"and the answer ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} "
@@ -197,11 +198,17 @@ class GPT4Provider:
         """
         Compiles the URL and headers to use for the API calls
         """
-        url, headers = super()._compile_url_and_headers(
-            azure_base_url=azure_base_url, azure_deployment=azure_deployment, api_version=api_version
+        if azure_base_url and azure_deployment:
+            return (
+                f"{azure_base_url}/openai/deployments/{azure_deployment}/chat/completions?api-version={api_version}",
+                {"api-key": self.api_key, "Content-Type": "application/json"},
+            )
+        if azure_base_url or azure_deployment:
+            raise ValueError("To use Azure OpenAI you must provide both 'azure_base_url' and 'azure_deployment'.")
+        return (
+            "https://api.openai.com/v1/chat/completions",
+            {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
         )
-        url = url.replace("/completions", "/chat/completions")
-        return url, headers
 
     def _check_truncated_answers(self, result: Dict[str, Any]) -> None:
         """
@@ -211,7 +218,13 @@ class GPT4Provider:
         :param result: The result returned from OpenAI.
         :param payload: The payload sent to OpenAI.
         """
-        super()._check_truncated_answers(result=result)
+        truncated_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "length")
+        if truncated_completions > 0:
+            logger.warning(
+                "%s completions have been truncated before reaching a natural stopping point. "
+                "Increase the `max_tokens` parameter to allow for longer completions.",
+                truncated_completions,
+            )
 
         content_filtered_completions = sum(1 for ans in result["choices"] if ans["finish_reason"] == "content_filter")
         if content_filtered_completions > 0:
@@ -219,6 +232,46 @@ class GPT4Provider:
                 "%s completions have omitted content due to a flag from OpenAI content filters.",
                 content_filtered_completions,
             )
+
+    def _check_api_key(self, api_key: Optional[str]) -> str:
+        """
+        Tries to load the API key and lightly validates it.
+
+        :param api_key: the API key given in `__init__`, if any.
+        :raises ValueError: if no valid key could be found.
+        :returns: the api key to use.
+        """
+        if not api_key:
+            api_key = os.environ.get("OPENAI_API_KEY", None)
+        if not isinstance(api_key, str) or len(api_key) == 0:
+            raise ValueError(
+                "No valid OpenAI API key found. You can provide one by either setting an environment variable "
+                "called `OPENAI_API_KEY`, or by passing one to the constructor of this class. Visit "
+                "https://openai.com/api/ to get a key if you don't have one."
+            )
+        return api_key
+
+    def _configure_tokenizer(self, model: str) -> Tuple[int, Any]:
+        """
+        Returns the proper tokenizer and maximum token count for the given model name. Heuristic based.
+        """
+        if "davinci" in model:
+            return (get_encoding(MODEL_TO_ENCODING.get(model, "p50k_base")), 4000)
+        else:
+            return (get_encoding("gpt2"), 2048)
+
+    def _translate_model_parameters(self, model_params: Dict[str, Any]):
+        """
+        Some parameter names might need to be converted to be understood by OpenAI models.
+        For example, we use 'stop_words' but OpenAI uses 'stop'
+        """
+        if "stop_words" in model_params.keys() and not "stop" in model_params.keys():
+            model_params["stop"] = model_params.pop("stop_words")
+        if "top_k" in model_params:
+            top_k = model_params.pop("top_k")
+            model_params["n"] = top_k
+            model_params["best_of"] = top_k
+        return model_params
 
 
 def _count_tokens(messages: List[Dict[str, str]], tokenizer: Any) -> int:

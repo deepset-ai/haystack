@@ -7,13 +7,24 @@ import subprocess
 from html.parser import HTMLParser
 
 import requests
-from tika import parser as tikaparser
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
+
+
+try:
+    from tika import parser as tika_parser
+except ImportError as exc:
+    logger.debug(
+        "tika could not be imported. "
+        "Run 'pip install farm-haystack[file-conversion]' or 'pip install tika' to fix this issue."
+    )
+    tika_parser = None
+
+
 TIKA_CONTAINER_NAME = "tika"
 
 
@@ -96,6 +107,11 @@ class TikaConverter(BaseConverter):
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
         """
+        if not tika_parser:
+            raise ImportError(
+                "tika could not be imported. "
+                "Run 'pip install farm-haystack[file-conversion]' or 'pip install tika' to fix this issue."
+            )
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
         )
@@ -146,7 +162,7 @@ class TikaConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
+        parsed = tika_parser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
         parser = TikaXHTMLParser()
         parser.feed(parsed["content"])
 

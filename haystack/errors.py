@@ -62,6 +62,17 @@ class PipelineError(HaystackError):
         super().__init__(message=message, docs_link=docs_link)
 
 
+class DatasetsError(HaystackError):
+    """Exception for issues raised within a dataset"""
+
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/documents_answers_labels#document",
+    ):
+        super().__init__(message=message, docs_link=docs_link)
+
+
 class PipelineSchemaError(PipelineError):
     """Exception for issues arising when reading/building the JSON schema of pipelines"""
 
@@ -168,3 +179,27 @@ class ImageToTextError(NodeError):
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message)
+
+
+class HuggingFaceInferenceError(NodeError):
+    """Exception for issues that occur in the HuggingFace inference node"""
+
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+        self.status_code = status_code
+
+
+class HuggingFaceInferenceLimitError(HuggingFaceInferenceError):
+    """Exception for issues that occur in the HuggingFace inference node due to rate limiting"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+
+
+class HuggingFaceInferenceUnauthorizedError(HuggingFaceInferenceError):
+    """Exception for issues that occur in the HuggingFace inference node due to unauthorized access"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)

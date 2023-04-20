@@ -35,7 +35,7 @@ DEFAULT_MODEL_PARAMS = {
 @prompt_model_provider
 class GPT3Provider:
     """
-    OUsed for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
+    Used for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
     See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
     Supports Azure GPT3 models as well.
     """
@@ -51,11 +51,11 @@ class GPT3Provider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
+        Creates a model provider for OpenAI's GPT-3 InstructGPT models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param api_key: The OpenAI API key. If empty, Haystack also check if an environment variable called
-            `OPENAI_API_KEY` is set and read it from there.
+            `OPENAI_API_KEY` is set and reads the key from there.
         :param max_length: The maximum length of the output text.
         :param azure_base_url: [Optional for Azure OpenAI] the URL of the Azure OpenAI endpoint.
         :param azure_deployment: [Optional for Azure OpenAI] the name of the deployment.
@@ -124,7 +124,6 @@ class GPT3Provider:
 
         response = requests.post(url=self.url, headers=self.headers, data=json.dumps(payload), timeout=OPENAI_TIMEOUT)
         if response.status_code != 200:
-            openai_error: OpenAIError
             if response.status_code == 429:
                 openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
             else:
@@ -136,8 +135,9 @@ class GPT3Provider:
                 )
             raise openai_error
 
-        self._check_truncated_answers(result=response.json())
-        return [ans["text"] for ans in response["choices"]]
+        result = response.json()
+        self._check_truncated_answers(result=result)
+        return [ans["text"] for ans in result["choices"]]
 
     def ensure_token_limit(self, prompt: str) -> str:
         """

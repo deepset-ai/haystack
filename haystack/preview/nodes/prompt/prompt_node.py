@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple, Any, Literal
 
 from jinja2 import Template as JinjaTemplate, Environment as JinjaEnvironment, meta as JinjaMeta
 
-from haystack.preview import node
+from haystack.preview import component
 from haystack.preview.nodes.prompt.providers.base import get_model
 
 
@@ -67,7 +67,7 @@ Thought: Let's think step-by-step, I first need to """,
 }
 
 
-@node
+@component
 class PromptNode:
     """
     The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode

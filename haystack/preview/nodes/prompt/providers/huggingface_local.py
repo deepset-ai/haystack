@@ -34,7 +34,7 @@ class HFLocalProvider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Invokes local Hugging Face models.
+        Creates a model provider for local Hugging Face models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of the output text.
@@ -93,6 +93,9 @@ class HFLocalProvider:
             config = AutoConfig.from_pretrained(model_name_or_path, **kwargs)
         except Exception as exc:
             logger.debug("This model doesn't seem to be a HuggingFace model. Exception: %s", str(exc))
+            return False
+
+        if not config or not config.architectures:
             return False
 
         if not all(m in model_name_or_path for m in ["flan", "t5"]):
