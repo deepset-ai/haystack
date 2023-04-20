@@ -75,15 +75,6 @@ class Prompt:
     summarization, question answering, question generation, and more, using a single, unified model within the Haystack
     framework.
 
-    One of the benefits of Prompt is that you can use it to define and add additional prompt templates
-    the model supports. Defining additional prompt templates makes it possible to extend the model's capabilities
-    and use it for a broader range of NLP tasks in Haystack. Prompt engineers define templates
-    for each NLP task and register them with Prompt. The burden of defining templates for each task rests on
-    the prompt engineers, not the users.
-
-    Using an instance of the PromptModel class, you can create multiple Prompts that share the same model, saving
-    the memory and time required to load the model multiple times.
-
     Prompt also supports multiple model invocation layers:
     - Hugging Face transformers (all text2text-generation models)
     - OpenAI InstructGPT models
@@ -108,21 +99,26 @@ class Prompt:
         """
         Creates a Prompt instance.
 
-        NOTE: the variables that the template accepts must match with the variables you list in the `inputs` variable of
-        this Prompt. For example, if your prompt expects `{{ documents }}` and `{{ documents }}`, the inputs need to
-        be `['question', 'documents']`. Inputs are automatically inferred from the template text.
+        The inputs of this component correspond to the variables of the template you provide.
+        For example, if your prompt template expects `{{ question }}` and `{{ documents }}`, the inputs this component
+        expects are `['question', 'documents']`. Inputs are automatically inferred from the template text.
 
-        :param outputs: the outputs that this Prompt will generate.
-        :param template: The template of the prompt to use for the model. Must be the name of a predefined prompt
-            template. To provide a custom template, use `custom_template`.
-        :param custom_template: A custom template of the prompt to use for the model.
-            To use Haystack's pre-defined templates, use `template`.
+        Templates follow Jinja2's template syntax: see
+        [the Jinja2 documentation](https://jinja.palletsprojects.com/en/3.1.x/templates/)
+
+        :param outputs: the outputs that this component will generate.
+        :param template: The template of the promptl. Must be the name of a predefined prompt template. To provide a
+            custom template, use `custom_template`.
+        :param custom_template: A custom template of the prompt. Must follow Jinja2's template syntax, see
+            [the Jinja2 documentation](https://jinja.palletsprojects.com/en/3.1.x/templates/). To use Haystack's
+            pre-defined templates, use `template`.
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
-        :param implementation: force a specific type for the model. If not given, Haystack will find an implementation for
+        :param model_implementation: force a specific implementation for the model
+            (see `haystack.preview.components.prompt.models`). If not given, Haystack will find an implementation for
             your model automatically.
         :param model_params: Parameters to be passed to the model implementation, like API keys, init parameters, etc.
-        :param implementation_modules: if you have external model implementations, add the module where they are, like
-            `haystack.preview`
+        :param implementation_modules: if you have external model implementations, add the module where they can be
+            imported from, like `haystack.preview`.
         """
         self.jinja_env = JinjaEnvironment()
         if template:
@@ -180,7 +176,7 @@ class Prompt:
         It takes in a prompt, and returns a list of responses using the underlying model.
 
         :param prompt: The prompt to use for the invocation.
-        :param kwargs: Additional keyword arguments to pass to the model.
+        :param kwargs: the variables to be rendered into the prompt.
         :return: A list of model generated responses for the prompt.
         """
         self.warm_up()
@@ -193,7 +189,7 @@ class Prompt:
         """
         Find out which inputs this template requires.
 
-        :param template: the template to infer the required variables from.
+        :param template: the template this Prompt uses.
         :returns: a list of strings corresponding to the variables found in the template.
         """
         parsed_content = self.jinja_env.parse(self.template)
