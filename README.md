@@ -155,5 +155,6 @@ Here's a list of organizations that we know about from our community. Don't hesi
 -   [LEGO](https://www.lego.com/)
 -   [Netflix](https://netflix.com)
 -   [Nvidia](https://www.nvidia.com/en-us/)
+-   [PostHog](https://posthog.com/)
 -   [Rakuten](https://www.rakuten.com/)
 -   [Sooth.ai](https://sooth.ai/)
