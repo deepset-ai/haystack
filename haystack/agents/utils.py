@@ -1,7 +1,7 @@
 from typing import Optional
 from haystack.agents.types import Color
 
-STREAMING_CAPABLE_MODELS = ["davinci", "gpt-3.5"]
+STREAMING_CAPABLE_MODELS = ["davinci", "gpt-3.5", "gpt-35-turbo"]
 
 
 def print_text(text: str, end="", color: Optional[Color] = None) -> None:
