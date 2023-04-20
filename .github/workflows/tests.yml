@@ -1231,7 +1231,7 @@ jobs:
 
     - name: Run Elasticsearch
       run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.17.6
 
     - name: Run Opensearch
       run: |
