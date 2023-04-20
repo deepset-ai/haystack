@@ -11,12 +11,12 @@ from generalimport import generalimport, MissingOptionalDependency, FakeModule
 generalimport(
     # "pydantic", # Required for all dataclasses
     # "tenacity",  # Probably needed because it's a decorator, to be evaluated
-    "pandas",
+    # "pandas",
     "numpy",
-    "requests",  # Used in dcdocumentstore, probably can be removed with some work
-    "transformers",  # Used in feature_extraction.py, can be removed too with some work
+    "requests",
+    "transformers",
     "tokenizers",
-    "PIL",  # something tricky going on with transformers :(
+    "PIL",
     "yaml",
     "torch",
     "protobuf",
