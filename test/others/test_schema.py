@@ -47,60 +47,45 @@ def text_labels():
 
 
 @pytest.fixture
-def table_labels():
-    return [
-        Label(
-            query="some",
-            answer=Answer(
-                answer="text_2",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[TableCell(row=1, col=0)],
-            ),
-            document=Document(
-                content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-                content_type="table",
-            ),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
+def table_label_1():
+    return Label(
+        query="some",
+        answer=Answer(
+            answer="text_2",
+            type="extractive",
+            score=0.1,
+            document_ids=["123"],
+            offsets_in_document=[TableCell(row=1, col=0)],
         ),
-        Label(
-            query="some",
-            answer=Answer(
-                answer="text_1",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[TableCell(row=0, col=0)],
-            ),
-            document=Document(
-                content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-                content_type="table",
-            ),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
+        document=Document(
+            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            content_type="table",
         ),
-        Label(
-            query="some",
-            answer=Answer(
-                answer="1",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[TableCell(row=0, col=1)],
-            ),
-            document=Document(
-                content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-                content_type="table",
-            ),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+    )
+
+
+@pytest.fixture
+def table_label_2():
+    return Label(
+        query="some",
+        answer=Answer(
+            answer="text_1",
+            type="extractive",
+            score=0.1,
+            document_ids=["123"],
+            offsets_in_document=[TableCell(row=0, col=0)],
         ),
-    ]
+        document=Document(
+            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            content_type="table",
+        ),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+    )
 
 
 @pytest.fixture
@@ -201,23 +186,22 @@ def test_label_to_dict(text_labels):
     assert l_new.answer.offsets_in_document[0].start == 1
 
 
-# TODO Fix
-# def test_equal_table_label(table_labels):
-#     assert table_labels[2] == table_labels[0]
-#     assert table_labels[1] != table_labels[0]
+def test_equal_table_label(table_label_1, table_label_2):
+    assert table_label_1 == table_label_1
+    assert table_label_1 != table_label_2
 
 
-def test_table_label_to_json(table_labels):
-    j0 = table_labels[0].to_json()
+def test_table_label_to_json(table_label_1):
+    j0 = table_label_1.to_json()
     l_new = Label.from_json(j0)
-    assert l_new == table_labels[0]
+    assert l_new == table_label_1
     assert l_new.answer.offsets_in_document[0].row == 1
 
 
-def test_table_label_to_dict(table_labels):
-    j0 = table_labels[0].to_dict()
+def test_table_label_to_dict(table_label_1):
+    j0 = table_label_1.to_dict()
     l_new = Label.from_dict(j0)
-    assert l_new == table_labels[0]
+    assert l_new == table_label_1
     assert l_new.answer.offsets_in_document[0].row == 1
 
 
