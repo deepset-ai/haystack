@@ -125,8 +125,12 @@ class HFLocalModel:
         output = self.pipe(prompt, max_length=self.max_length, **model_params)
         output = [o["generated_text"] for o in output if "generated_text" in o]
 
-        if model_params.get("stopping_criteria"):
-            output = self._exclude_stop_words(output)
+        # Remove stop words for consistency with other layers
+        generated_texts = [
+            text.removesuffix(stop_word)
+            for stop_word in model_params.get("stopping_criteria")
+            for text in generated_texts
+        ]
         return output
 
     def ensure_token_limit(self, prompt: str) -> str:
@@ -172,14 +176,6 @@ class HFLocalModel:
             model_params["num_return_sequences"] = top_k
             model_params["num_beams"] = top_k
         return model_params
-
-    def _exclude_stop_words(self, generated_texts: List[str], stop_words: List[str]):
-        """
-        Removes the stopwords from the model's output for consistency with other implementations.
-        """
-        for idx, _ in enumerate(generated_texts):
-            for stop_word in stop_words:
-                generated_texts[idx] = generated_texts[idx].replace(stop_word, "").strip()
 
     def _resolve_dtype(self, dtype: Union[str, torch.dtype]):
         """

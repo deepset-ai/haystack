@@ -12,7 +12,6 @@ from generalimport import is_imported
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.preview.components.prompt.models.base import prompt_model
-from haystack.preview.components.prompt.models.gpt3 import GPT3Model
 
 
 logger = logging.getLogger(__name__)

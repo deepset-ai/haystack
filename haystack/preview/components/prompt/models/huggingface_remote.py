@@ -159,5 +159,5 @@ def _is_inference_endpoint(model_name_or_path: str):
     https://api-inference.huggingface.co/models/<model-identifier>
     """
     return all(
-        token in model_name_or_path for token in ["https://", "endpoints" "huggingface"]
+        token in model_name_or_path for token in ["https://", "endpoints", "huggingface"]
     ) or model_name_or_path.startswith("https://api-inference.huggingface.co/models/")

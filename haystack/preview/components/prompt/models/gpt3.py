@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any, Tuple, List
+from typing import Dict, Optional, Any, Tuple
 
 import os
 import json
