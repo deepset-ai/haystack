@@ -11,8 +11,8 @@ from tiktoken.model import MODEL_TO_ENCODING
 from generalimport import is_imported
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
-from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
-from haystack.preview.nodes.prompt.providers.gpt3 import GPT3Provider
+from haystack.preview.components.prompt.models.base import prompt_model
+from haystack.preview.components.prompt.models.gpt3 import GPT3Model
 
 
 logger = logging.getLogger(__name__)
@@ -33,8 +33,8 @@ DEFAULT_MODEL_PARAMS = {
 }
 
 
-@prompt_model_provider
-class GPT4Provider:
+@prompt_model
+class GPT4Model:
     """
     Used for OpenAI's GPT-3.5 and GPT-4 models. Invocations are made using REST API.
     See [OpenAI GPT-4](https://platform.openai.com/docs/models/gpt-4) for more details.
@@ -51,7 +51,7 @@ class GPT4Provider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates a model provider for OpenAI's GPT-3.5 and GPT-4 models.
+        Creates a model implementation for OpenAI's GPT-3.5 and GPT-4 models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param api_key: The OpenAI API key. If empty, Haystack also check if an environment variable called
@@ -95,11 +95,11 @@ class GPT4Provider:
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
-        Returns True if the given model name (with the given arguments) is supported by this provider.
+        Returns True if the given model name (with the given arguments) is supported by this implementation.
 
         :param model_name_or_path: the model identifier.
         :param **kwargs: any other argument needed to load this model.
-        :returns: True if the model is compatible with this provider, False otherwise.
+        :returns: True if the model is compatible with this implementation, False otherwise.
         """
         if not is_imported("requests"):
             logger.debug("'requests' could not be imported. OpenAI GPT-3.5 and GPT-4 models can't be invoked.")
@@ -163,7 +163,7 @@ class GPT4Provider:
         assistant_response = [choice["message"]["content"].strip() for choice in result["choices"]]
 
         # Although ChatGPT generates text until stop words are encountered, unfortunately it includes the stop word
-        # We want to exclude it to be consistent with other providers
+        # We want to exclude it to be consistent with other implementations
         if "stop" in params and params["stop"] is not None:
             for idx, _ in enumerate(assistant_response):
                 for stop_word in params["stop"]:
@@ -185,7 +185,7 @@ class GPT4Provider:
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
-        # TODO: support truncation as in the ensure_token_limit() methods for other providers
+        # TODO: support truncation as in the ensure_token_limit() methods for other implementations
         raise ValueError(
             f"The prompt or the messages are too long ({n_prompt_tokens} tokens). The length of the prompt or messages "
             f"and the answer ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} "

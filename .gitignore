@@ -145,7 +145,6 @@ haystack/document_store/qa.db
 data
 **/mlruns/**
 src
-models
 saved_models
 *_build
 rest_api/file-upload/*

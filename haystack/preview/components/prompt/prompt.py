@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple, Any, Literal
 from jinja2 import Template as JinjaTemplate, Environment as JinjaEnvironment, meta as JinjaMeta
 
 from haystack.preview import component
-from haystack.preview.nodes.prompt.providers.base import get_model
+from haystack.preview.components.prompt.models.base import get_model
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ PromptTemplates = Literal[
 ]
 
 
-PROVIDER_MODULES = ["haystack.preview"]
+IMPLEMENTATION_MODULES = ["haystack.preview"]
 
 
 PREDEFINED_TEMPLATES = {
@@ -68,23 +68,23 @@ Thought: Let's think step-by-step, I first need to """,
 
 
 @component
-class PromptNode:
+class Prompt:
     """
-    The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode
+    The Prompt class is the central abstraction in Haystack's large language model (LLM) support. Prompt
     supports multiple NLP tasks out of the box. You can use it to perform tasks, such as
     summarization, question answering, question generation, and more, using a single, unified model within the Haystack
     framework.
 
-    One of the benefits of PromptNode is that you can use it to define and add additional prompt templates
+    One of the benefits of Prompt is that you can use it to define and add additional prompt templates
     the model supports. Defining additional prompt templates makes it possible to extend the model's capabilities
     and use it for a broader range of NLP tasks in Haystack. Prompt engineers define templates
-    for each NLP task and register them with PromptNode. The burden of defining templates for each task rests on
+    for each NLP task and register them with Prompt. The burden of defining templates for each task rests on
     the prompt engineers, not the users.
 
-    Using an instance of the PromptModel class, you can create multiple PromptNodes that share the same model, saving
+    Using an instance of the PromptModel class, you can create multiple Prompts that share the same model, saving
     the memory and time required to load the model multiple times.
 
-    PromptNode also supports multiple model invocation layers:
+    Prompt also supports multiple model invocation layers:
     - Hugging Face transformers (all text2text-generation models)
     - OpenAI InstructGPT models
     - Azure OpenAI InstructGPT models
@@ -92,7 +92,7 @@ class PromptNode:
     We recommend using LLMs fine-tuned on a collection of datasets phrased as instructions, otherwise we find that the
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
 
-    For more details, see [PromptNode](https://docs.haystack.deepset.ai/docs/prompt_node).
+    For more details, see [Prompt](https://docs.haystack.deepset.ai/docs/prompt_node).
     """
 
     def __init__(
@@ -101,27 +101,27 @@ class PromptNode:
         custom_template: Optional[str] = None,
         output: Optional[str] = "answers",
         model_name_or_path: str = "google/flan-t5-base",
-        model_provider: Optional[str] = None,
+        model_implementation: Optional[str] = None,
         model_params: Optional[Dict[str, Any]] = None,
-        provider_modules: Optional[List[str]] = None,
+        implementation_modules: Optional[List[str]] = None,
     ):
         """
-        Creates a PromptNode instance.
+        Creates a Prompt instance.
 
         NOTE: the variables that the template accepts must match with the variables you list in the `inputs` variable of
-        this PromptNode. For example, if your prompt expects `{{ documents }}` and `{{ documents }}`, the inputs need to
+        this Prompt. For example, if your prompt expects `{{ documents }}` and `{{ documents }}`, the inputs need to
         be `['question', 'documents']`. Inputs are automatically inferred from the template text.
 
-        :param outputs: the outputs that this PromptNode will generate.
+        :param outputs: the outputs that this Prompt will generate.
         :param template: The template of the prompt to use for the model. Must be the name of a predefined prompt
             template. To provide a custom template, use `custom_template`.
         :param custom_template: A custom template of the prompt to use for the model.
             To use Haystack's pre-defined templates, use `template`.
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
-        :param model_provider: force a specific provider for the model. If not given, Haystack will find a provider for
+        :param implementation: force a specific type for the model. If not given, Haystack will find an implementation for
             your model automatically.
-        :param model_params: Parameters to be passed to the model provider, like API keys, init parameters, etc.
-        :param provider_modules: if you have external model providers, add the module where they are, like
+        :param model_params: Parameters to be passed to the model implementation, like API keys, init parameters, etc.
+        :param implementation_modules: if you have external model implementations, add the module where they are, like
             `haystack.preview`
         """
         self.jinja_env = JinjaEnvironment()
@@ -130,31 +130,31 @@ class PromptNode:
         elif custom_template:
             self.template = custom_template
         else:
-            raise ValueError("Provide either a template or a custom_template for this PromptNode.")
+            raise ValueError("Provide either a template or a custom_template for this Prompt.")
 
         self.inputs = self.find_inputs()
         self.outputs = [output]
         self.model = None
         self.model_name_or_path = model_name_or_path
-        self.model_provider = model_provider
+        self.model_implementation = model_implementation
         self.model_params = model_params
-        self.provider_modules = provider_modules or PROVIDER_MODULES
+        self.implementation_modules = implementation_modules or IMPLEMENTATION_MODULES
         self.init_parameters = {
             "output": output,
             "template": template,
             "custom_template": custom_template,
             "model_name_or_path": model_name_or_path,
             "model_kwargs": model_params,
-            "model_provider": model_provider,
+            "model_implementation": model_implementation,
         }
 
     def warm_up(self):
         if not self.model:
             self.model = get_model(
                 model_name_or_path=self.model_name_or_path,
-                model_provider=self.model_provider,
+                model_implementation=self.model_implementation,
                 model_params=self.model_params,
-                modules_to_search=self.provider_modules,
+                modules_to_search=self.implementation_modules,
             )
 
     def run(
@@ -209,7 +209,7 @@ class PromptNode:
         """
         if sorted(self.inputs) != sorted(given_inputs):
             raise ValueError(
-                "The values given to this PromptNode do not match the variables it expects:\n- Expected variables: "
+                "The values given to this Prompt do not match the variables it expects:\n- Expected variables: "
                 f"{self.inputs}\n- Given variables: {given_inputs}\nConnect this node to another node that outputs "
-                "these variables, pass this value to `PromptNode.prompt()`, or change template."
+                "these variables, pass this value to `Prompt.prompt()`, or change template."
             )

@@ -13,14 +13,14 @@ from transformers import (
 from transformers.models.auto.modeling_auto import MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
 from generalimport import is_imported
 
-from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
+from haystack.preview.components.prompt.models.base import prompt_model
 
 
 logger = logging.getLogger(__name__)
 
 
-@prompt_model_provider
-class HFLocalProvider:
+@prompt_model
+class HFLocalModel:
     """
     It loads a pre-trained model from Hugging Face and passes a prepared prompt into that model.
     """
@@ -34,7 +34,7 @@ class HFLocalProvider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates a model provider for local Hugging Face models.
+        Creates a model implementation for local Hugging Face models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum length of the output text.
@@ -84,7 +84,7 @@ class HFLocalProvider:
 
         :param model_name_or_path: the model identifier.
         :param **kwargs: any other argument needed to load this model.
-        :returns: True if the model is compatible with this provider, False otherwise.
+        :returns: True if the model is compatible with this implementation, False otherwise.
         """
         if not is_imported("transformers"):
             logger.debug("Either tranformers or torch could not be imported. HuggingFace models can't run.")
@@ -175,7 +175,7 @@ class HFLocalProvider:
 
     def _exclude_stop_words(self, generated_texts: List[str], stop_words: List[str]):
         """
-        Removes the stopwords from the model's output for consistency with other providers.
+        Removes the stopwords from the model's output for consistency with other implementations.
         """
         for idx, _ in enumerate(generated_texts):
             for stop_word in stop_words:

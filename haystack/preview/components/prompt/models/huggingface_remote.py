@@ -14,7 +14,7 @@ from haystack.errors import (
     HuggingFaceInferenceUnauthorizedError,
     HuggingFaceInferenceError,
 )
-from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
+from haystack.preview.components.prompt.models.base import prompt_model
 
 
 logger = logging.getLogger(__name__)
@@ -26,13 +26,12 @@ HF_TIMEOUT = float(os.environ.get("HAYSTACK_HF_INFERENCE_API_TIMEOUT_SEC", 30))
 DEFAULT_MODEL_PARAMS = {}
 
 
-@prompt_model_provider
-class HFRemoteProvider:
+@prompt_model
+class HFRemoteModel:
     """
-    A PromptModelInvocationLayer that invokes Hugging Face remote Inference Endpoint and API Inference to prompt
-    the model. For more details see Hugging Face Inference API
-    [documentation](https://huggingface.co/docs/api-inference/index) and Hugging Face Inference Endpoints
-    [documentation](https://huggingface.co/inference-endpoints)
+    Invokes Hugging Face remote Inference Endpoint and API Inference to prompt the model. For more details see Hugging
+    Face Inference API [documentation](https://huggingface.co/docs/api-inference/index) and Hugging Face Inference
+    Endpoints [documentation](https://huggingface.co/inference-endpoints)
 
     The Inference API is free to use, and rate limited. If you need an inference solution for production, you can
     use Inference Endpoints service.
@@ -48,7 +47,7 @@ class HFRemoteProvider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates a model provider for remote Hugging Face models using Inference API or Inference Endpoints.
+        Creates a model implementation for remote Hugging Face models using Inference API or Inference Endpoints.
 
         :param model_name_or_path: can be either:
             a) Hugging Face Inference model name (i.e. google/flan-t5-xxl)
@@ -93,11 +92,11 @@ class HFRemoteProvider:
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
-        Returns True if the given model name (with the given arguments) is supported by this provider.
+        Returns True if the given model name (with the given arguments) is supported by this implementation.
 
         :param model_name_or_path: the model identifier.
         :param **kwargs: any other argument needed to load this model.
-        :returns: True if the model is compatible with this provider, False otherwise.
+        :returns: True if the model is compatible with this implementation, False otherwise.
         """
         if _is_inference_endpoint(model_name_or_path):
             return True

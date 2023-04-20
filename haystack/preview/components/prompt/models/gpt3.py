@@ -11,7 +11,7 @@ from tiktoken.model import MODEL_TO_ENCODING
 from generalimport import is_imported
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
-from haystack.preview.nodes.prompt.providers.base import prompt_model_provider
+from haystack.preview.components.prompt.models.base import prompt_model
 
 
 logger = logging.getLogger(__name__)
@@ -32,8 +32,8 @@ DEFAULT_MODEL_PARAMS = {
 }
 
 
-@prompt_model_provider
-class GPT3Provider:
+@prompt_model
+class GPT3Model:
     """
     Used for OpenAI's GPT-3 InstructGPT models. Invocations are made using REST API.
     See [OpenAI GPT-3](https://platform.openai.com/docs/models/gpt-3) for more details.
@@ -51,7 +51,7 @@ class GPT3Provider:
         default_model_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates a model provider for OpenAI's GPT-3 InstructGPT models.
+        Creates a model implementation for OpenAI's GPT-3 InstructGPT models.
 
         :param model_name_or_path: The name or path of the underlying model.
         :param api_key: The OpenAI API key. If empty, Haystack also check if an environment variable called
@@ -95,11 +95,11 @@ class GPT3Provider:
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         """
-        Returns True if the given model name (with the given arguments) is supported by this provider.
+        Returns True if the given model name (with the given arguments) is supported by this implementation.
 
         :param model_name_or_path: the model identifier.
         :param **kwargs: any other argument needed to load this model.
-        :returns: True if the model is compatible with this provider, False otherwise.
+        :returns: True if the model is compatible with this implementation, False otherwise.
         """
         if not is_imported("requests") or not is_imported("tiktoken"):
             logger.debug("Either 'requests' or 'tiktoken' could not be imported. OpenAI GPT-3 models can't be invoked.")
