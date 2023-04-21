@@ -82,6 +82,7 @@ class WhisperTranscriber:
         self.device = device or torch.device("cpu")
         self.use_local_whisper = is_imported("whisper") and self.api_key is None
 
+        self._model = None
         if not self.use_local_whisper and api_key is None:
             raise ValueError(
                 "Provide a valid api_key for OpenAI API. Alternatively, install OpenAI Whisper (see "
@@ -97,7 +98,7 @@ class WhisperTranscriber:
 
     def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]):
         params = parameters.get(name, {})
-        transcripts = [(audio_file, self.transcribe(audio_file, **params)) for audio_file in data[0][1]]
+        transcripts = zip(data[0][1], self.transcribe(data[0][1], **params))
         documents = [Document(content=transcript, metadata={"audio_file": audio}) for audio, transcript in transcripts]
         return {self.output[0]: documents}
 
