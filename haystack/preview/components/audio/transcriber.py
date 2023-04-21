@@ -100,11 +100,7 @@ class WhisperTranscriber:
     def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]):
         self.warm_up()
         params = parameters.get(name, {})
-        transcripts = zip(data[0][1], self.transcribe(data[0][1], **params))
-        documents = [
-            Document(content=transcript.pop("text"), metadata={"audio_file": audio, **transcript})
-            for audio, transcript in transcripts
-        ]
+        documents = self.transcribe_to_documents(data[0][1], **params)
         return {self.output[0]: documents}
 
     def transcribe_to_documents(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
@@ -123,20 +119,6 @@ class WhisperTranscriber:
             Document(content=transcript.pop("text"), metadata={"audio_file": audio, **transcript})
             for audio, transcript in zip(audio_files, transcriptions)
         ]
-
-    def transcribe_to_sringss(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
-        """
-        Transcribe the given audio files. Returns a list of strings.
-
-        For the supported audio formats, languages, and other parameters, see the
-        [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
-        [github repo](https://github.com/openai/whisper).
-
-        :param audio_files: a list of paths or binary streams to transcribe
-        :returns: a list of transcriptions.
-        """
-        transcriptions = self._transcribe(audio_files=audio_files)
-        return [transcription["text"] for transcription in transcriptions]
 
     def _transcribe(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
         """
