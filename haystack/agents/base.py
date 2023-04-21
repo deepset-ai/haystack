@@ -537,3 +537,34 @@ class ConversationalAgent(Agent):
             ),
             final_answer_pattern=final_answer_pattern if final_answer_pattern else BasicAnswerParser(),
         )
+
+
+class ConversationalAgentWithTools(Agent):
+    def __init__(
+        self,
+        prompt_node: PromptNode,
+        prompt_template: Union[str, PromptTemplate] = None,
+        tools_manager: Optional[ToolsManager] = None,
+        max_steps: int = 5,
+        memory: Memory = None,
+        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
+    ):
+        super().__init__(
+            prompt_node=prompt_node,
+            prompt_template=prompt_template,
+            tools_manager=tools_manager,
+            max_steps=max_steps,
+            memory=memory if memory else NoMemory(),
+            prompt_parameters_resolver=prompt_parameters_resolver
+            if prompt_parameters_resolver
+            else CallableResolver(
+                lambda query, agent, agent_step, **kwargs: {
+                    "query": query,
+                    "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
+                    "transcript": agent_step.transcript,
+                    "history": agent.memory.load(keys=["history"]),
+                }
+            ),
+            final_answer_pattern=final_answer_pattern,
+        )
