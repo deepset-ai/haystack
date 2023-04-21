@@ -33,3 +33,21 @@ def test_web_search_with_site_keyword():
     assert all(
         ["nasa" in doc.meta["link"] or "lifewire" in doc.meta["link"] for doc in result["documents"]]
     ), "Some documents are not from the specified sites lifewire.com or nasa.gov."
+
+
+@pytest.mark.skipif(
+    not os.environ.get("GOOGLE_API_KEY", None),
+    reason="Please export an env var called GOOGLE_API_KEY containing the serper.dev API key to run this test.",
+)
+@pytest.mark.skipif(
+    not os.enviorn.get("SEARCH_ENGINE_ID", None),
+    reason="Please export an env var called SEARCH_ENGINE_ID containing your search engine id to run this test.",
+)
+@pytest.mark.integration
+def test_web_search_with_google_api():
+    ws = WebSearch(api_key=G_API_KEY, search_engine_provider="GoogleAPI", search_engine_kwargs={"engine_id": s_id})
+
+    result, _ = ws.run(query="The founder of Python")
+    assert len(result["documents"]) > 1
+    assert "guido" in result["docker"][0].content.lower()
+    assert isinstance(result["documents"][0], Document)
