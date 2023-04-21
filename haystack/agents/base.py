@@ -15,7 +15,6 @@ from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color, AgentTokenStreamingHandler, PromptParametersResolver
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
-from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -65,6 +64,7 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
+            Callable[[str], str],
         ],
         description: str,
         output_variable: str = "results",
@@ -87,6 +87,8 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        elif isinstance(self.pipeline_or_node, Callable):
+            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
@@ -123,13 +125,32 @@ class ToolsManager:
         self,
         tools: Optional[List[Tool]] = None,
         tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
+        reasoning_error_handler: Optional[Callable] = None,
     ):
         """
         :param tools: A list of tools to add to the ToolManager. Each tool must have a unique name.
-        :param tool_pattern: A regular expression pattern that matches the text that the Agent generates to invoke a
+        :param tool_pattern: A regular expression pattern that matches the text that the Agent generates to invoke
+            a tool.
+        :param reasoning_error_handler: A function that handles errors that occur when the Agent is wrongly reasoning
+        about tools. It's a recovery mechanism that allows the Agent to recover from errors. The function takes the LLM
+        response as input and returns a string that the Agent should use to attempt to recover from the error.
         """
         self.tools = {tool.name: tool for tool in tools} if tools else {}
         self.tool_pattern = tool_pattern
+        if not reasoning_error_handler:
+
+            def default_handler(tool: str, tool_input: str, llm_response: str):
+                return (
+                    f"AI agent response should be either: \n"
+                    f"1) Final Answer: <insert any reasonable answer here>"
+                    f"2) Another attempt to use a tool with different input."
+                    f"Detect if AI Agent is repeating itself. If so, provide final answer now in the format:\n"
+                    f"Final Answer: <insert any reasonable answer here>"
+                )
+
+            self.reasoning_error_handler = default_handler
+        else:
+            self.reasoning_error_handler = reasoning_error_handler
         self.callback_manager = Events(("on_tool_start", "on_tool_finish", "on_tool_error"))
 
     def add_tool(self, tool: Tool):
@@ -172,29 +193,22 @@ class ToolsManager:
         tool_result: str = ""
         if self.has_tools():
             tool_name, tool_input = self.extract_tool_name_and_tool_input(llm_response)
-            if tool_name is None or tool_input is None:
-                raise AgentError(
-                    f"Could not identify the next tool or input for that tool from Agent's output. "
-                    f"Adjust the Agent's param 'tool_pattern' or 'prompt_template'. \n"
-                    f"# 'tool_pattern' to identify next tool: {self.tool_pattern} \n"
-                    f"# llm_response:\n{llm_response}"
-                )
-            if not self.has_tool(tool_name):
-                raise AgentError(
-                    f"The tool {tool_name} wasn't added to the Agent tools: {self.tools.keys()}."
-                    "Add the tool using `add_tool()` or include it in the parameter `tools` when initializing the Agent."
-                    f"llm_response :\n{llm_response}"
-                )
-            tool: Tool = self.tools[tool_name]
-            try:
-                self.callback_manager.on_tool_start(tool_input, tool=tool)
-                tool_result = tool.run(tool_input, params)
-                self.callback_manager.on_tool_finish(
-                    tool_result, observation_prefix="Observation: ", llm_prefix="Thought: ", color=tool.logging_color
-                )
-            except Exception as e:
-                self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
-                raise e
+            if tool_name and tool_input:
+                tool: Tool = self.tools[tool_name]
+                try:
+                    self.callback_manager.on_tool_start(tool_input, tool=tool)
+                    tool_result = tool.run(tool_input, params)
+                    self.callback_manager.on_tool_finish(
+                        tool_result,
+                        observation_prefix="Observation: ",
+                        llm_prefix="Thought: ",
+                        color=tool.logging_color,
+                    )
+                except Exception as e:
+                    self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
+                    raise e
+            else:
+                tool_result = self.reasoning_error_handler(tool_name, tool_input, llm_response)
         return tool_result
 
     def extract_tool_name_and_tool_input(self, llm_response: str) -> Tuple[Optional[str], Optional[str]]:
