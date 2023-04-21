@@ -108,3 +108,9 @@ class AgentStep:
             if observation
             else self.prompt_node_response
         )
+
+    def __repr__(self):
+        return (
+            f"AgentStep(current_step={self.current_step}, max_steps={self.max_steps}, "
+            f"prompt_node_response={self.prompt_node_response}, transcript={self.transcript})"
+        )
