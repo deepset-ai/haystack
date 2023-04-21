@@ -68,7 +68,14 @@ class WhisperTranscriber:
             If None, CPU is used.
         """
         self.inputs = [input]
-        self.output = [output]
+        self.outputs = [output]
+        self.init_parameters = {
+            "input": input,
+            "output": output,
+            "api_key": api_key,
+            "model_name_or_path": model_name_or_path,
+            "device": device,
+        }
 
         self.api_key = api_key
         self.model_name = model_name_or_path
