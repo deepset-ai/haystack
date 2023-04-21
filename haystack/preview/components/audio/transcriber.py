@@ -2,11 +2,11 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, Tuple
 
 import os
 import json
+from pathlib import Path
 
 import requests
 import torch
 import whisper
-from requests import PreparedRequest
 from generalimport import is_imported
 from tenacity import retry, wait_exponential, retry_if_not_result
 
@@ -27,13 +27,14 @@ class WhisperTranscriber:
 
     - API (default): Uses the OpenAI API and requires an API key. See the
       [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper for more details.
+
     - Local (requires installing Whisper): Uses the local installation
       of [Whisper](https://github.com/openai/whisper).
 
     To use Whisper locally, install it following the instructions on the Whisper
     [GitHub repo](https://github.com/openai/whisper) and omit the `api_key` parameter.
 
-    To use the API implementation, provide an api_key. You can get one by signing up for an
+    To use the API implementation, provide an API key. You can get one by signing up for an
     [OpenAI account](https://beta.openai.com/).
 
     For the supported audio formats, languages, and other parameters, see the
@@ -97,12 +98,33 @@ class WhisperTranscriber:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
     def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]):
+        self.warm_up()
         params = parameters.get(name, {})
         transcripts = zip(data[0][1], self.transcribe(data[0][1], **params))
-        documents = [Document(content=transcript, metadata={"audio_file": audio}) for audio, transcript in transcripts]
+        documents = [
+            Document(content=transcript.pop("text"), metadata={"audio_file": audio, **transcript})
+            for audio, transcript in transcripts
+        ]
         return {self.output[0]: documents}
 
-    def transcribe(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
+    def transcribe_to_documents(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
+        """
+        Transcribe the given audio files. Returns a list of Documents.
+
+        For the supported audio formats, languages, and other parameters, see the
+        [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
+        [github repo](https://github.com/openai/whisper).
+
+        :param audio_files: a list of paths or binary streams to transcribe
+        :returns: a list of transcriptions.
+        """
+        transcriptions = self._transcribe(audio_files=audio_files)
+        return [
+            Document(content=transcript.pop("text"), metadata={"audio_file": audio, **transcript})
+            for audio, transcript in zip(audio_files, transcriptions)
+        ]
+
+    def transcribe_to_sringss(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
         """
         Transcribe the given audio files. Returns a list of strings.
 
@@ -113,9 +135,24 @@ class WhisperTranscriber:
         :param audio_files: a list of paths or binary streams to transcribe
         :returns: a list of transcriptions.
         """
+        transcriptions = self._transcribe(audio_files=audio_files)
+        return [transcription["text"] for transcription in transcriptions]
+
+    def _transcribe(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
+        """
+        Transcribe the given audio files. Returns a list of strings.
+
+        For the supported audio formats, languages, and other parameters, see the
+        [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
+        [github repo](https://github.com/openai/whisper).
+
+        :param audio_files: a list of paths or binary streams to transcribe
+        :returns: a list of transcriptions.
+        """
+        self.warm_up()
         transcriptions = []
         for audio_file in audio_files:
-            if isinstance(audio_file, str):
+            if isinstance(audio_file, (str, Path)):
                 audio_file = open(audio_file, "rb")
 
             if self.use_local_whisper:

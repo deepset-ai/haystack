@@ -1,4 +1,4 @@
-import os
+from typing import List, Tuple, Dict, Any
 
 from pathlib import Path
 
@@ -6,15 +6,19 @@ import pytest
 
 from haystack.preview.components import WhisperTranscriber
 
-from test.preview.components.test_component_base import _BaseTestComponent
+from test.preview.components.test_component_base import BaseTestComponent
 
 
-SAMPLES_PATH = Path(__file__).parent / "test_files"
+SAMPLES_PATH = Path(__file__).parent.parent / "test_files"
 
 
-class TestTranscriber(_BaseTestComponent):
+class TestTranscriber(BaseTestComponent):
+    """
+    Tests for WhisperTranscriber.
+    """
+
     @pytest.fixture
-    def components(self):
+    def components(self) -> List[Tuple[object, Dict[str, Dict[str, Any]]]]:
         comps = [
             (
                 WhisperTranscriber(),
@@ -24,9 +28,8 @@ class TestTranscriber(_BaseTestComponent):
                 },
             )
         ]
-        for comp, _ in comps:
-            comp.warm_up()
-        return comp
+        return comps
 
     def test_transcribe(self):
         pass
+        # TODO mock model

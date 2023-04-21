@@ -1,12 +1,17 @@
+from typing import List, Tuple, Dict, Any
+
 from abc import ABC, abstractmethod
 
 from unittest.mock import MagicMock
 
-from requests import Response
 import pytest
 
 
-class _BaseTestComponent(ABC):
+class BaseTestComponent(ABC):
+    """
+    Base tests for Haystack components.
+    """
+
     @pytest.fixture
     def request_mock(self, monkeypatch):
         request_mock = MagicMock()
@@ -15,7 +20,12 @@ class _BaseTestComponent(ABC):
 
     @pytest.fixture
     @abstractmethod
-    def components(self):
+    def components(self) -> List[Tuple[object, Dict[str, Dict[str, Any]]]]:
+        """
+        Provide here all the combinations of (component instance, {data and parameters})
+        to be tested by this suite. Should cover most relevant combinations to get a good coverage of your component's
+        basic features.
+        """
         pass
 
     @pytest.mark.unit
@@ -38,7 +48,7 @@ class _BaseTestComponent(ABC):
     #
 
     @pytest.mark.unit
-    def test_output_respects_contract(self, components):
+    def test_run_output_matches_declared_output(self, components):
         pass
 
     @pytest.mark.unit
