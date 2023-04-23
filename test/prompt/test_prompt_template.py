@@ -36,6 +36,27 @@ def test_prompt_templates():
 
 
 @pytest.mark.unit
+def test_missing_prompt_template_params():
+    p = PromptTemplate("missing_params", "Here is some fake template with variable {foo} and {bar}")
+
+    # both params provided - ok
+    p.prepare(foo="foo", bar="bar")
+
+    # missing one param
+    with pytest.raises(ValueError, match=".*parameters \['bar', 'foo'\] to be provided but got only \['foo'\].*"):
+        p.prepare(foo="foo")
+
+    # missing both params
+    with pytest.raises(
+        ValueError, match=".*parameters \['bar', 'foo'\] to be provided but got none of these parameters.*"
+    ):
+        p.prepare(lets="go")
+
+    # more than both params provided - also ok
+    p.prepare(foo="foo", bar="bar", lets="go")
+
+
+@pytest.mark.unit
 def test_prompt_template_repr():
     p = PromptTemplate("t", "Here is variable {baz}")
     desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable {baz}, prompt_params=['baz'])"
