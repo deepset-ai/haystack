@@ -2,13 +2,14 @@ import os
 
 from haystack.agents.base import ConversationalAgentWithTools, Tool, ToolsManager
 from haystack.agents.memory import ConversationSummaryMemory
+from haystack.agents.types import Color
 from haystack.nodes import PromptNode, WebRetriever, PromptTemplate
 from haystack.pipelines import WebQAPipeline
 
 few_shot_prompt = """
 In the conversation below, a Human interacts with an AI Agent. The Human asks questions, and the AI goes through several steps to answer each question. If the AI Agent is unsure about the answer or if the information might be outdated or inaccurate, it uses the available tools when necessary to find the most up-to-date and accurate information. The AI has access to these tools:
 {tool_names_with_descriptions}
-To answer a question, the AI Agent might go through several steps. Each step starts with a Thought, Tool, Tool Input, Observation, or Final Answer. An Observation marks the beginning of the tool result, and the AI trusts these results.
+Each AI output line starts with a Thought, Tool, Tool Input, Observation, or Final Answer. An Observation marks the beginning of the tool result, and the AI trusts these results.
 
 Examples:
 ##
@@ -25,7 +26,7 @@ Thought: As of my knowledge cutoff date in September 2021, I'll use the search t
 Tool: Search
 Tool Input: What is the latest version of Python programming language as of today?
 Observation: 3.11.2
-Thought: We've learned that the latest Python version is 3.11.2! Now I can provide the final answer.
+Thought: We've learned that the latest Python version is 3.11.2! Now I can give the final answer.
 Final Answer: The latest Python version is 3.11.2.
 ##
 Question: What happened with the latest SpaceX Starship launch?
@@ -33,7 +34,7 @@ Thought: I can't answer most recent events due to my knowledge cutoff date; I'll
 Tool: Search
 Tool Input: What happened with the latest SpaceX Starship launch?
 Observation: SpaceX's Starship rocket launched for the first time on Thursday but exploded in mid-flight, falling short of reaching space. No crew were on board. Before the mid-flight failure, the Super Heavy booster successfully separated from the rocket, flipped and began its return to Earth.
-Thought: We've learned what happened with the latest SpaceX Starship launch. I can now provide the final answer.
+Thought: We've learned what happened with the latest SpaceX Starship launch. I can now summarize the final answer.
 Final Answer: The latest Space X Starship launch was an experimental launch that did not reach space and ended in mid-flight failure.
 
 Question: What happened after that?
@@ -41,15 +42,15 @@ Thought: I'm not sure what you're referring to. I'll use conversation history to
 Tool: conversation_history
 Tool Input: What happened after that?
 Observation: Human asked AI about the indictment of the former president Trump and AI responded the details of the indictment.
-Thought: Based on the conversation history, it seems likely that the Human is asking what happened to former President after the indictment. I'll use the search tool to help me answer the question.
+Thought: Based on the conversation history, it seems that the Human is referring events after former President Trump's indictment. I'll use the search tool to help me answer the question.
 Tool: Search
 Tool Input: What happened after the indictment of the former president Trump?
-Observation: The former president Trump went to trial and the trial is still ongoing.
+Observation: The former president Trump went to trial and the trial is still ongoing. I can now give the final answer.
 Final Answer: The former president Trump went to trial and the trial is still ongoing.
 
 
 The AI Agent should use the conversation history tool to infer context when needed, rather than asking for more clarification.
-The AI Agent should never respond that a question is too vague. If it is vague, the Agent should consult conversation history tool to understand the context.
+The AI Agent should never respond that a question is too vague. If it is vague, the Agent should consult conversation history tool to better understand the context.
 
 Question: {query}
 Thought:
@@ -85,6 +86,7 @@ conversation_history = Tool(
     name="conversation_history",
     pipeline_or_node=lambda tool_input, **kwargs: agent.memory.load(),
     description="useful for when you need to remember what you've already discussed.",
+    logging_color=Color.MAGENTA,
 )
 web_qa_tool = Tool(
     name="Search",
