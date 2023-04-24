@@ -10,7 +10,7 @@ class PromptModelInvocationLayer:
     could be even remote, for example, a call to a remote API endpoint.
     """
 
-    invocation_layer_providers: List[Type["PromptModelInvocationLayer"]] = []
+    invocation_layer_providers: dict = {}
 
     def __init__(self, model_name_or_path: str, **kwargs):
         """
@@ -31,7 +31,8 @@ class PromptModelInvocationLayer:
         Called when a subclass of PromptModelInvocationLayer is imported.
         """
         super().__init_subclass__(**kwargs)
-        cls.invocation_layer_providers.append(cls)
+        #cls.invocation_layer_providers.append(cls)
+        cls.invocation_layer_providers[cls.__name__] = cls
 
     @abstractmethod
     def invoke(self, *args, **kwargs):
@@ -40,6 +41,18 @@ class PromptModelInvocationLayer:
         :return: A list of generated text.
         """
         pass
+
+    @classmethod
+    def get_subclass(cls, layer_name: str) :
+        if layer_name not in cls.invocation_layer_providers.keys():
+            raise ValueError(
+                f"Haystack component with the name '{layer_name}' not found. "
+                "Check the class name of your component for spelling mistakes and make sure you installed "
+                "Haystack with the proper extras: https://docs.haystack.deepset.ai/docs/installation#custom-installation"
+            )
+
+        subclass = cls.invocation_layer_providers[layer_name]
+        return subclass
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:

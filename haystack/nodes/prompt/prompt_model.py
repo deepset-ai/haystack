@@ -39,7 +39,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
+        invocation_layer_class: Optional[Union[Type[PromptModelInvocationLayer], str]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -68,6 +68,10 @@ class PromptModel(BaseComponent):
         self.devices = devices
 
         self.model_kwargs = model_kwargs if model_kwargs else {}
+        if isinstance(invocation_layer_class, str) :
+            invocation_layer_class = PromptModelInvocationLayer.get_subclass(invocation_layer_class)
+
+
         self.model_invocation_layer = self.create_invocation_layer(invocation_layer_class=invocation_layer_class)
         is_instruction_following: bool = any(m in model_name_or_path for m in instruction_following_models())
         if not is_instruction_following:
@@ -90,12 +94,13 @@ class PromptModel(BaseComponent):
         all_kwargs = {**self.model_kwargs, **kwargs}
 
         if invocation_layer_class:
+
             return invocation_layer_class(
                 model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
             )
         # search all invocation layer classes and find the first one that supports the model,
         # then create an instance of that invocation layer
-        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
+        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers.values():
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
