@@ -431,7 +431,7 @@ class Answer:
         return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self.to_dict(), cls=NumpyEncoder)
+        return json.dumps(self, default=pydantic_encoder)
 
     @classmethod
     def from_json(cls, data):
@@ -578,7 +578,7 @@ class Label:
         return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self.to_dict(), cls=NumpyEncoder)
+        return json.dumps(self, default=pydantic_encoder)
 
     @classmethod
     def from_json(cls, data):
@@ -684,7 +684,7 @@ class MultiLabel:
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
         self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
-        self._contexts = [l.document.content for l in self._labels if not l.no_answer]
+        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
 
     @staticmethod
     def _to_dict_offsets(offset: Union[Span, TableCell]) -> Dict:

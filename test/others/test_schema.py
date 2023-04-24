@@ -607,7 +607,7 @@ def test_multilabel_with_doc_containing_dataframes():
     )
     multilabel = MultiLabel(labels=[label])
     assert multilabel.query == "A question"
-    assert multilabel.contexts[0].equals(pd.DataFrame({"col1": [1, 2], "col2": [3, 4]}))
+    assert multilabel.contexts == ["   col1  col2\n0     1     3\n1     2     4"]
     assert multilabel.answers == ["1"]
     assert multilabel.document_ids == ["table1"]
     assert multilabel.offsets_in_documents == [{"row": 0, "col": 0}]
