@@ -37,17 +37,22 @@ def test_web_search_with_site_keyword():
 
 @pytest.mark.skipif(
     not os.environ.get("GOOGLE_API_KEY", None),
-    reason="Please export an env var called GOOGLE_API_KEY containing the serper.dev API key to run this test.",
+    reason="Please export an env var called GOOGLE_API_KEY containing the Google API key to run this test. \
+        See https://console.cloud.google.com/apis .",
 )
 @pytest.mark.skipif(
-    not os.enviorn.get("SEARCH_ENGINE_ID", None),
-    reason="Please export an env var called SEARCH_ENGINE_ID containing your search engine id to run this test.",
+    not os.environ.get("SEARCH_ENGINE_ID", None),
+    reason="Please export an env var called SEARCH_ENGINE_ID containing your search engine id to run this test. \
+        See https://programmablesearchengine.google.com/ .",
 )
 @pytest.mark.integration
 def test_web_search_with_google_api():
-    ws = WebSearch(api_key=G_API_KEY, search_engine_provider="GoogleAPI", search_engine_kwargs={"engine_id": s_id})
-
+    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+    SEARCH_ENGINE_ID = os.environ.get("SEARCH_ENGINE_ID")
+    ws = WebSearch(
+        api_key=GOOGLE_API_KEY, search_engine_provider="GoogleAPI", search_engine_kwargs={"engine_id": SEARCH_ENGINE_ID}
+    )
     result, _ = ws.run(query="The founder of Python")
     assert len(result["documents"]) > 1
-    assert "guido" in result["docker"][0].content.lower()
+    assert "guido" in result["documents"][0].content.lower()
     assert isinstance(result["documents"][0], Document)
