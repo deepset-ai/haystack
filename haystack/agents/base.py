@@ -571,6 +571,7 @@ class ConversationalAgentWithTools(Agent):
             else CallableResolver(
                 lambda query, agent, agent_step, **kwargs: {
                     "query": query,
+                    "tool_names": agent.tm.get_tool_names(),
                     "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
                     "transcript": agent_step.transcript,
                     "history": agent.memory.load(keys=["history"]),
