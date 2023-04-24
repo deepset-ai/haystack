@@ -130,29 +130,15 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         # Connect to Weaviate server using python binding
         weaviate_url = f"{host}:{port}"
-        if username and password:
-            secret = AuthClientPassword(username, password, scope=scope)
-            self.weaviate_client = client.Client(
-                url=weaviate_url, auth_client_secret=secret, timeout_config=timeout_config
-            )
-        elif client_secret:
-            secret = AuthClientCredentials(client_secret, scope=scope)
-            self.weaviate_client = client.Client(
-                url=weaviate_url, auth_client_secret=secret, timeout_config=timeout_config
-            )
-        elif access_token:
-            secret = AuthBearerToken(access_token, expires_in=expires_in, refresh_token=refresh_token)
-            self.weaviate_client = client.Client(
-                url=weaviate_url,
-                auth_client_secret=secret,
-                timeout_config=timeout_config,
-                additional_headers=additional_headers,
-            )
-        else:
-            self.weaviate_client = client.Client(
-                url=weaviate_url, timeout_config=timeout_config, additional_headers=additional_headers
-            )
-
+        secret = self._get_auth_secret(
+            username, password, client_secret, access_token, expires_in, refresh_token, scope
+        )
+        self.weaviate_client = client.Client(
+            url=weaviate_url,
+            auth_client_secret=secret,
+            timeout_config=timeout_config,
+            additional_headers=additional_headers,
+        )
         # Test Weaviate connection
         try:
             status = self.weaviate_client.is_ready()
@@ -190,6 +176,25 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
+
+    @staticmethod
+    def _get_auth_secret(
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        access_token: Optional[str] = None,
+        expires_in: int = 60,
+        refresh_token: Optional[str] = None,
+        scope: str = "offline_access",
+    ) -> Optional[Union[AuthClientPassword, AuthClientCredentials, AuthBearerToken]]:
+        if username and password:
+            return AuthClientPassword(username, password, scope=scope)
+        elif client_secret:
+            return AuthClientCredentials(client_secret, scope=scope)
+        elif access_token:
+            return AuthBearerToken(access_token, expires_in=expires_in, refresh_token=refresh_token)
+
+        return None
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
