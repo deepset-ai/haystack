@@ -516,7 +516,6 @@ class ConversationalAgent(Agent):
     def __init__(
         self,
         prompt_node: PromptNode,
-        tools_manager: Optional[ToolsManager] = None,
         memory: Memory = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
         final_answer_pattern: Union[str, AgentAnswerParser] = None,
@@ -526,8 +525,6 @@ class ConversationalAgent(Agent):
 
         :param prompt_node: A PromptNode used to communicate with LLM.
         :type prompt_node: PromptNode
-        :param tools_manager: An optional manager for handling additional tools, defaults to None.
-        :type tools_manager: Optional[ToolsManager]
         :param memory: A memory object for storing conversation history and other relevant data, defaults to None.
         :type memory: Memory
         :param prompt_parameters_resolver: An optional resolver or callable for resolving prompt template parameters,
@@ -541,7 +538,6 @@ class ConversationalAgent(Agent):
             prompt_template=prompt_node.default_prompt_template
             if prompt_node.default_prompt_template is not None
             else "conversational-agent",
-            tools_manager=tools_manager,
             max_steps=2,
             memory=memory if memory else ConversationMemory(),
             prompt_parameters_resolver=prompt_parameters_resolver
