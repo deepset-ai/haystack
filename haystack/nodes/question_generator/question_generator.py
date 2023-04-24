@@ -18,12 +18,13 @@ logger = logging.getLogger(__name__)
 
 class QuestionGenerator(BaseComponent):
     """
-    The Question Generator takes only a document as input and outputs questions that it thinks can be
-    answered by this document. In our current implementation, input texts are split into chunks of 50 words
+    The QuestionGenerator takes only a document as input and outputs questions that it thinks this document can answer. In the current implementation, it splits input texts into chunks of 50 words
     with a 10 word overlap. This is because the default model `valhalla/t5-base-e2e-qg` seems to generate only
-    about 3 questions per passage regardless of length. Our approach prioritizes the creation of more questions
-    over processing efficiency (T5 is able to digest much more than 50 words at once). The returned questions
-    generally come in an order dictated by the order of their answers i.e. early questions in the list generally
+    about 3 questions per passage, regardless of length.
+
+    Our approach prioritizes the creation of more questions
+    over processing efficiency (T5 can digest much more than 50 words at once). The returned questions
+    generally come in an order dictated by the order of their answers, this means early questions in the list generally
     come from earlier in the document.
     """
 
@@ -50,31 +51,41 @@ class QuestionGenerator(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
-        Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
-        implemented as a Seq2SeqLM in HuggingFace Transformers. Note that this style of question generation (where the only input
+        Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is implemented as a Seq2SeqLM in Hugging Face Transformers.
+        Note that this style of question generation (where the only input
         is a document) is sometimes referred to as end-to-end question generation. Answer-supervised question
         generation is not currently supported.
 
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. "valhalla/t5-base-e2e-qg".
-                                   See https://huggingface.co/models for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param model_name_or_path: Directory of a saved model or the name of a public model, for example "valhalla/t5-base-e2e-qg".
+                                   See [Hugging Face models](https://huggingface.co/models) for a full list of available models.
+        :param model_version: The version of the model to use from the Hugging Face model hub. Can be a tag name, a branch name, or a commit hash.
+        :param num_beams: The number of beams for beam search. `1` means no beam search.
+        :param max_length: The maximum number of characters the generated text can have.
+        :param no_repeat_ngram_size: If set to a number larger than 0, all ngrams whose size equals this number can only occur once. For example, if you set it to `3`, all 3-grams can appear once.
+        :param length_penalty: Encourages the model to generate longer or shorter texts, depending on the value you specify. Values greater than 0.0 promote longer sequences, while values less than 0.0 promote shorter sequences. Used with text generation based on beams.
+        :param early_stopping: Defines the stopping condition for beam search.
+                                `True` means the model stops generating text after reaching the `num_beams`.
+                                `False` means the model stops generating text only if it's unlikely to find better candidates.
+        :param split_length: Determines the length of the split (a chunk of a document). Used by `num_queries_per_doc`.
+        :param split_overlap: Configures the amount of overlap between two adjacent documents after a split. Setting it to a positive number enables sliding window approach.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+        :param prompt: Contains the prompt with instructions for the model.
         :param batch_size: Number of documents to process at a time.
         :param num_queries_per_doc: Number of questions to generate per document. However, this is actually a number
-                                    of question to generate per split in the document where the `split_length` determines
+                                    of questions to generate per split in the document where the `split_length` determines
                                     the length of the split and the `split_overlap` determines the overlap between splits.
                                     Therefore, this parameter is multiplied by the resulting number of splits to get the
                                     total number of questions generated per document. This value is capped at 3.
+        :param sep_token: A special token that separates two sentences in the same output.
         :param progress_bar: Whether to show a tqdm progress bar or not.
-        :param use_auth_token: The API token used to download private models from Huggingface.
-                               If this parameter is set to `True`, then the token generated when running
-                               `transformers-cli login` (stored in ~/.huggingface) will be used.
-                               Additional information can be found here
-                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
-                        A list containing torch device objects and/or strings is supported (For example
-                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
-                        parameter is not used and a single cpu device is used for inference.
+        :param use_auth_token: The API token used to download private models from Hugging Face.
+                               If set to `True`, the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) is used.
+                               For more information, see [Hugging Face](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained).
+        :param devices: List of torch devices (for example cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects or strings is supported (for example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). If you specify `use_gpu=False`, the devices
+                        parameter is not used and a single CPU device is used for inference.
 
         """
         super().__init__()

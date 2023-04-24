@@ -11,7 +11,6 @@ import opensearchpy
 from haystack.document_stores.opensearch import (
     OpenSearch,
     OpenSearchDocumentStore,
-    OpenDistroElasticsearchDocumentStore,
     RequestsHttpConnection,
     Urllib3HttpConnection,
     RequestError,
@@ -33,7 +32,8 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     @pytest.fixture
     def ds(self):
         """
-        This fixture provides a working document store and takes care of removing the indices when done
+        This fixture provides a working document store and takes care of keeping clean the
+        OS cluster used in the tests.
         """
         labels_index_name = f"{self.index_name}_labels"
         ds = OpenSearchDocumentStore(
@@ -41,10 +41,10 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             label_index=labels_index_name,
             host=os.environ.get("OPENSEARCH_HOST", "localhost"),
             create_index=True,
+            recreate_index=True,
         )
+
         yield ds
-        ds.delete_index(self.index_name)
-        ds.delete_index(labels_index_name)
 
     @pytest.fixture
     def mocked_document_store(self, existing_index):
@@ -1241,19 +1241,19 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
             assert mocked_bulk.call_count == 5
 
-
-class TestOpenDistroElasticsearchDocumentStore:
     @pytest.mark.unit
-    def test_deprecation_notice(self, monkeypatch, caplog):
-        klass = OpenDistroElasticsearchDocumentStore
-        monkeypatch.setattr(klass, "_init_client", MagicMock())
-        monkeypatch.setattr(klass, "_validate_and_adjust_document_index", MagicMock())
-        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
-            klass()
-        assert caplog.record_tuples == [
-            (
-                "haystack.document_stores.opensearch",
-                logging.WARN,
-                "Open Distro for Elasticsearch has been replaced by OpenSearch! See https://opensearch.org/faq/ for details. We recommend using the OpenSearchDocumentStore instead.",
-            )
-        ]
+    def test_get_document_by_id_return_embedding_false(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.unit
+    def test_get_document_by_id_excluded_meta_data_has_no_influence(self, mocked_document_store):
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.return_embedding = False
+        mocked_document_store.get_document_by_id("123")
+        # assert the resulting body is not affected by the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}

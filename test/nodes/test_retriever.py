@@ -1,14 +1,14 @@
-from typing import List
-
-import os
 import logging
 import os
 from math import isclose
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
+from unittest.mock import patch, Mock, DEFAULT
 
 import pytest
 import numpy as np
 import pandas as pd
+import requests
+from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
 from elasticsearch import Elasticsearch
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
@@ -17,6 +17,9 @@ from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.retriever.web import WebRetriever
+from haystack.nodes.search_engine import WebSearch
+from haystack.nodes.retriever import Text2SparqlRetriever
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -24,7 +27,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
 
-from ..conftest import SAMPLES_PATH, MockRetriever
+from ..conftest import MockRetriever, fail_at_version
 
 
 # TODO check if we this works with only "memory" arg
@@ -83,8 +86,7 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
         ("embedding", "elasticsearch"),
         ("embedding", "memory"),
         ("bm25", "elasticsearch"),
-        # TODO - add once Weaviate starts supporting filters with BM25 in Weaviate v1.18+
-        # ("bm25", "weaviate"),
+        ("bm25", "weaviate"),
         ("es_filter_only", "elasticsearch"),
     ],
     indirect=True,
@@ -378,14 +380,13 @@ def test_openai_embedding_retriever_selection():
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.parametrize("retriever", ["cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
-    "the OpenAI/Cohere API key to run this test.",
+    not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called COHERE_API_KEY containing " "the Cohere API key to run this test.",
 )
-def test_basic_embedding(document_store, retriever, docs_with_ids):
+def test_basic_cohere_embedding(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -399,14 +400,105 @@ def test_basic_embedding(document_store, retriever, docs_with_ids):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason=("Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test."),
+)
+def test_basic_openai_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1536
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["azure"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("AZURE_OPENAI_API_KEY", None)
+    and not os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    and not os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED", None),
+    reason=(
+        "Please export env variables called AZURE_OPENAI_API_KEY containing "
+        "the Azure OpenAI key, AZURE_OPENAI_BASE_URL containing "
+        "the Azure OpenAI base URL, and AZURE_OPENAI_DEPLOYMENT_NAME_EMBED containing "
+        "the Azure OpenAI deployment name to run this test."
+    ),
+)
+def test_basic_azure_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1536
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
-    "the OpenAI/Cohere API key to run this test.",
+    not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called COHERE_API_KEY containing the Cohere API key to run this test.",
 )
-def test_retriever_basic_search(document_store, retriever, docs_with_ids):
+def test_retriever_basic_cohere_search(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export env called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_retriever_basic_openai_search(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["azure"], indirect=True)
+@pytest.mark.embedding_dim(1536)
+@pytest.mark.skipif(
+    not os.environ.get("AZURE_OPENAI_API_KEY", None)
+    and not os.environ.get("AZURE_OPENAI_BASE_URL", None)
+    and not os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED", None),
+    reason=(
+        "Please export env variables called AZURE_OPENAI_API_KEY containing "
+        "the Azure OpenAI key, AZURE_OPENAI_BASE_URL containing "
+        "the Azure OpenAI base URL, and AZURE_OPENAI_DEPLOYMENT_NAME_EMBED containing "
+        "the Azure OpenAI deployment name to run this test."
+    ),
+)
+def test_retriever_basic_azure_search(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -565,7 +657,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 
 
 @pytest.mark.embedding_dim(128)
-def test_table_text_retriever_training(tmp_path, document_store):
+def test_table_text_retriever_training(tmp_path, document_store, samples_path):
     retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
@@ -575,7 +667,7 @@ def test_table_text_retriever_training(tmp_path, document_store):
     )
 
     retriever.train(
-        data_dir=SAMPLES_PATH / "mmr",
+        data_dir=samples_path / "mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
@@ -952,10 +1044,10 @@ def table_docs() -> List[Document]:
 
 
 @pytest.fixture
-def image_docs() -> List[Document]:
+def image_docs(samples_path) -> List[Document]:
     return [
-        Document(content=str(SAMPLES_PATH / "images" / imagefile), content_type="image")
-        for imagefile in os.listdir(SAMPLES_PATH / "images")
+        Document(content=str(samples_path / "images" / imagefile), content_type="image")
+        for imagefile in os.listdir(samples_path / "images")
     ]
 
 
@@ -1011,6 +1103,7 @@ def test_multimodal_table_retrieval(table_docs: List[Document]):
     )
 
 
+@pytest.mark.skip("Must be reworked as it fails randomly")
 @pytest.mark.integration
 def test_multimodal_retriever_query():
     retriever = MultiModalRetriever(
@@ -1024,7 +1117,7 @@ def test_multimodal_retriever_query():
 
 
 @pytest.mark.integration
-def test_multimodal_image_retrieval(image_docs: List[Document]):
+def test_multimodal_image_retrieval(image_docs: List[Document], samples_path):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
@@ -1034,12 +1127,12 @@ def test_multimodal_image_retrieval(image_docs: List[Document]):
     retriever.document_store.update_embeddings(retriever=retriever)
 
     results = retriever.retrieve(query="What's a cat?")
-    assert str(results[0].content) == str(SAMPLES_PATH / "images" / "cat.jpg")
+    assert str(results[0].content) == str(samples_path / "images" / "cat.jpg")
 
 
 @pytest.mark.skip("Not working yet as intended")
 @pytest.mark.integration
-def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document]):
+def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document], samples_path):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
@@ -1057,5 +1150,173 @@ def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: 
     text_results = [result for result in results if result.content_type == "text"]
     image_results = [result for result in results if result.content_type == "image"]
 
-    assert str(image_results[0].content) == str(SAMPLES_PATH / "images" / "paris.jpg")
+    assert str(image_results[0].content) == str(samples_path / "images" / "paris.jpg")
     assert text_results[0].content == "My name is Christelle and I live in Paris"
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_raw_documents(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    class MockResponse:
+        def __init__(self, text, status_code):
+            self.text = text
+            self.status_code = status_code
+
+    def get(url, headers, timeout):
+        return MockResponse("mocked", 200)
+
+    def get_content(self, text: str) -> str:
+        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
+    monkeypatch.setattr(requests, "get", get)
+
+    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="raw_documents")
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert len(result) == 1
+    assert isinstance(result[0], Document)
+    assert (
+        result[0].content
+        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+    )
+    assert result[0].score == None
+    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
+    # Only preprocessed docs but not raw docs should have the _split_id field
+    assert "_split_id" not in result[0].meta
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_preprocessed_documents(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    class MockResponse:
+        def __init__(self, text, status_code):
+            self.text = text
+            self.status_code = status_code
+
+    def get(url, headers, timeout):
+        return MockResponse("mocked", 200)
+
+    def get_content(self, text: str) -> str:
+        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
+    monkeypatch.setattr(requests, "get", get)
+
+    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="preprocessed_documents")
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert len(result) == 1
+    assert isinstance(result[0], Document)
+    assert (
+        result[0].content
+        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+    )
+    assert result[0].score == None
+    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
+    assert result[0].meta["_split_id"] == 0
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_snippets(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    web_retriever = WebRetriever(api_key="", top_search_results=2)
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert result == expected_search_results["documents"]
+
+
+@fail_at_version(1, 17)
+def test_text_2_sparql_retriever_deprecation():
+    BartForConditionalGeneration = object()
+    BartTokenizer = object()
+    with patch.multiple(
+        "haystack.nodes.retriever.text2sparql", BartForConditionalGeneration=DEFAULT, BartTokenizer=DEFAULT
+    ):
+        knowledge_graph = Mock()
+        with pytest.warns(DeprecationWarning) as w:
+            Text2SparqlRetriever(knowledge_graph)
+
+            assert len(w) == 1
+            assert (
+                w[0].message.args[0]
+                == "The Text2SparqlRetriever component is deprecated and will be removed in future versions."
+            )

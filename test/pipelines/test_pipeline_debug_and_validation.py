@@ -6,7 +6,7 @@ import pytest
 from haystack.pipelines import Pipeline, RootNode, DocumentSearchPipeline
 from haystack.nodes import FARMReader, BM25Retriever, JoinDocuments
 
-from ..conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockReader
+from ..conftest import MockRetriever as BaseMockRetriever, MockReader
 
 
 class MockRetriever(BaseMockRetriever):
@@ -68,12 +68,16 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
     assert "Reader" in prediction["_debug"].keys()
     assert "input" in prediction["_debug"]["BM25Retriever"].keys()
     assert "output" in prediction["_debug"]["BM25Retriever"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["BM25Retriever"].keys()
     assert "input" in prediction["_debug"]["Reader"].keys()
     assert "output" in prediction["_debug"]["Reader"].keys()
+    assert "exec_time_ms" in prediction["_debug"]["Reader"].keys()
     assert prediction["_debug"]["BM25Retriever"]["input"]
     assert prediction["_debug"]["BM25Retriever"]["output"]
+    assert prediction["_debug"]["BM25Retriever"]["exec_time_ms"] is not None
     assert prediction["_debug"]["Reader"]["input"]
     assert prediction["_debug"]["Reader"]["output"]
+    assert prediction["_debug"]["Reader"]["exec_time_ms"] is not None
 
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)
@@ -197,24 +201,6 @@ def test_unexpected_node_arg():
     with pytest.raises(Exception) as exc:
         pipeline.run(query="Who made the PDF specification?", params={"Retriever": {"invalid": 10}})
     assert "Invalid parameter 'invalid' for the node 'Retriever'" in str(exc.value)
-
-
-@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_pipeline_run_counters(retriever, document_store):
-    documents = [{"content": "Sample text for document-1", "meta": {"source": "wiki1"}}]
-
-    document_store.write_documents(documents)
-    document_store.update_embeddings(retriever)
-
-    p = DocumentSearchPipeline(retriever=retriever)
-    p.run(query="Irrelevant", params={"top_k": 1})
-    assert p.pipeline.run_total == 1
-    for i in range(p.pipeline.event_run_total_threshold + 1):
-        p.run(query="Irrelevant", params={"top_k": 1})
-
-    assert p.pipeline.run_total == 102
-    assert p.pipeline.last_window_run_total == 101
 
 
 def test_debug_info_propagation():

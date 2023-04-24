@@ -12,7 +12,9 @@ from haystack.schema import Document, Answer, Label, MultiLabel, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes import FARMReader, TransformersReader
 
-from ..conftest import SAMPLES_PATH
+
+def _joinpath(rootdir, targetdir):
+    return os.path.join(os.sep, rootdir + os.sep, targetdir)
 
 
 # TODO Fix bug in test_no_answer_output when using
@@ -138,6 +140,27 @@ def test_no_answer_output(no_answer_reader, docs):
     answers = [x.answer for x in no_answer_prediction["answers"]]
     assert answers.count("") == 1
     assert len(no_answer_prediction["answers"]) == 5
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_deduplication_for_overlapping_documents(reader):
+    docs = [
+        Document(
+            content="My name is Carla. I live in Berlin.",
+            id="doc1",
+            meta={"_split_id": 0, "_split_overlap": [{"doc_id": "doc2", "range": (18, 35)}]},
+        ),
+        Document(
+            content="I live in Berlin. My friends call me Carla.",
+            id="doc2",
+            meta={"_split_id": 1, "_split_overlap": [{"doc_id": "doc1", "range": (0, 17)}]},
+        ),
+    ]
+    prediction = reader.predict(query="Where does Carla live?", documents=docs, top_k=5)
+
+    # Check that there are no duplicate answers
+    assert len(set(ans.answer for ans in prediction["answers"])) == len(prediction["answers"])
 
 
 @pytest.mark.integration
@@ -286,9 +309,12 @@ def test_farm_reader_load_hf_local(tmp_path):
     # Test Case: 2. HuggingFace downloaded (local load)
 
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    local_model_path = "locally_saved_hf"
+    cwd_path = os.getcwd()
+    local_model_path = _joinpath(cwd_path, local_model_path)
+
     # TODO: change the /tmp to proper tmp_path and get rid of rmtree
-    # local_model_path = str(Path.joinpath(tmp_path, "locally_saved_hf"))
-    local_model_path = "/tmp/locally_saved_hf"
+    # local_model_path = str(Path.joinpath(tmp_path, local_model_path))
     model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
     _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
     rmtree(local_model_path)
@@ -409,7 +435,7 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
 
 
-def test_reader_training(tmp_path):
+def test_reader_training(tmp_path, samples_path):
     max_seq_len = 16
     max_query_length = 8
     reader = FARMReader(
@@ -423,7 +449,7 @@ def test_reader_training(tmp_path):
 
     save_dir = f"{tmp_path}/test_dpr_training"
     reader.train(
-        data_dir=str(SAMPLES_PATH / "squad"),
+        data_dir=str(samples_path / "squad"),
         train_filename="tiny.json",
         dev_filename="tiny.json",
         test_filename="tiny.json",

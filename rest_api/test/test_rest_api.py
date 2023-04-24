@@ -12,7 +12,8 @@ import pandas as pd
 
 import pytest
 from fastapi.testclient import TestClient
-from haystack import Document, Answer, Pipeline
+import posthog
+from haystack import Document, Answer, Pipeline, TableCell
 import haystack
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
@@ -23,16 +24,24 @@ from haystack.nodes.file_converter import BaseConverter
 from rest_api.pipeline import _load_pipeline
 from rest_api.utils import get_app
 
+# Disable telemetry reports when running tests
+posthog.disabled = True
 
 TEST_QUERY = "Who made the PDF specification?"
 
 
-def test_single_worker_warning_for_indexing_pipelines(caplog):
+def test_doc_store_error_for_indexing_pipelines(caplog):
     yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
-    p, _ = _load_pipeline(yaml_pipeline_path, None)
+    p, _ = _load_pipeline(yaml_pipeline_path, "indexing")
 
     assert isinstance(p, Pipeline)
-    assert "used with 1 worker" in caplog.text
+    assert "will not work as expected" in caplog.text
+
+
+def test_single_worker_doc_store_success_for_query_pipelines():
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.in-memory-haystack-pipeline.yml"
+    p, _ = _load_pipeline(yaml_pipeline_path, "query")
+    assert isinstance(p, Pipeline)
 
 
 def test_check_error_for_pipeline_not_found():
@@ -426,12 +435,27 @@ def test_query_with_dataframe(client):
                     meta={"test_key": "test_value"},
                 )
             ],
+            "answers": [
+                Answer(
+                    answer="text_2",
+                    type="extractive",
+                    score=0.95,
+                    context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+                    offsets_in_document=[TableCell(1, 0)],
+                    offsets_in_context=[TableCell(1, 0)],
+                    meta={"aggregation_operator": "NONE", "answer_cells": ["text_2"]},
+                )
+            ],
         }
         response = client.post(url="/query", json={"query": TEST_QUERY})
         assert 200 == response.status_code
         assert len(response.json()["documents"]) == 1
         assert response.json()["documents"][0]["content"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
         assert response.json()["documents"][0]["content_type"] == "table"
+        assert len(response.json()["answers"]) == 1
+        assert response.json()["answers"][0]["context"] == [["col1", "col2"], ["text_1", 1], ["text_2", 2]]
+        assert response.json()["answers"][0]["offsets_in_document"] == [{"row": 1, "col": 0}]
+        assert response.json()["answers"][0]["offsets_in_context"] == [{"row": 1, "col": 0}]
         # Ensure `run` was called with the expected parameters
         mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
 
