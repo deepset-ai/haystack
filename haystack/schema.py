@@ -431,7 +431,7 @@ class Answer:
         return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
     def from_json(cls, data):
@@ -578,7 +578,7 @@ class Label:
         return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
     def from_json(cls, data):
