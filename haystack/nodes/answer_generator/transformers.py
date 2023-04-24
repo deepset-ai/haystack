@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict, List, Optional, Union
 
 import logging
@@ -367,6 +368,10 @@ class Seq2SeqGenerator(BaseGenerator):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        warnings.warn(
+            "Seq2SeqGenerator component is deprecated and will be removed in future versions.",
+            category=DeprecationWarning,
+        )
         super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
