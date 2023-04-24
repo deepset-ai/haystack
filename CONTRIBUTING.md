@@ -31,7 +31,7 @@ You might need to install additional dependencies, depending on what exactly you
 Now fork and clone the repo. From the terminal, run:
 
 ```bash
-git clone https://github.com/<your-gh-username>/haystack.git
+git clone https://github.com/deepset-ai/haystack.git
 ```
 
 or use your favourite Git(Hub) client.
