@@ -7,50 +7,25 @@ from haystack.nodes import PromptNode, WebRetriever, PromptTemplate
 from haystack.pipelines import WebQAPipeline
 
 few_shot_prompt = """
-In the conversation below, a Human interacts with an AI Agent. The Human asks questions, and the AI goes through several steps to answer each question. If the AI Agent is unsure about the answer or if the information might be outdated or inaccurate, it uses the available tools when necessary to find the most up-to-date and accurate information. The AI has access to these tools:
+In the following conversation, a human user interacts with an AI Agent using the ChatGPT API. The human user poses questions, and the AI Agent goes through several steps to provide well-informed answers.
+
+If the AI Agent knows the answer, the response begins with "Final Answer:" on a new line.
+
+If the AI Agent is uncertain or concerned that the information may be outdated or inaccurate, it must use the available tools to find the most up-to-date information. The AI has access to these tools:
 {tool_names_with_descriptions}
-Each AI output line starts with a Thought, Tool, Tool Input, Observation, or Final Answer. An Observation marks the beginning of the tool result, and the AI trusts these results.
 
-Examples:
-##
-Question: What is the capital of France?
-Thought: This is a common-knowledge question. Therefore, I'll provide the final answer directly without consulting any tools.
-Final Answer: The capital of France is Paris.
-##
-Question: Who was the first president of the United States?
-Thought: This is a common knowledge question. I'll provide the final answer directly without using any tools.
-Final Answer: The first president of the United States was George Washington.
-##
-Question: What is the latest version of Python programming language?
-Thought: As of my knowledge cutoff date in September 2021, I'll use the search tool to help me answer the question.
-Tool: Search
-Tool Input: What is the latest version of Python programming language as of today?
-Observation: 3.11.2
-Thought: We've learned that the latest Python version is 3.11.2! Now I can give the final answer.
-Final Answer: The latest Python version is 3.11.2.
-##
-Question: What happened with the latest SpaceX Starship launch?
-Thought: I can't answer most recent events due to my knowledge cutoff date; I'll use the search tool to help me answer the question.
-Tool: Search
-Tool Input: What happened with the latest SpaceX Starship launch?
-Observation: SpaceX's Starship rocket launched for the first time on Thursday but exploded in mid-flight, falling short of reaching space. No crew were on board. Before the mid-flight failure, the Super Heavy booster successfully separated from the rocket, flipped and began its return to Earth.
-Thought: We've learned what happened with the latest SpaceX Starship launch. I can now summarize the final answer.
-Final Answer: The latest Space X Starship launch was an experimental launch that did not reach space and ended in mid-flight failure.
+AI Agent responses must start with one of the following:
 
-Question: What happened after that?
-Thought: I'm not sure what you're referring to. I'll use conversation history to help me understand the context.
-Tool: conversation_history
-Tool Input: What happened after that?
-Observation: Human asked AI about the indictment of the former president Trump and AI responded the details of the indictment.
-Thought: Based on the conversation history, it seems that the Human is referring events after former President Trump's indictment. I'll use the search tool to help me answer the question.
-Tool: Search
-Tool Input: What happened after the indictment of the former president Trump?
-Observation: The former president Trump went to trial and the trial is still ongoing. I can now give the final answer.
-Final Answer: The former president Trump went to trial and the trial is still ongoing.
+Thought: [AI Agent's reasoning process]
+Tool: [{tool_names}] (on a new line) Tool Input: [input for the selected tool WITHOUT quotation marks and on a new line] (These must always be provided together and on separate lines.)
+Final Answer: [final answer to the human user's question]
+When selecting a tool, the AI Agent must provide both the "Tool:" and "Tool Input:" pair in the same response, but on separate lines. "Observation:" marks the beginning of a tool's result, and the AI Agent trusts these results.
 
+The AI Agent must use the conversation_history tool to infer context when necessary.
+If a question is vague or requires context, the AI Agent should explicitly use the conversation_history tool with a clear Tool Input focused on finding the relevant context.
+The AI Agent should not ask the human user for additional information, clarification, or context.
+If the AI Agent cannot find a specific answer after exhausting available tools and approaches, it answers with Final Answer: inconclusive
 
-The AI Agent should use the conversation history tool to infer context when needed, rather than asking for more clarification.
-The AI Agent should never respond that a question is too vague. If it is vague, the Agent should consult conversation history tool to better understand the context.
 
 Question: {query}
 Thought:
@@ -78,7 +53,7 @@ prompt_node = PromptNode(
     max_length=256,
 )
 
-web_retriever = WebRetriever(api_key=search_key, top_search_results=2, mode="preprocessed_documents")
+web_retriever = WebRetriever(api_key=search_key, top_search_results=5, mode="snippets")
 pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
 
 few_shot_agent = PromptTemplate("conversational-agent-with-tools", prompt_text=few_shot_prompt)
@@ -99,21 +74,34 @@ pn = PromptNode(
     api_key=os.environ.get("OPENAI_API_KEY"),
     max_length=256,
     stop_words=["Observation:"],
-    model_kwargs={"temperature": 0.7},
+    model_kwargs={"temperature": 0.5, "top_p": 0.9},
 )
 agent = ConversationalAgentWithTools(
     pn,
     max_steps=10,
     prompt_template=few_shot_agent,
     tools_manager=ToolsManager(tools=[web_qa_tool, conversation_history]),
-    memory=ConversationSummaryMemory(pn),
+    memory=ConversationSummaryMemory(pn, summary_frequency=1),
 )
 
-while True:
-    user_input = input("\nHuman (type 'exit' or 'quit' to quit): ")
-    if user_input.lower() == "exit" or user_input.lower() == "quit":
-        break
-    if user_input.lower() == "memory":
-        print("\nMemory:\n", agent.memory.load())
-    else:
-        assistant_response = agent.run(user_input)
+test = False
+if test:
+    questions = [
+        "Why was Jamie Foxx recently hospitalized?",
+        "Where was he hospitalized?",
+        "What movie was he filming at the time?",
+        "Who is his female co-star in Back in Action?",
+        "Tell me more about her, who is her partner?",
+    ]
+    for question in questions:
+        print(f"\nHuman: {question}")
+        agent.run(question)
+else:
+    while True:
+        user_input = input("\nHuman (type 'exit' or 'quit' to quit): ")
+        if user_input.lower() == "exit" or user_input.lower() == "quit":
+            break
+        if user_input.lower() == "memory":
+            print("\nMemory:\n", agent.memory.load())
+        else:
+            assistant_response = agent.run(user_input)
