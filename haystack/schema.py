@@ -795,6 +795,11 @@ def _pydantic_dataclass_from_dict(dict: "dict", pydantic_dataclass_type) -> Any:
 
 
 def _dict_factory(list_of_tuples):
+    """Meant to be as the dict_factory for `asdict`. This function is called within `asdict` to convert a list of tuples
+    into a dictionary object. This handles the conversion of pandas Dataframes into a list of lists.
+
+    :param list_of_tuples: list of (key, value) pairs
+    """
     res = {}
     for key, val in list_of_tuples:
         if isinstance(val, pd.DataFrame):
