@@ -88,14 +88,16 @@ class PromptModel(BaseComponent):
             "devices": self.devices,
         }
         all_kwargs = {**self.model_kwargs, **kwargs}
+        if isinstance(invocation_layer_class, str):
+            invocation_layer_class = PromptModelInvocationLayer.get_subclass(invocation_layer_class)
 
-        if invocation_layer_class:
+        if isinstance(invocation_layer_class, type(PromptModelInvocationLayer)):
             return invocation_layer_class(
                 model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
             )
         # search all invocation layer classes and find the first one that supports the model,
         # then create an instance of that invocation layer
-        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
+        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers.values():
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs

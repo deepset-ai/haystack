@@ -88,6 +88,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 "device_map",
                 "generation_kwargs",
                 "model_max_length",
+                "task",
             ]
             if key in kwargs
         }
@@ -96,6 +97,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             mkwargs = model_input_kwargs.pop("model_kwargs")
             model_input_kwargs.update(mkwargs)
 
+        task_name = model_input_kwargs.pop("task", None)
         # save generation_kwargs for pipeline invocation
         self.generation_kwargs = model_input_kwargs.pop("generation_kwargs", {})
         model_max_length = model_input_kwargs.pop("model_max_length", None)
@@ -119,8 +121,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         if len(model_input_kwargs) > 0:
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
-        self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
+        self.task_name = task_name or get_task(model_name_or_path, use_auth_token=use_auth_token)
         self.pipe = pipeline(
+            task=self.task_name,
             model=model_name_or_path,
             device=self.devices[0] if "device_map" not in model_input_kwargs else None,
             use_auth_token=self.use_auth_token,
