@@ -128,6 +128,7 @@ class Document:
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
+        # TODO Try calling super().__init__() here ??
 
     def _get_id(self, id_hash_keys: Optional[List[str]] = None):
         """
@@ -185,7 +186,7 @@ class Document:
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
                 if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
-                    v = [self.content.columns.tolist()] + self.content.values.tolist()
+                    v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc
@@ -232,7 +233,7 @@ class Document:
 
         # Convert list of rows to pd.DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
-            _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
+            _new_doc["content"] = dataframe_from_list(_new_doc["content"])
 
         return cls(**_new_doc)
 
@@ -401,6 +402,9 @@ class Answer:
         if self.meta is None:
             self.meta = {}
 
+        if self.context is not None and isinstance(self.context, list):
+            self.context = dataframe_from_list(self.context)
+
     def __lt__(self, other):
         """Enable sorting of Answers by score"""
         return self.score < other.score
@@ -414,21 +418,20 @@ class Answer:
     def __repr__(self):
         return f"<Answer {asdict(self)}>"
 
-    def to_dict(self):
+    # TODO To be consistent with Document.to_dict() this method should also convert Dataframe to list of lists
+    def to_dict(self) -> Dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, dict: "dict"):
+    def from_dict(cls, dict: "dict") -> Answer:
         # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
         if "document_id" in dict:
             dict = dict.copy()
             document_id = dict.pop("document_id")
             dict["document_ids"] = [document_id] if document_id is not None else None
-        if "context" in dict and isinstance(dict["context"], list):
-            dict = dict.copy()
-            dict["context"] = pd.DataFrame(columns=dict["context"][0], data=dict["context"][1:])
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        return cls(**dict)
 
+    # TODO Once to_dict is updated only Numpy encoder is needed for ExtraEncoders
     def to_json(self):
         return json.dumps(self.to_dict(), cls=ExtraEncoders)
 
@@ -573,14 +576,15 @@ class Label:
     @classmethod
     def from_dict(cls, dict: "dict"):
         # backward compatibility for old labels using answers with document_id instead of document_ids
+        #   also needed to properly load table answers
         answer = dict.get("answer")
-        if answer and "document_id" in answer:
+        if answer and ("document_id" in answer or "context" in answer):
             dict = dict.copy()
             dict["answer"] = Answer.from_dict(dict["answer"])
         # convert content of table Documents into Pandas DataFrames
         doc = dict.get("document")
         if doc.get("content_type", None) == "table" and isinstance(doc["content"], list):
-            dict["document"]["content"] = pd.DataFrame(columns=doc["content"][0], data=doc["content"][1:])
+            dict["document"]["content"] = dataframe_from_list(doc["content"])
         return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
@@ -690,7 +694,7 @@ class MultiLabel:
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
         self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
-        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
+        self._contexts = [l.document.content for l in self._labels if not l.no_answer]
 
     @staticmethod
     def _to_dict_offsets(offset: Union[Span, TableCell]) -> Dict:
@@ -760,7 +764,7 @@ class MultiLabel:
         return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
     def to_json(self):
-        return json.dumps(self.to_dict(), default=pydantic_encoder)
+        return json.dumps(self.to_dict(), default=pydantic_encoder)  # , cls=ExtraEncoders)
 
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
@@ -805,8 +809,16 @@ class ExtraEncoders(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         if isinstance(obj, pd.DataFrame):
-            return [obj.columns.tolist()] + obj.values.tolist()
+            return dataframe_to_list(obj)
         return json.JSONEncoder.default(self, obj)
+
+
+def dataframe_to_list(df: pd.DataFrame) -> List[List]:
+    return [df.columns.tolist()] + df.values.tolist()
+
+
+def dataframe_from_list(list_df: List[List]) -> pd.DataFrame:
+    return pd.DataFrame(columns=list_df[0], data=list_df[1:])
 
 
 class EvaluationResult:
