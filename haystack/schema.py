@@ -128,7 +128,6 @@ class Document:
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
-        # TODO Try calling super().__init__() here ??
 
     def _get_id(self, id_hash_keys: Optional[List[str]] = None):
         """
@@ -241,7 +240,7 @@ class Document:
         if not field_map:
             field_map = {}
         dictionary = self.to_dict(field_map=field_map)
-        return json.dumps(dictionary, cls=ExtraEncoders)
+        return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
     def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
@@ -402,6 +401,7 @@ class Answer:
         if self.meta is None:
             self.meta = {}
 
+        # In case the context is a list of lists for a table document that is instantiated by from_json() or from_dict()
         if self.context is not None and isinstance(self.context, list):
             self.context = dataframe_from_list(self.context)
 
@@ -416,11 +416,10 @@ class Answer:
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
     def __repr__(self):
-        return f"<Answer {asdict(self)}>"
+        return f"<Answer {asdict(self, dict_factory=_dict_factory)}>"
 
-    # TODO To be consistent with Document.to_dict() this method should also convert Dataframe to list of lists
     def to_dict(self) -> Dict:
-        return asdict(self)
+        return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
     def from_dict(cls, dict: "dict") -> Answer:
@@ -431,9 +430,8 @@ class Answer:
             dict["document_ids"] = [document_id] if document_id is not None else None
         return cls(**dict)
 
-    # TODO Once to_dict is updated only Numpy encoder is needed for ExtraEncoders
     def to_json(self):
-        return json.dumps(self.to_dict(), cls=ExtraEncoders)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
     def from_json(cls, data):
@@ -543,11 +541,7 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        if isinstance(answer, dict):
-            answer = Answer.from_dict(answer)
         self.answer = answer
-        if isinstance(document, dict):
-            document = Document.from_dict(document)
         self.document = document
 
         self.is_correct_answer = is_correct_answer
@@ -571,24 +565,20 @@ class Label:
         return no_answer
 
     def to_dict(self):
-        return asdict(self)
+        return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
     def from_dict(cls, dict: "dict"):
-        # backward compatibility for old labels using answers with document_id instead of document_ids
-        #   also needed to properly load table answers
         answer = dict.get("answer")
-        if answer and ("document_id" in answer or "context" in answer):
-            dict = dict.copy()
+        if answer:
             dict["answer"] = Answer.from_dict(dict["answer"])
-        # convert content of table Documents into Pandas DataFrames
         doc = dict.get("document")
-        if doc.get("content_type", None) == "table" and isinstance(doc["content"], list):
-            dict["document"]["content"] = dataframe_from_list(doc["content"])
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        if doc:
+            dict["document"] = Document.from_dict(dict["document"])
+        return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self.to_dict(), cls=ExtraEncoders)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
     def from_json(cls, data):
@@ -764,7 +754,7 @@ class MultiLabel:
         return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
     def to_json(self):
-        return json.dumps(self.to_dict(), default=pydantic_encoder)  # , cls=ExtraEncoders)
+        return json.dumps(self.to_dict(), default=pydantic_encoder)
 
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
@@ -804,12 +794,19 @@ def _pydantic_dataclass_from_dict(dict: "dict", pydantic_dataclass_type) -> Any:
     return dataclass_object
 
 
-class ExtraEncoders(json.JSONEncoder):
+def _dict_factory(list_of_tuples):
+    res = {}
+    for key, val in list_of_tuples:
+        if isinstance(val, pd.DataFrame):
+            val = dataframe_to_list(val)
+        res.update({key: val})
+    return res
+
+
+class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
-        if isinstance(obj, pd.DataFrame):
-            return dataframe_to_list(obj)
         return json.JSONEncoder.default(self, obj)
 
 

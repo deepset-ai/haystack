@@ -250,6 +250,7 @@ def test_table_answer_to_json(table_answer):
 def test_table_answer_to_dict(table_answer):
     dict_ans = table_answer.to_dict()
     assert isinstance(dict_ans, dict)
+    assert isinstance(dict_ans["context"], list)
     a_new = Answer.from_dict(dict_ans)
     assert isinstance(a_new.offsets_in_document[0], TableCell)
     assert a_new == table_answer
