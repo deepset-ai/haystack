@@ -102,14 +102,27 @@ This command installs everything needed for basic Pipelines that use an Elastics
 
 **Full Installation**
 
-To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the latest version of Haystack and all its dependencies from the main branch:
+To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the most recent version of Haystack and all its dependencies from the latest branch:
 
 ```
 pip install --upgrade pip
 pip install 'farm-haystack[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
-**Installing the REST API** Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
+If you want to try out the newest features that are not in an official release yet, you can install Haystack from the main branch. The following commands install from `main` with all its dependencies:
+
+```
+pip install -e '.[all]'
+```
+or
+
+```
+pip install git+https://github.com/deepset-ai/haystack.git@main#egg=farm-haystack[colab,ocr]
+```
+
+**Installing the REST API** 
+
+Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
 
 ```
 pip install rest_api/
