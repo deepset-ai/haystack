@@ -114,10 +114,6 @@ def _openai_text_completion_tokenization_details(model_name: str):
         elif model_name.startswith("gpt-3"):
             max_tokens_limit = 4096
             tokenizer_name = model_tokenizer
-        # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
-        elif model_name.startswith("gpt-35"):
-            max_tokens_limit = 4096
-            tokenizer_name = model_tokenizer
         # Ref: https://platform.openai.com/docs/models/gpt-4
         elif model_name.startswith("gpt-4-32k"):
             max_tokens_limit = 32768  # tokens
