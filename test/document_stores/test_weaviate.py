@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from haystack.schema import Document
+import weaviate
 
 embedding_dim = 768
 
@@ -258,3 +259,22 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         ds.write_documents(documents)
         assert ds.get_embedding_count() == 9
+
+    def test_get_auth_secret(self, ds):
+        # Test with username and password
+        secret = ds._get_auth_secret("user", "pass", scope="some_scope")
+        assert isinstance(secret, weaviate.AuthClientPassword)
+
+        # Test with client_secret
+        secret = ds._get_auth_secret(client_secret="client_secret_value", scope="some_scope")
+        assert isinstance(secret, weaviate.AuthClientCredentials)
+
+        # Test with access_token
+        secret = ds._get_auth_secret(
+            access_token="access_token_value", expires_in=3600, refresh_token="refresh_token_value"
+        )
+        assert isinstance(secret, weaviate.AuthBearerToken)
+
+        # Test with no authentication method
+        secret = ds._get_auth_secret()
+        assert secret is None
