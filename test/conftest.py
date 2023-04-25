@@ -363,6 +363,7 @@ class MockReader(BaseReader):
 class MockPromptNode(PromptNode):
     def __init__(self):
         self.default_prompt_template = None
+        self.model_name_or_path = ""
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]
@@ -510,16 +511,17 @@ def reader(request):
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq", return_table_cell=True), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", return_table_cell=True), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader", return_table_cell=True), request.param
     elif request.param == "rci":
         return (
             RCIReader(
                 row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
                 column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+                return_table_cell=True,
             ),
             request.param,
         )
@@ -809,3 +811,17 @@ def haystack_openai_config(request, haystack_azure_conf):
 @pytest.fixture
 def samples_path():
     return Path(__file__).parent / "samples"
+
+
+@pytest.fixture(autouse=True)
+def request_blocker(request: pytest.FixtureRequest, monkeypatch):
+    """
+    This fixture is applied automatically to all tests.
+    Those that are marked as unit will have the requests module
+    monkeypatched to avoid making HTTP requests by mistake.
+    """
+    marker = request.node.get_closest_marker("unit")
+    if marker is None:
+        return
+    monkeypatch.delattr("requests.sessions.Session")
+    monkeypatch.delattr("requests_cache.session.CachedSession")
