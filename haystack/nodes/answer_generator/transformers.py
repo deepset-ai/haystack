@@ -369,7 +369,8 @@ class Seq2SeqGenerator(BaseGenerator):
                         parameter is not used and a single cpu device is used for inference.
         """
         warnings.warn(
-            "Seq2SeqGenerator component is deprecated and will be removed in future versions.",
+            "`Seq2SeqGenerator` component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `Seq2SeqGenerator`.",
             category=DeprecationWarning,
         )
         super().__init__(progress_bar=progress_bar)
