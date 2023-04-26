@@ -9,60 +9,14 @@ from haystack.preview.components.prompt.models.base import get_model
 logger = logging.getLogger(__name__)
 
 
-PromptTemplates = Literal[
-    "question-answering",
-    "question-generation",
-    "conditioned-question-generation",
-    "summarization",
-    "question-answering-check",
-    "sentiment-analysis",
-    "multiple-choice-question-answering",
-    "topic-classification",
-    "language-detection",
-    "translation",
-    "zero-shot-react",
-]
+PromptTemplates = Literal["question-answering",]
 
 
 IMPLEMENTATION_MODULES = ["haystack.preview"]
 
 
 PREDEFINED_TEMPLATES = {
-    "question-answering": "Given the context please answer the question. Context: {{ documents }}; Question: {{ question }}; Answer:",
-    "question-generation": "Given the context please generate a question. Context: {{ documents }}; Question:",
-    "conditioned-question-generation": "Please come up with a question for the given context and the answer. Context: {{ documents }}; Answer: $answers; Question:",
-    "summarization": "Summarize this document: {{ documents }} Summary:",
-    "question-answering-check": "Does the following context contain the answer to the question? Context: {{ documents }}; Question: {{ question }}s; Please answer yes or no! Answer:",
-    "sentiment-analysis": "Please give a sentiment for this context. Answer with positive, negative or neutral. Context: {{ documents }}; Answer:",
-    "multiple-choice-question-answering": "Question:{{ question }}s ; Choose the most suitable option to answer the above question. Options: $options; Answer:",
-    "topic-classification": "Categories: {{ options }}; What category best describes: {{ documents }}; Answer:",
-    "language-detection": "Detect the language in the following context and answer with the name of the language. Context: {{ documents }}; Answer:",
-    "translation": "Translate the following context to {{ target_language }}. Context: {{ documents }}; Translation:",
-    "zero-shot-react": """
-You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions
-correctly, you have access to the following tools:
-
-{{ tool_names_with_descriptions }}
-
-To answer questions, you'll need to go through multiple steps involving step-by-step thinking and
-selecting appropriate tools and their inputs; tools will respond with observations. When you are ready
-for a final answer, respond with the `Final Answer:`
-
-Use the following format:
-
-Question: the question to be answered
-Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.
-Tool: pick one of {{ tool_names }}
-Tool Input: the input for the tool
-Observation: the tool will respond with the result
-...
-Final Answer: the final answer to the question, make it short (1-5 words)
-
-Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass
----
-
-Question: {{ question }}
-Thought: Let's think step-by-step, I first need to """,
+    "question-answering": "Given the context please answer the question. Context: {{ documents }}; Question: {{ question }}; Answer:"
 }
 
 
@@ -102,15 +56,10 @@ class Prompt:
         For example, if your prompt template expects `{{ question }}` and `{{ documents }}`, the inputs this component
         expects are `['question', 'documents']`. Inputs are automatically inferred from the template text.
 
-        Templates follow Jinja2's template syntax: see
-        [the Jinja2 documentation](https://jinja.palletsprojects.com/en/3.1.x/templates/)
-
         :param outputs: the outputs that this component will generate.
-        :param template: The template of the promptl. Must be the name of a predefined prompt template. To provide a
+        :param template: The template of the prompt. Must be the name of a predefined prompt template. To provide a
             custom template, use `custom_template`.
-        :param custom_template: A custom template of the prompt. Must follow Jinja2's template syntax, see
-            [the Jinja2 documentation](https://jinja.palletsprojects.com/en/3.1.x/templates/). To use Haystack's
-            pre-defined templates, use `template`.
+        :param custom_template: A custom template of the prompt. To use Haystack's pre-defined templates, use `template`.
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
         :param model_implementation: force a specific implementation for the model
             (see `haystack.preview.components.prompt.models`). If not given, Haystack will find an implementation for

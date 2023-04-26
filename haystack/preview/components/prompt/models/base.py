@@ -50,14 +50,14 @@ def prompt_model(class_):
     # Check for invoke()
     if not hasattr(class_, "invoke"):
         # TODO check the node signature too
-        raise PromotModelError(
+        raise PromptModelError(
             "Prompt model implementations must have an 'invoke()' method. See the docs for more information."
         )
 
     # Check for supports()
     if not hasattr(class_, "supports"):
         # TODO check the node signature too
-        raise PromotModelError(
+        raise PromptModelError(
             "Prompt model implementations  must have a 'supports()' method. See the docs for more information."
         )
 
