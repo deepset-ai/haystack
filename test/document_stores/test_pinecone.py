@@ -13,7 +13,7 @@ from haystack.errors import FilterError, PineconeDocumentStoreError
 from haystack.testing import DocumentStoreBaseTestAbstract
 
 from ..mocks import pinecone as pinecone_mock
-from ..nodes.test_retriever import MockBaseRetriever
+from ..conftest import MockBaseRetriever
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
