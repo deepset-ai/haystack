@@ -1,12 +1,9 @@
-from typing import Literal, Any, Dict, List, Optional, Iterable, Union
+from typing import Literal, Any, Dict, List, Optional, Iterable
 
 import logging
 
-import torch
-
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.memory._filters import match
-from haystack.preview.document_stores.memory._bm25 import BM25Ranking
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 
 
@@ -19,41 +16,11 @@ class MemoryDocumentStore:
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(
-        self,
-        enable_retrieve_by_embedding: bool = True,
-        enable_retrieve_by_bm25: bool = False,
-        bm25_parameters: Optional[Dict[str, Any]] = None,
-        device: Optional[Union[str, torch.device]] = None,
-        progress_bar: bool = True,
-    ):
+    def __init__(self):
         """
         Initializes the store.
-
-        :param enable_retrieve_by_embedding: whether the document store should support retrieval by embedding.
-            Defaults to True
-        :param enable_retrieve_by_bm25: whether the document store should build a BM25 index and use it for retrieval.
-            Defaults to False
-        :param bm25_parameters: If enable_retrieve_by_bm25, add here any parameters to pass to the initialization of
-            the BM25 index. Otherwise unused.
-            Parameters that can be passed here are, for example:
-                - `algorithm`: the BM25 algorithm to use (`BM25Okapi`, `BM25L` or `BM25Plus`, see
-                    [`rank_bm25` documentation](https://github.com/dorianbrown/rank_bm25))
-                - `tokenization_regex`: how to tokenize the text before ranking.
-                - any other parameter that is accepted by `rank_bm25.BM25()`, see
-                    [`rank_bm25` documentation](https://github.com/dorianbrown/rank_bm25)
-        :param device: If enable_retrieve_by_embedding, the pytorch device to use. Defaults to `cpu`.
-        :param progress_bar: enables/disables progress bars for long operations, such as retrieval.
         """
         self.storage = {}
-
-        # For BM25 retrieval
-        if enable_retrieve_by_bm25:
-            self.bm25 = BM25Ranking(progress_bar=progress_bar, **(bm25_parameters or {}))
-
-        # For embedding retrieval
-        if enable_retrieve_by_embedding:
-            self.device = torch.device(device if device else "cpu")
 
     def count_documents(self) -> int:
         """
@@ -63,74 +30,75 @@ class MemoryDocumentStore:
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
         """
-        Returns the documents that match the filters provided.
+                Returns the documents that match the filters provided.
 
-        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical operator (`"$and"`,
-        `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `$ne`, `"$in"`, `$nin`, `"$gt"`, `"$gte"`, `"$lt"`,
-        `"$lte"`) or a metadata field name.
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical operator (`"$and"`,
+                `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `$ne`, `"$in"`, `$nin`, `"$gt"`, `"$gte"`, `"$lt"`,
+                `"$lte"`) or a metadata field name.
 
-        Logical operator keys take a dictionary of metadata field names and/or logical operators as value. Metadata
-        field names take a dictionary of comparison operators as value. Comparison operator keys take a single value or
-        (in case of `"$in"`) a list of values as value. If no logical operator is provided, `"$and"` is used as default
-        operation. If no comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used
-        as default operation.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as value. Metadata
+                field names take a dictionary of comparison operators as value. Comparison operator keys take a single value or
+                (in case of `"$in"`) a list of values as value. If no logical operator is provided, `"$and"` is used as default
+                operation. If no comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used
+                as default operation.
 
-        Example:
+                Example:
 
-        ```python
-        filters = {
-            "$and": {
-                "type": {"$eq": "article"},
-                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                "rating": {"$gte": 3},
-                "$or": {
-                    "genre": {"$in": ["economy", "politics"]},
-                    "publisher": {"$eq": "nytimes"}
-                }
-            }
-        }
-        # or simpler using default operators
-        filters = {
-            "type": "article",
-            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-            "rating": {"$gte": 3},
-            "$or": {
-                "genre": ["economy", "politics"],
-                "publisher": "nytimes"
-            }
-        }
-        ```
-
-        To use the same logical operator multiple times on the same level, logical operators can take a list of
-        dictionaries as value.
-
-        Example:
-
-        ```python
-        filters = {
-            "$or": [
-                {
+                ```python
+                filters = {
                     "$and": {
-                        "Type": "News Paper",
-                        "Date": {
-                            "$lt": "2019-01-01"
-                        }
-                    }
-                },
-                {
-                    "$and": {
-                        "Type": "Blog Post",
-                        "Date": {
-                            "$gte": "2019-01-01"
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
                         }
                     }
                 }
-            ]
-        }
-        ```
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                    "rating": {"$gte": 3},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 
-        :param filters: the filters to apply to the document list.
-        :return: a list of Documents that match the given filters.
+                To use the same logical operator multiple times on the same level, logical operators can take a list of
+                dictionaries as value.
+        ,
+
+                Example:
+
+                ```python
+                filters = {
+                    "$or": [
+                        {
+                            "$and": {
+                                "Type": "News Paper",
+                                "Date": {
+                                    "$lt": "2019-01-01"
+                                }
+                            }
+                        },
+                        {
+                            "$and": {
+                                "Type": "Blog Post",
+                                "Date": {
+                                    "$gte": "2019-01-01"
+                                }
+                            }
+                        }
+                    ]
+                }
+                ```
+
+                :param filters: the filters to apply to the document list.
+                :return: a list of Documents that match the given filters.
         """
         if filters:
             return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
@@ -164,10 +132,6 @@ class MemoryDocumentStore:
                     logger.warning("ID '%s' already exists", document.id)
             self.storage[document.id] = document
 
-        # For BM25 retrieval
-        if self.bm25:
-            self.bm25.update_bm25(self.filter_documents())
-
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with matching document_ids from the document store.
@@ -179,7 +143,3 @@ class MemoryDocumentStore:
             if not doc_id in self.storage.keys():
                 raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
             del self.storage[doc_id]
-
-        # For BM25 retrieval
-        if self.bm25:
-            self.bm25.update_bm25(self.filter_documents())
