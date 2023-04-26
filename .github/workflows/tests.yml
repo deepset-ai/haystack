@@ -146,6 +146,8 @@ jobs:
           - agents
           - preview
           - prompt
+          - pipelines
+          - utils
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -240,7 +242,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preprocessing]
+        run: pip install .[elasticsearch,dev,preprocessing]
 
       - name: Run tests
         run: |
