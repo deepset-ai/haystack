@@ -56,6 +56,15 @@ class SearchEngineDocumentStoreTestAbstract:
         result = ds.get_metadata_values_by_key(key="year", query="Bar")
         assert result == [{"count": 3, "value": "2021"}]
 
+    @pytest.mark.integration
+    def test_query(self, ds, documents):
+        ds.write_documents(documents)
+
+        result = ds.query(query="foo")
+        assert len(result) == 3
+        for doc in result:
+            assert "foo" in doc.content.lower()
+
     @pytest.mark.unit
     def test_query_return_embedding_true(self, mocked_document_store):
         mocked_document_store.return_embedding = True
