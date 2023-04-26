@@ -1,9 +1,12 @@
-from typing import Literal, Any, Dict, List, Optional, Iterable
+from typing import Literal, Any, Dict, List, Optional, Iterable, Union
 
 import logging
 
+import torch
+
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.memory._filters import match
+from haystack.preview.document_stores.memory._bm25 import BM25Ranking
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 
 
@@ -16,11 +19,41 @@ class MemoryDocumentStore:
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        enable_retrieve_by_embedding: bool = True,
+        enable_retrieve_by_bm25: bool = False,
+        bm25_parameters: Optional[Dict[str, Any]] = None,
+        device: Optional[Union[str, torch.device]] = None,
+        progress_bar: bool = True,
+    ):
         """
         Initializes the store.
+
+        :param enable_retrieve_by_embedding: whether the document store should support retrieval by embedding.
+            Defaults to True
+        :param enable_retrieve_by_bm25: whether the document store should build a BM25 index and use it for retrieval.
+            Defaults to False
+        :param bm25_parameters: If enable_retrieve_by_bm25, add here any parameters to pass to the initialization of
+            the BM25 index. Otherwise unused.
+            Parameters that can be passed here are, for example:
+                - `algorithm`: the BM25 algorithm to use (`BM25Okapi`, `BM25L` or `BM25Plus`, see
+                    [`rank_bm25` documentation](https://github.com/dorianbrown/rank_bm25))
+                - `tokenization_regex`: how to tokenize the text before ranking.
+                - any other parameter that is accepted by `rank_bm25.BM25()`, see
+                    [`rank_bm25` documentation](https://github.com/dorianbrown/rank_bm25)
+        :param device: If enable_retrieve_by_embedding, the pytorch device to use. Defaults to `cpu`.
+        :param progress_bar: enables/disables progress bars for long operations, such as retrieval.
         """
         self.storage = {}
+
+        # For BM25 retrieval
+        if enable_retrieve_by_bm25:
+            self.bm25 = BM25Ranking(progress_bar=progress_bar, **(bm25_parameters or {}))
+
+        # For embedding retrieval
+        if enable_retrieve_by_embedding:
+            self.device = torch.device(device if device else "cpu")
 
     def count_documents(self) -> int:
         """
@@ -131,14 +164,22 @@ class MemoryDocumentStore:
                     logger.warning("ID '%s' already exists", document.id)
             self.storage[document.id] = document
 
+        # For BM25 retrieval
+        if self.bm25:
+            self.bm25.update_bm25(self.filter_documents())
+
     def delete_documents(self, document_ids: List[str]) -> None:
         """
-        Deletes all documents with a matching document_ids from the document store.
+        Deletes all documents with matching document_ids from the document store.
         Fails with `MissingDocumentError` if no document with this id is present in the store.
 
-        :param object_ids: the object_ids to delete
+        :param document_ids: the document_ids to delete
         """
         for doc_id in document_ids:
             if not doc_id in self.storage.keys():
                 raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
             del self.storage[doc_id]
+
+        # For BM25 retrieval
+        if self.bm25:
+            self.bm25.update_bm25(self.filter_documents())
