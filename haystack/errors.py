@@ -201,5 +201,32 @@ class HuggingFaceInferenceLimitError(HuggingFaceInferenceError):
 class HuggingFaceInferenceUnauthorizedError(HuggingFaceInferenceError):
     """Exception for issues that occur in the HuggingFace inference node due to unauthorized access"""
 
+
+class AnthropicError(NodeError):
+    """Exception for issues that occur in the Anthropic APIs"""
+
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+        self.status_code = status_code
+
+
+class AnthropicRateLimitError(AnthropicError):
+    """
+    Rate limit error for Anthropic API (status code 429)
+    See https://console.anthropic.com/docs/api/errors
+    """
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+
+
+class AnthropicUnauthorizedError(AnthropicError):
+    """
+    Unauthorized error for Anthropic API (status code 401)
+    https://console.anthropic.com/docs/api/errors
+    """
+
     def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
         super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
