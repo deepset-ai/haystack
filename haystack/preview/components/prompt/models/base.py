@@ -8,7 +8,7 @@ from canals import _find_decorated_classes
 logger = logging.getLogger(__name__)
 
 
-class PromotModelError(Exception):
+class PromptModelError(Exception):
     pass
 
 

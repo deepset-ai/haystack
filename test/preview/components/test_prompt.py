@@ -3,7 +3,7 @@ import pytest
 import haystack
 from haystack.preview.components.prompt.prompt import Prompt
 
-from haystack.preview.components.prompt.models.base import prompt_model
+from haystack.preview.components import prompt_model
 
 
 @prompt_model
