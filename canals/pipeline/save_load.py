@@ -93,7 +93,7 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
                 # Serialize the components
                 component_repr = {
                     "type": component_instance.__class__.__name__,
-                    "init_parameters": component_instance.init_parameters,  # pylint: disable=protected-access
+                    "init_parameters": component_instance.init_parameters,
                 }
                 pipeline_repr["components"][component_name] = component_repr
 
