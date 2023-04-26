@@ -1,7 +1,6 @@
+import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any, Literal
-
-from jinja2 import Template as JinjaTemplate, Environment as JinjaEnvironment, meta as JinjaMeta
 
 from haystack.preview import component
 from haystack.preview.components.prompt.models.base import get_model
@@ -120,7 +119,6 @@ class Prompt:
         :param implementation_modules: if you have external model implementations, add the module where they can be
             imported from, like `haystack.preview`.
         """
-        self.jinja_env = JinjaEnvironment()
         if template:
             self.template = PREDEFINED_TEMPLATES[template]
         elif custom_template:
@@ -135,14 +133,6 @@ class Prompt:
         self.model_implementation = model_implementation
         self.model_params = model_params
         self.implementation_modules = implementation_modules or IMPLEMENTATION_MODULES
-        self.init_parameters = {
-            "output": output,
-            "template": template,
-            "custom_template": custom_template,
-            "model_name_or_path": model_name_or_path,
-            "model_kwargs": model_params,
-            "model_implementation": model_implementation,
-        }
 
     def warm_up(self):
         if not self.model:
@@ -182,7 +172,11 @@ class Prompt:
         self.warm_up()
         if validate_inputs:
             self.validate_inputs(given_inputs=list(kwargs.keys()))
-        prompt = JinjaTemplate(self.template).render(**kwargs)
+
+        prompt = self.template
+        for placeholder in re.findall(r"\{\{\s*[a-zA-Z0-9_]*\s*\}\}", prompt):  # Note that () were removed
+            value_name = placeholder[2:-2].strip()
+            prompt.replace(placeholder, kwargs.get(value_name))
         return self.model.invoke(prompt=prompt, model_params=model_params or {})
 
     def find_inputs(self) -> List[str]:
@@ -192,8 +186,7 @@ class Prompt:
         :param template: the template this Prompt uses.
         :returns: a list of strings corresponding to the variables found in the template.
         """
-        parsed_content = self.jinja_env.parse(self.template)
-        return JinjaMeta.find_undeclared_variables(parsed_content)
+        return re.findall(r"\{\{\s*([a-zA-Z0-9_]*)\s*\}\}", self.template)
 
     def validate_inputs(self, given_inputs: List[str]) -> None:
         """
