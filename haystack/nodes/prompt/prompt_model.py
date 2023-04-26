@@ -39,7 +39,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
+        invocation_layer_class: Optional[Union[Type[PromptModelInvocationLayer], str]] = None,
         model_kwargs: Optional[Dict] = None,
     ):
         """
@@ -79,7 +79,7 @@ class PromptModel(BaseComponent):
             )
 
     def create_invocation_layer(
-        self, invocation_layer_class: Optional[Type[PromptModelInvocationLayer]]
+        self, invocation_layer_class: Optional[Union[Type[PromptModelInvocationLayer], str]]
     ) -> PromptModelInvocationLayer:
         kwargs = {
             "api_key": self.api_key,
