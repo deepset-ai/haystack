@@ -268,8 +268,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 if param in kwargs:
                     params_dict[param] = kwargs[param]
 
-        if not set(self.prompt_params).issubset(set(params_dict.keys())):
-            available_params = set(list(params_dict.keys()) + list(set(kwargs.keys())))
+        if not set(self.prompt_params).issubset(params_dict.keys()):
+            available_params = {*params_dict.keys(), *kwargs.keys()}
             provided = set(self.prompt_params).intersection(available_params)
             message = f"only {list(provided)}" if provided else "none of these parameters"
             raise ValueError(
