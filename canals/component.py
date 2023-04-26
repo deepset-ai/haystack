@@ -28,14 +28,14 @@ def save_init_parameters(init_func, serializable=True):
         args_as_kwargs = {arg_name: arg for arg, arg_name in zip(args, arg_names)}
 
         # Collect and store all the init parameters
-        self.init_parameters = {**args_as_kwargs, **kwargs}  # pylint: disable=protected-access
+        self.init_parameters = {**args_as_kwargs, **kwargs}
 
         # Call the actuall __init__ function with the arguments
-        init_func(self, **self.init_parameters)  # pylint: disable=protected-access
+        init_func(self, **self.init_parameters)
 
         # Check if the component can be saved with `save_pipelines()`
         if serializable:
-            is_serializable(self.init_parameters)  # pylint: disable=protected-access
+            is_serializable(self.init_parameters)
 
     return wrapper_save_init_parameters
 
