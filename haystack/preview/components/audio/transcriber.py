@@ -7,11 +7,11 @@ from pathlib import Path
 import requests
 import torch
 import whisper
-from generalimport import is_imported
 from tenacity import retry, wait_exponential, retry_if_not_result
 
 from haystack.preview import component, Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.preview.utils.import_utils import is_imported
 
 
 OPENAI_TIMEOUT = float(os.environ.get("HAYSTACK_OPENAI_TIMEOUT_SEC", 30))
@@ -70,14 +70,6 @@ class WhisperTranscriber:
         """
         self.inputs = [input]
         self.outputs = [output]
-        self.init_parameters = {
-            "input": input,
-            "output": output,
-            "api_key": api_key,
-            "model_name_or_path": model_name_or_path,
-            "device": device,
-        }
-
         self.api_key = api_key
         self.model_name = model_name_or_path
         self.device = device or torch.device("cpu")
