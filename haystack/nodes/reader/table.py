@@ -32,6 +32,70 @@ from haystack.modeling.utils import initialize_device_settings
 logger = logging.getLogger(__name__)
 
 
+class BaseTableProcessor:
+    def preprocess(self, docs: List[Document]):
+        return docs
+
+    def postprocess(self, answers: List[Answer], docs: List[Document]):
+        return answers
+
+
+class TableProcessor(BaseTableProcessor):
+    def __init__(self, num_rows=7, num_cols=7, num_row_fixed=0, num_col_fixed=0) -> None:
+        self.num_rows = num_rows
+        self.num_cols = num_cols
+        self.num_row_fixed = num_row_fixed
+        self.num_col_fixed = num_col_fixed
+
+    def preprocess(self, docs: List[Document]):
+        split_docs = []
+        for doc in docs:
+            table = doc.content
+            n_row, n_col = table.shape
+            for r in range(0, n_row, self.num_rows):
+                for c in range(0, n_col, self.num_cols):
+                    table_subset = table.iloc[r : r + self.num_rows, c : c + self.num_cols].reset_index(drop=True)
+                    split_docs.append(
+                        Document(
+                            content=table_subset,
+                            content_type="table",
+                            id=doc.id,
+                            meta={"row_offset": r, "col_offset": c},
+                        )
+                    )
+        return split_docs
+
+    def _remap_offset(self, answer: Answer, doc: Document):
+        # Return offset in split table document to the original parent document space
+        row_offset = doc.meta.get("row_offset", 0)
+        col_offset = doc.meta.get("col_offset", 0)
+
+        new_offsets = []
+
+        for offset in answer.offsets_in_document:
+            # TODO: Support Span in addition to TableCell; also, look at offsets_in_context
+            new_offsets.append(TableCell(row=row_offset + offset.row, col=col_offset + offset.col))
+
+        answer.offsets_in_document = new_offsets
+        return answer
+
+    def postprocess(self, answers: List[Answer], docs: List[Document]):
+        """Keep one answer per original document and adjust the offset of the answer."""
+        doc_answers = {}
+        for answer, doc in zip(answers, docs):
+            if answer is None:
+                continue
+            # Set the answer as the document id's cannonical answer
+            # if there isn't already an answer
+            # or this answer's score is greater than the current answer for the doc
+            if doc.id not in doc_answers or doc_answers[doc.id].score < answer.score:
+                answer = self._remap_offset(answer, doc)
+                answer.document_ids = [doc.id]
+                doc_answers[doc.id] = answer
+
+        return doc_answers.values()
+
+
 class TableReader(BaseReader):
     """
     Transformer-based model for extractive Question Answering on Tables with TaPas
@@ -72,6 +136,7 @@ class TableReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
         return_table_cell: bool = False,
+        table_processor: BaseTableProcessor = None,
     ):
         """
         Load a TableQA model from Transformers.
@@ -138,6 +203,8 @@ class TableReader(BaseReader):
                 self.devices[0],
             )
 
+        # Default to the BaseTableProcessor which is No-Op
+        table_processor = BaseTableProcessor() if table_processor is None else table_processor
         config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.table_encoder: Union[_TapasEncoder, _TapasScoredEncoder]
         if config.architectures[0] == "TapasForQuestionAnswering":
@@ -149,6 +216,7 @@ class TableReader(BaseReader):
                 max_seq_len=max_seq_len,
                 use_auth_token=use_auth_token,
                 return_table_cell=return_table_cell,
+                table_processor=table_processor,
             )
         elif config.architectures[0] == "TapasForScoredQA":
             self.table_encoder = _TapasScoredEncoder(
@@ -161,6 +229,7 @@ class TableReader(BaseReader):
                 max_seq_len=max_seq_len,
                 use_auth_token=use_auth_token,
                 return_table_cell=return_table_cell,
+                table_processor=table_processor,
             )
         else:
             logger.error(
@@ -256,6 +325,7 @@ class _TapasEncoder:
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
         return_table_cell: bool = False,
+        table_processor: BaseTableProcessor = None,
     ):
         self.model = TapasForQuestionAnswering.from_pretrained(
             model_name_or_path, revision=model_version, use_auth_token=use_auth_token
@@ -279,15 +349,18 @@ class _TapasEncoder:
             device=self.device,
             return_table_cell=return_table_cell,
         )
+        self.table_processor = table_processor
 
     def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
         table_documents = _check_documents(documents)
         if len(table_documents) == 0:
             return {"query": query, "answers": []}
 
+        table_documents_processed = self.table_processor.preprocess(table_documents)
+
         # Create list of all data points
         pipeline_inputs = []
-        for document in table_documents:
+        for document in table_documents_processed:
             table: pd.DataFrame = document.content
             pipeline_inputs.append({"query": query, "table": table.astype(str)})
 
@@ -297,12 +370,14 @@ class _TapasEncoder:
         # Unpack batched answers
         if isinstance(answers[0], list):
             answers = list(itertools.chain.from_iterable(answers))
-        for ans, doc in zip(answers, table_documents):
-            if ans is not None:
-                ans.document_ids = [doc.id]
+        # for ans, doc in zip(answers, table_documents_processed):
+        # if ans is not None:
+        # ans.document_ids = [doc.id]
 
         # Remove no_answers from the answers list
-        answers = [ans for ans in answers if ans is not None]
+        # answers = [ans for ans in answers if ans is not None]
+
+        answers = self.table_processor.postprocess(answers, table_documents_processed)
 
         answers = sorted(answers, reverse=True)
         results = {"query": query, "answers": answers[:top_k]}
@@ -472,6 +547,7 @@ class _TapasScoredEncoder:
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
         return_table_cell: bool = False,
+        table_processor: BaseTableProcessor = None,
     ):
         self.model = self._TapasForScoredQA.from_pretrained(
             model_name_or_path, revision=model_version, use_auth_token=use_auth_token
@@ -485,6 +561,7 @@ class _TapasScoredEncoder:
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answer = return_no_answer
         self.return_table_cell = return_table_cell
+        self.table_processor = table_processor
 
     def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
         orig_table: pd.DataFrame = document.content
