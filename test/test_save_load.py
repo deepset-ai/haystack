@@ -40,13 +40,13 @@ def test_marshal():
                 "components": {
                     "first_addition": {
                         "type": "AddValue",
-                        "init_parameters": {"add": 1, "input": "value", "output": "value"},
+                        "init_parameters": {"add": 1},
                         "run_parameters": {"add": 6},
                     },
-                    "double": {"type": "Double", "init_parameters": {"input": "value", "output": "value"}},
+                    "double": {"type": "Double", "init_parameters": {"input": "value"}},
                     "second_addition": {
                         "type": "AddValue",
-                        "init_parameters": {"add": 1, "input": "value", "output": "value"},
+                        "init_parameters": {"add": 1},
                     },
                     "third_addition": {"refer_to": "pipe1.first_addition"},
                 },
@@ -61,7 +61,7 @@ def test_marshal():
                 "max_loops_allowed": 100,
                 "components": {
                     "first_addition": {"refer_to": "pipe1.first_addition", "run_parameters": {"add": 4}},
-                    "double": {"type": "Double", "init_parameters": {"input": "value", "output": "value"}},
+                    "double": {"type": "Double", "init_parameters": {"input": "value"}},
                     "second_addition": {"refer_to": "pipe1.second_addition"},
                 },
                 "connections": [

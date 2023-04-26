@@ -15,7 +15,7 @@ class Sum:
         :param inputs: list of connections to sum.
         :param output: name of the output connection.
         """
-        self.init_parameters = {"inputs": inputs, "output": output}
+        # self.init_parameters = {"inputs": inputs, "output": output}
         self.inputs = inputs
         self.outputs = [output]
 
@@ -32,7 +32,7 @@ def test_sum_default():
     component = Sum()
     results = component.run(name="test_component", data=[("value", 10)], parameters={})
     assert results == ({"sum": 10}, {})
-    assert component.init_parameters == {"inputs": ["value"], "output": "sum"}
+    assert component.init_parameters == {}
 
 
 def test_sum_init_params():

@@ -17,7 +17,7 @@ class Rename:
 
     def __init__(self, input: str, output: str):
         # Contract
-        self.init_parameters = {"input": input, "output": output}
+        # self.init_parameters = {"input": input, "output": output}
         self.inputs = [input]
         self.outputs = [output]
 

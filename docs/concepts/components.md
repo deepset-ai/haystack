@@ -23,9 +23,18 @@ In their `__init__`, Components must define:
     A list with the connections they might possibly produce as output
 
 - `self.init_parameters = {<init parameters>}`:
-    Any state they wish to be persisted when they are marshalled.
+    Any state they wish to be persisted when they are saved.
     These values will be given to the `__init__` method of a new instance
-    when the pipeline is unmarshalled.
+    when the pipeline is loaded.
+    The `@component` decorator saves the arguments automatically.
+    Components can assume that the dictionary exists and can alter its content
+    in the `__init__` method if needed.
+
+Note that components should take only "basic" Python types as parameters of their
+`__init__` function, or iterables and dictionaries containing only such values.
+Anything else (objects, functions, etc) will raise an exception at init time.
+
+_(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
 
 If components want to let users customize their input and output connections (be it
 the connection name, the connection count, etc...) they should provide properly

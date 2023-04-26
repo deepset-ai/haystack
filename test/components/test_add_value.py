@@ -16,8 +16,6 @@ class AddValue:
         :param output: name of the output connection
         """
         self.add = add
-
-        self.init_parameters = {"add": add, "input": input, "output": output}
         self.inputs = [input]
         self.outputs = [output]
 
@@ -31,7 +29,7 @@ def test_addvalue_default():
     component = AddValue()
     results = component.run(name="test_component", data=[("value", 10)], parameters={})
     assert results == ({"value": 11}, {})
-    assert component.init_parameters == {"add": 1, "input": "value", "output": "value"}
+    assert component.init_parameters == {}
 
 
 def test_addvalue_init_params():

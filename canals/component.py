@@ -1,4 +1,8 @@
+from typing import Iterable
+
 import logging
+import inspect
+from functools import partial, wraps
 
 
 logger = logging.getLogger(__name__)
@@ -8,10 +12,58 @@ class ComponentError(Exception):
     pass
 
 
-def component(class_):
+def save_init_parameters(init_func, serializable=True):
     """
-    Marks a class as a component. Any class decorated with `@component`
-    can be picked up by a Pipeline, serialized, deserialized, etc.
+    Decorator that saves the init parameters of a component in a dictionary.
+    """
+
+    @wraps(init_func)
+    def wrapper_save_init_parameters(self, *args, **kwargs):
+
+        # Convert all args into kwargs
+        sig = inspect.signature(init_func)
+        arg_names = list(sig.parameters.keys())
+        if any(arg_names) and arg_names[0] in ["self", "cls"]:
+            arg_names.pop(0)
+        args_as_kwargs = {arg_name: arg for arg, arg_name in zip(args, arg_names)}
+
+        # Collect and store all the init parameters
+        self.init_parameters = {**args_as_kwargs, **kwargs}  # pylint: disable=protected-access
+
+        # Call the actuall __init__ function with the arguments
+        init_func(self, **self.init_parameters)  # pylint: disable=protected-access
+
+        # Check if the component can be saved with `save_pipelines()`
+        if serializable:
+            is_serializable(self.init_parameters)  # pylint: disable=protected-access
+
+    return wrapper_save_init_parameters
+
+
+def is_serializable(value):
+    """
+    Checks that the value given can be saved to disk with a writer like `json.dump`.
+    Very conservative check.
+    """
+    if isinstance(value, (bool, int, float, str)):
+        return
+    if isinstance(value, dict):
+        for val in value.values():
+            is_serializable(val)
+    elif isinstance(value, Iterable):
+        for val in value:
+            is_serializable(val)
+    else:
+        raise ComponentError(
+            f"'{value}' is not a bool, int, float, str, None, dict or iterable. "
+            "It can't be passed to the `__init__()` method of a component."
+        )
+
+
+def component(class_, serializable=True):
+    """
+    Marks a class as a component.
+    Any class decorated with `@component` can be used by a Pipeline.
 
     All components MUST follow the contract below.
     This docstring is the source of truth for components contract.
@@ -30,9 +82,19 @@ def component(class_):
         A list with the connections they might possibly produce as output
 
     - `self.init_parameters = {<init parameters>}`:
-        Any state they wish to be persisted when they are marshalled.
+        Any state they wish to be persisted when they are saved.
         These values will be given to the `__init__` method of a new instance
-        when the pipeline is unmarshalled.
+        when the pipeline is loaded.
+        Note that by default the `@component` decorator saves the arguments
+        automatically. Components can assume that the dictionary exists and
+        can alter its content in the `__init__` method if needed.
+
+    Components should take only "basic" Python types as parameters of their
+    `__init__` function, or iterables and dictionaries containing only such values.
+    Anything else (objects, functions, etc) will raise an exception at init time.
+
+    _(TODO explain how to use classes and functions in init. In the meantime see
+    `test/components/test_accumulate.py`)_
 
     If components want to let users customize their input and output connections (be it
     the connection name, the connection count, etc...) they should provide properly
@@ -131,6 +193,8 @@ def component(class_):
 
     Args:
         class_: the class that Canals should use as a component.
+        serializable: whether to check, at init time, if the component can be saved with
+        `save_pipelines()`.
 
     Returns:
         A class that can be recognized by Canals as a component.
@@ -149,4 +213,16 @@ def component(class_):
         # TODO check the component signature too
         raise ComponentError("Components must have a 'run()' method. See the docs for more information.")
 
+    # Check for __init__()
+    if not hasattr(class_, "__init__"):
+        # TODO check the component signature too
+        raise ComponentError("Components must have a '__init__()' method. See the docs for more information.")
+
+    # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
+    # See `save_init_parameters()`.
+    class_.__init__ = save_init_parameters(class_.__init__, serializable=serializable)
+
     return class_
+
+
+non_serializable_component = partial(component, serializable=False)

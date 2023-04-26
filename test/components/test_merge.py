@@ -20,10 +20,6 @@ class Merge:
         :param output: the name of the output connection.
         """
         self.output = output
-        self.init_parameters = {
-            "inputs": inputs,
-            "output": output,
-        }
         self.inputs = inputs
         self.outputs = [output]
 
@@ -37,10 +33,7 @@ def test_merge_default():
     component = Merge()
     results = component.run(name="test_component", data=[("value", 5)], parameters={})
     assert results == ({"value": 5}, {})
-    assert component.init_parameters == {
-        "inputs": ["value"],
-        "output": "value",
-    }
+    assert component.init_parameters == {}
 
 
 def test_merge_init_parameters():

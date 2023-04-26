@@ -16,7 +16,7 @@ class Subtract:
         :param second_input: name of the connection carrying the value to subtract.
         :param output: name of the output connection.
         """
-        self.init_parameters = {"first_input": first_input, "second_input": second_input, "output": output}
+        # self.init_parameters = {"first_input": first_input, "second_input": second_input, "output": output}
         self.inputs = [first_input, second_input]
         self.outputs = [output]
 

@@ -14,7 +14,6 @@ class Double:
         :param input: the name of the input.
         :param output: the name of the output.
         """
-        self.init_parameters = {"input": input, "output": output}
         self.inputs = [input]
         self.outputs = [output]
 
@@ -29,7 +28,7 @@ def test_double_default():
     component = Double()
     results = component.run(name="test_component", data=[("value", 10)], parameters={})
     assert results == ({"value": 20}, {})
-    assert component.init_parameters == {"input": "value", "output": "value"}
+    assert component.init_parameters == {}
 
 
 def test_double_init_params():

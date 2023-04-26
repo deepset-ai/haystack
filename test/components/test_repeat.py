@@ -16,10 +16,6 @@ class Repeat:
     """
 
     def __init__(self, input: str = "value", outputs: Set[str] = {"first", "second"}):
-        self.init_parameters = {
-            "input": input,
-            "outputs": outputs,
-        }
         self.inputs = [input]
         self.outputs = outputs
 
@@ -31,7 +27,7 @@ def test_repeat_default():
     component = Repeat()
     results = component.run(name="test_component", data=[("value", 10)], parameters={})
     assert results == ({"first": 10, "second": 10}, {})
-    assert component.init_parameters == {"input": "value", "outputs": {"first", "second"}}
+    assert component.init_parameters == {}
 
 
 def test_repeat_init_params():

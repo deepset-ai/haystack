@@ -3,7 +3,7 @@ import sys
 import builtins
 from importlib import import_module
 
-from canals import component
+from canals import component  # , non_serializable_component
 
 
 @component
@@ -32,10 +32,10 @@ class Accumulate:
         else:
             self.function = self._load_function(function)
 
-        self.init_parameters = {
-            "connection": connection,
-            "function": self._save_function(function) if function else None,
-        }
+        # 'function' is not serializable normally, so we serialize it manually.
+        if "function" in self.init_parameters.keys():  # type: ignore
+            self.init_parameters["function"] = self._save_function(self.init_parameters["function"])  # type: ignore
+
         self.inputs = [connection]
         self.outputs = [connection]
 
@@ -78,7 +78,7 @@ def test_accumulate_default():
     results = component.run(name="test_component", data=[("test", 10)], parameters={})
     assert results == ({"test": 10}, {})
     assert component.state == 10
-    assert component.init_parameters == {"connection": "test", "function": None}
+    assert component.init_parameters == {"connection": "test"}
 
 
 def my_subtract(first, second):

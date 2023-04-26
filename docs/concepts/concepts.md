@@ -41,7 +41,7 @@ class Sum:
         # self.inputs and self.outputs are required by Canals
         self.inputs = input_names
         self.outputs = [output_name]
-        self.init_parameters = {"input_names": input_names, "output_name": output_name}
+        # self.init_parameters = {"input_names": input_names, "output_name": output_name}
 
     # The signature of the run() method must be exactly this.
     def run(

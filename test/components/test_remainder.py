@@ -30,7 +30,6 @@ class Remainder:
             outputs = [str(remainder) for remainder in range(divisor)]
         self.divisor = divisor
 
-        self.init_parameters = {"divisor": divisor, "input": input, "outputs": outputs}
         self.inputs = [input]
         self.outputs = outputs
 
@@ -46,7 +45,7 @@ def test_remainder_default():
 
     results = component.run(name="test_component", data=[("value", 11)], parameters={})
     assert results == ({"1": 11}, {})
-    assert component.init_parameters == {"divisor": 2, "input": "value", "outputs": ["0", "1"]}
+    assert component.init_parameters == {}
 
 
 def test_remainder_default_output_for_divisor():
@@ -56,7 +55,7 @@ def test_remainder_default_output_for_divisor():
 
     results = component.run(name="test_component", data=[("value", 13)], parameters={})
     assert results == ({"3": 13}, {})
-    assert component.init_parameters == {"divisor": 5, "input": "value", "outputs": ["0", "1", "2", "3", "4"]}
+    assert component.init_parameters == {"divisor": 5}
 
 
 def test_remainder_init_params():

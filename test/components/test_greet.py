@@ -21,7 +21,6 @@ class Greet:
         """
         self.message = message
 
-        self.init_parameters = {"connection": connection, "message": message}
         self.inputs = [connection]
         self.outputs = [connection]
 
@@ -37,7 +36,7 @@ def test_greet_default(caplog):
     results = component.run(name="test_component", data=[("value", 10)], parameters={})
     assert results == ({"value": 10}, {})
     assert "Greeting component says: Hi!" in caplog.text
-    assert component.init_parameters == {"connection": "value", "message": "\nGreeting component says: Hi!\n"}
+    assert component.init_parameters == {}
 
 
 def test_greet_init_params(caplog):

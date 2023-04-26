@@ -27,12 +27,6 @@ class Below:
         self.output_above = output_above
         self.output_below = output_below
 
-        self.init_parameters = {
-            "threshold": threshold,
-            "input": input,
-            "output_above": output_above,
-            "output_below": output_below,
-        }
         self.inputs = [input]
         self.outputs = [output_above, output_below]
 
@@ -52,12 +46,7 @@ def test_below_default():
     results = component.run(name="test_component", data=[("value", 15)], parameters={})
     assert results == ({"above": 15}, {})
 
-    assert component.init_parameters == {
-        "threshold": 10,
-        "input": "value",
-        "output_above": "above",
-        "output_below": "below",
-    }
+    assert component.init_parameters == {"threshold": 10}
 
 
 def test_below_init_parameters():
