@@ -90,6 +90,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 "device_map",
                 "generation_kwargs",
                 "model_max_length",
+                "stream",
+                "stream_handler",
             ]
             if key in kwargs
         }
@@ -97,6 +99,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if "model_kwargs" in model_input_kwargs:
             mkwargs = model_input_kwargs.pop("model_kwargs")
             model_input_kwargs.update(mkwargs)
+
+        # save stream settings and stream_handler for pipeline invocation
+        self.stream_handler = model_input_kwargs.pop("stream_handler", None)
+        self.stream = model_input_kwargs.pop("stream", False)
 
         # save generation_kwargs for pipeline invocation
         self.generation_kwargs = model_input_kwargs.pop("generation_kwargs", {})
@@ -165,7 +171,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         stop_words = kwargs.pop("stop_words", None)
         top_k = kwargs.pop("top_k", None)
         # either stream is True (will use default handler) or stream_handler is provided for custom handler
-        stream = kwargs.get("stream", False) or kwargs.get("stream_handler", None) is not None
+        stream = kwargs.get("stream", self.stream) or kwargs.get("stream_handler", self.stream_handler) is not None
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
