@@ -274,7 +274,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             message = f"only {list(provided)}" if provided else "none of these parameters"
             raise ValueError(
                 f"Expected prompt parameters {self.prompt_params} to be provided but got "
-                f"{message}. Please make sure to provide all template parameters."
+                f"{message}. Make sure to provide all template parameters."
             )
 
         template_dict = {"_at_least_one_prompt": True}
