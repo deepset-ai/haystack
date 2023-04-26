@@ -242,7 +242,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preprocessing]
+        run: pip install .[elasticsearch,dev,preprocessing]
 
       - name: Run tests
         run: |
