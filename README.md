@@ -102,14 +102,42 @@ This command installs everything needed for basic Pipelines that use an Elastics
 
 **Full Installation**
 
-To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the latest version of Haystack and all its dependencies from the main branch:
+To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the [latest release](https://github.com/deepset-ai/haystack/releases) of Haystack and all its dependencies:
 
-```
+```bash
 pip install --upgrade pip
 pip install 'farm-haystack[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
-**Installing the REST API** Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
+If you want to try out the newest features that are not in an official release yet, you can install Haystack from the main branch. The following command installs from `main` branch with `dev` dependencies:
+
+```
+pip install git+https://github.com/deepset-ai/haystack.git@main#egg=farm-haystack[dev]
+```
+
+To be able to make changes to Haystack code, install with the following commands:
+
+```bash
+# Clone the repo
+git clone https://github.com/deepset-ai/haystack.git
+
+# Move into the cloned folder
+cd haystack
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install Haystack in editable mode
+pip install -e '.[all]'
+```
+
+If you want to contribute to the Haystack repo, check our [Contributor Guidelines](#💙-contributing) first.
+
+See the list of [dependencies](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml) to check which ones you want to install (for example, `[all]`, `[dev]`, or other).
+
+**Installing the REST API** 
+
+Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
 
 ```
 pip install rest_api/
