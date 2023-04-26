@@ -346,6 +346,8 @@ class Seq2SeqGenerator(BaseGenerator):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
+        `This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `Seq2SeqGenerator`.
+
         :param model_name_or_path: A Hugging Face model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5, and so on.
         :param input_converter: An optional callable to prepare model input for the underlying language model
                                 specified in the `model_name_or_path` parameter. The required `__call__` method signature for
