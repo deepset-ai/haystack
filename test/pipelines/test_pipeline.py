@@ -2074,3 +2074,16 @@ def test_update_config_hash():
         assert test_pipeline.config_hash == None
         test_pipeline.update_config_hash()
         assert test_pipeline.config_hash == "a30d3273de0d70e63e8cd91d915255b3"
+
+
+@pytest.mark.unit
+def test_load_from_config_w_param_that_equals_component_name():
+    config = {
+        "version": "ignore",
+        "components": [{"name": "node", "type": "InMemoryDocumentStore", "params": {"index": "node"}}],
+        "pipelines": [{"name": "indexing", "nodes": [{"name": "node", "inputs": ["File"]}]}],
+    }
+
+    pipeline = Pipeline.load_from_config(pipeline_config=config)
+    assert pipeline.components["node"].name == "node"
+    assert pipeline.components["node"].index == "node"
