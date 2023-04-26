@@ -52,7 +52,7 @@ Use the following format:
 
 Question: the question to be answered
 Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.
-Tool: pick one of $tool_names
+Tool: pick one of {{ tool_names }}
 Tool Input: the input for the tool
 Observation: the tool will respond with the result
 ...
