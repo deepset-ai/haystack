@@ -8,7 +8,7 @@ from generalimport import FakeModule, MissingOptionalDependency
 
 
 #
-# TEMPORARY: remove once generalimport>0.3.1 is released
+# TEMPORARY: remove once generalimport>0.3.1 is released (https://github.com/ManderaGeneral/generalimport/pull/25)
 #
 def is_imported(module_name: str) -> bool:
     """
