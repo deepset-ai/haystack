@@ -146,6 +146,8 @@ jobs:
           - agents
           - preview
           - prompt
+          - pipelines
+          - utils
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
