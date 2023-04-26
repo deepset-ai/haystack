@@ -1,11 +1,12 @@
 import logging
 
 import pandas as pd
-import torch
 import pytest
 
-from haystack.schema import Document, Answer
+from haystack.schema import Document, Answer, Span, TableCell
 from haystack.pipelines.base import Pipeline
+
+from haystack.nodes.reader.table import _calculate_answer_offsets_span, _calculate_answer_offsets
 
 
 @pytest.fixture
@@ -39,6 +40,18 @@ def table_doc3():
     return Document(content=pd.DataFrame(data), content_type="table", id="doc3")
 
 
+@pytest.mark.unit
+def test_calculate_answer_offsets_span(table_doc1):
+    offsets_span = _calculate_answer_offsets_span(answer_coordinates=[(0, 1), (1, 3)], table=table_doc1.content)
+    assert offsets_span == [Span(start=1, end=2), Span(start=7, end=8)]
+
+
+@pytest.mark.unit
+def test_calculate_answer_offsets_table_cell(table_doc1):
+    offsets_span = _calculate_answer_offsets(answer_coordinates=[(0, 1), (1, 3)])
+    assert offsets_span == [TableCell(row=0, col=1), TableCell(row=1, col=3)]
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader(table_reader_and_param, table_doc1, table_doc2):
@@ -57,20 +70,20 @@ def test_table_reader(table_reader_and_param, table_doc1, table_doc2):
     reference1 = {"tapas_small": {"score": 1.0}, "rci": {"score": -6.5301}, "tapas_scored": {"score": 0.50568}}
     assert prediction["answers"][0].score == pytest.approx(reference1[param]["score"], rel=1e-3)
     assert prediction["answers"][0].answer == "11 november 1974"
-    assert prediction["answers"][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].offsets_in_context[0].row == 1
+    assert prediction["answers"][0].offsets_in_context[0].col == 3
     assert prediction["answers"][0].document_ids == ["doc1"]
 
     # Check the second answer in the list
     reference2 = {
-        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314, "doc_id": ["doc2"]},
-        "rci": {"answer": "47", "start": 5, "end": 6, "score": -6.836, "doc_id": ["doc1"]},
-        "tapas_scored": {"answer": "brad pitt", "start": 0, "end": 1, "score": 0.49078, "doc_id": ["doc1"]},
+        "tapas_small": {"answer": "5 april 1980", "row": 1, "col": 3, "score": 0.86314, "doc_id": ["doc2"]},
+        "rci": {"answer": "47", "row": 1, "col": 1, "score": -6.836, "doc_id": ["doc1"]},
+        "tapas_scored": {"answer": "brad pitt", "row": 0, "col": 0, "score": 0.49078, "doc_id": ["doc1"]},
     }
     assert prediction["answers"][1].score == pytest.approx(reference2[param]["score"], rel=1e-3)
     assert prediction["answers"][1].answer == reference2[param]["answer"]
-    assert prediction["answers"][1].offsets_in_context[0].start == reference2[param]["start"]
-    assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
+    assert prediction["answers"][1].offsets_in_context[0].row == reference2[param]["row"]
+    assert prediction["answers"][1].offsets_in_context[0].col == reference2[param]["col"]
     assert prediction["answers"][1].document_ids == reference2[param]["doc_id"]
 
 
@@ -100,20 +113,20 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     score_reference = {"tapas_small": {"score": 1.0}, "rci": {"score": -6.5301}, "tapas_scored": {"score": 0.50568}}
     assert prediction["answers"][0][0].score == pytest.approx(score_reference[param]["score"], rel=1e-3)
     assert prediction["answers"][0][0].answer == "11 november 1974"
-    assert prediction["answers"][0][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0][0].offsets_in_context[0].row == 1
+    assert prediction["answers"][0][0].offsets_in_context[0].col == 3
     assert prediction["answers"][0][0].document_ids == ["doc1"]
 
     # Check first answer from the 2ND Document
     ans_reference = {
-        "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314, "doc_id": ["doc2"]},
-        "rci": {"answer": "15 september 1960", "start": 11, "end": 12, "score": -7.9429, "doc_id": ["doc2"]},
-        "tapas_scored": {"answer": "5", "start": 10, "end": 11, "score": 0.11485, "doc_id": ["doc2"]},
+        "tapas_small": {"answer": "5 april 1980", "row": 1, "col": 3, "score": 0.86314, "doc_id": ["doc2"]},
+        "rci": {"answer": "15 september 1960", "row": 2, "col": 3, "score": -7.9429, "doc_id": ["doc2"]},
+        "tapas_scored": {"answer": "5", "row": 2, "col": 2, "score": 0.11485, "doc_id": ["doc2"]},
     }
     assert prediction["answers"][1][0].score == pytest.approx(ans_reference[param]["score"], rel=1e-3)
     assert prediction["answers"][1][0].answer == ans_reference[param]["answer"]
-    assert prediction["answers"][1][0].offsets_in_context[0].start == ans_reference[param]["start"]
-    assert prediction["answers"][1][0].offsets_in_context[0].end == ans_reference[param]["end"]
+    assert prediction["answers"][1][0].offsets_in_context[0].row == ans_reference[param]["row"]
+    assert prediction["answers"][1][0].offsets_in_context[0].col == ans_reference[param]["col"]
     assert prediction["answers"][1][0].document_ids == ans_reference[param]["doc_id"]
 
 
@@ -207,8 +220,8 @@ def test_table_reader_in_pipeline(table_reader_and_param, table_doc1):
 
     prediction = pipeline.run(query=query, documents=[table_doc1])
     assert prediction["answers"][0].answer == "11 november 1974"
-    assert prediction["answers"][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].offsets_in_context[0].row == 1
+    assert prediction["answers"][0].offsets_in_context[0].col == 3
     assert prediction["answers"][0].document_ids == ["doc1"]
 
 
