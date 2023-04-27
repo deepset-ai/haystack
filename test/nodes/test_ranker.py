@@ -227,9 +227,9 @@ def test_ranker_returns_raw_score_for_two_logits(ranker_two_logits):
     assert math.isclose(precomputed_score, score, rel_tol=0.001)
 
 
-def test_predict_batch_wrong_number_of_docs(ranker):
-    docs = [Document(content=f"test {number}") for number in range(100)]
+def test_predict_batch_returns_correct_number_of_docs(ranker):
+    docs = [Document(content=f"test {number}") for number in range(5)]
 
-    assert len(ranker.predict("where is test 3?", docs, top_k=50)) == 50
+    assert len(ranker.predict("where is test 3?", docs, top_k=4)) == 4
 
-    assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=32, top_k=50)) == 50
+    assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=2, top_k=4)) == 4
