@@ -199,6 +199,7 @@ dev = [
   "typing_extensions; python_version < '3.8'",
   # Test
   "pytest",
+  "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
   "responses",
