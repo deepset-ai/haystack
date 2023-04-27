@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, GenerationConfig
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
+from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
 
 
 def skip_test_for_invalid_key(prompt_model):
@@ -339,6 +340,17 @@ def test_prompt_node_streaming_handler_on_call(mock_model):
     # Verify model has been constructed with expected model_kwargs
     mock_model.invoke.assert_called_once()
     assert mock_model.invoke.call_args_list[0].kwargs["stream_handler"] == mock_handler
+
+
+@pytest.mark.integration
+def test_prompt_node_hf_model_streaming():
+    # tests that the streaming handler is passed to the model as "streamer" kwarg with the expected type
+    pn = PromptNode(model_kwargs={"stream_handler": Mock()})
+    with patch.object(pn.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        pn("Irrelevant prompt")
+        args, kwargs = mock_call.call_args
+        assert "streamer" in args[2]
+        assert isinstance(args[2]["streamer"], HFTokenStreamingHandler)
 
 
 @pytest.mark.unit
