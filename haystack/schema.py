@@ -423,7 +423,7 @@ class Answer:
         return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
-    def from_dict(cls, dict: "dict") -> Answer:
+    def from_dict(cls, dict: Dict) -> Answer:
         # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
         if "document_id" in dict:
             dict = dict.copy()
@@ -569,12 +569,12 @@ class Label:
         return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
-    def from_dict(cls, dict: "dict"):
+    def from_dict(cls, dict: Dict):
         answer = dict.get("answer")
         if answer and isinstance(answer, builtins.dict):
             dict["answer"] = Answer.from_dict(dict["answer"])
         doc = dict.get("document")
-        if doc and isinstance(doc, builtins.dict):
+        if isinstance(doc, builtins.dict):
             dict["document"] = Document.from_dict(dict["document"])
         return cls(**dict)
 
@@ -750,7 +750,7 @@ class MultiLabel:
         return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
-    def from_dict(cls, dict: "dict"):
+    def from_dict(cls, dict: Dict):
         # exclude extra arguments
         return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
@@ -776,7 +776,7 @@ class MultiLabel:
         return f"<MultiLabel: {self.to_dict()}>"
 
 
-def _pydantic_dataclass_from_dict(dict: "dict", pydantic_dataclass_type) -> Any:
+def _pydantic_dataclass_from_dict(dict: Dict, pydantic_dataclass_type) -> Any:
     """
     Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
     This allows simple de-serialization of pydantic dataclasses from json.
