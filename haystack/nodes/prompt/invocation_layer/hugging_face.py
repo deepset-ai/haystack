@@ -2,7 +2,6 @@ from typing import Optional, Union, List, Dict
 import logging
 
 import torch
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, HFTokenStreamingHandler
 
 from transformers import (
     pipeline,
@@ -16,6 +15,7 @@ from transformers.pipelines import get_task
 
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, HFTokenStreamingHandler
 
 logger = logging.getLogger(__name__)
 
