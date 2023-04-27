@@ -2,7 +2,6 @@ from __future__ import annotations
 import csv
 import hashlib
 import inspect
-import builtins
 
 from typing import Any, Optional, Dict, List, Union
 
@@ -571,10 +570,10 @@ class Label:
     @classmethod
     def from_dict(cls, dict: Dict):
         answer = dict.get("answer")
-        if answer and isinstance(answer, builtins.dict):
+        if answer and isinstance(answer, Dict):
             dict["answer"] = Answer.from_dict(dict["answer"])
         doc = dict.get("document")
-        if isinstance(doc, builtins.dict):
+        if isinstance(doc, Dict):
             dict["document"] = Document.from_dict(dict["document"])
         return cls(**dict)
 
