@@ -32,7 +32,3 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         """
         for doc_id in ids:
             del docstore.storage[doc_id]
-
-    #
-    # Test retrieval
-    #
