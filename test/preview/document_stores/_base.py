@@ -134,12 +134,6 @@ class DocumentStoreBaseTests:
         result = docstore.filter_documents(filters={"page": "100"})
         assert all(doc.metadata["page"] == "100" for doc in result)
 
-    def test_eq_filter_date(self, docstore, filterable_docs):
-        self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"content": pd.DataFrame([1])})
-        assert len(result) > 0
-        assert all(doc.content.equals(pd.DataFrame([1])) for doc in result)
-
     def test_eq_filter_table(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": pd.DataFrame([1])})
