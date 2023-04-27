@@ -211,7 +211,8 @@ def match(conditions: Any, document: Document, _current_key=None):
             return OPERATORS[field_key](fields=document.metadata, field_name=_current_key, value=field_value)
 
         # Otherwise fall back to the defaults
-        return match(conditions=_list_conditions(field_value), document=document, _current_key=field_key)
+        conditions = _list_conditions(field_value)
+        _current_key = field_key
 
     # Defaults for implicit filters
     if isinstance(conditions, list):
