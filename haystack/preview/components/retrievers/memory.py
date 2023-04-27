@@ -18,26 +18,44 @@ RetrievalMethod = Literal["bm25"]
 
 @component
 class MemoryRetriever:
+    """
+    Retrieves documents from a MemoryDocumentStore.
+
+    Supports BM25 Retrieval.
+    """
+
     def __init__(
         self,
         input: str = "queries",
         output: str = "documents",
+        document_store: str = "document_store",
         retrieve_by: RetrievalMethod = "bm25",
-        default_top_k: int = 5,
-        default_filters: Optional[Dict[str, Any]] = None,
     ):
         self.inputs = [input]
         self.outputs = [output]
+        self.document_store = document_store
         self.retrieve_by = retrieve_by
-        self.top_k = default_top_k
-        self.filters = default_filters
 
     def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]):
+        """
+        Performs the retrieval.
+
+        It expects the following parameters:
+        - the value of `self.document_store`: this entry should contain a `MemoryDocumentStore` instance. Attach such
+            instance to the pipeline with `add_store` to make this happen automatically.
+        - `retrieve_by`: to specify the retrieval method, by default `bm25`.
+        - Any parameter that can be passed to `MemoryRetriever.retrieve_by_bm25()` except for `docstore` and `query`,
+            like `filters`, `top_k`, `scale_score`, and so on. See `MemoryRetriever.retrieve_by_bm25()`.
+        """
         params = parameters.get(name, {})
 
-        docstore = params.pop("document_store", None)
+        for key in params.keys():
+            if key not in [self.document_store, "retrieve_by", "bm25_parameters"]:
+                logger.warning(f"MemoryRetriever received an unexpected parameter: '{key}'. It will be ignored.")
+
+        docstore = params.pop(self.document_store, None)
         if not docstore or not isinstance(docstore, MemoryDocumentStore):
-            raise ValueError("MemoryRetriever needs a MemoryDocumentStore")
+            raise ValueError("MemoryRetriever needs a MemoryDocumentStore. Add one to the Pipeline.")
 
         queries = [value for key, value in data if key == self.inputs[0]]
 
@@ -74,10 +92,8 @@ class MemoryRetriever:
         :param filters: perform retrieval only on the subset defined by this filter
         :param top_k: how many hits to return. Note that it might return less than top_k if the store
             contains less than top_k documents, or the filters returnes less than top_k documents.
-
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
         :param progress_bar: enables/disables progress bars for long operations.
-
         :param tokenization_regex: how to tokenize the text before ranking by BM25.
         :param algorithm: the BM25 algorithm to use (`BM25Okapi`, `BM25L` or `BM25Plus`, see
             [`rank_bm25` documentation](https://github.com/dorianbrown/rank_bm25))
@@ -109,7 +125,7 @@ class MemoryRetriever:
             else:
                 tokenized_corpus.append(tokenizer(doc.content.lower()))
 
-        # Rank the documents
+        # Rank all the documents
         algorithm = getattr(rank_bm25, algorithm)
         ranking = algorithm(tokenized_corpus, **bm25_parameters)
         docs_scores = ranking.get_scores(tokenized_query)
