@@ -9,15 +9,7 @@ from haystack.preview.components.prompt.models.base import get_model
 logger = logging.getLogger(__name__)
 
 
-PromptTemplates = Literal["question-answering",]
-
-
 IMPLEMENTATION_MODULES = ["haystack.preview"]
-
-
-PREDEFINED_TEMPLATES = {
-    "question-answering": "Given the context please answer the question. Context: {{ documents }}; Question: {{ question }}; Answer:"
-}
 
 
 @component
@@ -41,8 +33,7 @@ class Prompt:
 
     def __init__(
         self,
-        template: Optional[PromptTemplates] = None,
-        custom_template: Optional[str] = None,
+        template: Optional[str] = "Given the context please answer the question. Context: {{ documents }}; Question: {{ question }}; Answer:",
         output: Optional[str] = "answers",
         model_name_or_path: str = "google/flan-t5-base",
         model_implementation: Optional[str] = None,
@@ -57,9 +48,9 @@ class Prompt:
         expects are `['question', 'documents']`. Inputs are automatically inferred from the template text.
 
         :param outputs: the outputs that this component will generate.
-        :param template: The template of the prompt. Must be the name of a predefined prompt template. To provide a
-            custom template, use `custom_template`.
-        :param custom_template: A custom template of the prompt. To use Haystack's pre-defined templates, use `template`.
+        :param template: The template of the prompt. Use `{{ }}` as placeholders for input values to be substituted into the prompt.
+            For example, if the prompt contains `{{ question }}`, this component will accept an input connection called `question`
+            that will be injected into the prompt at that location.
         :param model_name: The name of the model to use, like a HF model identifier or an OpenAI model name.
         :param model_implementation: force a specific implementation for the model
             (see `haystack.preview.components.prompt.models`). If not given, Haystack will find an implementation for
@@ -68,13 +59,7 @@ class Prompt:
         :param implementation_modules: if you have external model implementations, add the module where they can be
             imported from, like `haystack.preview`.
         """
-        if template:
-            self.template = PREDEFINED_TEMPLATES[template]
-        elif custom_template:
-            self.template = custom_template
-        else:
-            raise ValueError("Provide either a template or a custom_template for this Prompt.")
-
+        self.template = template
         self.inputs = self.find_inputs()
         self.outputs = [output]
         self.model = None
