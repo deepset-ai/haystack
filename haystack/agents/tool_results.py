@@ -1,9 +1,10 @@
 from haystack.agents.agent_step import AgentStep
+from events import Events
 
 class ToolResultsGatherer:
     results = []
 
-    def __init__(self, agent_callback_manager, tool_manager_callback_manager):
+    def __init__(self, agent_callback_manager: Events, tool_manager_callback_manager: Events):
         agent_callback_manager.on_agent_start += self.on_agent_start
         agent_callback_manager.on_agent_finish += self.on_agent_finish
 
