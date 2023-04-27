@@ -67,13 +67,16 @@ class DocumentStoreBaseTests:
     def test_filter_simple_value(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": "2020"})
-        assert len(result) == 3
+        assert len(result) > 0
+        assert all(doc.metadata["year"] == "2020" for doc in result)
 
     def test_filter_simple_list(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": ["2020"]})
+        assert len(result) > 0
         assert all(doc.metadata["year"] == "2020" for doc in result)
         result = docstore.filter_documents(filters={"year": ["2020", "2021"]})
+        assert len(result) > 0
         assert all(doc.metadata["year"] in ["2020", "2021"] for doc in result)
 
     def test_incorrect_filter_name(self, docstore, filterable_docs):
@@ -101,63 +104,77 @@ class DocumentStoreBaseTests:
     def test_eq_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$eq": "2020"}})
+        assert len(result) > 0
         assert all(doc.metadata["year"] == "2020" for doc in result)
         result = docstore.filter_documents(filters={"year": "2020"})
+        assert len(result) > 0
         assert all(doc.metadata["year"] == "2020" for doc in result)
 
     def test_in_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$in": ["2020", "2021", "n.a."]}})
+        assert len(result) > 0
         assert all(doc.metadata["year"] in ["2020", "2021"] for doc in result)
         result = docstore.filter_documents(filters={"year": ["2020", "2021", "n.a."]})
+        assert len(result) > 0
         assert all(doc.metadata["year"] in ["2020", "2021"] for doc in result)
 
     def test_ne_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$ne": "2020"}})
+        assert len(result) > 0
         assert all(doc.metadata.get("year", None) != "2020" for doc in result)
 
     def test_nin_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
+        assert len(result) > 0
         assert all(doc.metadata.get("year", None) not in ["2020", "2021"] for doc in result)
 
     def test_gt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
+        assert len(result) > 0
         assert all(doc.metadata["number"] > 0 for doc in result)
 
     def test_gte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gte": -2.0}})
+        assert len(result) > 0
         assert all(doc.metadata["number"] >= -2.0 for doc in result)
 
     def test_lt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
+        assert len(result) > 0
         assert all(doc.metadata["number"] < 0 for doc in result)
 
     def test_lte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
+        assert len(result) > 0
         assert all(doc.metadata["number"] <= 2.0 for doc in result)
 
     def test_filter_simple_explicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$and": {"$lte": "2021", "$gte": "2020"}}})
+        assert len(result) > 0
         assert all(int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021 for doc in result)
         result = docstore.filter_documents(filters={"year": {"$and": [{"$lte": "2021"}, {"$gte": "2020"}]}})
+        assert len(result) > 0
         assert all(int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021 for doc in result)
 
     def test_filter_simple_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$lte": "2021", "$gte": "2020"}})
+        assert len(result) > 0
         assert all(int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021 for doc in result)
 
     def test_filter_nested_explicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$and": {"year": {"$and": {"$lte": "2021", "$gte": "2020"}}, "name": {"$in": ["name_0", "name_1"]}}}
         result = docstore.filter_documents(filters=filters)
+        assert len(result) > 0
         assert all(
             int(doc.metadata["year"]) >= 2020
             and int(doc.metadata["year"]) <= 2021
@@ -169,6 +186,7 @@ class DocumentStoreBaseTests:
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {"year": {"$lte": "2021", "$gte": "2020"}, "name": ["name_0", "name_1"]}
         result = docstore.filter_documents(filters=filters_simplified)
+        assert len(result) > 0
         assert all(
             int(doc.metadata["year"]) >= 2020
             and int(doc.metadata["year"]) <= 2021
@@ -180,12 +198,14 @@ class DocumentStoreBaseTests:
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
+        assert len(result) > 0
         assert all(doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0 for doc in result)
 
     def test_filter_nested_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
+        assert len(result) > 0
         assert all(doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0 for doc in result)
 
     def test_filter_nested_and_or(self, docstore, filterable_docs):
@@ -195,6 +215,7 @@ class DocumentStoreBaseTests:
             "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}},
         }
         result = docstore.filter_documents(filters=filters_simplified)
+        assert len(result) > 0
         assert all(
             (int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021)
             and (doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0)
@@ -210,6 +231,7 @@ class DocumentStoreBaseTests:
             }
         }
         result = docstore.filter_documents(filters=filters_simplified)
+        assert len(result) > 0
         assert all(
             doc.metadata.get("number", 2) < 1.0
             or (doc.metadata["name"] in ["name_0", "name_1"] and doc.metadata["month"] != "01")
@@ -225,6 +247,7 @@ class DocumentStoreBaseTests:
             ]
         }
         result = docstore.filter_documents(filters=filters)
+        assert len(result) > 0
         assert all(doc.metadata["name"] in ["name_0", "name_1"] for doc in result)
 
     def test_write(self, docstore):
