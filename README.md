@@ -135,7 +135,7 @@ If you want to contribute to the Haystack repo, check our [Contributor Guideline
 
 See the list of [dependencies](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml) to check which ones you want to install (for example, `[all]`, `[dev]`, or other).
 
-**Installing the REST API** 
+**Installing the REST API**
 
 Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
 
