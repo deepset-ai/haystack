@@ -244,17 +244,17 @@ def test_tool_result_extraction(reader, retriever_with_docs):
 )
 def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     search = ExtractiveQAPipeline(reader, retriever_with_docs)
-    prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    prompt_model = PromptModel(model_name_or_path="gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"))
     prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    counter = PromptNode(
+    country_finder = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
-            name="calculator_template",
-            prompt_text="When I give you a word, respond with the number of characters that this word contains.\n"
-            "Word: Rome\nLength: 4\n"
-            "Word: Arles\nLength: 5\n"
-            "Word: Berlin\nLength: 6\n"
-            "Word: {query}?\nLength: ",
+            name="country_finder",
+            prompt_text="When I give you a name of the city, respond with the country where the city is located.\n"
+            "City: Rome\nCountry: Italy\n"
+            "City: Berlin\nCountry: Germany\n"
+            "City: Belgrade\nCountry: Serbia\n"
+            "City: {query}?\nCountry: ",
         ),
     )
 
@@ -271,18 +271,19 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     )
     agent.add_tool(
         Tool(
-            name="Count",
-            pipeline_or_node=counter,
-            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
+            name="CountryFinder",
+            pipeline_or_node=country_finder,
+            description="useful for when you need to find the country where a city is located",
         )
     )
 
-    # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
-    result = agent.run("How many characters are in the word Madrid?")
-    assert any(digit in result["answers"][0].answer for digit in ["5", "6", "five", "six"])
+    result = agent.run("Where is Madrid?")
+    country = result["answers"][0].answer
+    assert "spain" in country.lower()
 
-    result = agent.run("How many letters does the name of the town where Christelle lives have?")
-    assert any(digit in result["answers"][0].answer for digit in ["5", "6", "five", "six"])
+    result = agent.run("In which country is the city where Christelle lives?")
+    country = result["answers"][0].answer
+    assert "france" in country.lower()
 
 
 @pytest.mark.integration
@@ -294,17 +295,17 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
 )
 def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
     search = ExtractiveQAPipeline(reader, retriever_with_docs)
-    prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    prompt_model = PromptModel(model_name_or_path="gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"))
     prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    counter = PromptNode(
+    country_finder = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
-            name="calculator_template",
-            prompt_text="When I give you a word, respond with the number of characters that this word contains.\n"
-            "Word: Rome\nLength: 4\n"
-            "Word: Arles\nLength: 5\n"
-            "Word: Berlin\nLength: 6\n"
-            "Word: {query}\nLength: ",
+            name="country_finder",
+            prompt_text="When I give you a name of the city, respond with the country where the city is located.\n"
+            "City: Rome\nCountry: Italy\n"
+            "City: Berlin\nCountry: Germany\n"
+            "City: Belgrade\nCountry: Serbia\n"
+            "City: {query}?\nCountry: ",
         ),
     )
 
@@ -321,21 +322,15 @@ def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
     )
     agent.add_tool(
         Tool(
-            name="Count",
-            pipeline_or_node=counter,
-            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
+            name="CountryFinder",
+            pipeline_or_node=country_finder,
+            description="useful for when you need to find the country where a city is located",
         )
     )
 
-    results = agent.run_batch(
-        queries=[
-            "How many characters are in the word Madrid?",
-            "How many letters does the name of the town where Christelle lives have?",
-        ]
-    )
-    # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
-    assert any(digit in results["answers"][0][0].answer for digit in ["5", "6", "five", "six"])
-    assert any(digit in results["answers"][1][0].answer for digit in ["5", "6", "five", "six"])
+    results = agent.run_batch(queries=["Where is Madrid?", "In which country is the city where Christelle lives?"])
+    assert "spain" in results["answers"][0][0].answer.lower()
+    assert "france" in results["answers"][1][0].answer.lower()
 
 
 @pytest.mark.unit
