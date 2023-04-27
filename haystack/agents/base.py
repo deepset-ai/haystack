@@ -15,6 +15,7 @@ from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color, AgentTokenStreamingHandler, PromptParametersResolver
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
+from haystack.agents.tool_results import ToolResultsGatherer
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -91,7 +92,7 @@ class Tool:
             result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
-        return self._process_result(result)
+        return self._process_result(result), result
 
     def _process_result(self, result: Any) -> str:
         # Base case: string or an empty container
@@ -197,12 +198,14 @@ class ToolsManager:
                 tool: Tool = self.tools[tool_name]
                 try:
                     self.callback_manager.on_tool_start(tool_input, tool=tool)
-                    tool_result = tool.run(tool_input, params)
+                    tool_result, unprocessed_tool_result = tool.run(tool_input, params)
                     self.callback_manager.on_tool_finish(
                         tool_result,
                         observation_prefix="Observation: ",
                         llm_prefix="Thought: ",
                         color=tool.logging_color,
+                        tool_name=tool_name,
+                        unprocessed_tool_result=unprocessed_tool_result
                     )
                 except Exception as e:
                     self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
@@ -308,6 +311,8 @@ class Agent:
         self.tm = tools_manager if tools_manager else ToolsManager()
         self.memory = memory if memory else NoMemory()
         self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
+        self.trg = ToolResultsGatherer(self.callback_manager, self.tm.callback_manager)
+        self.tool_results = []
         self.prompt_node = prompt_node
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
         if not resolved_prompt_template:

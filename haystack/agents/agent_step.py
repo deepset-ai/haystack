@@ -36,6 +36,7 @@ class AgentStep:
         self.final_answer_parser = final_answer_parser
         self.prompt_node_response = prompt_node_response
         self.transcript = transcript
+        self.tool_results = []
 
     def create_next_step(self, prompt_node_response: Any) -> AgentStep:
         """
@@ -67,6 +68,7 @@ class AgentStep:
             "query": query,
             "answers": [Answer(answer="", type="generative")],
             "transcript": self.transcript,
+            "tool_results": self.tool_results
         }
         if self.current_step > self.max_steps:
             logger.warning(
@@ -88,6 +90,7 @@ class AgentStep:
                     "query": query,
                     "answers": [Answer(answer=final_answer, type="generative")],
                     "transcript": self.transcript,
+                    "tool_results": self.tool_results
                 }
         return answer
 

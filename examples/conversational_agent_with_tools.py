@@ -60,7 +60,7 @@ if not search_key:
     raise ValueError("Please set the SERPERDEV_API_KEY environment variable")
 
 openai_key = os.environ.get("OPENAI_API_KEY")
-if not search_key:
+if not openai_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
 prompt_text = """
@@ -115,3 +115,4 @@ while True:
         print("\nMemory:\n", agent.memory.load())
     else:
         assistant_response = agent.run(user_input)
+        print("\nAssistant: ", assistant_response)
