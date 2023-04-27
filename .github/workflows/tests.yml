@@ -156,7 +156,17 @@ jobs:
         run: pip install .[all]
 
       - name: Run
-        run: pytest -m "unit" test/${{ matrix.topic }}
+        run: pytest --cov-report lcov:cov.info --cov="haystack" -m "unit" test/${{ matrix.topic }}
+
+      - name: Coveralls Parallel
+        # We upload only coverage for ubuntu as handling both os
+        # complicates the workflow too much for little to no gain
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: cov.info
+          flag-name: ${{ matrix.topic }}
+          parallel: true
 
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
@@ -210,6 +220,17 @@ jobs:
                 }
               ]
             }
+
+  upload-coverage:
+    needs: unit-tests
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel-finished: true
+          carryforward: "document_stores,nodes,agents,preview,prompt,pipelines,utils"
 
   integration-tests-elasticsearch:
     name: Integration / Elasticsearch / ${{ matrix.os }}
