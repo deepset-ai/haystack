@@ -199,7 +199,7 @@ def test_build_prompt_within_max_length():
         assert prompt_docs[0] == documents[0]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_openai_answer_generator_pipeline_max_tokens():
     # tests that the max_tokens parameter is passed to the generator component in the pipeline
 
