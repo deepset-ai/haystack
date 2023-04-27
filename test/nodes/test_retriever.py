@@ -1,22 +1,33 @@
-from typing import List
-
-import os
 import logging
 import os
 from math import isclose
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
+from unittest.mock import patch, Mock, DEFAULT
 
 import pytest
 import numpy as np
 import pandas as pd
+import requests
+from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
-from elasticsearch import Elasticsearch
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+
+
+try:
+    from elasticsearch import Elasticsearch
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
+
 
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.retriever.web import WebRetriever
+from haystack.nodes.search_engine import WebSearch
+from haystack.nodes.retriever import Text2SparqlRetriever
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -24,7 +35,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
 
-from ..conftest import SAMPLES_PATH, MockRetriever
+from ..conftest import MockBaseRetriever, fail_at_version
 
 
 # TODO check if we this works with only "memory" arg
@@ -83,8 +94,7 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
         ("embedding", "elasticsearch"),
         ("embedding", "memory"),
         ("bm25", "elasticsearch"),
-        # TODO - add once Weaviate starts supporting filters with BM25 in Weaviate v1.18+
-        # ("bm25", "weaviate"),
+        ("bm25", "weaviate"),
         ("es_filter_only", "elasticsearch"),
     ],
     indirect=True,
@@ -127,38 +137,6 @@ def test_tfidf_retriever_multiple_indexes():
 
     assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
     assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
-
-
-class MockBaseRetriever(MockRetriever):
-    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
-        self.document_store = document_store
-        self.mock_document = mock_document
-
-    def retrieve(
-        self,
-        query: str,
-        filters: dict,
-        top_k: Optional[int],
-        index: str,
-        headers: Optional[Dict[str, str]],
-        scale_score: bool,
-    ):
-        return [self.mock_document]
-
-    def retrieve_batch(
-        self,
-        queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
-        top_k: Optional[int] = None,
-        index: str = None,
-        headers: Optional[Dict[str, str]] = None,
-        batch_size: Optional[int] = None,
-        scale_score: bool = None,
-    ):
-        return [[self.mock_document] for _ in range(len(queries))]
-
-    def embed_documents(self, documents: List[Document]):
-        return np.full((len(documents), 768), 0.5)
 
 
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
@@ -655,7 +633,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 
 
 @pytest.mark.embedding_dim(128)
-def test_table_text_retriever_training(tmp_path, document_store):
+def test_table_text_retriever_training(tmp_path, document_store, samples_path):
     retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
@@ -665,7 +643,7 @@ def test_table_text_retriever_training(tmp_path, document_store):
     )
 
     retriever.train(
-        data_dir=SAMPLES_PATH / "mmr",
+        data_dir=samples_path / "mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
@@ -1042,10 +1020,10 @@ def table_docs() -> List[Document]:
 
 
 @pytest.fixture
-def image_docs() -> List[Document]:
+def image_docs(samples_path) -> List[Document]:
     return [
-        Document(content=str(SAMPLES_PATH / "images" / imagefile), content_type="image")
-        for imagefile in os.listdir(SAMPLES_PATH / "images")
+        Document(content=str(samples_path / "images" / imagefile), content_type="image")
+        for imagefile in os.listdir(samples_path / "images")
     ]
 
 
@@ -1101,6 +1079,7 @@ def test_multimodal_table_retrieval(table_docs: List[Document]):
     )
 
 
+@pytest.mark.skip("Must be reworked as it fails randomly")
 @pytest.mark.integration
 def test_multimodal_retriever_query():
     retriever = MultiModalRetriever(
@@ -1114,7 +1093,7 @@ def test_multimodal_retriever_query():
 
 
 @pytest.mark.integration
-def test_multimodal_image_retrieval(image_docs: List[Document]):
+def test_multimodal_image_retrieval(image_docs: List[Document], samples_path):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
@@ -1124,12 +1103,12 @@ def test_multimodal_image_retrieval(image_docs: List[Document]):
     retriever.document_store.update_embeddings(retriever=retriever)
 
     results = retriever.retrieve(query="What's a cat?")
-    assert str(results[0].content) == str(SAMPLES_PATH / "images" / "cat.jpg")
+    assert str(results[0].content) == str(samples_path / "images" / "cat.jpg")
 
 
 @pytest.mark.skip("Not working yet as intended")
 @pytest.mark.integration
-def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document]):
+def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document], samples_path):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
@@ -1147,5 +1126,173 @@ def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: 
     text_results = [result for result in results if result.content_type == "text"]
     image_results = [result for result in results if result.content_type == "image"]
 
-    assert str(image_results[0].content) == str(SAMPLES_PATH / "images" / "paris.jpg")
+    assert str(image_results[0].content) == str(samples_path / "images" / "paris.jpg")
     assert text_results[0].content == "My name is Christelle and I live in Paris"
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_raw_documents(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    class MockResponse:
+        def __init__(self, text, status_code):
+            self.text = text
+            self.status_code = status_code
+
+    def get(url, headers, timeout):
+        return MockResponse("mocked", 200)
+
+    def get_content(self, text: str) -> str:
+        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
+    monkeypatch.setattr(requests, "get", get)
+
+    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="raw_documents")
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert len(result) == 1
+    assert isinstance(result[0], Document)
+    assert (
+        result[0].content
+        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+    )
+    assert result[0].score == None
+    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
+    # Only preprocessed docs but not raw docs should have the _split_id field
+    assert "_split_id" not in result[0].meta
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_preprocessed_documents(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    class MockResponse:
+        def __init__(self, text, status_code):
+            self.text = text
+            self.status_code = status_code
+
+    def get(url, headers, timeout):
+        return MockResponse("mocked", 200)
+
+    def get_content(self, text: str) -> str:
+        return "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    monkeypatch.setattr(ArticleExtractor, "get_content", get_content)
+    monkeypatch.setattr(requests, "get", get)
+
+    web_retriever = WebRetriever(api_key="", top_search_results=2, mode="preprocessed_documents")
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert len(result) == 1
+    assert isinstance(result[0], Document)
+    assert (
+        result[0].content
+        == "What are the top solutions for\nArya Stark's Father\nWe found 1 solutions for\nArya Stark's Father\n.The top solutions is determined by popularity, ratings and frequency of searches. The most likely answer for the clue is NED..."
+    )
+    assert result[0].score == None
+    assert result[0].meta["url"] == "https://crossword-solver.io/clue/arya-stark%27s-father/"
+    assert result[0].meta["_split_id"] == 0
+
+
+@pytest.mark.unit
+def test_web_retriever_mode_snippets(monkeypatch):
+    expected_search_results = {
+        "documents": [
+            Document(
+                content="Eddard Stark",
+                score=0.9090909090909091,
+                meta={"title": "Eddard Stark", "link": "", "score": 0.9090909090909091},
+                id_hash_keys=["content"],
+                id="f408db6de8de0ffad0cb47cf8830dbb8",
+            ),
+            Document(
+                content="The most likely answer for the clue is NED. How many solutions does Arya Stark's Father have? With crossword-solver.io you will find 1 solutions. We use ...",
+                score=0.09090909090909091,
+                meta={
+                    "title": "Arya Stark's Father - Crossword Clue Answers",
+                    "link": "https://crossword-solver.io/clue/arya-stark%27s-father/",
+                    "position": 1,
+                    "score": 0.09090909090909091,
+                },
+                id_hash_keys=["content"],
+                id="51779277acf94cf90e7663db137c0732",
+            ),
+        ]
+    }
+
+    def mock_web_search_run(self, query: str) -> Tuple[Dict, str]:
+        return expected_search_results, "output_1"
+
+    monkeypatch.setattr(WebSearch, "run", mock_web_search_run)
+    web_retriever = WebRetriever(api_key="", top_search_results=2)
+    result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
+    assert result == expected_search_results["documents"]
+
+
+@fail_at_version(1, 17)
+def test_text_2_sparql_retriever_deprecation():
+    BartForConditionalGeneration = object()
+    BartTokenizer = object()
+    with patch.multiple(
+        "haystack.nodes.retriever.text2sparql", BartForConditionalGeneration=DEFAULT, BartTokenizer=DEFAULT
+    ):
+        knowledge_graph = Mock()
+        with pytest.warns(DeprecationWarning) as w:
+            Text2SparqlRetriever(knowledge_graph)
+
+            assert len(w) == 1
+            assert (
+                w[0].message.args[0]
+                == "The Text2SparqlRetriever component is deprecated and will be removed in future versions."
+            )

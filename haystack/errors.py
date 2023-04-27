@@ -2,8 +2,6 @@
 
 from typing import Optional
 
-from haystack.telemetry import send_custom_event
-
 
 class HaystackError(Exception):
     """
@@ -12,15 +10,12 @@ class HaystackError(Exception):
     This error wraps its source transparently in such a way that its attributes
     can be accessed directly: for example, if the original error has a `message` attribute,
     `HaystackError.message` will exist and have the expected content.
-    If send_message_in_event is set to True (default), the message will be sent as part of a telemetry event reporting the error.
     The messages of errors that might contain user-specific information will not be sent, e.g., DocumentStoreError or OpenAIError.
     """
 
     def __init__(
         self, message: Optional[str] = None, docs_link: Optional[str] = None, send_message_in_event: bool = True
     ):
-        payload = {"message": message} if send_message_in_event else {}
-        send_custom_event(event=f"{type(self).__name__} raised", payload=payload)
         super().__init__()
         if message:
             self.message = message
@@ -63,6 +58,17 @@ class PipelineError(HaystackError):
         self,
         message: Optional[str] = None,
         docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/pipelines",
+    ):
+        super().__init__(message=message, docs_link=docs_link)
+
+
+class DatasetsError(HaystackError):
+    """Exception for issues raised within a dataset"""
+
+    def __init__(
+        self,
+        message: Optional[str] = None,
+        docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/documents_answers_labels#document",
     ):
         super().__init__(message=message, docs_link=docs_link)
 
@@ -120,13 +126,6 @@ class NodeError(HaystackError):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
 
 
-class AudioNodeError(NodeError):
-    """Exception for issues that occur in a node of the audio module"""
-
-    def __init__(self, message: Optional[str] = None):
-        super().__init__(message=message)
-
-
 class OpenAIError(NodeError):
     """Exception for issues that occur in the OpenAI APIs"""
 
@@ -148,6 +147,16 @@ class OpenAIRateLimitError(OpenAIError):
         super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
 
 
+class OpenAIUnauthorizedError(OpenAIError):
+    """
+    Unauthorized error for OpenAI API (status code 401)
+    See https://platform.openai.com/docs/guides/error-codes/api-errors
+    """
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+
+
 class CohereError(NodeError):
     """Exception for issues that occur in the Cohere APIs"""
 
@@ -158,8 +167,39 @@ class CohereError(NodeError):
         self.status_code = status_code
 
 
+class CohereUnauthorizedError(CohereError):
+    """Exception for unauthorized access to Cohere APIs"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
+
+
 class ImageToTextError(NodeError):
     """Exception for issues that occur in the ImageToText node"""
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message)
+
+
+class HuggingFaceInferenceError(NodeError):
+    """Exception for issues that occur in the HuggingFace inference node"""
+
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+        self.status_code = status_code
+
+
+class HuggingFaceInferenceLimitError(HuggingFaceInferenceError):
+    """Exception for issues that occur in the HuggingFace inference node due to rate limiting"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=429, send_message_in_event=send_message_in_event)
+
+
+class HuggingFaceInferenceUnauthorizedError(HuggingFaceInferenceError):
+    """Exception for issues that occur in the HuggingFace inference node due to unauthorized access"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)

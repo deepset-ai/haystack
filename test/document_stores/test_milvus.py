@@ -1,11 +1,15 @@
 import pytest
 import numpy as np
+from unittest.mock import patch, DEFAULT
 
 from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
 
+from ..conftest import fail_at_version
 
+
+@pytest.mark.skip("MilvusDocumentStore is deprecated")
 class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.fixture
     def ds(self, tmp_path):
@@ -46,6 +50,23 @@ class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
             )
 
         return documents
+
+    @pytest.mark.unit
+    @fail_at_version(1, 17)
+    def test_deprecation_warning(self):
+        with patch.multiple(
+            "haystack.document_stores.milvus",
+            SQLDocumentStore=DEFAULT,
+            FieldSchema=DEFAULT,
+            CollectionSchema=DEFAULT,
+            Collection=DEFAULT,
+            connections=DEFAULT,
+            utility=DEFAULT,
+            QueryResult=DEFAULT,
+            DataType=DEFAULT,
+        ):
+            with pytest.warns(DeprecationWarning):
+                MilvusDocumentStore()
 
     @pytest.mark.integration
     def test_delete_index(self, ds, documents):

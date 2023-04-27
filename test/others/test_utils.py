@@ -12,18 +12,16 @@ from responses import matchers
 
 import _pytest
 
-from haystack.errors import OpenAIRateLimitError
-from haystack.environment import set_pytorch_secure_model_loading
 from haystack.schema import Answer, Document, Span, Label
+from haystack.utils import print_answers
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
-from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from .. import conftest
-from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture, fail_at_version
+from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, deepset_cloud_fixture, fail_at_version
 
 TEST_CONTEXT = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
@@ -50,7 +48,7 @@ def noop():
 
 
 def test_deprecation_previous_major_and_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.1"):
             fail_at_version(1, 1)(noop)()
 
@@ -64,7 +62,7 @@ def test_deprecation_previous_major_and_minor():
 
 
 def test_deprecation_previous_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.2"):
             fail_at_version(1, 2)(noop)()
 
@@ -78,7 +76,7 @@ def test_deprecation_previous_major_same_minor():
 
 
 def test_deprecation_previous_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.3"):
             fail_at_version(1, 3)(noop)()
 
@@ -92,7 +90,7 @@ def test_deprecation_previous_major_later_minor():
 
 
 def test_deprecation_same_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.1"):
             fail_at_version(2, 1)(noop)()
 
@@ -106,7 +104,7 @@ def test_deprecation_same_major_previous_minor():
 
 
 def test_deprecation_same_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.2"):
             fail_at_version(2, 2)(noop)()
 
@@ -120,7 +118,7 @@ def test_deprecation_same_major_same_minor():
 
 
 def test_deprecation_same_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(2, 3)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -131,7 +129,7 @@ def test_deprecation_same_major_later_minor():
 
 
 def test_deprecation_later_major_previous_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 1)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -142,7 +140,7 @@ def test_deprecation_later_major_previous_minor():
 
 
 def test_deprecation_later_major_same_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 2)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -153,7 +151,7 @@ def test_deprecation_later_major_same_minor():
 
 
 def test_deprecation_later_major_later_minor():
-    with mock.patch.object(conftest, "haystack_version", "2.2.2rc0"):
+    with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 3)(noop)()
 
     with mock.patch.object(conftest, "haystack_version", "2.2.2rc1"):
@@ -163,16 +161,16 @@ def test_deprecation_later_major_later_minor():
         assert fail_at_version(3, 3)(noop)()
 
 
-def test_convert_files_to_docs():
+def test_convert_files_to_docs(samples_path):
     documents = convert_files_to_docs(
-        dir_path=(SAMPLES_PATH).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
+        dir_path=(samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
     )
     assert documents and len(documents) > 0
 
 
 @pytest.mark.tika
-def test_tika_convert_files_to_docs():
-    documents = tika_convert_files_to_docs(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True)
+def test_tika_convert_files_to_docs(samples_path):
+    documents = tika_convert_files_to_docs(dir_path=samples_path, clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
 
 
@@ -345,7 +343,7 @@ def _insert_noise(input: str, ratio):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_file_to_deepset_cloud(caplog):
+def test_upload_file_to_deepset_cloud(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -370,9 +368,9 @@ def test_upload_file_to_deepset_cloud(caplog):
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     file_paths = [
-        SAMPLES_PATH / "docx/sample_docx.docx",
-        SAMPLES_PATH / "pdf/sample_pdf_1.pdf",
-        SAMPLES_PATH / "docs/doc_1.txt",
+        samples_path / "docx/sample_docx.docx",
+        samples_path / "pdf/sample_pdf_1.pdf",
+        samples_path / "docs/doc_1.txt",
     ]
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
@@ -382,7 +380,7 @@ def test_upload_file_to_deepset_cloud(caplog):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_file_to_deepset_cloud_file_fails(caplog):
+def test_upload_file_to_deepset_cloud_file_fails(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -407,9 +405,9 @@ def test_upload_file_to_deepset_cloud_file_fails(caplog):
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     file_paths = [
-        SAMPLES_PATH / "docx/sample_docx.docx",
-        SAMPLES_PATH / "pdf/sample_pdf_1.pdf",
-        SAMPLES_PATH / "docs/doc_1.txt",
+        samples_path / "docx/sample_docx.docx",
+        samples_path / "pdf/sample_pdf_1.pdf",
+        samples_path / "docs/doc_1.txt",
     ]
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
@@ -1118,7 +1116,7 @@ def test_delete_eval_run():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_eval_set(caplog):
+def test_upload_eval_set(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -1129,14 +1127,14 @@ def test_upload_eval_set(caplog):
 
     client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     with caplog.at_level(logging.INFO):
-        client.upload_evaluation_set(file_path=SAMPLES_PATH / "dc/matching_test_1.csv")
+        client.upload_evaluation_set(file_path=samples_path / "dc/matching_test_1.csv")
         assert f"Successfully uploaded evaluation set file" in caplog.text
         assert f"You can access it now under evaluation set 'matching_test_1.csv'." in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_upload_existing_eval_set(caplog):
+def test_upload_existing_eval_set(caplog, samples_path):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -1147,7 +1145,7 @@ def test_upload_existing_eval_set(caplog):
 
     client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     with caplog.at_level(logging.INFO):
-        client.upload_evaluation_set(file_path=SAMPLES_PATH / "dc/matching_test_1.csv")
+        client.upload_evaluation_set(file_path=samples_path / "dc/matching_test_1.csv")
         assert f"Successfully uploaded evaluation set file" not in caplog.text
         assert f"You can access it now under evaluation set 'matching_test_1.csv'." not in caplog.text
         assert "Evaluation set with the same name already exists." in caplog.text
@@ -1273,27 +1271,6 @@ def test_get_eval_run_results():
     first_result = node_results.iloc[0]
     assert first_result["exact_match"] == True
     assert first_result["answer"] == "This"
-
-
-def test_exponential_backoff():
-    # Test that the exponential backoff works as expected
-    # should raise exception, check the exception contains the correct message
-    with pytest.raises(Exception, match="retries \(2\)"):
-
-        @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=2)
-        def greet(name: str):
-            if random() < 1.1:
-                raise OpenAIRateLimitError("Too many requests")
-            return f"Hello {name}"
-
-        greet("John")
-
-    # this should not raise exception and should print "Hello John"
-    @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=1)
-    def greet2(name: str):
-        return f"Hello {name}"
-
-    assert greet2("John") == "Hello John"
 
 
 def test_secure_model_loading(monkeypatch, caplog):
@@ -1578,3 +1555,45 @@ class TestAggregateLabels:
                 assert l.filters["from_meta"] == l.meta["from_meta"]
                 assert "_id" in l.filters
                 assert multi_label.filters == l.filters
+
+
+def test_print_answers_run():
+    with mock.patch("pprint.PrettyPrinter.pprint") as pprint:
+        query_string = "Who is the father of Arya Stark?"
+        run_result = {
+            "query": query_string,
+            "answers": [Answer(answer="Eddard", context="Eddard"), Answer(answer="Ned", context="Eddard")],
+        }
+
+        print_answers(run_result, details="minimum")
+
+        expected_pprint_string = f"Query: {query_string}"
+        pprint.assert_any_call(expected_pprint_string)
+
+        expected_pprint_answers = [
+            {"answer": answer.answer, "context": answer.context}  # filtered fields for minimum
+            for answer in run_result["answers"]
+        ]
+        pprint.assert_any_call(expected_pprint_answers)
+
+
+def test_print_answers_run_batch():
+    with mock.patch("pprint.PrettyPrinter.pprint") as pprint:
+        queries = ["Who is the father of Arya Stark?", "Who is the sister of Arya Stark?"]
+        answers = [
+            [Answer(answer="Eddard", context="Eddard"), Answer(answer="Ned", context="Eddard")],
+            [Answer(answer="Sansa", context="Sansa")],
+        ]
+        run_batch_result = {"queries": queries, "answers": answers}
+
+        print_answers(run_batch_result, details="minimum")
+
+        for query in queries:
+            expected_pprint_string = f"Query: {query}"
+            pprint.assert_any_call(expected_pprint_string)
+        for answer_list in answers:
+            expected_pprint_answers = [
+                {"answer": answer.answer, "context": answer.context}  # filtered fields for minimum
+                for answer in answer_list
+            ]
+            pprint.assert_any_call(expected_pprint_answers)

@@ -1,3 +1,4 @@
+#  type: ignore
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -79,7 +80,7 @@ class MetaDocumentORM(ORMBase):
     __tablename__ = "meta_document"
 
     name = Column(String(100), index=True)
-    value = Column(ArrayType(100), index=True)
+    value = Column(ArrayType(1000), index=True)
     documents = relationship("DocumentORM", back_populates="meta")
 
     document_id = Column(String(100), nullable=False, index=True)

@@ -11,10 +11,9 @@ import numpy as np
 from tqdm.auto import tqdm
 
 try:
+    # These deps are optional, but get installed with the `faiss` extra
     import faiss
-    from haystack.document_stores.sql import (
-        SQLDocumentStore,
-    )  # its deps are optional, but get installed with the `faiss` extra
+    from haystack.document_stores.sql import SQLDocumentStore  # type: ignore
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -276,6 +275,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     if add_vectors:
+                        if not self.faiss_indexes[index].is_trained:
+                            raise ValueError(
+                                "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
+                                "method before adding the vectors. For details, refer to the documentation: "
+                                "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
+                                "".format(self.faiss_index_factory_str)
+                            )
+
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
@@ -338,6 +345,14 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if not self.faiss_indexes.get(index):
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
+
+        if not self.faiss_indexes[index].is_trained:
+            raise ValueError(
+                "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
+                "method before adding the vectors. For details, refer to the documentation: "
+                "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
+                "".format(self.faiss_index_factory_str)
+            )
 
         document_count = self.get_document_count(index=index)
         if document_count == 0:

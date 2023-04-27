@@ -1,8 +1,10 @@
 from __future__ import annotations
 import inspect
 import logging
+from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
+
 import networkx as nx
 
 try:
@@ -22,6 +24,7 @@ from haystack.pipelines.config import (
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Document, MultiLabel
+from haystack.telemetry import send_pipeline_event
 
 
 logger = logging.getLogger(__name__)
@@ -128,6 +131,7 @@ class RayPipeline(Pipeline):
                 inputs=node_config.get("inputs", []),
             )
 
+        pipeline.update_config_hash()
         return pipeline
 
     @classmethod
@@ -240,8 +244,8 @@ class RayPipeline(Pipeline):
                        from Python: https://docs.ray.io/en/main/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'FilterRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["FilterRetriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
@@ -310,6 +314,17 @@ class RayPipeline(Pipeline):
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        send_pipeline_event(
+            pipeline=self,
+            query=query,
+            file_paths=file_paths,
+            labels=labels,
+            documents=documents,
+            meta=meta,
+            params=params,
+            debug=debug,
+        )
+
         # validate the node names
         self._validate_node_names_in_params(params=params)
 
@@ -355,7 +370,10 @@ class RayPipeline(Pipeline):
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug("Running node '%s` with input: %s", node_id, node_input)
+                    start = time()
                     node_output, stream_id = await self._run_node_async(node_id, node_input)
+                    if "_debug" in node_output and node_id in node_output["_debug"]:
+                        node_output["_debug"][node_id]["exec_time_ms"] = round((time() - start) * 1000, 2)
                 except Exception as e:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
@@ -405,7 +423,6 @@ class RayPipeline(Pipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
-        self.run_total += 1
         # Disabled due to issue https://github.com/deepset-ai/haystack/issues/3970
         # self.send_pipeline_event_if_needed(is_indexing=file_paths is not None)
         return node_output

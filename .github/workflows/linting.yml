@@ -1,4 +1,4 @@
-# If you change this name also do it in linting-skipper.yml
+# If you change this name also do it in linting-skipper.yml and ci_metrics.yml
 name: Linting
 
 on:
@@ -6,6 +6,9 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
+
+env:
+  PYTHON_VERSION: "3.8"
 
 jobs:
   mypy:
@@ -28,8 +31,12 @@ jobs:
             test/**
             rest_api/test/**
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install ".[all]"
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -57,8 +64,12 @@ jobs:
             test/**
             rest_api/test/**
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install ".[all]"
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'

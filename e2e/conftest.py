@@ -23,13 +23,11 @@ from haystack.document_stores import (
 
 
 set_all_seeds(0)
-SAMPLES_PATH = Path(__file__).parent.parent / "test" / "samples"
 
 
-# Fix all random seeds that come to mind
-torch.manual_seed(0)
-np.random.seed(0)
-random.seed(0)
+@pytest.fixture
+def samples_path():
+    return Path(__file__).parent / "samples"
 
 
 @pytest.fixture

@@ -7,14 +7,18 @@ on:
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
 
+env:
+  PYTHON_VERSION: "3.8"
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: sudo apt update && sudo apt-get install libsndfile1 ffmpeg

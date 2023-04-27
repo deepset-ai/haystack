@@ -1,8 +1,11 @@
+# If you change this name also do it in ci_metrics.yml
 name: end-to-end
 
 on:
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: "3.8"
 
 jobs:
   e2e:
@@ -18,8 +21,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Cache HF models
       id: cache-hf-models

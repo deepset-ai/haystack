@@ -1,3 +1,4 @@
+# If you change this name also do it in tests.yml and ci_metrics.yml
 name: Tests
 
 on:

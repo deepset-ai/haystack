@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+import warnings
 import logging
 from collections import defaultdict
 from pathlib import Path
@@ -18,10 +19,16 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
 
     def __init__(self, index: str = "document"):
         """
+        The InMemoryKnowledgeGraph component is deprecated and will be removed in future versions.
+
         Init the in memory knowledge graph
 
         :param index: name of the index
         """
+        warnings.warn(
+            "The InMemoryKnowledgeGraph component is deprecated and will be removed in future versions.",
+            category=DeprecationWarning,
+        )
         super().__init__()
 
         self.indexes: Dict[str, Graph] = defaultdict(dict)  # type: ignore [arg-type]
@@ -131,7 +138,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
                 items = list(b.items())
                 for item in items:
                     type_ = item[0].toPython()[1:]
-                    uri = item[1].toPython()
+                    uri = item[1].toPython()  # type: ignore [attr-defined]
                     formatted_result[type_] = {"type": "uri", "value": uri}
                 formatted_results.append(formatted_result)
             return formatted_results

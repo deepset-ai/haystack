@@ -1,10 +1,17 @@
+from csv import DictWriter
 import logging
+from pathlib import Path
 import pytest
 import sys
+import pandas as pd
 from copy import deepcopy
+
+import responses
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
 from haystack.nodes.preprocessor import PreProcessor
+from haystack.nodes.prompt.prompt_node import PromptNode
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever
@@ -18,35 +25,7 @@ from haystack.pipelines.standard_pipelines import (
     TranslationWrapperPipeline,
 )
 from haystack.nodes.translator.transformers import TransformersTranslator
-from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
-
-from ..conftest import SAMPLES_PATH
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
-def test_generativeqa_calculate_metrics(
-    document_store_with_docs: InMemoryDocumentStore, rag_generator, retriever_with_docs
-):
-    document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
-    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
-
-    metrics = eval_result.calculate_metrics(document_scope="document_id")
-
-    assert "Retriever" in eval_result
-    assert "Generator" in eval_result
-    assert len(eval_result) == 2
-
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 0.1
-    assert metrics["Retriever"]["ndcg"] == 0.5
-    assert metrics["Generator"]["exact_match"] == 0.0
-    assert metrics["Generator"]["f1"] == 1.0 / 3
+from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span, TableCell
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
@@ -84,10 +63,10 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
-def test_add_eval_data(document_store, batch_size):
+def test_add_eval_data(document_store, batch_size, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "small.json",
+        filename=samples_path / "squad" / "small.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         batch_size=batch_size,
@@ -132,10 +111,10 @@ def test_add_eval_data(document_store, batch_size):
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
-def test_eval_reader(reader, document_store, use_confidence_scores):
+def test_eval_reader(reader, document_store, use_confidence_scores, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -166,10 +145,10 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_eval_elastic_retriever(document_store, open_domain, retriever):
+def test_eval_elastic_retriever(document_store, open_domain, retriever, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -188,10 +167,10 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever):
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_eval_pipeline(document_store, reader, retriever):
+def test_eval_pipeline(document_store, reader, retriever, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -222,7 +201,7 @@ def test_eval_pipeline(document_store, reader, retriever):
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
-def test_eval_data_split_word(document_store):
+def test_eval_data_split_word(document_store, samples_path):
     # splitting by word
     preprocessor = PreProcessor(
         clean_empty_lines=False,
@@ -235,7 +214,7 @@ def test_eval_data_split_word(document_store):
     )
 
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         preprocessor=preprocessor,
@@ -247,7 +226,7 @@ def test_eval_data_split_word(document_store):
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
-def test_eval_data_split_passage(document_store):
+def test_eval_data_split_passage(document_store, samples_path):
     # splitting by passage
     preprocessor = PreProcessor(
         clean_empty_lines=False,
@@ -260,7 +239,7 @@ def test_eval_data_split_passage(document_store):
     )
 
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny_passages.json",
+        filename=samples_path / "squad" / "tiny_passages.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         preprocessor=preprocessor,
@@ -405,6 +384,117 @@ FILE_SEARCH_EVAL_LABELS = [
     ),
 ]
 
+EVAL_TABLE_LABELS = [
+    MultiLabel(
+        labels=[
+            Label(
+                query="How old is Brad Pitt?",
+                answer=Answer(answer="56", offsets_in_context=[TableCell(1, 2)]),
+                document=Document(
+                    id="a044cf3fb8aade03a12399c7a2fe9a6b",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["Actors", "Age", "Number of movies"],
+                        data=[
+                            ["Brad Pitt", "56", "87"],
+                            ["Leonardo Di Caprio", "45", "53"],
+                            ["George Clooney", "59", "69"],
+                        ],
+                    ),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            Label(  # Label with different doc but same answer and query
+                query="How old is Brad Pitt?",
+                answer=Answer(answer="56", offsets_in_context=[TableCell(4, 5)]),
+                document=Document(
+                    id="a044cf3fb8aade03a12399c7a2fe9a6b",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["Actors", "Age", "Number of movies"],
+                        data=[["Beyonce", "45", "53"], ["Brad Pitt", "56", "87"], ["Jane Doe", "59", "69"]],
+                    ),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+        ]
+    ),
+    MultiLabel(
+        labels=[
+            Label(
+                query="To which state does Spikeroog belong?",
+                answer=Answer(answer="Lower Saxony", offsets_in_context=[TableCell(7, 8)]),
+                document=Document(
+                    id="b044cf3fb8aade03a12399c7a2fe9a6c",
+                    content_type="table",
+                    content=pd.DataFrame(
+                        columns=["0", "1"],
+                        data=[
+                            ["Area", "18.25 km2 (7.05 sq mi)"],
+                            ["Population", "794"],
+                            ["Country", "Germany"],
+                            ["State", "Lower Saxony"],
+                            ["District", "Wittmund"],
+                        ],
+                    ),
+                ),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            )
+        ]
+    ),
+]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small"], indirect=True)
+@pytest.mark.embedding_dim(512)
+def test_table_qa_eval(table_reader_and_param, document_store, retriever):
+    docs = []
+    for multi_label in EVAL_TABLE_LABELS:
+        for label in multi_label.labels:
+            docs.append(label.document)
+
+    assert len(docs) == 3
+
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever=retriever)
+
+    table_reader, _ = table_reader_and_param
+    p = Pipeline()
+    p.add_node(component=retriever, name="TableRetriever", inputs=["Query"])
+    p.add_node(component=table_reader, name="TableReader", inputs=["TableRetriever"])
+
+    eval_result = p.eval(labels=EVAL_TABLE_LABELS, params={"TableRetriever": {"top_k": 2}})
+    table_reader_results = eval_result.node_results["TableReader"]
+
+    assert set(table_reader_results["query"].tolist()) == {
+        "How old is Brad Pitt?",
+        "To which state does Spikeroog belong?",
+    }
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer")
+    assert metrics["TableRetriever"]["recall_single_hit"] == 1.0
+    assert metrics["TableRetriever"]["recall_multi_hit"] == 1.0
+    assert metrics["TableRetriever"]["precision"] == 0.5
+    assert metrics["TableRetriever"]["mrr"] == 1.0
+    assert metrics["TableRetriever"]["map"] == 1.0
+    assert metrics["TableRetriever"]["ndcg"] == 1.0
+    assert metrics["TableReader"]["exact_match"] == 1.0
+    assert metrics["TableReader"]["f1"] == 1.0
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
@@ -531,6 +621,202 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     for node_metrics in metrics.values():
         for value in node_metrics.values():
             assert isinstance(value, float)
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@responses.activate
+def test_generative_qa_eval(retriever_with_docs, tmp_path):
+    labels = EVAL_LABELS[:1]
+    responses.add(
+        responses.POST,
+        "https://api.openai.com/v1/completions",
+        json={"choices": [{"text": "test", "finish_reason": "stop"}, {"text": "test2", "finish_reason": "stop"}]},
+        status=200,
+    )
+    responses.add_passthru("https://openaipublic.blob.core.windows.net")
+    generator = OpenAIAnswerGenerator(api_key="dummy", top_k=2)
+    pipeline = GenerativeQAPipeline(generator=generator, retriever=retriever_with_docs)
+    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id")
+
+    generator_result = eval_result["Generator"]
+    retriever_result = eval_result["Retriever"]
+
+    expected_generator_result_columns = [
+        "answer",  # answer-specific
+        "exact_match",  # answer-specific
+        "f1",  # answer-specific
+        # "sas",  # answer-specific optional
+        "exact_match_context_scope",  # answer-specific
+        "f1_context_scope",  # answer-specific
+        # "sas_context_scope",  # answer-specific optional
+        "exact_match_document_id_scope",  # answer-specific
+        "f1_document_id_scope",  # answer-specific
+        # "sas_document_id_scope",  # answer-specific optional
+        "exact_match_document_id_and_context_scope",  # answer-specific
+        "f1_document_id_and_context_scope",  # answer-specific
+        # "sas_document_id_and_context_scope",  # answer-specific optional
+        "offsets_in_document",  # answer-specific
+        "gold_offsets_in_documents",  # answer-specific
+        "offsets_in_context",  # answer-specific
+        "gold_offsets_in_contexts",  # answer-specific
+        "gold_answers_exact_match",  # answer-specific
+        "gold_answers_f1",  # answer-specific
+        # "gold_answers_sas",  # answer-specific optional
+        "document_ids",  # answer-specific
+        "prompt",  # answer-specific
+    ]
+
+    expected_retriever_result_columns = [
+        "gold_id_match",  # doc-specific
+        "context_match",  # doc-specific
+        "answer_match",  # doc-specific
+        "gold_id_or_answer_match",  # doc-specific
+        "gold_id_and_answer_match",  # doc-specific
+        "gold_id_or_context_match",  # doc-specific
+        "gold_id_and_context_match",  # doc-specific
+        "gold_id_and_context_and_answer_match",  # doc-specific
+        "context_and_answer_match",  # doc-specific
+        "gold_answers_match",  # doc-specific,
+        "document_id",  # doc-specific
+    ]
+
+    expected_generic_result_columns = [
+        "multilabel_id",  # generic
+        "query",  # generic
+        "filters",  # generic
+        "context",  # generic
+        "gold_contexts",  # generic
+        "gold_documents_id_match",  # generic
+        "gold_contexts_similarity",  # generic
+        "type",  # generic
+        "node",  # generic
+        "eval_mode",  # generic
+        "rank",  # generic
+        "gold_document_ids",  # generic
+        "gold_answers",  # generic
+        # "custom_document_id",  # generic optional
+        # "gold_custom_document_ids",  # generic optional
+    ]
+
+    # all expected columns are part of the evaluation result dataframe
+    assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(generator_result.columns)
+    )
+    assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(retriever_result.columns)
+    )
+
+    assert generator_result["prompt"].iloc[0] is not None
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
+
+    eval_result.save(tmp_path)
+    saved_eval_result = EvaluationResult.load(tmp_path)
+    loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
+    assert metrics == loaded_metrics
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
+    labels = EVAL_LABELS[:1]
+    pipeline = Pipeline()
+    pipeline.add_node(retriever_with_docs, name="Retriever", inputs=["Query"])
+    pipeline.add_node(
+        PromptNode(default_prompt_template="question-answering", model_name_or_path="google/flan-t5-small", top_k=2),
+        name="PromptNode",
+        inputs=["Retriever"],
+    )
+
+    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id")
+
+    generator_result = eval_result["PromptNode"]
+    retriever_result = eval_result["Retriever"]
+
+    expected_generator_result_columns = [
+        "answer",  # answer-specific
+        "exact_match",  # answer-specific
+        "f1",  # answer-specific
+        # "sas",  # answer-specific optional
+        "exact_match_context_scope",  # answer-specific
+        "f1_context_scope",  # answer-specific
+        # "sas_context_scope",  # answer-specific optional
+        "exact_match_document_id_scope",  # answer-specific
+        "f1_document_id_scope",  # answer-specific
+        # "sas_document_id_scope",  # answer-specific optional
+        "exact_match_document_id_and_context_scope",  # answer-specific
+        "f1_document_id_and_context_scope",  # answer-specific
+        # "sas_document_id_and_context_scope",  # answer-specific optional
+        "offsets_in_document",  # answer-specific
+        "gold_offsets_in_documents",  # answer-specific
+        "offsets_in_context",  # answer-specific
+        "gold_offsets_in_contexts",  # answer-specific
+        "gold_answers_exact_match",  # answer-specific
+        "gold_answers_f1",  # answer-specific
+        # "gold_answers_sas",  # answer-specific optional
+        "document_ids",  # answer-specific
+        "prompt",  # answer-specific
+    ]
+
+    expected_retriever_result_columns = [
+        "gold_id_match",  # doc-specific
+        "context_match",  # doc-specific
+        "answer_match",  # doc-specific
+        "gold_id_or_answer_match",  # doc-specific
+        "gold_id_and_answer_match",  # doc-specific
+        "gold_id_or_context_match",  # doc-specific
+        "gold_id_and_context_match",  # doc-specific
+        "gold_id_and_context_and_answer_match",  # doc-specific
+        "context_and_answer_match",  # doc-specific
+        "gold_answers_match",  # doc-specific,
+        "document_id",  # doc-specific
+    ]
+
+    expected_generic_result_columns = [
+        "multilabel_id",  # generic
+        "query",  # generic
+        "filters",  # generic
+        "context",  # generic
+        "gold_contexts",  # generic
+        "gold_documents_id_match",  # generic
+        "gold_contexts_similarity",  # generic
+        "type",  # generic
+        "node",  # generic
+        "eval_mode",  # generic
+        "rank",  # generic
+        "gold_document_ids",  # generic
+        "gold_answers",  # generic
+        # "custom_document_id",  # generic optional
+        # "gold_custom_document_ids",  # generic optional
+    ]
+
+    # all expected columns are part of the evaluation result dataframe
+    assert sorted(expected_generator_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(generator_result.columns)
+    )
+    assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(retriever_result.columns)
+    )
+
+    assert generator_result["prompt"].iloc[0] is not None
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
+
+    eval_result.save(tmp_path)
+    saved_eval_result = EvaluationResult.load(tmp_path)
+    loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
+    assert metrics == loaded_metrics
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -1765,3 +2051,110 @@ def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
         .iloc[0]
         == ""
     )
+
+
+def test_load_legacy_evaluation_result(tmp_path):
+    legacy_csv = Path(tmp_path) / "legacy.csv"
+    with open(legacy_csv, "w") as legacy_csv:
+        columns = ["answer", "document_id", "custom_document_id", "gold_document_contents", "content"]
+        writer = DictWriter(legacy_csv, fieldnames=columns)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "answer": "answer",
+                "document_id": Document("test").id,
+                "custom_document_id": "custom_id",
+                "gold_document_contents": ["gold", "document", "contents"],
+                "content": "content",
+            }
+        )
+
+    eval_result = EvaluationResult.load(tmp_path)
+    assert "legacy" in eval_result
+    assert len(eval_result["legacy"]) == 1
+    assert eval_result["legacy"]["answer"].iloc[0] == "answer"
+    assert eval_result["legacy"]["document_ids"].iloc[0] == [Document("test").id]
+    assert eval_result["legacy"]["custom_document_ids"].iloc[0] == ["custom_id"]
+    assert eval_result["legacy"]["gold_contexts"].iloc[0] == ["gold", "document", "contents"]
+    assert eval_result["legacy"]["context"].iloc[0] == "content"
+
+    assert "document_id" not in eval_result["legacy"]
+    assert "custom_document_id" not in eval_result["legacy"]
+    assert "gold_document_contents" not in eval_result["legacy"]
+    assert "content" not in eval_result["legacy"]
+
+
+def test_load_evaluation_result_w_empty_document_ids(tmp_path):
+    eval_result_csv = Path(tmp_path) / "Reader.csv"
+    with open(eval_result_csv, "w") as eval_result_csv:
+        columns = [
+            "multilabel_id",
+            "query",
+            "filters",
+            "gold_answers",
+            "answer",
+            "context",
+            "exact_match",
+            "f1",
+            "exact_match_context_scope",
+            "f1_context_scope",
+            "exact_match_document_id_scope",
+            "f1_document_id_scope",
+            "exact_match_document_id_and_context_scope",
+            "f1_document_id_and_context_scope",
+            "gold_contexts",
+            "rank",
+            "document_ids",
+            "gold_document_ids",
+            "offsets_in_document",
+            "gold_offsets_in_documents",
+            "offsets_in_context",
+            "gold_offsets_in_contexts",
+            "gold_answers_exact_match",
+            "gold_answers_f1",
+            "gold_documents_id_match",
+            "gold_contexts_similarity",
+            "type",
+            "node",
+            "eval_mode",
+            "index",
+        ]
+        writer = DictWriter(eval_result_csv, fieldnames=columns)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "multilabel_id": "ddc1562602f2d6d895b91e53f83e4c16",
+                "query": "who is written in the book of life",
+                "filters": "b'null'",
+                "gold_answers": "['every person who is destined for Heaven or the World to Come', 'all people considered righteous before God']",
+                "answer": None,
+                "context": None,
+                "exact_match": 0.0,
+                "f1": 0.0,
+                "exact_match_context_scope": 0.0,
+                "f1_context_scope": 0.0,
+                "exact_match_document_id_scope": 0.0,
+                "f1_document_id_scope": 0.0,
+                "exact_match_document_id_and_context_scope": 0.0,
+                "f1_document_id_and_context_scope": 0.0,
+                "gold_contexts": "['Book of Life - wikipedia Book of Life Jump to: navigation, search...']",
+                "rank": 1.0,
+                "document_ids": None,
+                "gold_document_ids": "['de2fd2f109e11213af1ea189fd1488a3-0', 'de2fd2f109e11213af1ea189fd1488a3-0']",
+                "offsets_in_document": "[{'start': 0, 'end': 0}]",
+                "gold_offsets_in_documents": "[{'start': 374, 'end': 434}, {'start': 1107, 'end': 1149}]",
+                "offsets_in_context": "[{'start': 0, 'end': 0}]",
+                "gold_offsets_in_contexts": "[{'start': 374, 'end': 434}, {'start': 1107, 'end': 1149}]",
+                "gold_answers_exact_match": "[0, 0]",
+                "gold_answers_f1": "[0, 0]",
+                "gold_documents_id_match": "[0.0, 0.0]",
+                "gold_contexts_similarity": "[0.0, 0.0]",
+                "type": "answer",
+                "node": "Reader",
+                "eval_mode": "integrated",
+            }
+        )
+
+    eval_result = EvaluationResult.load(tmp_path)
+    assert "Reader" in eval_result
+    assert len(eval_result) == 1

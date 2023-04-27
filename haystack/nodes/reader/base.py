@@ -1,5 +1,6 @@
-import itertools
 from typing import List, Optional, Sequence, Tuple, Union
+import itertools
+import logging
 
 from abc import abstractmethod
 from copy import deepcopy
@@ -7,10 +8,13 @@ from functools import wraps
 from time import perf_counter
 
 import numpy as np
-from scipy.special import expit
 
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
+from haystack.utils.scipy_utils import expit
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseReader(BaseComponent):
@@ -122,7 +126,9 @@ class BaseReader(BaseComponent):
             # filters out empty documents
             relevant_documents = list(
                 {
-                    label.document.id: label.document for label in labels.labels if label.document.content.strip() != ""
+                    label.document.id: label.document
+                    for label in labels.labels
+                    if not isinstance(label.document.content, str) or label.document.content.strip() != ""
                 }.values()
             )
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
@@ -184,7 +190,7 @@ class BaseReader(BaseComponent):
                     {
                         label.document.id: label.document
                         for label in labelx.labels
-                        if label.document.content.strip() != ""
+                        if not isinstance(label.document.content, str) or label.document.content.strip() != ""
                     }.values()
                 )
                 relevant_documents.append(relevant_docs_labelx)
