@@ -393,6 +393,40 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert "http_auth" not in kwargs
 
     @pytest.mark.unit
+    def test_query(self, mocked_document_store):
+        mocked_document_store.query(query=self.query)
+        kwargs = mocked_document_store.client.search.call_args.kwargs
+        assert "index" in kwargs
+        assert "body" in kwargs
+        assert "headers" in kwargs
+
+    @pytest.mark.unit
+    def test_query_return_embedding_false(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.query(self.query)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.unit
+    def test_query_excluded_meta_data_return_embedding_true(self, mocked_document_store):
+        mocked_document_store.return_embedding = True
+        mocked_document_store.excluded_meta_data = ["foo", "embedding"]
+        mocked_document_store.query(self.query)
+        _, kwargs = mocked_document_store.client.search.call_args
+        # we expect "embedding" was removed from the final query
+        assert kwargs["body"]["_source"] == {"excludes": ["foo"]}
+
+    @pytest.mark.unit
+    def test_query_excluded_meta_data_return_embedding_false(self, mocked_document_store):
+        mocked_document_store.return_embedding = False
+        mocked_document_store.excluded_meta_data = ["foo"]
+        mocked_document_store.query(self.query)
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.search.call_args
+        assert kwargs["body"]["_source"] == {"excludes": ["foo", "embedding"]}
+
+    @pytest.mark.unit
     def test_query_by_embedding_raises_if_missing_field(self, mocked_document_store):
         mocked_document_store.embedding_field = ""
         with pytest.raises(DocumentStoreError):
