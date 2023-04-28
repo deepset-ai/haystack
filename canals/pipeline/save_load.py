@@ -149,7 +149,6 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
                 pipe.add_component(
                     name=component_name,
                     instance=component_instances[component_schema["refer_to"]],
-                    parameters=component_schema.get("run_parameters", {}),
                 )
             else:
                 component_class = classes[component_schema["type"]]
@@ -158,7 +157,6 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:
                 pipe.add_component(
                     name=component_name,
                     instance=component_instance,
-                    parameters=component_schema.get("run_parameters", {}),
                 )
 
         for edge in pipeline_schema["connections"]:
