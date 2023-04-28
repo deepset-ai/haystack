@@ -140,6 +140,7 @@ def table_doc_with_embedding():
     )
 
 
+@pytest.mark.unit
 def test_no_answer_label():
     labels = [
         Label(
@@ -182,11 +183,13 @@ def test_no_answer_label():
     assert labels[3].no_answer == False
 
 
+@pytest.mark.unit
 def test_equal_label(text_labels):
     assert text_labels[2] == text_labels[0]
     assert text_labels[1] != text_labels[0]
 
 
+@pytest.mark.unit
 def test_label_to_json(text_labels):
     j0 = text_labels[0].to_json()
     l_new = Label.from_json(j0)
@@ -194,6 +197,7 @@ def test_label_to_json(text_labels):
     assert l_new.answer.offsets_in_document[0].start == 1
 
 
+@pytest.mark.unit
 def test_label_to_dict(text_labels):
     j0 = text_labels[0].to_dict()
     l_new = Label.from_dict(j0)
@@ -201,11 +205,53 @@ def test_label_to_dict(text_labels):
     assert l_new.answer.offsets_in_document[0].start == 1
 
 
-def test_equal_table_label(table_label_1, table_label_2):
-    assert table_label_1 == table_label_1
+@pytest.mark.unit
+def test_labels_with_identical_fields_are_equal(table_label_1):
+    table_label = Label(
+        query="some",
+        answer=Answer(
+            answer="text_2",
+            type="extractive",
+            score=0.1,
+            document_ids=["123"],
+            context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            offsets_in_document=[TableCell(row=1, col=0)],
+        ),
+        document=Document(
+            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            content_type="table",
+        ),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+    )
+    table_label_copy = Label(
+        query="some",
+        answer=Answer(
+            answer="text_2",
+            type="extractive",
+            score=0.1,
+            document_ids=["123"],
+            context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            offsets_in_document=[TableCell(row=1, col=0)],
+        ),
+        document=Document(
+            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            content_type="table",
+        ),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+    )
+    assert table_label == table_label_copy
+
+
+@pytest.mark.unit
+def test_labels_with_different_fields_are_not_equal(table_label_1, table_label_2):
     assert table_label_1 != table_label_2
 
 
+@pytest.mark.unit
 def test_table_label_to_json(table_label_1):
     j0 = table_label_1.to_json()
     l_new = Label.from_json(j0)
@@ -213,6 +259,7 @@ def test_table_label_to_json(table_label_1):
     assert l_new.answer.offsets_in_document[0].row == 1
 
 
+@pytest.mark.unit
 def test_table_label_to_dict(table_label_1):
     j0 = table_label_1.to_dict()
     l_new = Label.from_dict(j0)
@@ -220,6 +267,7 @@ def test_table_label_to_dict(table_label_1):
     assert l_new.answer.offsets_in_document[0].row == 1
 
 
+@pytest.mark.unit
 def test_answer_to_json(text_answer):
     a = text_answer
     j = a.to_json()
@@ -230,6 +278,7 @@ def test_answer_to_json(text_answer):
     assert a_new == a
 
 
+@pytest.mark.unit
 def test_answer_to_dict(text_answer):
     a = text_answer
     j = a.to_dict()
@@ -239,6 +288,7 @@ def test_answer_to_dict(text_answer):
     assert a_new == a
 
 
+@pytest.mark.unit
 def test_table_answer_to_json(table_answer):
     json_ans = table_answer.to_json()
     assert isinstance(json_ans, str)
@@ -247,6 +297,7 @@ def test_table_answer_to_json(table_answer):
     assert a_new == table_answer
 
 
+@pytest.mark.unit
 def test_table_answer_to_dict(table_answer):
     dict_ans = table_answer.to_dict()
     assert isinstance(dict_ans, dict)
@@ -256,6 +307,7 @@ def test_table_answer_to_dict(table_answer):
     assert a_new == table_answer
 
 
+@pytest.mark.unit
 def test_document_from_dict():
     doc = Document(
         content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
@@ -263,10 +315,12 @@ def test_document_from_dict():
     assert doc == Document.from_dict(doc.to_dict())
 
 
+@pytest.mark.unit
 def test_table_document_from_dict(table_doc):
     assert table_doc == Document.from_dict(table_doc.to_dict())
 
 
+@pytest.mark.unit
 def test_doc_to_json():
     # With embedding
     d = Document(
@@ -295,6 +349,7 @@ def test_doc_to_json():
     assert d == d_new
 
 
+@pytest.mark.unit
 def test_table_doc_to_json(table_doc, table_doc_with_embedding):
     # With embedding
     j0 = table_doc_with_embedding.to_json()
@@ -307,18 +362,21 @@ def test_table_doc_to_json(table_doc, table_doc_with_embedding):
     assert table_doc == d_new
 
 
+@pytest.mark.unit
 def test_answer_postinit():
     a = Answer(answer="test", offsets_in_document=[{"start": 10, "end": 20}])
     assert a.meta == {}
     assert isinstance(a.offsets_in_document[0], Span)
 
 
+@pytest.mark.unit
 def test_table_answer_postinit():
     a = Answer(answer="test", offsets_in_document=[{"row": 1, "col": 2}])
     assert a.meta == {}
     assert isinstance(a.offsets_in_document[0], TableCell)
 
 
+@pytest.mark.unit
 def test_generate_doc_id_using_text():
     text1 = "text1"
     text2 = "text2"
@@ -330,6 +388,7 @@ def test_generate_doc_id_using_text():
     assert doc1_text1.id != doc3_text2.id
 
 
+@pytest.mark.unit
 def test_generate_doc_id_using_custom_list():
     text1 = "text1"
     text2 = "text2"
@@ -350,6 +409,7 @@ def test_generate_doc_id_using_custom_list():
         _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content", "non_existing_field"])
 
 
+@pytest.mark.unit
 def test_generate_doc_id_custom_list_meta():
     text1 = "text1"
     text2 = "text2"
@@ -373,6 +433,7 @@ def test_generate_doc_id_custom_list_meta():
     assert doc1_text1.id != doc2_text2.id
 
 
+@pytest.mark.unit
 def test_aggregate_labels_with_labels():
     label1_with_filter1 = Label(
         query="question",
@@ -407,6 +468,7 @@ def test_aggregate_labels_with_labels():
         label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
 
 
+@pytest.mark.unit
 def test_multilabel_preserve_order():
     labels = [
         Label(
@@ -462,6 +524,7 @@ def test_multilabel_preserve_order():
         assert multilabel.labels[i].id == str(i)
 
 
+@pytest.mark.unit
 def test_multilabel_preserve_order_w_duplicates():
     labels = [
         Label(
@@ -548,6 +611,7 @@ def test_multilabel_preserve_order_w_duplicates():
         assert multilabel.labels[i].id == str(i)
 
 
+@pytest.mark.unit
 def test_multilabel_id():
     query1 = "question 1"
     query2 = "question 2"
@@ -588,6 +652,7 @@ def test_multilabel_id():
     assert MultiLabel(labels=[label3]).id == "531445fa3bdf98b8598a3bea032bd605"
 
 
+@pytest.mark.unit
 def test_multilabel_with_doc_containing_dataframes():
     table = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
     table_doc = Document(content=table, content_type="table", id="table1")
@@ -614,6 +679,7 @@ def test_multilabel_with_doc_containing_dataframes():
     assert multilabel.offsets_in_contexts == [{"row": 0, "col": 0}]
 
 
+@pytest.mark.unit
 def test_multilabel_serialization():
     label_dict = {
         "id": "011079cf-c93f-49e6-83bb-42cd850dce12",
@@ -659,23 +725,27 @@ def test_multilabel_serialization():
     assert json_deserialized_multilabel.labels[0] == label
 
 
+@pytest.mark.unit
 def test_span_in():
     assert 10 in Span(5, 15)
-    assert not 20 in Span(1, 15)
+    assert 20 not in Span(1, 15)
 
 
+@pytest.mark.unit
 def test_span_in_edges():
     assert 5 in Span(5, 15)
-    assert not 15 in Span(5, 15)
+    assert 15 not in Span(5, 15)
 
 
+@pytest.mark.unit
 def test_span_in_other_values():
     assert 10.0 in Span(5, 15)
     assert "10" in Span(5, 15)
     with pytest.raises(ValueError):
-        "hello" in Span(5, 15)
+        assert "hello" in Span(5, 15)
 
 
+@pytest.mark.unit
 def test_assert_span_vs_span():
     assert Span(10, 11) in Span(5, 15)
     assert Span(5, 10) in Span(5, 15)
@@ -688,6 +758,7 @@ def test_assert_span_vs_span():
     assert not Span(10, 20) in Span(5, 15)
 
 
+@pytest.mark.unit
 def test_id_hash_keys_not_ignored():
     # Test that two documents with the same content but different metadata get assigned different ids if and only if
     # id_hash_keys is set to 'meta'
@@ -699,6 +770,7 @@ def test_id_hash_keys_not_ignored():
     assert doc3.id == doc4.id
 
 
+@pytest.mark.unit
 def test_legacy_answer_document_id():
     legacy_label = {
         "id": "123",
@@ -735,6 +807,7 @@ def test_legacy_answer_document_id():
     assert label.answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
 
 
+@pytest.mark.unit
 def test_legacy_answer_document_id_is_none():
     legacy_label = {
         "id": "123",
