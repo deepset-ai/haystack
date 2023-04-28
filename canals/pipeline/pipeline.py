@@ -291,7 +291,7 @@ class Pipeline:
                     + "\n".join(
                         [f" - {edge.name} ({edge.type.__name__})" for edge in connect_from_node_data["outputs"]]
                     )
-                    + f"'{connect_to_node_name}:\n"
+                    + f"\n'{connect_to_node_name}:\n"
                     + "\n".join([f" - {edge.name} ({edge.type.__name__})" for edge in available_edges])
                     + "\n".join(
                         [
@@ -310,7 +310,7 @@ class Pipeline:
                     + "\n".join(
                         [f" - {edge.name} ({edge.type.__name__})" for edge in connect_from_node_data["outputs"]]
                     )
-                    + f"'{connect_to_node_name}:\n"
+                    + f"\n'{connect_to_node_name}:\n"
                     + "\n".join([f" - {edge.name} ({edge.type.__name__})" for edge in available_edges])
                     + "\n".join(
                         [
