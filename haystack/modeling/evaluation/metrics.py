@@ -30,7 +30,7 @@ except ImportError as exc:
 try:
     from seqeval.metrics import classification_report as token_classification_report
 except ImportError as exc:
-    logger.debug("seqeval could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+    logger.debug("seqeval could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
     token_classification_report = None
 
 
@@ -150,7 +150,9 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
         report_fn = registered_reports[head.ph_output_type]  # type: ignore [index]
     elif head.ph_output_type == "per_token":
         if not token_classification_report:
-            raise ImportError("seqeval could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+            raise ImportError(
+                "seqeval could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
+            )
         report_fn = token_classification_report
     elif head.ph_output_type == "per_sequence":
         if not classification_report:
