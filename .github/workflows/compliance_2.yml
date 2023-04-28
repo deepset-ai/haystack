@@ -1,0 +1,36 @@
+name: License Compliance Test
+
+on:
+  push:
+    branches:
+      - massi/license-checker
+
+
+jobs:
+  license_check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Get explicit and transitive dependencies
+      run: |
+        pip install .[all]
+        pip freeze > requirements-all.txt
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        requirements: 'requirements-all.txt'
+        fail: 'Copyleft,Other,Error'
+        # exclude: '(?i)^(pylint|aio[-_]*).*'
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
