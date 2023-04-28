@@ -1,4 +1,4 @@
-from haystack.schema import Document, Label, Answer, Span, MultiLabel, TableCell
+from haystack.schema import Document, Label, Answer, Span, MultiLabel, TableCell, _dict_factory
 import pytest
 import numpy as np
 import pandas as pd
@@ -47,7 +47,7 @@ def text_labels():
 
 
 @pytest.fixture
-def table_label_1():
+def table_label():
     return Label(
         query="some",
         answer=Answer(
@@ -57,28 +57,6 @@ def table_label_1():
             document_ids=["123"],
             context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
             offsets_in_document=[TableCell(row=1, col=0)],
-        ),
-        document=Document(
-            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-            content_type="table",
-        ),
-        is_correct_answer=True,
-        is_correct_document=True,
-        origin="user-feedback",
-    )
-
-
-@pytest.fixture
-def table_label_2():
-    return Label(
-        query="some",
-        answer=Answer(
-            answer="text_1",
-            type="extractive",
-            score=0.1,
-            document_ids=["123"],
-            context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-            offsets_in_document=[TableCell(row=0, col=0)],
         ),
         document=Document(
             content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
@@ -185,25 +163,7 @@ def test_label_to_dict(text_labels):
 
 
 @pytest.mark.unit
-def test_labels_with_identical_fields_are_equal(table_label_1):
-    table_label = Label(
-        query="some",
-        answer=Answer(
-            answer="text_2",
-            type="extractive",
-            score=0.1,
-            document_ids=["123"],
-            context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-            offsets_in_document=[TableCell(row=1, col=0)],
-        ),
-        document=Document(
-            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
-            content_type="table",
-        ),
-        is_correct_answer=True,
-        is_correct_document=True,
-        origin="user-feedback",
-    )
+def test_labels_with_identical_fields_are_equal(table_label):
     table_label_copy = Label(
         query="some",
         answer=Answer(
@@ -226,23 +186,41 @@ def test_labels_with_identical_fields_are_equal(table_label_1):
 
 
 @pytest.mark.unit
-def test_labels_with_different_fields_are_not_equal(table_label_1, table_label_2):
-    assert table_label_1 != table_label_2
+def test_labels_with_different_fields_are_not_equal(table_label):
+    table_label_different = Label(
+        query="some",
+        answer=Answer(
+            answer="text_1",
+            type="extractive",
+            score=0.1,
+            document_ids=["123"],
+            context=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            offsets_in_document=[TableCell(row=0, col=0)],
+        ),
+        document=Document(
+            content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+            content_type="table",
+        ),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+    )
+    assert table_label != table_label_different
 
 
 @pytest.mark.unit
-def test_table_label_to_json(table_label_1):
-    j0 = table_label_1.to_json()
+def test_table_label_to_json(table_label):
+    j0 = table_label.to_json()
     l_new = Label.from_json(j0)
-    assert l_new == table_label_1
+    assert l_new == table_label
     assert l_new.answer.offsets_in_document[0].row == 1
 
 
 @pytest.mark.unit
-def test_table_label_to_dict(table_label_1):
-    j0 = table_label_1.to_dict()
+def test_table_label_to_dict(table_label):
+    j0 = table_label.to_dict()
     l_new = Label.from_dict(j0)
-    assert l_new == table_label_1
+    assert l_new == table_label
     assert l_new.answer.offsets_in_document[0].row == 1
 
 
@@ -821,3 +799,16 @@ def test_legacy_answer_document_id_is_none():
 
     label = Label.from_dict(legacy_label)
     assert label.answer.document_ids is None
+
+
+@pytest.mark.unit
+def test_dict_factory():
+    data = [
+        ("key1", "some_value"),
+        ("key2", ["val1", "val2"]),
+        ("key3", pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})),
+    ]
+    result = _dict_factory(data)
+    assert result["key1"] == "some_value"
+    assert result["key2"] == ["val1", "val2"]
+    assert result["key3"] == [["col1", "col2"], [1, 3], [2, 4]]
