@@ -1,46 +1,59 @@
-from typing import Dict, Any, List, Tuple
+from typing import Optional
 
+from dataclasses import dataclass
 from canals import component
 
 
 @component
 class AddValue:
-    def __init__(self, add: int = 1, input: str = "value", output: str = "value"):
+    """
+    Adds the value of `add` to the value of the incoming connection.
+
+    Single input, single output component.
+    """
+
+    @dataclass
+    class Output:
+        value: int
+
+    def __init__(self, add: int = 1):
         """
-        Adds the value of `add` to the value of the incoming connection.
-
-        Single input, single output component.
-
-        :param add: the value to add. This is also a parameter.
-        :param input: name of the input connection
-        :param output: name of the output connection
+        :param add: the default value to add.
         """
         self.add = add
-        self.inputs = [input]
-        self.outputs = [output]
 
-    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
-        sum = parameters.get(name, {}).get("add", self.add)
-        sum += data[0][1]
-        return ({self.outputs[0]: sum}, parameters)
+    def run(self, value: int, add: Optional[int] = None) -> Output:
+        """
+        Sums the incoming value with the value to add.
+        """
+        if add is None:
+            add = self.add
+        return AddValue.Output(value=value + add)
 
 
 def test_addvalue_default():
     component = AddValue()
-    results = component.run(name="test_component", data=[("value", 10)], parameters={})
-    assert results == ({"value": 11}, {})
+    results = component.run(value=10)
+    assert results == AddValue.Output(value=11)
     assert component.init_parameters == {}
 
 
-def test_addvalue_init_params():
-    component = AddValue(add=3, input="test_in", output="test_out")
-    results = component.run(name="test_component", data=[("test_in", 10)], parameters={})
-    assert results == ({"test_out": 13}, {})
-    assert component.init_parameters == {"add": 3, "input": "test_in", "output": "test_out"}
+def test_addvalue_only_init_params():
+    component = AddValue(add=3)
+    results = component.run(value=100)
+    assert results == AddValue.Output(value=103)
+    assert component.init_parameters == {"add": 3}
 
 
-def test_addvalue_runtime_params():
-    component = AddValue(add=3, input="test_in", output="test_out")
-    results = component.run(name="test_component", data=[("test_in", 10)], parameters={"test_component": {"add": 5}})
-    assert results == ({"test_out": 15}, {"test_component": {"add": 5}})
-    assert component.init_parameters == {"add": 3, "input": "test_in", "output": "test_out"}
+def test_addvalue_only_runtime_params():
+    component = AddValue()
+    results = component.run(value=50, add=10)
+    assert results == AddValue.Output(value=60)
+    assert component.init_parameters == {}
+
+
+def test_addvalue_init_and_runtime_params():
+    component = AddValue(add=3)
+    results = component.run(value=50, add=6)
+    assert results == AddValue.Output(value=56)
+    assert component.init_parameters == {"add": 3}

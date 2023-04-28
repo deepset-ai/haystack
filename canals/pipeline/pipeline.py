@@ -505,10 +505,8 @@ class Pipeline:
                 # store it in pipeline_results.
                 if not node_name in pipeline_results.keys():
                     pipeline_results[node_name] = []
-                # We use append() to account for the case in which a node outputs several times
-                # (for example, it can happen if there's a loop upstream). The list gets unwrapped before
-                # returning it if there's only one output.
-                pipeline_results[node_name].append(node_results)
+                # If a node outputs many times (like in loops), the output will be overwritten
+                pipeline_results[node_name] = node_results
             else:
                 inputs_buffer = self._route_output(
                     node_results=node_results, node_name=node_name, inputs_buffer=inputs_buffer
