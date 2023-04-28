@@ -142,45 +142,24 @@ def table_doc_with_embedding():
 
 @pytest.mark.unit
 def test_no_answer_label():
-    labels = [
-        Label(
-            query="question",
-            answer=Answer(answer=""),
-            is_correct_answer=True,
-            is_correct_document=True,
-            document=Document(content="some", id="777"),
-            origin="gold-label",
-        ),
-        Label(
-            query="question",
-            answer=Answer(answer=""),
-            is_correct_answer=True,
-            is_correct_document=True,
-            document=Document(content="some", id="777"),
-            origin="gold-label",
-        ),
-        Label(
-            query="question",
-            answer=Answer(answer="some"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            document=Document(content="some", id="777"),
-            origin="gold-label",
-        ),
-        Label(
-            query="question",
-            answer=Answer(answer="some"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            document=Document(content="some", id="777"),
-            origin="gold-label",
-        ),
-    ]
-
-    assert labels[0].no_answer == True
-    assert labels[1].no_answer == True
-    assert labels[2].no_answer == False
-    assert labels[3].no_answer == False
+    label_no_answer = Label(
+        query="question",
+        answer=Answer(answer=""),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="some", id="777"),
+        origin="gold-label",
+    )
+    label_with_answer = Label(
+        query="question",
+        answer=Answer(answer="some"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="some", id="777"),
+        origin="gold-label",
+    )
+    assert label_no_answer.no_answer is True
+    assert label_with_answer.no_answer is False
 
 
 @pytest.mark.unit
