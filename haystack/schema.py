@@ -402,7 +402,7 @@ class Answer:
             self.meta = {}
 
         # In case the context is a list of lists for a table document that is instantiated by from_json() or from_dict()
-        if self.context is not None and isinstance(self.context, list):
+        if isinstance(self.context, list):
             self.context = dataframe_from_list(self.context)
 
     def __lt__(self, other):
