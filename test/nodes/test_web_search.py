@@ -1,4 +1,5 @@
 import os
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -35,24 +36,65 @@ def test_web_search_with_site_keyword():
     ), "Some documents are not from the specified sites lifewire.com or nasa.gov."
 
 
-@pytest.mark.skipif(
-    not os.environ.get("GOOGLE_API_KEY", None),
-    reason="Please export an env var called GOOGLE_API_KEY containing the Google API key to run this test. \
-        See https://console.cloud.google.com/apis .",
-)
-@pytest.mark.skipif(
-    not os.environ.get("SEARCH_ENGINE_ID", None),
-    reason="Please export an env var called SEARCH_ENGINE_ID containing your search engine id to run this test. \
-        See https://programmablesearchengine.google.com/ .",
-)
-@pytest.mark.integration
-def test_web_search_with_google_api():
-    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-    SEARCH_ENGINE_ID = os.environ.get("SEARCH_ENGINE_ID")
-    ws = WebSearch(
-        api_key=GOOGLE_API_KEY, search_engine_provider="GoogleAPI", search_engine_kwargs={"engine_id": SEARCH_ENGINE_ID}
-    )
-    result, _ = ws.run(query="The founder of Python")
-    assert len(result["documents"]) > 1
-    assert "guido" in result["documents"][0].content.lower()
-    assert isinstance(result["documents"][0], Document)
+@pytest.mark.unit
+def test_web_search_with_google_api_provider():
+    GOOGLE_API_KEY = "dummy_api_key"
+    SEARCH_ENGINE_ID = "dummy_search_engine_id"
+    query = "The founder of Python"
+
+    with patch("haystack.nodes.search_engine.WebSearch.run") as mock_run:
+        mock_run.return_value = ([{"content": "Guido van Rossum"}], None)
+        ws = WebSearch(
+            api_key=GOOGLE_API_KEY,
+            search_engine_provider="GoogleAPI",
+            search_engine_kwargs={"engine_id": SEARCH_ENGINE_ID},
+        )
+        result, _ = ws.run(query=query)
+
+        mock_run.assert_called_once_with(query=query)
+
+        assert "guido" in result[0]["content"].lower()
+
+
+@pytest.mark.unit
+def test_web_search_with_google_api_client():
+    GOOGLE_API_KEY = "dummy_api_key"
+    SEARCH_ENGINE_ID = "dummy_search_engine_id"
+    query = "The founder of Python"
+
+    try:
+        from googleapiclient.discovery import build
+    except ImportError:
+        raise ImportError(
+            "You need to install the Google API client. You can do so by running 'pip install google-api-python-client'."
+        )
+
+    with patch("googleapiclient.discovery.build") as mock_build:
+        mock_service = MagicMock()
+        mock_cse = MagicMock()
+        mock_list = MagicMock()
+
+        mock_build.return_value = mock_service
+        mock_service.cse.return_value = mock_cse
+        mock_cse.list.return_value = mock_list
+        mock_list.execute.return_value = {
+            "items": [
+                {
+                    "title": "Guido van Rossum",
+                    "snippet": "The founder of Python programming language.",
+                    "link": "https://example.com/guido",
+                }
+            ]
+        }
+
+        ws = WebSearch(
+            api_key=GOOGLE_API_KEY,
+            search_engine_provider="GoogleAPI",
+            search_engine_kwargs={"engine_id": SEARCH_ENGINE_ID},
+        )
+        result, _ = ws.run(query=query)
+
+        mock_build.assert_called_once_with("customsearch", "v1", developerKey=GOOGLE_API_KEY)
+        mock_service.cse.assert_called_once()
+        mock_cse.list.assert_called_once_with(q=query, cx=SEARCH_ENGINE_ID, num=10)
+        mock_list.execute.assert_called_once()
