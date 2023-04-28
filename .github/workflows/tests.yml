@@ -156,7 +156,7 @@ jobs:
         run: pip install .[all]
 
       - name: Run
-        run: pytest --cov-report lcov:cov.info --cov="haystack" -m "unit" test/${{ matrix.topic }}
+        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
 
       - name: Coveralls Parallel
         # We upload only coverage for ubuntu as handling both os
@@ -164,7 +164,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: coverallsapp/github-action@v2
         with:
-          path-to-lcov: cov.info
+          path-to-lcov: coverage.xml
           flag-name: ${{ matrix.topic }}
           parallel: true
 
