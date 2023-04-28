@@ -30,8 +30,12 @@ jobs:
         github-token: ${{ secrets.GH_ACCESS_TOKEN }}
         requirements: 'requirements-all.txt'
         fail: 'Copyleft,Other,Error'
-        # This check must always pass without exclusions!
-        # exclude:
+        # Exclusions in the vanilla distribution must be explicitly motivated
+        #
+        # - certifi is pulled in by requests
+        # - num2words is pulled in by quantulum3
+        # - tqdm is MLP but there are no better alternatives
+        exclude: '(?i)^(certifi|num2words|tqdm).*'
 
     - name: Print report
       if: ${{ always() }}
