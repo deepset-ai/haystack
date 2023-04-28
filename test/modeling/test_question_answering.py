@@ -23,7 +23,6 @@ def bert_base_squad2(request):
         batch_size=4,
         num_processes=0,
         multithreading_rust=False,
-        use_fast=True,  # TODO parametrize this to test slow as well
     )
     return model
 
