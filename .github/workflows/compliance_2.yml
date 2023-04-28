@@ -7,7 +7,37 @@ on:
 
 
 jobs:
-  license_check:
+  license_check_vanilla:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Get explicit and transitive dependencies
+      run: |
+        pip install .
+        pip freeze > requirements-all.txt
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        requirements: 'requirements-all.txt'
+        fail: 'Copyleft,Other,Error'
+        # This check must always pass without exclusions!
+        # exclude:
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
+
+  license_check_all:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout the code
@@ -27,9 +57,15 @@ jobs:
       id: license_check_report
       uses: pilosus/action-pip-license-checker@v2
       with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
         requirements: 'requirements-all.txt'
         fail: 'Copyleft,Other,Error'
-        # exclude: '(?i)^(pylint|aio[-_]*).*'
+        # We exclude from the check any optional dependency that
+        # is not automatically installed along with Haystack.
+        # Special cases:
+        # - pyzmq is flagged because dual-licensed, but we assume using BSD
+        # - tqdm is MLP but there are no better alternatives
+        exclude: '(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*'
 
     - name: Print report
       if: ${{ always() }}
