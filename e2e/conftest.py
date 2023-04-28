@@ -1,11 +1,7 @@
 import os
 import uuid
 from contextlib import contextmanager
-import random
 from pathlib import Path
-
-import torch
-import numpy as np
 
 import pytest
 

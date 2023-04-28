@@ -13,10 +13,8 @@ from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.nodes.retriever.dense import DensePassageRetriever
 
-from haystack.modeling.utils import set_all_seeds, initialize_device_settings
-from haystack.utils.early_stopping import EarlyStopping
+from haystack.modeling.utils import initialize_device_settings
 
 
 def test_dpr_modules():
