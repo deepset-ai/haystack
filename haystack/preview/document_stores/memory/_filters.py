@@ -83,7 +83,7 @@ def _safe_gt(first: Any, second: Any) -> bool:
             f"Can't evaluate '{type(first).__name__} > {type(second).__name__}'. "
             f"Convert these values into one of the following types: {[type_.__name__ for type_ in GT_TYPES]}"
         )
-    return first > second
+    return bool(first > second)
 
 
 def eq_operation(fields, field_name, value):
