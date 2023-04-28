@@ -8,6 +8,9 @@ on:
 
 jobs:
   license_check_vanilla:
+    env:
+      REQUIREMENTS_FILE: requirements_vanilla.txt
+
     runs-on: ubuntu-latest
     steps:
     - name: Checkout the code
@@ -21,14 +24,14 @@ jobs:
     - name: Get explicit and transitive dependencies
       run: |
         pip install .
-        pip freeze > requirements-all.txt
+        pip freeze > ${{ env.REQUIREMENTS_FILE }}
 
     - name: Check Licenses
       id: license_check_report
       uses: pilosus/action-pip-license-checker@v2
       with:
         github-token: ${{ secrets.GH_ACCESS_TOKEN }}
-        requirements: 'requirements-all.txt'
+        requirements: ${{ env.REQUIREMENTS_FILE }}
         fail: 'Copyleft,Other,Error'
         # Exclusions in the vanilla distribution must be explicitly motivated
         #
@@ -42,6 +45,9 @@ jobs:
       run: echo "${{ steps.license_check_report.outputs.report }}"
 
   license_check_all:
+    env:
+      REQUIREMENTS_FILE: requirements_all.txt
+
     runs-on: ubuntu-latest
     steps:
     - name: Checkout the code
@@ -55,14 +61,14 @@ jobs:
     - name: Get explicit and transitive dependencies
       run: |
         pip install .[all]
-        pip freeze > requirements-all.txt
+        pip freeze > ${{ env.REQUIREMENTS_FILE }}
 
     - name: Check Licenses
       id: license_check_report
       uses: pilosus/action-pip-license-checker@v2
       with:
         github-token: ${{ secrets.GH_ACCESS_TOKEN }}
-        requirements: 'requirements-all.txt'
+        requirements: ${{ env.REQUIREMENTS_FILE }}
         fail: 'Copyleft,Other,Error'
         # We exclude from the check any optional dependency that
         # is not automatically installed along with Haystack.
