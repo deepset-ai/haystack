@@ -794,18 +794,19 @@ def _pydantic_dataclass_from_dict(dict: Dict, pydantic_dataclass_type) -> Any:
     return dataclass_object
 
 
-def _dict_factory(list_of_tuples):
+def _dict_factory(data):
     """Meant to be as the dict_factory for `asdict`. This function is called within `asdict` to convert a list of tuples
     into a dictionary object. This handles the conversion of pandas Dataframes into a list of lists.
 
-    :param list_of_tuples: list of (key, value) pairs
+    :param data: list of (key, value) pairs
     """
-    res = {}
-    for key, val in list_of_tuples:
-        if isinstance(val, pd.DataFrame):
-            val = dataframe_to_list(val)
-        res.update({key: val})
-    return res
+
+    def convert_value(v):
+        if isinstance(v, pd.DataFrame):
+            return dataframe_to_list(v)
+        return v
+
+    return {k: convert_value(v) for k, v in data}
 
 
 class NumpyEncoder(json.JSONEncoder):
