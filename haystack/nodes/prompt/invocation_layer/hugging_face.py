@@ -47,7 +47,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of HFLocalInvocationLayer might receive some unrelated
         kwargs. Only kwargs relevant to the HFLocalInvocationLayer are considered. The list of supported kwargs
-        includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
+        includes: task_name, trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
         For more details about pipeline kwargs in general, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
 
@@ -119,8 +119,15 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         if len(model_input_kwargs) > 0:
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
-        self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
+
+        # If task_name is not provided, get the task name from the model name or path (uses HFApi)
+        if "task_name" in kwargs:
+            self.task_name = kwargs.get("task_name")
+        else:
+            self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
+
         self.pipe = pipeline(
+            task=self.task_name,  # task_name is used to determine the pipeline type
             model=model_name_or_path,
             device=self.devices[0] if "device_map" not in model_input_kwargs else None,
             use_auth_token=self.use_auth_token,
