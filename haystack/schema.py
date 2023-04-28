@@ -416,7 +416,7 @@ class Answer:
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
     def __repr__(self):
-        return f"<Answer {asdict(self, dict_factory=_dict_factory)}>"
+        return f"<Answer {self.to_dict()}>"
 
     def to_dict(self) -> Dict:
         return asdict(self, dict_factory=_dict_factory)
