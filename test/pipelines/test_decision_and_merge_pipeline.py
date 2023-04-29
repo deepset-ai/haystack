@@ -3,30 +3,30 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.components import AddValue, Remainder, Double, Sum
+from test.components import AddValue, Even, Double, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 def test_pipeline(tmp_path):
-    add_one = AddValue(add=1, input="value")
+    add_one = AddValue()
 
     pipeline = Pipeline()
     pipeline.add_component("add_one", add_one)
-    pipeline.add_component("remainder", Remainder(input="value", divisor=3))
-    pipeline.add_component("add_ten", AddValue(add=10, input="0"))
-    pipeline.add_component("double", Double(input="1", output="value"))
-    pipeline.add_component("add_three", AddValue(add=3, input="2"))
+    pipeline.add_component("parity", Even())
+    pipeline.add_component("add_ten", AddValue(add=10))
+    pipeline.add_component("double", Double())
+    pipeline.add_component("add_four", AddValue(add=4))
     pipeline.add_component("add_one_again", add_one)
-    pipeline.add_component("sum", Sum(inputs=["value"] * 4), input_component=True)
+    pipeline.add_component("sum", Sum())
 
-    pipeline.connect("add_one", "remainder")
-    pipeline.connect("remainder.0", "add_ten")
-    pipeline.connect("remainder.1", "double")
+    pipeline.connect("add_one", "parity")
+    pipeline.connect("parity.even", "add_ten")
+    pipeline.connect("parity.odd", "double")
     pipeline.connect("add_ten", "sum")
     pipeline.connect("double", "sum")
-    pipeline.connect("remainder.2", "add_three")
-    pipeline.connect("add_three", "add_one_again")
+    pipeline.connect("parity.odd", "add_four")
+    pipeline.connect("add_four", "add_one_again")
     pipeline.connect("add_one_again", "sum")
 
     try:
@@ -34,10 +34,13 @@ def test_pipeline(tmp_path):
     except ImportError:
         logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
-    results = pipeline.run({"value": 1})
+    results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)
+    assert results == {"sum": {"total": 12}}
 
-    assert results == {"sum": 7}
+    results = pipeline.run({"add_one": {"value": 2}})
+    pprint(results)
+    assert results == {"sum": {"total": 14}}
 
 
 if __name__ == "__main__":

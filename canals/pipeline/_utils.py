@@ -33,7 +33,7 @@ def is_subtype(from_what: Type, to_what: Type) -> bool:
     """
     Checks if two types are compatible
     """
-    print(from_what, to_what, _is_subtype(to_what, from_what))
+    # TODO we should re-implement this method from pytypes if possible - pytypes is seriously unmaintained.
     return _is_subtype(to_what, from_what)
 
 
@@ -69,18 +69,18 @@ def get_socket(node_name: str, socket_name: str, sockets: List[Socket]) -> Socke
     """
     Makes sure a socket with that name exists and, if so, returns it.
     """
-    sockets = [socket for socket in sockets if socket.name == socket_name]
-    if not sockets:
+    candidate_sockets = [socket for socket in sockets if socket.name == socket_name]
+    if not candidate_sockets:
         raise PipelineConnectError(
             f"'{node_name}.{socket_name} does not exist. "
             f"Connections of {node_name} are: " + ", ".join([socket.name for socket in sockets])
         )
-    if len(sockets) > 1:
+    if len(candidate_sockets) > 1:
         raise PipelineConnectError(
             f"'{node_name}.{socket_name} is duplicate. This is a bug, please open an issue here: "
             "https://github.com/deepset-ai/canals/issues."
         )
-    return sockets[0]
+    return candidate_sockets[0]
 
 
 def connections_status(from_node: str, to_node: str, from_sockets: List[OutputSocket], to_sockets: List[InputSocket]):

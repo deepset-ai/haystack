@@ -134,8 +134,13 @@ class Pipeline:
 
         # Create the connection
         logger.debug("Connecting '%s.%s' to '%s.%s'", from_node, from_socket.name, to_node, to_socket.name)
-        self.graph.add_edge(from_node, to_node, from_socket=from_socket, to_socket=to_socket)
-
+        self.graph.add_edge(
+            from_node,
+            to_node,
+            from_socket=from_socket,
+            to_socket=to_socket,
+            label=f"{from_socket.name}/{to_socket.name}",  # for pygraphviz
+        )
         # Variadic sockets are never fully taken
         if not to_socket.variadic:
             to_socket.taken_by = from_node
@@ -299,7 +304,11 @@ class Pipeline:
         #
         logger.info("Pipeline execution started.")
 
-        # TODO validate this input data a bit
+        # Make sure the input keys are all nodes of the pipeline
+        unknown_components = [key for key in data.keys() if not key in self.graph.nodes]
+        if unknown_components:
+            raise ValueError(f"Pipeline received data for unknown component(s): {', '.join(unknown_components)}")
+
         inputs_buffer = OrderedDict(data)
 
         # *** PIPELINE EXECUTION LOOP ***
@@ -426,7 +435,11 @@ class Pipeline:
             return (True, inputs_buffer)
 
         # Do we have all the inputs we expect?
-        if sorted(inputs_to_wait_for) == sorted(inputs_received):
+        if self.graph.nodes[component_name]["variadic_input"]:
+            if inputs_received and len(inputs_received[0]) == len(inputs_to_wait_for):
+                return (True, inputs_buffer)
+
+        elif sorted(inputs_to_wait_for) == sorted(inputs_received):
             return (True, inputs_buffer)
 
         # This node is missing some inputs.
@@ -541,17 +554,16 @@ class Pipeline:
                 # edge that did not receive input.
                 if not target_node in inputs_buffer:
                     inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
-                if from_socket.name in node_results.keys():
-                    edge_data = [
-                        e for e in self._get_component_data(target_node)["input_sockets"] if e.name == to_socket.name
-                    ]
-                    if not edge_data:
-                        continue
-                    if edge_data[0].variadic:
-                        if to_socket.name in inputs_buffer[target_node]:
-                            inputs_buffer[target_node][to_socket.name].append(node_results[from_socket.name])
-                        else:
-                            inputs_buffer[target_node][to_socket.name] = [node_results[from_socket.name]]
+                if node_results.get(from_socket.name, None):
+                    if to_socket.variadic:
+                        # if to_socket.name in inputs_buffer[target_node]:
+
+                        logger.debug("$$$$$$$$$$$$$ %s %s %s", target_node, inputs_buffer[target_node], to_socket.name)
+                        if not to_socket.name in inputs_buffer[target_node].keys():
+                            inputs_buffer[target_node][to_socket.name] = []
+                        inputs_buffer[target_node][to_socket.name].append(node_results[from_socket.name])
+                        # else:
+                        #     inputs_buffer[target_node][to_socket.name] = [node_results[from_socket.name]]
                     else:
                         inputs_buffer[target_node][to_socket.name] = node_results[from_socket.name]
 

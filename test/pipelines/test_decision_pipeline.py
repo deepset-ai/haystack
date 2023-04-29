@@ -31,13 +31,11 @@ def test_pipeline(tmp_path):
 
     results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)
-    assert results == {"double": {"value": 4}}
+    assert results == {"add_three": {"value": 15}}
 
-    assert False
-
-    # results = pipeline.run({"add_one": {"value": 2}})
-    # pprint(results)
-    # assert results == {"add_one_again": {"value": 15}}
+    results = pipeline.run({"add_one": {"value": 2}})
+    pprint(results)
+    assert results == {"double": {"value": 6}}
 
 
 if __name__ == "__main__":
