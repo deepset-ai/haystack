@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.components import AddValue, Even, Double
+from test.components import AddValue, Remainder, Double
 
 import logging
 
@@ -14,30 +14,27 @@ def test_pipeline(tmp_path):
 
     pipeline = Pipeline()
     pipeline.add_component("add_one", add_one)
-    pipeline.add_component("parity", Even())
+    pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_ten", AddValue(add=10))
     pipeline.add_component("double", Double())
     pipeline.add_component("add_three", AddValue(add=3))
+    pipeline.add_component("add_one_again", add_one)
 
-    pipeline.connect("add_one", "parity")
-    pipeline.connect("parity.even", "add_ten.value")
-    pipeline.connect("parity.odd", "double.value")
-    pipeline.connect("add_ten", "add_three")
+    pipeline.connect("add_one", "remainder")
+    pipeline.connect("remainder.remainder_is_0", "add_ten")
+    pipeline.connect("remainder.remainder_is_1", "double")
+    pipeline.connect("remainder.remainder_is_2", "add_three")
+    pipeline.connect("add_three", "add_one_again")
 
     try:
         pipeline.draw(tmp_path / "decision_pipeline.png")
     except ImportError:
         logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
-    results = pipeline.run({"add_one": {"value": 1}})
+    results = pipeline.run({"value": 1})
     pprint(results)
-    assert results == {"double": {"value": 4}}
 
-    assert False
-
-    # results = pipeline.run({"add_one": {"value": 2}})
-    # pprint(results)
-    # assert results == {"add_one_again": {"value": 15}}
+    assert results == {"add_one_again": {"value": 6}}
 
 
 if __name__ == "__main__":

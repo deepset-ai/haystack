@@ -4,12 +4,10 @@ import logging
 import inspect
 from functools import partial, wraps
 
+from canals.errors import ComponentError
+
 
 logger = logging.getLogger(__name__)
-
-
-class ComponentError(Exception):
-    pass
 
 
 def save_init_parameters(init_func, serializable=True):
@@ -210,13 +208,40 @@ def component(class_, serializable=True):
 
     # Check for run()
     if not hasattr(class_, "run"):
-        # TODO check the component signature too
-        raise ComponentError("Components must have a 'run()' method. See the docs for more information.")
+        raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
+    run_signature = inspect.signature(class_.run)
 
-    # Check for __init__()
-    if not hasattr(class_, "__init__"):
-        # TODO check the component signature too
-        raise ComponentError("Components must have a '__init__()' method. See the docs for more information.")
+    # Check the run() signature for keyword variadic arguments
+    if any(run_signature.parameters[param].kind == inspect.Parameter.VAR_KEYWORD for param in run_signature.parameters):
+        raise ComponentError(
+            f"{class_.__name__} can't have variadic keyword arguments like **kwargs in its 'run()' method."
+        )
+
+    # Check the run() signature for missing types in positional variadic arguments
+    if any(
+        run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
+        and run_signature.parameters[param].annotation == inspect.Parameter.empty
+        for param in run_signature.parameters
+    ):
+        raise ComponentError(
+            f"{class_.__name__} must type also variadic arguments like *args in its 'run()' method.\n"
+            "Hint: variadic arguments are typed in singular form, so if your component takes an arbitrary number of "
+            "strings, the signature of run() should look like 'def run(self, *my_strings: str) -> Output:'."
+        )
+
+    # Check the run() signature for other missing types
+    missing_types = [
+        parameter
+        for parameter in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
+        if run_signature.parameters[parameter].annotation == inspect.Parameter.empty
+    ]
+    if missing_types:
+        raise ComponentError(
+            f"{class_.__name__}.run() must declare types for all its parameters, "
+            f"but these parameters are not typed: {', '.join(missing_types)}."
+        )
+    if run_signature.return_annotation == inspect.Parameter.empty:
+        raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
 
     # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
     # See `save_init_parameters()`.

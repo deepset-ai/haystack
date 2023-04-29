@@ -1,34 +1,23 @@
-from typing import Dict, Any, List, Tuple
-
+from dataclasses import dataclass
 from canals import component
 
 
 @component
 class Subtract:
-    def __init__(self, first_input: str, second_input: str, output: str = "diff"):
+    @dataclass
+    class Output:
+        difference: int
+
+    def run(self, first_value: int, second_value: int) -> Output:
         """
-        Subtracts the second connection's value from the first.
-
-        Double input, single output component. Order of input connections is critical.
-        Doesn't have parameters.
-
-        :param first_input: name of the connection carrying the value to subtract from.
-        :param second_input: name of the connection carrying the value to subtract.
-        :param output: name of the output connection.
+        :param first_value: name of the connection carrying the value to subtract from.
+        :param second_value: name of the connection carrying the value to subtract.
         """
-        # self.init_parameters = {"first_input": first_input, "second_input": second_input, "output": output}
-        self.inputs = [first_input, second_input]
-        self.outputs = [output]
-
-    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
-        first_value = [value for name, value in data if name == self.inputs[0]][0]
-        second_value = [value for name, value in data if name == self.inputs[1]][0]
-
-        return ({"diff": first_value - second_value}, parameters)
+        return Subtract.Output(difference=first_value - second_value)
 
 
 def test_subtract():
-    component = Subtract(first_input="first", second_input="second", output="diff")
-    results = component.run(name="test_component", data=[("second", 7), ("first", 10)], parameters={})
-    assert results == ({"diff": 3}, {})
-    assert component.init_parameters == {"first_input": "first", "second_input": "second", "output": "diff"}
+    component = Subtract()
+    results = component.run(first_value=10, second_value=7)
+    assert results == Subtract.Output(difference=3)
+    assert component.init_parameters == {}

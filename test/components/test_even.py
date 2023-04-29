@@ -1,46 +1,30 @@
-from dataclasses import dataclass, make_dataclass
+from typing import Optional
+
+from dataclasses import dataclass
 import pytest
 
 from canals import component
 
 
 @component
-class Remainder:
+class Even:
     """
-    Redirects the value, unchanged, along the connection corresponding to the remainder
-    of a division. For example, if `divisor=3`, the value `5` would be sent along
-    the second output connection.
-
-    Single input, multi output decision component. Order of output connections is critical.
+    Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """
 
     @dataclass
     class Output:
-        odd: int
+        even: Optional[int] = None
+        odd: Optional[int] = None
 
-    def __init__(self, divisor: int = 2):
-        self.divisor = divisor
-        setattr(
-            self,
-            f"Output_{divisor}",
-            make_dataclass("Output", [(f"remainder_is_{val}", int) for val in range(divisor)]),
-        )
-
-    def _output_types(self):
-        return
-
-    def run(self, value: int) -> None:  # Output:
+    def run(self, value: int) -> Output:
         """
-        :param divisor: the number to divide the input value for.
-        :param input: the name of the input connection.
-        :param outputs: the name of the output connections. Must be equal in length to the
-            divisor (if dividing by 3, you must give exactly three output names).
-            Ordering is important.
+        :param value: The value to check for parity
         """
-        remainder = value % self.divisor
-        # output = Remainder.Output()
-        # setattr(output, str(remainder), remainder)
-        return None  # output
+        remainder = value % 2
+        if remainder:
+            return Even.Output(odd=value)
+        return Even.Output(even=value)
 
 
 # def test_remainder_default():
