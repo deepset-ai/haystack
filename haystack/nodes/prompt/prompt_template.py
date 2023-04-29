@@ -448,4 +448,14 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
                         {chat_transcript}
                         Condensed Transcript:""",
         ),
+        PromptTemplate(
+            name="self-reflection-tools",
+            prompt_text="""You are an advanced reasoning agent that can improve based on self refection. You will be given a previous reasoning trial in which you were given access to the following tools {tool_names} and a question to answer.\nYou were unsuccessful in answering the question either because you used wrong search tool and/or input, or you guessed the wrong final answer. In a few sentences, diagnose a possible reason for failure and devise a new, concise and concrete plan that aims to mitigate the failure. Conclude your plan with a selected Tool and a new Tool Input or a Final Answer depending on the situation. Use complete sentences.\nHere are some examples:\n{examples}\nPrevious trial:\nQuestion: {query}\n{transcript}\n\n
+            Reflection:""",
+        ),
+        PromptTemplate(
+            name="self-reflection-no-tools",
+            prompt_text="""You are an advanced reasoning agent that can improve based on self refection. You will be given a previous reasoning trial in which you were given and question to answer.\nYou were unsuccessful in answering the question either because you guessed the wrong final answer, or you used up your set number of reasoning steps. In a few sentences, diagnose a possible reason for failure and devise a new, concise,and concrete plan that aims to mitigate the same failure. Use complete sentences.\nHere are some examples:\n{examples}\nPrevious trial:\nQuestion: {query}\n{transcript}\n\n
+                Reflection:""",
+        ),
     ]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from hashlib import md5
 from typing import List, Optional, Union, Dict, Any, Tuple, Callable
@@ -224,6 +225,19 @@ class ToolsManager:
             return tool_name.strip('" []\n').strip(), tool_input.strip('" \n')
         return None, None
 
+    def valid_tool_selected(self, llm_response: str) -> bool:
+        """
+        Verify that the tool selected by LLM is an actual tool.
+        :param llm_response: The PromptNode response.
+        :return: A boolean indicating whether the tool selected by LLM is valid.
+        """
+        tool_match = re.search(self.tool_pattern, llm_response)
+        if tool_match:
+            tool_name = tool_match.group(1)
+            tool_name = tool_name.strip('" []\n').strip()
+            return self.has_tools() and tool_name in self.tools
+        return False
+
 
 class ReActResolver(PromptParametersResolver):
     """
@@ -285,6 +299,7 @@ class Agent:
         tools_manager: Optional[ToolsManager] = None,
         memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        self_reflection: SelfReflection = None,
         final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
     ):
         """
@@ -323,6 +338,7 @@ class Agent:
         self.final_answer_parser = (
             RegexAnswerParser(final_answer_pattern) if isinstance(final_answer_pattern, str) else final_answer_pattern
         )
+        self.reflection = self_reflection or NoSelfReflection()
         # Resolve model name to check if it's a streaming model
         if isinstance(self.prompt_node.model_name_or_path, str):
             model_name = self.prompt_node.model_name_or_path
@@ -442,6 +458,10 @@ class Agent:
         next_step = current_step.create_next_step(prompt_node_response)
         self.callback_manager.on_agent_step(next_step)
 
+        # should we invoke self-reflection?
+        if self.reflection.should_reflect(self, next_step):
+            next_step = self.reflection.reflect(query, self, next_step)
+
         # run the tool selected by the LLM
         observation = self.tm.run_tool(next_step.prompt_node_response, params) if not next_step.is_last() else None
 
@@ -483,6 +503,104 @@ class Agent:
         return {
             k: v if isinstance(v, str) else next(iter(v)) for k, v in kwargs.items() if isinstance(v, (str, Iterable))
         }
+
+
+class SelfReflection(ABC):
+    """
+    Abstract class for self-reflection. Self-reflection is a mechanism that allows the Agent to reflect on its own
+    reasoning process and decide whether it should rerun the current step.
+    For more details see Reflexion: an autonomous agent with dynamic memory and self-reflection at
+    https://arxiv.org/abs/2303.11366
+    """
+
+    @abstractmethod
+    def should_reflect(self, agent: Agent, agent_step: AgentStep) -> bool:
+        """
+        Whether the Agent should reflect on the current step.
+        :param agent: The Agent
+        :param agent_step: The current AgentStep
+        :return: True if the Agent should reflect on the current step, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def reflect(self, query: str, agent: Agent, agent_step: AgentStep) -> AgentStep:
+        """
+        Self reflect on the current step and return the next step after self-reflection.
+        :param query: The search query
+        :param agent: The Agent
+        :param agent_step: The current AgentStep
+        :return: The next AgentStep after self-reflection.
+        """
+        pass
+
+
+class NoSelfReflection(SelfReflection):
+    """
+    A self-reflection class whose instances never reflect on the current step.
+    """
+
+    def should_reflect(self, agent: Agent, agent_step: AgentStep) -> bool:
+        return False
+
+    def reflect(self, query: str, agent: Agent, agent_step: AgentStep) -> AgentStep:
+        return agent_step
+
+
+class DefaultSelfReflection(SelfReflection):
+    """
+    A default self-reflection class
+    """
+
+    def __init__(
+        self,
+        prompt_node: PromptNode,
+        prompt_template: Union[str, PromptTemplate],
+        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]],
+        step_threshold: float = 0.8,
+    ):
+        """
+        :param prompt_node: The PromptNode used by self-reflection (GPT-4 recommended)
+        :param prompt_template: The name of the PromptTemplate used by the Agent
+        :param prompt_parameters_resolver: The PromptParametersResolver used to resolve the prompt template parameters
+        :param step_threshold: The threshold for self-reflection. If the current step is above this threshold, the Agent
+        will reflect on the current step.
+        """
+        self.prompt_node = prompt_node
+        resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
+        if not resolved_prompt_template:
+            raise ValueError(
+                f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
+            )
+        self.prompt_template = resolved_prompt_template
+        self.prompt_parameters_resolver = (
+            prompt_parameters_resolver
+            if isinstance(prompt_parameters_resolver, PromptParametersResolver)
+            else CallableResolver(prompt_parameters_resolver)
+        )
+        self.step_threshold = step_threshold
+
+    def should_reflect(self, agent: Agent, agent_step: AgentStep) -> bool:
+        current_step = agent_step.current_step
+        max_steps = agent_step.max_steps
+        above_threshold = current_step / float(max_steps) > self.step_threshold
+        if agent_step.is_last():
+            return False
+        else:
+            invalid_tool_selected = agent.has_tools() and not agent.tm.valid_tool_selected(
+                agent_step.prompt_node_response
+            )
+            return above_threshold or invalid_tool_selected
+
+    def reflect(self, query: str, agent: Agent, agent_step: AgentStep) -> AgentStep:
+        # first resolve prompt template params
+        template_params = self.prompt_parameters_resolver.resolve(query=query, agent=agent, agent_step=agent_step)
+        prepared_prompt = next(self.prompt_template.fill(**template_params))
+        # invoke the self reflection prompt node with the prepared prompt
+        prompt_node_response = self.prompt_node(
+            prepared_prompt, stream_handler=AgentTokenStreamingHandler(agent.callback_manager)
+        )
+        return agent_step.create_next_step(prompt_node_response, agent_step.current_step - 1)
 
 
 class ConversationalAgent(Agent):
@@ -558,6 +676,7 @@ class ConversationalAgentWithTools(Agent):
         max_steps: int = 5,
         memory: Memory = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        self_reflection: Optional[SelfReflection] = None,
         final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
     ):
         super().__init__(
@@ -577,5 +696,6 @@ class ConversationalAgentWithTools(Agent):
                     "history": agent.memory.load(keys=["history"]),
                 }
             ),
+            self_reflection=self_reflection,
             final_answer_pattern=final_answer_pattern,
         )

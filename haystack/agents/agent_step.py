@@ -37,10 +37,11 @@ class AgentStep:
         self.prompt_node_response = prompt_node_response
         self.transcript = transcript
 
-    def create_next_step(self, prompt_node_response: Any) -> AgentStep:
+    def create_next_step(self, prompt_node_response: Any, current_step: Optional[int] = None) -> AgentStep:
         """
         Creates the next agent step based on the current step and the PromptNode response.
         :param prompt_node_response: The PromptNode response received.
+        :param current_step: The current step in the execution of the agent.
         """
         if not isinstance(prompt_node_response, list) or not prompt_node_response:
             raise AgentError(
@@ -49,7 +50,7 @@ class AgentStep:
             )
         cls = type(self)
         return cls(
-            current_step=self.current_step + 1,
+            current_step=current_step if current_step else self.current_step + 1,
             max_steps=self.max_steps,
             final_answer_parser=self.final_answer_parser,
             prompt_node_response=prompt_node_response[0],

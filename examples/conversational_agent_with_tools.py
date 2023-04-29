@@ -1,10 +1,27 @@
 import os
 
-from haystack.agents.base import ConversationalAgentWithTools, Tool, ToolsManager
+from haystack.agents.base import ConversationalAgentWithTools, Tool, ToolsManager, DefaultSelfReflection
 from haystack.agents.memory import ConversationSummaryMemory
 from haystack.agents.types import Color
 from haystack.nodes import PromptNode, WebRetriever, PromptTemplate
 from haystack.pipelines import WebQAPipeline
+
+examples = """
+Question: Tell me more about her, who is her partner?
+Thought: I don't have enough context to determine who "her" is referring to. I should use the conversation_history tool to see if we've talked about this before.
+Tool: conversation_history
+Tool Input: "Who is her partner?"
+Observation: Jamie Foxx hospitalized in Georgia while filming Rust with Cameron Diaz. Undergoing medical tests at unknown facility. Cameron Diaz is one of the female co-stars in "Back in Action."
+Thought: It seems like we haven't talked about "her" or her partner before. I should use the search tool to find out who "her" might refer to.
+Tool: Search
+Tool Input: "who is her partner?"
+Observation: As of 2020, H.E.R. was in a rumored relationship with Skip Marley, but she has generally kept her love life private and is currently single.
+Thought: Based on the search results, it seems like "her" might be referring to the musician H.E.R. Final Answer: As of 2020, H.E.R. was rumored to be in a relationship with Skip Marley, but she generally keeps her love life private and is currently single.
+Reflection: I was able to find the answer by using the conversation_history tool to see if we had talked about this before, and then I didn't pick up the fact the her was referring to Cameron Diaz. After realizing that, I should have used the search tool to find out who is Cameron Diaz's partner.
+In conclusion, I should have used the search tool to find out who is Cameron Diaz's partner like this:
+Tool: Search
+Tool Input: Who is Cameron Diaz's partner?
+"""
 
 few_shot_prompt = """
 In the following conversation, a human user interacts with an AI Agent using the ChatGPT API. The human user poses questions, and the AI Agent goes through several steps to provide well-informed answers.
@@ -41,8 +58,7 @@ if not search_key:
 
 prompt_text = """
 Synthesize a comprehensive answer from the following most relevant paragraphs and the given question.
-Provide a clear and concise response that summarizes the key points and information presented in the paragraphs.
-Your answer should be in your own words and be no longer than 20 words.
+Provide a clear and concise answer, no longer than 10-20 words.
 \n\n Paragraphs: {documents} \n\n Question: {query} \n\n Answer:
 """
 
@@ -53,7 +69,7 @@ prompt_node = PromptNode(
     max_length=256,
 )
 
-web_retriever = WebRetriever(api_key=search_key, top_search_results=5, mode="snippets")
+web_retriever = WebRetriever(api_key=search_key, top_search_results=3, mode="snippets")
 pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
 
 few_shot_agent = PromptTemplate("conversational-agent-with-tools", prompt_text=few_shot_prompt)
@@ -76,12 +92,32 @@ pn = PromptNode(
     stop_words=["Observation:"],
     model_kwargs={"temperature": 0.5, "top_p": 0.9},
 )
+
+
+def self_reflection_params(query: str, **kwargs):
+    agent = kwargs.get("agent")
+    agent_step = kwargs.get("agent_step")
+    return {
+        "query": query,
+        "tool_names": agent.tm.get_tool_names(),
+        "transcript": agent_step.transcript,
+        "examples": examples,
+    }
+
+
+reflection_node = PromptNode("gpt-4", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
+self_reflection = DefaultSelfReflection(
+    prompt_node=reflection_node,
+    prompt_template="self-reflection-tools",
+    prompt_parameters_resolver=self_reflection_params,
+)
 agent = ConversationalAgentWithTools(
     pn,
-    max_steps=10,
+    max_steps=4,
     prompt_template=few_shot_agent,
     tools_manager=ToolsManager(tools=[web_qa_tool, conversation_history]),
     memory=ConversationSummaryMemory(pn, summary_frequency=1),
+    self_reflection=self_reflection,
 )
 
 test = False
@@ -90,11 +126,10 @@ if test:
         "Why was Jamie Foxx recently hospitalized?",
         "Where was he hospitalized?",
         "What movie was he filming at the time?",
-        "Who is his female co-star in Back in Action?",
+        "Who is Jamie's female co-star in the movie he was filing at that time?",
         "Tell me more about her, who is her partner?",
     ]
     for question in questions:
-        print(f"\nHuman: {question}")
         agent.run(question)
 else:
     while True:
