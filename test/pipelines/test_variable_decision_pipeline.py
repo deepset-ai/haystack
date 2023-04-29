@@ -31,7 +31,7 @@ def test_pipeline(tmp_path):
     except ImportError:
         logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
-    results = pipeline.run({"value": 1})
+    results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)
 
     assert results == {"add_one_again": {"value": 6}}

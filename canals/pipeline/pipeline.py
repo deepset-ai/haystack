@@ -102,7 +102,7 @@ class Pipeline:
             )
 
         # Find expected inputs and outputs
-        input_sockets, output_sockets = find_sockets(instance.run)
+        input_sockets, output_sockets = find_sockets(instance)
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)

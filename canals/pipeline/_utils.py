@@ -34,7 +34,7 @@ def is_subtype(from_what: Type, to_what: Type) -> bool:
     Checks if two types are compatible
     """
     # TODO we should re-implement this method from pytypes if possible - pytypes is seriously unmaintained.
-    return _is_subtype(to_what, from_what)
+    return _is_subtype(from_what, to_what)
 
 
 def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
@@ -47,11 +47,11 @@ def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-def find_sockets(run_method):
+def find_sockets(component):
     """
     Find a component's input and output sockets.
     """
-    run_signature = inspect.signature(run_method)
+    run_signature = inspect.signature(component.run)
 
     input_sockets = []
     for param in run_signature.parameters:
@@ -60,6 +60,8 @@ def find_sockets(run_method):
         input_sockets.append(InputSocket(name=run_signature.parameters[param].name, type=annotation, variadic=variadic))
 
     return_annotation = run_signature.return_annotation
+    if return_annotation == inspect.Parameter.empty:
+        return_annotation = component.output_type
     output_sockets = [OutputSocket(name=field.name, type=field.type) for field in fields(return_annotation)]
 
     return input_sockets, output_sockets

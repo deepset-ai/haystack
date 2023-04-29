@@ -1,6 +1,9 @@
 from dataclasses import dataclass, make_dataclass
 import pytest
 
+from functools import partialmethod
+import inspect
+
 from canals import component
 
 
@@ -14,22 +17,11 @@ class Remainder:
     Single input, multi output decision component. Order of output connections is critical.
     """
 
-    @dataclass
-    class Output:
-        odd: int
-
     def __init__(self, divisor: int = 2):
         self.divisor = divisor
-        setattr(
-            self,
-            f"Output_{divisor}",
-            make_dataclass("Output", [(f"remainder_is_{val}", int) for val in range(divisor)]),
-        )
+        self.output_type = make_dataclass("Output", [(f"remainder_is_{val}", int, None) for val in range(self.divisor)])
 
-    def _output_types(self):
-        return
-
-    def run(self, value: int) -> None:  # Output:
+    def run(self, value: int):
         """
         :param divisor: the number to divide the input value for.
         :param input: the name of the input connection.
@@ -38,39 +30,12 @@ class Remainder:
             Ordering is important.
         """
         remainder = value % self.divisor
-        # output = Remainder.Output()
-        # setattr(output, str(remainder), remainder)
-        return None  # output
+        output = self.output_type()
+        setattr(output, f"remainder_is_{remainder}", value)
+        return output
 
 
-# def test_remainder_default():
-#     component = Remainder()
-#     results = component.run(name="test_component", data=[("value", 10)], parameters={})
-#     assert results == ({"0": 10}, {})
-
-#     results = component.run(name="test_component", data=[("value", 11)], parameters={})
-#     assert results == ({"1": 11}, {})
-#     assert component.init_parameters == {}
-
-
-# def test_remainder_default_output_for_divisor():
-#     component = Remainder(divisor=5)
-#     results = component.run(name="test_component", data=[("value", 10)], parameters={})
-#     assert results == ({"0": 10}, {})
-
-#     results = component.run(name="test_component", data=[("value", 13)], parameters={})
-#     assert results == ({"3": 13}, {})
-#     assert component.init_parameters == {"divisor": 5}
-
-
-# def test_remainder_init_params():
-#     with pytest.raises(ValueError):
-#         component = Remainder(divisor=3, input="test", outputs=["one", "two"])
-
-#     with pytest.raises(ValueError):
-#         component = Remainder(divisor=3, input="test", outputs=["zero", "one", "two", "three"])
-
-#     component = Remainder(divisor=3, input="test", outputs=["zero", "one", "two"])
-#     results = component.run(name="test_component", data=[("value", 10)], parameters={})
-#     assert results == ({"one": 10}, {})
-#     assert component.init_parameters == {"divisor": 3, "input": "test", "outputs": ["zero", "one", "two"]}
+def test_remainder_default():
+    component = Remainder()
+    results = component.run(value=3)
+    assert results == component.output_dataclass(remainder_is_1=3)

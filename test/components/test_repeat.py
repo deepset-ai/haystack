@@ -1,5 +1,6 @@
-from typing import Dict, Any, List, Tuple, Set
+from typing import TypeVar, Any
 
+from dataclasses import dataclass
 from canals import component
 
 
@@ -8,30 +9,20 @@ class Repeat:
     """
     Repeats the input value on all outputs.
 
-    Single input, multi output component. Order of outputs is irrelevant.
-    Doesn't accept parameters.
-
-    :param input: the name of the input connection.
-    :param outputs: the list of the output connections.
+    CAN REPEAT ONLY INTS.
     """
 
-    def __init__(self, input: str = "value", outputs: Set[str] = {"first", "second"}):
-        self.inputs = [input]
-        self.outputs = outputs
+    @dataclass
+    class Output:
+        first: int
+        second: int
 
-    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Any]):
-        return ({output: data[0][1] for output in self.outputs}, parameters)
+    def run(self, value: int) -> Output:
+        return Repeat.Output(first=value, second=value)
 
 
 def test_repeat_default():
     component = Repeat()
-    results = component.run(name="test_component", data=[("value", 10)], parameters={})
-    assert results == ({"first": 10, "second": 10}, {})
+    results = component.run(value=10)
+    assert results == Repeat.Output(first=10, second=10)
     assert component.init_parameters == {}
-
-
-def test_repeat_init_params():
-    component = Repeat(input="test", outputs={"one", "two"})
-    results = component.run(name="test_component", data=[("test", 10)], parameters={})
-    assert results == ({"one": 10, "two": 10}, {})
-    assert component.init_parameters == {"input": "test", "outputs": {"one", "two"}}

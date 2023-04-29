@@ -240,8 +240,11 @@ def component(class_, serializable=True):
             f"{class_.__name__}.run() must declare types for all its parameters, "
             f"but these parameters are not typed: {', '.join(missing_types)}."
         )
+
+    # Check for the return types
     if run_signature.return_annotation == inspect.Parameter.empty:
-        raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
+        if not hasattr(class_, "output_type"):
+            raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
 
     # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
     # See `save_init_parameters()`.

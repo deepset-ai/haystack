@@ -4,6 +4,10 @@ from canals import component
 
 @component
 class Subtract:
+    """
+    Compute the difference between two values.
+    """
+
     @dataclass
     class Output:
         difference: int
