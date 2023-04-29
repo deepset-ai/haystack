@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023-present deepset <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 # https://pylint.pycqa.org/en/latest/development_guide/how_tos/custom_checkers.html
 
 from typing import TYPE_CHECKING, Optional, List, Any
@@ -33,7 +37,9 @@ class DirectLoggingChecker(BaseChecker):
         self._function_stack.pop()
 
     def visit_call(self, node: nodes.Call) -> None:
-        if isinstance(node.func, nodes.Attribute) and isinstance(node.func.expr, nodes.Name):
+        if isinstance(node.func, nodes.Attribute) and isinstance(
+            node.func.expr, nodes.Name
+        ):
             if node.func.expr.name == "logging" and node.func.attrname in [
                 "debug",
                 "info",
@@ -42,7 +48,9 @@ class DirectLoggingChecker(BaseChecker):
                 "critical",
                 "exception",
             ]:
-                self.add_message("no-direct-logging", args=node.func.attrname, node=node)
+                self.add_message(
+                    "no-direct-logging", args=node.func.attrname, node=node
+                )
 
 
 class NoLoggingConfigurationChecker(BaseChecker):
@@ -67,8 +75,12 @@ class NoLoggingConfigurationChecker(BaseChecker):
         self._function_stack.pop()
 
     def visit_call(self, node: nodes.Call) -> None:
-        if isinstance(node.func, nodes.Attribute) and isinstance(node.func.expr, nodes.Name):
-            if node.func.expr.name == "logging" and node.func.attrname in ["basicConfig"]:
+        if isinstance(node.func, nodes.Attribute) and isinstance(
+            node.func.expr, nodes.Name
+        ):
+            if node.func.expr.name == "logging" and node.func.attrname in [
+                "basicConfig"
+            ]:
                 self.add_message("no-logging-basicconfig", node=node)
 
 
