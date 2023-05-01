@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable
 from hashlib import md5
-from typing import List, Optional, Union, Dict, Any, Tuple
+from typing import List, Optional, Union, Dict, Any, Tuple, Callable, Mapping
 
 from events import Events
 
 from haystack import Pipeline, BaseComponent, Answer, Document
+from haystack.agents.answer_parser import RegexAnswerParser, AgentAnswerParser
+from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
-from haystack.agents.types import Color, AgentTokenStreamingHandler
+from haystack.agents.types import Color, AgentTokenStreamingHandler, PromptParametersResolver
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
-from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -62,6 +64,7 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
+            Callable[[str], str],
         ],
         description: str,
         output_variable: str = "results",
@@ -84,6 +87,8 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        elif isinstance(self.pipeline_or_node, Callable):
+            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
@@ -140,7 +145,7 @@ class ToolsManager:
             Tool(
                 name="Calculator",
                 pipeline_or_node=calculator
-                description="Useful when you need to answer questions about math."
+                description="Useful when you need to answer questions about math"
             )
         )
         """
@@ -202,6 +207,26 @@ class ToolsManager:
         return None, None
 
 
+class CallablePromptParametersResolver(PromptParametersResolver):
+    """
+    A CallablePromptParametersResolver is a PromptParametersResolver that uses a callable to resolve the parameters.
+    """
+
+    def __init__(self, prompt_callable: Callable[[str, Mapping[str, Any]], Dict[str, Any]]):
+        """
+        :param prompt_callable: The callable that resolves the parameters.
+        """
+        self.callable = prompt_callable
+
+    def resolve(self, query: str, **kwargs) -> Dict[str, Any]:
+        """
+        :param query: The query to resolve the parameters for.
+        :param kwargs: Additional parameters to pass to the callable.
+        :return: The resolved parameters via callable
+        """
+        return self.callable(query, **kwargs)
+
+
 class Agent:
     """
     An Agent answers queries using the tools you give to it. The tools are pipelines or nodes. The Agent uses a large
@@ -223,8 +248,10 @@ class Agent:
         prompt_node: PromptNode,
         prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
         tools_manager: Optional[ToolsManager] = None,
+        memory: Optional[Memory] = None,
+        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
         max_steps: int = 8,
-        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
+        final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
     ):
         """
          Creates an Agent instance.
@@ -245,6 +272,7 @@ class Agent:
         """
         self.max_steps = max_steps
         self.tm = tools_manager or ToolsManager()
+        self.memory = memory or NoMemory()
         self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
         self.prompt_node = prompt_node
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
@@ -253,7 +281,24 @@ class Agent:
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        self.final_answer_pattern = final_answer_pattern
+        react_parameter_resolver: Callable[[str, Agent, AgentStep], Dict[str, Any]] = lambda query, agent, agent_step: {
+            "query": query,
+            "tool_names": agent.tm.get_tool_names(),
+            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
+            "transcript": agent_step.transcript,
+        }
+        self.prompt_parameters_resolver = (
+            CallablePromptParametersResolver(prompt_parameters_resolver)
+            if isinstance(prompt_parameters_resolver, Callable)
+            else (
+                prompt_parameters_resolver
+                if prompt_parameters_resolver
+                else CallablePromptParametersResolver(react_parameter_resolver)
+            )
+        )
+        self.final_answer_parser = (
+            RegexAnswerParser(final_answer_pattern) if isinstance(final_answer_pattern, str) else final_answer_pattern
+        )
         # Resolve model name to check if it's a streaming model
         if isinstance(self.prompt_node.model_name_or_path, str):
             model_name = self.prompt_node.model_name_or_path
@@ -350,37 +395,18 @@ class Agent:
         except Exception as exc:
             logger.debug("Telemetry exception: %s", exc)
 
-        if max_steps is None:
-            max_steps = self.max_steps
-        if max_steps < 2:
-            raise AgentError(
-                f"max_steps must be at least 2 to let the Agent use a tool once and then infer it knows the final "
-                f"answer. It was set to {max_steps}."
-            )
         self.callback_manager.on_agent_start(name=self.prompt_template.name, query=query, params=params)
-        agent_step = self._create_first_step(query, max_steps)
+        agent_step = self.create_agent_step()
         try:
             while not agent_step.is_last():
-                agent_step = self._step(agent_step, params)
+                agent_step = self._step(query, agent_step, params)
         finally:
             self.callback_manager.on_agent_finish(agent_step)
         return agent_step.final_answer(query=query)
 
-    def _create_first_step(self, query: str, max_steps: int = 10):
-        transcript = self._get_initial_transcript(query=query)
-        return AgentStep(
-            current_step=1,
-            max_steps=max_steps,
-            final_answer_pattern=self.final_answer_pattern,
-            prompt_node_response="",  # no LLM response for the first step
-            transcript=transcript,
-        )
-
-    def _step(self, current_step: AgentStep, params: Optional[dict] = None):
+    def _step(self, query: str, current_step: AgentStep, params: Optional[dict] = None):
         # plan next step using the LLM
-        prompt_node_response = self.prompt_node(
-            current_step.prepare_prompt(), stream_handler=AgentTokenStreamingHandler(self.callback_manager)
-        )
+        prompt_node_response = self._plan(query, current_step)
 
         # from the LLM response, create the next step
         next_step = current_step.create_next_step(prompt_node_response)
@@ -389,21 +415,41 @@ class Agent:
         # run the tool selected by the LLM
         observation = self.tm.run_tool(next_step.prompt_node_response, params) if not next_step.is_last() else None
 
+        # save the input, output and observation to memory (if memory is enabled)
+        memory_data = self.prepare_data_for_memory(input=query, output=prompt_node_response, observation=observation)
+        self.memory.save(data=memory_data)
+
         # update the next step with the observation
         next_step.completed(observation)
         return next_step
 
-    def _get_initial_transcript(self, query: str):
-        """
-        Fills the Agent's PromptTemplate with the query, tool names, and descriptions.
+    def _plan(self, query, current_step):
+        # first resolve prompt template params
+        template_params = self.prompt_parameters_resolver.resolve(query=query, agent=self, agent_step=current_step)
 
-        :param query: The search query.
+        # if prompt node has no default prompt template, use agent's prompt template
+        if self.prompt_node.default_prompt_template is None:
+            prepared_prompt = next(self.prompt_template.fill(**template_params))
+            prompt_node_response = self.prompt_node(
+                prepared_prompt, stream_handler=AgentTokenStreamingHandler(self.callback_manager)
+            )
+        # otherwise, if prompt node has default prompt template, use it
+        else:
+            prompt_node_response = self.prompt_node(
+                stream_handler=AgentTokenStreamingHandler(self.callback_manager), **template_params
+            )
+        return prompt_node_response
+
+    def create_agent_step(self) -> AgentStep:
         """
-        return next(
-            self.prompt_template.fill(
-                query=query,
-                tool_names=self.tm.get_tool_names(),
-                tool_names_with_descriptions=self.tm.get_tool_names_with_descriptions(),
-            ),
-            "",
-        )
+        Create an AgentStep object. Override this method to customize the AgentStep class used by the Agent.
+        """
+        return AgentStep(max_steps=self.max_steps, final_answer_parser=self.final_answer_parser)
+
+    def prepare_data_for_memory(self, **kwargs) -> dict:
+        """
+        Prepare data for saving to the Agent's memory. Override this method to customize the data saved to the memory.
+        """
+        return {
+            k: v if isinstance(v, str) else next(iter(v)) for k, v in kwargs.items() if isinstance(v, (str, Iterable))
+        }
