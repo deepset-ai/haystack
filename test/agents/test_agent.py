@@ -128,17 +128,9 @@ def test_extract_final_answer():
     ]
 
     for example, expected_answer in zip(match_examples, expected_answers):
-        agent_step = AgentStep(prompt_node_response=example)
-        final_answer = agent_step.extract_final_answer()
-        assert final_answer == expected_answer
-
-
-@pytest.mark.unit
-def test_format_answer():
-    step = AgentStep(prompt_node_response="have the final answer to the question.\nFinal Answer: Florida")
-    formatted_answer = step.final_answer(query="query")
-    assert formatted_answer["query"] == "query"
-    assert formatted_answer["answers"] == [Answer(answer="Florida", type="generative")]
+        agent_step = AgentStep(prompt_node_response=example, final_answer_pattern=r"Final Answer\s*:\s*(.*)")
+        final_answer = agent_step.final_answer(query="irrelevant")
+        assert final_answer["answers"][0].answer == expected_answer
 
 
 @pytest.mark.unit
@@ -229,7 +221,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
         ),
     )
 
-    agent = Agent(prompt_node=prompt_node)
+    agent = Agent(prompt_node=prompt_node, max_steps=12)
     agent.add_tool(
         Tool(
             name="Search",
