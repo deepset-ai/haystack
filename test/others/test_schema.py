@@ -136,8 +136,8 @@ def test_no_answer_label():
         document=Document(content="some", id="777"),
         origin="gold-label",
     )
-    assert label_no_answer.no_answer is True
-    assert label_with_answer.no_answer is False
+    assert label_no_answer.no_answer
+    assert not label_with_answer.no_answer
 
 
 @pytest.mark.unit
@@ -148,18 +148,18 @@ def test_equal_label(text_labels):
 
 @pytest.mark.unit
 def test_label_to_json(text_labels):
-    j0 = text_labels[0].to_json()
-    l_new = Label.from_json(j0)
-    assert l_new == text_labels[0]
-    assert l_new.answer.offsets_in_document[0].start == 1
+    text_label_json = text_labels[0].to_json()
+    text_label_from_json = Label.from_json(text_label_json)
+    assert text_label_from_json == text_labels[0]
+    assert text_label_from_json.answer.offsets_in_document[0].start == 1
 
 
 @pytest.mark.unit
 def test_label_to_dict(text_labels):
-    j0 = text_labels[0].to_dict()
-    l_new = Label.from_dict(j0)
-    assert l_new == text_labels[0]
-    assert l_new.answer.offsets_in_document[0].start == 1
+    text_label_dict = text_labels[0].to_dict()
+    text_label_from_dict = Label.from_dict(text_label_dict)
+    assert text_label_from_dict == text_labels[0]
+    assert text_label_from_dict.answer.offsets_in_document[0].start == 1
 
 
 @pytest.mark.unit
@@ -210,18 +210,18 @@ def test_labels_with_different_fields_are_not_equal(table_label):
 
 @pytest.mark.unit
 def test_table_label_to_json(table_label):
-    j0 = table_label.to_json()
-    l_new = Label.from_json(j0)
-    assert l_new == table_label
-    assert l_new.answer.offsets_in_document[0].row == 1
+    table_label_json = table_label.to_json()
+    table_label_from_json = Label.from_json(table_label_json)
+    assert table_label_from_json == table_label
+    assert table_label_from_json.answer.offsets_in_document[0].row == 1
 
 
 @pytest.mark.unit
 def test_table_label_to_dict(table_label):
-    j0 = table_label.to_dict()
-    l_new = Label.from_dict(j0)
-    assert l_new == table_label
-    assert l_new.answer.offsets_in_document[0].row == 1
+    table_label_dict = table_label.to_dict()
+    table_label_from_dict = Label.from_dict(table_label_dict)
+    assert table_label_from_dict == table_label
+    assert table_label_from_dict.answer.offsets_in_document[0].row == 1
 
 
 @pytest.mark.unit
@@ -247,21 +247,21 @@ def test_answer_to_dict(text_answer):
 
 @pytest.mark.unit
 def test_table_answer_to_json(table_answer):
-    json_ans = table_answer.to_json()
-    assert isinstance(json_ans, str)
-    a_new = Answer.from_json(json_ans)
-    assert isinstance(a_new.offsets_in_document[0], TableCell)
-    assert a_new == table_answer
+    table_answer_json = table_answer.to_json()
+    assert isinstance(table_answer_json, str)
+    table_answer_from_json = Answer.from_json(table_answer_json)
+    assert isinstance(table_answer_from_json.offsets_in_document[0], TableCell)
+    assert table_answer_from_json == table_answer
 
 
 @pytest.mark.unit
 def test_table_answer_to_dict(table_answer):
-    dict_ans = table_answer.to_dict()
-    assert isinstance(dict_ans, dict)
-    assert isinstance(dict_ans["context"], list)
-    a_new = Answer.from_dict(dict_ans)
-    assert isinstance(a_new.offsets_in_document[0], TableCell)
-    assert a_new == table_answer
+    table_answer_to_dict = table_answer.to_dict()
+    assert isinstance(table_answer_to_dict, dict)
+    assert isinstance(table_answer_to_dict["context"], list)
+    table_answer_from_dict = Answer.from_dict(table_answer_to_dict)
+    assert isinstance(table_answer_from_dict.offsets_in_document[0], TableCell)
+    assert table_answer_from_dict == table_answer
 
 
 @pytest.mark.unit
@@ -280,7 +280,7 @@ def test_table_document_from_dict(table_doc):
 @pytest.mark.unit
 def test_doc_to_json():
     # With embedding
-    d = Document(
+    doc_with_embedding = Document(
         content="some text",
         content_type="text",
         id_hash_keys=["meta"],
@@ -288,12 +288,12 @@ def test_doc_to_json():
         meta={"name": "doc1"},
         embedding=np.random.rand(768).astype(np.float32),
     )
-    j0 = d.to_json()
-    d_new = Document.from_json(j0)
-    assert d == d_new
+    doc_emb_json = doc_with_embedding.to_json()
+    doc_emb_from_json = Document.from_json(doc_emb_json)
+    assert doc_with_embedding == doc_emb_from_json
 
     # No embedding
-    d = Document(
+    doc_with_no_embedding = Document(
         content="some text",
         content_type="text",
         score=0.99988,
@@ -301,22 +301,22 @@ def test_doc_to_json():
         id_hash_keys=["meta"],
         embedding=None,
     )
-    j0 = d.to_json()
-    d_new = Document.from_json(j0)
-    assert d == d_new
+    doc_no_emb_json = doc_with_no_embedding.to_json()
+    doc_no_emb_from_json = Document.from_json(doc_no_emb_json)
+    assert doc_with_no_embedding == doc_no_emb_from_json
 
 
 @pytest.mark.unit
 def test_table_doc_to_json(table_doc, table_doc_with_embedding):
     # With embedding
-    j0 = table_doc_with_embedding.to_json()
-    d_new = Document.from_json(j0)
-    assert table_doc_with_embedding == d_new
+    table_doc_emb_json = table_doc_with_embedding.to_json()
+    table_doc_emb_from_json = Document.from_json(table_doc_emb_json)
+    assert table_doc_with_embedding == table_doc_emb_from_json
 
     # No embedding
-    j0 = table_doc.to_json()
-    d_new = Document.from_json(j0)
-    assert table_doc == d_new
+    table_doc_no_emb_json = table_doc.to_json()
+    table_doc_no_emb_from_json = Document.from_json(table_doc_no_emb_json)
+    assert table_doc == table_doc_no_emb_from_json
 
 
 @pytest.mark.unit
@@ -328,9 +328,9 @@ def test_answer_postinit():
 
 @pytest.mark.unit
 def test_table_answer_postinit():
-    a = Answer(answer="test", offsets_in_document=[{"row": 1, "col": 2}])
-    assert a.meta == {}
-    assert isinstance(a.offsets_in_document[0], TableCell)
+    table_answer = Answer(answer="test", offsets_in_document=[{"row": 1, "col": 2}])
+    assert table_answer.meta == {}
+    assert isinstance(table_answer.offsets_in_document[0], TableCell)
 
 
 @pytest.mark.unit
