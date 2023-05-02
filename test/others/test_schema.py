@@ -195,8 +195,8 @@ def table_doc_dict():
 @pytest.fixture
 def table_doc_json(samples_path):
     with open(samples_path / "schema" / "table_doc.json") as f1:
-        data = json.load(f1)
-    return data
+        json_str = f1.read()
+    return json_str
 
 
 @pytest.fixture
@@ -215,8 +215,8 @@ def table_doc_with_embedding():
 @pytest.fixture
 def table_doc_with_embedding_json(samples_path):
     with open(samples_path / "schema" / "table_doc_emb.json") as f1:
-        data = json.load(f1)
-    return data
+        json_str = f1.read()
+    return json_str
 
 
 @pytest.mark.unit
@@ -438,11 +438,11 @@ def test_table_doc_from_json(table_doc, table_doc_with_embedding, table_doc_json
 def test_table_doc_to_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
     # With embedding
     table_doc_emb_to_json = json.loads(table_doc_with_embedding.to_json())
-    assert table_doc_with_embedding_json == table_doc_emb_to_json
+    assert json.loads(table_doc_with_embedding_json) == table_doc_emb_to_json
 
     # No embedding
     table_doc_no_emb_to_json = json.loads(table_doc.to_json())
-    assert table_doc_json == table_doc_no_emb_to_json
+    assert json.loads(table_doc_json) == table_doc_no_emb_to_json
 
 
 @pytest.mark.unit
