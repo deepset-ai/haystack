@@ -243,12 +243,14 @@ class Document:
         return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
+    def from_json(cls, data: Union[str, Dict[str, Any]], field_map: Optional[Dict[str, Any]] = None) -> Document:
         if not field_map:
             field_map = {}
         if isinstance(data, str):
-            data = json.loads(data)
-        return cls.from_dict(data, field_map=field_map)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data, field_map=field_map)
 
     def __eq__(self, other):
         content = getattr(other, "content", None)
@@ -435,10 +437,12 @@ class Answer:
         return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
         if isinstance(data, str):
-            data = json.loads(data)
-        return cls.from_dict(data)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data)
 
     @staticmethod
     def _from_dict_offsets(offsets):
@@ -582,10 +586,12 @@ class Label:
         return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
         if isinstance(data, str):
-            data = json.loads(data)
-        return cls.from_dict(data)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data)
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
@@ -759,7 +765,7 @@ class MultiLabel:
 
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
-        if type(data) == str:
+        if isinstance(data, str):
             dict_data = json.loads(data)
         else:
             dict_data = data
