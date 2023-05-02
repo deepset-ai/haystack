@@ -1682,7 +1682,7 @@ def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     get_component_definitions(pipeline.get_config())
 
 
-def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
+def test_pipeline_env_vars_do_not_modify__component_config(caplog, monkeypatch):
     class DummyNode(MockNode):
         def __init__(self, replaceable: str):
             self.replaceable = replaceable
@@ -1697,7 +1697,10 @@ def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
     original_pipeline_config = deepcopy(pipeline.get_config())
 
     no_env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=False)
-    env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+
+    with caplog.at_level(logging.INFO):
+        env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+        assert "overwritten with environment variable 'NODE_PARAMS_REPLACEABLE' value '***'." in caplog.text
 
     new_component_config = deepcopy(node._component_config)
     new_pipeline_config = deepcopy(pipeline.get_config())
