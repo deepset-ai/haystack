@@ -9,7 +9,7 @@ import pytest
 
 from haystack import BaseComponent, Answer
 from haystack.agents import Agent, AgentStep
-from haystack.agents.base import Tool
+from haystack.agents.base import Tool, ToolsManager
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, BaseStandardPipeline
 
@@ -109,8 +109,8 @@ def test_extract_tool_name_and_tool_input():
     tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
     pn_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
 
-    step = AgentStep(prompt_node_response=pn_response)
-    tool_name, tool_input = step.extract_tool_name_and_tool_input(tool_pattern=tool_pattern)
+    tm = ToolsManager(tool_pattern=tool_pattern)
+    tool_name, tool_input = tm.extract_tool_name_and_tool_input(pn_response)
     assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
 
 
