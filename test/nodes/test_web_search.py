@@ -1,10 +1,18 @@
 import os
+import unittest
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from haystack.nodes.search_engine import WebSearch
 from haystack.schema import Document
+
+try:
+    import googleapiclient
+
+    googleapi_installed = True
+except ImportError:
+    googleapi_installed = False
 
 
 @pytest.mark.skipif(
@@ -38,6 +46,9 @@ def test_web_search_with_site_keyword():
 
 @pytest.mark.unit
 def test_web_search_with_google_api_provider():
+    if not googleapi_installed:
+        pytest.skip("google-api-python-client is not installed, skipping test.")
+
     GOOGLE_API_KEY = "dummy_api_key"
     SEARCH_ENGINE_ID = "dummy_search_engine_id"
     query = "The founder of Python"
@@ -58,16 +69,12 @@ def test_web_search_with_google_api_provider():
 
 @pytest.mark.unit
 def test_web_search_with_google_api_client():
+    if not googleapi_installed:
+        pytest.skip("google-api-python-client is not installed, skipping test.")
+
     GOOGLE_API_KEY = "dummy_api_key"
     SEARCH_ENGINE_ID = "dummy_search_engine_id"
     query = "The founder of Python"
-
-    try:
-        from googleapiclient.discovery import build
-    except ImportError:
-        raise ImportError(
-            "You need to install the Google API client. You can do so by running 'pip install google-api-python-client'."
-        )
 
     with patch("googleapiclient.discovery.build") as mock_build:
         mock_service = MagicMock()
