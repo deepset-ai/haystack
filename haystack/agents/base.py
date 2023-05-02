@@ -126,7 +126,7 @@ class ToolsManager:
         :param tool_pattern: A regular expression pattern that matches the text that the Agent generates to invoke
             a tool.
         """
-        self.tools = {tool.name: tool for tool in tools} if tools else {}
+        self.tools: Dict[str, Tool] = {tool.name: tool for tool in tools} if tools else {}
         self.tool_pattern = tool_pattern
         self.callback_manager = Events(("on_tool_start", "on_tool_finish", "on_tool_error"))
 
@@ -146,23 +146,35 @@ class ToolsManager:
         """
         self.tools[tool.name] = tool
 
-    def get_tool_names(self):
+    def get_tool_names(self) -> str:
+        """
+        Returns a string with the names of all tools registered
+        """
         return ", ".join(self.tools.keys())
 
-    def get_tools(self):
-        return self.tools.values()
+    def get_tools(self) -> List[Tool]:
+        """
+        Returns a list of all tool instances registered
+        """
+        return list(self.tools.values())
 
-    def get_tool_names_with_descriptions(self):
+    def get_tool_names_with_descriptions(self) -> str:
+        """
+        Returns a string with the names and descriptions of all tools registered
+        """
         return "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools.values()])
 
-    def has_tools(self):
+    def has_tools(self) -> bool:
+        """
+        Returns True if this ToolsManager has any tools, False otherwise.
+        """
         return len(self.tools) > 0
 
-    def has_tool(self, tool_name: str):
+    def has_tool(self, tool_name: str) -> bool:
         """
-        Check whether the Agent has a tool with the name you provide.
+        Returns True if this ToolsManager has a tool with the given name, False otherwise.
 
-        :param tool_name: The name of the tool for which you want to check whether the Agent has it.
+        :param tool_name: The name of the tool for which you want to check whether the ToolsManager has it.
         """
         return tool_name in self.tools
 
@@ -203,13 +215,13 @@ class ToolsManager:
         """
         Verify that the tool selected by LLM is an actual registered tool.
         :param llm_response: The PromptNode response.
-        :return: A boolean indicating whether the tool selected by LLM is valid.
+        :return: Returns True if the tool in llm_response is an actual registered tool, False otherwise.
         """
         tool_match = re.search(self.tool_pattern, llm_response)
         if tool_match:
             tool_name = tool_match.group(1)
             tool_name = tool_name.strip('" []\n').strip()
-            return self.has_tools() and tool_name in self.tools
+            return self.has_tool(tool_name)
         return False
 
 
@@ -245,12 +257,11 @@ class Agent:
         :param prompt_template: The name of a PromptTemplate for the PromptNode. It's used for generating thoughts and
         choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a
         new template in a similar format.
-        :param tools: A list of tools the Agent can run. If you don't specify any tools here, you must add them
         with `add_tool()` before running the Agent.
+        :param tools_manager: A ToolsManager instance that contains the tools the Agent can use to answer queries.
         :param max_steps: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
             Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer.
             The default is 5.
-        :param tool_pattern: A regular expression to extract the name of the tool and the corresponding input from the
         text the Agent generated.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
@@ -329,7 +340,7 @@ class Agent:
         """
         self.tm.add_tool(tool)
 
-    def has_tool(self, tool_name: str):
+    def has_tool(self, tool_name: str) -> bool:
         """
         Check whether the Agent has a tool with the name you provide.
 
