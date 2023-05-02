@@ -70,7 +70,7 @@ def test_max_steps(caplog, monkeypatch):
     def mock_extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
-    monkeypatch.setattr(AgentStep, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
+    monkeypatch.setattr(ToolsManager, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
 
     # Using max_steps as specified in the Agent's init method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
