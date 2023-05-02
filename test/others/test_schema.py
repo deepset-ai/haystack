@@ -175,6 +175,31 @@ def table_doc():
 
 
 @pytest.fixture
+def table_doc_dict():
+    return {
+        "content": [
+            ["actors", "age", "number of movies", "date of birth"],
+            ["brad pitt", 58, 87, "18 december 1963"],
+            ["leonardo di caprio", 47, 53, "11 november 1974"],
+            ["george clooney", 60, 69, "6 may 1961"],
+        ],
+        "content_type": "table",
+        "score": None,
+        "meta": {},
+        "id_hash_keys": ["content"],
+        "embedding": None,
+        "id": "doc1",
+    }
+
+
+@pytest.fixture
+def table_doc_json(samples_path):
+    with open(samples_path / "schema" / "table_doc.json") as f1:
+        data = json.load(f1)
+    return data
+
+
+@pytest.fixture
 def table_doc_with_embedding():
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -183,8 +208,15 @@ def table_doc_with_embedding():
         "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
     }
     return Document(
-        content=pd.DataFrame(data), content_type="table", id="doc2", embedding=np.random.rand(768).astype(np.float32)
+        content=pd.DataFrame(data), content_type="table", id="doc2", embedding=np.array([1.1, 2.2, 3.3, 4.4])
     )
+
+
+@pytest.fixture
+def table_doc_with_embedding_json(samples_path):
+    with open(samples_path / "schema" / "table_doc_emb.json") as f1:
+        data = json.load(f1)
+    return data
 
 
 @pytest.mark.unit
@@ -336,14 +368,12 @@ def test_table_answer_from_json(table_answer, table_answer_json):
 
 @pytest.mark.unit
 def test_table_answer_to_dict(table_answer, table_answer_dict):
-    table_answer_to_dict = table_answer.to_dict()
-    assert table_answer_to_dict == table_answer_dict
+    assert table_answer.to_dict() == table_answer_dict
 
 
 @pytest.mark.unit
 def test_table_answer_from_dict(table_answer, table_answer_dict):
-    table_answer_from_dict = Answer.from_dict(table_answer_dict)
-    assert table_answer_from_dict == table_answer
+    assert table_answer == Answer.from_dict(table_answer_dict)
 
 
 @pytest.mark.unit
@@ -355,22 +385,13 @@ def test_document_from_dict():
 
 
 @pytest.mark.unit
-def test_table_document_from_dict(table_doc):
-    table_doc_dict = {
-        "content": [
-            ["actors", "age", "number of movies", "date of birth"],
-            ["brad pitt", 58, 87, "18 december 1963"],
-            ["leonardo di caprio", 47, 53, "11 november 1974"],
-            ["george clooney", 60, 69, "6 may 1961"],
-        ],
-        "content_type": "table",
-        "score": None,
-        "meta": {},
-        "id_hash_keys": ["content"],
-        "embedding": None,
-        "id": "doc1",
-    }
+def test_table_document_from_dict(table_doc, table_doc_dict):
     assert table_doc == Document.from_dict(table_doc_dict)
+
+
+@pytest.mark.unit
+def test_table_document_to_dict(table_doc, table_doc_dict):
+    assert table_doc.to_dict() == table_doc_dict
 
 
 @pytest.mark.unit
@@ -403,16 +424,25 @@ def test_doc_to_json():
 
 
 @pytest.mark.unit
-def test_table_doc_to_json(table_doc, table_doc_with_embedding):
+def test_table_doc_from_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
     # With embedding
-    table_doc_emb_json = table_doc_with_embedding.to_json()
-    table_doc_emb_from_json = Document.from_json(table_doc_emb_json)
+    table_doc_emb_from_json = Document.from_json(table_doc_with_embedding_json)
     assert table_doc_with_embedding == table_doc_emb_from_json
 
     # No embedding
-    table_doc_no_emb_json = table_doc.to_json()
-    table_doc_no_emb_from_json = Document.from_json(table_doc_no_emb_json)
+    table_doc_no_emb_from_json = Document.from_json(table_doc_json)
     assert table_doc == table_doc_no_emb_from_json
+
+
+@pytest.mark.unit
+def test_table_doc_to_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
+    # With embedding
+    table_doc_emb_to_json = json.loads(table_doc_with_embedding.to_json())
+    assert table_doc_with_embedding_json == table_doc_emb_to_json
+
+    # No embedding
+    table_doc_no_emb_to_json = json.loads(table_doc.to_json())
+    assert table_doc_json == table_doc_no_emb_to_json
 
 
 @pytest.mark.unit

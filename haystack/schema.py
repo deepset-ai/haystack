@@ -246,8 +246,9 @@ class Document:
     def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
         if not field_map:
             field_map = {}
-        dictionary = json.loads(data)
-        return cls.from_dict(dictionary, field_map=field_map)
+        if isinstance(data, str):
+            data = json.loads(data)
+        return cls.from_dict(data, field_map=field_map)
 
     def __eq__(self, other):
         content = getattr(other, "content", None)
