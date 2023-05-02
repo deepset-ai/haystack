@@ -21,13 +21,13 @@ def test_pipeline(tmp_path):
     pipeline.add_component("add_one_again", add_one)
 
     pipeline.connect("add_one", "remainder")
-    pipeline.connect("remainder.remainder_is_0", "add_ten")
+    pipeline.connect("remainder.remainder_is_0", "add_ten.value")
     pipeline.connect("remainder.remainder_is_1", "double")
-    pipeline.connect("remainder.remainder_is_2", "add_three")
+    pipeline.connect("remainder.remainder_is_2", "add_three.value")
     pipeline.connect("add_three", "add_one_again")
 
     try:
-        pipeline.draw(tmp_path / "decision_pipeline.png")
+        pipeline.draw(tmp_path / "variable_decision_pipeline.png")
     except ImportError:
         logging.warning("pygraphviz not found, pipeline is not being drawn.")
 

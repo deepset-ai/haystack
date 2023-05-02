@@ -15,8 +15,8 @@ def test_marshal():
     add_2 = AddValue(add=1)
 
     pipeline_1 = Pipeline(metadata={"type": "test pipeline", "author": "me"})
-    pipeline_1.add_component("first_addition", add_2, parameters={"add": 6})
-    pipeline_1.add_component("double", Double(input="value"))
+    pipeline_1.add_component("first_addition", add_2)
+    pipeline_1.add_component("double", Double())
     pipeline_1.add_component("second_addition", add_1)
     pipeline_1.add_component("third_addition", add_2)
 
@@ -25,8 +25,8 @@ def test_marshal():
     pipeline_1.connect("second_addition", "third_addition")
 
     pipeline_2 = Pipeline(metadata={"type": "another test pipeline", "author": "you"})
-    pipeline_2.add_component("first_addition", add_2, parameters={"add": 4})
-    pipeline_2.add_component("double", Double(input="value"))
+    pipeline_2.add_component("first_addition", add_2)
+    pipeline_2.add_component("double", Double())
     pipeline_2.add_component("second_addition", add_1)
 
     pipeline_2.connect("first_addition", "double")
@@ -41,9 +41,8 @@ def test_marshal():
                     "first_addition": {
                         "type": "AddValue",
                         "init_parameters": {"add": 1},
-                        "run_parameters": {"add": 6},
                     },
-                    "double": {"type": "Double", "init_parameters": {"input": "value"}},
+                    "double": {"type": "Double", "init_parameters": {}},
                     "second_addition": {
                         "type": "AddValue",
                         "init_parameters": {"add": 1},
@@ -60,8 +59,8 @@ def test_marshal():
                 "metadata": {"type": "another test pipeline", "author": "you"},
                 "max_loops_allowed": 100,
                 "components": {
-                    "first_addition": {"refer_to": "pipe1.first_addition", "run_parameters": {"add": 4}},
-                    "double": {"type": "Double", "init_parameters": {"input": "value"}},
+                    "first_addition": {"refer_to": "pipe1.first_addition"},
+                    "double": {"type": "Double", "init_parameters": {}},
                     "second_addition": {"refer_to": "pipe1.second_addition"},
                 },
                 "connections": [
@@ -84,13 +83,12 @@ def test_unmarshal():
                     "components": {
                         "first_addition": {
                             "type": "AddValue",
-                            "init_parameters": {"add": 1, "input": "value", "output": "value"},
-                            "run_parameters": {"add": 6},
+                            "init_parameters": {"add": 1},
                         },
-                        "double": {"type": "Double", "init_parameters": {"input": "value", "output": "value"}},
+                        "double": {"type": "Double"},
                         "second_addition": {
                             "type": "AddValue",
-                            "init_parameters": {"add": 1, "input": "value", "output": "value"},
+                            "init_parameters": {"add": 1},
                         },
                         "third_addition": {"refer_to": "pipe1.first_addition"},
                     },
@@ -104,8 +102,8 @@ def test_unmarshal():
                     "metadata": {"type": "another test pipeline", "author": "you"},
                     "max_loops_allowed": 100,
                     "components": {
-                        "first_addition": {"refer_to": "pipe1.first_addition", "run_parameters": {"add": 4}},
-                        "double": {"type": "Double", "init_parameters": {"input": "value", "output": "value"}},
+                        "first_addition": {"refer_to": "pipe1.first_addition"},
+                        "double": {"type": "Double"},
                         "second_addition": {"refer_to": "pipe1.second_addition"},
                     },
                     "connections": [
@@ -122,25 +120,21 @@ def test_unmarshal():
     assert pipe1.metadata == {"type": "test pipeline", "author": "me"}
 
     first_addition = pipe1.get_component("first_addition")
-    assert type(first_addition["instance"]) == AddValue
-    assert first_addition["instance"].add == 1
-    assert first_addition["parameters"] == {"add": 6}
+    assert type(first_addition) == AddValue
+    assert first_addition.add == 1
 
     second_addition = pipe1.get_component("second_addition")
-    assert type(second_addition["instance"]) == AddValue
-    assert second_addition["instance"].add == 1
-    assert second_addition["parameters"] == {}
-    assert second_addition["instance"] != first_addition["instance"]
+    assert type(second_addition) == AddValue
+    assert second_addition.add == 1
+    assert second_addition != first_addition
 
     third_addition = pipe1.get_component("third_addition")
-    assert type(third_addition["instance"]) == AddValue
-    assert third_addition["instance"].add == 1
-    assert third_addition["parameters"] == {}
-    assert third_addition["instance"] == first_addition["instance"]
+    assert type(third_addition) == AddValue
+    assert third_addition.add == 1
+    assert third_addition == first_addition
 
     double = pipe1.get_component("double")
-    assert type(double["instance"]) == Double
-    assert double["parameters"] == {}
+    assert type(double) == Double
 
     assert list(pipe1.graph.edges) == [
         ("first_addition", "double"),
@@ -152,25 +146,22 @@ def test_unmarshal():
     assert pipe2.metadata == {"type": "another test pipeline", "author": "you"}
 
     first_addition_2 = pipe2.get_component("first_addition")
-    assert type(first_addition_2["instance"]) == AddValue
-    assert first_addition_2["instance"].add == 1
-    assert first_addition_2["parameters"] == {"add": 4}
-    assert first_addition_2["instance"] == first_addition["instance"]
+    assert type(first_addition_2) == AddValue
+    assert first_addition_2.add == 1
+    assert first_addition_2 == first_addition
 
     second_addition_2 = pipe2.get_component("second_addition")
-    assert type(second_addition_2["instance"]) == AddValue
-    assert second_addition_2["instance"].add == 1
-    assert second_addition_2["parameters"] == {}
-    assert second_addition_2["instance"] != first_addition_2["instance"]
-    assert second_addition_2["instance"] == second_addition["instance"]
+    assert type(second_addition_2) == AddValue
+    assert second_addition_2.add == 1
+    assert second_addition_2 != first_addition_2
+    assert second_addition_2 == second_addition
 
     with pytest.raises(ValueError):
         pipe2.get_component("third_addition")
 
     double_2 = pipe2.get_component("double")
-    assert type(double_2["instance"]) == Double
-    assert double_2["parameters"] == {}
-    assert double_2["instance"] != double["instance"]
+    assert type(double_2) == Double
+    assert double_2 != double
 
     assert list(pipe2.graph.edges) == [
         ("first_addition", "double"),

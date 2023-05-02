@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.components import Accumulate, AddValue, Below, Merge, Sum
+from test.components import Accumulate, AddValue, Threshold, Sum
 
 import logging
 
@@ -14,9 +14,9 @@ def test_pipeline(tmp_path):
     accumulator = Accumulate(connection="value")
 
     pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_component("merge", Merge(), input_component=True)
+    # pipeline.add_component("merge", Merge(), input_component=True)
     pipeline.add_component("sum", Sum(inputs=["value", "value"]), input_component=True)
-    pipeline.add_component("below_10", Below(threshold=10))
+    pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("add_one", AddValue(add=1, input="below"))
     pipeline.add_component("counter", accumulator)
     pipeline.add_component("add_two", AddValue(add=2, input="above"))

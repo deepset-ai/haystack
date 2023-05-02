@@ -97,12 +97,6 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
                 }
                 pipeline_repr["components"][component_name] = component_repr
 
-            # Check for run parameters
-            if pipeline.graph.nodes[component_name]["parameters"]:
-                pipeline_repr["components"][component_name]["run_parameters"] = pipeline.graph.nodes[component_name][
-                    "parameters"
-                ]
-
         pipeline_repr["connections"] = list(pipeline.graph.edges)
         schema["pipelines"][pipeline_name] = pipeline_repr
 

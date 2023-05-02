@@ -14,7 +14,6 @@ from canals.pipeline._utils import (
     InputSocket,
     OutputSocket,
     find_sockets,
-    get_socket,
     find_unambiguous_connection,
     is_subtype,
     parse_connection_name,
@@ -110,7 +109,7 @@ class Pipeline:
             name,
             instance=instance,
             input_sockets=input_sockets,
-            variadic_input=any(e.variadic for e in input_sockets),
+            variadic_input=any(e.variadic for e in input_sockets.values()),
             output_sockets=output_sockets,
             visits=0,
         )
@@ -172,20 +171,27 @@ class Pipeline:
         from_sockets = self._get_component_data(from_node_name)["output_sockets"]
         to_sockets = self._get_component_data(to_node_name)["input_sockets"]
 
-        if to_socket_name and from_socket_name:
-            # Names of both edges are given, get the sockets
-            from_socket = get_socket(node_name=from_node_name, socket_name=from_socket_name, sockets=from_sockets)
-            to_socket = get_socket(node_name=to_node_name, socket_name=to_socket_name, sockets=to_sockets)
-        else:
-            # The source socket is given, get it
-            if from_socket_name:
-                from_sockets = [
-                    get_socket(node_name=from_node_name, socket_name=from_socket_name, sockets=from_sockets)
-                ]
-            # The sink socket is given, get it
-            if to_socket_name:
-                to_sockets = [get_socket(node_name=to_node_name, socket_name=to_socket_name, sockets=to_sockets)]
+        # If the names of both edges are given, get the sockets directly
+        if from_socket_name:
+            from_socket = from_sockets.get(from_socket_name, None)
+            if not from_socket:
+                raise PipelineConnectError(
+                    f"'{from_node_name}.{from_socket_name} does not exist. "
+                    f"Output connections of {from_node_name} are: "
+                    + ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in from_sockets.items()])
+                )
+        if to_socket_name:
+            to_socket = to_sockets.get(to_socket_name, None)
+            if not to_socket:
+                raise PipelineConnectError(
+                    f"'{to_node_name}.{to_socket_name} does not exist. "
+                    f"Input connections of {to_node_name} are: "
+                    ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in to_sockets.items()])
+                )
+        if not to_socket_name or not from_socket_name:
             # Find one pair of sockets that can be connected
+            from_sockets = [from_socket] if from_socket_name else from_sockets.values()
+            to_sockets = [to_socket] if to_socket_name else to_sockets.values()
             from_socket, to_socket = find_unambiguous_connection(
                 from_node=from_node_name, from_sockets=from_sockets, to_node=to_node_name, to_sockets=to_sockets
             )
@@ -338,15 +344,11 @@ class Pipeline:
 
             # Call the node
             try:
-                logger.info(
-                    "* Running %s (visits: %s)",
-                    node_name,
-                    self.graph.nodes[node_name]["visits"],
-                )
+                logger.info("* Running %s (visits: %s)", node_name, self.graph.nodes[node_name]["visits"])
                 logger.debug("   '%s' inputs: %s", node_name, node_inputs)
 
                 # Check if any param is variadic and unpack it
-                # Note that nodes either accept one single variadic positional or named kwargs! Not both.
+                # Note that components either accept one single variadic positional or named kwargs! Not both.
                 if self._get_component_data(node_name)["variadic_input"]:
                     node_inputs = list(node_inputs.items())[0][1]
                     node_output = node_node.run(*node_inputs)
@@ -426,8 +428,6 @@ class Pipeline:
             if not is_merge_node or not nx.has_path(self.graph, component_name, from_node)
         ]
         nodes_to_wait_for, inputs_to_wait_for = zip(*data_to_wait_for) if data_to_wait_for else ([], [])
-        if self.graph.nodes[component_name]["variadic_input"]:
-            inputs_to_wait_for = list(set(inputs_to_wait_for))
 
         if not data_to_wait_for:
             # This is an input node, so it's ready to run.
@@ -436,10 +436,11 @@ class Pipeline:
 
         # Do we have all the inputs we expect?
         if self.graph.nodes[component_name]["variadic_input"]:
-            if inputs_received and len(inputs_received[0]) == len(inputs_to_wait_for):
+            # Here we're assuming the variadic nodes take only one argument!
+            if inputs_received and len(component_inputs[inputs_received[0]]) == len(inputs_to_wait_for):
                 return (True, inputs_buffer)
 
-        elif sorted(inputs_to_wait_for) == sorted(inputs_received):
+        elif set(inputs_to_wait_for).issubset(set(inputs_received)):
             return (True, inputs_buffer)
 
         # This node is missing some inputs.
@@ -460,58 +461,39 @@ class Pipeline:
             return (False, inputs_buffer)
 
         # All upstream nodes run, so it **must** be our turn.
+        # However, we're missing data, so this branch probably is being skipped.
+        # Let's skip this node and add all downstream nodes to the queue with an equally empty buffer, so they will
+        # be skipped in turn, unless they're variadic merge nodes.
         #
-        # Are we missing ALL inputs or just a few?
-        if not inputs_received:
-            # ALL upstream nodes have been skipped.
-            #
-            # Let's skip this node and add all downstream nodes to the queue.
-            self.graph.nodes[component_name]["visits"] += 1
+        # TODO Merge nodes that are not variadic but tolerate Nones might also exist. We should check for that.
+        if self.graph.nodes[component_name]["variadic_input"]:
             logger.debug(
-                "Skipping '%s', all input components were skipped and no inputs were received "
-                "(skipped components: %s, inputs: %s)",
+                "Running '%s', even though some upstream component did not produced output. "
+                "(upstream components: %s, expected inputs: %s, n. inputs received %s)",
                 component_name,
                 nodes_to_wait_for,
                 inputs_to_wait_for,
+                # Here we're assuming the variadic nodes take only one argument!
+                len(component_inputs[inputs_received[0]]),
             )
-            # Put all downstream nodes in the inputs buffer...
-            downstream_nodes = [e[1] for e in self.graph.out_edges(component_name)]
-            for downstream_node in downstream_nodes:
-                if not downstream_node in inputs_buffer:
-                    inputs_buffer[downstream_node] = {}
-            # ... and never run this node
-            return (False, inputs_buffer)
+            return (True, inputs_buffer)
 
-        # If all nodes upstream have run and we received SOME input,
-        # this is a merge node that was waiting on a node that has been skipped, so it's ready to run.
-        # Let's pass None on the missing edges and go ahead.
-        #
-        # Example:
-        #
-        # --------------- value ----+
-        #                           |
-        #        +---X--- even ---+ |
-        #        |                | |
-        # -- parity_check         sum --
-        #        |                 |
-        #        +------ odd ------+
-        #
-        # If 'parity_check' produces output only on 'odd', 'sum' should run
-        # with 'value' and 'odd' only, because 'even' will never arrive.
-        #
-        inputs_to_wait_for = list(inputs_to_wait_for)
-        for input_expected in inputs_to_wait_for:
-            if input_expected in inputs_received:
-                inputs_to_wait_for.pop(inputs_to_wait_for.index(input_expected))
+        self.graph.nodes[component_name]["visits"] += 1
         logger.debug(
-            "Some components upstream of '%s' were skipped, so some inputs will be None (missing inputs: %s)",
+            "Skipping '%s', no upstream component produced output "
+            "(upstream components: %s, expected inputs: %s, inputs received %s)",
             component_name,
+            nodes_to_wait_for,
             inputs_to_wait_for,
+            inputs_received,
         )
-        for missing_input in inputs_to_wait_for:
-            component_inputs[missing_input] = None
-
-        return (True, inputs_buffer)
+        # Put all downstream nodes in the inputs buffer...
+        downstream_nodes = [e[1] for e in self.graph.out_edges(component_name)]
+        for downstream_node in downstream_nodes:
+            if not downstream_node in inputs_buffer:
+                inputs_buffer[downstream_node] = {}
+        # ... and never run this node
+        return (False, inputs_buffer)
 
     def _route_output(
         self,

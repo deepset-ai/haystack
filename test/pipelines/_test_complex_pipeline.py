@@ -3,39 +3,37 @@ from pprint import pprint
 import logging
 
 from canals.pipeline import Pipeline
-from test.components import Accumulate, AddValue, Greet, Remainder, Rename, Merge, Below, Double, Sum, Repeat, Subtract
+from test.components import Accumulate, AddValue, Greet, Parity, Threshold, Double, Sum, Repeat, Subtract
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 def test_complex_pipeline(tmp_path):
-    accumulate = Accumulate(connection="value")
+    accumulate = Accumulate()
 
     pipeline = Pipeline(max_loops_allowed=4)
-    pipeline.add_component("greet_first", Greet(connection="value", message="Hello!"))
+    pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", accumulate)
     pipeline.add_component("add_two", AddValue(add=2))
-    pipeline.add_component("parity_check", Remainder(divisor=2))
-    pipeline.add_component("add_one", AddValue(add=1, input="1"))
+    pipeline.add_component("parity", Parity())
+    pipeline.add_component("add_one", AddValue(add=1))
     pipeline.add_component("accumulate_2", accumulate)
-    pipeline.add_component("rename_above_to_value", Rename(input="above", output="value"))
 
-    pipeline.add_component("loop_merger", Merge(inputs=["value", "value"]))
-    pipeline.add_component("below_10", Below(threshold=10))
-    pipeline.add_component("double", Double(input="below", output="value"))
+    pipeline.add_component("below_10", Threshold(threshold=10))
+    pipeline.add_component("double", Double())
 
-    pipeline.add_component("greet_again", Greet(connection="0", message="Hello again!"))
-    pipeline.add_component("sum", Sum(inputs=["1", "0", "value"]))
+    pipeline.add_component("greet_again", Greet(message="Hello again, now the value is {value}."))
+    pipeline.add_component("sum", Sum())
 
-    pipeline.add_component("greet_enumerator", Greet(connection="value", message="Hello from enumerator!"))
-    pipeline.add_component("enumerate", Repeat(input="value", outputs=["0", "1"]))
-    pipeline.add_component("add_three", AddValue(add=3, input="0"))
+    pipeline.add_component("greet_enumerator", Greet(message="Hello from enumerator, here the value became {value}."))
+    pipeline.add_component("enumerate", Repeat(repeat=2))
+    pipeline.add_component("add_three", AddValue(add=3))
 
-    pipeline.add_component("diff", Subtract(first_input="value", second_input="sum"))
-    pipeline.add_component("greet_one_last_time", Greet(connection="diff", message="Bye bye!"))
-    pipeline.add_component("replicate", Repeat(input="diff", outputs=["first", "second"]))
-    pipeline.add_component("add_five", AddValue(add=5, input="first"))
-    pipeline.add_component("add_four", AddValue(add=4, input="second"))
+    pipeline.add_component("diff", Subtract())
+    pipeline.add_component("greet_one_last_time", Greet(message="Bye bye! The value here is {value}!"))
+    pipeline.add_component("replicate", Repeat(repeat=2))
+    pipeline.add_component("add_five", AddValue(add=5))
+    pipeline.add_component("add_four", AddValue(add=4))
     pipeline.add_component("accumulate_3", accumulate)
 
     pipeline.connect("greet_first", "accumulate_1")

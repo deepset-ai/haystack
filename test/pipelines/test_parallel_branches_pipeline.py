@@ -14,16 +14,16 @@ def test_pipeline(tmp_path):
 
     pipeline = Pipeline()
     pipeline.add_component("add_one", add_one)
-    pipeline.add_component("repeat", Repeat())
+    pipeline.add_component("repeat", Repeat(outputs=["first", "second"]))
     pipeline.add_component("add_ten", AddValue(add=10))
     pipeline.add_component("double", Double())
     pipeline.add_component("add_three", AddValue(add=3))
     pipeline.add_component("add_one_again", add_one)
 
     pipeline.connect("add_one.value", "repeat.value")
-    pipeline.connect("repeat.first", "add_ten")
+    pipeline.connect("repeat.first", "add_ten.value")
     pipeline.connect("repeat.second", "double")
-    pipeline.connect("repeat.second", "add_three")
+    pipeline.connect("repeat.second", "add_three.value")
     pipeline.connect("add_three", "add_one_again")
 
     try:

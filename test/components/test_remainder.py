@@ -1,8 +1,4 @@
-from dataclasses import dataclass, make_dataclass
-import pytest
-
-from functools import partialmethod
-import inspect
+from dataclasses import make_dataclass
 
 from canals import component
 
@@ -19,7 +15,13 @@ class Remainder:
 
     def __init__(self, divisor: int = 2):
         self.divisor = divisor
-        self.output_type = make_dataclass("Output", [(f"remainder_is_{val}", int, None) for val in range(self.divisor)])
+        self._output_type = make_dataclass(
+            "Output", [(f"remainder_is_{val}", int, None) for val in range(self.divisor)]
+        )
+
+    @property
+    def output_type(self):
+        return self._output_type
 
     def run(self, value: int):
         """
@@ -38,4 +40,4 @@ class Remainder:
 def test_remainder_default():
     component = Remainder()
     results = component.run(value=3)
-    assert results == component.output_dataclass(remainder_is_1=3)
+    assert results == component.output_type(remainder_is_1=3)
