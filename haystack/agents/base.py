@@ -10,11 +10,10 @@ from events import Events
 from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
-from haystack.agents.types import Color
+from haystack.agents.types import Color, AgentTokenStreamingHandler
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
 from haystack.errors import AgentError
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
-from haystack.nodes.prompt.invocation_layer import TokenStreamingHandler
 from haystack.pipelines import (
     BaseStandardPipeline,
     ExtractiveQAPipeline,
@@ -312,16 +311,9 @@ class Agent:
         )
 
     def _step(self, current_step: AgentStep, params: Optional[dict] = None):
-        cm = self.callback_manager
-
-        class AgentTokenStreamingHandler(TokenStreamingHandler):
-            def __call__(self, token_received, **kwargs) -> str:
-                cm.on_new_token(token_received, **kwargs)
-                return token_received
-
         # plan next step using the LLM
         prompt_node_response = self.prompt_node(
-            current_step.prepare_prompt(), stream_handler=AgentTokenStreamingHandler()
+            current_step.prepare_prompt(), stream_handler=AgentTokenStreamingHandler(self.callback_manager)
         )
 
         # from the LLM response, create the next step
