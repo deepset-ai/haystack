@@ -1,3 +1,5 @@
+import json
+
 from haystack.schema import Document, Label, Answer, Span, MultiLabel, TableCell, _dict_factory
 import pytest
 import numpy as np
@@ -61,11 +63,57 @@ def table_label():
         document=Document(
             content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
             content_type="table",
+            id="fe5cb68f8226776914781f6bd40ad718",
         ),
         is_correct_answer=True,
         is_correct_document=True,
         origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        updated_at=None,
+        id="fbd79f71-d690-4b21-bd0a-1094292b9809",
     )
+
+
+@pytest.fixture
+def table_label_dict():
+    return {
+        "id": "fbd79f71-d690-4b21-bd0a-1094292b9809",
+        "query": "some",
+        "document": {
+            "id": "fe5cb68f8226776914781f6bd40ad718",
+            "content": [["col1", "col2"], ["text_1", 1], ["text_2", 2]],
+            "content_type": "table",
+            "meta": {},
+            "id_hash_keys": ["content"],
+            "score": None,
+            "embedding": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "answer": {
+            "answer": "text_2",
+            "type": "extractive",
+            "score": 0.1,
+            "context": [["col1", "col2"], ["text_1", 1], ["text_2", 2]],
+            "offsets_in_document": [{"row": 1, "col": 0}],
+            "offsets_in_context": None,
+            "document_ids": ["123"],
+            "meta": {},
+        },
+        "pipeline_id": None,
+        "created_at": "2023-05-02 11:43:56",
+        "updated_at": None,
+        "meta": {},
+        "filters": None,
+    }
+
+
+@pytest.fixture
+def table_label_json(samples_path):
+    with open(samples_path / "schema" / "table_label.json") as f1:
+        data = json.load(f1)
+    return data
 
 
 @pytest.fixture
@@ -92,6 +140,27 @@ def table_answer():
         offsets_in_context=[TableCell(row=1, col=0)],
         document_ids=["123"],
     )
+
+
+@pytest.fixture
+def table_answer_dict():
+    return {
+        "answer": "text_2",
+        "type": "extractive",
+        "score": 0.1,
+        "context": [["col1", "col2"], ["text_1", 1], ["text_2", 2]],
+        "offsets_in_document": [{"row": 1, "col": 0}],
+        "offsets_in_context": [{"row": 1, "col": 0}],
+        "document_ids": ["123"],
+        "meta": {},
+    }
+
+
+@pytest.fixture
+def table_answer_json(samples_path):
+    with open(samples_path / "schema" / "table_answer.json") as f1:
+        data = json.load(f1)
+    return data
 
 
 @pytest.fixture
@@ -209,19 +278,27 @@ def test_labels_with_different_fields_are_not_equal(table_label):
 
 
 @pytest.mark.unit
-def test_table_label_to_json(table_label):
-    table_label_json = table_label.to_json()
+def test_table_label_from_json(table_label, table_label_json):
     table_label_from_json = Label.from_json(table_label_json)
     assert table_label_from_json == table_label
-    assert table_label_from_json.answer.offsets_in_document[0].row == 1
 
 
 @pytest.mark.unit
-def test_table_label_to_dict(table_label):
-    table_label_dict = table_label.to_dict()
+def test_table_label_to_json(table_label, table_label_json):
+    table_label_to_json = json.loads(table_label.to_json())
+    assert table_label_to_json == table_label_json
+
+
+@pytest.mark.unit
+def test_table_label_from_dict(table_label, table_label_dict):
     table_label_from_dict = Label.from_dict(table_label_dict)
     assert table_label_from_dict == table_label
-    assert table_label_from_dict.answer.offsets_in_document[0].row == 1
+
+
+@pytest.mark.unit
+def test_table_label_to_dict(table_label, table_label_dict):
+    table_label_to_dict = table_label.to_dict()
+    assert table_label_to_dict == table_label_dict
 
 
 @pytest.mark.unit
@@ -246,21 +323,26 @@ def test_answer_to_dict(text_answer):
 
 
 @pytest.mark.unit
-def test_table_answer_to_json(table_answer):
-    table_answer_json = table_answer.to_json()
-    assert isinstance(table_answer_json, str)
+def test_table_answer_to_json(table_answer, table_answer_json):
+    table_answer_to_json = json.loads(table_answer.to_json())
+    assert table_answer_to_json == table_answer_json
+
+
+@pytest.mark.unit
+def test_table_answer_from_json(table_answer, table_answer_json):
     table_answer_from_json = Answer.from_json(table_answer_json)
-    assert isinstance(table_answer_from_json.offsets_in_document[0], TableCell)
     assert table_answer_from_json == table_answer
 
 
 @pytest.mark.unit
-def test_table_answer_to_dict(table_answer):
+def test_table_answer_to_dict(table_answer, table_answer_dict):
     table_answer_to_dict = table_answer.to_dict()
-    assert isinstance(table_answer_to_dict, dict)
-    assert isinstance(table_answer_to_dict["context"], list)
-    table_answer_from_dict = Answer.from_dict(table_answer_to_dict)
-    assert isinstance(table_answer_from_dict.offsets_in_document[0], TableCell)
+    assert table_answer_to_dict == table_answer_dict
+
+
+@pytest.mark.unit
+def test_table_answer_from_dict(table_answer, table_answer_dict):
+    table_answer_from_dict = Answer.from_dict(table_answer_dict)
     assert table_answer_from_dict == table_answer
 
 
@@ -274,7 +356,21 @@ def test_document_from_dict():
 
 @pytest.mark.unit
 def test_table_document_from_dict(table_doc):
-    assert table_doc == Document.from_dict(table_doc.to_dict())
+    table_doc_dict = {
+        "content": [
+            ["actors", "age", "number of movies", "date of birth"],
+            ["brad pitt", 58, 87, "18 december 1963"],
+            ["leonardo di caprio", 47, 53, "11 november 1974"],
+            ["george clooney", 60, 69, "6 may 1961"],
+        ],
+        "content_type": "table",
+        "score": None,
+        "meta": {},
+        "id_hash_keys": ["content"],
+        "embedding": None,
+        "id": "doc1",
+    }
+    assert table_doc == Document.from_dict(table_doc_dict)
 
 
 @pytest.mark.unit
