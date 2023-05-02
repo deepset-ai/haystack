@@ -1700,7 +1700,7 @@ def test_pipeline_env_vars_do_not_modify__component_config(caplog, monkeypatch):
 
     with caplog.at_level(logging.INFO):
         env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
-        assert "overwritten with environment variable 'NODE_PARAMS_REPLACEABLE' value 'env v...'." in caplog.text
+        assert "overwritten with environment variable 'NODE_PARAMS_REPLACEABLE' value '***'." in caplog.text
 
     new_component_config = deepcopy(node._component_config)
     new_pipeline_config = deepcopy(pipeline.get_config())
