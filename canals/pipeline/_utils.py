@@ -119,8 +119,8 @@ def find_unambiguous_connection(
             )
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}' with '{to_node}': more than one connection is possible "
-                "between these components. Please specify the connection name, like "
-                f"pipeline.connect(component_1.output_value, component_2.input_value).\n{connections_status_str}"
+                "between these components. Please specify the connection name, like: "
+                f"pipeline.connect('component_1.output_value', 'component_2.input_value').\n{connections_status_str}"
             )
 
     return possible_connections[0]
@@ -144,8 +144,8 @@ def validate_pipeline(graph):
     """
     Make sure the pipeline has at least one input component and one output component.
     """
-    if not locate_pipeline_input_components(graph):
-        raise PipelineValidationError("This pipeline has no input components.")
+    # if not locate_pipeline_input_components(graph):
+    #     raise PipelineValidationError("This pipeline has no input components.")
 
     if not locate_pipeline_output_components(graph):
         raise PipelineValidationError("This pipeline has no output components.")

@@ -447,6 +447,14 @@ class Pipeline:
         #
         # Did all the upstream nodes run?
         if not all(self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in nodes_to_wait_for):
+
+            if not inputs_buffer:
+                # What if there are no components to wait for, though?
+                raise PipelineRuntimeError(
+                    f"'{component_name}' is stuck waiting for input, but there are no other components to run. "
+                    "This is likely a Canals bug. Open an issue at https://github.com/deepset-ai/canals."
+                )
+
             # Some node upstream didn't run yet, so we should wait for them.
             logger.debug(
                 "Putting '%s' back in the queue, some inputs are missing "
@@ -538,14 +546,9 @@ class Pipeline:
                     inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
                 if node_results.get(from_socket.name, None):
                     if to_socket.variadic:
-                        # if to_socket.name in inputs_buffer[target_node]:
-
-                        logger.debug("$$$$$$$$$$$$$ %s %s %s", target_node, inputs_buffer[target_node], to_socket.name)
                         if not to_socket.name in inputs_buffer[target_node].keys():
                             inputs_buffer[target_node][to_socket.name] = []
                         inputs_buffer[target_node][to_socket.name].append(node_results[from_socket.name])
-                        # else:
-                        #     inputs_buffer[target_node][to_socket.name] = [node_results[from_socket.name]]
                     else:
                         inputs_buffer[target_node][to_socket.name] = node_results[from_socket.name]
 

@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.components import AddValue, Remainder, Double
+from test.components import AddFixedValue, Remainder, Double
 
 import logging
 
@@ -10,14 +10,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_pipeline(tmp_path):
-    add_one = AddValue(add=1)
+    add_one = AddFixedValue(add=1)
 
     pipeline = Pipeline()
     pipeline.add_component("add_one", add_one)
     pipeline.add_component("remainder", Remainder(divisor=3))
-    pipeline.add_component("add_ten", AddValue(add=10))
+    pipeline.add_component("add_ten", AddFixedValue(add=10))
     pipeline.add_component("double", Double())
-    pipeline.add_component("add_three", AddValue(add=3))
+    pipeline.add_component("add_three", AddFixedValue(add=3))
     pipeline.add_component("add_one_again", add_one)
 
     pipeline.connect("add_one", "remainder")

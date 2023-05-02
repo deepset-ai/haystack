@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from canals import component
+from canals import component, component_input, component_output
 
 
 @component
@@ -10,19 +10,23 @@ class Double:
     Single input single output component. Doesn't take parameters.
     """
 
-    @dataclass
+    @component_input
+    class Input:
+        value: int
+
+    @component_output
     class Output:
         value: int
 
-    def run(self, value: int) -> Output:
+    def run(self, data: Input) -> Output:
         """
         Doubles the input value
         """
-        return Double.Output(value=value * 2)
+        return Double.Output(value=data.value * 2)  # type: ignore
 
 
 def test_double_default():
     component = Double()
-    results = component.run(value=10)
+    results = component.run(Double(value=10))
     assert results == Double.Output(value=20)
     assert component.init_parameters == {}

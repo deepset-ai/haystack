@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from canals.pipeline import Pipeline, marshal_pipelines, unmarshal_pipelines
-from test.components import AddValue, Double
+from test.components import AddFixedValue, Double
 
 import logging
 
@@ -11,8 +11,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_marshal():
-    add_1 = AddValue(add=1)
-    add_2 = AddValue(add=1)
+    add_1 = AddFixedValue(add=1)
+    add_2 = AddFixedValue(add=1)
 
     pipeline_1 = Pipeline(metadata={"type": "test pipeline", "author": "me"})
     pipeline_1.add_component("first_addition", add_2)
@@ -120,16 +120,16 @@ def test_unmarshal():
     assert pipe1.metadata == {"type": "test pipeline", "author": "me"}
 
     first_addition = pipe1.get_component("first_addition")
-    assert type(first_addition) == AddValue
+    assert type(first_addition) == AddFixedValue
     assert first_addition.add == 1
 
     second_addition = pipe1.get_component("second_addition")
-    assert type(second_addition) == AddValue
+    assert type(second_addition) == AddFixedValue
     assert second_addition.add == 1
     assert second_addition != first_addition
 
     third_addition = pipe1.get_component("third_addition")
-    assert type(third_addition) == AddValue
+    assert type(third_addition) == AddFixedValue
     assert third_addition.add == 1
     assert third_addition == first_addition
 
@@ -146,12 +146,12 @@ def test_unmarshal():
     assert pipe2.metadata == {"type": "another test pipeline", "author": "you"}
 
     first_addition_2 = pipe2.get_component("first_addition")
-    assert type(first_addition_2) == AddValue
+    assert type(first_addition_2) == AddFixedValue
     assert first_addition_2.add == 1
     assert first_addition_2 == first_addition
 
     second_addition_2 = pipe2.get_component("second_addition")
-    assert type(second_addition_2) == AddValue
+    assert type(second_addition_2) == AddFixedValue
     assert second_addition_2.add == 1
     assert second_addition_2 != first_addition_2
     assert second_addition_2 == second_addition
