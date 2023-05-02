@@ -1,7 +1,4 @@
-import os
-from typing import Tuple
-
-import logging
+from typing import Dict, Any
 from pathlib import Path
 
 import numpy as np
@@ -9,7 +6,7 @@ import pytest
 import torch
 from torch.utils.data import SequentialSampler
 from tqdm import tqdm
-from transformers import DPRQuestionEncoder, AutoTokenizer
+from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import TextSimilarityProcessor
@@ -17,19 +14,10 @@ from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
 
-from haystack.nodes.retriever.dense import DensePassageRetriever
-
-from haystack.modeling.utils import set_all_seeds, initialize_device_settings
-from haystack.utils.early_stopping import EarlyStopping
+from haystack.modeling.utils import initialize_device_settings
 
 
-def test_dpr_modules(caplog=None):
-    if caplog:
-        caplog.set_level(logging.CRITICAL)
-
-    set_all_seeds(seed=42)
-    devices, n_gpu = initialize_device_settings(use_cuda=True)
-
+def test_dpr_modules():
     # 1.Create question and passage tokenizers
     query_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path="facebook/dpr-question_encoder-single-nq-base", do_lower_case=True, use_fast=True
@@ -66,6 +54,7 @@ def test_dpr_modules(caplog=None):
 
     prediction_head = TextSimilarityHead(similarity_function="dot_product")
 
+    devices, _ = initialize_device_settings(use_cuda=True)
     model = BiAdaptiveModel(
         language_model1=question_language_model,
         language_model2=passage_language_model,
@@ -110,7 +99,9 @@ def test_dpr_modules(caplog=None):
         ],
     }
 
-    dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset, tensor_names, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
+        dicts=[d], return_baskets=False
+    )
     features = {key: val.unsqueeze(0).to(devices[0]) for key, val in zip(tensor_names, dataset[0])}
 
     # test features
@@ -322,6 +313,13 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
                     "label": "hard_negative",
                     "external_id": "3643705",
                 },
+                # Empty title
+                {
+                    "title": "",
+                    "text": "Director Radio Iași); Dragoș-Liviu Vîlceanu; Mihnea-Adrian Vîlceanu; Nathalie-Teona",
+                    "label": "positive",
+                    "external_id": "b21eaeff-e08b-4548-b5e0-a280f6f4efef",
+                },
             ],
         },
         {
@@ -382,7 +380,7 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
     )
 
     for i, d in enumerate(dict):
-        dataset, tensor_names, _, baskets = processor.dataset_from_dicts(dicts=[d], return_baskets=True)
+        __, ___, _, baskets = processor.dataset_from_dicts(dicts=[d], return_baskets=True)
         feat = baskets[0].samples[0].features
         assert torch.all(torch.eq(torch.tensor(feat[0]["query_input_ids"][:10]), query_input_ids[i]))
         assert len(torch.tensor(feat[0]["query_segment_ids"]).nonzero()) == 0
@@ -402,42 +400,6 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
             torch.eq(torch.tensor(feat[0]["label_ids"]), torch.tensor(labels[i])[: num_hard_negatives + 1])
         )
         assert len(torch.tensor(feat[0]["passage_segment_ids"]).nonzero()) == 0
-
-
-@pytest.mark.parametrize("use_fast", [False])
-@pytest.mark.parametrize("embed_title", [True, False])
-def test_dpr_processor_empty_title(use_fast, embed_title):
-    dict = {
-        "query": "what is a cat?",
-        "passages": [
-            {
-                "title": "",
-                "text": "Director Radio Iași); Dragoș-Liviu Vîlceanu; Mihnea-Adrian Vîlceanu; Nathalie-Teona",
-                "label": "positive",
-                "external_id": "b21eaeff-e08b-4548-b5e0-a280f6f4efef",
-            }
-        ],
-    }
-
-    query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = AutoTokenizer.from_pretrained(query_tok, use_fast=use_fast)
-    passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok, use_fast=use_fast)
-    processor = TextSimilarityProcessor(
-        query_tokenizer=query_tokenizer,
-        passage_tokenizer=passage_tokenizer,
-        max_seq_len_query=256,
-        max_seq_len_passage=256,
-        data_dir="data/retriever",
-        train_filename="nq-train.json",
-        test_filename="nq-dev.json",
-        embed_title=embed_title,
-        num_hard_negatives=1,
-        label_list=["hard_negative", "positive"],
-        metric="text_similarity_metric",
-        shuffle_negatives=False,
-    )
-    _ = processor.dataset_from_dicts(dicts=[dict])
 
 
 def test_dpr_problematic():
@@ -523,9 +485,7 @@ def test_dpr_problematic():
         shuffle_negatives=False,
     )
 
-    dataset, tensor_names, problematic_ids, baskets = processor.dataset_from_dicts(
-        dicts=erroneous_dicts, return_baskets=True
-    )
+    _, __, problematic_ids, ___ = processor.dataset_from_dicts(dicts=erroneous_dicts, return_baskets=True)
     assert problematic_ids == {0, 1}
 
 
@@ -554,9 +514,7 @@ def test_dpr_query_only():
         shuffle_negatives=False,
     )
 
-    dataset, tensor_names, problematic_ids, baskets = processor.dataset_from_dicts(
-        dicts=erroneous_dicts, return_baskets=True
-    )
+    _, tensor_names, problematic_ids, __ = processor.dataset_from_dicts(dicts=erroneous_dicts, return_baskets=True)
     assert len(problematic_ids) == 0
     assert tensor_names == ["query_input_ids", "query_segment_ids", "query_attention_mask"]
 
@@ -616,9 +574,7 @@ def test_dpr_context_only():
         shuffle_negatives=False,
     )
 
-    dataset, tensor_names, problematic_ids, baskets = processor.dataset_from_dicts(
-        dicts=erroneous_dicts, return_baskets=True
-    )
+    _, tensor_names, problematic_ids, __ = processor.dataset_from_dicts(dicts=erroneous_dicts, return_baskets=True)
     assert len(problematic_ids) == 0
     assert tensor_names == ["passage_input_ids", "passage_segment_ids", "passage_attention_mask", "label_ids"]
 
@@ -668,9 +624,11 @@ def test_dpr_processor_save_load(tmp_path):
     )
     save_dir = f"{tmp_path}/testsave/dpr_processor"
     processor.save(save_dir=save_dir)
-    dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset, __, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
+        dicts=[d], return_baskets=False
+    )
     loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=save_dir)
-    dataset2, tensor_names, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset2, __, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
 
@@ -688,7 +646,7 @@ def test_dpr_processor_save_load(tmp_path):
         {"query": "facebook/dpr-question_encoder-single-nq-base", "passage": "facebook/dpr-ctx_encoder-single-nq-base"},
     ],
 )
-def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_passage_model: Tuple[str, str]):
+def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_passage_model: Dict[str, str]):
     """
     This test compares 1) a model that was loaded from model hub with
     2) a model from model hub that was saved to disk and then loaded from disk and
@@ -809,22 +767,26 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     loaded_model.connect_heads_with_processor(loaded_processor.tasks, require_labels=False)
 
     # compare model loaded from model hub with model loaded from disk
-    dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset, tensor_names, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
+        dicts=[d], return_baskets=False
+    )
+    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
+        dicts=[d], return_baskets=False
+    )
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
     # generate embeddings with model loaded from model hub
-    dataset, tensor_names, _, baskets = processor.dataset_from_dicts(
+    dataset, tensor_names, _, __ = processor.dataset_from_dicts(
         dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
     )
 
     data_loader = NamedDataLoader(
         dataset=dataset, sampler=SequentialSampler(dataset), batch_size=16, tensor_names=tensor_names
     )
-    all_embeddings = {"query": [], "passages": []}
+    all_embeddings: Dict[str, Any] = {"query": [], "passages": []}
     model.eval()
 
-    for batch in tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True):
+    for batch in tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -848,17 +810,17 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         all_embeddings["query"] = np.concatenate(all_embeddings["query"])
 
     # generate embeddings with model loaded from disk
-    dataset2, tensor_names2, _, baskets2 = loaded_processor.dataset_from_dicts(
+    dataset2, tensor_names2, _, __ = loaded_processor.dataset_from_dicts(
         dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
     )
 
     data_loader = NamedDataLoader(
         dataset=dataset2, sampler=SequentialSampler(dataset2), batch_size=16, tensor_names=tensor_names2
     )
-    all_embeddings2 = {"query": [], "passages": []}
+    all_embeddings2: Dict[str, Any] = {"query": [], "passages": []}
     loaded_model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True)):
+    for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -932,22 +894,26 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 
     # compare a model loaded from disk that originated from the model hub and was then saved disk with
     # a model loaded from disk that also originated from a FARM style model that was saved to disk
-    dataset3, tensor_names3, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(dicts=[d], return_baskets=False)
+    dataset3, tensor_names3, _ = processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
+        dicts=[d], return_baskets=False
+    )
+    dataset2, tensor_names2, _ = loaded_processor.dataset_from_dicts(  # pylint: disable=unbalanced-tuple-unpacking
+        dicts=[d], return_baskets=False
+    )
     assert np.array_equal(dataset3.tensors[0], dataset2.tensors[0])
 
     # generate embeddings with model loaded from disk that originated from a FARM style model that was saved to disk earlier
-    dataset3, tensor_names3, _, baskets3 = loaded_processor.dataset_from_dicts(
+    dataset3, tensor_names3, _, __ = loaded_processor.dataset_from_dicts(
         dicts=[d], indices=[i for i in range(len([d]))], return_baskets=True
     )
 
     data_loader = NamedDataLoader(
         dataset=dataset3, sampler=SequentialSampler(dataset3), batch_size=16, tensor_names=tensor_names3
     )
-    all_embeddings3 = {"query": [], "passages": []}
+    all_embeddings3: Dict[str, Any] = {"query": [], "passages": []}
     loaded_model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True)):
+    for i, batch in enumerate(tqdm(data_loader, desc="Creating Embeddings", unit=" Batches", disable=True)):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -973,170 +939,3 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     # compare embeddings of model loaded from model hub and model loaded from disk that originated from a FARM style
     # model that was saved to disk earlier
     assert np.array_equal(all_embeddings["query"][0], all_embeddings3["query"][0])
-
-
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_training(document_store, tmp_path, samples_path):
-    retriever = DensePassageRetriever(
-        document_store=document_store,
-        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-        max_seq_len_query=8,
-        max_seq_len_passage=8,
-    )
-
-    save_dir = f"{tmp_path}/test_dpr_training"
-    retriever.train(
-        data_dir=str(samples_path / "dpr"),
-        train_filename="sample.json",
-        dev_filename="sample.json",
-        test_filename="sample.json",
-        n_epochs=1,
-        batch_size=1,
-        grad_acc_steps=1,
-        save_dir=save_dir,
-        evaluate_every=10,
-        embed_title=True,
-        num_positives=1,
-        num_hard_negatives=1,
-    )
-
-
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_training_with_earlystopping(document_store, tmp_path, samples_path):
-    retriever = DensePassageRetriever(
-        document_store=document_store,
-        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-        max_seq_len_query=8,
-        max_seq_len_passage=8,
-    )
-
-    save_dir = f"{tmp_path}/test_dpr_training"
-    retriever.train(
-        data_dir=str(samples_path / "dpr"),
-        train_filename="sample.json",
-        dev_filename="sample.json",
-        test_filename="sample.json",
-        n_epochs=1,
-        batch_size=1,
-        grad_acc_steps=1,
-        save_dir=save_dir,
-        evaluate_every=1,
-        embed_title=True,
-        num_positives=1,
-        num_hard_negatives=1,
-        early_stopping=EarlyStopping(save_dir=save_dir),
-    )
-
-
-# TODO fix CI errors (test pass locally or on AWS, next steps: isolate PyTorch versions once FARM dependency is removed)
-# def test_dpr_training():
-#     batch_size = 1
-#     n_epochs = 1
-#     distributed = False  # enable for multi GPU training via DDP
-#     evaluate_every = 1
-#     question_lang_model = "microsoft/MiniLM-L12-H384-uncased"
-#     passage_lang_model = "microsoft/MiniLM-L12-H384-uncased"
-#     do_lower_case = True
-#     use_fast = True
-#     similarity_function = "dot_product"
-#
-#     device, n_gpu = initialize_device_settings(use_cuda=False)
-#
-#     query_tokenizer = get_tokenizer(pretrained_model_name_or_path=question_lang_model,
-#                                      do_lower_case=do_lower_case, use_fast=use_fast)
-#     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_lang_model,
-#                                        do_lower_case=do_lower_case, use_fast=use_fast)
-#     label_list = ["hard_negative", "positive"]
-#
-#     processor = TextSimilarityProcessor(query_tokenizer=query_tokenizer,
-#                                         passage_tokenizer=passage_tokenizer,
-#                                         max_seq_len_query=10,
-#                                         max_seq_len_passage=10,
-#                                         label_list=label_list,
-#                                         metric="text_similarity_metric",
-#                                         data_dir="samples/dpr/",
-#                                         train_filename="sample.json",
-#                                         dev_filename="sample.json",
-#                                         test_filename=None,
-#                                         embed_title=True,
-#                                         num_hard_negatives=1,
-#                                         dev_split=0,
-#                                         max_samples=2)
-#
-#     data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False)
-#
-#     question_language_model = get_language_model(pretrained_model_name_or_path=question_lang_model,
-#                                                  language_model_class="DPRQuestionEncoder")
-#     passage_language_model = get_language_model(pretrained_model_name_or_path=passage_lang_model,
-#                                                 language_model_class="DPRContextEncoder")
-#
-#     prediction_head = TextSimilarityHead(similarity_function=similarity_function)
-#
-#     model = BiAdaptiveModel(
-#         language_model1=question_language_model,
-#         language_model2=passage_language_model,
-#         prediction_heads=[prediction_head],
-#         embeds_dropout_prob=0.1,
-#         lm1_output_types=["per_sequence"],
-#         lm2_output_types=["per_sequence"],
-#         device=device,
-#     )
-#
-#     model, optimizer, lr_schedule = initialize_optimizer(
-#         model=model,
-#         learning_rate=1e-5,
-#         optimizer_opts={"name": "TransformersAdamW", "correct_bias": True, "weight_decay": 0.0, \
-#                         "eps": 1e-08},
-#         schedule_opts={"name": "LinearWarmup", "num_warmup_steps": 100},
-#         n_batches=len(data_silo.loaders["train"]),
-#         n_epochs=n_epochs,
-#         grad_acc_steps=1,
-#         device=device,
-#         distributed=distributed
-#     )
-#
-#     trainer = Trainer(
-#         model=model,
-#         optimizer=optimizer,
-#         data_silo=data_silo,
-#         epochs=n_epochs,
-#         n_gpu=n_gpu,
-#         lr_schedule=lr_schedule,
-#         evaluate_every=evaluate_every,
-#         device=device,
-#     )
-#
-#     trainer.train()
-#
-#     ######## save and load model again
-#     save_dir = Path("testsave/dpr-model")
-#     model.save(save_dir)
-#     del model
-#
-#     model2 = BiAdaptiveModel.load(save_dir, device=device)
-#     model2, optimizer2, lr_schedule = initialize_optimizer(
-#         model=model2,
-#         learning_rate=1e-5,
-#         optimizer_opts={"name": "TransformersAdamW", "correct_bias": True, "weight_decay": 0.0, \
-#                         "eps": 1e-08},
-#         schedule_opts={"name": "LinearWarmup", "num_warmup_steps": 100},
-#         n_batches=len(data_silo.loaders["train"]),
-#         n_epochs=n_epochs,
-#         grad_acc_steps=1,
-#         device=device,
-#         distributed=distributed
-#     )
-#     trainer2 = Trainer(
-#         model=model2,
-#         optimizer=optimizer,
-#         data_silo=data_silo,
-#         epochs=n_epochs,
-#         n_gpu=n_gpu,
-#         lr_schedule=lr_schedule,
-#         evaluate_every=evaluate_every,
-#         device=device,
-#     )
-#
-#     trainer2.train()

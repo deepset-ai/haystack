@@ -1,9 +1,13 @@
 from typing import Set, Type, List
+from unittest.mock import patch
 
 import pytest
 
 from haystack.nodes.prompt import PromptTemplate
+from haystack.nodes.prompt.prompt_node import PromptNode
 from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError
+from haystack.nodes.prompt.shapers import AnswerParser
+from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
 
@@ -36,11 +40,60 @@ def test_prompt_templates():
 
 
 @pytest.mark.unit
+def test_missing_prompt_template_params():
+    template = PromptTemplate("missing_params", "Here is some fake template with variable {foo} and {bar}")
+
+    # both params provided - ok
+    template.prepare(foo="foo", bar="bar")
+
+    # missing one param
+    with pytest.raises(ValueError, match=r".*parameters \['bar', 'foo'\] to be provided but got only \['foo'\].*"):
+        template.prepare(foo="foo")
+
+    # missing both params
+    with pytest.raises(
+        ValueError, match=r".*parameters \['bar', 'foo'\] to be provided but got none of these parameters.*"
+    ):
+        template.prepare(lets="go")
+
+    # more than both params provided - also ok
+    template.prepare(foo="foo", bar="bar", lets="go")
+
+
+@pytest.mark.unit
 def test_prompt_template_repr():
     p = PromptTemplate("t", "Here is variable {baz}")
     desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable {baz}, prompt_params=['baz'])"
     assert repr(p) == desired_repr
     assert str(p) == desired_repr
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_template_deserialization(mock_prompt_model):
+    custom_prompt_template = PromptTemplate(
+        name="custom-question-answering",
+        prompt_text="Given the context please answer the question. Context: {context}; Question: {query}; Answer:",
+        output_parser=AnswerParser(),
+    )
+
+    prompt_node = PromptNode(default_prompt_template=custom_prompt_template)
+
+    pipe = Pipeline()
+    pipe.add_node(component=prompt_node, name="Generator", inputs=["Query"])
+
+    config = pipe.get_config()
+    loaded_pipe = Pipeline.load_from_config(config)
+
+    loaded_generator = loaded_pipe.get_node("Generator")
+    assert isinstance(loaded_generator, PromptNode)
+    assert isinstance(loaded_generator.default_prompt_template, PromptTemplate)
+    assert loaded_generator.default_prompt_template.name == "custom-question-answering"
+    assert (
+        loaded_generator.default_prompt_template.prompt_text
+        == "Given the context please answer the question. Context: {context}; Question: {query}; Answer:"
+    )
+    assert isinstance(loaded_generator.default_prompt_template.output_parser, AnswerParser)
 
 
 class TestPromptTemplateSyntax:
