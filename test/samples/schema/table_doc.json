@@ -1,0 +1,36 @@
+{
+  "content": [
+    [
+      "actors",
+      "age",
+      "number of movies",
+      "date of birth"
+    ],
+    [
+      "brad pitt",
+      58,
+      87,
+      "18 december 1963"
+    ],
+    [
+      "leonardo di caprio",
+      47,
+      53,
+      "11 november 1974"
+    ],
+    [
+      "george clooney",
+      60,
+      69,
+      "6 may 1961"
+    ]
+  ],
+  "content_type": "table",
+  "score": null,
+  "meta": {},
+  "id_hash_keys": [
+    "content"
+  ],
+  "embedding": null,
+  "id": "doc1"
+}
