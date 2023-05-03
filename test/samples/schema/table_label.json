@@ -1,0 +1,66 @@
+{
+  "id": "fbd79f71-d690-4b21-bd0a-1094292b9809",
+  "query": "some",
+  "document": {
+    "id": "fe5cb68f8226776914781f6bd40ad718",
+    "content": [
+      [
+        "col1",
+        "col2"
+      ],
+      [
+        "text_1",
+        1
+      ],
+      [
+        "text_2",
+        2
+      ]
+    ],
+    "content_type": "table",
+    "meta": {},
+    "id_hash_keys": [
+      "content"
+    ],
+    "score": null,
+    "embedding": null
+  },
+  "is_correct_answer": true,
+  "is_correct_document": true,
+  "origin": "user-feedback",
+  "answer": {
+    "answer": "text_2",
+    "type": "extractive",
+    "score": 0.1,
+    "context": [
+      [
+        "col1",
+        "col2"
+      ],
+      [
+        "text_1",
+        1
+      ],
+      [
+        "text_2",
+        2
+      ]
+    ],
+    "offsets_in_document": [
+      {
+        "row": 1,
+        "col": 0
+      }
+    ],
+    "offsets_in_context": null,
+    "document_ids": [
+      "123"
+    ],
+    "meta": {}
+  },
+  "pipeline_id": null,
+  "created_at": "2023-05-02 11:43:56",
+  "updated_at": null,
+  "meta": {},
+  "filters": null
+}
