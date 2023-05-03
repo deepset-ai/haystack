@@ -23,17 +23,12 @@ def test_pipeline(tmp_path):
     pipeline.connect("merge", "below_10")
     pipeline.connect("below_10.below", "add_one.value")
     pipeline.connect("add_one", "accumulator")
-    pipeline.connect("accumulator", "merge")
+    pipeline.connect("accumulator", "merge.second_branch")
     pipeline.connect("below_10.above", "add_two.value")
 
-    try:
-        pipeline.draw(tmp_path / "looping_pipeline.png")
-    except ImportError:
-        logging.warning("pygraphviz not found, pipeline is not being drawn.")
+    pipeline.draw(tmp_path / "looping_pipeline.png")
 
-    results = pipeline.run(
-        {"value": 3},
-    )
+    results = pipeline.run({"merge": {"first_branch": 3}})
     pprint(results)
     print("accumulator: ", accumulator.state)
 

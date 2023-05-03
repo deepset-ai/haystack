@@ -20,10 +20,12 @@ repos:
   hooks:
   - id: black-jupyter
 
-# - repo: https://github.com/pre-commit/mirrors-mypy
-#   rev: 'v1.1.1'
-#   hooks:
-#   - id: mypy
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: 'v1.1.1'
+  hooks:
+  - id: mypy
+    args: [--ignore-missing-imports]
+    additional_dependencies: ['types-requests']
 
 - repo: https://github.com/pycqa/pylint
   rev: 'v2.17.0'

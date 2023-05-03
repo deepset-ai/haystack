@@ -210,7 +210,9 @@ class Pipeline:
         """
         return self._get_component_data(name)["instance"]
 
-    def draw(self, path: Path, engine: Literal["graphviz", "mermaid"] = "mermaid") -> None:
+    def draw(  # pylint: disable=too-many-locals
+        self, path: Path, engine: Literal["graphviz", "mermaid"] = "mermaid"
+    ) -> None:
         """
         Draws the pipeline. Requires `pygraphviz`.
         Run `pip install canals[draw]` to install missing dependencies.
@@ -236,15 +238,15 @@ class Pipeline:
 
         # Draw the input
         graph.add_node("input")
-        for node, sockets in input_nodes.items():
-            for socket in sockets:
-                graph.add_edge("input", node, label=socket.name)
+        for in_node, in_sockets in input_nodes.items():
+            for in_socket in in_sockets:
+                graph.add_edge("input", in_node, label=in_socket.name)
 
         # Draw the output
         graph.add_node("output", shape="plain")
-        for node, sockets in output_nodes.items():
-            for socket in sockets:
-                graph.add_edge(node, "output", label=socket.name)
+        for out_node, out_sockets in output_nodes.items():
+            for out_socket in out_sockets:
+                graph.add_edge(out_node, "output", label=out_socket.name)
 
         if engine == "graphviz":
             render_graphviz(graph=graph, path=path)

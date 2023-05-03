@@ -135,7 +135,7 @@ def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSo
     }
 
 
-def find_pipeline_outputs(graph) -> Dict[str, List[str]]:
+def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     """
     Collect the components with no output connections: these define the output of the pipeline.
     """
