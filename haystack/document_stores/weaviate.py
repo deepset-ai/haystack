@@ -243,13 +243,20 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 )
 
     def _convert_weaviate_result_to_document(
-        self, result: dict, return_embedding: bool, scale_score: bool = True, json_properties: List[str] = []
+        self,
+        result: dict,
+        return_embedding: bool,
+        scale_score: bool = True,
+        json_properties: Optional[List[str]] = None,
     ) -> Document:
         """
         Convert weaviate result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
         Weaviate get methods return the data items in properties key, whereas the query doesn't.
         """
+        if json_properties is None:
+            json_properties = []
+
         score = None
         content = ""
 
