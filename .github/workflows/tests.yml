@@ -144,6 +144,7 @@ jobs:
           - prompt
           - pipelines
           - utils
+          - others
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
