@@ -126,7 +126,7 @@ class ToolsManager:
         :param tool_pattern: A regular expression pattern that matches the text that the Agent generates to invoke
             a tool.
         """
-        self.tools: Dict[str, Tool] = {tool.name: tool for tool in tools} if tools else {}
+        self._tools: Dict[str, Tool] = {tool.name: tool for tool in tools} if tools else {}
         self.tool_pattern = tool_pattern
         self.callback_manager = Events(("on_tool_start", "on_tool_finish", "on_tool_error"))
 
@@ -146,6 +146,10 @@ class ToolsManager:
         """
         self.tools[tool.name] = tool
 
+    @property
+    def tools(self):
+        return self._tools
+
     def get_tool_names(self) -> str:
         """
         Returns a string with the names of all registered tools.
@@ -164,23 +168,9 @@ class ToolsManager:
         """
         return "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools.values()])
 
-    def has_tools(self) -> bool:
-        """
-        Returns True if this ToolsManager has any tools, False otherwise.
-        """
-        return len(self.tools) > 0
-
-    def has_tool(self, tool_name: str) -> bool:
-        """
-        Returns True if this ToolsManager has a tool with the given name, False otherwise.
-
-        :param tool_name: The name of the tool for which you want to check whether the ToolsManager has it.
-        """
-        return tool_name in self.tools
-
     def run_tool(self, llm_response: str, params: Optional[Dict[str, Any]] = None) -> str:
         tool_result: str = ""
-        if self.has_tools():
+        if self.tools:
             tool_name, tool_input = self.extract_tool_name_and_tool_input(llm_response)
             if tool_name and tool_input:
                 tool: Tool = self.tools[tool_name]
@@ -211,19 +201,6 @@ class ToolsManager:
             return tool_name.strip('" []\n').strip(), tool_input.strip('" \n')
         return None, None
 
-    def valid_tool_selected(self, llm_response: str) -> bool:
-        """
-        Verify that the tool selected by LLM is an actual registered tool.
-        :param llm_response: The PromptNode response.
-        :return: Returns True if the tool in llm_response is an actual registered tool, False otherwise.
-        """
-        tool_match = re.search(self.tool_pattern, llm_response)
-        if tool_match:
-            tool_name = tool_match.group(1)
-            tool_name = tool_name.strip('" []\n').strip()
-            return self.has_tool(tool_name)
-        return False
-
 
 class Agent:
     """
@@ -245,9 +222,10 @@ class Agent:
         self,
         prompt_node: PromptNode,
         prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
-        tools_manager: Optional[ToolsManager] = None,
+        tools: Optional[List[Tool]] = None,
         max_steps: int = 8,
         final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
+        tool_pattern: Optional[str] = None,
     ):
         """
          Creates an Agent instance.
@@ -258,7 +236,8 @@ class Agent:
         choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a
         new template in a similar format.
         with `add_tool()` before running the Agent.
-        :param tools_manager: A ToolsManager instance that contains the tools the Agent can use to answer queries.
+        :param tools: A list of tools to add to the Agent. Each tool must have a unique name. You can also add tools
+        with `add_tool()` before running the Agent.
         :param max_steps: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
             Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer.
             The default is 5.
@@ -266,7 +245,10 @@ class Agent:
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
         self.max_steps = max_steps
-        self.tm = tools_manager if tools_manager else ToolsManager()
+        if tool_pattern:
+            self.tm = ToolsManager(tools, tool_pattern=tool_pattern)
+        else:
+            self.tm = ToolsManager(tools)
         self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
         self.prompt_node = prompt_node
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
@@ -346,7 +328,7 @@ class Agent:
 
         :param tool_name: The name of the tool for which you want to check whether the Agent has it.
         """
-        return self.tm.has_tool(tool_name)
+        return tool_name in self.tm.tools
 
     def run(
         self, query: str, max_steps: Optional[int] = None, params: Optional[dict] = None

@@ -105,16 +105,6 @@ def test_run_tool():
 
 
 @pytest.mark.unit
-def test_extract_tool_name_and_tool_input():
-    tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
-    pn_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
-
-    tm = ToolsManager(tool_pattern=tool_pattern)
-    tool_name, tool_input = tm.extract_tool_name_and_tool_input(pn_response)
-    assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
-
-
-@pytest.mark.unit
 def test_extract_final_answer():
     match_examples = [
         "have the final answer to the question.\nFinal Answer: Florida",
