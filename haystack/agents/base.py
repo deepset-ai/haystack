@@ -120,7 +120,7 @@ class ToolsManager:
     def __init__(
         self,
         tools: Optional[List[Tool]] = None,
-        tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
+        tool_pattern: str = r"Tool:\s*(\w+)\s*Tool Input:\s*(?:\"([^\"\n]+|[\s\S]*?)\"|((?:.|\n)+))\s*",
     ):
         """
         :param tools: A list of tools to add to the ToolManager. Each tool must have a unique name.

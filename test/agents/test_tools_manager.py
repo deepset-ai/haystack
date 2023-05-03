@@ -98,3 +98,18 @@ def test_tool_invocation():
     # same but for the document
     with unittest.mock.patch("haystack.pipelines.Pipeline.run", return_value=[Document("mocked_document")]):
         assert tool.run("input") == "mocked_document"
+
+
+@pytest.mark.unit
+def test_extract_tool_name_and_tool_multi_line_input(tools_manager):
+    # new pattern being supported but with backward compatibility for the old
+    text = (
+        "We need to find out the following information:\n"
+        "1. What city was Jeremy McKinnon born in?\n"
+        "2. What's the capital of Germany?\n"
+        "Tool: Search\n"
+        "Tool Input: Where was Jeremy\n McKinnon born\n and where did he grow up?"
+    )
+
+    tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(text)
+    assert tool_name == "Search" and tool_input == "Where was Jeremy\n McKinnon born\n and where did he grow up?"
