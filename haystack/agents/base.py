@@ -140,7 +140,7 @@ class ToolsManager:
             Tool(
                 name="Calculator",
                 pipeline_or_node=calculator
-                description="Useful when you need to answer questions about math"
+                description="Useful when you need to answer questions about math."
             )
         )
         """
@@ -148,19 +148,19 @@ class ToolsManager:
 
     def get_tool_names(self) -> str:
         """
-        Returns a string with the names of all tools registered
+        Returns a string with the names of all registered tools.
         """
         return ", ".join(self.tools.keys())
 
     def get_tools(self) -> List[Tool]:
         """
-        Returns a list of all tool instances registered
+        Returns a list of all registered tool instances.
         """
         return list(self.tools.values())
 
     def get_tool_names_with_descriptions(self) -> str:
         """
-        Returns a string with the names and descriptions of all tools registered
+        Returns a string with the names and descriptions of all registered tools.
         """
         return "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools.values()])
 
