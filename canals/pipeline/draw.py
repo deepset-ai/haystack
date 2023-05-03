@@ -65,7 +65,7 @@ linkStyle default stroke-width:2px,stroke-dasharray: 5 5;
             logger.info("Exact URL requested: %s", url)
             logger.warning("No pipeline diagram will be saved.")
             return
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:  # pylint: disable=broad-except
         logger.warning("Failed to draw the pipeline: could not connect to https://mermaid.ink/img/ (%s)", exc)
         logger.info("Exact URL requested: %s", url)
         logger.warning("No pipeline diagram will be saved.")
