@@ -50,3 +50,14 @@ def test_extract_tool_name_and_tool_input(tools_manager):
     for example in examples:
         tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(example)
         assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
+
+    negative_examples = [
+        "need to find out what city he was born.",
+        "Tool: Search",
+        "Tool Input: Where was Jeremy McKinnon born",
+        "need to find out what city he was born. Tool: Search",
+        "Tool Input: Where was Jeremy McKinnon born",
+    ]
+    for example in negative_examples:
+        tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(example)
+        assert tool_name is None and tool_input is None

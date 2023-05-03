@@ -1,6 +1,7 @@
 import os
 
 from haystack.agents import Agent, Tool
+from haystack.agents.base import ToolsManager
 from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
@@ -94,7 +95,9 @@ web_qa_tool = Tool(
     output_variable="results",
 )
 
-agent = Agent(prompt_node=prompt_node, prompt_template=few_shot_agent_template, tools=[web_qa_tool])
+agent = Agent(
+    prompt_node=prompt_node, prompt_template=few_shot_agent_template, tools_manager=ToolsManager([web_qa_tool])
+)
 
 hotpot_questions = [
     "What year was the father of the Princes in the Tower born?",

@@ -222,10 +222,9 @@ class Agent:
         self,
         prompt_node: PromptNode,
         prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
-        tools: Optional[List[Tool]] = None,
+        tools_manager: Optional[ToolsManager] = None,
         max_steps: int = 8,
         final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
-        tool_pattern: Optional[str] = None,
     ):
         """
          Creates an Agent instance.
@@ -245,10 +244,7 @@ class Agent:
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
         self.max_steps = max_steps
-        if tool_pattern:
-            self.tm = ToolsManager(tools, tool_pattern=tool_pattern)
-        else:
-            self.tm = ToolsManager(tools)
+        self.tm = tools_manager or ToolsManager()
         self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
         self.prompt_node = prompt_node
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
