@@ -51,7 +51,6 @@ docs = [
   "mkdocs-mermaid2-plugin"
 
 ]
-all = ["canals[graphviz,mermaid,dev]"]
 
 
 [project.urls]

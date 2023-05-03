@@ -59,7 +59,7 @@ linkStyle default stroke-width:2px,stroke-dasharray: 5 5;
 
     logging.debug("Rendeding graph at %s", url)
     try:
-        resp = requests.get(url)
+        resp = requests.get(url, timeout=10)
         if resp.status_code >= 400:
             logger.warning("Failed to draw the pipeline: https://mermaid.ink/img/ returned status %s", resp.status_code)
             logger.info("Exact URL requested: %s", url)
