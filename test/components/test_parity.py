@@ -27,10 +27,9 @@ class Parity:
         return Parity.Output(even=value, odd=None)  # type: ignore  # (mypy doesn't like the missing Optional)
 
 
-def test_parity_default():
+def test_parity():
     component = Parity()
     results = component.run(value=1)
     assert results == Parity.Output(even=None, odd=1)  # type: ignore  #(mypy doesn't like the missing Optional)
     results = component.run(value=2)
     assert results == Parity.Output(even=2, odd=None)  # type: ignore  #(mypy doesn't like the missing Optional)
-    assert component.init_parameters == {}

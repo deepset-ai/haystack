@@ -1,3 +1,5 @@
+# pylint: disable=protected-access
+
 from typing import Iterable
 
 import logging
@@ -10,9 +12,11 @@ from canals.errors import ComponentError
 logger = logging.getLogger(__name__)
 
 
-def save_init_parameters(init_func):
+def set_default_component_attributes(init_func):
     """
-    Decorator that saves the init parameters of a component in a dictionary.
+    Decorator that prepares a few default attributes for each component:
+     - saves the init parameters of a component in self._init_parameters
+     - makes sure the `self.defaults` dictionary exists
     """
 
     @wraps(init_func)
@@ -29,13 +33,17 @@ def save_init_parameters(init_func):
         args_as_kwargs = {arg_name: arg for arg, arg_name in zip(args, arg_names)}
 
         # Collect and store all the init parameters, preserving whatever the components might have already added there
-        init_parameters = {**args_as_kwargs, **kwargs}
-        if hasattr(self, "init_parameters"):
-            init_parameters = {**init_parameters, **self.init_parameters}
-        self.init_parameters = init_parameters
+        _init_parameters = {**args_as_kwargs, **kwargs}
+        if hasattr(self, "_init_parameters"):
+            _init_parameters = {**_init_parameters, **self._init_parameters}
+        self._init_parameters = _init_parameters
+
+        # Makes sure the component has a defaults dictionary the pipeline can use
+        if not hasattr(self, "defaults"):
+            self.defaults = {}
 
         # Check if the component can be saved with `save_pipelines()`
-        is_serializable(self.init_parameters)
+        is_serializable(self._init_parameters)
 
     return wrapper_save_init_parameters
 

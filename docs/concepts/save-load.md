@@ -47,7 +47,7 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
             "components": {
                 "first_addition": {
                     "type": "AddValue",
-                    "init_parameters": {
+                    "_init_parameters": {
                         "add": 1,
                         "input": "value",
                         "output": "value"
@@ -58,14 +58,14 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
                 },
                 "double": {
                     "type": "Double",
-                    "init_parameters": {
+                    "_init_parameters": {
                         "input": "value",
                         "output": "value"
                     }
                 },
                 "second_addition": {
                     "type": "AddValue",
-                    "init_parameters": {
+                    "_init_parameters": {
                         "add": 1,
                         "input": "value",
                         "output": "value"
@@ -100,7 +100,7 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
                 },
                 "double": {
                     "type": "Double",
-                    "init_parameters": {
+                    "_init_parameters": {
                         "input": "value",
                         "output": "value"
                     }

@@ -13,5 +13,4 @@ from canals.pipeline import (
     _find_decorated_classes,
 )
 from canals.component.component import component
-from canals.component.input_output import component_input, component_output
 from canals.__about__ import __version__

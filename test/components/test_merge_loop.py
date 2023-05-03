@@ -24,11 +24,9 @@ class _MetaClass(type):
 
         @dataclass
         class Output:
-            value: Optional[expected_type]
+            value: expected_type
 
-        def run(
-            self, first_branch: Optional[expected_type] = None, second_branch: Optional[expected_type] = None
-        ) -> Output:
+        def run(self, first_branch: expected_type, second_branch: expected_type) -> Output:
             return self._run(first_branch=first_branch, second_branch=second_branch)
 
         cls.Output = Output
@@ -77,7 +75,7 @@ class MergeLoop(metaclass=_MetaClass):
         return MergeLoop.Output(value=None)  # type: ignore
 
 
-def test_merge_default():
+def test_merge():
     component = MergeLoop(expected_type=int)
     results = component.run(first_branch=5, second_branch=None)
     assert results == component.Output(value=5)
@@ -87,5 +85,3 @@ def test_merge_default():
 
     results = component.run(first_branch=None, second_branch=None)
     assert results == component.Output(value=None)
-
-    assert component.init_parameters == {}

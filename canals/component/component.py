@@ -2,7 +2,7 @@ import logging
 import inspect
 
 from canals.errors import ComponentError
-from canals.component.save_init_params import save_init_parameters
+from canals.component.save_init_params import set_default_component_attributes
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def component(class_):
     - `self.outputs = [<expected_output_connection_name(s)>]`:
         A list with the connections they might possibly produce as output
 
-    - `self.init_parameters = {<init parameters>}`:
+    - `self._init_parameters = {<init parameters>}`:
         Any state they wish to be persisted when they are saved.
         These values will be given to the `__init__` method of a new instance
         when the pipeline is loaded.
@@ -196,8 +196,8 @@ def component(class_):
         if not hasattr(class_, "output_type"):
             raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
 
-    # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
+    # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
     # See `save_init_parameters()`.
-    class_.__init__ = save_init_parameters(class_.__init__)
+    class_.__init__ = set_default_component_attributes(class_.__init__)
 
     return class_

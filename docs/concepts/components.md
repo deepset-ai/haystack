@@ -22,7 +22,7 @@ In their `__init__`, Components must define:
 - `self.outputs = [<expected_output_connection_name(s)>]`:
     A list with the connections they might possibly produce as output
 
-- `self.init_parameters = {<init parameters>}`:
+- `self._init_parameters = {<init parameters>}`:
     Any state they wish to be persisted when they are saved.
     These values will be given to the `__init__` method of a new instance
     when the pipeline is loaded.

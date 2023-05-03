@@ -1,5 +1,3 @@
-from typing import Optional
-
 from dataclasses import dataclass
 
 from canals import component
@@ -21,31 +19,23 @@ class Threshold:
         above: int
         below: int
 
-    def __init__(
-        self,
-        threshold: int,
-    ):
+    def __init__(self, threshold: int = 10):
         """
         :param threshold: the number to compare the input value against.
         """
-        self.threshold = threshold
+        self.defaults = {"threshold": threshold}
 
-    def run(self, value: int, threshold: Optional[int] = None) -> Output:
-        threshold = threshold if threshold is not None else self.threshold
+    def run(self, value: int, threshold: int) -> Output:
         if value < threshold:
             return Threshold.Output(above=None, below=value)  # type: ignore
         return Threshold.Output(above=value, below=None)  # type: ignore
 
 
-def test_below_default():
-    component = Threshold(threshold=10)
-    results = component.run(value=5)
+def test_threshold():
+    component = Threshold()
+
+    results = component.run(value=5, threshold=10)
     assert results == Threshold.Output(above=None, below=5)
 
-    results = component.run(value=15)
+    results = component.run(value=15, threshold=10)
     assert results == Threshold.Output(above=15, below=None)
-
-    results = component.run(value=15, threshold=20)
-    assert results == Threshold.Output(above=None, below=15)
-
-    assert component.init_parameters == {"threshold": 10}

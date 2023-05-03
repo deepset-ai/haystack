@@ -23,18 +23,18 @@ def test_sum_no_values():
     component = Sum()
     results = component.run()
     assert results == Sum.Output(total=0)
-    assert component.init_parameters == {}
+    assert component._init_parameters == {}
 
 
 def test_sum_one_value():
     component = Sum()
     results = component.run(10)
     assert results == Sum.Output(total=10)
-    assert component.init_parameters == {}
+    assert component._init_parameters == {}
 
 
 def test_sum_few_values():
     component = Sum()
     results = component.run(10, 11, 12)
     assert results == Sum.Output(total=33)
-    assert component.init_parameters == {}
+    assert component._init_parameters == {}

@@ -1,15 +1,14 @@
-from typing import Optional, Any, Dict, List, Tuple
+from typing import Optional, Any, Dict, List, Tuple, Literal
 
 from pathlib import Path
 import logging
 from copy import deepcopy
 from collections import OrderedDict
 
-
 import networkx as nx
-from networkx.drawing.nx_agraph import to_agraph
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
+from canals.pipeline.draw import render_graphviz, render_mermaid
 from canals.pipeline._utils import (
     InputSocket,
     OutputSocket,
@@ -18,23 +17,12 @@ from canals.pipeline._utils import (
     is_subtype,
     parse_connection_name,
     validate_pipeline,
+    find_pipeline_inputs,
+    find_pipeline_outputs,
 )
 
 
 logger = logging.getLogger(__name__)
-
-
-PYGRAPHVIZ_IMPORTED = False
-try:
-    import pygraphviz  # pylint: disable=unused-import
-
-    PYGRAPHVIZ_IMPORTED = True
-except ImportError:
-    logger.info(
-        "Could not import `pygraphviz`. Please install via: \n"
-        "pip install pygraphviz\n"
-        "(You might need to run this first: apt install libgraphviz-dev graphviz )"
-    )
 
 
 class Pipeline:
@@ -60,7 +48,7 @@ class Pipeline:
         """
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
-        self.graph = nx.DiGraph()
+        self.graph = nx.MultiDiGraph()
 
     def __eq__(self, other) -> bool:
         # Equal pipelines share all nodes and metadata instances.
@@ -136,9 +124,9 @@ class Pipeline:
         self.graph.add_edge(
             from_node,
             to_node,
+            key=f"{from_socket.name}/{to_socket.name}",
             from_socket=from_socket,
             to_socket=to_socket,
-            label=f"{from_socket.name}/{to_socket.name}",  # for pygraphviz
         )
         # Variadic sockets are never fully taken
         if not to_socket.variadic:
@@ -207,7 +195,7 @@ class Pipeline:
             raise ValueError(f"Component named {name} not found in the pipeline.")
         return self.graph.nodes[candidates[0]]
 
-    def get_component(self, name: str) -> Dict[str, Any]:
+    def get_component(self, name: str) -> object:
         """
         Returns an instance of a component.
 
@@ -222,7 +210,7 @@ class Pipeline:
         """
         return self._get_component_data(name)["instance"]
 
-    def draw(self, path: Path) -> None:
+    def draw(self, path: Path, engine: Literal["graphviz", "mermaid"] = "mermaid") -> None:
         """
         Draws the pipeline. Requires `pygraphviz`.
         Run `pip install canals[draw]` to install missing dependencies.
@@ -236,17 +224,35 @@ class Pipeline:
         Raises:
             ImportError: if pygraphviz is not installed.
         """
-        if not PYGRAPHVIZ_IMPORTED:
-            raise ImportError(
-                "Could not import `pygraphviz`. Please install via: \n"
-                "pip install pygraphviz\n"
-                "(You might need to run this first: apt install libgraphviz-dev graphviz )"
-            )
         graph = deepcopy(self.graph)
 
-        graphviz = to_agraph(graph)
-        graphviz.layout("dot")
-        graphviz.draw(path)
+        input_nodes = find_pipeline_inputs(graph)
+        output_nodes = find_pipeline_outputs(graph)
+
+        # Label the edges
+        for inp, outp, key, data in graph.edges(keys=True, data=True):
+            data["label"] = f"{data['from_socket'].name} -> {data['to_socket'].name}"
+            graph.add_edge(inp, outp, key=key, **data)
+
+        # Draw the input
+        graph.add_node("input")
+        for node, sockets in input_nodes.items():
+            for socket in sockets:
+                graph.add_edge("input", node, label=socket.name)
+
+        # Draw the output
+        graph.add_node("output", shape="plain")
+        for node, sockets in output_nodes.items():
+            for socket in sockets:
+                graph.add_edge(node, "output", label=socket.name)
+
+        if engine == "graphviz":
+            render_graphviz(graph=graph, path=path)
+        elif engine == "mermaid":
+            render_mermaid(graph=graph, path=path)
+        else:
+            raise ValueError(f"Unknown rendering engine '{engine}'. Choose one from: 'graphviz', 'mermaid'.")
+
         logger.debug("Pipeline diagram saved at %s", path)
 
     def warm_up(self):
@@ -260,11 +266,7 @@ class Pipeline:
             if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(
-        self,
-        data: Dict[str, Dict[str, Any]],
-        debug: bool = False,
-    ) -> Dict[str, Any]:
+    def run(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """
         Runs the pipeline.
 
@@ -279,7 +281,7 @@ class Pipeline:
         Raises:
             PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
-        validate_pipeline(self.graph)
+        validate_pipeline(self.graph, inputs_values=data)
         self._clear_visits_count()
         self.warm_up()
 
@@ -310,11 +312,6 @@ class Pipeline:
         #
         logger.info("Pipeline execution started.")
 
-        # Make sure the input keys are all nodes of the pipeline
-        unknown_components = [key for key in data.keys() if not key in self.graph.nodes]
-        if unknown_components:
-            raise ValueError(f"Pipeline received data for unknown component(s): {', '.join(unknown_components)}")
-
         inputs_buffer = OrderedDict(data)
 
         # *** PIPELINE EXECUTION LOOP ***
@@ -340,7 +337,7 @@ class Pipeline:
             self.graph.nodes[node_name]["visits"] += 1
 
             # Get the node
-            node_node = self.graph.nodes[node_name]["instance"]
+            node_instance = self.graph.nodes[node_name]["instance"]
 
             # Call the node
             try:
@@ -351,9 +348,10 @@ class Pipeline:
                 # Note that components either accept one single variadic positional or named kwargs! Not both.
                 if self._get_component_data(node_name)["variadic_input"]:
                     node_inputs = list(node_inputs.items())[0][1]
-                    node_output = node_node.run(*node_inputs)
+                    node_output = node_instance.run(*node_inputs)
                 else:
-                    node_output = node_node.run(**node_inputs)
+                    node_inputs = {**node_instance.defaults, **node_inputs}
+                    node_output = node_instance.run(**node_inputs)
 
                 node_results = node_output.__dict__
                 logger.debug("   '%s' outputs: %s\n", node_name, node_results)

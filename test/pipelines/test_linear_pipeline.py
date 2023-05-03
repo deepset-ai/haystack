@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_pipeline(tmp_path):
     pipeline = Pipeline()
-    pipeline.add_component("first_addition", AddFixedValue())
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue())
     pipeline.add_component("double", Double())
     pipeline.connect("first_addition", "double")
@@ -22,10 +22,10 @@ def test_pipeline(tmp_path):
     except ImportError:
         logging.warning("pygraphviz not found, pipeline is not being drawn.")
 
-    results = pipeline.run({"first_addition": AddFixedValue.Input(value=1)})
+    results = pipeline.run({"first_addition": {"value": 1}})
     pprint(results)
 
-    assert results == {"second_addition": AddFixedValue.Input(value=5)}
+    assert results == {"second_addition": {"value": 7}}
 
 
 if __name__ == "__main__":

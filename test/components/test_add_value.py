@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from canals import component, component_input, component_output
+from canals import component
 
 
 @component
@@ -8,28 +8,19 @@ class AddFixedValue:
     Adds the value of `add` to `value`. If not given, `add` defaults to 1.
     """
 
-    @component_input
-    class Input:
-        value: int
-        add: int = 1
-
-    @component_output
+    @dataclass
     class Output:
         value: int
 
-    def run(self, data: Input) -> Output:
-        return AddFixedValue.Output(value=data.value + data.add)  # type: ignore
+    def __init__(self, add: int = 1):
+        self.defaults = {"add": add}
+
+    def run(self, value: int, add: int) -> Output:
+        return AddFixedValue.Output(value=value + add)
 
 
-def test_addvalue_no_add():
+def test_addvalue():
     component = AddFixedValue()
-    results = component.run(AddFixedValue.Input(value=10))
-    assert results == AddFixedValue.Output(value=11)
-    assert component.init_parameters == {}
-
-
-def test_addvalue_with_add():
-    component = AddFixedValue()
-    results = component.run(AddFixedValue.Input(value=50, add=10))
+    results = component.run(value=50, add=10)
     assert results == AddFixedValue.Output(value=60)
-    assert component.init_parameters == {}
+    assert component._init_parameters == {}

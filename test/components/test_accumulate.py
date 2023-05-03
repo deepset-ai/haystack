@@ -38,11 +38,10 @@ class Accumulate:
         else:
             self.function = self._load_function(function)
             # 'function' is not serializable by default, so we serialize it manually.
-            self.init_parameters = {"function": self._save_function(function)}
+            self._init_parameters = {"function": self._save_function(function)}
 
-    def run(self, value: int, function: Optional[Union[str, Callable]] = None) -> Output:
-        function = self.function if function is None else self._load_function(function)
-        self.state = function(self.state, value)
+    def run(self, value: int) -> Output:
+        self.state = self.function(self.state, value)
         return Accumulate.Output(value=self.state)
 
     def _load_function(self, function: Union[Callable, str]):
@@ -84,7 +83,7 @@ def test_accumulate_default():
     assert results == Accumulate.Output(value=11)
     assert component.state == 11
 
-    assert component.init_parameters == {}
+    assert component._init_parameters == {}
 
 
 def my_subtract(first, second):
@@ -102,7 +101,7 @@ def test_accumulate_callable():
     assert results == Accumulate.Output(value=-11)
     assert component.state == -11
 
-    assert component.init_parameters == {
+    assert component._init_parameters == {
         "function": "test.components.test_accumulate.my_subtract",
     }
 
@@ -118,20 +117,6 @@ def test_accumulate_string():
     assert results == Accumulate.Output(value=-11)
     assert component.state == -11
 
-    assert component.init_parameters == {
+    assert component._init_parameters == {
         "function": "test.components.test_accumulate.my_subtract",
     }
-
-
-def test_accumulate_change_func():
-    component = Accumulate()
-
-    results = component.run(value=10)
-    assert results == Accumulate.Output(value=10)
-    assert component.state == 10
-
-    results = component.run(value=1, function="test.components.test_accumulate.my_subtract")
-    assert results == Accumulate.Output(value=9)
-    assert component.state == 9
-
-    assert component.init_parameters == {}

@@ -29,11 +29,11 @@ def test_repeat_default():
     component = Repeat()
     results = component.run(value=10)
     assert results == component.output_type(output_1=10, output_2=10, output_3=10)
-    assert component.init_parameters == {}
+    assert component._init_parameters == {}
 
 
 def test_repeat_init():
     component = Repeat(outputs=["one", "two"])
     results = component.run(value=10)
     assert results == component.output_type(one=10, two=10)
-    assert component.init_parameters == {"outputs": ["one", "two"]}
+    assert component._init_parameters == {"outputs": ["one", "two"]}
