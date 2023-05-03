@@ -9,8 +9,7 @@ import pytest
 
 from haystack import BaseComponent, Answer
 from haystack.agents import Agent, AgentStep
-from haystack.agents.base import Tool
-from haystack.errors import AgentError
+from haystack.agents.base import Tool, ToolsManager
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, BaseStandardPipeline
 
@@ -27,10 +26,9 @@ def test_add_and_overwrite_tool():
             description="useful for when you need to " "retrieve documents from your index",
         )
     )
-    assert len(agent.tools) == 1
-    assert "Retriever" in agent.tools
+    assert len(agent.tm.tools) == 1
     assert agent.has_tool(tool_name="Retriever")
-    assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseComponent)
+    assert isinstance(agent.tm.tools["Retriever"].pipeline_or_node, BaseComponent)
 
     agent.add_tool(
         Tool(
@@ -49,27 +47,9 @@ def test_add_and_overwrite_tool():
             description="useful for when you need to retrieve documents from your index",
         )
     )
-    assert len(agent.tools) == 1
-    assert "Retriever" in agent.tools
+    assert len(agent.tm.tools) == 1
     assert agent.has_tool(tool_name="Retriever")
-    assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
-
-
-@pytest.mark.unit
-def test_agent_chooses_no_action():
-    agent = Agent(prompt_node=MockPromptNode())
-    retriever = MockRetriever()
-    agent.add_tool(
-        Tool(
-            name="Retriever",
-            pipeline_or_node=retriever,
-            description="useful for when you need to retrieve documents from your index",
-        )
-    )
-    with pytest.raises(
-        AgentError, match=r"Could not identify the next tool or input for that tool from Agent's output.*"
-    ):
-        agent.run("How many letters does the name of the town where Christelle lives have?")
+    assert isinstance(agent.tm.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
 
 
 @pytest.mark.unit
@@ -90,7 +70,7 @@ def test_max_steps(caplog, monkeypatch):
     def mock_extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
-    monkeypatch.setattr(AgentStep, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
+    monkeypatch.setattr(ToolsManager, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
 
     # Using max_steps as specified in the Agent's init method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
@@ -120,18 +100,8 @@ def test_run_tool():
     pn_response = "need to find out what city he was born.\nTool: Retriever\nTool Input: Where was Jeremy McKinnon born"
 
     step = AgentStep(prompt_node_response=pn_response)
-    result = agent._run_tool(step)
+    result = agent.tm.run_tool(step.prompt_node_response)
     assert result == "[]"  # empty list of documents
-
-
-@pytest.mark.unit
-def test_extract_tool_name_and_tool_input():
-    tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
-    pn_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
-
-    step = AgentStep(prompt_node_response=pn_response)
-    tool_name, tool_input = step.extract_tool_name_and_tool_input(tool_pattern=tool_pattern)
-    assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
 
 
 @pytest.mark.unit
@@ -284,53 +254,6 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     result = agent.run("In which country is the city where Christelle lives?")
     country = result["answers"][0].answer
     assert "france" in country.lower()
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("retriever_with_docs, document_store_with_docs", [("bm25", "memory")], indirect=True)
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
-    search = ExtractiveQAPipeline(reader, retriever_with_docs)
-    prompt_model = PromptModel(model_name_or_path="gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"))
-    prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    country_finder = PromptNode(
-        model_name_or_path=prompt_model,
-        default_prompt_template=PromptTemplate(
-            name="country_finder",
-            prompt_text="When I give you a name of the city, respond with the country where the city is located.\n"
-            "City: Rome\nCountry: Italy\n"
-            "City: Berlin\nCountry: Germany\n"
-            "City: Belgrade\nCountry: Serbia\n"
-            "City: {query}?\nCountry: ",
-        ),
-    )
-
-    agent = Agent(prompt_node=prompt_node)
-    agent.add_tool(
-        Tool(
-            name="Search",
-            pipeline_or_node=search,
-            description="useful for when you need to answer "
-            "questions about where people live. You "
-            "should ask targeted questions",
-            output_variable="answers",
-        )
-    )
-    agent.add_tool(
-        Tool(
-            name="CountryFinder",
-            pipeline_or_node=country_finder,
-            description="useful for when you need to find the country where a city is located",
-        )
-    )
-
-    results = agent.run_batch(queries=["Where is Madrid?", "In which country is the city where Christelle lives?"])
-    assert "spain" in results["answers"][0][0].answer.lower()
-    assert "france" in results["answers"][1][0].answer.lower()
 
 
 @pytest.mark.unit
