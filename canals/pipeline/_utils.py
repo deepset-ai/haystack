@@ -5,7 +5,7 @@ import inspect
 import itertools
 from dataclasses import dataclass, fields
 
-import networkx as nx
+from pytypes import is_subtype as _is_subtype
 
 from canals.errors import PipelineConnectError, PipelineValidationError
 
@@ -34,8 +34,11 @@ def is_subtype(from_what: Type, to_what: Type) -> bool:
     """
     Checks if two types are compatible
     """
+    # TODO we should re-implement this method from pytypes if possible - pytypes is seriously unmaintained.
+    return _is_subtype(from_what, to_what)
+
     # https://github.com/python/typing/issues/570
-    return from_what == to_what
+    # return from_what == to_what
 
 
 def parse_connection_name(connection: str) -> Tuple[str, Optional[str]]:
@@ -54,21 +57,12 @@ def find_sockets(component):
     """
     run_signature = inspect.signature(component.run)
 
-    # input_sockets = {}
-    # for param in run_signature.parameters:
-    #     variadic = run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
-    #     annotation = run_signature.parameters[param].annotation
-    #     socket = InputSocket(name=run_signature.parameters[param].name, type=annotation, variadic=variadic)
-    #     input_sockets[socket.name] = socket
-
-    param = run_signature.parameters["data"].annotation
-    print(param)
-    if param == inspect.Parameter.empty:
-        param = component.input_type
-    # variadic = run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
-    input_sockets = {
-        field.name: InputSocket(name=field.name, type=field.type, variadic=False) for field in fields(param)
-    }
+    input_sockets = {}
+    for param in run_signature.parameters:
+        variadic = run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
+        annotation = run_signature.parameters[param].annotation
+        socket = InputSocket(name=run_signature.parameters[param].name, type=annotation, variadic=variadic)
+        input_sockets[socket.name] = socket
 
     return_annotation = run_signature.return_annotation
     if return_annotation == inspect.Parameter.empty:
@@ -130,17 +124,6 @@ def find_unambiguous_connection(
             )
 
     return possible_connections[0]
-
-
-def is_decision_node_for_loop(graph: nx.DiGraph, node_name: str) -> bool:
-    """
-    Returns True if this node appreas to be a decision node deciding whether to stay in a loop
-    or leaving it,
-    """
-    return (
-        any(nx.has_path(graph, edge[1], node_name) for edge in graph.out_edges(node_name))
-        and len(graph.out_edges(node_name)) > 1
-    )
 
 
 def locate_pipeline_input_components(graph) -> List[str]:
