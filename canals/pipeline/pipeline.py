@@ -1,8 +1,10 @@
 from typing import Optional, Any, Dict, List, Tuple
 
-from pathlib import Path
 import logging
+from pathlib import Path
 from copy import deepcopy
+
+# from dataclasses import asdict
 from collections import OrderedDict
 
 
@@ -18,6 +20,7 @@ from canals.pipeline._utils import (
     is_subtype,
     parse_connection_name,
     validate_pipeline,
+    is_decision_node_for_loop,
 )
 
 
@@ -279,7 +282,9 @@ class Pipeline:
         Raises:
             PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
+        # TODO Check we're not receiving input values for edges that are already connected to other components
         validate_pipeline(self.graph)
+
         self._clear_visits_count()
         self.warm_up()
 
@@ -353,7 +358,7 @@ class Pipeline:
                     node_inputs = list(node_inputs.items())[0][1]
                     node_output = node_node.run(*node_inputs)
                 else:
-                    node_output = node_node.run(**node_inputs)
+                    node_output = node_node.run(data=node_inputs)
 
                 node_results = node_output.__dict__
                 logger.debug("   '%s' outputs: %s\n", node_name, node_results)
@@ -437,7 +442,7 @@ class Pipeline:
         # Do we have all the inputs we expect?
         if self.graph.nodes[component_name]["variadic_input"]:
             # Here we're assuming the variadic nodes take only one argument!
-            if inputs_received and len(component_inputs[inputs_received[0]]) == len(inputs_to_wait_for):
+            if inputs_received and len(getattr(component_inputs, inputs_received[0])) == len(inputs_to_wait_for):
                 return (True, inputs_buffer)
 
         elif set(inputs_to_wait_for).issubset(set(inputs_received)):
@@ -482,7 +487,7 @@ class Pipeline:
                 nodes_to_wait_for,
                 inputs_to_wait_for,
                 # Here we're assuming the variadic nodes take only one argument!
-                len(component_inputs[inputs_received[0]]),
+                len(getattr(component_inputs, inputs_received[0])),
             )
             return (True, inputs_buffer)
 
@@ -514,11 +519,9 @@ class Pipeline:
 
         Returns the updated inputs buffer.
         """
-        # This is not a terminal node: find out where the output goes, to which nodes and along which edge
-        is_decision_node_for_loop = (
-            any(nx.has_path(self.graph, edge[1], node_name) for edge in self.graph.out_edges(node_name))
-            and len(self.graph.out_edges(node_name)) > 1
-        )
+        # Find out where the output goes, to which nodes and along which edge
+        is_loop_access = is_decision_node_for_loop(graph=self.graph, node_name=node_name)
+
         for edge_data in self.graph.out_edges(node_name, data=True):
             to_socket = edge_data[2]["to_socket"]
             from_socket = edge_data[2]["from_socket"]
@@ -526,7 +529,7 @@ class Pipeline:
 
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
-            if is_decision_node_for_loop and not to_socket.name in node_results.keys():
+            if is_loop_access and not to_socket.name in node_results.keys():
                 if nx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(
