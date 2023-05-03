@@ -14,7 +14,7 @@ logger = logging.getLogger(__file__)
 try:
     from rapidfuzz import fuzz
 except ImportError as exc:
-    logger.debug("rapidfuzz could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+    logger.debug("rapidfuzz could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue.")
     fuzz = None  # type: ignore
 
 
@@ -56,7 +56,9 @@ def calculate_context_similarity(
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
     if not fuzz:
-        raise ImportError("rapidfuzz could not be imported. Run 'pip install farm-haystack[eval]' to fix this issue.")
+        raise ImportError(
+            "rapidfuzz could not be imported. Run 'pip install farm-haystack[metrics]' to fix this issue."
+        )
     # we need to handle short contexts/contents (e.g single word)
     # as they produce high scores by matching if the chars of the word are contained in the other one
     # this has to be done after normalizing
