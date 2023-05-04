@@ -188,8 +188,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         self,
         prompt_text: str,
         template_name: Optional[str] = None,
-        name: Optional[str] = None,
         output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None,
+        name: Optional[str] = None,
     ):
         """
          Creates a PromptTemplate instance.
@@ -197,13 +197,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
         :param prompt_text: The prompt text, including prompt parameters.
         :param template_name: The name of the prompt template (for example, "sentiment-analysis", "question-generation").
                               You can specify your own name but it must be unique.
-        :param name: This parameter is deprecated. Use `template_name` instead.
         :param output_parser: A parser that applied to the model output.
                 For example, to convert the model output to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
                 ```
                 output_parser={"type": "AnswerParser", "params": {"pattern": "Answer: (.*)"}},
                 ```
+        :param name: This parameter is deprecated. Use `template_name` instead.
         """
         super().__init__()
 
