@@ -64,6 +64,7 @@ path = "canals/__about__.py"
 dependencies = [
   "pytest",
   "pytest-cov",
+  "requests",
 ]
 [tool.hatch.envs.default.scripts]
 cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=canals --cov=tests {args}"
