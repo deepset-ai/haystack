@@ -9,7 +9,7 @@ from haystack.nodes import PromptNode
 
 @pytest.fixture
 def prompt_node():
-    return PromptNode("gpt-3.5-turbo", api_key="som_fake_key", max_length=256)
+    return PromptNode()
 
 
 @pytest.fixture
