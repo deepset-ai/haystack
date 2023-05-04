@@ -3,6 +3,7 @@ import os
 import re
 from typing import Tuple
 
+from haystack.agents.answer_parser import RegexAnswerParser
 from test.conftest import MockRetriever, MockPromptNode
 from unittest import mock
 import pytest
@@ -128,9 +129,11 @@ def test_extract_final_answer():
     ]
 
     for example, expected_answer in zip(match_examples, expected_answers):
-        agent_step = AgentStep(prompt_node_response=example)
-        final_answer = agent_step.extract_final_answer()
-        assert final_answer == expected_answer
+        agent_step = AgentStep(
+            prompt_node_response=example, final_answer_parser=RegexAnswerParser(r"Final Answer\s*:\s*(.*)")
+        )
+        final_answer = agent_step.final_answer(query="irrelevant")
+        assert final_answer["answers"][0].answer == expected_answer
 
 
 @pytest.mark.unit

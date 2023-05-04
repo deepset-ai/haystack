@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from haystack import Answer
-from haystack.agents.answer_parser import AgentAnswerParser
+from haystack.agents.answer_parser import AgentAnswerParser, BasicAnswerParser
 from haystack.errors import AgentError
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class AgentStep:
         """
         self.current_step = current_step
         self.max_steps = max_steps
-        self.final_answer_parser = final_answer_parser
+        self.final_answer_parser = final_answer_parser or BasicAnswerParser()
         self.prompt_node_response = prompt_node_response
         self.transcript = transcript
 

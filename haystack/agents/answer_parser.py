@@ -55,7 +55,7 @@ class BasicAnswerParser(AgentAnswerParser):
     """
 
     def can_parse(self, parser_input: Any) -> bool:
-        return isinstance(parser_input, str) and parser_input
+        return isinstance(parser_input, str) and len(parser_input) > 0
 
     def parse(self, parser_input: Any) -> str:
         if self.can_parse(parser_input):

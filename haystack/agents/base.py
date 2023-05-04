@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 from hashlib import md5
-from typing import List, Optional, Union, Dict, Any, Tuple, Callable, Mapping
+from typing import List, Optional, Union, Dict, Any, Tuple
 
 from events import Events
 
@@ -87,10 +87,12 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
-        elif isinstance(self.pipeline_or_node, Callable):
+        elif callable(self.pipeline_or_node):
             result = self.pipeline_or_node(tool_input)
-        else:
+        elif isinstance(self.pipeline_or_node, BaseComponent):
             result = self.pipeline_or_node.run(query=tool_input)
+        else:
+            raise TypeError(f"Unsupported type for pipeline_or_node: {type(self.pipeline_or_node)}")
         return self._process_result(result)
 
     def _process_result(self, result: Any) -> str:
@@ -208,22 +210,10 @@ class ToolsManager:
 
 
 class CallablePromptParametersResolver(PromptParametersResolver):
-    """
-    A CallablePromptParametersResolver is a PromptParametersResolver that uses a callable to resolve the parameters.
-    """
-
-    def __init__(self, prompt_callable: Callable[[str, Mapping[str, Any]], Dict[str, Any]]):
-        """
-        :param prompt_callable: The callable that resolves the parameters.
-        """
+    def __init__(self, prompt_callable: Callable[..., Dict[str, Any]]):
         self.callable = prompt_callable
 
     def resolve(self, query: str, **kwargs) -> Dict[str, Any]:
-        """
-        :param query: The query to resolve the parameters for.
-        :param kwargs: Additional parameters to pass to the callable.
-        :return: The resolved parameters via callable
-        """
         return self.callable(query, **kwargs)
 
 
@@ -246,7 +236,7 @@ class Agent:
     def __init__(
         self,
         prompt_node: PromptNode,
-        prompt_template: Union[str, PromptTemplate] = "zero-shot-react",
+        prompt_template: Union[str, PromptTemplate] = None,
         tools_manager: Optional[ToolsManager] = None,
         memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
@@ -275,21 +265,22 @@ class Agent:
         self.memory = memory or NoMemory()
         self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
         self.prompt_node = prompt_node
+        prompt_template = prompt_template or "zero-shot-react"
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
         if not resolved_prompt_template:
             raise ValueError(
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        react_parameter_resolver: Callable[[str, Agent, AgentStep], Dict[str, Any]] = lambda query, agent, agent_step: {
+        react_parameter_resolver: Callable[[str, Any], Dict[str, Any]] = lambda query, **kwargs: {
             "query": query,
-            "tool_names": agent.tm.get_tool_names(),
-            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-            "transcript": agent_step.transcript,
+            "tool_names": kwargs["agent"].tm.get_tool_names(),
+            "tool_names_with_descriptions": kwargs["agent"].tm.get_tool_names_with_descriptions(),
+            "transcript": kwargs["agent_step"].transcript,
         }
         self.prompt_parameters_resolver = (
             CallablePromptParametersResolver(prompt_parameters_resolver)
-            if isinstance(prompt_parameters_resolver, Callable)
+            if callable(prompt_parameters_resolver)
             else (
                 prompt_parameters_resolver
                 if prompt_parameters_resolver

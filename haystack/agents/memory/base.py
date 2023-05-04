@@ -68,14 +68,14 @@ class ConversationMemory(Memory):
     A memory class that stores conversation history.
     """
 
-    def __init__(self, input_key: Optional[str] = "input", output_key: Optional[str] = "output"):
+    def __init__(self, input_key: str = "input", output_key: str = "output"):
         """
         Initialize ConversationMemory with input and output keys.
 
-        :param input_key: Optional input key, default is "input".
-        :param output_key: Optional output key, default is "output".
+        :param input_key: The key to use for storing user input.
+        :param output_key: The key to use for storing model output.
         """
-        self.list = []
+        self.list: List[OrderedDict] = []
         self.input_key = input_key
         self.output_key = output_key
 
@@ -90,7 +90,7 @@ class ConversationMemory(Memory):
         chat_transcript = ""
 
         if k is not None:
-            chat_list = self.list[-k:]
+            chat_list = self.list[-k:]  # pylint: disable=invalid-unary-operand-type
         else:
             chat_list = self.list
 
@@ -126,9 +126,9 @@ class ConversationSummaryMemory(ConversationMemory):
         self,
         pn: PromptNode,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
-        input_key: Optional[str] = "input",
-        output_key: Optional[str] = "output",
-        summary_frequency: Optional[int] = 3,
+        input_key: str = "input",
+        output_key: str = "output",
+        summary_frequency: int = 3,
     ):
         """
         Initialize ConversationSummaryMemory with a PromptNode, optional prompt_template,
@@ -136,9 +136,9 @@ class ConversationSummaryMemory(ConversationMemory):
 
         :param pn: A PromptNode object for generating conversation summaries.
         :param prompt_template: Optional prompt template as a string or PromptTemplate object.
-        :param input_key: Optional input key, default is "input".
-        :param output_key: Optional output key, default is "output".
-        :param summary_frequency: Optional integer specifying how often to generate a summary (default is 3).
+        :param input_key: input key, default is "input".
+        :param output_key: output key, default is "output".
+        :param summary_frequency: integer specifying how often to generate a summary (default is 3).
         """
         super().__init__(input_key, output_key)
         self.save_count = 0
@@ -147,9 +147,7 @@ class ConversationSummaryMemory(ConversationMemory):
         template = (
             pn.default_prompt_template
             if pn.default_prompt_template is not None
-            else prompt_template
-            if prompt_template
-            else "conversational-summary"
+            else prompt_template or "conversational-summary"
         )
         self.template = pn.get_prompt_template(template)
         self.summary_frequency = summary_frequency
