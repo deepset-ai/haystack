@@ -48,7 +48,7 @@ def test_extract_tool_name_and_tool_input(tools_manager):
     examples = [
         "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born",
         "need to find out what city he was born.\n\nTool: Search\n\nTool Input: Where was Jeremy McKinnon born",
-        "need to find out what city he was born. Tool: Search Tool Input: Where was Jeremy McKinnon born",
+        'need to find out what city he was born. Tool: Search Tool Input: "Where was Jeremy McKinnon born"',
     ]
     for example in examples:
         tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(example)
