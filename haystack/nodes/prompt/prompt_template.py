@@ -208,7 +208,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         super().__init__()
 
         if template_name is None and name is None:
-            raise ValueError("Please specify the parameter `template_name`.")
+            raise ValueError("Specify the parameter `template_name`.")
 
         if name is not None and template_name is None:
             warnings.warn(
@@ -221,7 +221,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         if name is not None and template_name is not None:
             warnings.warn(
-                "You use both parameters `name` and `template_name`. The parameter `name` is deprecated and will be "
+                "You are using both `name` and `template_name` parameters. The parameter `name` is deprecated and will be "
                 "removed in Haystack 2.0. Use only the parameter `template_name`. "
                 f"PromptTemplate will be initialized using the parameter `template_name` ('{template_name}').",
                 category=DeprecationWarning,
