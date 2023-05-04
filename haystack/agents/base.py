@@ -387,7 +387,7 @@ class Agent:
             logger.debug("Telemetry exception: %s", exc)
 
         self.callback_manager.on_agent_start(name=self.prompt_template.name, query=query, params=params)
-        agent_step = self.create_agent_step()
+        agent_step = self.create_agent_step(max_steps)
         try:
             while not agent_step.is_last():
                 agent_step = self._step(query, agent_step, params)
@@ -431,11 +431,11 @@ class Agent:
             )
         return prompt_node_response
 
-    def create_agent_step(self) -> AgentStep:
+    def create_agent_step(self, max_steps: Optional[int] = None) -> AgentStep:
         """
         Create an AgentStep object. Override this method to customize the AgentStep class used by the Agent.
         """
-        return AgentStep(max_steps=self.max_steps, final_answer_parser=self.final_answer_parser)
+        return AgentStep(max_steps=max_steps or self.max_steps, final_answer_parser=self.final_answer_parser)
 
     def prepare_data_for_memory(self, **kwargs) -> dict:
         """

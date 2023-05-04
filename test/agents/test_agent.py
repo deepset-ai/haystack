@@ -231,7 +231,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
         ),
     )
 
-    agent = Agent(prompt_node=prompt_node)
+    agent = Agent(prompt_node=prompt_node, max_steps=12)
     agent.add_tool(
         Tool(
             name="Search",
