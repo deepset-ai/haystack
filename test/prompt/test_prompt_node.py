@@ -142,10 +142,10 @@ def test_get_prompt_template_without_default_template(mock_model):
     assert node.get_prompt_template() is None
 
     template = node.get_prompt_template("question-answering")
-    assert template.name == "question-answering"
+    assert template.template_name == "question-answering"
 
     template = node.get_prompt_template(PromptTemplate(template_name="fake-template", prompt_text=""))
-    assert template.name == "fake-template"
+    assert template.template_name == "fake-template"
 
     with pytest.raises(ValueError) as e:
         node.get_prompt_template("some-unsupported-template")
@@ -153,14 +153,14 @@ def test_get_prompt_template_without_default_template(mock_model):
 
     fake_yaml_prompt = "name: fake-yaml-template\nprompt_text: fake prompt text"
     template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "fake-yaml-template"
+    assert template.template_name == "fake-yaml-template"
 
     fake_yaml_prompt = "- prompt_text: fake prompt text"
     template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "custom-at-query-time"
+    assert template.template_name == "custom-at-query-time"
 
     template = node.get_prompt_template("some prompt")
-    assert template.name == "custom-at-query-time"
+    assert template.template_name == "custom-at-query-time"
 
 
 @pytest.mark.unit
@@ -170,13 +170,13 @@ def test_get_prompt_template_with_default_template(mock_model):
     node.set_default_prompt_template("question-answering")
 
     template = node.get_prompt_template()
-    assert template.name == "question-answering"
+    assert template.template_name == "question-answering"
 
     template = node.get_prompt_template("sentiment-analysis")
-    assert template.name == "sentiment-analysis"
+    assert template.template_name == "sentiment-analysis"
 
     template = node.get_prompt_template(PromptTemplate(template_name="fake-template", prompt_text=""))
-    assert template.name == "fake-template"
+    assert template.template_name == "fake-template"
 
     with pytest.raises(ValueError) as e:
         node.get_prompt_template("some-unsupported-template")
@@ -184,14 +184,14 @@ def test_get_prompt_template_with_default_template(mock_model):
 
     fake_yaml_prompt = "name: fake-yaml-template\nprompt_text: fake prompt text"
     template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "fake-yaml-template"
+    assert template.template_name == "fake-yaml-template"
 
     fake_yaml_prompt = "- prompt_text: fake prompt text"
     template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "custom-at-query-time"
+    assert template.template_name == "custom-at-query-time"
 
     template = node.get_prompt_template("some prompt")
-    assert template.name == "custom-at-query-time"
+    assert template.template_name == "custom-at-query-time"
 
 
 @pytest.mark.integration
