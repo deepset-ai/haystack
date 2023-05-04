@@ -1,7 +1,9 @@
 from typing import Optional, Union, List, Dict
 import logging
+import os
 
 import torch
+
 from transformers import (
     pipeline,
     StoppingCriteriaList,
@@ -13,7 +15,8 @@ from transformers import (
 from transformers.pipelines import get_task
 
 from haystack.modeling.utils import initialize_device_settings
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, HFTokenStreamingHandler
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +91,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 "device_map",
                 "generation_kwargs",
                 "model_max_length",
+                "stream",
+                "stream_handler",
             ]
             if key in kwargs
         }
@@ -95,6 +100,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         if "model_kwargs" in model_input_kwargs:
             mkwargs = model_input_kwargs.pop("model_kwargs")
             model_input_kwargs.update(mkwargs)
+
+        # save stream settings and stream_handler for pipeline invocation
+        self.stream_handler = model_input_kwargs.pop("stream_handler", None)
+        self.stream = model_input_kwargs.pop("stream", False)
 
         # save generation_kwargs for pipeline invocation
         self.generation_kwargs = model_input_kwargs.pop("generation_kwargs", {})
@@ -162,6 +171,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
         top_k = kwargs.pop("top_k", None)
+        # either stream is True (will use default handler) or stream_handler is provided for custom handler
+        stream = kwargs.get("stream", self.stream) or kwargs.get("stream_handler", self.stream_handler) is not None
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -210,6 +221,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             else:
                 model_input_kwargs["max_length"] = self.max_length
 
+            if stream:
+                stream_handler: TokenStreamingHandler = kwargs.pop("stream_handler", DefaultTokenStreamingHandler())
+                model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
+
             output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
 
@@ -252,6 +267,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         task_name: Optional[str] = None
+        if os.path.exists(model_name_or_path):
+            return True
+
         try:
             task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
         except RuntimeError:

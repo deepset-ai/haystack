@@ -185,7 +185,7 @@ class Document:
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
                 if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
-                    v = [self.content.columns.tolist()] + self.content.values.tolist()
+                    v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc
@@ -232,7 +232,7 @@ class Document:
 
         # Convert list of rows to pd.DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
-            _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
+            _new_doc["content"] = dataframe_from_list(_new_doc["content"])
 
         return cls(**_new_doc)
 
@@ -243,11 +243,14 @@ class Document:
         return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
+    def from_json(cls, data: Union[str, Dict[str, Any]], field_map: Optional[Dict[str, Any]] = None) -> Document:
         if not field_map:
             field_map = {}
-        dictionary = json.loads(data)
-        return cls.from_dict(dictionary, field_map=field_map)
+        if isinstance(data, str):
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data, field_map=field_map)
 
     def __eq__(self, other):
         content = getattr(other, "content", None)
@@ -401,6 +404,10 @@ class Answer:
         if self.meta is None:
             self.meta = {}
 
+        # In case the context is a list of lists for a table document that is instantiated by from_json() or from_dict()
+        if isinstance(self.context, list):
+            self.context = dataframe_from_list(self.context)
+
     def __lt__(self, other):
         """Enable sorting of Answers by score"""
         return self.score < other.score
@@ -412,29 +419,30 @@ class Answer:
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
     def __repr__(self):
-        return f"<Answer {asdict(self)}>"
+        return f"<Answer {self.to_dict()}>"
 
-    def to_dict(self):
-        return asdict(self)
+    def to_dict(self) -> Dict:
+        return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: Dict) -> Answer:
         # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
         if "document_id" in dict:
             dict = dict.copy()
             document_id = dict.pop("document_id")
             dict["document_ids"] = [document_id] if document_id is not None else None
-
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data):
-        if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
+        if isinstance(data, str):
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data)
 
     @staticmethod
     def _from_dict_offsets(offsets):
@@ -448,6 +456,23 @@ class Answer:
             else:
                 converted_offsets.append(e)
         return converted_offsets
+
+    def __eq__(self, other):
+        context = getattr(other, "context", None)
+        if isinstance(context, pd.DataFrame):
+            is_content_equal = context.equals(self.context)
+        else:
+            is_content_equal = context == self.context
+        return (
+            isinstance(other, self.__class__)
+            and is_content_equal
+            and getattr(other, "type", None) == self.type
+            and getattr(other, "score", None) == self.score
+            and getattr(other, "offsets_in_document", None) == self.offsets_in_document
+            and getattr(other, "offsets_in_context", None) == self.offsets_in_context
+            and getattr(other, "document_ids", None) == self.document_ids
+            and getattr(other, "meta", None) == self.meta
+        )
 
 
 @dataclass
@@ -521,11 +546,7 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        if isinstance(answer, dict):
-            answer = Answer.from_dict(answer)
         self.answer = answer
-        if isinstance(document, dict):
-            document = Document.from_dict(document)
         self.document = document
 
         self.is_correct_answer = is_correct_answer
@@ -549,25 +570,28 @@ class Label:
         return no_answer
 
     def to_dict(self):
-        return asdict(self)
+        return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
-    def from_dict(cls, dict: dict):
-        # backward compatibility for old labels using answers with document_id instead of document_ids
+    def from_dict(cls, dict: Dict):
         answer = dict.get("answer")
-        if answer and "document_id" in answer:
-            dict = dict.copy()
+        if answer and isinstance(answer, Dict):
             dict["answer"] = Answer.from_dict(dict["answer"])
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        doc = dict.get("document")
+        if isinstance(doc, Dict):
+            dict["document"] = Document.from_dict(dict["document"])
+        return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data):
-        if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
+        if isinstance(data, str):
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data)
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
@@ -732,7 +756,7 @@ class MultiLabel:
         return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: Dict):
         # exclude extra arguments
         return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
@@ -741,7 +765,7 @@ class MultiLabel:
 
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
-        if type(data) == str:
+        if isinstance(data, str):
             dict_data = json.loads(data)
         else:
             dict_data = data
@@ -758,7 +782,7 @@ class MultiLabel:
         return f"<MultiLabel: {self.to_dict()}>"
 
 
-def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
+def _pydantic_dataclass_from_dict(dict: Dict, pydantic_dataclass_type) -> Any:
     """
     Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
     This allows simple de-serialization of pydantic dataclasses from json.
@@ -777,11 +801,34 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     return dataclass_object
 
 
+def _dict_factory(data):
+    """Meant to be as the dict_factory for `asdict`. This function is called within `asdict` to convert a list of tuples
+    into a dictionary object. This handles the conversion of pandas Dataframes into a list of lists.
+
+    :param data: list of (key, value) pairs
+    """
+
+    def convert_value(v):
+        if isinstance(v, pd.DataFrame):
+            return dataframe_to_list(v)
+        return v
+
+    return {k: convert_value(v) for k, v in data}
+
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
+
+def dataframe_to_list(df: pd.DataFrame) -> List[List]:
+    return [df.columns.tolist()] + df.values.tolist()
+
+
+def dataframe_from_list(list_df: List[List]) -> pd.DataFrame:
+    return pd.DataFrame(columns=list_df[0], data=list_df[1:])
 
 
 class EvaluationResult:

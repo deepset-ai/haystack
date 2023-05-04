@@ -87,7 +87,7 @@ def get_component_definitions(
                         param_name,
                         name,
                         key,
-                        value,
+                        "***",
                     )
     return component_definitions
 
