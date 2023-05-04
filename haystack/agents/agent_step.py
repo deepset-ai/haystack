@@ -20,7 +20,7 @@ class AgentStep:
         self,
         current_step: int = 1,
         max_steps: int = 10,
-        final_answer_parser: AgentAnswerParser = None,
+        final_answer_parser: Optional[AgentAnswerParser] = None,
         prompt_node_response: str = "",
         transcript: str = "",
     ):

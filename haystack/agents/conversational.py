@@ -39,7 +39,7 @@ class ConversationalAgent(Agent):
     def __init__(
         self,
         prompt_node: PromptNode,
-        memory: Memory = None,
+        memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
     ):
         """
@@ -103,10 +103,10 @@ class ConversationalAgentWithTools(Agent):
     def __init__(
         self,
         prompt_node: PromptNode,
-        prompt_template: Union[str, PromptTemplate] = None,
+        prompt_template: Optional[Union[str, PromptTemplate]] = None,
         tools_manager: Optional[ToolsManager] = None,
         max_steps: int = 5,
-        memory: Memory = None,
+        memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
         final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
     ):
