@@ -10,6 +10,8 @@ from haystack.nodes.prompt.shapers import AnswerParser
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
+from ..conftest import fail_at_version
+
 
 @pytest.mark.unit
 def test_prompt_templates():
@@ -340,3 +342,29 @@ class TestPromptTemplateSyntax:
         prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
         assert prompts == expected_prompts
+
+    @pytest.mark.unit
+    @fail_at_version(2, 0)
+    def test_name_parameter_deprecated(self):
+        with pytest.warns(DeprecationWarning) as w:
+            prompt_template = PromptTemplate(name="test", prompt_text="test")
+            assert "Use the parameter `template_name` instead" in str(w[0].message)
+            assert prompt_template.template_name == "test"
+
+    @pytest.mark.unit
+    @fail_at_version(2, 0)
+    def test_passing_name_and_template_name_parameter(self):
+        with pytest.warns(DeprecationWarning) as w:
+            prompt_template = PromptTemplate(name="test", template_name="test2", prompt_text="test")
+            assert (
+                "Use only the parameter `template_name`. PromptTemplate will be initialized "
+                "using the parameter `template_name`" in str(w[0].message)
+            )
+            assert prompt_template.template_name == "test2"
+
+    @pytest.mark.unit
+    @fail_at_version(2, 0)
+    def test_passing_neither_name_nor_template_name_parameter(self):
+        with pytest.raises(ValueError) as e:
+            PromptTemplate(prompt_text="test")
+            assert "Please specify the parameter `template_name`" in str(e[0].message)

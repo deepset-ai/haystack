@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, List, Union, Tuple, Dict, Iterator, Any
 import logging
 import os
@@ -184,13 +185,19 @@ class PromptTemplate(BasePromptTemplate, ABC):
     """
 
     def __init__(
-        self, name: str, prompt_text: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None
+        self,
+        prompt_text: str,
+        template_name: Optional[str] = None,
+        name: Optional[str] = None,
+        output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None,
     ):
         """
          Creates a PromptTemplate instance.
 
-        :param name: The name of the prompt template (for example, "sentiment-analysis", "question-generation"). You can specify your own name but it must be unique.
         :param prompt_text: The prompt text, including prompt parameters.
+        :param template_name: The name of the prompt template (for example, "sentiment-analysis", "question-generation").
+                              You can specify your own name but it must be unique.
+        :param name: This parameter is deprecated. Use `template_name` instead.
         :param output_parser: A parser that applied to the model output.
                 For example, to convert the model output to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
@@ -199,6 +206,27 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 ```
         """
         super().__init__()
+
+        if template_name is None and name is None:
+            raise ValueError("Please specify the parameter `template_name`.")
+
+        if name is not None and template_name is None:
+            warnings.warn(
+                "The parameter `name` is deprecated and will be removed in Haystack 2.0. Use the parameter "
+                "`template_name` instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            template_name = name
+
+        if name is not None and template_name is not None:
+            warnings.warn(
+                "You use both parameters `name` and `template_name`. The parameter `name` is deprecated and will be "
+                "removed in Haystack 2.0. Use only the parameter `template_name`. "
+                f"PromptTemplate will be initialized using the parameter `template_name` ('{template_name}').",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
         for strip in PROMPT_TEMPLATE_STRIPS:
@@ -212,7 +240,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
         self._ast_expression = ast.parse(f'f"{prompt_text}"', mode="eval")
 
-        ast_validator = _ValidationVisitor(prompt_template_name=name)
+        template_name = str(template_name)
+        ast_validator = _ValidationVisitor(prompt_template_name=template_name)
         ast_validator.visit(self._ast_expression)
 
         ast_transformer = _FstringParamsTransformer()
@@ -220,7 +249,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         self._prompt_params_functions = ast_transformer.prompt_params_functions
         self._used_functions = ast_validator.used_functions
 
-        self.name = name
+        self.template_name = template_name
         self.prompt_text = prompt_text
         self.prompt_params: List[str] = sorted(
             param for param in ast_validator.prompt_params if param not in PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS
