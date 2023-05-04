@@ -288,7 +288,9 @@ class PromptNode(BaseComponent):
         default_prompt_template = self.get_prompt_template()
         if default_prompt_template:
             output_parser = default_prompt_template.output_parser
-        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser)
+        return PromptTemplate(
+            template_name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser
+        )
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """

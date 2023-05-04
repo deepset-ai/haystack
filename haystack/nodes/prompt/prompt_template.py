@@ -364,25 +364,25 @@ class PromptTemplate(BasePromptTemplate, ABC):
             yield prompt_prepared
 
     def __repr__(self):
-        return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
+        return f"PromptTemplate(prompt_text={self.prompt_text}, template_name={self.template_name}, prompt_params={self.prompt_params})"
 
 
 def get_predefined_prompt_templates() -> List[PromptTemplate]:
     return [
         PromptTemplate(
-            name="question-answering",
+            template_name="question-answering",
             prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
             "{query}; Answer:",
             output_parser=AnswerParser(),
         ),
         PromptTemplate(
-            name="question-answering-per-document",
+            template_name="question-answering-per-document",
             prompt_text="Given the context please answer the question. Context: {documents}; Question: "
             "{query}; Answer:",
             output_parser=AnswerParser(),
         ),
         PromptTemplate(
-            name="question-answering-with-references",
+            template_name="question-answering-with-references",
             prompt_text="Create a concise and informative answer (no more than 50 words) for a given question "
             "based solely on the given documents. You must only use information from the given documents. "
             "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
@@ -392,7 +392,7 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]"),
         ),
         PromptTemplate(
-            name="question-answering-with-document-scores",
+            template_name="question-answering-with-document-scores",
             prompt_text="Answer the following question using the paragraphs below as sources. "
             "An answer should be short, a few words at most.\n"
             "Paragraphs:\n{documents}\n"
@@ -403,47 +403,47 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "After having considered all possibilities, the final answer is:\n",
         ),
         PromptTemplate(
-            name="question-generation",
+            template_name="question-generation",
             prompt_text="Given the context please generate a question. Context: {documents}; Question:",
         ),
         PromptTemplate(
-            name="conditioned-question-generation",
+            template_name="conditioned-question-generation",
             prompt_text="Please come up with a question for the given context and the answer. "
             "Context: {documents}; Answer: {answers}; Question:",
         ),
-        PromptTemplate(name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
+        PromptTemplate(template_name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
         PromptTemplate(
-            name="question-answering-check",
+            template_name="question-answering-check",
             prompt_text="Does the following context contain the answer to the question? "
             "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
             output_parser=AnswerParser(),
         ),
         PromptTemplate(
-            name="sentiment-analysis",
+            template_name="sentiment-analysis",
             prompt_text="Please give a sentiment for this context. Answer with positive, "
             "negative or neutral. Context: {documents}; Answer:",
         ),
         PromptTemplate(
-            name="multiple-choice-question-answering",
+            template_name="multiple-choice-question-answering",
             prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
             "Options: {options}; Answer:",
             output_parser=AnswerParser(),
         ),
         PromptTemplate(
-            name="topic-classification",
+            template_name="topic-classification",
             prompt_text="Categories: {options}; What category best describes: {documents}; Answer:",
         ),
         PromptTemplate(
-            name="language-detection",
+            template_name="language-detection",
             prompt_text="Detect the language in the following context and answer with the "
             "name of the language. Context: {documents}; Answer:",
         ),
         PromptTemplate(
-            name="translation",
+            template_name="translation",
             prompt_text="Translate the following context to {target_language}. Context: {documents}; Translation:",
         ),
         PromptTemplate(
-            name="zero-shot-react",
+            template_name="zero-shot-react",
             prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
             "correctly, you have access to the following tools:\n\n"
             "{tool_names_with_descriptions}\n\n"

@@ -115,7 +115,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             stop_words = ["\n", "<|endoftext|>"]
         if prompt_template is None:
             prompt_template = PromptTemplate(
-                name="question-answering-with-examples",
+                template_name="question-answering-with-examples",
                 prompt_text="Please answer the question according to the above context."
                 "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
                 "===\nContext: {context}\n===\n{query}",
