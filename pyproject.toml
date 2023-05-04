@@ -49,7 +49,6 @@ docs = [
   "mkdocs-material",
   "mkdocstrings[python]",
   "mkdocs-mermaid2-plugin"
-
 ]
 
 

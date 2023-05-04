@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from canals import component
+from canals import name
 
 
-@component
+@name
 class Sum:
     """
     Sums the values of all the input connections together.
@@ -14,8 +14,8 @@ class Sum:
     class Output:
         total: int
 
-    def run(self, *values: int) -> Output:
-        total = sum(values)
+    def run(self, *value: int) -> Output:
+        total = sum(value)
         return Sum.Output(total=total)
 
 

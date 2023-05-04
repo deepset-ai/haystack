@@ -1,10 +1,10 @@
 from typing import TypeVar, Any, List
 
 from dataclasses import make_dataclass
-from canals import component
+from canals import name
 
 
-@component
+@name
 class Repeat:
     """
     Repeats the input value on all outputs.

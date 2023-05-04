@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from canals import component
+from canals import name
 
 
-@component
+@name
 class Double:
     """
     Doubles the value in input.

@@ -1,8 +1,8 @@
-from typing import Optional, Any
+from typing import Any
 
-from dataclasses import dataclass
+from dataclasses import make_dataclass
 
-from canals import component
+from canals import name
 
 
 class _MetaClass(type):
@@ -18,70 +18,70 @@ class _MetaClass(type):
                 "For example: 'merge_loop = MergeLoop(expected_type=List[Document])'"
             )
 
-        # Here is where the Output dataclass and the run method are defined with the specific types.
+        # Here is where the run method is defined with the specific types.
         # Let's minimize the amount of logic contained here to the absolute minimum, because this area of the code
         # is really complex to reason about.
 
-        @dataclass
-        class Output:
-            value: expected_type
+        def run(self, *value: expected_type):
+            return self._run(*value)
 
-        def run(self, first_branch: expected_type, second_branch: expected_type) -> Output:
-            return self._run(first_branch=first_branch, second_branch=second_branch)
-
-        cls.Output = Output
         cls.run = run
 
         obj = cls.__new__(cls, *args, **kwargs)
         obj.__init__(*args, **kwargs)
+        obj.expected_type = expected_type
         return obj
 
 
-@component
+@name
 class MergeLoop(metaclass=_MetaClass):
     """
     Takes two input components and returns the first one that is not None.
 
-    In case both received a value, priority is given to 'first_branch'.
+    In case both received a value, priority is given to 'first'.
 
     Always initialize this class by passing the expected type, like: `MergeLoop(expected_type=int)`.
     """
 
-    #
-    # Note: highly dynamically typed classes like MergeLoop are mostly built by the metaclass.
-    # However, @component's reflexive checks will fail if the class does not have a run() method
-    # that returns an Output dataclass, so we have to provide these mocks to make it happy.
-    #
-    # The real Output and run() are both defined in the metaclass.__call__(). Note how run() in fact calls
-    # back directly _run() to avoid encoding too much logic in the metaclass itself.
-    #
-    @dataclass
-    class Output:
+    def run(self, *value: Any):
+        """
+        Takes some inputs and returns the first one that is not None.
+
+        In case it receives more than one value, priority is given to the first.
+        """
+        #
+        # Note: highly dynamically typed classes like MergeLoop are mostly built by the metaclass.
+        # However, @component's reflexive checks will fail if the class does not have a 'run()' method,
+        # so for now we have to provide these mocks to make it happy.
+        #
+        # The real run() is defined in '_MetaClass.__call__()'. Note how 'run()' in fact calls back immediately
+        # '_run()' to avoid encoding too much logic in the metaclass itself.
+        #
+        # TODO generalize this metaclass to spare contributors from understanding this thing.
+        #
         pass
 
-    def run(self, first_branch: Any, second_branch: Any) -> Output:  # type: ignore
-        """
-        Takes two input components and returns the first one that is not None.
+    @property
+    def output_type(self):
+        return make_dataclass("Output", [(f"value", self.expected_type, None)])
 
-        In case both received a value, priority is given to 'first_branch'.
-        """
-        pass
-
-    def _run(self, first_branch: Any, second_branch: Any) -> Output:
-        if first_branch is not None:
-            return MergeLoop.Output(value=first_branch)  # type: ignore
-        if second_branch is not None:
-            return MergeLoop.Output(value=second_branch)  # type: ignore
-        return MergeLoop.Output(value=None)  # type: ignore
+    def _run(self, *value: Any):
+        for v in value:
+            if v is not None:
+                return self.output_type(value=v)
+        return self.output_type(value=None)
 
 
 def test_merge():
     component = MergeLoop(expected_type=int)
-    results = component.run(first_branch=5, second_branch=None)
-    assert results == component.Output(value=5)
+    results = component.run(5, None)
+    assert results.__dict__ == component.output_type(value=5).__dict__
 
-    results = component.run(first_branch=None, second_branch=5)
-    assert results == component.Output(value=5)
+    results = component.run(None, 5)
+    assert results.__dict__ == component.output_type(value=5).__dict__
 
-    results = component.run(first_branch=None, second_branch=None)
-    assert results == component.Output(value=None)
+    results = component.run(None, None, None)
+    assert results.__dict__ == component.output_type(value=None).__dict__
+
+    results = component.run()
+    assert results.__dict__ == component.output_type(value=None).__dict__

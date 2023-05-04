@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from canals import component
+from canals import name
 
 
-@component
+@name
 class AddFixedValue:
     """
     Adds the value of `add` to `value`. If not given, `add` defaults to 1.

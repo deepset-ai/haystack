@@ -24,10 +24,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("parity.odd", "double.value")
     pipeline.connect("add_ten", "add_three")
 
-    try:
-        pipeline.draw(tmp_path / "fixed_decision_pipeline.png")
-    except ImportError:
-        logging.warning("pygraphviz not found, pipeline is not being drawn.")
+    pipeline.draw(tmp_path / "fixed_decision_pipeline.png")
 
     results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)

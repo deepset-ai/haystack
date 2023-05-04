@@ -62,11 +62,11 @@ def test_complex_pipeline(tmp_path):
     pipeline.connect("add_four", "accumulate_3")
 
     pipeline.connect("parity.odd", "add_one.value")
-    pipeline.connect("add_one", "loop_merger.first_branch")
+    pipeline.connect("add_one", "loop_merger")
     pipeline.connect("loop_merger", "below_10")
 
     pipeline.connect("below_10.below", "double")
-    pipeline.connect("double", "loop_merger.second_branch")
+    pipeline.connect("double", "loop_merger")
 
     pipeline.connect("below_10.above", "accumulate_2")
     pipeline.connect("accumulate_2", "diff.second_value")
@@ -77,17 +77,14 @@ def test_complex_pipeline(tmp_path):
     pipeline.connect("enumerate.first", "add_three.value")
     pipeline.connect("add_three", "sum")
 
-    try:
-        pipeline.draw(tmp_path / "complex_pipeline.png")
-    except ImportError:
-        logging.warning("pygraphviz not found, pipeline is not being drawn.")
+    pipeline.draw(tmp_path / "complex_pipeline.png")
 
     results = pipeline.run({"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}})
     pprint(results)
     print("accumulated: ", accumulate.state)
 
-    assert results == {"add_five": [{"value": 16}], "accumulate_3": [{"value": 15}]}
-    assert accumulate.state == 32
+    assert results == {"accumulate_3": {"value": 9}, "add_five": {"value": -7}}
+    assert accumulate.state == 9
 
 
 if __name__ == "__main__":

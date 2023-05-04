@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from canals import component
+from canals import name
 
 
-@component
+@name
 class Subtract:
     """
     Compute the difference between two values.

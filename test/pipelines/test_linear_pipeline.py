@@ -17,10 +17,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("first_addition", "double")
     pipeline.connect("double", "second_addition")
 
-    try:
-        pipeline.draw(tmp_path / "linear_pipeline.png")
-    except ImportError:
-        logging.warning("pygraphviz not found, pipeline is not being drawn.")
+    pipeline.draw(tmp_path / "linear_pipeline.png")
 
     results = pipeline.run({"first_addition": {"value": 1}})
     pprint(results)

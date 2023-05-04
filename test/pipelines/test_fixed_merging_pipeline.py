@@ -26,10 +26,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("third_addition", "diff.second_value")
     pipeline.connect("diff", "fourth_addition.value")
 
-    try:
-        pipeline.draw(tmp_path / "fixed_merging_pipeline.png")
-    except ImportError:
-        logging.warning("pygraphviz not found, pipeline is not being drawn.")
+    pipeline.draw(tmp_path / "fixed_merging_pipeline.png")
 
     results = pipeline.run(
         {

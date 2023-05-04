@@ -26,10 +26,7 @@ def test_pipeline(tmp_path):
     pipeline.connect("remainder.remainder_is_2", "add_three.value")
     pipeline.connect("add_three", "add_one_again")
 
-    try:
-        pipeline.draw(tmp_path / "variable_decision_pipeline.png")
-    except ImportError:
-        logging.warning("pygraphviz not found, pipeline is not being drawn.")
+    pipeline.draw(tmp_path / "variable_decision_pipeline.png")
 
     results = pipeline.run({"add_one": {"value": 1}})
     pprint(results)

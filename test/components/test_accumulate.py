@@ -4,10 +4,10 @@ import builtins
 from importlib import import_module
 
 from dataclasses import dataclass
-from canals import component
+from canals import name
 
 
-@component
+@name
 class Accumulate:
     """
     Accumulates the value flowing through the connection into an internal attribute.

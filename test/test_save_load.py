@@ -38,12 +38,12 @@ def test_marshal():
                 "components": {
                     "first_addition": {
                         "type": "AddFixedValue",
-                        "_init_parameters": {"add": 200},
+                        "init_parameters": {"add": 200},
                     },
-                    "double": {"type": "Double", "_init_parameters": {}},
+                    "double": {"type": "Double", "init_parameters": {}},
                     "second_addition": {
                         "type": "AddFixedValue",
-                        "_init_parameters": {},
+                        "init_parameters": {},
                     },
                     "third_addition": {"refer_to": "pipe1.first_addition"},
                 },
@@ -58,7 +58,7 @@ def test_marshal():
                 "max_loops_allowed": 100,
                 "components": {
                     "first_addition": {"refer_to": "pipe1.first_addition"},
-                    "double": {"type": "Double", "_init_parameters": {}},
+                    "double": {"type": "Double", "init_parameters": {}},
                     "second_addition": {"refer_to": "pipe1.second_addition"},
                 },
                 "connections": [
@@ -81,12 +81,12 @@ def test_unmarshal():
                     "components": {
                         "first_addition": {
                             "type": "AddFixedValue",
-                            "_init_parameters": {"add": 300},
+                            "init_parameters": {"add": 300},
                         },
                         "double": {"type": "Double"},
                         "second_addition": {
                             "type": "AddFixedValue",
-                            "_init_parameters": {},
+                            "init_parameters": {},
                         },
                         "third_addition": {"refer_to": "pipe1.first_addition"},
                     },

@@ -8,7 +8,7 @@ from canals.component.save_init_params import set_default_component_attributes
 logger = logging.getLogger(__name__)
 
 
-def component(class_):
+def name(class_):
     """
     Marks a class as a component.
     Any class decorated with `@component` can be used by a Pipeline.

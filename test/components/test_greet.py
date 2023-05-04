@@ -2,13 +2,13 @@ import logging
 
 from dataclasses import dataclass
 
-from canals import component
+from canals import name
 
 
 logger = logging.getLogger(__name__)
 
 
-@component
+@name
 class Greet:
     """
     Logs a greeting message without affecting the value passing on the connection.

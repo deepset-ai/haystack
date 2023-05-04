@@ -1,9 +1,9 @@
 from dataclasses import make_dataclass
 
-from canals import component
+from canals import name
 
 
-@component
+@name
 class Remainder:
     """
     Redirects the value, unchanged, along the connection corresponding to the remainder

@@ -8,17 +8,15 @@ from collections import OrderedDict
 import networkx as nx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
-from canals.pipeline.draw import render_graphviz, render_mermaid
+from canals.pipeline.draw import draw
 from canals.pipeline._utils import (
     InputSocket,
     OutputSocket,
-    find_sockets,
+    find_input_sockets,
+    find_output_sockets,
     find_unambiguous_connection,
-    is_subtype,
     parse_connection_name,
-    validate_pipeline,
-    find_pipeline_inputs,
-    find_pipeline_outputs,
+    validate_pipeline_input,
 )
 
 
@@ -50,16 +48,6 @@ class Pipeline:
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.MultiDiGraph()
 
-    def __eq__(self, other) -> bool:
-        # Equal pipelines share all nodes and metadata instances.
-        if not isinstance(other, type(self)):
-            return False
-        return (
-            self.metadata == other.metadata
-            and self.max_loops_allowed == other.max_loops_allowed
-            and self.graph == other.graph
-        )
-
     def add_component(self, name: str, instance: Any) -> None:
         """
         Create a component for the given component. Components are not connected to anything by default:
@@ -75,12 +63,12 @@ class Pipeline:
             None
 
         Raises:
-            ValueError: if a component with the same name already exists or `parameters` is not a dictionary
+            ValueError: if a component with the same name already exists
             PipelineValidationError: if the given instance is not a Canals component
         """
         # Component names are unique
         if name in self.graph.nodes:
-            raise ValueError(f"Component named '{name}' already exists: choose another name.")
+            raise ValueError(f"A component named '{name}' already exists in this pipeline: choose another name.")
 
         # Component instances must be components
         if not hasattr(instance, "__canals_component__"):
@@ -88,8 +76,9 @@ class Pipeline:
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
-        # Find expected inputs and outputs
-        input_sockets, output_sockets = find_sockets(instance)
+        # Find inputs and outputs
+        input_sockets = find_input_sockets(instance)
+        output_sockets = find_output_sockets(instance)
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '%s' (%s)", name, instance)
@@ -102,46 +91,16 @@ class Pipeline:
             visits=0,
         )
 
-    def _connect(self, from_node: str, from_socket: OutputSocket, to_node: str, to_socket: InputSocket) -> None:
-        """
-        Directly connect socket to socket.
-        """
-        if not is_subtype(from_socket.type, to_socket.type):
-            raise PipelineConnectError(
-                f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
-                f"their declared input and output types do not match.\n"
-                f" - {from_node}.{from_socket.name}: {from_socket.type.__name__}\n"
-                f" - {to_node}.{to_socket.name}: {to_socket.type.__name__}\n"
-            )
-        if to_socket.taken_by:
-            raise PipelineConnectError(
-                f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
-                f"{to_node}.{to_socket.name} is already connected to {to_socket.taken_by}.\n"
-            )
-
-        # Create the connection
-        logger.debug("Connecting '%s.%s' to '%s.%s'", from_node, from_socket.name, to_node, to_socket.name)
-        self.graph.add_edge(
-            from_node,
-            to_node,
-            key=f"{from_socket.name}/{to_socket.name}",
-            from_socket=from_socket,
-            to_socket=to_socket,
-        )
-        # Variadic sockets are never fully taken
-        if not to_socket.variadic:
-            to_socket.taken_by = from_node
-
     def connect(self, connect_from: str, connect_to: str) -> None:
         """
-        Connect components together. All components to connect must exist in the pipeline.
-        If connecting to an component that has several output connections, specify its name with
+        Connects two components together. All components to connect must exist in the pipeline.
+        If connecting to an component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
         Args:
-            connect_from: the component that deliver the value. This can be either a single component name or can be
+            connect_from: the component that delivers the value. This can be either just a component name or can be
                 in the format `component_name.connection_name` if the component has multiple outputs.
-            connect_to: the component that receives the value. This can be either a single component name or can be
+            connect_to: the component that receives the value. This can be either just a component name or can be
                 in the format `component_name.connection_name` if the component has multiple inputs.
 
         Returns:
@@ -152,48 +111,80 @@ class Pipeline:
                 not present in the pipeline, or the connections don't match by type, and so on).
         """
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
-        from_node_name, from_socket_name = parse_connection_name(connect_from)
-        to_node_name, to_socket_name = parse_connection_name(connect_to)
+        from_node, from_socket_name = parse_connection_name(connect_from)
+        to_node, to_socket_name = parse_connection_name(connect_to)
 
-        # Get the nodes data. This method also ensures that the nodes names are present the pipeline
-        from_sockets = self._get_component_data(from_node_name)["output_sockets"]
-        to_sockets = self._get_component_data(to_node_name)["input_sockets"]
+        # Get the nodes data.
+        try:
+            from_sockets = self.graph.nodes[from_node]["output_sockets"]
+        except KeyError as exc:
+            raise ValueError(f"Component named {from_node} not found in the pipeline.") from exc
 
-        # If the names of both edges are given, get the sockets directly
+        try:
+            to_sockets = self.graph.nodes[to_node]["input_sockets"]
+        except KeyError as exc:
+            raise ValueError(f"Component named {to_node} not found in the pipeline.") from exc
+
+        # If the name of either socket is given, get the socket
         if from_socket_name:
             from_socket = from_sockets.get(from_socket_name, None)
             if not from_socket:
                 raise PipelineConnectError(
-                    f"'{from_node_name}.{from_socket_name} does not exist. "
-                    f"Output connections of {from_node_name} are: "
+                    f"'{from_node}.{from_socket_name} does not exist. "
+                    f"Output connections of {from_node} are: "
                     + ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in from_sockets.items()])
                 )
         if to_socket_name:
             to_socket = to_sockets.get(to_socket_name, None)
             if not to_socket:
                 raise PipelineConnectError(
-                    f"'{to_node_name}.{to_socket_name} does not exist. "
-                    f"Input connections of {to_node_name} are: "
-                    ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in to_sockets.items()])
+                    f"'{to_node}.{to_socket_name} does not exist. "
+                    f"Input connections of {to_node} are: "
+                    + ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in to_sockets.items()])
                 )
+
+        # If either one of the two sockets is not specified, look for an unambiguous connection
+        # Note that if there is more than one possible connection but two sockets match by name, they're paired.
         if not to_socket_name or not from_socket_name:
-            # Find one pair of sockets that can be connected
             from_sockets = [from_socket] if from_socket_name else from_sockets.values()
             to_sockets = [to_socket] if to_socket_name else to_sockets.values()
             from_socket, to_socket = find_unambiguous_connection(
-                from_node=from_node_name, from_sockets=from_sockets, to_node=to_node_name, to_sockets=to_sockets
+                from_node=from_node, from_sockets=from_sockets, to_node=to_node, to_sockets=to_sockets
             )
-        # Connect the components on these sockets
-        self._connect(from_node=from_node_name, from_socket=from_socket, to_node=to_node_name, to_socket=to_socket)
 
-    def _get_component_data(self, name: str) -> Dict[str, Any]:
+        # Connect the components on these sockets
+        self._direct_connect(from_node=from_node, from_socket=from_socket, to_node=to_node, to_socket=to_socket)
+
+    def _direct_connect(self, from_node: str, from_socket: OutputSocket, to_node: str, to_socket: InputSocket) -> None:
         """
-        Returns all the data associated with a component.
+        Directly connect socket to socket.
         """
-        candidates = [node for node in self.graph.nodes if node == name]
-        if not candidates:
-            raise ValueError(f"Component named {name} not found in the pipeline.")
-        return self.graph.nodes[candidates[0]]
+        # Check that the types match. We need type equality: subclass relationships are not accepted, just like
+        # Optionals, Unions, and similar "aggregate" types. See https://github.com/python/typing/issues/570
+        if not from_socket.type == to_socket.type:
+            raise PipelineConnectError(
+                f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
+                f"their declared input and output types do not match.\n"
+                f" - {from_node}.{from_socket.name}: {from_socket.type.__name__}\n"
+                f" - {to_node}.{to_socket.name}: {to_socket.type.__name__}\n"
+            )
+
+        # Make sure the receiving socket is not taken - sending sockets can be connected as many times as needed,
+        # so they don't need this check
+        if to_socket.taken_by:
+            raise PipelineConnectError(
+                f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
+                f"{to_node}.{to_socket.name} is already connected to {to_socket.taken_by}.\n"
+            )
+
+        # Create the connection
+        logger.debug("Connecting '%s.%s' to '%s.%s'", from_node, from_socket.name, to_node, to_socket.name)
+        edge_key = f"{from_socket.name}/{to_socket.name}"
+        self.graph.add_edge(from_node, to_node, key=edge_key, from_socket=from_socket, to_socket=to_socket)
+
+        # Mark the receiving socket as taken (unless is variadic - variadic sockets are never "taken")
+        if not to_socket.variadic:
+            to_socket.taken_by = from_node
 
     def get_component(self, name: str) -> object:
         """
@@ -208,54 +199,27 @@ class Pipeline:
         Raises:
             ValueError: if a component with that name is not present in the pipeline.
         """
-        return self._get_component_data(name)["instance"]
+        try:
+            return self.graph.nodes[name]["instance"]
+        except KeyError as exc:
+            raise ValueError(f"Component named {name} not found in the pipeline.") from exc
 
-    def draw(  # pylint: disable=too-many-locals
-        self, path: Path, engine: Literal["graphviz", "mermaid"] = "mermaid"
-    ) -> None:
+    def draw(self, path: Path, engine: Literal["graphviz", "mermaid"] = "mermaid") -> None:
         """
-        Draws the pipeline. Requires `pygraphviz`.
-        Run `pip install canals[draw]` to install missing dependencies.
+        Draws the pipeline. Requires either `graphviz` as a system dependency, or an internet connection for Mermaid.
+        Run `pip install canals[graphviz]` or `pip install canals[mermaid]` to install missing dependencies.
 
         Args:
-            path: where to save the drawing.
+            path: where to save the diagram.
 
         Returns:
             None
 
         Raises:
-            ImportError: if pygraphviz is not installed.
+            ImportError: if `engine='graphviz'` pygraphviz is not installed.
+            HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
-        graph = deepcopy(self.graph)
-
-        input_nodes = find_pipeline_inputs(graph)
-        output_nodes = find_pipeline_outputs(graph)
-
-        # Label the edges
-        for inp, outp, key, data in graph.edges(keys=True, data=True):
-            data["label"] = f"{data['from_socket'].name} -> {data['to_socket'].name}"
-            graph.add_edge(inp, outp, key=key, **data)
-
-        # Draw the input
-        graph.add_node("input")
-        for in_node, in_sockets in input_nodes.items():
-            for in_socket in in_sockets:
-                graph.add_edge("input", in_node, label=in_socket.name)
-
-        # Draw the output
-        graph.add_node("output", shape="plain")
-        for out_node, out_sockets in output_nodes.items():
-            for out_socket in out_sockets:
-                graph.add_edge(out_node, "output", label=out_socket.name)
-
-        if engine == "graphviz":
-            render_graphviz(graph=graph, path=path)
-        elif engine == "mermaid":
-            render_mermaid(graph=graph, path=path)
-        else:
-            raise ValueError(f"Unknown rendering engine '{engine}'. Choose one from: 'graphviz', 'mermaid'.")
-
-        logger.debug("Pipeline diagram saved at %s", path)
+        draw(graph=deepcopy(self.graph), path=path, engine=engine)
 
     def warm_up(self):
         """
@@ -266,6 +230,7 @@ class Pipeline:
         """
         for node in self.graph.nodes:
             if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
+                logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
     def run(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -283,14 +248,10 @@ class Pipeline:
         Raises:
             PipelineRuntimeError: if the any of the components fail or return unexpected output.
         """
-        validate_pipeline(self.graph, inputs_values=data)
-        self._clear_visits_count()
-        self.warm_up()
-
         # **** The Pipeline.run() algorithm ****
         #
         # Nodes are run as soon as an input for them appears in the inputs buffer.
-        # When there's more than a node at once  in the buffer (which means some
+        # When there's more than a node at once in the buffer (which means some
         # branches are running in parallel or that there are loops) they are selected to
         # run in FIFO order by the `inputs_buffer` OrderedDict.
         #
@@ -305,84 +266,70 @@ class Pipeline:
         # If the pipeline has branches of different lengths, it's possible that a node has to
         # wait a bit and let other nodes pass before receiving all the input data it needs.
         #
-        # Data access:
+        # Chetsheet for networkx data access:
         # - Name of the node       # self.graph.nodes  (List[str])
         # - Node instance          # self.graph.nodes[node]["instance"]
         # - Input nodes            # [e[0] for e in self.graph.in_edges(node)]
         # - Output nodes           # [e[1] for e in self.graph.out_edges(node)]
         # - Output edges           # [e[2]["label"] for e in self.graph.out_edges(node, data=True)]
         #
-        logger.info("Pipeline execution started.")
+        # if debug:
+        #     os.makedirs("debug", exist_ok=True)
 
+        data = validate_pipeline_input(self.graph, inputs_values=data)
+        self._clear_visits_count()
+        self.warm_up()
+
+        logger.info("Pipeline execution started.")
         inputs_buffer = OrderedDict(data)
+        pipeline_results = {}
 
         # *** PIPELINE EXECUTION LOOP ***
-        # We select the nodes to run by checking which keys are set in the
-        # inputs buffer. If the key exists, the node might be ready to run.
-        pipeline_results: Dict[str, List[Dict[str, Any]]] = {}
+        # We select the nodes to run by popping them in FIFO order from the inputs buffer.
+        current_step = 0
         while inputs_buffer:
-            logger.debug("> Current component queue: %s", inputs_buffer.keys())
-            logger.debug("> Current inputs buffer: %s", inputs_buffer)
-
-            node_name, node_inputs = inputs_buffer.popitem(last=False)  # FIFO
-
-            ready_to_run, inputs_buffer = self._ready_to_run(
-                component_name=node_name, component_inputs=node_inputs, inputs_buffer=inputs_buffer
+            current_step += 1
+            logger.debug(
+                "> Queue at step %s: %s",
+                current_step,
+                {key: list(value.keys()) for key, value in inputs_buffer.items()},
             )
-            if not ready_to_run:
+
+            component, inputs = inputs_buffer.popitem(last=False)  # FIFO
+
+            # if debug:
+            #     draw(deepcopy(self.graph), engine="graphviz", path=f"debug/step_{current_step}.jpg", running=component, queued=inputs_buffer.keys())
+
+            # **** IS IT MY TURN YET? ****
+            # Check if the node should be run or not
+            ready_to_run = self._ready_to_run(name=component, inputs=inputs, inputs_buffer=inputs_buffer)
+
+            # This component is missing data: let's put it back in the queue and wait.
+            if ready_to_run == "wait":
+                inputs_buffer[component] = inputs
+                continue
+
+            # This component did not receive the input it needs: it must be on a skipped branch. Let's not run it.
+            if ready_to_run == "skip":
+                self.graph.nodes[component]["visits"] += 1
+                inputs_buffer = self._skip_downstream_nodes(component=component, inputs_buffer=inputs_buffer)
                 continue
 
             # **** RUN THE NODE ****
-            # It is our turn! The node is ready to run and all inputs are ready
-            #
-            # Let's raise the visits count
-            self.graph.nodes[node_name]["visits"] += 1
-
-            # Get the node
-            node_instance = self.graph.nodes[node_name]["instance"]
-
-            # Call the node
-            try:
-                logger.info("* Running %s (visits: %s)", node_name, self.graph.nodes[node_name]["visits"])
-                logger.debug("   '%s' inputs: %s", node_name, node_inputs)
-
-                # Check if any param is variadic and unpack it
-                # Note that components either accept one single variadic positional or named kwargs! Not both.
-                if self._get_component_data(node_name)["variadic_input"]:
-                    node_inputs = list(node_inputs.items())[0][1]
-                    node_output = node_instance.run(*node_inputs)
-                else:
-                    node_inputs = {**node_instance.defaults, **node_inputs}
-                    node_output = node_instance.run(**node_inputs)
-
-                node_results = node_output.__dict__
-                logger.debug("   '%s' outputs: %s\n", node_name, node_results)
-            except Exception as e:
-                raise PipelineRuntimeError(
-                    f"{node_name} raised '{e.__class__.__name__}: {e}' \ninputs={node_inputs}\n\n"
-                    "See the stacktrace above for more information."
-                ) from e
+            # It is our turn! The node is ready to run and all necessary inputs are present
+            output = self._run_component(name=component, inputs=inputs)
 
             # **** PROCESS THE OUTPUT ****
             # The node run successfully. Let's store or distribute the output it produced, if it's valid.
-            #
-            # Process the output of the node
-            if not self.graph.out_edges(node_name):
-                # If there are no output edges, the output of this node is the output of the pipeline:
-                # store it in pipeline_results.
-                if not node_name in pipeline_results.keys():
-                    pipeline_results[node_name] = []
-                # If a node outputs many times (like in loops), the output will be overwritten
-                pipeline_results[node_name] = node_results
+            if not self.graph.out_edges(component):
+                # Note: if a node outputs many times (like in loops), the output will be overwritten
+                pipeline_results[component] = output
             else:
                 inputs_buffer = self._route_output(
-                    node_results=node_results, node_name=node_name, inputs_buffer=inputs_buffer
+                    node_results=output, node_name=component, inputs_buffer=inputs_buffer
                 )
 
         logger.info("Pipeline executed successfully.")
-
-        # # Simplify output for single edge, single output pipelines
-        # pipeline_results = self._unwrap_results(pipeline_results)
         return pipeline_results
 
     def _clear_visits_count(self):
@@ -402,106 +349,173 @@ class Pipeline:
             )
 
     def _ready_to_run(
-        self, component_name: str, component_inputs: Dict[str, Any], inputs_buffer: OrderedDict
-    ) -> Tuple[bool, OrderedDict]:
+        self, name: str, inputs: Dict[str, Any], inputs_buffer: OrderedDict
+    ) -> Literal["run", "wait", "skip"]:
         """
         Verify whether a component is ready to run.
 
-        Returns true if the component should run, false otherwise, and the updated inputs buffer.
+        Returns 'run', 'wait' or 'skip' depending on how the node should be treated and the log message explaining
+        the decision.
         """
         # Make sure it didn't run too many times already
-        self._check_max_loops(component_name)
+        self._check_max_loops(name)
 
-        # List all the inputs the current node should be waiting for.
-        inputs_received = tuple(component_inputs.keys())
+        # List all the component/socket pairs the current component should be waiting for.
+        expected_inputs = self._connections_to_wait_for(name=name)
 
-        # We should be wait on all edges except for the downstream ones, to support loops.
-        # This downstream check is enabled only for nodes taking more than one input
-        # (the "entrance" of the loop).
-        is_merge_node = len(self.graph.in_edges(component_name)) != 1
+        # Check if the expected inputs were all received
+        if self._check_received_vs_expected_inputs(name=name, inputs=inputs, expected_inputs=expected_inputs):
+            return "run"
 
-        data_to_wait_for = [
-            (from_node, data["to_socket"].name)
-            for from_node, _, data in self.graph.in_edges(component_name, data=True)
-            # if there's a path in the graph leading back from the current node to the
-            # input node, in case of multiple input nodes.
-            if not is_merge_node or not nx.has_path(self.graph, component_name, from_node)
-        ]
-        nodes_to_wait_for, inputs_to_wait_for = zip(*data_to_wait_for) if data_to_wait_for else ([], [])
+        # This node is missing some inputs. Did all the upstream nodes run?
+        nodes_to_wait_for, _ = zip(*expected_inputs) if expected_inputs else ([], [])
 
-        if not data_to_wait_for:
-            # This is an input node, so it's ready to run.
-            logger.debug("'%s' is an input component and it's ready to run.", component_name)
-            return (True, inputs_buffer)
-
-        # Do we have all the inputs we expect?
-        if self.graph.nodes[component_name]["variadic_input"]:
-            # Here we're assuming the variadic nodes take only one argument!
-            if inputs_received and len(component_inputs[inputs_received[0]]) == len(inputs_to_wait_for):
-                return (True, inputs_buffer)
-
-        elif set(inputs_to_wait_for).issubset(set(inputs_received)):
-            return (True, inputs_buffer)
-
-        # This node is missing some inputs.
-        #
-        # Did all the upstream nodes run?
-        if not all(self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in nodes_to_wait_for):
+        # Some node upstream didn't run yet, so we should wait for them.
+        if not self._all_nodes_to_wait_for_run(nodes_to_wait_for=nodes_to_wait_for):
 
             if not inputs_buffer:
-                # What if there are no components to wait for, though?
+                # What if there are no components to wait for?
                 raise PipelineRuntimeError(
-                    f"'{component_name}' is stuck waiting for input, but there are no other components to run. "
+                    f"'{name}' is stuck waiting for input, but there are no other components to run. "
                     "This is likely a Canals bug. Open an issue at https://github.com/deepset-ai/canals."
                 )
 
-            # Some node upstream didn't run yet, so we should wait for them.
             logger.debug(
-                "Putting '%s' back in the queue, some inputs are missing "
-                "(inputs to wait for: %s, inputs_received: %s)",
-                component_name,
-                inputs_to_wait_for,
-                inputs_received,
+                "Putting '%s' back in the queue, some inputs are missing (inputs to wait for: %s, inputs_received: %s)",
+                name,
+                [f"{node}.{socket}" for node, socket in expected_inputs],
+                list(inputs.keys()),
             )
-            # Put back the node in the inputs buffer at the back...
-            inputs_buffer[component_name] = component_inputs
-            # ... and do not run this node (yet)
-            return (False, inputs_buffer)
+            return "wait"
 
         # All upstream nodes run, so it **must** be our turn.
-        # However, we're missing data, so this branch probably is being skipped.
-        # Let's skip this node and add all downstream nodes to the queue with an equally empty buffer, so they will
-        # be skipped in turn, unless they're variadic merge nodes.
-        #
-        # TODO Merge nodes that are not variadic but tolerate Nones might also exist. We should check for that.
-        if self.graph.nodes[component_name]["variadic_input"]:
+        # However we're missing data, so this branch probably is being skipped.
+        if inputs and self.graph.nodes[name]["variadic_input"]:
             logger.debug(
                 "Running '%s', even though some upstream component did not produced output. "
-                "(upstream components: %s, expected inputs: %s, n. inputs received %s)",
-                component_name,
-                nodes_to_wait_for,
-                inputs_to_wait_for,
-                # Here we're assuming the variadic nodes take only one argument!
-                len(component_inputs[inputs_received[0]]),
+                "(upstream components: %s, expected inputs: %s, n. of inputs received %s)",
+                name,
+                list(nodes_to_wait_for),
+                [f"{node}.{socket}" for node, socket in expected_inputs],
+                len(list(inputs.values())[0]) if inputs else 0,
             )
-            return (True, inputs_buffer)
+            return "run"
 
-        self.graph.nodes[component_name]["visits"] += 1
         logger.debug(
-            "Skipping '%s', no upstream component produced output "
-            "(upstream components: %s, expected inputs: %s, inputs received %s)",
-            component_name,
-            nodes_to_wait_for,
-            inputs_to_wait_for,
-            inputs_received,
+            "Skipping '%s', upstream component didn't produce output "
+            "(upstream components: %s, expected inputs: %s, inputs received: %s)",
+            name,
+            list(nodes_to_wait_for),
+            [f"{node}.{socket}" for node, socket in expected_inputs],
+            list(inputs.keys()),
         )
-        # Put all downstream nodes in the inputs buffer...
-        downstream_nodes = [e[1] for e in self.graph.out_edges(component_name)]
+        return "skip"
+
+    def _check_received_vs_expected_inputs(
+        self, name: str, inputs: Dict[str, Any], expected_inputs: Tuple[str, str]
+    ) -> bool:
+        """
+        Check if all the inputs the component is expecting have been received.
+
+        Returns True if all the necessary inputs are received, False otherwise, and a message with the decision.
+        """
+        # Variadic nodes expect a single list regardless of how many incoming connections they have,
+        # but the length of the list should match the length of incoming connections.
+        if self.graph.nodes[name]["variadic_input"]:
+
+            # Variadic nodes need at least two values
+            if not inputs or len(inputs) < 2:
+                return False
+
+            if len(list(inputs.values())[0]) == len(expected_inputs):
+                logger.debug(
+                    "Component '%s' is ready to run: all connected inputs were received "
+                    "(expecting %s, received %s values).",
+                    name,
+                    len(expected_inputs),
+                    len(list(inputs.values())[0]),
+                )
+                return True
+        else:
+            # No input sockets are connected: this is an input node and should be always ready to run.
+            if not expected_inputs:
+                logger.debug("Component '%s' is ready to run: it's a starting node.", name)
+                return True
+
+            # Otherwise, just make sure there is one input key for each expected input key
+            _, expected_input_names = zip(*expected_inputs)
+            if set(expected_input_names).issubset(set(inputs.keys())):
+                logger.debug("Component '%s' is ready to run: all expected inputs were received.", name)
+                return True
+
+        return False
+
+    def _connections_to_wait_for(self, name: str):
+        """
+        Return all the component/socket pairs this component is waiting for.
+        """
+        # We should be wait on all edges except for the downstream ones, to support loops.
+        # This downstream check is enabled only for nodes taking more than one input
+        # (the "entrance" of the loop).
+        data_to_wait_for = [
+            (from_node, data["to_socket"].name)
+            for from_node, _, data in self.graph.in_edges(name, data=True)
+            # ... if there's a path in the graph leading back from the current node to the
+            # input node, # and only in case this node accepts multiple inputs.
+            if not (nx.has_path(self.graph, name, from_node) and self.graph.nodes[name]["variadic_input"])
+        ]
+        return data_to_wait_for
+
+    def _all_nodes_to_wait_for_run(self, nodes_to_wait_for: List[str]) -> bool:
+        """
+        Check if all the nodes this component is waiting for has run or not.
+
+        FIXME: checking for `visits>0` might not be enough for all loops.
+        """
+        return all(self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in nodes_to_wait_for)
+
+    def _skip_downstream_nodes(self, component: str, inputs_buffer: OrderedDict) -> OrderedDict:
+        """
+        When a component is skipped, put all downstream nodes in the inputs buffer too: the might be skipped too,
+        unless they are merge/variadic nodes. They will be evaluated later by the pipeline execution loop.
+        """
+        downstream_nodes = [e[1] for e in self.graph.out_edges(component)]
         for downstream_node in downstream_nodes:
             if not downstream_node in inputs_buffer:
                 inputs_buffer[downstream_node] = {}
-        # ... and never run this node
-        return (False, inputs_buffer)
+        return inputs_buffer
+
+    def _run_component(self, name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Once we're confident this component is ready to run, run it and collect the output.
+        """
+        self.graph.nodes[name]["visits"] += 1
+        instance = self.graph.nodes[name]["instance"]
+        try:
+            logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
+            logger.debug("   '%s' inputs: %s", name, inputs)
+
+            # If the node is variadic, unpack the input
+            if self.graph.nodes[name]["variadic_input"]:
+                inputs = list(inputs.values())[0]
+                output_dataclass = instance.run(*inputs)
+
+            # Otherwise pass the inputs as kwargs after adding the component's own defaults to them
+            else:
+                inputs = {**instance.defaults, **inputs}
+                output_dataclass = instance.run(**inputs)
+
+            # Unwrap the output
+            output = output_dataclass.__dict__
+            logger.debug("   '%s' outputs: %s\n", name, output)
+
+        except Exception as e:
+            raise PipelineRuntimeError(
+                f"{name} raised '{e.__class__.__name__}: {e}' \nInputs: {inputs}\n\n"
+                "See the stacktrace above for more information."
+            ) from e
+
+        return output
 
     def _route_output(
         self,
@@ -526,7 +540,7 @@ class Pipeline:
 
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
-            if is_decision_node_for_loop and not to_socket.name in node_results.keys():
+            if is_decision_node_for_loop and node_results[from_socket.name] is None:
                 if nx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(

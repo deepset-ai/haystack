@@ -95,7 +95,7 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
                 # Serialize the components
                 component_repr = {
                     "type": component_instance.__class__.__name__,
-                    "_init_parameters": component_instance._init_parameters,
+                    "init_parameters": component_instance._init_parameters,
                 }
                 pipeline_repr["components"][component_name] = component_repr
 
@@ -148,7 +148,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
                 )
             else:
                 component_class = classes[component_schema["type"]]
-                component_instance = component_class(**component_schema.get("_init_parameters", {}))
+                component_instance = component_class(**component_schema.get("init_parameters", {}))
                 component_instances[f"{pipeline_name}.{component_name}"] = component_instance
                 pipe.add_component(
                     name=component_name,
