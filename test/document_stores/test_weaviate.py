@@ -222,7 +222,7 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         ds.write_documents(documents)
         # This test verifies that deleting an object by its ID does not first require fetching all documents. This fixes
         # a bug, as described in https://github.com/deepset-ai/haystack/issues/2898
-        ds.get_all_documents = MagicMock(wraps=ds.get_all_documents)
+        ds.get_all_documents = mock.MagicMock(wraps=ds.get_all_documents)
 
         assert ds.get_document_count() == 9
 
