@@ -1,4 +1,4 @@
-from typing import Union, Optional, Callable
+from typing import Union, Optional, Callable, Any, Dict
 
 from haystack.agents import Agent
 from haystack.agents.answer_parser import AgentAnswerParser, BasicAnswerParser

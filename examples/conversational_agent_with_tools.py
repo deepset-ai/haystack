@@ -59,7 +59,7 @@ pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
 few_shot_agent = PromptTemplate("conversational-agent-with-tools", prompt_text=few_shot_prompt)
 conversation_history = Tool(
     name="conversation_history",
-    pipeline_or_node=lambda tool_input, **kwargs: agent.memory.load(),
+    pipeline_or_node=lambda tool_input: agent.memory.load(),  # type: ignore
     description="useful for when you need to remember what you've already discussed.",
     logging_color=Color.MAGENTA,
 )
