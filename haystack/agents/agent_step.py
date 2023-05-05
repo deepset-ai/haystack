@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Optional, Dict, Tuple, Any
+from typing import Optional, Dict, Any
 
 from haystack import Answer
 from haystack.errors import AgentError
@@ -68,19 +68,6 @@ class AgentStep:
             prompt_node_response=prompt_node_response[0],
             transcript=self.transcript,
         )
-
-    def extract_tool_name_and_tool_input(self, tool_pattern: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Parse the tool name and the tool input from the PromptNode response.
-        :param tool_pattern: The regex pattern to extract the tool name and the tool input from the PromptNode response.
-        :return: A tuple containing the tool name and the tool input.
-        """
-        tool_match = re.search(tool_pattern, self.prompt_node_response)
-        if tool_match:
-            tool_name = tool_match.group(1)
-            tool_input = tool_match.group(3)
-            return tool_name.strip('" []\n').strip(), tool_input.strip('" \n')
-        return None, None
 
     def final_answer(self, query: str) -> Dict[str, Any]:
         """
