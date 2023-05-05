@@ -1,4 +1,5 @@
 from typing import List, Dict, Union, Any, Tuple, Optional, Callable
+import inspect
 
 from pathlib import Path
 
@@ -53,25 +54,23 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(
-        self,
-        data: Union[Dict[str, Any], List[Tuple[str, Any]]],
-        parameters: Optional[Dict[str, Dict[str, Any]]] = None,
-        debug: bool = False,
-    ):
+    def run(self, data: Union[Dict[str, Any], List[Tuple[str, Any]]], debug: bool = False):
         """
         Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
         """
-        if not parameters:
-            parameters = {}
 
-        for node in self.graph.nodes:
-            if not node in parameters.keys():
-                parameters[node] = {"stores": self.stores}
-            else:
-                parameters[node] = {"stores": self.stores, **parameters[node]}
+        # Get all nodes in this pipelines instance
+        for node_name in self.graph.nodes:
+            node = self.graph.nodes[node_name]["instance"]
+            # Get node inputs
+            input_params = inspect.signature(node.run).parameters
+            # If the node needs a store adds the list of stores to its default inputs
+            if "stores" in input_params:
+                if not hasattr(node, "defaults"):
+                    setattr(node, "defaults", {})
+                node.defaults["stores"] = self.stores
 
-        super().run(data=data, parameters=parameters, debug=debug)
+        super().run(data=data, debug=debug)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
