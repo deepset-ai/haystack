@@ -97,7 +97,7 @@ pipeline.connect('component_a', 'component_b.output')
 # canals.errors.PipelineConnectError: 'component_b.output does not exist. Input connections of component_b are: intermediate_value (type str)
 ```
 
-# Save and Load
+## Save and Load
 
 Pipelines can be serialized to Python dictionaries, that can be then dumped to JSON or to any other suitable format, like YAML, TOML, HCL, etc. These pipelines can then be loaded back.
 
