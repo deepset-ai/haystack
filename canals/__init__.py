@@ -12,5 +12,5 @@ from canals.pipeline import (
     unmarshal_pipelines,
     _find_decorated_classes,
 )
-from canals.component import component, non_serializable_component
+from canals.component.component import component
 from canals.__about__ import __version__

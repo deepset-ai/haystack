@@ -48,27 +48,17 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
                 "first_addition": {
                     "type": "AddValue",
                     "init_parameters": {
-                        "add": 1,
-                        "input": "value",
-                        "output": "value"
-                    },
-                    "run_parameters": {
-                        "add": 6
+                        "add": 1
                     },
                 },
                 "double": {
                     "type": "Double",
-                    "init_parameters": {
-                        "input": "value",
-                        "output": "value"
-                    }
+                    "init_parameters": {}
                 },
                 "second_addition": {
                     "type": "AddValue",
                     "init_parameters": {
-                        "add": 1,
-                        "input": "value",
-                        "output": "value"
+                        "add": 1
                     },
                 },
                 # This is how instances of the same component are reused
@@ -79,9 +69,9 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
             # All the components that would be made with a
             # Pipeline.connect() call
             "connections": [
-                ("first_addition", "double"),
-                ("double", "second_addition"),
-                ("second_addition", "third_addition"),
+                ("first_addition", "double", "value/value"),
+                ("double", "second_addition", "value/value"),
+                ("second_addition", "third_addition", "value/value"),
             ],
             # All other Pipeline.__init__() parameters go here.
             "metadata": {"type": "test pipeline", "author": "me"},
@@ -92,26 +82,18 @@ This is how the resulting file will look like, assuming a JSON writer was chosen
                 "first_addition": {
                     # We can reference components from other pipelines too!
                     "refer_to": "pipe1.first_addition",
-                    # Additional parameters for this specific
-                    # component location only
-                    "run_parameters": {
-                        "add": 4
-                    }
                 },
                 "double": {
                     "type": "Double",
-                    "init_parameters": {
-                        "input": "value",
-                        "output": "value"
-                    }
+                    "init_parameters": {}
                 },
                 "second_addition": {
                     "refer_to": "pipe1.second_addition"
                 },
             },
             "connections": [
-                ("first_addition", "double"),
-                ("double", "second_addition"),
+                ("first_addition", "double", "value/value"),
+                ("double", "second_addition", "value/value"),
             ],
             "metadata": {"type": "another test pipeline", "author": "you"},
             "max_loops_allowed": 100,

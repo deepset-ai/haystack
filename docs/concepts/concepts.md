@@ -16,48 +16,31 @@ a data trasformation, writing something to a file or a database, and so on.
 
 To be recognized as a Component by Canals, a Python class needs to respect these rules:
 
-1. Must be decorated with the `@component` decorator
-2. Declare its inputs and outputs in the `__init__` function.
-3. Must have a `run()` method with a specific signature
-4. Must return output that Canals can interpret.
+1. Must be decorated with the `@component` decorator.
+3. Have a `run()` method with all the inputs and outputs typed.
+4. Must return a pre-defined dataclass called `Output`.
 
-For example, the following is a Component that sums up all its inputs:
+For example, the following is a Component that sums up two numbers:
 
 ```python
+from dataclasses import dataclass
 from canals import component
 
-# The mandatory 'component' decorator
 @component
-class Sum:
+class AddTwoValues:
     """
-    A Canals component that takes some input numbers and outputs their sum.
+    Adds the value of `add` to `value`. If not given, `add` defaults to 1.
     """
 
-    def __init__(
-        self,
-        input_names: str = ["first_number", "second_number"],
-        output_name: str = "value"
-    ):
-        # self.inputs and self.outputs are required by Canals
-        self.inputs = input_names
-        self.outputs = [output_name]
-        # self.init_parameters = {"input_names": input_names, "output_name": output_name}
+    @dataclass
+    class Output:
+        value: int
 
-    # The signature of the run() method must be exactly this.
-    def run(
-        self,
-        name: str,  # The name of the component in the pipeline
-        data: List[Tuple[str, Any]],    # The data from other components
-        parameters: Dict[str, Any],     # All the parameters of all the nodes in the pipeline
-    ):
-        # Let's sum the values of all the inputs we've got
-        for _, value in data:
-            value += add
+    def __init__(self, add: int = 1):
+        self.defaults = {"add": add}
 
-        # We declared one output in the __init__, so the output should be:
-        # - a dictionary with that key
-        # - the parameters dictionary we received in input.
-        return ({self.outputs[0]: value}, parameters)
+    def run(self, value: int, add: int) -> Output:
+        return AddTwoValues.Output(value=value + add)
 ```
 
 We will see the details of all of these requirements below.
@@ -69,10 +52,10 @@ sure all the connections are valid, and takes care of calling the component's `r
 
 Pipeline connects compoonents together through so-called connections, which are the edges of the pipeline graph.
 Pipeline is going to make sure that all the connections are valid based on the inputs and output that Components have
-declared (with their `self.inputs` and `self.outputs` attributes).
+declared.
 
-For example, if a component produces a value called `document`, among others, and another component expects an input
-called `document`, among others, Pipeline will be able to connect them. Otherwise, it will raise an exception.
+For example, if a component produces a value of type `List[Document]` and another component expects an input
+of type `List[Document]`, Pipeline will be able to connect them. Otherwise, it will raise an exception.
 
 This is a simple example of how a Pipeline is created:
 
@@ -81,42 +64,44 @@ This is a simple example of how a Pipeline is created:
 from canals import Pipeline, component
 
 # Some Canals components
-from my_components import Sum, MultiplyBy
+from my_components import AddTwoValues, MultiplyTwoValues
 
-#
 pipeline = Pipeline()
 
 # Components can be initialized as standalone objects.
 # These instances can be added to the Pipeline in several places.
-multiplication = MultiplyBy(input_name="value", output_name="value", multiply_by=2)
-addition = Sum(input_names=["value", "value"], output_name="value")
+multiplication = MultiplyBy(multiply_by=2)
+addition = AddTwoValues(add=1)
 
 # Components are added with a name and an component
-pipeline.add_component("double", multiplication, input_component=True)
-pipeline.add_component("first_addition", addition, input_component=True)
-pipeline.add_component("second_addition", addition)  # Component instances can be reused
+pipeline.add_component("double", multiplication)
+pipeline.add_component("add_one", addition)
+pipeline.add_component("add_one_again", addition)  # Component instances can be reused
+pipeline.add_component("add_two", AddTwoValues(add=2))
 
 # Connect the components together
-pipeline.connect(connect_from="double", connect_to="first_addition")
-pipeline.connect(connect_from="double", connect_to="second_addition")
-pipeline.connect(connect_from="first_addition", connect_to="second_addition")
+pipeline.connect(connect_from="double", connect_to="add_one")
+pipeline.connect(connect_from="add_one", connect_to="add_one_again")
+pipeline.connect(connect_from="add_one_again", connect_to="add_two")
+
+# Pipeline can be drawn
+pipeline.draw("pipeline.jpg")
 
 # Pipelines are run by giving them the data that the input nodes expect.
-results = pipeline.run(data={"value": 1})
+results = pipeline.run(data={"double":{"value": 1}})
 
 print(results)
 
-# prints {"value": 5}
+# prints {"add_two": {"value": 6}}
 ```
 
 This is how the pipeline's graph looks like:
 
 ```mermaid
-graph TD
-I((input)) -- value --> B(first_addition)
-I((input)) -- value --> A(double)
-A -- value --> B
-A -- value --> C
-B -- value --> C(second addition)
-C -- value --> O((output))
+graph TD;
+double -- value -> value --> add_one
+add_one -- value -> value --> add_one_again
+add_one_again -- value -> value --> add_two
+IN([input]) -- value --> double
+add_two -- value --> OUT([output])
 ```

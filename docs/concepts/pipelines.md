@@ -1,12 +1,14 @@
 # Advanced Pipelines
 
-Canals aims to support pipelines of arbitrary complexity.
+Canals aims to support pipelines of (close to) arbitrary complexity.
 
 ## Validation
 
-Pipeline performs validation on the connection name level: when calling `Pipeline.connect()`, it uses the values of the components' `self.inputs` and `self.outputs` to make sure that the connection is possible.
+Pipeline performs validation on the connection type level: when calling `Pipeline.connect()`, it uses the values of the
+components' `run()` method signature and the `Output` dataclass (or equivalent dataclass returned by
+`self.output_type()`) to make sure that the connection is possible.
 
-Components are required, by contract, to explicitly define their inputs and outputs, and these values are used by the connect method to validate the connection, and by the run method to route values.
+On top of this, specific connections can be specified with the syntax `component_name.input_or_output_name`.
 
 For example, let's imagine we have two components with the following I/O declared:
 
@@ -14,63 +16,87 @@ For example, let's imagine we have two components with the following I/O declare
 @component
 class ComponentA:
 
-    def __init__(self):
-        self.inputs = ["input"]
-        self.outputs = ["intermediate_value"]
+    @dataclass
+    class Output:
+        intermediate_value: str
 
-    def run(self):
-        pass
+    def run(self, input_value: int) -> Output:
+        return ComponentA.output(intermediate_value="hello")
 
 @component
 class ComponentB:
 
-    def __init__(self):
-        self.inputs = ["intermediate_value"]
-        self.outputs = ["output"]
+    @dataclass
+    class Output:
+        output_value: List[int]
 
-    def run(self):
-        pass
+    def run(self, intermediate_value: str) -> Output:
+        return ComponentB.output(output_value=[1, 2, 3])
 ```
 
 This is the behavior of `Pipeline.connect()`:
 
 ```python
+pipeline.add_component('component_a', ComponentA())
+pipeline.add_component('component_b', ComponentB())
+
+# All of these succeeds
 pipeline.connect('component_a', 'component_b')
-# Succeeds: no output
-
-pipeline.connect('component_a', 'component_a')
-# Traceback (most recent call last):
-#   File "/home/me/projects/canals/example.py", line 29, in <module>
-#     pipeline.connect('component_a', 'component_a')
-#   File "/home/me/projects/canals/canals/pipeline/pipeline.py", line 224, in connect
-#     raise PipelineConnectError(
-# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'component_a' with 'component_a' with a connection named 'intermediate_value': their declared inputs and outputs do not match.
-# Upstream component 'component_a' declared these outputs:
-#  - intermediate_value (free)
-# Downstream component 'component_a' declared these inputs:
-#  - input (free)
-
-pipeline.connect('component_b', 'component_a')
-# Traceback (most recent call last):
-#   File "/home/me/projects/canals/example.py", line 29, in <module>
-#     pipeline.connect('component_b', 'component_a')
-#   File "/home/me/projects/canals/canals/pipeline/pipeline.py", line 224, in connect
-#     raise PipelineConnectError(
-# haystack.pipeline._utils.PipelineConnectError: Cannot connect 'component_b' with 'component_a' with a connection named 'output': their declared inputs and outputs do not match.
-# Upstream component 'component_b' declared these outputs:
-#  - output (free)
-# Downstream component 'component_a' declared these inputs:
-#  - input (free)
+pipeline.connect('component_a.intermediate_value', 'component_b')
+pipeline.connect('component_a', 'component_b.intermediate_value')
+pipeline.connect('component_a.intermediate_value', 'component_b.intermediate_value')
 ```
 
-This type of error reporting was found especially useful for components that declare a variable number and name of inputs and outputs depending on their initialization parameters (think of classifiers, for example).
+These, instead, fail:
 
-One shortcoming is that currently Pipeline "trusts" the components to respect their own declarations. So if a component states that it will output `intermediate_value`, but outputs something else once run, Pipeline will fail. We accept this failure as a "contract breach": the component should fix its behavior and Pipeline should not try to prevent such scenarios.
+```python
+pipeline.connect('component_a', 'component_a')
+# canals.errors.PipelineConnectError: Cannot connect 'component_a' with 'component_a': no matching connections available.
+# 'component_a':
+#  - intermediate_value (str)
+# 'component_a':
+#  - input_value (int, available)
 
+pipeline.connect('component_b', 'component_a')
+# canals.errors.PipelineConnectError: Cannot connect 'component_b' with 'component_a': no matching connections available.
+# 'component_b':
+#  - output_value (List)
+# 'component_a':
+#  - input_value (int, available)
+```
+
+In addition, components names are validated:
+
+```python
+pipeline.connect('component_a', 'component_c')
+# ValueError: Component named component_c not found in the pipeline.
+```
+
+Just like input and output names, when stated:
+
+```python
+pipeline.connect('component_a.input', 'component_b')
+# canals.errors.PipelineConnectError: 'component_a.input does not exist. Output connections of component_a are: intermediate_value (type str)
+
+pipeline.connect('component_a.output', 'component_b')
+# canals.errors.PipelineConnectError: 'component_a.output does not exist. Output connections of component_a are: intermediate_value (type str)
+
+pipeline.connect('component_a', 'component_b.input')
+# canals.errors.PipelineConnectError: 'component_b.input does not exist. Input connections of component_b are: intermediate_value (type str)
+
+pipeline.connect('component_a', 'component_b.output')
+# canals.errors.PipelineConnectError: 'component_b.output does not exist. Input connections of component_b are: intermediate_value (type str)
+```
 
 ## Topologies
 
-Canals supports a variety of different pipeline topologies. Check the pipeline's test suite for some examples:
-these are only representations of the graphs that those pipelines generate.
+Canals supports a variety of different pipeline topologies:
 
-TODO
+- Simple linear pipelines
+- Branching pipelines where all or only some branches are executed
+- Pipelines merging a variable number of inputs, depending on decisions taken upstream
+- Simple loops
+- Multiple entry components, either alternative or parallel
+- Multiple exit components, either alternative or parallel
+
+Check the pipeline's test suite for some examples: these are only representations of the graphs that those pipelines generate.
