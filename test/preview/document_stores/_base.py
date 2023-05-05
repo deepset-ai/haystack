@@ -1,4 +1,4 @@
-from math import inf
+from typing import List
 
 import pytest
 import numpy as np
@@ -59,6 +59,16 @@ class DocumentStoreBaseTests:
             )
         return documents
 
+    def contains_same_docs(self, first_list: List[Document], second_list: List[Document]) -> bool:
+        """
+        Utility to compare two lists of documents for equality regardless of the order od the documents.
+        """
+        return (
+            first_list > 0
+            and second_list > 0
+            and first_list.sort(key=lambda d: d.id) == second_list.sort(key=lambda d: d.id)
+        )
+
     def test_count_empty(self, docstore):
         assert docstore.count_documents() == 0
 
@@ -81,26 +91,34 @@ class DocumentStoreBaseTests:
     def test_filter_simple_metadata_value(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": "100"})
-        assert len(result) == 3
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+
+    def test_filter_simple_list_single_element(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"page": ["100"]})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     def test_filter_document_content(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": "A Foo Document 1"})
-        assert len(result) > 0
-        assert all(doc.content == "A Foo Document 1" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.content == "A Foo Document 1"])
 
     def test_filter_document_type(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content_type": "table"})
-        assert len(result) > 0
-        assert all(doc.content_type == "table" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.content_type == "table"])
+
+    def test_filter_simple_list_one_value(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"page": ["100"]})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100"]])
 
     def test_filter_simple_list(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"page": ["100"]})
-        assert all(doc.metadata["page"] == "100" for doc in result)
         result = docstore.filter_documents(filters={"page": ["100", "123"]})
-        assert all(doc.metadata["page"] in ["100", "123"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
+        )
 
     def test_incorrect_filter_name(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -121,91 +139,140 @@ class DocumentStoreBaseTests:
         self.direct_write(docstore, filterable_docs)
         with pytest.raises(StoreError, match="malformed"):
             docstore.filter_documents(filters={"number": {"page": "100"}})
+
+    def test_deeper_incorrect_filter_nesting(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
         with pytest.raises(StoreError, match="malformed"):
             docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
 
     def test_eq_filter_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
-        assert all(doc.metadata["page"] == "100" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     def test_eq_filter_implicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": "100"})
-        assert all(doc.metadata["page"] == "100" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     def test_eq_filter_table(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": pd.DataFrame([1])})
-        assert len(result) > 0
-        assert all(doc.content.equals(pd.DataFrame([1])) for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.content.equals(pd.DataFrame([1]))]
+        )
 
     def test_eq_filter_tensor(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         embedding = np.zeros([768, 1]).astype(np.float32)
         result = docstore.filter_documents(filters={"embedding": embedding})
-        assert len(result) > 0
-        assert all(np.array_equal(embedding, doc.embedding) for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if np.array_equal(embedding, doc.embedding)]
+        )
 
-    def test_in_filter(self, docstore, filterable_docs):
+    def test_deeper_incorrect_filter_nesting(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        with pytest.raises(ValueError, match="malformed"):
+            docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
+
+    def test_eq_filter_explicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"page": {"$eq": "100"}})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+
+    def test_eq_filter_implicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"page": "100"})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
+
+    def test_in_filter_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$in": ["100", "123", "n.a."]}})
-        assert all(doc.metadata["page"] in ["100", "123"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
+        )
+
+    def test_in_filter_implicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100", "123", "n.a."]})
-        assert all(doc.metadata["page"] in ["100", "123"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("page") in ["100", "123"]]
+        )
 
     def test_in_filter_table(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"$in": {"content": [pd.DataFrame([1]), pd.DataFrame([2])]}})
-        assert len(result) > 0
-        assert all(doc.content.equals(pd.DataFrame([1])) or doc.content.equals(pd.DataFrame([2])) for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if doc.content.equals(pd.DataFrame([1])) or doc.content.equals(pd.DataFrame([2]))
+            ],
+        )
 
     def test_in_filter_tensor(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         embedding_zero = np.zeros([768, 1]).astype(np.float32)
         embedding_one = np.ones([768, 1]).astype(np.float32)
         result = docstore.filter_documents(filters={"$in": {"embedding": [embedding_zero, embedding_one]}})
-        assert len(result) > 0
-        assert all(
-            np.array_equal(embedding_zero, doc.embedding) or np.array_equal(embedding_one, doc.embedding)
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if np.array_equal(embedding_zero, doc.embedding) or np.array_equal(embedding_one, doc.embedding)
+            ],
         )
 
     def test_ne_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$ne": "100"}})
-        assert all(doc.metadata.get("page", None) != "100" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") != "100"])
 
     def test_ne_filter_table(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": {"$ne": pd.DataFrame([1])}})
-        assert len(result) > 0
-        assert all(
-            not isinstance(doc.content, pd.DataFrame) or not doc.content.equals(pd.DataFrame([1])) for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if not isinstance(doc.content, pd.DataFrame) or not doc.content.equals(pd.DataFrame([1]))
+            ],
         )
 
     def test_ne_filter_tensor(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         embedding = np.zeros([768, 1]).astype(np.float32)
         result = docstore.filter_documents(filters={"embedding": {"$ne": embedding}})
-        assert len(result) > 0
-        assert all(
-            not isinstance(doc.content, np.ndarray) or not np.array_equal(embedding, doc.embedding) for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if not isinstance(doc.content, np.ndarray) or not np.array_equal(embedding, doc.embedding)
+            ],
         )
 
     def test_nin_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"page": {"$nin": ["100", "123", "n.a."]}})
-        assert all(doc.metadata.get("page", None) not in ["100", "123"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("page", None) not in ["100", "123"]]
+        )
 
     def test_nin_filter_table(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": {"$nin": [pd.DataFrame([1]), pd.DataFrame([0])]}})
-        assert len(result) > 0
-        assert all(
-            not isinstance(doc.content, pd.DataFrame)
-            or (not doc.content.equals(pd.DataFrame([1])) and not doc.content.equals(pd.DataFrame([0])))
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if not isinstance(doc.content, pd.DataFrame)
+                or (not doc.content.equals(pd.DataFrame([1])) and not doc.content.equals(pd.DataFrame([0])))
+            ],
         )
 
     def test_nin_filter_tensor(self, docstore, filterable_docs):
@@ -213,19 +280,32 @@ class DocumentStoreBaseTests:
         embedding_zeros = np.zeros([768, 1]).astype(np.float32)
         embedding_ones = np.zeros([768, 1]).astype(np.float32)
         result = docstore.filter_documents(filters={"embedding": {"$nin": [embedding_ones, embedding_zeros]}})
-        assert len(result) > 0
-        assert all(
-            not isinstance(doc.content, np.ndarray)
-            or (
-                not np.array_equal(embedding_zeros, doc.embedding) and not np.array_equal(embedding_ones, doc.embedding)
-            )
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if not isinstance(doc.content, np.ndarray)
+                or (
+                    not np.array_equal(embedding_zeros, doc.embedding)
+                    and not np.array_equal(embedding_ones, doc.embedding)
+                )
+            ],
+        )
+
+    def test_nin_filter(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"page": {"$nin": ["100", "123", "n.a."]}})
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("page") not in ["100", "123"]]
         )
 
     def test_gt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
-        assert all(doc.metadata["number"] > 0 for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] > 0]
+        )
 
     def test_gt_filter_non_numeric(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -246,7 +326,10 @@ class DocumentStoreBaseTests:
     def test_gte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gte": -2.0}})
-        assert all(doc.metadata["number"] >= -2.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] >= -2.0],
+        )
 
     def test_gte_filter_non_numeric(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -267,7 +350,9 @@ class DocumentStoreBaseTests:
     def test_lt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
-        assert all(doc.metadata["number"] < 0.0 for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] < 0]
+        )
 
     def test_lt_filter_non_numeric(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -288,7 +373,10 @@ class DocumentStoreBaseTests:
     def test_lte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
-        assert all(doc.metadata["number"] <= 2.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] <= 2.0],
+        )
 
     def test_lte_filter_non_numeric(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -309,63 +397,199 @@ class DocumentStoreBaseTests:
     def test_filter_simple_explicit_and_multi_key_dict(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 2.0, "$gte": 0.0}}})
-        assert all(int(doc.metadata["number"]) <= 2.0 and int(doc.metadata["number"]) >= 0.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if int(doc.metadata["number"]) <= 2.0 and int(doc.metadata["number"]) >= 0.0
+            ],
+        )
 
     def test_filter_simple_explicit_and_sibling_dicts(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 2.0}, {"$gte": 0.0}]}})
-        assert all(int(doc.metadata["number"]) <= 2.0 and int(doc.metadata["number"]) >= 0.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if int(doc.metadata["number"]) <= 2.0 and int(doc.metadata["number"]) >= 0.0
+            ],
+        )
 
     def test_filter_simple_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 2.0, "$gte": 0.0}})
-        assert all(int(doc.metadata["number"]) >= 0.0 and int(doc.metadata["number"]) <= 2.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if int(doc.metadata["number"]) >= 0.0 and int(doc.metadata["number"]) <= 2.0
+            ],
+        )
 
     def test_filter_nested_explicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$and": {"page": {"$and": {"$lte": "123", "$gte": "100"}}, "name": {"$in": ["name_0", "name_1"]}}}
         result = docstore.filter_documents(filters=filters)
-        assert all(
-            int(doc.metadata["page"]) >= 100
-            and int(doc.metadata["page"]) <= 123
-            and doc.metadata["name"] in ["name_0", "name_1"]
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if int(doc.metadata["page"]) >= 100
+                and int(doc.metadata["page"]) <= 123
+                and doc.metadata["name"] in ["name_0", "name_1"]
+            ],
+        )
+
+    def test_filter_simple_explicit_and_with_multikey_dict(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 1, "$gte": -1}}})
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if "number" in doc.metadata.keys() and doc.metadata["number"] <= 1 and doc.metadata["number"] >= -1
+            ],
+        )
+
+    def test_filter_simple_explicit_and_with_list(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 1}, {"$gte": -1}]}})
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if "number" in doc.metadata.keys() and doc.metadata["number"] <= 1 and doc.metadata["number"] >= -1
+            ],
+        )
+
+    def test_filter_simple_implicit_and(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$lte": 1, "$gte": -1}})
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if "number" in doc.metadata.keys() and doc.metadata["number"] <= 1 and doc.metadata["number"] >= -1
+            ],
+        )
+
+    def test_filter_nested_explicit_and(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        filters = {"$and": {"number": {"$and": {"$lte": 1, "$gte": -1}}, "name": {"$in": ["name_0", "name_1"]}}}
+        result = docstore.filter_documents(filters=filters)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    "number" in doc.metadata.keys()
+                    and doc.metadata["number"] <= 1
+                    and doc.metadata["number"] >= -1
+                    and doc.metadata.get("name") in ["name_0", "name_1"]
+                )
+            ],
         )
 
     def test_filter_nested_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        filters_simplified = {"page": {"$lte": "123", "$gte": "100"}, "name": ["name_0", "name_1"]}
+        filters_simplified = {"number": {"$lte": 1, "$gte": -1}, "name": ["name_0", "name_1"]}
         result = docstore.filter_documents(filters=filters_simplified)
-        assert all(
-            int(doc.metadata["page"]) >= 100
-            and int(doc.metadata["page"]) <= 123
-            and doc.metadata["name"] in ["name_0", "name_1"]
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    "number" in doc.metadata.keys()
+                    and doc.metadata["number"] <= 1
+                    and doc.metadata["number"] >= -1
+                    and doc.metadata.get("name") in ["name_0", "name_1"]
+                )
+            ],
         )
 
     def test_filter_simple_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
-        assert all(doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    or doc.metadata.get("name") in ["name_0", "name_1"]
+                )
+            ],
+        )
 
     def test_filter_nested_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
-        assert all(doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    doc.metadata.get("name") in ["name_0", "name_1"]
+                    or ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                )
+            ],
+        )
 
-    def test_filter_nested_and_or(self, docstore, filterable_docs):
+    def test_filter_nested_and_or_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {
-            "page": {"$lte": "123", "$gte": "100"},
+            "$and": {"page": {"$eq": "123"}, "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
+        }
+        result = docstore.filter_documents(filters=filters_simplified)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    doc.metadata.get("page") in ["123"]
+                    and (
+                        doc.metadata.get("name") in ["name_0", "name_1"]
+                        or ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    )
+                )
+            ],
+        )
+
+    def test_filter_nested_and_or_implicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        filters_simplified = {
+            "page": {"$eq": "123"},
             "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}},
         }
         result = docstore.filter_documents(filters=filters_simplified)
-        assert all(
-            (int(doc.metadata["page"]) >= 100 and int(doc.metadata["page"]) <= 123)
-            and (doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0)
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    doc.metadata.get("page") in ["123"]
+                    and (
+                        doc.metadata.get("name") in ["name_0", "name_1"]
+                        or ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    )
+                )
+            ],
         )
 
     def test_filter_nested_or_and(self, docstore, filterable_docs):
@@ -377,22 +601,41 @@ class DocumentStoreBaseTests:
             }
         }
         result = docstore.filter_documents(filters=filters_simplified)
-        assert all(
-            doc.metadata.get("number", 2) < 1.0
-            or (doc.metadata["name"] in ["name_0", "name_1"] and doc.metadata["chapter"] != "intro")
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    or (
+                        doc.metadata.get("name") in ["name_0", "name_1"]
+                        or ("chapter" in doc.metadata.keys() and doc.metadata["chapter"] != "intro")
+                    )
+                )
+            ],
         )
 
     def test_filter_nested_multiple_identical_operators_same_level(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {
             "$or": [
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "page": {"$gte": "100"}}},
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "page": {"$lt": "123"}}},
+                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "page": "100"}},
+                {"$and": {"chapter": {"$in": ["intro", "abstract"]}, "page": "123"}},
             ]
         }
         result = docstore.filter_documents(filters=filters)
-        assert all(doc.metadata["name"] in ["name_0", "name_1"] for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    (doc.metadata.get("name") in ["name_0", "name_1"] and doc.metadata.get("page") == "100")
+                    or (doc.metadata.get("chapter") in ["intro", "abstract"] and doc.metadata.get("page") == "100")
+                )
+            ],
+        )
 
     def test_write(self, docstore):
         doc = Document(content="test doc")

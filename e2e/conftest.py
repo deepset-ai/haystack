@@ -1,15 +1,12 @@
 import os
 import uuid
 from contextlib import contextmanager
-import random
 from pathlib import Path
-
-import torch
-import numpy as np
 
 import pytest
 
 from haystack.schema import Document
+from haystack.modeling.utils import set_all_seeds
 from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
@@ -21,10 +18,7 @@ from haystack.document_stores import (
 )
 
 
-# Fix all random seeds that come to mind
-torch.manual_seed(0)
-np.random.seed(0)
-random.seed(0)
+set_all_seeds(0)
 
 
 @pytest.fixture

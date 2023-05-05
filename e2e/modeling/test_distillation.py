@@ -1,7 +1,7 @@
-from pathlib import Path
+import torch
+
 from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.processor import UnlabeledTextProcessor
-import torch
 
 
 def create_checkpoint(model):
