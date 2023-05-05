@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Dict, Union, List, Any
+from typing import Optional, Dict, Union, List, Any, Callable
 import logging
 
 import requests
@@ -12,7 +12,11 @@ from haystack.errors import (
     HuggingFaceInferenceUnauthorizedError,
     HuggingFaceInferenceError,
 )
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer import (
+    PromptModelInvocationLayer,
+    TokenStreamingHandler,
+    DefaultTokenStreamingHandler,
+)
 from haystack.utils.requests import request_with_retry
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         be found in your Hugging Face account [settings](https://huggingface.co/settings/tokens)
         """
         super().__init__(model_name_or_path)
+        self.prompt_preprocessors = {}
         valid_api_key = isinstance(api_key, str) and api_key
         if not valid_api_key:
             raise ValueError(
@@ -63,8 +68,13 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
-                "top_k",
                 "top_p",
+                "top_k",
+                "truncate",
+                "typical_p",
+                "best_of",
+                "watermark",
+                "details",
                 "temperature",
                 "repetition_penalty",
                 "max_new_tokens",
@@ -72,9 +82,22 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 "return_full_text",
                 "num_return_sequences",
                 "do_sample",
+                "stop",
+                "seed",
+                "stream",
             ]
             if key in kwargs
         }
+        self.register_prompt_preprocessor("oasst", lambda prompt: f"<|prompter|>{prompt}<|endoftext|><|assistant|>")
+
+    def register_prompt_preprocessor(self, model_family_id: str, prompt_handler: Callable[[str], str]):
+        self.prompt_preprocessors[model_family_id] = prompt_handler
+
+    def preprocess_prompt(self, prompt: str):
+        for key, prompt_preprocessor in self.prompt_preprocessors.items():
+            if key in self.model_name_or_path:
+                return prompt_preprocessor(prompt)
+        return prompt
 
     @property
     def url(self) -> str:
@@ -102,30 +125,45 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide prompt in kwargs."
             )
-        stop_words = kwargs.pop("stop_words", None)
-
+        prompt = self.preprocess_prompt(prompt)
+        stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
-        if "max_new_tokens" not in kwargs_with_defaults:
-            kwargs_with_defaults["max_new_tokens"] = self.max_length
+        if kwargs:
+            if "max_new_tokens" not in kwargs_with_defaults:
+                kwargs_with_defaults["max_new_tokens"] = self.max_length
+            kwargs_with_defaults.update(kwargs)
 
-        if "top_k" in kwargs:
-            top_k = kwargs.pop("top_k")
-            kwargs["num_return_sequences"] = top_k
+        # either stream is True (will use default handler) or stream_handler is provided
+        stream = (
+            kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
+        )
+
         kwargs_with_defaults.update(kwargs)
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
-        accepted_params = [
-            "top_p",
-            "top_k",
-            "temperature",
-            "repetition_penalty",
-            "max_new_tokens",
-            "max_time",
-            "return_full_text",
-            "num_return_sequences",
-            "do_sample",
-        ]
-        params = {key: kwargs_with_defaults.get(key) for key in accepted_params if key in kwargs_with_defaults}
-        generated_texts = self._post(data={"inputs": prompt, "parameters": params}, **kwargs)
+        params = {
+            "top_p": kwargs_with_defaults.get("top_p", None),
+            "top_k": kwargs_with_defaults.get("top_k", None),
+            "truncate": kwargs_with_defaults.get("truncate", None),
+            "typical_p": kwargs_with_defaults.get("typical_p", None),
+            "best_of": kwargs_with_defaults.get("best_of", None),
+            "watermark": kwargs_with_defaults.get("watermark", False),
+            "stop": kwargs_with_defaults.get("stop", stop_words),
+            "details": kwargs_with_defaults.get("details", True),
+            "temperature": kwargs_with_defaults.get("temperature", None),
+            "repetition_penalty": kwargs_with_defaults.get("repetition_penalty", None),
+            "max_new_tokens": kwargs_with_defaults.get("max_new_tokens", self.max_length),
+            "max_time": kwargs_with_defaults.get("max_time", None),
+            "return_full_text": kwargs_with_defaults.get("return_full_text", False),
+            "num_return_sequences": kwargs_with_defaults.get("num_return_sequences", None),
+            "do_sample": kwargs_with_defaults.get("do_sample", False),
+        }
+        response = self._post(data={"inputs": prompt, "parameters": params, "stream": stream}, stream=stream)
+        if not stream:
+            output = json.loads(response.text)
+            generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        else:
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            generated_texts = self._process_streaming_response(response, handler)
         if stop_words:
             for idx, _ in enumerate(generated_texts):
                 earliest_stop_word_idx = len(generated_texts[idx])
@@ -137,14 +175,40 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
 
         return generated_texts
 
+    def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
+        tokens: List[str] = []
+        for byte_payload in response.iter_lines():
+            # Skip line
+            if byte_payload == b"\n":
+                continue
+
+            payload = byte_payload.decode("utf-8")
+
+            # Event data
+            if payload.startswith("data:"):
+                # Decode payload
+                json_payload = json.loads(payload.lstrip("data:").rstrip("/n"))
+                # Parse payload
+                # {'details': None, 'generated_text': None,
+                # 'token': {'id': 4943, 'logprob': -1.0859375, 'special': False, 'text': 'Here'}}
+
+                token = self._extract_token(json_payload)
+                if token is not None:
+                    tokens.append(stream_handler(token, event_data=json_payload))
+        return ["".join(tokens)]  # return a list of strings just like non-streaming
+
+    def _extract_token(self, event_data: Dict[str, Any]):
+        return event_data["token"]["text"] if not event_data["token"]["special"] else None
+
     def _post(
         self,
         data: Dict[str, Any],
+        stream: bool = False,
         attempts: int = HF_RETRIES,
         status_codes: Optional[List[int]] = None,
         timeout: float = HF_TIMEOUT,
         **kwargs,
-    ) -> List[str]:
+    ) -> requests.Response:
         """
         Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST invocation.
         :param data: The data to be sent to the model.
@@ -153,7 +217,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param timeout: The timeout for the request.
         :return: The responses are being returned.
         """
-        generated_texts: List[str] = []
+        response: requests.Response
         if status_codes is None:
             status_codes = [429]
         try:
@@ -165,9 +229,8 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 headers=self.headers,
                 json=data,
                 timeout=timeout,
+                stream=stream,
             )
-            output = json.loads(response.text)
-            generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
         except requests.HTTPError as err:
             res = err.response
             if res.status_code == 429:
@@ -179,7 +242,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
                 status_code=res.status_code,
             )
-        return generated_texts
+        return response
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         # TODO: new implementation incoming for all layers, let's omit this for now
