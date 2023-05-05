@@ -142,13 +142,17 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         If needed, truncate the prompt text so that it fits within the limit.
         :param prompt: Prompt text to be sent to the generative model.
         """
+        if isinstance(prompt, List):
+            raise ValueError("Anthropic invocation layer doesn't support a dictionary as prompt")
+
         # Tokenizer can handle truncation by itself
         token_limit = self.max_tokens_limit - self.max_length
         self.tokenizer.enable_truncation(token_limit)
 
-        # Note: This will fail if the prompt is a List of Dicts.
         # The tokenizer we're using accepts either str or List[str],
         # if a List[str] is used we must also set is_pretokenized to True.
+        # We split at spaces because if we pass the string directly the encoded prompts
+        # contains strange characters in place of spaces.
         encoded_prompt: Encoding = self.tokenizer.encode(prompt.split(" "), is_pretokenized=True)
 
         # overflowing is the list of tokens that have been truncated

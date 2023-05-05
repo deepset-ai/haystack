@@ -162,6 +162,13 @@ def test_invoke_with_custom_stream_handler():
     assert mock_stream_handler.call_args_list == expected_call_list
 
 
+@pytest.mark.unit
+def test_ensure_token_limit_fails_if_called_with_list():
+    layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+    with pytest.raises(ValueError):
+        layer._ensure_token_limit(prompt=[])
+
+
 @pytest.mark.integration
 def test_ensure_token_limit_with_small_max_length(caplog):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key", max_length=10)
