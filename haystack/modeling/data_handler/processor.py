@@ -381,7 +381,7 @@ class SquadProcessor(Processor):
         doc_stride: int = 128,
         max_query_length: int = 64,
         proxies: Optional[dict] = None,
-        max_answers: int = 6,
+        max_answers: int = None,
         **kwargs,
     ):
         """
@@ -403,7 +403,10 @@ class SquadProcessor(Processor):
         :param max_query_length: Maximum length of the question (in number of subword tokens)
         :param proxies: proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
-        :param max_answers: number of answers to be converted. QA dev or train sets can contain multi-way annotations, which are converted to arrays of max_answer length
+        :param max_answers: Number of answers to be converted. QA dev or train sets can contain multi-way annotations,
+                            which are converted to arrays of max_answer length.
+                            If max_answers is not set, it will be set to the maximum number of answers for any question.
+                            If max_answers is less than the maximum number of answers, the answers will be truncated.
         :param kwargs: placeholder for passing generic parameters
         """
         self.ph_output_type = "per_token_squad"
@@ -468,6 +471,9 @@ class SquadProcessor(Processor):
 
         # Split documents into smaller passages to fit max_seq_len
         baskets = self._split_docs_into_passages(baskets)
+
+        # Determine max_answers if not set
+        self.max_answers = self.max_answers or max(len(basket.raw["answers"]) for basket in baskets)
 
         # Convert answers from string to token space, skip this step for inference
         if not return_baskets:
@@ -625,6 +631,12 @@ class SquadProcessor(Processor):
                 else:
                     # For all other cases we use start and end token indices, that are relative to the passage
                     for i, answer in enumerate(basket.raw["answers"]):
+                        if i >= self.max_answers:
+                            logger.warning(
+                                f"Found a sample with more answers ({len(basket.raw['answers'])}) than "
+                                f"max_answers ({self.max_answers}). These will be ignored."
+                            )
+                            break
                         # Calculate start and end relative to document
                         answer_len_c = len(answer["text"])
                         answer_start_c = answer["answer_start"]
