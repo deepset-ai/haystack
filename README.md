@@ -22,9 +22,15 @@ pip install canals
 
 gives you the bare minimum necessary to run Canals.
 
-To be able to draw pipelines, please make sure you have [graphviz](https://graphviz.org/download/) installed:
+To be able to draw pipelines, please make sure you have either an internet connection (to reach the Mermaid graph renderer at `https://mermaid.ink`) or [graphviz](https://graphviz.org/download/) installed and then install Canals as:
 
+### Mermaid
+```console
+pip install canals[mermaid]
+```
+
+### GraphViz
 ```console
 sudo apt install graphviz  # You may need `graphviz-dev` too: sudo apt install graphviz-dev
-pip install canals[draw]
+pip install canals[graphviz]
 ```
