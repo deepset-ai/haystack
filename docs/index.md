@@ -32,6 +32,6 @@ pip install canals[mermaid]
 
 ### GraphViz
 ```console
-sudo apt install graphviz  # You may need `graphviz-dev` too: sudo apt install graphviz-dev
+sudo apt install graphviz  # You may need `graphviz-dev` too
 pip install canals[graphviz]
 ```

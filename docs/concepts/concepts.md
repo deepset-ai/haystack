@@ -1,4 +1,4 @@
-# Components and Pipelines
+# Core concepts
 
 Canals is a **component orchestration engine**. It can be used to connect a group of smaller objects, called Components,
 that perform well-defined tasks into a network, called Pipeline, to achieve a larger goal.

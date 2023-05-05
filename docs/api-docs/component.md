@@ -1,5 +1,5 @@
 # Component
 
-::: canals.component
+::: canals.component.component
 
-::: canals.save_init_params
+::: canals.component.save_init_params

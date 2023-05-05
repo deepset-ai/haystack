@@ -33,13 +33,10 @@ extra_javascript:
 nav:
     - Get Started: index.md
     - Concepts:
-      - Components and Pipelines: concepts/concepts.md
-      - Creating Components: concepts/components.md
-      - Advanced Pipelines: concepts/pipelines.md
-      - Parameters: concepts/parameters.md
-      - Save and Load Your Pipelines: concepts/save-load.md
+      - Core Concepts: concepts/concepts.md
+      - Components: concepts/components.md
+      - Pipelines: concepts/pipelines.md
     - API Docs:
-      - Canals: api-docs/top-level.md
-      - Component: api-docs/component.md
       - Pipeline: api-docs/pipeline.md
+      - Component: api-docs/component.md
       - Draw: api-docs/draw.md

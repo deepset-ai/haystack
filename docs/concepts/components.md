@@ -1,6 +1,8 @@
-# Creating Components
+# Components
 
 In order to be recognized as components and work in a Pipeline, Components must follow the contract below.
+
+## Requirements
 
 ### `@component` decorator
 
