@@ -3,10 +3,11 @@ from typing import List, Union, Dict, Any
 import os
 import numpy as np
 from inspect import getmembers, isclass, isfunction
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, ANY
 
 import pytest
 
+from haystack.document_stores.pinecone import pinecone
 from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.schema import Document
 from haystack.errors import FilterError, PineconeDocumentStoreError
@@ -51,6 +52,17 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         """
         ds.write_documents(documents)
         return ds
+
+    @pytest.fixture
+    def mocked_ds(self):
+        class DSMock(PineconeDocumentStore):
+            pass
+
+        pinecone.init = MagicMock()
+        DSMock._create_index = MagicMock()
+        mocked_ds = DSMock(api_key="MOCK")
+
+        return mocked_ds
 
     @pytest.fixture
     def docs_all_formats(self) -> List[Union[Document, Dict[str, Any]]]:
@@ -515,3 +527,34 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         labels = ds.get_all_labels()
 
         assert labels[0].answer.document_ids == ["a0747b83aea0b60c4b114b15476dd32d"]
+
+    @pytest.mark.unit
+    def test_split_overlap_meta(self, mocked_ds):
+        """
+        Tests that we can upload Docs with a _split_overlap_meta field to Pinecone as a JSON string
+        and that the field is parsed correctly as dictionary when retrieved.
+        """
+        doc = Document(content="test", meta={"_split_overlap": [{"doc_id": "test_id", "range": (0, 10)}]}, id="test_id")
+        # Test writing as JSON string
+        mocked_ds.write_documents([doc])
+        call_args = mocked_ds.pinecone_indexes["document"].upsert.call_args.kwargs
+        assert list(call_args["vectors"])[0][2] == {
+            "content": "test",
+            "content_type": "text",
+            "_split_overlap": '[{"doc_id": "test_id", "range": [0, 10]}]',
+        }
+        # Test retrieving as dict
+        mocked_ds._get_all_document_ids = MagicMock(return_value=["test_id"])
+        mocked_ds.pinecone_indexes["document"].fetch.return_value = {
+            "vectors": {
+                "test_id": {
+                    "metadata": {
+                        "_split_overlap": '[{"doc_id": "test_id", "range": [0, 10]}]',
+                        "content": "test",
+                        "content_type": "text",
+                    }
+                }
+            }
+        }
+        retrieved_docs = mocked_ds.get_all_documents()
+        assert retrieved_docs[0].meta["_split_overlap"] == [{"doc_id": "test_id", "range": [0, 10]}]
