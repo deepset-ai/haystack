@@ -150,6 +150,27 @@ def text_answer():
 
 
 @pytest.fixture
+def text_answer_dict():
+    return {
+        "answer": "an answer",
+        "type": "extractive",
+        "score": 0.1,
+        "context": "abc",
+        "offsets_in_document": [{"start": 1, "end": 10}],
+        "offsets_in_context": [{"start": 3, "end": 5}],
+        "document_ids": ["123"],
+        "meta": {},
+    }
+
+
+@pytest.fixture
+def text_answer_json(samples_path):
+    with open(samples_path / "schema" / "text_answer.json") as f1:
+        data = json.load(f1)
+    return data
+
+
+@pytest.fixture
 def table_answer():
     return Answer(
         answer="text_2",
@@ -435,14 +456,15 @@ def test_table_label_to_dict(table_label, table_label_dict):
 
 
 @pytest.mark.unit
-def test_answer_to_json(text_answer):
-    a = text_answer
-    j = a.to_json()
-    assert type(j) == str
-    assert len(j) > 30
-    a_new = Answer.from_json(j)
-    assert type(a_new.offsets_in_document[0]) == Span
-    assert a_new == a
+def test_answer_to_json(text_answer, text_answer_json):
+    text_answer_to_json = json.loads(text_answer.to_json())
+    assert text_answer_to_json == text_answer_json
+
+
+@pytest.mark.unit
+def test_answer_from_json(text_answer, text_answer_json):
+    text_answer_from_json = Answer.from_json(text_answer_json)
+    assert text_answer_from_json == text_answer
 
 
 @pytest.mark.unit
