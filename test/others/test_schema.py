@@ -184,6 +184,43 @@ def table_answer_json(samples_path):
 
 
 @pytest.fixture
+def text_doc():
+    return Document(content="some text", content_type="text", id="doc1")
+
+
+@pytest.fixture
+def text_doc_dict():
+    return {
+        "content": "some text",
+        "content_type": "text",
+        "score": None,
+        "meta": {},
+        "id_hash_keys": ["content"],
+        "embedding": None,
+        "id": "doc_1",
+    }
+
+
+@pytest.fixture
+def text_doc_json(samples_path):
+    with open(samples_path / "schema" / "text_doc.json") as f1:
+        json_str = f1.read()
+    return json_str
+
+
+@pytest.fixture
+def text_doc_with_embedding():
+    return Document(content="some text", content_type="text", id="doc2", embedding=np.array([1.1, 2.2, 3.3, 4.4]))
+
+
+@pytest.fixture
+def text_doc_with_embedding_json(samples_path):
+    with open(samples_path / "schema" / "text_doc_emb.json") as f1:
+        json_str = f1.read()
+    return json_str
+
+
+@pytest.fixture
 def table_doc():
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -459,32 +496,25 @@ def test_table_document_to_dict(table_doc, table_doc_dict):
 
 
 @pytest.mark.unit
-def test_doc_to_json():
+def test_document_from_json(text_doc, text_doc_with_embedding, text_doc_json, text_doc_with_embedding_json):
     # With embedding
-    doc_with_embedding = Document(
-        content="some text",
-        content_type="text",
-        id_hash_keys=["meta"],
-        score=0.99988,
-        meta={"name": "doc1"},
-        embedding=np.random.rand(768).astype(np.float32),
-    )
-    doc_emb_json = doc_with_embedding.to_json()
-    doc_emb_from_json = Document.from_json(doc_emb_json)
-    assert doc_with_embedding == doc_emb_from_json
+    text_doc_emb_from_json = Document.from_json(text_doc_with_embedding_json)
+    assert text_doc_with_embedding == text_doc_emb_from_json
 
     # No embedding
-    doc_with_no_embedding = Document(
-        content="some text",
-        content_type="text",
-        score=0.99988,
-        meta={"name": "doc1"},
-        id_hash_keys=["meta"],
-        embedding=None,
-    )
-    doc_no_emb_json = doc_with_no_embedding.to_json()
-    doc_no_emb_from_json = Document.from_json(doc_no_emb_json)
-    assert doc_with_no_embedding == doc_no_emb_from_json
+    text_doc_no_emb_from_json = Document.from_json(text_doc_json)
+    assert text_doc == text_doc_no_emb_from_json
+
+
+@pytest.mark.unit
+def test_document_to_json(text_doc, text_doc_with_embedding, text_doc_json, text_doc_with_embedding_json):
+    # With embedding
+    text_doc_emb_to_json = json.loads(text_doc_with_embedding.to_json())
+    assert json.loads(text_doc_with_embedding_json) == text_doc_emb_to_json
+
+    # No embedding
+    text_doc_no_emb_to_json = json.loads(text_doc.to_json())
+    assert json.loads(text_doc_json) == text_doc_no_emb_to_json
 
 
 @pytest.mark.unit
