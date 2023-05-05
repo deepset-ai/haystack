@@ -22,7 +22,7 @@ jobs:
           python-version: '3.8'
 
       - name: Install Canals
-        run: pip install .[dev]
+        run: pip install .[mermaid,dev]
 
       - name: Mypy
         run: |
@@ -41,7 +41,7 @@ jobs:
           python-version: '3.8'
 
       - name: Install Canals
-        run: pip install .[dev]
+        run: pip install .[mermaid,dev]
 
       - name: Pylint
         run: pylint -ry -j 0 canals/
@@ -58,7 +58,7 @@ jobs:
           python-version: '3.8'
 
       - name: Install Canals
-        run: pip install .[dev]
+        run: pip install .[mermaid,dev]
 
       - name: Check status
         run: |
@@ -106,7 +106,7 @@ jobs:
           python-version: '3.8'
 
       - name: Install Canals
-        run: pip install .[dev]
+        run: pip install .[mermaid,dev]
 
       - name: Run
         run: hatch run cov

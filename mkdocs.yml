@@ -39,5 +39,7 @@ nav:
       - Parameters: concepts/parameters.md
       - Save and Load Your Pipelines: concepts/save-load.md
     - API Docs:
+      - Canals: api-docs/top-level.md
       - Component: api-docs/component.md
       - Pipeline: api-docs/pipeline.md
+      - Draw: api-docs/draw.md

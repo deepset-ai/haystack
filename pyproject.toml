@@ -30,8 +30,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-draw = [
+graphviz = [
   "pygraphviz", # Draw pipelines (requires the 'graphviz' system library)
+]
+mermaid = [
+  "requests", # Draw pipelines (requires internet connectivity)
 ]
 dev = [
   "hatch",
@@ -46,9 +49,7 @@ docs = [
   "mkdocs-material",
   "mkdocstrings[python]",
   "mkdocs-mermaid2-plugin"
-
 ]
-all = ["canals[draw,dev]"]
 
 
 [project.urls]
@@ -63,6 +64,7 @@ path = "canals/__about__.py"
 dependencies = [
   "pytest",
   "pytest-cov",
+  "requests",
 ]
 [tool.hatch.envs.default.scripts]
 cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=canals --cov=tests {args}"
@@ -93,7 +95,6 @@ max-line-length=120
 good-names="e"
 max-args=10
 disable = [
-  "unused-argument", # REMOVE ME
   "fixme",
   "line-too-long",
   "missing-class-docstring",

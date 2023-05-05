@@ -1,5 +1,5 @@
-from canals.pipeline.pipeline import (
-    Pipeline,
+from canals.pipeline.pipeline import Pipeline
+from canals.errors import (
     PipelineError,
     PipelineRuntimeError,
     PipelineValidationError,
