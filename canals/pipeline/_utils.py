@@ -23,7 +23,6 @@ class OutputSocket:
 class InputSocket:
     name: str
     type: type
-    has_default: bool
     variadic: bool
     taken_by: Optional[str] = None
 
@@ -49,9 +48,8 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
         name = run_signature.parameters[param].name
         variadic = run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
         annotation = run_signature.parameters[param].annotation
-        has_default = param in component.defaults.keys()
 
-        socket = InputSocket(name=name, type=annotation, has_default=has_default, variadic=variadic)
+        socket = InputSocket(name=name, type=annotation, variadic=variadic)
         input_sockets[socket.name] = socket
 
     return input_sockets
@@ -172,9 +170,11 @@ def validate_pipeline_input(  # pylint: disable=too-many-branches
     # Make sure all necessary sockets are connected
     valid_inputs = find_pipeline_inputs(graph)
     for node, sockets in valid_inputs.items():
-        if node in inputs_values.keys():
+        if node in inputs_values:
             for socket in sockets:
-                if not socket.has_default and not socket.name in inputs_values[node]:
+                node_instance = graph.nodes[node]["instance"]
+                input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
+                if not input_in_node_defaults and not socket.name in inputs_values[node]:
                     raise ValueError(f"Missing input: {node}.{socket.name}")
 
     # Make sure no inputs are given for connected sockets

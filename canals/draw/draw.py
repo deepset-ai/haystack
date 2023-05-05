@@ -82,7 +82,9 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
     graph.add_node("input")
     for in_node, in_sockets in find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
-            if not in_socket.has_default and not (
+            node_instance = graph.nodes[in_node]["instance"]
+            input_in_node_defaults = hasattr(node_instance, "defaults") and in_socket.name in node_instance.defaults
+            if not input_in_node_defaults and not (
                 graph.nodes[in_node]["variadic_input"] and not graph.in_edges(in_node)
             ):
                 graph.add_edge("input", in_node, label=in_socket.name)
