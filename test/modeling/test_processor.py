@@ -296,3 +296,28 @@ def test_dataset_from_dicts_qa_labelconversion(samples_path, caplog=None):
                         12,
                         12,
                     ], f"Processing labels for {model} has changed."
+
+
+def test_dataset_from_dicts_auto_determine_max_answers(samples_path, caplog=None):
+    """
+    Squadprocessor should determine the number of answers for the pytorch dataset by the maximum of the data.
+    In the case of vanilla.json, there is only one question with two answers. Therefore, it should be two.
+    """
+    model = "deepset/roberta-base-squad2"
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
+    processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
+    dicts = processor.file_to_dicts(samples_path / "qa" / "vanilla.json")
+    dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts, indices=[1])
+    assert len(dataset[0][tensor_names.index("labels")]) == 2
+
+
+def test_dataset_from_dicts_truncate_max_answers(samples_path, caplog=None):
+    """
+    Test that it is possible to manually set the number of answers, truncating the answers in the data.
+    """
+    model = "deepset/roberta-base-squad2"
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
+    processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None, max_answers=1)
+    dicts = processor.file_to_dicts(samples_path / "qa" / "vanilla.json")
+    dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts, indices=[1])
+    assert len(dataset[0][tensor_names.index("labels")]) == 1
