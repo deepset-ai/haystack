@@ -84,7 +84,9 @@ dependencies = [
   "canals",
 
   # Agent events
-  "events"
+  "events",
+
+  "requests-cache<1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -215,7 +217,6 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
-  "requests-cache<1.0.0",
 ]
 
 formatting = [
