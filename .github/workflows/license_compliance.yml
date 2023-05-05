@@ -19,10 +19,11 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.10'
 
     - name: Get explicit and transitive dependencies
       run: |
+        pip install -U pip
         pip install .
         pip freeze > ${{ env.REQUIREMENTS_FILE }}
 
@@ -56,10 +57,11 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.10'
 
     - name: Get explicit and transitive dependencies
       run: |
+        pip install -U pip
         pip install .[all]
         pip freeze > ${{ env.REQUIREMENTS_FILE }}
 
@@ -70,7 +72,7 @@ jobs:
         github-token: ${{ secrets.GH_ACCESS_TOKEN }}
         requirements: ${{ env.REQUIREMENTS_FILE }}
         fail: 'Copyleft,Other,Error'
-        # Allow incompatible licenses coming from optional dependencies.
+        # We allow incompatible licenses when they come from optional dependencies.
         #
         # Special cases:
         # - pyzmq is flagged because dual-licensed, but we assume using BSD
