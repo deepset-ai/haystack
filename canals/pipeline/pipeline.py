@@ -1,14 +1,15 @@
 from typing import Optional, Any, Dict, List, Tuple, Literal
 
-from pathlib import Path
+import datetime
 import logging
+from pathlib import Path
 from copy import deepcopy
 from collections import OrderedDict
 
 import networkx as nx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
-from canals.pipeline.draw import draw
+from canals.draw import draw, RenderingEngines
 from canals.pipeline._utils import (
     InputSocket,
     OutputSocket,
@@ -47,6 +48,7 @@ class Pipeline:
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = nx.MultiDiGraph()
+        self.debug: Dict[int, Dict[str, Any]] = {}
 
     def add_component(self, name: str, instance: Any) -> None:
         """
@@ -69,6 +71,10 @@ class Pipeline:
         # Component names are unique
         if name in self.graph.nodes:
             raise ValueError(f"A component named '{name}' already exists in this pipeline: choose another name.")
+
+        # Components can't be named `_debug`
+        if name == "_debug":
+            raise ValueError("'_debug' is a reserved name for debug output. Choose another name.")
 
         # Component instances must be components
         if not hasattr(instance, "__canals_component__"):
@@ -204,19 +210,21 @@ class Pipeline:
         except KeyError as exc:
             raise ValueError(f"Component named {name} not found in the pipeline.") from exc
 
-    def draw(self, path: Path, engine: Literal["graphviz", "mermaid"] = "mermaid") -> None:
+    def draw(self, path: Path, engine: RenderingEngines = "mermaid-img") -> None:
         """
         Draws the pipeline. Requires either `graphviz` as a system dependency, or an internet connection for Mermaid.
         Run `pip install canals[graphviz]` or `pip install canals[mermaid]` to install missing dependencies.
 
         Args:
             path: where to save the diagram.
+            engine: which format to save the graph as. Accepts 'graphviz', 'mermaid-text', 'mermaid-img'.
+                Default is 'mermaid-img'.
 
         Returns:
             None
 
         Raises:
-            ImportError: if `engine='graphviz'` pygraphviz is not installed.
+            ImportError: if `engine='graphviz'` and `pygraphviz` is not installed.
             HTTPConnectionError: (and similar) if the internet connection is down or other connection issues.
         """
         draw(graph=deepcopy(self.graph), path=path, engine=engine)
@@ -233,7 +241,7 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def run(self, data: Dict[str, Dict[str, Any]], debug: bool = True) -> Dict[str, Any]:
         """
         Runs the pipeline.
 
@@ -282,18 +290,24 @@ class Pipeline:
 
         logger.info("Pipeline execution started.")
         inputs_buffer = OrderedDict(data)
-        pipeline_results = {}
+        pipeline_output: Dict[str, Dict[str, Any]] = {}
+
+        if debug:
+            logger.info("Debug mode ON.")
+            self.debug = {}
 
         # *** PIPELINE EXECUTION LOOP ***
         # We select the nodes to run by popping them in FIFO order from the inputs buffer.
-        current_step = 0
+        step = 0
         while inputs_buffer:
-            current_step += 1
-            logger.debug(
-                "> Queue at step %s: %s",
-                current_step,
-                {key: list(value.keys()) for key, value in inputs_buffer.items()},
-            )
+            step += 1
+            if debug:
+                self.debug[step] = {
+                    "time": datetime.datetime.now(),
+                    "inputs_buffer": list(inputs_buffer.items()),
+                    "pipeline_output": pipeline_output,
+                }
+            logger.debug("> Queue at step %s: %s", step, {k: list(v.keys()) for k, v in inputs_buffer.items()})
 
             component, inputs = inputs_buffer.popitem(last=False)  # FIFO
 
@@ -323,14 +337,22 @@ class Pipeline:
             # The node run successfully. Let's store or distribute the output it produced, if it's valid.
             if not self.graph.out_edges(component):
                 # Note: if a node outputs many times (like in loops), the output will be overwritten
-                pipeline_results[component] = output
+                pipeline_output[component] = output
             else:
                 inputs_buffer = self._route_output(
                     node_results=output, node_name=component, inputs_buffer=inputs_buffer
                 )
 
+        if debug:
+            self.debug[step + 1] = {
+                "time": datetime.datetime.now(),
+                "inputs_buffer": list(inputs_buffer.items()),
+                "pipeline_output": pipeline_output,
+            }
+            pipeline_output["_debug"] = self.debug  # type: ignore
+
         logger.info("Pipeline executed successfully.")
-        return pipeline_results
+        return pipeline_output
 
     def _clear_visits_count(self):
         """
