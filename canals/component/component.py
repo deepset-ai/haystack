@@ -12,7 +12,7 @@ def component(class_):
     """
     Marks a class as a component. Any class decorated with `@component` can be used by a Pipeline.
 
-    All components MUST follow the contract below. This docstring is the source of truth for components contract.
+    All components must follow the contract below. This docstring is the source of truth for components contract.
 
     ```python
     def __init__(self, [... components init parameters ...]):
@@ -32,7 +32,7 @@ def component(class_):
         These values will be given to the `__init__` method of a new instance when the pipeline is loaded.
         Note that by default the `@component` decorator saves the arguments automatically.
         However, if a component sets their own `init_parameters` manually in `__init__()`, that will be used instead.
-        NOTE: all of the values contained here MUST BE JSON SERIALIZABLE. Serialize them manually if needed.
+        Note: all of the values contained here **must be JSON serializable**. Serialize them manually if needed.
 
     Components should take only "basic" Python types as parameters of their `__init__` function, or iterables and
     dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
@@ -68,7 +68,7 @@ def component(class_):
     Some components may need more dynamic output: for example, your component accepts a list of file extensions at
     init time and wants to have one output field for each of those. For these scenarios, refer to `self.output_type()`.
 
-    Every component should define EITHER `Output` or `self.output_types`.
+    Every component should define **either** `Output` or `self.output_types`.
 
     ```
     def output_types(self) -> dataclass:
@@ -84,7 +84,7 @@ def component(class_):
 
     If the output is static, normally the `Output` dataclass is preferred, as it provides autocompletion for the users.
 
-    Every component should define EITHER `Output` or `self.output_types`.
+    Every component should define **either** `Output` or `self.output_types`.
 
     ```
     def run(self, <parameters, typed>) -> Output:
@@ -99,15 +99,15 @@ def component(class_):
     - all the input values coming from "upstream" components connected to it,
     - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
 
-    All parameters of `run()` MUST BE TYPED. The types are used by `Pipeline.connect()` to make sure the two components
-    agree on the type being passed, to try ensure the connection will be successful. Defaults are allowed, however
-    `Optional`, `Union` and similar "generic" types are not, just as for the outputs.
+    All parameters of `run()` **must be typed**. The types are used by `Pipeline.connect()` to make sure the two
+    components agree on the type being passed, to try ensure the connection will be successful.
+    Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not, just as for the outputs.
 
     `run()` must return a single instance of the dataclass declared through either `Output` or `self.output_types()`.
 
     A variadic `run()` method is allowed if it respects the following rules:
 
-    - It can take EITHER regular parameters, or a single variadic positional (`*args`), NOT BOTH.
+    - It can take **either** regular parameters, or a single variadic positional (`*args`), NOT BOTH.
     - `**kwargs` are not supported
     - The variadic `*args` must be typed, for example `*args: int` if the component accepts any number of integers.
 

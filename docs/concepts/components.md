@@ -8,7 +8,7 @@ In order to be recognized as components and work in a Pipeline, Components must 
 
 All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
 
-### `__init__`
+### `__init__()`
 
 ```python
 def __init__(self, [... components init parameters ...]):
@@ -28,7 +28,7 @@ Components may have an `__init__` method where they define:
     These values will be given to the `__init__` method of a new instance when the pipeline is loaded.
     Note that by default the `@component` decorator saves the arguments automatically.
     However, if a component sets their own `init_parameters` manually in `__init__()`, that will be used instead.
-    NOTE: all of the values contained here MUST BE JSON SERIALIZABLE. Serialize them manually if needed.
+    Note: all of the values contained here **must be JSON serializable**. Serialize them manually if needed.
 
 Components should take only "basic" Python types as parameters of their `__init__` function, or iterables and
 dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
@@ -41,7 +41,7 @@ validation of the pipeline. If a component has some heavy state to initialize (m
 the `warm_up()` method.
 
 
-### `warm_up`
+### `warm_up()`
 
 ```python
 def warm_up(self):
@@ -59,7 +59,7 @@ because Pipeline will not keep track of which components it called `warm_up()` o
 class Output:
     <expected output fields>
 ```
-Semi-mandatory method (either this or `self.output_type()`).
+Semi-mandatory method (either this or `self.output_types(self)`).
 
 This inner class defines how the output of this component looks like. For example, if the node is producing
 a list of Documents, the fields of the class should be `documents: List[Document]`
@@ -70,13 +70,13 @@ proper validation of the connections, which rely on the type of these fields.
 Some components may need more dynamic output: for example, your component accepts a list of file extensions at
 init time and wants to have one output field for each of those. For these scenarios, refer to `self.output_type()`.
 
-Every component should define EITHER `Output` or `self.output_type()`.
+Every component should define **either** `Output` or `self.output_types`.
 
 
-### `output_type`
+### `output_types()`
 
 ```python
-def output_type(self) -> dataclass:
+def output_types(self) -> dataclass:
 ```
 Semi-mandatory method (either this or `class Output`).
 
@@ -89,10 +89,10 @@ proper validation of the connections, which rely on the type of these fields.
 
 If the output is static, normally the `Output` dataclass is preferred, as it provides autocompletion for the users.
 
-Every component should define EITHER `Output` or `self.output_type()`.
+Every component should define **either** `Output` or `self.output_types`.
 
 
-### `run`
+### `run()`
 
 ```python
 def run(self, <parameters, typed>) -> Output:
@@ -107,17 +107,22 @@ When the component should run, Pipeline will call this method with:
 - all the input values coming from "upstream" components connected to it,
 - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
 
-All parameters of `run()` MUST BE TYPED. The types are used by `Pipeline.connect()` to make sure the two components
-agree on the type being passed, to try ensure the connection will be successful. Defaults are allowed, however
-`Optional`, `Union` and similar "generic" types are not, just as for the outputs.
+All parameters of `run()` **must be typed**. The types are used by `Pipeline.connect()` to make sure the two
+components agree on the type being passed, to try ensure the connection will be successful.
+Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not, just as for the outputs.
 
 `run()` must return a single instance of the dataclass declared through either `Output` or `self.output_types()`.
 
 A variadic `run()` method is allowed if it respects the following rules:
 
-- It can take EITHER regular parameters, or a single variadic positional (`*args`), NOT BOTH.
+- It can take **either** regular parameters, or a single variadic positional (`*args`), NOT BOTH.
 - `**kwargs` are not supported
 - The variadic `*args` must be typed, for example `*args: int` if the component accepts any number of integers.
+
+Args:
+    class_: the class that Canals should use as a component.
+    serializable: whether to check, at init time, if the component can be saved with
+    `save_pipelines()`.
 
 
 ## Example components
