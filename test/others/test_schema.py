@@ -7,45 +7,65 @@ import pandas as pd
 
 
 @pytest.fixture
-def text_labels():
-    return [
-        Label(
-            query="some",
-            answer=Answer(
-                answer="an answer",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[Span(start=1, end=3)],
-            ),
-            document=Document(content="some text", content_type="text"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
+def text_label():
+    return Label(
+        query="some",
+        answer=Answer(
+            answer="an answer",
+            type="extractive",
+            score=0.1,
+            document_ids=["doc_1"],
+            offsets_in_document=[Span(start=1, end=3)],
         ),
-        Label(
-            query="some",
-            answer=Answer(answer="annother answer", type="extractive", score=0.1, document_ids=["123"]),
-            document=Document(content="some text", content_type="text"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
-        ),
-        Label(
-            query="some",
-            answer=Answer(
-                answer="an answer",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[Span(start=1, end=3)],
-            ),
-            document=Document(content="some text", content_type="text"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
-        ),
-    ]
+        document=Document(content="some text", content_type="text", id="doc_1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        id="text_label_1",
+    )
+
+
+@pytest.fixture
+def text_label_dict():
+    return {
+        "id": "text_label_1",
+        "query": "some",
+        "document": {
+            "id": "doc_1",
+            "content": "some text",
+            "content_type": "text",
+            "meta": {},
+            "id_hash_keys": ["content"],
+            "score": None,
+            "embedding": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "answer": {
+            "answer": "an answer",
+            "type": "extractive",
+            "score": 0.1,
+            "context": None,
+            "offsets_in_document": [{"start": 1, "end": 3}],
+            "offsets_in_context": None,
+            "document_ids": ["doc_1"],
+            "meta": {},
+        },
+        "pipeline_id": None,
+        "created_at": "2023-05-02 11:43:56",
+        "updated_at": None,
+        "meta": {},
+        "filters": None,
+    }
+
+
+@pytest.fixture
+def text_label_json(samples_path):
+    with open(samples_path / "schema" / "text_label.json") as f1:
+        data = json.load(f1)
+    return data
 
 
 @pytest.fixture
@@ -242,29 +262,73 @@ def test_no_answer_label():
 
 
 @pytest.mark.unit
-def test_equal_label(text_labels):
-    assert text_labels[2] == text_labels[0]
-    assert text_labels[1] != text_labels[0]
+def test_text_labels_with_identical_fields_are_equal(text_label):
+    text_label_copy = Label(
+        query="some",
+        answer=Answer(
+            answer="an answer",
+            type="extractive",
+            score=0.1,
+            document_ids=["doc_1"],
+            offsets_in_document=[Span(start=1, end=3)],
+        ),
+        document=Document(content="some text", content_type="text", id="doc_1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        id="text_label_1",
+    )
+    assert text_label == text_label_copy
 
 
 @pytest.mark.unit
-def test_label_to_json(text_labels):
-    text_label_json = text_labels[0].to_json()
+def test_text_labels_with_different_fields_are_not_equal(text_label):
+    text_label_different = Label(
+        query="some",
+        answer=Answer(
+            answer="different answer",
+            type="extractive",
+            score=0.1,
+            document_ids=["doc_1"],
+            offsets_in_document=[Span(start=5, end=15)],
+        ),
+        document=Document(content="some text", content_type="text", id="doc_1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        id="text_label_1",
+    )
+    assert text_label != text_label_different
+
+
+@pytest.mark.unit
+def test_label_from_json(text_label, text_label_json):
     text_label_from_json = Label.from_json(text_label_json)
-    assert text_label_from_json == text_labels[0]
-    assert text_label_from_json.answer.offsets_in_document[0].start == 1
+    assert text_label_from_json == text_label
 
 
 @pytest.mark.unit
-def test_label_to_dict(text_labels):
-    text_label_dict = text_labels[0].to_dict()
+def test_label_to_json(text_label, text_label_json):
+    text_label_to_json = json.loads(text_label.to_json())
+    assert text_label_to_json == text_label_json
+
+
+@pytest.mark.unit
+def test_text_label_from_dict(text_label, text_label_dict):
     text_label_from_dict = Label.from_dict(text_label_dict)
-    assert text_label_from_dict == text_labels[0]
-    assert text_label_from_dict.answer.offsets_in_document[0].start == 1
+    assert text_label_from_dict == text_label
 
 
 @pytest.mark.unit
-def test_labels_with_identical_fields_are_equal(table_label):
+def test_text_label_to_dict(text_label, text_label_dict):
+    text_label_to_dict = text_label.to_dict()
+    assert text_label_to_dict == text_label_dict
+
+
+@pytest.mark.unit
+def test_table_labels_with_identical_fields_are_equal(table_label):
     table_label_copy = Label(
         query="some",
         answer=Answer(
@@ -287,7 +351,7 @@ def test_labels_with_identical_fields_are_equal(table_label):
 
 
 @pytest.mark.unit
-def test_labels_with_different_fields_are_not_equal(table_label):
+def test_table_labels_with_different_fields_are_not_equal(table_label):
     table_label_different = Label(
         query="some",
         answer=Answer(
