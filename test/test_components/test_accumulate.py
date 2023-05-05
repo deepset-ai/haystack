@@ -1,13 +1,13 @@
-from typing import Any, Union, Callable, Optional
+from typing import Union, Callable, Optional
 import sys
 import builtins
 from importlib import import_module
 
 from dataclasses import dataclass
-from canals import name
+from canals import component
 
 
-@name
+@component
 class Accumulate:
     """
     Accumulates the value flowing through the connection into an internal attribute.
@@ -102,12 +102,12 @@ def test_accumulate_callable():
     assert component.state == -11
 
     assert component._init_parameters == {
-        "function": "test.components.test_accumulate.my_subtract",
+        "function": "test.test_components.test_accumulate.my_subtract",
     }
 
 
 def test_accumulate_string():
-    component = Accumulate(function="test.components.test_accumulate.my_subtract")
+    component = Accumulate(function="test.test_components.test_accumulate.my_subtract")
 
     results = component.run(value=10)
     assert results == Accumulate.Output(value=-10)
@@ -118,5 +118,5 @@ def test_accumulate_string():
     assert component.state == -11
 
     assert component._init_parameters == {
-        "function": "test.components.test_accumulate.my_subtract",
+        "function": "test.test_components.test_accumulate.my_subtract",
     }

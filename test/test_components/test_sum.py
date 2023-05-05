@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from canals import name
+from canals import component
 
 
-@name
+@component
 class Sum:
     """
     Sums the values of all the input connections together.

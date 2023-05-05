@@ -2,7 +2,7 @@ from typing import Any
 
 from dataclasses import make_dataclass
 
-from canals import name
+from canals import component
 
 
 class _MetaClass(type):
@@ -33,7 +33,7 @@ class _MetaClass(type):
         return obj
 
 
-@name
+@component
 class MergeLoop(metaclass=_MetaClass):
     """
     Takes two input components and returns the first one that is not None.

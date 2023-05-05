@@ -3,7 +3,7 @@ from pprint import pprint
 import logging
 
 from canals.pipeline import Pipeline
-from test.components import (
+from test.test_components import (
     Accumulate,
     AddFixedValue,
     Greet,

@@ -3,10 +3,10 @@ from typing import Optional
 from dataclasses import dataclass
 import pytest
 
-from canals import name
+from canals import component
 
 
-@name
+@component
 class Parity:
     """
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.

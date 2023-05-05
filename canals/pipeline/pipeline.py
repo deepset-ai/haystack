@@ -241,7 +241,7 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Dict[str, Any]], debug: bool = True) -> Dict[str, Any]:
+    def run(self, data: Dict[str, Dict[str, Any]], debug: bool = False) -> Dict[str, Any]:
         """
         Runs the pipeline.
 

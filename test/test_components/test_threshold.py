@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from canals import name
+from canals import component
 
 
-@name
+@component
 class Threshold:
     """
     Redirects the value, unchanged, along a different connection whether the value is above

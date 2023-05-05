@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.components import AddFixedValue, Subtract
+from test.test_components import AddFixedValue, Subtract
 
 import logging
 
