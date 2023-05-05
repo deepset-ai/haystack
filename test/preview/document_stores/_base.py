@@ -63,9 +63,10 @@ class DocumentStoreBaseTests:
         """
         Utility to compare two lists of documents for equality regardless of the order od the documents.
         """
+        print(first_list, second_list)
         return (
-            first_list > 0
-            and second_list > 0
+            len(first_list) > 0
+            and len(second_list) > 0
             and first_list.sort(key=lambda d: d.id) == second_list.sort(key=lambda d: d.id)
         )
 
@@ -101,7 +102,9 @@ class DocumentStoreBaseTests:
     def test_filter_document_content(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": "A Foo Document 1"})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.content == "A Foo Document 1"])
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.content_type == "text" and doc.content == "A Foo Document 1"]
+        )
 
     def test_filter_document_type(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -127,7 +130,7 @@ class DocumentStoreBaseTests:
 
     def test_incorrect_filter_type(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        with pytest.raises(StoreError, match="dictionaries or lists"):
+        with pytest.raises(ValueError, match="dictionaries or lists"):
             docstore.filter_documents(filters="something odd")
 
     def test_incorrect_filter_value(self, docstore, filterable_docs):
@@ -137,12 +140,12 @@ class DocumentStoreBaseTests:
 
     def test_incorrect_filter_nesting(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        with pytest.raises(StoreError, match="malformed"):
+        with pytest.raises(ValueError, match="malformed"):
             docstore.filter_documents(filters={"number": {"page": "100"}})
 
     def test_deeper_incorrect_filter_nesting(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        with pytest.raises(StoreError, match="malformed"):
+        with pytest.raises(ValueError, match="malformed"):
             docstore.filter_documents(filters={"number": {"page": {"chapter": "intro"}}})
 
     def test_eq_filter_explicit(self, docstore, filterable_docs):
@@ -159,7 +162,12 @@ class DocumentStoreBaseTests:
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"content": pd.DataFrame([1])})
         assert self.contains_same_docs(
-            result, [doc for doc in filterable_docs if doc.content.equals(pd.DataFrame([1]))]
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if isinstance(doc.content, pd.DataFrame) and doc.content.equals(pd.DataFrame([1]))
+            ],
         )
 
     def test_eq_filter_tensor(self, docstore, filterable_docs):

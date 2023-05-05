@@ -89,9 +89,9 @@ def _safe_gt(first: Any, second: Any) -> bool:
 
 def eq_operation(fields, field_name, value):
     """
-    Checks for equality between the document's metadata value and a fixed value.
+    Checks for equality between the document's field value value and a fixed value.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value: the fixed value to compare against
     :return: True if the values are equal, False otherwise
@@ -104,9 +104,9 @@ def eq_operation(fields, field_name, value):
 
 def in_operation(fields, field_name, value):
     """
-    Checks for whether the document's metadata value is present into the given list.
+    Checks for whether the document's field value value is present into the given list.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the document's value is included in the given list, False otherwise
@@ -122,9 +122,9 @@ def in_operation(fields, field_name, value):
 
 def ne_operation(fields, field_name, value):
     """
-    Checks for inequality between the document's metadata value and a fixed value.
+    Checks for inequality between the document's field value value and a fixed value.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the values are different, False otherwise
@@ -134,9 +134,9 @@ def ne_operation(fields, field_name, value):
 
 def nin_operation(fields, field_name, value):
     """
-    Checks whether the document's metadata value is absent from the given list.
+    Checks whether the document's field value value is absent from the given list.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the document's value is not included in the given list, False otherwise
@@ -146,9 +146,9 @@ def nin_operation(fields, field_name, value):
 
 def gt_operation(fields, field_name, value):
     """
-    Checks whether the document's metadata value is (strictly) larger than the given value.
+    Checks whether the document's field value value is (strictly) larger than the given value.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the document's value is strictly larger than the fixed value, False otherwise
@@ -160,9 +160,9 @@ def gt_operation(fields, field_name, value):
 
 def gte_operation(fields, field_name, value):
     """
-    Checks whether the document's metadata value is larger than or equal to the given value.
+    Checks whether the document's field value value is larger than or equal to the given value.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the document's value is larger than or equal to the fixed value, False otherwise
@@ -172,9 +172,9 @@ def gte_operation(fields, field_name, value):
 
 def lt_operation(fields, field_name, value):
     """
-    Checks whether the document's metadata value is (strictly) smaller than the given value.
+    Checks whether the document's field value value is (strictly) smaller than the given value.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the document's value is strictly smaller than the fixed value, False otherwise
@@ -186,9 +186,9 @@ def lt_operation(fields, field_name, value):
 
 def lte_operation(fields, field_name, value):
     """
-    Checks whether the document's metadata value is smaller than or equal to the given value.
+    Checks whether the document's field value value is smaller than or equal to the given value.
 
-    :param fields: all the document's metadata
+    :param fields: all the document's field value
     :param field_name: the field to test
     :param value; the fixed value to compare against
     :return: True if the document's value is smaller than or equal to the fixed value, False otherwise
@@ -245,7 +245,7 @@ def match(conditions: Any, document: Document, _current_key=None):
         # A comparison operator ($eq, $in, $gte, ...)
         if field_key in OPERATORS.keys():
             if not _current_key:
-                raise MemoryDocumentStoreFilterError(
+                raise ValueError(
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
                     "See the examples in the documentation."
                 )
@@ -262,11 +262,11 @@ def match(conditions: Any, document: Document, _current_key=None):
             return and_operation(conditions=_list_conditions(conditions), document=document, _current_key=_current_key)
         else:
             # The default operator for a {key: [value1, value2]} filter is $in
-            return in_operation(fields=document.metadata, field_name=_current_key, value=conditions)
+            return in_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
 
     if _current_key:
         # The default operator for a {key: value} filter is $eq
-        return eq_operation(fields=document.metadata, field_name=_current_key, value=conditions)
+        return eq_operation(fields=document.flatten(), field_name=_current_key, value=conditions)
 
     raise ValueError("Filters must be dictionaries or lists. See the examples in the documentation.")
 
