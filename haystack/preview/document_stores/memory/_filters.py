@@ -7,6 +7,10 @@ from haystack.preview.document_stores.errors import StoreError
 from haystack.preview.dataclasses import Document
 
 
+GT_TYPES = (int, float, np.number)
+IN_TYPES = (list, set, tuple)
+
+
 class MemoryDocumentStoreFilterError(StoreError):
     pass
 
@@ -69,9 +73,6 @@ def _safe_eq(first: Any, second: Any) -> bool:
     return first == second
 
 
-GT_TYPES = (int, float, np.number)
-
-
 def _safe_gt(first: Any, second: Any) -> bool:
     """
     Checks if first is bigger than second.
@@ -113,7 +114,7 @@ def in_operation(fields, field_name, value):
     if not field_name in fields:
         return False
 
-    if not isinstance(value, (list, set, tuple)):
+    if not isinstance(value, IN_TYPES):
         raise MemoryDocumentStoreFilterError("$in accepts only iterable values like lists, sets and tuples.")
 
     return any(_safe_eq(fields[field_name], v) for v in value)
@@ -128,7 +129,7 @@ def ne_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the values are different, False otherwise
     """
-    return not eq_operation(fields=fields, field_name=field_name, value=value)
+    return not eq_operation(fields, field_name, value)
 
 
 def nin_operation(fields, field_name, value):
@@ -140,7 +141,7 @@ def nin_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is not included in the given list, False otherwise
     """
-    return not in_operation(fields=fields, field_name=field_name, value=value)
+    return not in_operation(fields, field_name, value)
 
 
 def gt_operation(fields, field_name, value):
@@ -166,9 +167,7 @@ def gte_operation(fields, field_name, value):
     :param value; the fixed value to compare against
     :return: True if the document's value is larger than or equal to the fixed value, False otherwise
     """
-    return gt_operation(fields=fields, field_name=field_name, value=value) or eq_operation(
-        fields=fields, field_name=field_name, value=value
-    )
+    return gt_operation(fields, field_name, value) or eq_operation(fields, field_name, value)
 
 
 def lt_operation(fields, field_name, value):
@@ -250,7 +249,7 @@ def match(conditions: Any, document: Document, _current_key=None):
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
                     "See the examples in the documentation."
                 )
-            return OPERATORS[field_key](fields=flatten_doc(document), field_name=_current_key, value=field_value)
+            return OPERATORS[field_key](fields=document.flatten(), field_name=_current_key, value=field_value)
 
         # Otherwise fall back to the defaults
         conditions = _list_conditions(field_value)
@@ -270,17 +269,6 @@ def match(conditions: Any, document: Document, _current_key=None):
         return eq_operation(fields=document.metadata, field_name=_current_key, value=conditions)
 
     raise ValueError("Filters must be dictionaries or lists. See the examples in the documentation.")
-
-
-def flatten_doc(document: Document) -> Dict[str, Any]:
-    """
-    Returns a dictionary with all the fields of the document and the metadata on the same level.
-    This allows filtering by all document fields, not only the metadata.
-    """
-    dictionary = document.to_dict()
-    metadata = dictionary.pop("metadata", {})
-    dictionary = {**dictionary, **metadata}
-    return dictionary
 
 
 def _list_conditions(conditions: Any) -> List[Any]:

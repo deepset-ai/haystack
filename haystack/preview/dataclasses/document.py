@@ -108,3 +108,13 @@ class Document:
     def from_json(cls, data, **json_kwargs):
         dictionary = json.loads(data, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
+
+    def flatten(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary with all the fields of the document and the metadata on the same level.
+        This allows filtering by all document fields, not only the metadata.
+        """
+        dictionary = self.to_dict()
+        metadata = dictionary.pop("metadata", {})
+        dictionary = {**dictionary, **metadata}
+        return dictionary
