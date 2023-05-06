@@ -163,7 +163,9 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
         else:
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            generated_texts = self._process_streaming_response(response, handler, stop_words)
+            generated_texts = self._process_streaming_response(
+                response=response, stream_handler=handler, stop_words=stop_words
+            )
         return generated_texts
 
     def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler, stop_words=None):
