@@ -48,7 +48,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         be found in your Hugging Face account [settings](https://huggingface.co/settings/tokens)
         """
         super().__init__(model_name_or_path)
-        self.prompt_preprocessors = {}
+        self.prompt_preprocessors: Dict[str, Callable] = {}
         valid_api_key = isinstance(api_key, str) and api_key
         if not valid_api_key:
             raise ValueError(
@@ -82,9 +82,9 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 "return_full_text",
                 "num_return_sequences",
                 "do_sample",
-                "stop",
                 "seed",
                 "stream",
+                "stream_handler",
             ]
             if key in kwargs
         }
@@ -163,19 +163,10 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
         else:
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            generated_texts = self._process_streaming_response(response, handler)
-        if stop_words:
-            for idx, _ in enumerate(generated_texts):
-                earliest_stop_word_idx = len(generated_texts[idx])
-                for stop_word in stop_words:
-                    stop_word_idx = generated_texts[idx].find(stop_word)
-                    if stop_word_idx != -1:
-                        earliest_stop_word_idx = min(earliest_stop_word_idx, stop_word_idx)
-                generated_texts[idx] = generated_texts[idx][:earliest_stop_word_idx]
-
+            generated_texts = self._process_streaming_response(response, handler, stop_words)
         return generated_texts
 
-    def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
+    def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler, stop_words=None):
         tokens: List[str] = []
         for byte_payload in response.iter_lines():
             # Skip line
@@ -188,16 +179,17 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             if payload.startswith("data:"):
                 # Decode payload
                 json_payload = json.loads(payload.lstrip("data:").rstrip("/n"))
-                # Parse payload
+                # JSON event payload looks like this, see docs for details:
                 # {'details': None, 'generated_text': None,
                 # 'token': {'id': 4943, 'logprob': -1.0859375, 'special': False, 'text': 'Here'}}
 
-                token = self._extract_token(json_payload)
-                if token is not None:
+                token: str = self._extract_token(json_payload)
+                if token is not None and token.strip() not in stop_words:
                     tokens.append(stream_handler(token, event_data=json_payload))
         return ["".join(tokens)]  # return a list of strings just like non-streaming
 
     def _extract_token(self, event_data: Dict[str, Any]):
+        # extract token from event data and only consider non-special tokens
         return event_data["token"]["text"] if not event_data["token"]["special"] else None
 
     def _post(
