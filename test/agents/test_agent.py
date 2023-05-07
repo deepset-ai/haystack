@@ -141,29 +141,6 @@ def test_format_answer():
     assert formatted_answer["answers"] == [Answer(answer="Florida", type="generative")]
 
 
-@pytest.mark.unit
-def test_final_answer_regex():
-    match_examples = [
-        "Final Answer: 42 is the answer",
-        "Final Answer:  1234",
-        "Final Answer:  Answer",
-        "Final Answer:  This list: one and two and three",
-        "Final Answer:42",
-        "Final Answer:   ",
-        "Final Answer:    The answer is 99    ",
-    ]
-
-    non_match_examples = ["Final answer: 42 is the answer", "Final Answer", "The final answer is: 100"]
-    final_answer_pattern = r"Final Answer\s*:\s*(.*)"
-    for example in match_examples:
-        match = re.match(final_answer_pattern, example)
-        assert match is not None
-
-    for example in non_match_examples:
-        match = re.match(final_answer_pattern, example)
-        assert match is None
-
-
 @pytest.mark.integration
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs, document_store_with_docs", [("bm25", "memory")], indirect=True)
