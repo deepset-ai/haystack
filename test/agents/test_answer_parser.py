@@ -4,6 +4,7 @@ from haystack.agents.answer_parser import AgentAnswerParser, RegexAnswerParser
 final_answer_pattern = r"Final Answer\s*:\s*(.*)"
 
 
+@pytest.mark.unit
 def test_agent_answer_parser_abstract_base_class():
     with pytest.raises(TypeError):
         _ = AgentAnswerParser()
@@ -13,6 +14,7 @@ def test_agent_answer_parser_abstract_base_class():
     "input_str, expected",
     [("Hello, my name is John", True), ("This is a test", True), ("", False), (" ", True), (123, False), (None, False)],
 )
+@pytest.mark.unit
 def test_basic_answer_parser_can_parse(input_str, expected):
     parser = RegexAnswerParser()
     assert parser.can_parse(input_str) == expected
@@ -29,6 +31,7 @@ def test_basic_answer_parser_can_parse(input_str, expected):
         (" ", ""),
     ],
 )
+@pytest.mark.unit
 def test_answer_parser_parse_any_string(input_str, expected):
     parser = RegexAnswerParser()
     assert parser.parse(input_str) == expected
@@ -49,6 +52,7 @@ def test_answer_parser_parse_any_string(input_str, expected):
         ("The final answer is: 100", final_answer_pattern, False),
     ],
 )
+@pytest.mark.unit
 def test_final_answer_regex_can_parse(input_str, pattern, expected):
     parser = RegexAnswerParser(pattern)
     assert parser.can_parse(input_str) == expected
@@ -69,6 +73,7 @@ def test_final_answer_regex_can_parse(input_str, pattern, expected):
         ("The final answer is: 100", final_answer_pattern, ""),
     ],
 )
+@pytest.mark.unit
 def test_final_answer_regex_parse(input_str, pattern, expected):
     parser = RegexAnswerParser(pattern)
     assert parser.parse(input_str) == expected
