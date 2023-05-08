@@ -68,23 +68,23 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
-                "top_p",
-                "top_k",
-                "truncate",
-                "typical_p",
                 "best_of",
-                "watermark",
                 "details",
-                "temperature",
-                "repetition_penalty",
+                "do_sample",
                 "max_new_tokens",
                 "max_time",
-                "return_full_text",
                 "num_return_sequences",
-                "do_sample",
+                "repetition_penalty",
+                "return_full_text",
                 "seed",
                 "stream",
                 "stream_handler",
+                "temperature",
+                "top_k",
+                "top_p",
+                "truncate",
+                "typical_p",
+                "watermark",
             ]
             if key in kwargs
         }
@@ -138,21 +138,22 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         kwargs_with_defaults.update(kwargs)
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         params = {
-            "top_p": kwargs_with_defaults.get("top_p", None),
-            "top_k": kwargs_with_defaults.get("top_k", None),
-            "truncate": kwargs_with_defaults.get("truncate", None),
-            "typical_p": kwargs_with_defaults.get("typical_p", None),
             "best_of": kwargs_with_defaults.get("best_of", None),
-            "watermark": kwargs_with_defaults.get("watermark", False),
-            "stop": kwargs_with_defaults.get("stop", stop_words),
             "details": kwargs_with_defaults.get("details", True),
-            "temperature": kwargs_with_defaults.get("temperature", None),
-            "repetition_penalty": kwargs_with_defaults.get("repetition_penalty", None),
+            "do_sample": kwargs_with_defaults.get("do_sample", False),
             "max_new_tokens": kwargs_with_defaults.get("max_new_tokens", self.max_length),
             "max_time": kwargs_with_defaults.get("max_time", None),
-            "return_full_text": kwargs_with_defaults.get("return_full_text", False),
             "num_return_sequences": kwargs_with_defaults.get("num_return_sequences", None),
-            "do_sample": kwargs_with_defaults.get("do_sample", False),
+            "repetition_penalty": kwargs_with_defaults.get("repetition_penalty", None),
+            "return_full_text": kwargs_with_defaults.get("return_full_text", False),
+            "seed": kwargs_with_defaults.get("seed", None),
+            "stop": kwargs_with_defaults.get("stop", stop_words),
+            "temperature": kwargs_with_defaults.get("temperature", None),
+            "top_k": kwargs_with_defaults.get("top_k", None),
+            "top_p": kwargs_with_defaults.get("top_p", None),
+            "truncate": kwargs_with_defaults.get("truncate", None),
+            "typical_p": kwargs_with_defaults.get("typical_p", None),
+            "watermark": kwargs_with_defaults.get("watermark", False),
         }
         response = self._post(data={"inputs": prompt, "parameters": params, "stream": stream}, stream=stream)
         if not stream:

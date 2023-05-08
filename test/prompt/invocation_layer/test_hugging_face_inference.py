@@ -170,6 +170,7 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler):
             assert not called_kwargs["stream"]
 
 
+@pytest.mark.unit
 def test_supports():
     """
     Test that supports returns True correctly for HFInferenceEndpointInvocationLayer
