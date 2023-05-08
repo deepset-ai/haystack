@@ -66,7 +66,7 @@ class WhisperTranscriber:
         """
         self.api_key = api_key
         self.model_name = model_name_or_path
-        self.device = torch.device(device) or torch.device("cpu")
+        self.device = torch.device(device) if device else torch.device("cpu")
         self.use_local_whisper = is_imported("whisper") and self.api_key is None
 
         self._model = None

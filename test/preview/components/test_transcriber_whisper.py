@@ -18,17 +18,8 @@ class TestTranscriber(BaseTestComponent):
     """
 
     @pytest.fixture
-    def components(self) -> List[Tuple[object, Dict[str, Dict[str, Any]]]]:
-        comps = [
-            (
-                WhisperTranscriber(),
-                {
-                    "data": [("audio", [SAMPLES_PATH / "audio" / "this is the content of the document.wav"])],
-                    "parameters": {},
-                },
-            )
-        ]
-        return comps
+    def components(self):
+        return [WhisperTranscriber()]
 
     def test_transcribe(self):
         pass
