@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, Tuple
 import os
 import json
 from pathlib import Path
+from dataclasses import dataclass
 
 import requests
 import torch
@@ -42,19 +43,14 @@ class WhisperTranscriber:
     [github repo](https://github.com/openai/whisper).
     """
 
-    def __init__(
-        self,
-        input: str = "audio",
-        output: str = "documents",
-        api_key: Optional[str] = None,
-        model_name_or_path: WhisperModel = "medium",
-        device: Optional[Union[str, torch.device]] = None,
-    ) -> None:
+    @dataclass
+    class Output:
+        documents: List[Document]
+
+    def __init__(self, api_key: Optional[str] = None, model_name_or_path: WhisperModel = "medium", device: str = None):
         """
         Transcribes a list of audio files into a list of Documents.
 
-        :param input: the name of the expected input for this node.
-        :param output: the name of the expected output of this node.
         :param api_key: OpenAI API key. If None, a local installation of Whisper is used.
         :param model_name_or_path: Name of the model to use. If using a local installation of Whisper, set this to one
             of the following values:
@@ -68,11 +64,9 @@ class WhisperTranscriber:
         :param device: Device to use for inference. Only used if you're using a local installation of Whisper.
             If None, CPU is used.
         """
-        self.inputs = [input]
-        self.outputs = [output]
         self.api_key = api_key
         self.model_name = model_name_or_path
-        self.device = device or torch.device("cpu")
+        self.device = torch.device(device) or torch.device("cpu")
         self.use_local_whisper = is_imported("whisper") and self.api_key is None
 
         self._model = None
@@ -89,11 +83,10 @@ class WhisperTranscriber:
         if self.use_local_whisper and not self._model:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
-    def run(self, name: str, data: List[Tuple[str, Any]], parameters: Dict[str, Dict[str, Any]]):
+    def run(self, audios: List[Path], whisper_params: Dict[str, Any]) -> Output:
         self.warm_up()
-        params = parameters.get(name, {})
-        documents = self.transcribe_to_documents(data[0][1], **params)
-        return {self.output[0]: documents}
+        documents = self.transcribe_to_documents(audios, **whisper_params)
+        return WhisperTranscriber.Output(documents)
 
     def transcribe_to_documents(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
         """
@@ -106,13 +99,13 @@ class WhisperTranscriber:
         :param audio_files: a list of paths or binary streams to transcribe
         :returns: a list of transcriptions.
         """
-        transcriptions = self._transcribe(audio_files=audio_files)
+        transcriptions = self.transcribe(audio_files=audio_files, **kwargs)
         return [
             Document(content=transcript.pop("text"), metadata={"audio_file": audio, **transcript})
             for audio, transcript in zip(audio_files, transcriptions)
         ]
 
-    def _transcribe(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
+    def transcribe(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
         """
         Transcribe the given audio files. Returns a list of strings.
 
@@ -130,15 +123,15 @@ class WhisperTranscriber:
                 audio_file = open(audio_file, "rb")
 
             if self.use_local_whisper:
-                transcription = self._invoke_local(audio_file, **kwargs)
+                transcription = self._transcribe_locally(audio_file, **kwargs)
             else:
-                transcription = self._invoke_api(audio_file, **kwargs)
+                transcription = self._transcribe_with_api(audio_file, **kwargs)
 
             transcriptions.append(transcription)
         return transcriptions
 
     @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
-    def _invoke_api(self, audio_file: BinaryIO, **kwargs) -> Dict[str, Any]:
+    def _transcribe_with_api(self, audio_file: BinaryIO, **kwargs) -> Dict[str, Any]:
         """
         Calls a remote Whisper model through OpenAI Whisper API.
         """
@@ -164,7 +157,7 @@ class WhisperTranscriber:
 
         return json.loads(response.content)
 
-    def _invoke_local(self, audio_file: BinaryIO, **kwargs) -> Dict[str, Any]:
+    def _transcribe_locally(self, audio_file: BinaryIO, **kwargs) -> Dict[str, Any]:
         """
         Calls a local Whisper model.
         """
