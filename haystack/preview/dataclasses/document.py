@@ -4,7 +4,7 @@ import json
 import hashlib
 import logging
 from pathlib import Path
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 
 from haystack.preview.utils.import_utils import optional_import
 
@@ -77,6 +77,11 @@ class Document:
                 f"The type of content ({type(self.content)}) does not match the "
                 f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
             )
+        # Validate metadata
+        for key in self.metadata:
+            if key in [field.name for field in fields(self)]:
+                raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
+
         # Check if id_hash_keys are all present in the meta
         for key in self.id_hash_keys:
             if key not in self.metadata:
