@@ -21,7 +21,10 @@ class JoinNode(BaseComponent):
         top_k_join: Optional[int] = None,
     ) -> Tuple[Dict, str]:
         if inputs:
-            return self.run_accumulated(inputs, top_k_join=top_k_join)
+            results = self.run_accumulated(inputs, top_k_join=top_k_join)
+            if "root_node" in inputs[0]:
+                results[0]["root_node"] = inputs[0]["root_node"]
+            return results
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
         return self.run_accumulated(
             inputs=[
@@ -55,7 +58,10 @@ class JoinNode(BaseComponent):
         top_k_join: Optional[int] = None,
     ) -> Tuple[Dict, str]:
         if inputs:
-            return self.run_batch_accumulated(inputs=inputs, top_k_join=top_k_join)
+            results = self.run_batch_accumulated(inputs=inputs, top_k_join=top_k_join)
+            if "root_node" in inputs[0]:
+                results[0]["root_node"] = inputs[0]["root_node"]
+            return results
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
         return self.run_batch_accumulated(
             inputs=[
