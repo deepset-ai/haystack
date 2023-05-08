@@ -666,7 +666,7 @@ def test_aggregate_labels_with_labels():
     label = MultiLabel(labels=[label1_with_filter1, label2_with_filter1])
     assert label.filters == {"name": ["filename1"]}
     with pytest.raises(ValueError):
-        label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
+        _ = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
 
 
 @pytest.mark.unit
