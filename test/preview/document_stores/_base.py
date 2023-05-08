@@ -63,7 +63,6 @@ class DocumentStoreBaseTests:
         """
         Utility to compare two lists of documents for equality regardless of the order od the documents.
         """
-        print(first_list, second_list)
         return (
             len(first_list) > 0
             and len(second_list) > 0
