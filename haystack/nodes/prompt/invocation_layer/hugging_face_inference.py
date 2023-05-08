@@ -4,6 +4,7 @@ from typing import Optional, Dict, Union, List, Any, Callable
 import logging
 
 import requests
+import sseclient
 from transformers.pipelines import get_task
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
@@ -167,25 +168,18 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         return generated_texts
 
     def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler, stop_words=None):
+        client = sseclient.SSEClient(response)
         tokens: List[str] = []
-        for byte_payload in response.iter_lines():
-            # Skip line
-            if byte_payload == b"\n":
-                continue
-
-            payload = byte_payload.decode("utf-8")
-
-            # Event data
-            if payload.startswith("data:"):
-                # Decode payload
-                json_payload = json.loads(payload.lstrip("data:").rstrip("/n"))
-                # JSON event payload looks like this, see docs for details:
-                # {'details': None, 'generated_text': None,
-                # 'token': {'id': 4943, 'logprob': -1.0859375, 'special': False, 'text': 'Here'}}
-
-                token: str = self._extract_token(json_payload)
-                if token is not None and token.strip() not in stop_words:
-                    tokens.append(stream_handler(token, event_data=json_payload))
+        try:
+            for event in client.events():
+                if event.data != TokenStreamingHandler.DONE_MARKER:
+                    event_data = json.loads(event.data)
+                    token: str = self._extract_token(event_data)
+                    # if valid token and not a stop words (we don't want to return stop words)
+                    if token and token.strip() not in stop_words:
+                        tokens.append(stream_handler(token, event_data=event_data))
+        finally:
+            client.close()
         return ["".join(tokens)]  # return a list of strings just like non-streaming
 
     def _extract_token(self, event_data: Dict[str, Any]):
