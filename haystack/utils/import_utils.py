@@ -1,5 +1,4 @@
 import io
-import sys
 import gzip
 import tarfile
 import zipfile
