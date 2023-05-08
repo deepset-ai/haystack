@@ -23,7 +23,6 @@ class OutputSocket:
 class InputSocket:
     name: str
     type: type
-    has_default: bool
     variadic: bool
     taken_by: Optional[str] = None
 
@@ -49,9 +48,8 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
         name = run_signature.parameters[param].name
         variadic = run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
         annotation = run_signature.parameters[param].annotation
-        has_default = param in component.defaults.keys()
 
-        socket = InputSocket(name=name, type=annotation, has_default=has_default, variadic=variadic)
+        socket = InputSocket(name=name, type=annotation, variadic=variadic)
         input_sockets[socket.name] = socket
 
     return input_sockets
@@ -152,6 +150,28 @@ def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     }
 
 
+def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, inputs_values: Dict[str, Dict[str, Any]]):
+    valid_inputs = find_pipeline_inputs(graph)
+    for node, sockets in valid_inputs.items():
+        if node in inputs_values:
+            for socket in sockets:
+                node_instance = graph.nodes[node]["instance"]
+                input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
+                if not input_in_node_defaults and not socket.name in inputs_values[node]:
+                    raise ValueError(f"Missing input: {node}.{socket.name}")
+
+
+def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, inputs_values: Dict[str, Dict[str, Any]]):
+    for node, input_data in inputs_values.items():
+        for socket_name in input_data.keys():
+            if not socket_name in graph.nodes[node]["input_sockets"].keys():
+                raise ValueError(f"Component {node} is not expecting any input value called {socket_name}")
+
+            taken_by = graph.nodes[node]["input_sockets"][socket_name].taken_by
+            if taken_by:
+                raise ValueError(f"The input {socket_name} of {node} is already taken by node {taken_by}")
+
+
 def validate_pipeline_input(  # pylint: disable=too-many-branches
     graph: networkx.MultiDiGraph, inputs_values: Dict[str, Dict[str, Any]]
 ) -> Dict[str, Dict[str, Any]]:
@@ -170,22 +190,10 @@ def validate_pipeline_input(  # pylint: disable=too-many-branches
         raise ValueError(f"Pipeline received data for unknown component(s): {', '.join(unknown_components)}")
 
     # Make sure all necessary sockets are connected
-    valid_inputs = find_pipeline_inputs(graph)
-    for node, sockets in valid_inputs.items():
-        if node in inputs_values.keys():
-            for socket in sockets:
-                if not socket.has_default and not socket.name in inputs_values[node]:
-                    raise ValueError(f"Missing input: {node}.{socket.name}")
+    _validate_input_sockets_are_connected(graph, inputs_values)
 
-    # Make sure no inputs are given for connected sockets
-    for node, input_data in inputs_values.items():
-        for socket_name in input_data.keys():
-            if not socket_name in graph.nodes[node]["input_sockets"].keys():
-                raise ValueError(f"Component {node} is not expecting any input value called {socket_name}")
-
-            taken_by = graph.nodes[node]["input_sockets"][socket_name].taken_by
-            if taken_by:
-                raise ValueError(f"The input {socket_name} of {node} is already taken by node {taken_by}")
+    # Make sure that the pipeline input is only sent to nodes that won't receive data from other nodes
+    _validate_nodes_receive_only_expected_input(graph, inputs_values)
 
     # Make sure variadic input components are receiving lists
     for component in input_components.keys():

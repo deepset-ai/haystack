@@ -80,17 +80,17 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
 
     # Draw the inputs
     graph.add_node("input")
-    for in_node, in_sockets in find_pipeline_inputs(graph).items():
+    for node, in_sockets in find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
-            if not in_socket.has_default and not (
-                graph.nodes[in_node]["variadic_input"] and not graph.in_edges(in_node)
-            ):
-                graph.add_edge("input", in_node, label=in_socket.name)
+            node_instance = graph.nodes[node]["instance"]
+            input_node_defaults = hasattr(node_instance, "defaults") and in_socket.name in node_instance.defaults
+            if not input_node_defaults and not (graph.nodes[node]["variadic_input"] and not graph.in_edges(node)):
+                graph.add_edge("input", node, label=in_socket.name)
 
     # Draw the outputs
     graph.add_node("output")
-    for out_node, out_sockets in find_pipeline_outputs(graph).items():
+    for node, out_sockets in find_pipeline_outputs(graph).items():
         for out_socket in out_sockets:
-            graph.add_edge(out_node, "output", label=out_socket.name)
+            graph.add_edge(node, "output", label=out_socket.name)
 
     return graph
