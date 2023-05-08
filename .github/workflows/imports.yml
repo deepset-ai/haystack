@@ -37,5 +37,5 @@ jobs:
     - name: Install Haystack with no extras
       run: pip install .
 
-    - name: Try to import
+    - name: Import Haystack
       run: python -c 'import haystack'

@@ -243,13 +243,19 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 )
 
     def _convert_weaviate_result_to_document(
-        self, result: dict, return_embedding: bool, scale_score: bool = True
+        self,
+        result: dict,
+        return_embedding: bool,
+        scale_score: bool = True,
+        json_properties: Optional[List[str]] = None,
     ) -> Document:
         """
         Convert weaviate result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
         Weaviate get methods return the data items in properties key, whereas the query doesn't.
         """
+        json_properties = json_properties or []
+
         score = None
         content = ""
 
@@ -315,6 +321,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 continue
             if v is None:
                 continue
+            # Weaviate doesn't support dict as a property type. We store them as JSON strings and convert them back here.
+            if k in json_properties:
+                if isinstance(v, list):
+                    v = [json.loads(str(item)) for item in v]
+                else:
+                    v = json.loads(str(v))
             meta_data[k] = v
 
         document = Document.from_dict(
@@ -353,7 +365,11 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
             logger.debug("Weaviate could not get the document requested: %s", usce)
         if result:
-            document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+            json_properties = self._get_json_properties(index=index)
+            document = self._convert_weaviate_result_to_document(
+                result, return_embedding=True, json_properties=json_properties
+            )
         return document
 
     def get_documents_by_id(
@@ -370,6 +386,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         documents = []
         # TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
@@ -380,7 +398,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
                 logger.debug("Weaviate could not get the document requested: %s", usce)
             if result:
-                document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+                document = self._convert_weaviate_result_to_document(
+                    result, return_embedding=True, json_properties=json_properties
+                )
                 documents.append(document)
         return documents
 
@@ -435,6 +455,22 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         return cur_properties
 
+    def _get_json_properties(self, index: Optional[str] = None) -> List[str]:
+        """
+        Get all existing properties that store JSON strings in the indexes' schema.
+        """
+        index = self._sanitize_index_name(index) or self.index
+        cur_properties = []
+        for class_item in self.weaviate_client.schema.get()["classes"]:
+            if class_item["class"] == index:
+                cur_properties = [
+                    item["name"]
+                    for item in class_item["properties"]
+                    if item["description"].startswith("JSON dynamic property")
+                ]
+
+        return cur_properties
+
     def _update_schema(
         self, new_prop: str, property_value: Union[List, str, int, float, bool], index: Optional[str] = None
     ):
@@ -444,7 +480,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         index = self._sanitize_index_name(index) or self.index
         data_type = self._get_weaviate_type_of_value(property_value)
 
-        property_dict = {"dataType": [data_type], "description": f"dynamic property {new_prop}", "name": new_prop}
+        description = f"dynamic property {new_prop}"
+        if data_type.startswith("dict"):
+            # Weaviate does not support dict type, so we use string or list of string instead
+            data_type = "string" + data_type[4:]
+            description = f"JSON dynamic property {new_prop}"
+
+        property_dict = {"dataType": [data_type], "description": description, "name": new_prop}
         self.weaviate_client.schema.property.create(index, property_dict)
 
     @staticmethod
@@ -472,6 +514,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             data_type = "number"
         elif isinstance(value, bool):
             data_type = "boolean"
+        # Weaviate doesn't support dictionaries as property types, we'll convert them to JSON strings.
+        elif isinstance(value, dict):
+            data_type = "dict"
 
         if list_of_values:
             data_type += "[]"
@@ -557,6 +602,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
+                json_fields = []
                 for doc in document_batch:
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
@@ -569,6 +615,14 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                 raise ValueError(
                                     f'"meta" info contains duplicate key "{k}" with the top-level document structure'
                                 )
+                            # Weaviate doesn't support dictionaries as property types, so we convert them to JSON strings
+                            if isinstance(v, dict):
+                                json_fields.append(k)
+                                v = json.dumps(v)
+                            elif isinstance(v, list):
+                                if len(v) > 0 and isinstance(v[0], dict):
+                                    json_fields.append(k)
+                                    v = [json.dumps(item) for item in v]
                             _doc[k] = v
                         _doc.pop("meta")
 
@@ -586,7 +640,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     missing_props = self._check_document(current_properties, _doc)
                     if missing_props:
                         for property in missing_props:
-                            self._update_schema(property, _doc[property], index)
+                            property_value = _doc[property]
+                            if property in json_fields:
+                                property_value = doc.meta[property]
+                            self._update_schema(property, property_value, index)
                             current_properties.append(property)
 
                     # Weaviate requires dates to be in RFC3339 format
@@ -891,8 +948,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             return_embedding = self.return_embedding
 
         results = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         for result in results:
-            document = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
+            document = self._convert_weaviate_result_to_document(
+                result, return_embedding=return_embedding, json_properties=json_properties
+            )
             yield document
 
     def query(
@@ -1048,9 +1109,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             if query_output.get("data").get("Get").get(index):
                 results = query_output.get("data").get("Get").get(index)
 
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=True, scale_score=scale_score)
+            doc = self._convert_weaviate_result_to_document(
+                result, return_embedding=True, scale_score=scale_score, json_properties=json_properties
+            )
             documents.append(doc)
 
         return documents
@@ -1312,10 +1377,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             if query_output.get("data").get("Get").get(index):
                 results = query_output.get("data").get("Get").get(index)
 
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         documents = []
         for result in results:
             doc = self._convert_weaviate_result_to_document(
-                result, return_embedding=return_embedding, scale_score=scale_score
+                result, return_embedding=return_embedding, scale_score=scale_score, json_properties=json_properties
             )
             documents.append(doc)
 
@@ -1383,10 +1450,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             )
 
         result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
 
         for result_batch in get_batches_from_generator(result, batch_size):
             document_batch = [
-                self._convert_weaviate_result_to_document(hit, return_embedding=False) for hit in result_batch
+                self._convert_weaviate_result_to_document(hit, return_embedding=False, json_properties=json_properties)
+                for hit in result_batch
             ]
             embeddings = retriever.embed_documents(document_batch)
             self._validate_embeddings_shape(

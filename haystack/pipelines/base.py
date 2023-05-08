@@ -2103,7 +2103,7 @@ class Pipeline:
                 # Component params can reference to other components. For instance, a Retriever can reference a
                 # DocumentStore defined in the YAML. All references should be recursively resolved.
                 if (
-                    isinstance(value, str) and value in definitions.keys()
+                    isinstance(value, str) and value in definitions.keys() and value != name
                 ):  # check if the param value is a reference to another component.
                     if value not in components.keys():  # check if the referenced component is already loaded.
                         cls._load_or_get_component(name=value, definitions=definitions, components=components)

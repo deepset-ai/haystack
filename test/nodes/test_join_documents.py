@@ -42,3 +42,15 @@ def test_joindocuments_score_none(join_mode, sort_by_score):
 
     result, _ = join_docs.run(inputs, top_k_join=1)
     assert len(result["documents"]) == 1
+
+
+@pytest.mark.unit
+def test_joindocuments_preserves_root_node():
+    # https://github.com/deepset-ai/haystack-private/issues/51
+    inputs = [
+        {"documents": [Document(content="text document 1", content_type="text", score=0.2)], "root_node": "File"},
+        {"documents": [Document(content="text document 2", content_type="text", score=None)], "root_node": "File"},
+    ]
+    join_docs = JoinDocuments()
+    result, _ = join_docs.run(inputs)
+    assert result["root_node"] == "File"

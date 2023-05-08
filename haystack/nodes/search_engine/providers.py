@@ -274,3 +274,78 @@ class BingAPI(SearchEngine):
 
         logger.debug("Bing API returned %s documents for the query '%s'", len(documents), query)
         return documents[:top_k]
+
+
+class GoogleAPI(SearchEngine):
+    """Search engine using the Google API. See [Google Search API](https://developers.google.com/custom-search/v1/overview) for more details."""
+
+    def __init__(
+        self,
+        top_k: Optional[int] = 10,
+        api_key: Optional[str] = None,
+        engine_id: Optional[str] = None,
+        search_engine_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        :param top_k: Number of documents to return.
+        :param api_key: API key for the Google API.
+        :param engine_id: Engine ID for the Google API.
+        :param search_engine_kwargs: Additional parameters passed to the Google API. As an example, you can pass the hl parameter to specify the language to use for the query: 'hl':'en'.
+        """
+        super().__init__()
+        self.api_key = api_key
+        self.engine_id = engine_id
+        self.top_k = top_k
+        self.kwargs = search_engine_kwargs if search_engine_kwargs else {}
+
+    def _validate_environment(self):
+        """
+        Validate if the environment variables are set.
+        """
+        if not self.api_key:
+            raise ValueError(
+                "You need to provide an API key for the Google API. See https://developers.google.com/custom-search/v1/overview"
+            )
+        if not self.engine_id:
+            raise ValueError(
+                "You need to provide an engine ID for the Google API. See https://developers.google.com/custom-search/v1/overview"
+            )
+
+        # check if google api is installed
+        try:
+            from googleapiclient.discovery import build
+        except ImportError:
+            raise ImportError(
+                "You need to install the Google API client. You can do so by running 'pip install google-api-python-client'."
+            )
+        # create a custom search service
+        self.service = build("customsearch", "v1", developerKey=self.api_key)
+
+    def search(self, query: str, **kwargs) -> List[Document]:
+        """
+        :param query: Query string.
+        :param kwargs: Additional parameters passed to the Google API.
+                       As an example, you can pass the hl parameter to specify the language to use for the query: 'hl':'en'.
+                       If you don't specify the hl parameter, the default language for the user's location is used.
+                       For a complete list of the language codes, see [Language Codes](https://developers.google.com/custom-search/docs/xml_results#languageCollections).
+                       You can also pass the num parameter to specify the number of results to return: 'num':10.
+                       You can find a full list of parameters at [Query Parameters](https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list).
+        :return: List[Document]
+        """
+        kwargs = {**self.kwargs, **kwargs}
+        self.engine_id = kwargs.pop("engine_id", self.engine_id)
+
+        self._validate_environment()
+
+        top_k = kwargs.pop("top_k", self.top_k)
+        params: Dict[str, Union[str, int, float]] = {"num": 10, **kwargs}
+        res = self.service.cse().list(q=query, cx=self.engine_id, **params).execute()
+        documents: List[Document] = []
+        for i, result in enumerate(res["items"]):
+            documents.append(
+                Document.from_dict(
+                    {"title": result["title"], "content": result["snippet"], "position": i, "link": result["link"]}
+                )
+            )
+        logger.debug("Google API returned %s documents for the query '%s'", len(documents), query)
+        return documents[:top_k]

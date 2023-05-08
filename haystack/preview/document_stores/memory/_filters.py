@@ -25,7 +25,7 @@ def and_operation(conditions: List[Any], document: Document, _current_key: str):
     :return: True if the document matches all the filters, False otherwise
     """
     for condition in conditions:
-        if not _match(conditions=condition, document=document, _current_key=_current_key):
+        if not match(conditions=condition, document=document, _current_key=_current_key):
             return False
     return True
 
@@ -40,7 +40,7 @@ def or_operation(conditions: List[Any], document: Document, _current_key: str):
     :return: True if the document matches ano of the filters, False otherwise
     """
     for condition in conditions:
-        if _match(conditions=condition, document=document, _current_key=_current_key):
+        if match(conditions=condition, document=document, _current_key=_current_key):
             return True
     return False
 
@@ -171,7 +171,7 @@ OPERATORS = {
 RESERVED_KEYS = [*LOGICAL_STATEMENTS.keys(), *OPERATORS.keys()]
 
 
-def match(conditions: Any, document: Document):
+def match(conditions: Any, document: Document, _current_key=None):
     """
     This method applies the filters to any given document and returns True when the documents
     metadata matches the filters, False otherwise.
@@ -180,52 +180,29 @@ def match(conditions: Any, document: Document):
     :param document: the document to test.
     :return: True if the document matches the filters, False otherwise
     """
-    if isinstance(conditions, list):
-        # The default operation for a list of sibling conditions is $and
-        return _match(conditions=conditions, document=document, _current_key="$and")
-
-    if isinstance(conditions, dict):
-        if len(conditions.keys()) > 1:
-            # The default operation for a list of sibling conditions is $and
-            return _match(conditions=conditions, document=document, _current_key="$and")
-
-        field_key, field_value = list(conditions.items())[0]
-        return _match(conditions=field_value, document=document, _current_key=field_key)
-
-    raise ValueError("Filters must be dictionaries or lists. See the examples in the documentation.")
-
-
-def _match(conditions: Any, document: Document, _current_key: str):
-    """
-    Recursive implementation of match().
-    """
-    if isinstance(conditions, list):
-        # The default operation for a list of sibling conditions is $and
-        return _match(conditions={"$and": conditions}, document=document, _current_key=_current_key)
-
     if isinstance(conditions, dict):
         # Check for malformed filters, like {"name": {"year": "2020"}}
-        if _current_key not in RESERVED_KEYS and any(key not in RESERVED_KEYS for key in conditions.keys()):
+        if _current_key and any(key not in RESERVED_KEYS for key in conditions.keys()):
             raise ValueError(
-                f"This filter ({_current_key}, {conditions}) seems to be malformed. Comparisons with dictionaries are "
-                "not currently supported. Check the documentation to learn more about filters syntax."
+                f"This filter ({{{_current_key}: {conditions}}}) seems to be malformed. "
+                "Comparisons between dictionaries are not currently supported. "
+                "Check the documentation to learn more about filters syntax."
             )
 
-        # The default operation for a list of sibling conditions is $and
         if len(conditions.keys()) > 1:
-            return and_operation(
-                conditions=_conditions_as_list(conditions), document=document, _current_key=_current_key
-            )
+            # The default operation for a list of sibling conditions is $and
+            return and_operation(conditions=_list_conditions(conditions), document=document, _current_key=_current_key)
 
         field_key, field_value = list(conditions.items())[0]
 
+        # Nested logical statement ($and, $or, $not)
         if field_key in LOGICAL_STATEMENTS.keys():
-            # It's a nested logical statement ($and, $or, $not)
             return LOGICAL_STATEMENTS[field_key](
-                conditions=_conditions_as_list(field_value), document=document, _current_key=_current_key
+                conditions=_list_conditions(field_value), document=document, _current_key=_current_key
             )
+
+        # A comparison operator ($eq, $in, $gte, ...)
         if field_key in OPERATORS.keys():
-            # It's a comparison operator ($eq, $in, $gte, ...)
             if not _current_key:
                 raise ValueError(
                     "Filters can't start with an operator like $eq and $in. You have to specify the field name first. "
@@ -233,15 +210,27 @@ def _match(conditions: Any, document: Document, _current_key: str):
                 )
             return OPERATORS[field_key](fields=document.metadata, field_name=_current_key, value=field_value)
 
-        if isinstance(field_value, list):
+        # Otherwise fall back to the defaults
+        conditions = _list_conditions(field_value)
+        _current_key = field_key
+
+    # Defaults for implicit filters
+    if isinstance(conditions, list):
+        if all(isinstance(cond, dict) for cond in conditions):
+            # The default operation for a list of sibling conditions is $and
+            return and_operation(conditions=_list_conditions(conditions), document=document, _current_key=_current_key)
+        else:
             # The default operator for a {key: [value1, value2]} filter is $in
-            return in_operation(fields=document.metadata, field_name=field_key, value=field_value)
+            return in_operation(fields=document.metadata, field_name=_current_key, value=conditions)
 
-    # The default operator for a {key: value} filter is $eq
-    return eq_operation(fields=document.metadata, field_name=_current_key, value=conditions)
+    if _current_key:
+        # The default operator for a {key: value} filter is $eq
+        return eq_operation(fields=document.metadata, field_name=_current_key, value=conditions)
+
+    raise ValueError("Filters must be dictionaries or lists. See the examples in the documentation.")
 
 
-def _conditions_as_list(conditions: Any) -> List[Any]:
+def _list_conditions(conditions: Any) -> List[Any]:
     """
     Make sure all nested conditions are not dictionaries or single values, but always lists.
 
