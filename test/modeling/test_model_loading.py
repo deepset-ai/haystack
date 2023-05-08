@@ -9,7 +9,7 @@ from haystack.modeling.model.language_model import (
 )
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "pretrained_model_name_or_path, lm_class",
     [
