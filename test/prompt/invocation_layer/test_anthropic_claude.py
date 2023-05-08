@@ -194,7 +194,7 @@ def test_ensure_token_limit_with_huge_max_length(caplog):
     assert res == "This is a very very very very very much longer"
     assert len(caplog.records) == 1
     expected_message_log = (
-        "The prompt has been truncated from 11 tokens to 10 tokens such that the prompt length and "
+        "The prompt has been truncated from 11 tokens to 10 tokens so that the prompt length and "
         "answer length (8990 tokens) fits within the max token limit (9000 tokens). "
         "Reduce the length of the prompt to prevent it from being cut off."
     )
