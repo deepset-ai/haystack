@@ -11,7 +11,7 @@ def is_imported(module_name: str) -> bool:
     """
     module = sys.modules.get(module_name)
     try:
-        return bool(module and not isinstance(module, FakeModule))
+        return bool(module) and not isinstance(module, FakeModule)
     except MissingOptionalDependency:
         # isinstance() raises MissingOptionalDependency: fake module
         pass
