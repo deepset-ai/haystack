@@ -1,7 +1,6 @@
 from typing import Union, Optional, Callable
 
 from haystack.agents import Agent
-from haystack.agents.answer_parser import AgentAnswerParser, BasicAnswerParser
 from haystack.agents.base import ToolsManager, CallablePromptParametersResolver
 from haystack.agents.memory import Memory, ConversationSummaryMemory
 from haystack.agents.types import PromptParametersResolver
@@ -62,7 +61,7 @@ class ConversationalAgent(Agent):
             else CallablePromptParametersResolver(
                 lambda query, agent, **kwargs: {"query": query, "history": agent.memory.load(keys=["history"])}
             ),
-            final_answer_pattern=BasicAnswerParser(),
+            final_answer_pattern=r"^([\s\S]+)$",
         )
 
 
@@ -108,7 +107,7 @@ class ConversationalAgentWithTools(Agent):
         max_steps: int = 5,
         memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
-        final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
+        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
     ):
         """
         Creates a ConversationalAgentWithTools.

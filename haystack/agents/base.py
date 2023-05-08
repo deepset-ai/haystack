@@ -9,7 +9,6 @@ from typing import List, Optional, Union, Dict, Any, Tuple
 from events import Events
 
 from haystack import Pipeline, BaseComponent, Answer, Document
-from haystack.agents.answer_parser import RegexAnswerParser, AgentAnswerParser
 from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
@@ -241,7 +240,7 @@ class Agent:
         memory: Optional[Memory] = None,
         prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
         max_steps: int = 8,
-        final_answer_pattern: Union[str, AgentAnswerParser] = r"Final Answer\s*:\s*(.*)",
+        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
     ):
         """
          Creates an Agent instance.
@@ -287,9 +286,7 @@ class Agent:
                 else CallablePromptParametersResolver(react_parameter_resolver)
             )
         )
-        self.final_answer_parser = (
-            RegexAnswerParser(final_answer_pattern) if isinstance(final_answer_pattern, str) else final_answer_pattern
-        )
+        self.final_answer_parser = final_answer_pattern
         # Resolve model name to check if it's a streaming model
         if isinstance(self.prompt_node.model_name_or_path, str):
             model_name = self.prompt_node.model_name_or_path

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional, Dict, Any
 
 from haystack import Answer
-from haystack.agents.answer_parser import AgentAnswerParser, BasicAnswerParser
 from haystack.errors import AgentError
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class AgentStep:
         self,
         current_step: int = 1,
         max_steps: int = 10,
-        final_answer_parser: Optional[AgentAnswerParser] = None,
+        final_answer_parser: Optional[str] = None,
         prompt_node_response: str = "",
         transcript: str = "",
     ):
@@ -33,7 +33,7 @@ class AgentStep:
         """
         self.current_step = current_step
         self.max_steps = max_steps
-        self.final_answer_parser = final_answer_parser or BasicAnswerParser()
+        self.final_answer_parser = final_answer_parser or r"^([\s\S]+)$"
         self.prompt_node_response = prompt_node_response
         self.transcript = transcript
 
@@ -77,7 +77,7 @@ class AgentStep:
                 query,
             )
         else:
-            final_answer = self.final_answer_parser.parse(self.prompt_node_response)
+            final_answer = self.parse_final_answer()
             if not final_answer:
                 logger.warning(
                     "Final answer parser (%s) could not parse PromptNode response (%s).",
@@ -97,7 +97,7 @@ class AgentStep:
         Check if this is the last step of the Agent.
         :return: True if this is the last step of the Agent, False otherwise.
         """
-        return self.final_answer_parser.can_parse(self.prompt_node_response) or self.current_step > self.max_steps
+        return self.parse_final_answer() or self.current_step > self.max_steps
 
     def completed(self, observation: Optional[str]):
         """
@@ -115,3 +115,11 @@ class AgentStep:
             f"AgentStep(current_step={self.current_step}, max_steps={self.max_steps}, "
             f"prompt_node_response={self.prompt_node_response}, transcript={self.transcript})"
         )
+
+    def parse_final_answer(self):
+        final_answer_match = re.search(self.final_answer_parser, self.prompt_node_response)
+        if final_answer_match:
+            final_answer = final_answer_match.group(1)
+            return final_answer.strip('" ')  # type: ignore
+        else:
+            return None
