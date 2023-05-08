@@ -218,7 +218,7 @@ def text_doc_dict():
         "meta": {},
         "id_hash_keys": ["content"],
         "embedding": None,
-        "id": "doc_1",
+        "id": "doc1",
     }
 
 
@@ -468,13 +468,13 @@ def test_answer_from_json(text_answer, text_answer_json):
 
 
 @pytest.mark.unit
-def test_answer_to_dict(text_answer):
-    a = text_answer
-    j = a.to_dict()
-    assert type(j) == dict
-    a_new = Answer.from_dict(j)
-    assert type(a_new.offsets_in_document[0]) == Span
-    assert a_new == a
+def test_answer_to_dict(text_answer, text_answer_dict):
+    assert text_answer.to_dict() == text_answer_dict
+
+
+@pytest.mark.unit
+def test_answer_from_dict(text_answer, text_answer_dict):
+    assert text_answer == Answer.from_dict(text_answer_dict)
 
 
 @pytest.mark.unit
@@ -500,11 +500,13 @@ def test_table_answer_from_dict(table_answer, table_answer_dict):
 
 
 @pytest.mark.unit
-def test_document_from_dict():
-    doc = Document(
-        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
-    )
-    assert doc == Document.from_dict(doc.to_dict())
+def test_document_from_dict(text_doc, text_doc_dict):
+    assert text_doc == Document.from_dict(text_doc_dict)
+
+
+@pytest.mark.unit
+def test_document_to_dict(text_doc, text_doc_dict):
+    assert text_doc.to_dict() == text_doc_dict
 
 
 @pytest.mark.unit
