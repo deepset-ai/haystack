@@ -227,7 +227,7 @@ def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers:
     for retrieved_doc in retrieved_docs:
         retrieved_doc_id = retrieved_doc.meta.get("name", "")
         retrieved_doc_text = retrieved_doc.content
-        if any(answer.lower() in retrieved_doc_text.lower() for answer in answers):
+        if any(str(answer).lower() in retrieved_doc_text.lower() for answer in answers):
             continue
         list_hard_neg_ctxs.append({"title": retrieved_doc_id, "text": retrieved_doc_text, "passage_id": ""})
 
