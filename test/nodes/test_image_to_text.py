@@ -96,6 +96,7 @@ def test_image_to_text_unsupported_model_after_loading():
 @pytest.mark.integration
 def test_image_to_text_unsupported_model_before_loading():
     with pytest.raises(
-        ValueError, match="The model 'Salesforce/blip-image-captioning-base' is not supported for ImageToText"
+        ValueError,
+        match=r"The model '.*' \(class '.*'\) is not supported for ImageToText. The supported classes are: \['VisionEncoderDecoderModel'\]",
     ):
         _ = TransformersImageToText(model_name_or_path="Salesforce/blip-image-captioning-base")

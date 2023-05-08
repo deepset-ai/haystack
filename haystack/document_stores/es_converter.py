@@ -1,7 +1,13 @@
 from typing import Dict, Optional, List, Union
 
 from tqdm.auto import tqdm
-from elasticsearch.helpers import scan
+
+try:
+    from elasticsearch.helpers import scan
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore

@@ -296,6 +296,38 @@ class MockRetriever(BaseRetriever):
         return [[]]
 
 
+class MockBaseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
+    ):
+        return [self.mock_document]
+
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ):
+        return [[self.mock_document] for _ in range(len(queries))]
+
+    def embed_documents(self, documents: List[Document]):
+        return np.full((len(documents), 768), 0.5)
+
+
 class MockSeq2SegGenerator(BaseGenerator):
     def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
         pass
@@ -511,16 +543,17 @@ def reader(request):
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq", return_table_cell=True), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", return_table_cell=True), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader", return_table_cell=True), request.param
     elif request.param == "rci":
         return (
             RCIReader(
                 row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
                 column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+                return_table_cell=True,
             ),
             request.param,
         )

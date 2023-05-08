@@ -48,7 +48,7 @@ classifiers = [
 dependencies = [
   "requests",
   "pydantic",
-  "transformers[torch]==4.25.1",
+  "transformers[torch]==4.28.1",
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "pandas",
   "rank_bm25",
@@ -74,9 +74,6 @@ dependencies = [
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",
 
-  # Elasticsearch
-  "elasticsearch>=7.17,<8",
-
   # OpenAI tokenizer
   "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
@@ -91,6 +88,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+elasticsearch = [
+  "elasticsearch>=7.17,<8",
+]
 sql = [
   "sqlalchemy>=1.4.2,<2",
   "sqlalchemy_utils",
@@ -115,7 +115,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.10.0",
+  "weaviate-client>=3.10.0,<4",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -135,10 +135,10 @@ opensearch = [
   "opensearch-py>=2",
 ]
 docstores = [
-  "farm-haystack[faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 docstores-gpu = [
-  "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 audio = [
   "openai-whisper"
@@ -199,6 +199,7 @@ dev = [
   "typing_extensions; python_version < '3.8'",
   # Test
   "pytest",
+  "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
   "responses",
@@ -266,7 +267,7 @@ skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if 
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
-load-plugins = "haystack.utils.linting"
+load-plugins = "haystack_linter"
 disable = [
 
   # To keep

@@ -1,4 +1,5 @@
 from typing import Dict, Any
+from dataclasses import dataclass
 
 import pytest
 
@@ -33,16 +34,13 @@ def test_pipeline_stores_in_params():
 
     @component
     class MockComponent:
-        def __init__(self):
-            self.inputs = ["value"]
-            self.outputs = ["value"]
-            self.init_parameters = {}
+        @dataclass
+        class Output:
+            value: int
 
-        def run(self, name: str, data: Dict[str, Any], parameters: Dict[str, Dict[str, Any]]):
-            assert name in parameters.keys()
-            assert "stores" in parameters[name].keys()
-            assert parameters[name]["stores"] == {"first_store": store_1, "second_store": store_2}
-            return ({"value": None}, parameters or {})
+        def run(self, value: int, stores: Dict[str, Any]) -> Output:
+            assert stores == {"first_store": store_1, "second_store": store_2}
+            return MockComponent.Output(value=value)
 
     pipe = Pipeline()
     pipe.add_component("component", MockComponent())
@@ -50,4 +48,4 @@ def test_pipeline_stores_in_params():
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
 
-    pipe.run(data={"value": None})
+    pipe.run(data={"component": {"value": None}})
