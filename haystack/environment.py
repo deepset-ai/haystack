@@ -87,8 +87,7 @@ def collect_static_system_specs() -> Dict[str, Any]:
         "libraries.haystack": __version__,
         "libraries.transformers": transformers.__version__ if "transformers" in sys.modules.keys() else False,
         "libraries.torch": torch.__version__ if "torch" in sys.modules.keys() else False,
-        # FIXME TEMPORARY!!
-        # "libraries.cuda": torch.version.cuda if "torch" in sys.modules.keys() and torch.cuda.is_available() else False,
+        "libraries.cuda": torch.version.cuda if "torch" in sys.modules.keys() and torch.cuda.is_available() else False,
         "os.containerized": is_containerized(),
         # FIXME review these
         "os.version": platform.release(),
@@ -96,8 +95,7 @@ def collect_static_system_specs() -> Dict[str, Any]:
         "os.machine": platform.machine(),
         "python.version": platform.python_version(),  # FIXME verify
         "hardware.cpus": os.cpu_count(),  # FIXME verify
-        # FIXME TEMPORARY!!
-        # "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,  # probably ok
+        "hardware.gpus": torch.cuda.device_count() if torch.cuda.is_available() else 0,  # probably ok
     }
 
 
