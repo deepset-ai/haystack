@@ -193,7 +193,7 @@ class Document:
                 continue
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
-                if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
+                if self.content_type == "table" and isinstance(self.content, DataFrame):
                     v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
