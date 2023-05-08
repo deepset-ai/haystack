@@ -24,15 +24,14 @@ def test_default_constructor():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "model_kwargs, model_kwargs_rejected",
-    [({"temperature": 0.7, "do_sample": True, "stream": True}, {"fake_param": 0.7, "another_fake_param": 1})],
-)
-def test_constructor_with_model_kwargs(model_kwargs, model_kwargs_rejected):
+def test_constructor_with_model_kwargs():
     """
     Test that model_kwargs are correctly set in the constructor
     and that model_kwargs_rejected are correctly filtered out
     """
+    model_kwargs = {"temperature": 0.7, "do_sample": True, "stream": True}
+    model_kwargs_rejected = {"fake_param": 0.7, "another_fake_param": 1}
+
     layer = HFInferenceEndpointInvocationLayer(
         model_name_or_path="fake_model", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
     )

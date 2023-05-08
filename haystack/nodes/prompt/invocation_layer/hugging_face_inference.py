@@ -88,10 +88,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             ]
             if key in kwargs
         }
-        self.register_prompt_preprocessor("oasst", lambda prompt: f"<|prompter|>{prompt}<|endoftext|><|assistant|>")
-
-    def register_prompt_preprocessor(self, model_family_id: str, prompt_handler: Callable[[str], str]):
-        self.prompt_preprocessors[model_family_id] = prompt_handler
+        self.prompt_preprocessors["oasst"] = lambda prompt: f"<|prompter|>{prompt}<|endoftext|><|assistant|>"
 
     def preprocess_prompt(self, prompt: str):
         for key, prompt_preprocessor in self.prompt_preprocessors.items():
