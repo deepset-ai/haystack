@@ -127,6 +127,8 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         return generated_texts
 
     def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
+        # sseclient doesn't work with Cohere streaming API
+        # let's do it manually
         tokens = []
         for line in response.iter_lines():
             if line:
