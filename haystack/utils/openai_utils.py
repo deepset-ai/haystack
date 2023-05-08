@@ -6,7 +6,7 @@ import sys
 import json
 from typing import Dict, Union, Tuple, Optional, List
 import requests
-import tenacity as tc
+import tenacity
 from transformers import GPT2TokenizerFast
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
