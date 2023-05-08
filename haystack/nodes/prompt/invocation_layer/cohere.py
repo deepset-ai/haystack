@@ -50,20 +50,20 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
-                "model",
-                "p",
-                "k",
-                "truncate",
-                "max_tokens",
-                "num_generations",
-                "temperature",
                 "end_sequences",
-                "presence_penalty",
-                "logit_bias",
                 "frequency_penalty",
+                "k",
+                "logit_bias",
+                "max_tokens",
+                "model",
+                "num_generations",
+                "p",
+                "presence_penalty",
                 "return_likelihoods",
                 "stream",
                 "stream_handler",
+                "temperature",
+                "truncate",
             ]
             if key in kwargs
         }
@@ -103,19 +103,19 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         kwargs_with_defaults.update(kwargs)
         # see https://docs.cohere.com/reference/generate
         params = {
-            "model": kwargs_with_defaults.get("model", self.model_name_or_path),
-            "prompt": prompt,
-            "p": kwargs_with_defaults.get("p", None),
-            "k": kwargs_with_defaults.get("k", None),
-            "truncate": kwargs_with_defaults.get("truncate", None),
-            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
-            "num_generations": kwargs_with_defaults.get("num_generations", None),
             "end_sequences": kwargs_with_defaults.get("end_sequences", stop_words),
-            "temperature": kwargs_with_defaults.get("temperature", None),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", None),
+            "k": kwargs_with_defaults.get("k", None),
+            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
+            "model": kwargs_with_defaults.get("model", self.model_name_or_path),
+            "num_generations": kwargs_with_defaults.get("num_generations", None),
+            "p": kwargs_with_defaults.get("p", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", None),
+            "prompt": prompt,
             "return_likelihoods": kwargs_with_defaults.get("return_likelihoods", None),
             "stream": stream,
+            "temperature": kwargs_with_defaults.get("temperature", None),
+            "truncate": kwargs_with_defaults.get("truncate", None),
         }
         response = self._post(params, stream=stream)
         if not stream:
