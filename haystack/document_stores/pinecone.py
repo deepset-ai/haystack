@@ -58,7 +58,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         api_key: str,
         environment: str = "us-west1-gcp",
-        pinecone_index: Optional[pinecone.Index] = None,
+        pinecone_index: Optional["pinecone.Index"] = None,
         embedding_dim: int = 768,
         return_embedding: bool = False,
         index: str = "document",
