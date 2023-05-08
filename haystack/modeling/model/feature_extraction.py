@@ -29,7 +29,7 @@ from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, Auto
 from transformers.models.auto.feature_extraction_auto import FEATURE_EXTRACTOR_MAPPING_NAMES
 from transformers.models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES
 
-from haystack.utils.generalimport import is_imported
+from haystack import is_imported
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
 
