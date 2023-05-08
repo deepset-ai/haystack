@@ -24,7 +24,7 @@ jobs:
     - name: Get explicit and transitive dependencies
       run: |
         pip install -U pip
-        pip install .
+        pip install . --index-url https://download.pytorch.org/whl/cpu
         pip freeze > ${{ env.REQUIREMENTS_FILE }}
 
     - name: Check Licenses
