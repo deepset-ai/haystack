@@ -7,7 +7,7 @@ import pytest
 
 from haystack.nodes import PromptNode
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
-from haystack.nodes.prompt.invocation_layer import HFInferenceEndpointInvocationLayer, CohereInvocationLayer
+from haystack.nodes.prompt.invocation_layer import CohereInvocationLayer
 
 
 @pytest.mark.unit
@@ -24,15 +24,13 @@ def test_default_constructor():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "model_kwargs, model_kwargs_rejected",
-    [({"temperature": 0.7, "end_sequences": ["end"], "stream": True}, {"fake_param": 0.7, "another_fake_param": 1})],
-)
-def test_constructor_with_model_kwargs(model_kwargs, model_kwargs_rejected):
+def test_constructor_with_model_kwargs():
     """
     Test that model_kwargs are correctly set in the constructor
     and that model_kwargs_rejected are correctly filtered out
     """
+    model_kwargs = {"temperature": 0.7, "end_sequences": ["end"], "stream": True}
+    model_kwargs_rejected = {"fake_param": 0.7, "another_fake_param": 1}
     layer = CohereInvocationLayer(
         model_name_or_path="command", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
     )
@@ -52,14 +50,15 @@ def test_invoke_with_no_kwargs():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("model", ["command", "command-light"])
 @pytest.mark.parametrize("using_constructor", [True, False])
-def test_invoke_with_stop_words(model, using_constructor):
+def test_invoke_with_stop_words(using_constructor):
     """
-    Test stop words are correctly passed from PromptNode to wire in HFInferenceEndpointInvocationLayer
+    Test stop words are correctly passed from PromptNode to wire in CohereInvocationLayer
     """
     stop_words = ["but", "not", "bye"]
-    pn = PromptNode(model_name_or_path=model, api_key="fake_key", stop_words=stop_words if using_constructor else None)
+    pn = PromptNode(
+        model_name_or_path="command", api_key="fake_key", stop_words=stop_words if using_constructor else None
+    )
     assert isinstance(pn.prompt_model.model_invocation_layer, CohereInvocationLayer)
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
         # Mock the response, need to return a list of dicts
@@ -79,17 +78,16 @@ def test_invoke_with_stop_words(model, using_constructor):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("model", ["command", "command-light"])
 @pytest.mark.parametrize("using_constructor", [True, False])
 @pytest.mark.parametrize("stream", [True, False])
-def test_streaming_stream_param(model, using_constructor, stream):
+def test_streaming_stream_param(using_constructor, stream):
     """
     Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer
     """
     if using_constructor:
-        pn = PromptNode(model_name_or_path=model, api_key="fake_key", model_kwargs={"stream": stream})
+        pn = PromptNode(model_name_or_path="command", api_key="fake_key", model_kwargs={"stream": stream})
     else:
-        pn = PromptNode(model_name_or_path=model, api_key="fake_key")
+        pn = PromptNode(model_name_or_path="command", api_key="fake_key")
 
     assert isinstance(pn.prompt_model.model_invocation_layer, CohereInvocationLayer)
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
@@ -118,17 +116,18 @@ def test_streaming_stream_param(model, using_constructor, stream):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("model", ["command", "command-light"])
 @pytest.mark.parametrize("using_constructor", [True, False])
 @pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
-def test_streaming_stream_handler_param(model, using_constructor, stream_handler):
+def test_streaming_stream_handler_param(using_constructor, stream_handler):
     """
     Test stream_handler parameter is correctly from PromptNode passed to wire in CohereInvocationLayer
     """
     if using_constructor:
-        pn = PromptNode(model_name_or_path=model, api_key="fake_key", model_kwargs={"stream_handler": stream_handler})
+        pn = PromptNode(
+            model_name_or_path="command", api_key="fake_key", model_kwargs={"stream_handler": stream_handler}
+        )
     else:
-        pn = PromptNode(model_name_or_path=model, api_key="fake_key")
+        pn = PromptNode(model_name_or_path="command", api_key="fake_key")
 
     assert isinstance(pn.prompt_model.model_invocation_layer, CohereInvocationLayer)
     with unittest.mock.patch(
@@ -164,15 +163,16 @@ def test_streaming_stream_handler_param(model, using_constructor, stream_handler
             assert not called_kwargs["stream"]
 
 
+@pytest.mark.unit
 def test_supports():
     """
     Test that supports returns True correctly for CohereInvocationLayer
     """
     # doesn't support fake model
-    assert not CohereInvocationLayer.supports("fake_model", api_key="fake_key")
+    assert not CohereInvocationLayer.supports("fake_model")
 
     # supports cohere command with api_key
-    assert CohereInvocationLayer.supports("command", api_key="fake_key")
+    assert CohereInvocationLayer.supports("command")
 
     # supports cohere command-light with api_key
-    assert CohereInvocationLayer.supports("command-light", api_key="fake_key")
+    assert CohereInvocationLayer.supports("command-light")

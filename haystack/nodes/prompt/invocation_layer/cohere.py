@@ -6,7 +6,7 @@ import logging
 import requests
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
-from haystack.errors import CohereInferenceLimitError, CohereInferenceUnauthorizedError, CohereInferenceError
+from haystack.errors import CohereInferenceLimitError, CohereInferenceError, CohereUnauthorizedError
 from haystack.nodes.prompt.invocation_layer import (
     PromptModelInvocationLayer,
     TokenStreamingHandler,
@@ -26,10 +26,11 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
 
     def __init__(self, api_key: str, model_name_or_path: str, max_length: Optional[int] = 100, **kwargs):
         """
-         Creates an instance of CohereInvocationLayer
-        :param model_name_or_path: can be either:
-        :param max_length: The maximum length of the output text.
+         Creates an instance of CohereInvocationLayer for the specified Cohere model
+
         :param api_key: Cohere API key
+        :param model_name_or_path: Cohere model name
+        :param max_length: The maximum length of the output text.
         """
         super().__init__(model_name_or_path)
         valid_api_key = isinstance(api_key, str) and api_key
@@ -148,10 +149,11 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST
         invocation.
         :param data: The data to be sent to the model.
+        :param stream: Whether to stream the response.
         :param attempts: The number of attempts to make.
         :param status_codes: The status codes to retry on.
         :param timeout: The timeout for the request.
-        :return: The responses are being returned.
+        :return: The response from the model as a requests.Response object.
         """
         response: requests.Response
         if status_codes is None:
@@ -172,7 +174,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             if res.status_code == 429:
                 raise CohereInferenceLimitError(f"API rate limit exceeded: {res.text}")
             if res.status_code == 401:
-                raise CohereInferenceUnauthorizedError(f"API key is invalid: {res.text}")
+                raise CohereUnauthorizedError(f"API key is invalid: {res.text}")
 
             raise CohereInferenceError(
                 f"Cohere model returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
