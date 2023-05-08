@@ -310,6 +310,7 @@ class PromptNode(BaseComponent):
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these input parameters. Returns the output of the prompt model.
@@ -357,6 +358,9 @@ class PromptNode(BaseComponent):
 
         if "prompt_template" not in invocation_context.keys():
             invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
+
+        if generation_kwargs and "generation_kwargs" not in invocation_context.keys():
+            invocation_context["generation_kwargs"] = generation_kwargs
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
