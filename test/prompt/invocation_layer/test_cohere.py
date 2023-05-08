@@ -1,11 +1,8 @@
 import unittest
-from unittest.mock import patch, Mock, call, MagicMock
-import json
-import os
+from unittest.mock import patch, MagicMock
 
 import pytest
 
-from haystack.nodes import PromptNode
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer import CohereInvocationLayer
 
@@ -50,24 +47,17 @@ def test_invoke_with_no_kwargs():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("using_constructor", [True, False])
-def test_invoke_with_stop_words(using_constructor):
+def test_invoke_with_stop_words():
     """
     Test stop words are correctly passed from PromptNode to wire in CohereInvocationLayer
     """
     stop_words = ["but", "not", "bye"]
-    pn = PromptNode(
-        model_name_or_path="command", api_key="fake_key", stop_words=stop_words if using_constructor else None
-    )
-    assert isinstance(pn.prompt_model.model_invocation_layer, CohereInvocationLayer)
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='{"generations":[{"text": "Hello"}]}')
 
-        if using_constructor:
-            pn("Tell me hello")
-        else:
-            pn("Tell me hello", stop_words=stop_words if not using_constructor else None)
+        layer.invoke(prompt="Tell me hello", stop_words=stop_words)
 
         assert mock_post.called
 
@@ -85,19 +75,18 @@ def test_streaming_stream_param(using_constructor, stream):
     Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer
     """
     if using_constructor:
-        pn = PromptNode(model_name_or_path="command", api_key="fake_key", model_kwargs={"stream": stream})
+        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream=stream)
     else:
-        pn = PromptNode(model_name_or_path="command", api_key="fake_key")
+        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
 
-    assert isinstance(pn.prompt_model.model_invocation_layer, CohereInvocationLayer)
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='{"generations":[{"text": "Hello"}]}')
 
         if using_constructor:
-            pn("Tell me hello")
+            layer.invoke(prompt="Tell me hello")
         else:
-            pn("Tell me hello", stream=stream)
+            layer.invoke(prompt="Tell me hello", stream=stream)
 
         assert mock_post.called
 
@@ -123,13 +112,10 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler):
     Test stream_handler parameter is correctly from PromptNode passed to wire in CohereInvocationLayer
     """
     if using_constructor:
-        pn = PromptNode(
-            model_name_or_path="command", api_key="fake_key", model_kwargs={"stream_handler": stream_handler}
-        )
+        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream_handler=stream_handler)
     else:
-        pn = PromptNode(model_name_or_path="command", api_key="fake_key")
+        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
 
-    assert isinstance(pn.prompt_model.model_invocation_layer, CohereInvocationLayer)
     with unittest.mock.patch(
         "haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post"
     ) as mock_post, unittest.mock.patch(
@@ -139,9 +125,9 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler):
         mock_post.return_value = MagicMock(text='{"generations":[{"text": "Hello"}]}')
 
         if using_constructor:
-            pn("Tell me hello")
+            layer.invoke(prompt="Tell me hello")
         else:
-            pn("Tell me hello", stream_handler=stream_handler)
+            layer.invoke(prompt="Tell me hello", stream_handler=stream_handler)
 
         assert mock_post.called
 
