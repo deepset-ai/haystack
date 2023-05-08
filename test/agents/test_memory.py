@@ -24,7 +24,7 @@ def mocked_prompt_template():
 @pytest.mark.unit
 def test_no_memory():
     no_mem = NoMemory()
-    assert no_mem.load() == {}
+    assert no_mem.load() == ""
     no_mem.save({"key": "value"})
     no_mem.clear()
 
