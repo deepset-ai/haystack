@@ -20,7 +20,7 @@ class ConversationMemory(Memory):
         self.input_key = input_key
         self.output_key = output_key
 
-    def load(self, keys: Optional[List[str]] = None, **kwargs) -> Any:
+    def load(self, keys: Optional[List[str]] = None, **kwargs) -> str:
         """
         Load conversation history as a formatted string.
 

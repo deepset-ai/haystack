@@ -38,7 +38,7 @@ class ConversationSummaryMemory(ConversationMemory):
         self.summary_frequency = summary_frequency
         self.summary = ""
 
-    def load(self, keys: Optional[List[str]] = None, **kwargs) -> Any:
+    def load(self, keys: Optional[List[str]] = None, **kwargs) -> str:
         """
         Load conversation history as a formatted string, including the latest summary.
 

@@ -8,7 +8,7 @@ class NoMemory(Memory):
     A memory class that doesn't store any data.
     """
 
-    def load(self, keys: Optional[List[str]] = None, **kwargs) -> Any:
+    def load(self, keys: Optional[List[str]] = None, **kwargs) -> str:
         """
         Load an empty dictionary.
 
