@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
+from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args, Sequence
 
 import os
 import json
@@ -13,7 +13,7 @@ from tenacity import retry, wait_exponential, retry_if_not_result
 
 from haystack.preview import component, Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
-from haystack.preview.utils.import_utils import is_imported
+from haystack import is_imported
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,10 @@ class WhisperTranscriber:
         documents: List[Document]
 
     def __init__(
-        self, model_name_or_path: WhisperModel = "whisper-1", api_key: Optional[str] = None, device: str = None
+        self,
+        model_name_or_path: WhisperModel = "whisper-1",
+        api_key: Optional[str] = None,
+        device: Optional[str] = None,
     ):
         """
         Transcribes a list of audio files into a list of Documents.
@@ -123,7 +126,7 @@ class WhisperTranscriber:
         documents = self.transcribe_to_documents(audios, **whisper_params)
         return WhisperTranscriber.Output(documents)
 
-    def transcribe_to_documents(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
+    def transcribe_to_documents(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
         """
         Transcribe the given audio files. Returns a list of Documents.
 
@@ -140,7 +143,7 @@ class WhisperTranscriber:
             for audio, transcript in zip(audio_files, transcriptions)
         ]
 
-    def transcribe(self, audio_files: List[Union[str, BinaryIO]], **kwargs) -> Dict[str, Any]:
+    def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Dict[str, Any]]:
         """
         Transcribe the given audio files. Returns a list of strings.
 
@@ -151,7 +154,6 @@ class WhisperTranscriber:
         :param audio_files: a list of paths or binary streams to transcribe
         :returns: a list of transcriptions.
         """
-        self.warm_up()
         transcriptions = []
         for audio_file in audio_files:
             if isinstance(audio_file, (str, Path)):
@@ -196,6 +198,10 @@ class WhisperTranscriber:
         """
         Calls a local Whisper model.
         """
+        if not self._model:
+            self.warm_up()
+        if not self._model:
+            raise ValueError("WhisperTranscriber._transcribe_locally() can't work without a local model.")
         return_segments = kwargs.pop("return_segments", None)
         transcription = self._model.transcribe(audio_file.name, **kwargs)
         if not return_segments:
