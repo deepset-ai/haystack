@@ -1,7 +1,8 @@
-from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, Tuple
+from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal, get_args
 
 import os
 import json
+import logging
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -15,10 +16,15 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.preview.utils.import_utils import is_imported
 
 
+logger = logging.getLogger(__name__)
+
+
 OPENAI_TIMEOUT = float(os.environ.get("HAYSTACK_OPENAI_TIMEOUT_SEC", 30))
 
 
-WhisperModel = Literal["tiny", "small", "medium", "large", "large-v2"]
+WhisperLocalModel = Literal["tiny", "small", "medium", "large", "large-v2"]
+WhisperRemoteModel = Literal["whisper-1"]
+WhisperModel = Union[WhisperLocalModel, WhisperRemoteModel]
 
 
 @component
@@ -47,7 +53,9 @@ class WhisperTranscriber:
     class Output:
         documents: List[Document]
 
-    def __init__(self, api_key: Optional[str] = None, model_name_or_path: WhisperModel = "medium", device: str = None):
+    def __init__(
+        self, model_name_or_path: WhisperModel = "whisper-1", api_key: Optional[str] = None, device: str = None
+    ):
         """
         Transcribes a list of audio files into a list of Documents.
 
@@ -64,15 +72,43 @@ class WhisperTranscriber:
         :param device: Device to use for inference. Only used if you're using a local installation of Whisper.
             If None, CPU is used.
         """
+        if model_name_or_path not in (get_args(WhisperRemoteModel) + get_args(WhisperLocalModel)):
+            raise ValueError(
+                f"Model name not recognized. Choose one among: "
+                f"{', '.join(get_args(WhisperRemoteModel) + get_args(WhisperLocalModel))}."
+            )
+
+        if model_name_or_path in get_args(WhisperRemoteModel) and not api_key:
+            raise ValueError(
+                "Provide a valid API key for OpenAI API. Alternatively, install OpenAI Whisper (see "
+                "[Whisper](https://github.com/openai/whisper) for more details) "
+                f"and select a model size among: {', '.join(get_args(WhisperLocalModel))}"
+            )
+
+        if model_name_or_path in get_args(WhisperLocalModel) and not is_imported("whisper"):
+            raise ValueError(
+                "To use a local Whisper model, install Haystack's audio extras as `pip install farm-haystack[audio]` "
+                "or install Whisper yourself with `pip install openai-whisper`. You will need ffmpeg on your system "
+                "in either case, see: https://github.com/openai/whisper."
+            )
+
+        if model_name_or_path in get_args(WhisperLocalModel) and api_key:
+            logger.warning(
+                "An API Key was provided, but a local model was selected. "
+                "WhisperTranscriber will try to use the local model."
+            )
+
         self.api_key = api_key
         self.model_name = model_name_or_path
-        self.device = torch.device(device) if device else torch.device("cpu")
-        self.use_local_whisper = is_imported("whisper") and self.api_key is None
+        self.use_local_whisper = model_name_or_path in get_args(WhisperLocalModel)
+
+        if self.use_local_whisper:
+            self.device = torch.device(device) if device else torch.device("cpu")
 
         self._model = None
         if not self.use_local_whisper and api_key is None:
             raise ValueError(
-                "Provide a valid api_key for OpenAI API. Alternatively, install OpenAI Whisper (see "
+                "Provide a valid API key for OpenAI API. Alternatively, install OpenAI Whisper (see "
                 "[Whisper](https://github.com/openai/whisper) for more details)."
             )
 
@@ -84,7 +120,6 @@ class WhisperTranscriber:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
     def run(self, audios: List[Path], whisper_params: Dict[str, Any]) -> Output:
-        self.warm_up()
         documents = self.transcribe_to_documents(audios, **whisper_params)
         return WhisperTranscriber.Output(documents)
 
