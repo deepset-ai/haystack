@@ -1,7 +1,12 @@
-from typing import Any
+import typing
+from typing import Any, List, Union
 
+import builtins
 from dataclasses import make_dataclass
 
+import pytest
+
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -11,12 +16,14 @@ class _MetaClass(type):
         # The __call__ method of a metaclass is called early enough to make the validation of the actual class succeed.
         # This method is responsible of calling both __new__ and __init__ properly.
 
-        expected_type = kwargs.pop("expected_type", None)
-        if not expected_type:
+        expected_type = kwargs.get("expected_type", None)
+        if expected_type is None:
             raise ValueError(
                 "Please specify the type MergeLoop should expect by giving a value to the 'expected_type' parameter.\n"
                 "For example: 'merge_loop = MergeLoop(expected_type=List[Document])'"
             )
+        if isinstance(expected_type, str):
+            expected_type = getattr(builtins, expected_type)
 
         # Here is where the run method is defined with the specific types.
         # Let's minimize the amount of logic contained here to the absolute minimum, because this area of the code
@@ -29,7 +36,6 @@ class _MetaClass(type):
 
         obj = cls.__new__(cls, *args, **kwargs)
         obj.__init__(*args, **kwargs)
-        obj.expected_type = expected_type
         return obj
 
 
@@ -61,6 +67,10 @@ class MergeLoop(metaclass=_MetaClass):
         #
         pass
 
+    def __init__(self, expected_type: type):
+        self.expected_type = expected_type
+        self._init_parameters = {"expected_type": expected_type.__name__}
+
     @property
     def output_type(self):
         return make_dataclass("Output", [(f"value", self.expected_type, None)])
@@ -72,16 +82,40 @@ class MergeLoop(metaclass=_MetaClass):
         return self.output_type(value=None)
 
 
-def test_merge():
-    component = MergeLoop(expected_type=int)
-    results = component.run(5, None)
-    assert results.__dict__ == component.output_type(value=5).__dict__
+# FIXME can't be serialized yet due to the magic type dynamism
 
-    results = component.run(None, 5)
-    assert results.__dict__ == component.output_type(value=5).__dict__
 
-    results = component.run(None, None, None)
-    assert results.__dict__ == component.output_type(value=None).__dict__
+class TestMergeLoop:  # (BaseTestComponent):
 
-    results = component.run()
-    assert results.__dict__ == component.output_type(value=None).__dict__
+    # @pytest.fixture
+    # def components(self):
+    #     return [
+    #         MergeLoop(expected_type=int),
+    #         MergeLoop(expected_type=str),
+    #         MergeLoop(expected_type=List[str]) to fix, these types don't work yet
+    #     ]
+
+    def test_merge_first(self):
+        component = MergeLoop(expected_type=int)
+        results = component.run(5, None)
+        assert results.__dict__ == component.output_type(value=5).__dict__
+
+    def test_merge_second(self):
+        component = MergeLoop(expected_type=int)
+        results = component.run(None, 5)
+        assert results.__dict__ == component.output_type(value=5).__dict__
+
+    def test_merge_nones(self):
+        component = MergeLoop(expected_type=int)
+        results = component.run(None, None, None)
+        assert results.__dict__ == component.output_type(value=None).__dict__
+
+    def test_merge_one(self):
+        component = MergeLoop(expected_type=int)
+        results = component.run(1)
+        assert results.__dict__ == component.output_type(value=1).__dict__
+
+    def test_merge_one_none(self):
+        component = MergeLoop(expected_type=int)
+        results = component.run()
+        assert results.__dict__ == component.output_type(value=None).__dict__

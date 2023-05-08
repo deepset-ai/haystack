@@ -1,7 +1,7 @@
+import pytest
 from dataclasses import dataclass
 from canals import component
-
-from test.pipelines.unit.test_component import BaseTestComponent
+from canals.testing.test_component import BaseTestComponent
 
 
 @component
@@ -21,9 +21,10 @@ class AddFixedValue:
         return AddFixedValue.Output(value=value + add)
 
 
-class AddTest(BaseTestComponent):
+class TestAddFixedValue(BaseTestComponent):
+    @pytest.fixture
     def components(self):
-        return [(AddFixedValue(), {"value": 50, "add": 10})]
+        return [AddFixedValue(), AddFixedValue(add=2)]
 
     def test_addvalue(self):
         component = AddFixedValue()

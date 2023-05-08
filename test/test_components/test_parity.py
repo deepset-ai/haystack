@@ -3,6 +3,7 @@ from typing import Optional
 from dataclasses import dataclass
 import pytest
 
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -27,9 +28,14 @@ class Parity:
         return Parity.Output(even=value, odd=None)  # type: ignore  # (mypy doesn't like the missing Optional)
 
 
-def test_parity():
-    component = Parity()
-    results = component.run(value=1)
-    assert results == Parity.Output(even=None, odd=1)  # type: ignore  #(mypy doesn't like the missing Optional)
-    results = component.run(value=2)
-    assert results == Parity.Output(even=2, odd=None)  # type: ignore  #(mypy doesn't like the missing Optional)
+class TestParity(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [Parity()]
+
+    def test_parity(self):
+        component = Parity()
+        results = component.run(value=1)
+        assert results == Parity.Output(even=None, odd=1)  # type: ignore  #(mypy doesn't like the missing Optional)
+        results = component.run(value=2)
+        assert results == Parity.Output(even=2, odd=None)  # type: ignore  #(mypy doesn't like the missing Optional)

@@ -1,5 +1,8 @@
 from dataclasses import make_dataclass
 
+import pytest
+
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -12,6 +15,8 @@ class Remainder:
     """
 
     def __init__(self, divisor: int = 2):
+        if divisor == 0:
+            raise ValueError("Can't divide by zero")
         self.divisor = divisor
         self._output_type = make_dataclass("Output", [(f"remainder_is_{val}", int, None) for val in range(divisor)])
 
@@ -29,11 +34,21 @@ class Remainder:
         return output
 
 
-def test_remainder():
-    component = Remainder()
-    results = component.run(value=3)
-    assert results == component.output_type(remainder_is_1=3)
+class TestRemainder(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [Remainder(), Remainder(divisor=1)]
 
-    component = Remainder(divisor=4)
-    results = component.run(value=3)
-    assert results == component.output_type(remainder_is_3=3)
+    def test_remainder_default(self):
+        component = Remainder()
+        results = component.run(value=3)
+        assert results == component.output_type(remainder_is_1=3)
+
+    def test_remainder_with_divisor(self):
+        component = Remainder(divisor=4)
+        results = component.run(value=3)
+        assert results == component.output_type(remainder_is_3=3)
+
+    def test_remainder_zero(self):
+        with pytest.raises(ValueError):
+            Remainder(divisor=0)

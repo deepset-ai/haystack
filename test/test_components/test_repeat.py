@@ -1,6 +1,10 @@
 from typing import TypeVar, Any, List
 
 from dataclasses import make_dataclass
+
+import pytest
+
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -25,15 +29,19 @@ class Repeat:
         return output_dataclass
 
 
-def test_repeat_default():
-    component = Repeat()
-    results = component.run(value=10)
-    assert results == component.output_type(output_1=10, output_2=10, output_3=10)
-    assert component._init_parameters == {}
+class TestRepeat(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [Repeat(), Repeat(outputs=["one", "two"])]
 
+    def test_repeat_default(self):
+        component = Repeat()
+        results = component.run(value=10)
+        assert results == component.output_type(output_1=10, output_2=10, output_3=10)
+        assert component._init_parameters == {}
 
-def test_repeat_init():
-    component = Repeat(outputs=["one", "two"])
-    results = component.run(value=10)
-    assert results == component.output_type(one=10, two=10)
-    assert component._init_parameters == {"outputs": ["one", "two"]}
+    def test_repeat_init(self):
+        component = Repeat(outputs=["one", "two"])
+        results = component.run(value=10)
+        assert results == component.output_type(one=10, two=10)
+        assert component._init_parameters == {"outputs": ["one", "two"]}

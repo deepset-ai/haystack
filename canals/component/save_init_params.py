@@ -1,12 +1,8 @@
 # pylint: disable=protected-access
 
-from typing import Iterable
-
 import logging
 import inspect
 from functools import wraps
-
-from canals.errors import ComponentError
 
 
 logger = logging.getLogger(__name__)
@@ -42,27 +38,4 @@ def set_default_component_attributes(init_func):
         if not hasattr(self, "defaults"):
             self.defaults = {}
 
-        # Check if the component can be saved with `save_pipelines()`
-        is_serializable(self._init_parameters)
-
     return wrapper_save_init_parameters
-
-
-def is_serializable(value):
-    """
-    Checks that the value given can be saved to disk with a writer like `json.dump`.
-    Very conservative check.
-    """
-    if isinstance(value, (bool, int, float, str)):
-        return
-    if isinstance(value, dict):
-        for val in value.values():
-            is_serializable(val)
-    elif isinstance(value, Iterable):
-        for val in value:
-            is_serializable(val)
-    else:
-        raise ComponentError(
-            f"'{value}' is not a bool, int, float, str, None, dict or iterable. "
-            "It can't be passed to the `__init__()` method of a component."
-        )

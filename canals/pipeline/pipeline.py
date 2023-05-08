@@ -6,7 +6,7 @@ from pathlib import Path
 from copy import deepcopy
 from collections import OrderedDict
 
-import networkx as nx
+import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.draw import draw, RenderingEngines
@@ -47,8 +47,42 @@ class Pipeline:
         """
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
-        self.graph = nx.MultiDiGraph()
+        self.graph = networkx.MultiDiGraph()
         self.debug: Dict[int, Dict[str, Any]] = {}
+
+    def __eq__(self, other) -> bool:
+        """
+        Equal pipelines share every metadata, node and edge, but they're not required to use
+        the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
+        """
+        if (
+            not isinstance(other, type(self))
+            or not getattr(self, "metadata") == getattr(other, "metadata")
+            or not getattr(self, "max_loops_allowed") == getattr(other, "max_loops_allowed")
+            or not hasattr(self, "graph")
+            or not hasattr(other, "graph")
+        ):
+            return False
+
+        return (
+            self.graph.adj == other.graph.adj
+            and self._comparable_nodes_list(self.graph) == self._comparable_nodes_list(other.graph)
+            and self.graph.graph == other.graph.graph
+        )
+
+    def _comparable_nodes_list(self, graph: networkx.MultiDiGraph) -> List[Dict[str, Any]]:
+        """
+        Replaces instances of nodes with their class name and defaults list in order to make sure they're comparable.
+        """
+        nodes = []
+        for node in graph.nodes:
+            comparable_node = graph.nodes[node]
+            if hasattr(comparable_node, "defaults"):
+                comparable_node["defaults"] = comparable_node["instance"].defaults
+            comparable_node["instance"] = comparable_node["instance"].__class__
+            nodes.append(comparable_node)
+        nodes.sort()
+        return nodes
 
     def add_component(self, name: str, instance: Any) -> None:
         """
@@ -484,7 +518,7 @@ class Pipeline:
             for from_node, _, data in self.graph.in_edges(name, data=True)
             # ... if there's a path in the graph leading back from the current node to the
             # input node, # and only in case this node accepts multiple inputs.
-            if not (nx.has_path(self.graph, name, from_node) and self.graph.nodes[name]["variadic_input"])
+            if not (networkx.has_path(self.graph, name, from_node) and self.graph.nodes[name]["variadic_input"])
         ]
         return data_to_wait_for
 
@@ -552,7 +586,7 @@ class Pipeline:
         """
         # This is not a terminal node: find out where the output goes, to which nodes and along which edge
         is_decision_node_for_loop = (
-            any(nx.has_path(self.graph, edge[1], node_name) for edge in self.graph.out_edges(node_name))
+            any(networkx.has_path(self.graph, edge[1], node_name) for edge in self.graph.out_edges(node_name))
             and len(self.graph.out_edges(node_name)) > 1
         )
         for edge_data in self.graph.out_edges(node_name, data=True):
@@ -563,7 +597,7 @@ class Pipeline:
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
             if is_decision_node_for_loop and node_results[from_socket.name] is None:
-                if nx.has_path(self.graph, target_node, node_name):
+                if networkx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(
                         "Not adding '%s' to the inputs buffer: we're leaving the loop.",

@@ -2,6 +2,9 @@ import logging
 
 from dataclasses import dataclass
 
+import pytest
+
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -40,9 +43,19 @@ class Greet:
         return Greet.Output(value=value)
 
 
-def test_greet_message(caplog):
-    caplog.set_level(logging.WARNING)
-    component = Greet()
-    results = component.run(value=10, message="Hello, that's {value}", log_level="WARNING")
-    assert results == Greet.Output(value=10)
-    assert "Hello, that's 10" in caplog.text
+class TestGreet(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [
+            Greet(),
+            Greet(message="Hello, that's {value}"),
+            Greet(log_level="WARNING"),
+            Greet(message="Hello, that's {value}", log_level="WARNING"),
+        ]
+
+    def test_greet_message(self, caplog):
+        caplog.set_level(logging.WARNING)
+        component = Greet()
+        results = component.run(value=10, message="Hello, that's {value}", log_level="WARNING")
+        assert results == Greet.Output(value=10)
+        assert "Hello, that's 10" in caplog.text

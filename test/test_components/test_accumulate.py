@@ -2,9 +2,11 @@ from typing import Union, Callable, Optional
 import sys
 import builtins
 from importlib import import_module
-
 from dataclasses import dataclass
+
+import pytest
 from canals import component
+from canals.testing import BaseTestComponent
 
 
 @component
@@ -73,50 +75,57 @@ class Accumulate:
         return f"{module.__name__}.{function.__name__}"
 
 
-def test_accumulate_default():
-    component = Accumulate()
-    results = component.run(value=10)
-    assert results == Accumulate.Output(value=10)
-    assert component.state == 10
-
-    results = component.run(value=1)
-    assert results == Accumulate.Output(value=11)
-    assert component.state == 11
-
-    assert component._init_parameters == {}
-
-
 def my_subtract(first, second):
     return first - second
 
 
-def test_accumulate_callable():
-    component = Accumulate(function=my_subtract)
+class TestAccumulate(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [
+            Accumulate(),
+            Accumulate(function=my_subtract),
+            Accumulate(function="test.test_components.test_accumulate.my_subtract"),
+        ]
 
-    results = component.run(value=10)
-    assert results == Accumulate.Output(value=-10)
-    assert component.state == -10
+    def test_accumulate_default(self):
+        component = Accumulate()
+        results = component.run(value=10)
+        assert results == Accumulate.Output(value=10)
+        assert component.state == 10
 
-    results = component.run(value=1)
-    assert results == Accumulate.Output(value=-11)
-    assert component.state == -11
+        results = component.run(value=1)
+        assert results == Accumulate.Output(value=11)
+        assert component.state == 11
 
-    assert component._init_parameters == {
-        "function": "test.test_components.test_accumulate.my_subtract",
-    }
+        assert component._init_parameters == {}
 
+    def test_accumulate_callable(self):
+        component = Accumulate(function=my_subtract)
 
-def test_accumulate_string():
-    component = Accumulate(function="test.test_components.test_accumulate.my_subtract")
+        results = component.run(value=10)
+        assert results == Accumulate.Output(value=-10)
+        assert component.state == -10
 
-    results = component.run(value=10)
-    assert results == Accumulate.Output(value=-10)
-    assert component.state == -10
+        results = component.run(value=1)
+        assert results == Accumulate.Output(value=-11)
+        assert component.state == -11
 
-    results = component.run(value=1)
-    assert results == Accumulate.Output(value=-11)
-    assert component.state == -11
+        assert component._init_parameters == {
+            "function": "test.test_components.test_accumulate.my_subtract",
+        }
 
-    assert component._init_parameters == {
-        "function": "test.test_components.test_accumulate.my_subtract",
-    }
+    def test_accumulate_string(self):
+        component = Accumulate(function="test.test_components.test_accumulate.my_subtract")
+
+        results = component.run(value=10)
+        assert results == Accumulate.Output(value=-10)
+        assert component.state == -10
+
+        results = component.run(value=1)
+        assert results == Accumulate.Output(value=-11)
+        assert component.state == -11
+
+        assert component._init_parameters == {
+            "function": "test.test_components.test_accumulate.my_subtract",
+        }

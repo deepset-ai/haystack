@@ -1,0 +1,1 @@
+from canals.testing.test_component import BaseTestComponent

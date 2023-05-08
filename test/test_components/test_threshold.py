@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+import pytest
+
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -31,11 +34,16 @@ class Threshold:
         return Threshold.Output(above=value, below=None)  # type: ignore
 
 
-def test_threshold():
-    component = Threshold()
+class TestThreshold(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [Threshold()]
 
-    results = component.run(value=5, threshold=10)
-    assert results == Threshold.Output(above=None, below=5)
+    def test_threshold(self):
+        component = Threshold()
 
-    results = component.run(value=15, threshold=10)
-    assert results == Threshold.Output(above=15, below=None)
+        results = component.run(value=5, threshold=10)
+        assert results == Threshold.Output(above=None, below=5)
+
+        results = component.run(value=15, threshold=10)
+        assert results == Threshold.Output(above=15, below=None)

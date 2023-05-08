@@ -1,4 +1,8 @@
 from dataclasses import dataclass
+
+import pytest
+
+from canals.testing import BaseTestComponent
 from canals import component
 
 
@@ -20,8 +24,13 @@ class Subtract:
         return Subtract.Output(difference=first_value - second_value)
 
 
-def test_subtract():
-    component = Subtract()
-    results = component.run(first_value=10, second_value=7)
-    assert results == Subtract.Output(difference=3)
-    assert component._init_parameters == {}
+class TestSubtract(BaseTestComponent):
+    @pytest.fixture
+    def components(self):
+        return [Subtract()]
+
+    def test_subtract(self):
+        component = Subtract()
+        results = component.run(first_value=10, second_value=7)
+        assert results == Subtract.Output(difference=3)
+        assert component._init_parameters == {}
