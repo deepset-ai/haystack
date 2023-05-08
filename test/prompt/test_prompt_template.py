@@ -10,32 +10,30 @@ from haystack.nodes.prompt.shapers import AnswerParser
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
-from ..conftest import fail_at_version
-
 
 @pytest.mark.unit
 def test_prompt_templates():
-    p = PromptTemplate("Here is some fake template with variable {foo}", "t1")
+    p = PromptTemplate("t1", "Here is some fake template with variable {foo}")
     assert set(p.prompt_params) == {"foo"}
 
-    p = PromptTemplate("Here is some fake template with variable {foo} and {bar}", "t3")
+    p = PromptTemplate("t3", "Here is some fake template with variable {foo} and {bar}")
     assert set(p.prompt_params) == {"foo", "bar"}
 
-    p = PromptTemplate("Here is some fake template with variable {foo1} and {bar2}", "t4")
+    p = PromptTemplate("t4", "Here is some fake template with variable {foo1} and {bar2}")
     assert set(p.prompt_params) == {"foo1", "bar2"}
 
-    p = PromptTemplate("Here is some fake template with variable {foo_1} and {bar_2}", "t4")
+    p = PromptTemplate("t4", "Here is some fake template with variable {foo_1} and {bar_2}")
     assert set(p.prompt_params) == {"foo_1", "bar_2"}
 
-    p = PromptTemplate("Here is some fake template with variable {Foo_1} and {Bar_2}", "t4")
+    p = PromptTemplate("t4", "Here is some fake template with variable {Foo_1} and {Bar_2}")
     assert set(p.prompt_params) == {"Foo_1", "Bar_2"}
 
-    p = PromptTemplate("'Here is some fake template with variable {baz}'", "t4")
+    p = PromptTemplate("t4", "'Here is some fake template with variable {baz}'")
     assert set(p.prompt_params) == {"baz"}
     # strip single quotes, happens in YAML as we need to use single quotes for the template string
     assert p.prompt_text == "Here is some fake template with variable {baz}"
 
-    p = PromptTemplate('"Here is some fake template with variable {baz}"', "t4")
+    p = PromptTemplate("t4", '"Here is some fake template with variable {baz}"')
     assert set(p.prompt_params) == {"baz"}
     # strip double quotes, happens in YAML as we need to use single quotes for the template string
     assert p.prompt_text == "Here is some fake template with variable {baz}"
@@ -43,7 +41,7 @@ def test_prompt_templates():
 
 @pytest.mark.unit
 def test_missing_prompt_template_params():
-    template = PromptTemplate("Here is some fake template with variable {foo} and {bar}", "missing_params")
+    template = PromptTemplate("missing_params", "Here is some fake template with variable {foo} and {bar}")
 
     # both params provided - ok
     template.prepare(foo="foo", bar="bar")
@@ -64,8 +62,8 @@ def test_missing_prompt_template_params():
 
 @pytest.mark.unit
 def test_prompt_template_repr():
-    p = PromptTemplate("Here is variable {baz}", "t")
-    desired_repr = "PromptTemplate(prompt_text=Here is variable {baz}, template_name=t, prompt_params=['baz'])"
+    p = PromptTemplate("t", "Here is variable {baz}")
+    desired_repr = "PromptTemplate(name=t, prompt_text=Here is variable {baz}, prompt_params=['baz'])"
     assert repr(p) == desired_repr
     assert str(p) == desired_repr
 
@@ -74,7 +72,7 @@ def test_prompt_template_repr():
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_prompt_template_deserialization(mock_prompt_model):
     custom_prompt_template = PromptTemplate(
-        template_name="custom-question-answering",
+        name="custom-question-answering",
         prompt_text="Given the context please answer the question. Context: {context}; Question: {query}; Answer:",
         output_parser=AnswerParser(),
     )
@@ -90,7 +88,7 @@ def test_prompt_template_deserialization(mock_prompt_model):
     loaded_generator = loaded_pipe.get_node("Generator")
     assert isinstance(loaded_generator, PromptNode)
     assert isinstance(loaded_generator.default_prompt_template, PromptTemplate)
-    assert loaded_generator.default_prompt_template.template_name == "custom-question-answering"
+    assert loaded_generator.default_prompt_template.name == "custom-question-answering"
     assert (
         loaded_generator.default_prompt_template.prompt_text
         == "Given the context please answer the question. Context: {context}; Question: {query}; Answer:"
@@ -137,7 +135,7 @@ class TestPromptTemplateSyntax:
     def test_prompt_template_syntax_parser(
         self, prompt_text: str, expected_prompt_params: Set[str], expected_used_functions: Set[str]
     ):
-        prompt_template = PromptTemplate(template_name="test", prompt_text=prompt_text)
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         assert set(prompt_template.prompt_params) == expected_prompt_params
         assert set(prompt_template._used_functions) == expected_used_functions
 
@@ -218,7 +216,7 @@ class TestPromptTemplateSyntax:
     def test_prompt_template_syntax_fill(
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
-        prompt_template = PromptTemplate(template_name="test", prompt_text=prompt_text)
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
         assert prompts == expected_prompts
 
@@ -245,7 +243,7 @@ class TestPromptTemplateSyntax:
         ],
     )
     def test_join(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
-        prompt_template = PromptTemplate(template_name="test", prompt_text=prompt_text)
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
         assert prompts == expected_prompts
 
@@ -278,7 +276,7 @@ class TestPromptTemplateSyntax:
         ],
     )
     def test_to_strings(self, prompt_text: str, documents: List[Document], expected_prompts: List[str]):
-        prompt_template = PromptTemplate(template_name="test", prompt_text=prompt_text)
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents)]
         assert prompts == expected_prompts
 
@@ -302,7 +300,7 @@ class TestPromptTemplateSyntax:
         self, prompt_text: str, exc_type: Type[BaseException], expected_exc_match: str
     ):
         with pytest.raises(exc_type, match=expected_exc_match):
-            PromptTemplate(template_name="test", prompt_text=prompt_text)
+            PromptTemplate(name="test", prompt_text=prompt_text)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -318,7 +316,7 @@ class TestPromptTemplateSyntax:
         expected_exc_match: str,
     ):
         with pytest.raises(exc_type, match=expected_exc_match):
-            prompt_template = PromptTemplate(template_name="test", prompt_text=prompt_text)
+            prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
             next(prompt_template.fill(documents=documents, query=query))
 
     @pytest.mark.unit
@@ -339,32 +337,6 @@ class TestPromptTemplateSyntax:
     def test_prompt_template_syntax_fill_ignores_dangerous_input(
         self, prompt_text: str, documents: List[Document], query: str, expected_prompts: List[str]
     ):
-        prompt_template = PromptTemplate(template_name="test", prompt_text=prompt_text)
+        prompt_template = PromptTemplate(name="test", prompt_text=prompt_text)
         prompts = [prompt for prompt in prompt_template.fill(documents=documents, query=query)]
         assert prompts == expected_prompts
-
-    @pytest.mark.unit
-    @fail_at_version(2, 0)
-    def test_name_parameter_deprecated(self):
-        with pytest.warns(DeprecationWarning) as w:
-            prompt_template = PromptTemplate(name="test", prompt_text="test")
-            assert "Use the parameter `template_name` instead" in str(w[0].message)
-            assert prompt_template.template_name == "test"
-
-    @pytest.mark.unit
-    @fail_at_version(2, 0)
-    def test_passing_name_and_template_name_parameter(self):
-        with pytest.warns(DeprecationWarning) as w:
-            prompt_template = PromptTemplate(name="test", template_name="test2", prompt_text="test")
-            assert (
-                "Use only the parameter `template_name`. PromptTemplate will be initialized "
-                "using the parameter `template_name`" in str(w[0].message)
-            )
-            assert prompt_template.template_name == "test2"
-
-    @pytest.mark.unit
-    @fail_at_version(2, 0)
-    def test_passing_neither_name_nor_template_name_parameter(self):
-        with pytest.raises(ValueError) as e:
-            PromptTemplate(prompt_text="test")
-            assert "Please specify the parameter `template_name`" in str(e[0].message)

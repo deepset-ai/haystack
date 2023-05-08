@@ -838,7 +838,7 @@ def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
               - name: prompt_template_raw_qa_per_document
                 type: PromptTemplate
                 params:
-                  template_name: raw-question-answering-per-document
+                  name: raw-question-answering-per-document
                   prompt_text: 'Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer:'
 
               - name: prompt_node_raw_qa
