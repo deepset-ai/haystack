@@ -31,7 +31,7 @@ from pydantic.json import pydantic_encoder
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
-from generalimport import is_imported
+from haystack.utils.import_utils import is_imported
 
 
 logger = logging.getLogger(__name__)

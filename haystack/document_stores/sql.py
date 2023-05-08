@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import numpy as np
 
-from generalimport import is_imported
+from haystack.utils.import_utils import is_imported
 
 try:
     from sqlalchemy import (
