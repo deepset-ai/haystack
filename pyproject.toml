@@ -53,7 +53,7 @@ dependencies = [
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
-  "generalimport @ git+https://github.com/ZanSara/generalimport.git@handling-classes", # "generalimport", # Optional imports
+  "generalimport", # Optional imports
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
