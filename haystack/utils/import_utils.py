@@ -10,28 +10,12 @@ from pathlib import Path
 from typing import Optional, Dict, Union, Tuple, List
 
 import requests
-from generalimport import FakeModule, MissingOptionalDependency
 
 from haystack.errors import DatasetsError
 from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
-
-
-# TODO: remove this function once this PR is merged and released by generalimport:
-# https://github.com/ManderaGeneral/generalimport/pull/25
-def is_imported(module_name: str) -> bool:
-    """
-    Returns True if the module was actually imported, False, if generalimport mocked it.
-    """
-    module = sys.modules.get(module_name)
-    try:
-        return bool(module and not isinstance(module, FakeModule))
-    except MissingOptionalDependency:
-        # isinstance() raises MissingOptionalDependency: fake module
-        pass
-    return False
 
 
 def safe_import(import_path: str, classname: str, dep_group: str):

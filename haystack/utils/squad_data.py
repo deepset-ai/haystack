@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 import mmh3
 
-from haystack.utils.import_utils import is_imported
+from haystack.utils.generalimport import is_imported
 from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
