@@ -31,6 +31,8 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         prefixes: str = "",
     ):
         """
+        The GraphDBKnowledgeGraph component is deprecated and will be removed in future versions.
+
         Init the knowledge graph by defining the settings to connect with a GraphDB instance
 
         :param host: address of server where the GraphDB instance is running

@@ -1,6 +1,7 @@
 import os
 
 from haystack.agents import Agent, Tool
+from haystack.agents.base import ToolsManager
 from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
@@ -10,12 +11,12 @@ if not search_key:
     raise ValueError("Please set the SERPERDEV_API_KEY environment variable")
 
 openai_key = os.environ.get("OPENAI_API_KEY")
-if not search_key:
+if not openai_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
 
 pn = PromptNode(
-    "text-davinci-003",
+    "gpt-3.5-turbo",
     api_key=openai_key,
     max_length=256,
     default_prompt_template="question-answering-with-document-scores",
@@ -84,7 +85,7 @@ Thought:
 """
 few_shot_agent_template = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
 prompt_node = PromptNode(
-    "text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
+    "gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
 )
 
 web_qa_tool = Tool(
@@ -95,10 +96,7 @@ web_qa_tool = Tool(
 )
 
 agent = Agent(
-    prompt_node=prompt_node,
-    prompt_template=few_shot_agent_template,
-    tools=[web_qa_tool],
-    final_answer_pattern=r"Final Answer\s*:\s*(.*)",
+    prompt_node=prompt_node, prompt_template=few_shot_agent_template, tools_manager=ToolsManager([web_qa_tool])
 )
 
 hotpot_questions = [

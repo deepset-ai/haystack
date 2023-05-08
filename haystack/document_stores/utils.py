@@ -197,7 +197,9 @@ def _extract_docs_and_labels_from_dict(
                         )
                         labels.append(label)
                     else:
-                        ans_position = cur_full_doc.content[answer["answer_start"] : answer["answer_start"] + len(ans)]
+                        ans_position = cur_full_doc.content[
+                            answer["answer_start"] : answer["answer_start"] + len(str(ans))
+                        ]
                         if ans != ans_position:
                             # do not use answer
                             problematic_ids.append(qa.get("id", "missing"))

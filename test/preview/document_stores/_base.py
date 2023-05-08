@@ -1,3 +1,5 @@
+from typing import List
+
 import pytest
 
 import numpy as np
@@ -45,6 +47,12 @@ class DocumentStoreBaseTests:
 
         return documents
 
+    def contains_same_docs(self, first_list: List[Document], second_list: List[Document]) -> bool:
+        """
+        Utility to compare two lists of documents for equality regardless of the order od the documents.
+        """
+        return first_list.sort(key=lambda d: d.id) == second_list.sort(key=lambda d: d.id)
+
     def test_count_empty(self, docstore):
         assert docstore.count_documents() == 0
 
@@ -67,14 +75,19 @@ class DocumentStoreBaseTests:
     def test_filter_simple_value(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": "2020"})
-        assert len(result) == 3
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
+
+    def test_filter_simple_list_single_element(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"year": ["2020"]})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
 
     def test_filter_simple_list(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"year": ["2020"]})
-        assert all(doc.metadata["year"] == "2020" for doc in result)
         result = docstore.filter_documents(filters={"year": ["2020", "2021"]})
-        assert all(doc.metadata["year"] in ["2020", "2021"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("year") in ["2020", "2021"]]
+        )
 
     def test_incorrect_filter_name(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
@@ -95,110 +108,223 @@ class DocumentStoreBaseTests:
         self.direct_write(docstore, filterable_docs)
         with pytest.raises(ValueError, match="malformed"):
             docstore.filter_documents(filters={"number": {"year": "2020"}})
+
+    def test_deeper_incorrect_filter_nesting(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
         with pytest.raises(ValueError, match="malformed"):
             docstore.filter_documents(filters={"number": {"year": {"month": "01"}}})
 
-    def test_eq_filter(self, docstore, filterable_docs):
+    def test_eq_filter_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$eq": "2020"}})
-        assert all(doc.metadata["year"] == "2020" for doc in result)
-        result = docstore.filter_documents(filters={"year": "2020"})
-        assert all(doc.metadata["year"] == "2020" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
 
-    def test_in_filter(self, docstore, filterable_docs):
+    def test_eq_filter_implicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"year": "2020"})
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
+
+    def test_in_filter_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$in": ["2020", "2021", "n.a."]}})
-        assert all(doc.metadata["year"] in ["2020", "2021"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("year") in ["2020", "2021"]]
+        )
+
+    def test_in_filter_implicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": ["2020", "2021", "n.a."]})
-        assert all(doc.metadata["year"] in ["2020", "2021"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("year") in ["2020", "2021"]]
+        )
 
     def test_ne_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$ne": "2020"}})
-        assert all(doc.metadata.get("year", None) != "2020" for doc in result)
+        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") != "2020"])
 
     def test_nin_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
-        assert all(doc.metadata.get("year", None) not in ["2020", "2021"] for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if doc.metadata.get("year") not in ["2020", "2021"]]
+        )
 
     def test_gt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
-        assert all(doc.metadata["number"] > 0 for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] > 0]
+        )
 
     def test_gte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gte": -2.0}})
-        assert all(doc.metadata["number"] >= -2.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] >= -2.0],
+        )
 
     def test_lt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
-        assert all(doc.metadata["number"] < 0 for doc in result)
+        assert self.contains_same_docs(
+            result, [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] < 0]
+        )
 
     def test_lte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
-        assert all(doc.metadata["number"] <= 2.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] <= 2.0],
+        )
 
-    def test_filter_simple_explicit_and(self, docstore, filterable_docs):
+    def test_filter_simple_explicit_and_with_multikey_dict(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"year": {"$and": {"$lte": "2021", "$gte": "2020"}}})
-        assert all(int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021 for doc in result)
-        result = docstore.filter_documents(filters={"year": {"$and": [{"$lte": "2021"}, {"$gte": "2020"}]}})
-        assert all(int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021 for doc in result)
+        result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 1, "$gte": -1}}})
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if "number" in doc.metadata.keys() and doc.metadata["number"] <= 1 and doc.metadata["number"] >= -1
+            ],
+        )
+
+    def test_filter_simple_explicit_and_with_list(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 1}, {"$gte": -1}]}})
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if "number" in doc.metadata.keys() and doc.metadata["number"] <= 1 and doc.metadata["number"] >= -1
+            ],
+        )
 
     def test_filter_simple_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"year": {"$lte": "2021", "$gte": "2020"}})
-        assert all(int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021 for doc in result)
+        result = docstore.filter_documents(filters={"number": {"$lte": 1, "$gte": -1}})
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if "number" in doc.metadata.keys() and doc.metadata["number"] <= 1 and doc.metadata["number"] >= -1
+            ],
+        )
 
     def test_filter_nested_explicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        filters = {"$and": {"year": {"$and": {"$lte": "2021", "$gte": "2020"}}, "name": {"$in": ["name_0", "name_1"]}}}
+        filters = {"$and": {"number": {"$and": {"$lte": 1, "$gte": -1}}, "name": {"$in": ["name_0", "name_1"]}}}
         result = docstore.filter_documents(filters=filters)
-        assert all(
-            int(doc.metadata["year"]) >= 2020
-            and int(doc.metadata["year"]) <= 2021
-            and doc.metadata["name"] in ["name_0", "name_1"]
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    "number" in doc.metadata.keys()
+                    and doc.metadata["number"] <= 1
+                    and doc.metadata["number"] >= -1
+                    and doc.metadata.get("name") in ["name_0", "name_1"]
+                )
+            ],
         )
 
     def test_filter_nested_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
-        filters_simplified = {"year": {"$lte": "2021", "$gte": "2020"}, "name": ["name_0", "name_1"]}
+        filters_simplified = {"number": {"$lte": 1, "$gte": -1}, "name": ["name_0", "name_1"]}
         result = docstore.filter_documents(filters=filters_simplified)
-        assert all(
-            int(doc.metadata["year"]) >= 2020
-            and int(doc.metadata["year"]) <= 2021
-            and doc.metadata["name"] in ["name_0", "name_1"]
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    "number" in doc.metadata.keys()
+                    and doc.metadata["number"] <= 1
+                    and doc.metadata["number"] >= -1
+                    and doc.metadata.get("name") in ["name_0", "name_1"]
+                )
+            ],
         )
 
     def test_filter_simple_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
-        assert all(doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    or doc.metadata.get("name") in ["name_0", "name_1"]
+                )
+            ],
+        )
 
     def test_filter_nested_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "number": {"$lt": 1.0}}}
         result = docstore.filter_documents(filters=filters)
-        assert all(doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0 for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    doc.metadata.get("name") in ["name_0", "name_1"]
+                    or ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                )
+            ],
+        )
 
-    def test_filter_nested_and_or(self, docstore, filterable_docs):
+    def test_filter_nested_and_or_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {
-            "year": {"$lte": "2021", "$gte": "2020"},
+            "$and": {"year": {"$eq": "2021"}, "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
+        }
+        result = docstore.filter_documents(filters=filters_simplified)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    doc.metadata.get("year") in ["2021"]
+                    and (
+                        doc.metadata.get("name") in ["name_0", "name_1"]
+                        or ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    )
+                )
+            ],
+        )
+
+    def test_filter_nested_and_or_implicit(self, docstore, filterable_docs):
+        self.direct_write(docstore, filterable_docs)
+        filters_simplified = {
+            "year": {"$eq": "2021"},
             "$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}},
         }
         result = docstore.filter_documents(filters=filters_simplified)
-        assert all(
-            (int(doc.metadata["year"]) >= 2020 and int(doc.metadata["year"]) <= 2021)
-            and (doc.metadata["name"] in ["name_0", "name_1"] or doc.metadata["number"] < 1.0)
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    doc.metadata.get("year") in ["2021"]
+                    and (
+                        doc.metadata.get("name") in ["name_0", "name_1"]
+                        or ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    )
+                )
+            ],
         )
 
     def test_filter_nested_or_and(self, docstore, filterable_docs):
@@ -210,22 +336,41 @@ class DocumentStoreBaseTests:
             }
         }
         result = docstore.filter_documents(filters=filters_simplified)
-        assert all(
-            doc.metadata.get("number", 2) < 1.0
-            or (doc.metadata["name"] in ["name_0", "name_1"] and doc.metadata["month"] != "01")
-            for doc in result
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    ("number" in doc.metadata.keys() and doc.metadata["number"] < 1)
+                    or (
+                        doc.metadata.get("name") in ["name_0", "name_1"]
+                        or ("month" in doc.metadata.keys() and doc.metadata["month"] != "01")
+                    )
+                )
+            ],
         )
 
     def test_filter_nested_multiple_identical_operators_same_level(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {
             "$or": [
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": {"$gte": "2020"}}},
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": {"$lt": "2021"}}},
+                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": "2020"}},
+                {"$and": {"month": {"$in": ["01", "02"]}, "year": "2021"}},
             ]
         }
         result = docstore.filter_documents(filters=filters)
-        assert all(doc.metadata["name"] in ["name_0", "name_1"] for doc in result)
+        assert self.contains_same_docs(
+            result,
+            [
+                doc
+                for doc in filterable_docs
+                if (
+                    (doc.metadata.get("name") in ["name_0", "name_1"] and doc.metadata.get("year") == "2020")
+                    or (doc.metadata.get("month") in ["01", "02"] and doc.metadata.get("year") == "2020")
+                )
+            ],
+        )
 
     def test_write(self, docstore):
         doc = Document(content="test doc")
