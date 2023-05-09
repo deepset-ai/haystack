@@ -51,18 +51,17 @@ def test_default_table_document_to_dict():
 
 
 def test_default_table_document_from_dict():
-    df = pd.DataFrame([1, 2])
     assert Document.from_dict(
         {
-            "id": _create_id(classname=Document.__name__, content=df),
-            "content": df,
+            "id": _create_id(classname=Document.__name__, content=pd.DataFrame([1, 2])),
+            "content": pd.DataFrame([1, 2]),
             "content_type": "table",
             "metadata": {},
             "id_hash_keys": [],
             "score": None,
             "embedding": None,
         }
-    ) == Document(content=df, content_type="table")
+    ) == Document(content=pd.DataFrame([1, 2]), content_type="table")
 
 
 def test_default_image_document_to_dict():
@@ -79,18 +78,17 @@ def test_default_image_document_to_dict():
 
 
 def test_default_image_document_from_dict():
-    path = Path(__file__).parent / "test_files" / "apple.jpg"
     assert Document.from_dict(
         {
-            "id": _create_id(classname=Document.__name__, content=path),
-            "content": path,
+            "id": _create_id(classname=Document.__name__, content=Path(__file__).parent / "test_files" / "apple.jpg"),
+            "content": Path(__file__).parent / "test_files" / "apple.jpg",
             "content_type": "image",
             "metadata": {},
             "id_hash_keys": [],
             "score": None,
             "embedding": None,
         }
-    ) == Document(content=path, content_type="image")
+    ) == Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image")
 
 
 def test_document_with_most_attributes_to_dict():
