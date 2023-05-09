@@ -102,7 +102,7 @@ class Document:
         return asdict(self)
 
     def to_json(self, **json_kwargs):
-        return json.dumps(self.to_dict(), **json_kwargs, cls=_DocumentEncoder)
+        return json.dumps(self.to_dict(), **json_kwargs)
 
     @classmethod
     def from_dict(cls, dictionary):
@@ -110,33 +110,5 @@ class Document:
 
     @classmethod
     def from_json(cls, data, **json_kwargs):
-        dictionary = json.loads(data, **json_kwargs, cls=_DocumentDecoder)
+        dictionary = json.loads(data, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
-
-
-class _DocumentEncoder(json.JSONEncoder):
-    """
-    Encodes more exotic datatypes like pandas dataframes or file paths.
-    """
-
-    def default(self, obj):
-        if isinstance(obj, DataFrame):
-            return obj.to_json()
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-
-class _DocumentDecoder(json.JSONDecoder):
-    """
-    Decodes more exotic datatypes like pandas dataframes or file paths.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(object_hook=self.object_hook)
-
-    def object_hook(self, dictionary):
-        if "content_type" in dictionary and dictionary["content_type"] == "table":
-            dictionary["content"] = pandas.read_json(dictionary.get("content", None))
-            print(dictionary)
-
-        return dictionary
