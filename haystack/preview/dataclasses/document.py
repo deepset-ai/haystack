@@ -1,4 +1,4 @@
-from typing import List, Any, Dict, Literal, Optional, TYPE_CHECKING
+from typing import List, Any, Dict, Literal, Optional
 
 import json
 import hashlib
