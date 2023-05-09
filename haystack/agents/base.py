@@ -344,7 +344,7 @@ class Agent:
             model_name = self.prompt_node.model_name_or_path
         else:
             model_name = self.prompt_node.model_name_or_path.model_name_or_path
-        self.add_default_logging_callbacks(streaming=any(m for m in STREAMING_CAPABLE_MODELS if m in model_name))
+        self.add_default_logging_callbacks(streaming=True)
         self.hash = None
         self.last_hash = None
         self.update_hash()
