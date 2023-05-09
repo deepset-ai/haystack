@@ -1,10 +1,13 @@
-from typing import List, Any, Dict, Literal, Optional, TYPE_CHECKING
+from typing import List, Any, Dict, Literal, Optional, TYPE_CHECKING, Type
 
 import json
 import hashlib
 import logging
 from pathlib import Path
 from dataclasses import asdict, dataclass, field
+
+import numpy
+import pandas
 
 from haystack.preview.utils.import_utils import optional_import
 
@@ -36,6 +39,47 @@ def _create_id(
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
+class DocumentEncoder(json.JSONEncoder):
+    """
+    Encodes more exotic datatypes like pandas dataframes or file paths.
+    """
+
+    def default(self, obj):
+        if isinstance(obj, numpy.ndarray):
+            return obj.tolist()
+        if isinstance(obj, DataFrame):
+            return obj.to_json()
+        if isinstance(obj, Path):
+            return str(obj)
+        try:
+            return json.JSONEncoder.default(self, obj)
+        except TypeError as exc:
+            return json.JSONEncoder.default(self, str(obj))
+
+
+class DocumentDecoder(json.JSONDecoder):
+    """
+    Decodes more exotic datatypes like pandas dataframes or file paths.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(object_hook=self.object_hook)
+
+    def object_hook(self, dictionary):
+        # Decode content types
+        if "content_type" in dictionary:
+            if dictionary["content_type"] == "table":
+                dictionary["content"] = pandas.read_json(dictionary.get("content", None))
+            elif dictionary["content_type"] == "image":
+                dictionary["content"] = Path(dictionary.get("content", None))
+
+        # Decode embeddings
+        if "embedding" in dictionary:
+            dictionary["embedding"] = numpy.array(dictionary.get("embedding", None))
+
+        return dictionary
+
+
 @dataclass(frozen=True)
 class Document:
     """
@@ -61,7 +105,7 @@ class Document:
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
     score: Optional[float] = field(default=None, compare=True)
-    embedding: Optional[ndarray] = field(default=None, repr=False)
+    embedding: Optional[ndarray] = field(default=None)
 
     def __str__(self):
         return f"{self.__class__.__name__}('{self.content}')"
@@ -97,14 +141,14 @@ class Document:
     def to_dict(self):
         return asdict(self)
 
-    def to_json(self, **json_kwargs):
-        return json.dumps(self.to_dict(), *json_kwargs)
+    def to_json(self, json_encoder: Optional[Type[DocumentEncoder]] = None, **json_kwargs):
+        return json.dumps(self.to_dict(), cls=json_encoder or DocumentEncoder, **json_kwargs)
 
     @classmethod
     def from_dict(cls, dictionary):
         return cls(**dictionary)
 
     @classmethod
-    def from_json(cls, data, **json_kwargs):
-        dictionary = json.loads(data, **json_kwargs)
+    def from_json(cls, data, json_decoder: Optional[Type[DocumentDecoder]] = None, **json_kwargs):
+        dictionary = json.loads(data, cls=json_decoder or DocumentDecoder, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
