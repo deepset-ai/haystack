@@ -43,7 +43,7 @@ def test_openai_request_does_not_retry_on_unauthorized_error(mock_requests):
         # as the original wait time is exponential
         openai_request.retry_with(wait=wait_none())(url="some_url", headers={}, payload={}, read_response=False)
 
-    assert mock_requests.request.call_count == 5
+    assert mock_requests.request.call_count == 1
 
 
 @pytest.mark.unit

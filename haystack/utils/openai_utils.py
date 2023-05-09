@@ -129,7 +129,8 @@ def _openai_text_completion_tokenization_details(model_name: str):
 
 @tenacity.retry(
     reraise=True,
-    retry=tenacity.retry_if_exception_type((OpenAIRateLimitError, OpenAIError)),
+    retry=tenacity.retry_if_exception_type(OpenAIError)
+    and tenacity.retry_if_not_exception_type(OpenAIUnauthorizedError),
     wait=tenacity.wait_exponential(multiplier=OPENAI_BACKOFF),
     stop=tenacity.stop_after_attempt(OPENAI_MAX_RETRIES),
 )
