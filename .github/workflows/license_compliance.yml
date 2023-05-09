@@ -41,7 +41,9 @@ jobs:
         # - certifi is pulled in by requests
         # - num2words is pulled in by quantulum3
         # - tqdm is MLP but there are no better alternatives
-        exclude: '(?i)^(certifi|num2words|tqdm).*'
+        # - nvidia libraries are brought in by torch on Linux,
+        #   FIXME: to be removed once we stop depending on torch with the vanilla install
+        exclude: '(?i)^(certifi|num2words|tqdm|nvidia-).*'
 
     - name: Print report
       if: ${{ always() }}
