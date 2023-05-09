@@ -18,6 +18,13 @@ def test_default_constructor():
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 100
     assert layer.model_input_kwargs == {}
+    assert layer.prompt_resizer.model_max_length == 4096
+
+    layer = CohereInvocationLayer(model_name_or_path="base", api_key="some_fake_key")
+    assert layer.api_key == "some_fake_key"
+    assert layer.max_length == 100
+    assert layer.model_input_kwargs == {}
+    assert layer.prompt_resizer.model_max_length == 2048
 
 
 @pytest.mark.unit
@@ -154,11 +161,20 @@ def test_supports():
     """
     Test that supports returns True correctly for CohereInvocationLayer
     """
+    # See command and generate models at https://docs.cohere.com/docs/models
     # doesn't support fake model
-    assert not CohereInvocationLayer.supports("fake_model")
+    assert not CohereInvocationLayer.supports("fake_model", api_key="fake_key")
 
     # supports cohere command with api_key
-    assert CohereInvocationLayer.supports("command")
+    assert CohereInvocationLayer.supports("command", api_key="fake_key")
 
     # supports cohere command-light with api_key
-    assert CohereInvocationLayer.supports("command-light")
+    assert CohereInvocationLayer.supports("command-light", api_key="fake_key")
+
+    # supports cohere base with api_key
+    assert CohereInvocationLayer.supports("base", api_key="fake_key")
+
+    assert CohereInvocationLayer.supports("base-light", api_key="fake_key")
+
+    # doesn't support other models that have base substring only i.e. google/flan-t5-base
+    assert not CohereInvocationLayer.supports("google/flan-t5-base")

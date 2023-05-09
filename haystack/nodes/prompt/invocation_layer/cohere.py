@@ -70,9 +70,10 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         }
         # cohere uses BPE tokenizer
         # the tokenization lengths are very close to gpt2, in our experiments the differences were minimal
-        # context size of Cohere command models is 2048
+        # See model info at https://docs.cohere.com/docs/models
+        model_max_length = 4096 if "command" in model_name_or_path else 2048
         self.prompt_resizer = DefaultPromptResizer(
-            model_name_or_path="gpt2", model_max_length=2048, max_length=self.max_length
+            model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length
         )
 
     @property
@@ -212,4 +213,9 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         Ensures CohereInvocationLayer is selected only when Cohere models are specified in
         the model name.
         """
-        return "command" in model_name_or_path
+        is_inference_api = "api_key" in kwargs
+        return (
+            model_name_or_path is not None
+            and is_inference_api
+            and any(token == model_name_or_path for token in ["command", "command-light", "base", "base-light"])
+        )
