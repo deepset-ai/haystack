@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABC
-from collections.abc import Callable
-from typing import Union, Dict, Optional
+from typing import Union, Dict, Optional, Callable
 
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer
 
