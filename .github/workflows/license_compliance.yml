@@ -21,9 +21,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Manually install CPU version of PyTorch
-      run: pip install "torch>=1.9,!=1.12.0" --index-url https://download.pytorch.org/whl/cpu
-
     - name: Get explicit and transitive dependencies
       run: |
         pip install .
