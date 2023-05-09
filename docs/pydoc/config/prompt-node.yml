@@ -1,7 +1,13 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/prompt]
-    modules: ["prompt_node"]
+    modules: 
+      [
+        "prompt_node",
+        "prompt_model",
+        "prompt_template",
+        "shapers",
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
