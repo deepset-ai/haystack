@@ -12,6 +12,7 @@ from haystack.nodes.prompt.invocation_layer import (
     TokenStreamingHandler,
     DefaultTokenStreamingHandler,
 )
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptResizer
 from haystack.utils.requests import request_with_retry
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,12 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             ]
             if key in kwargs
         }
+        # cohere uses BPE tokenizer
+        # the tokenization lengths are very close to gpt2, in our experiments the differences were minimal
+        # context size of Cohere command models is 2048
+        self.prompt_resizer = DefaultPromptResizer(
+            model_name_or_path="gpt2", model_max_length=2048, max_length=self.max_length
+        )
 
     @property
     def url(self) -> str:
@@ -185,7 +192,18 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         return response
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        # TODO: new implementation incoming for all layers, let's omit this for now
+        # the prompt for this model will be of the type str
+        resize_info = self.prompt_resizer(prompt)  # type: ignore
+        if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
+            logger.warning(
+                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+                "answer length (%s tokens) fit within the max token limit (%s tokens). "
+                "Shorten the prompt to prevent it from being cut off",
+                resize_info["prompt_length"],
+                max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
+                resize_info["max_length"],
+                resize_info["model_max_length"],
+            )
         return prompt
 
     @classmethod
