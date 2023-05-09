@@ -1,7 +1,21 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/prompt]
-    modules: ["prompt_node"]
+    modules: 
+      [
+        "prompt_node",
+        "prompt_model",
+        "prompt_template",
+        "shapers",
+        "base",
+        "open_ai",
+        "chatgpt",
+        "azure_open_ai",
+        "azure_chatgpt",
+        "handlers",
+        "hugging_face_inference",
+        "hugging_face",
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
