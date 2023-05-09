@@ -1,6 +1,14 @@
-name: License Compliance Test
+name: License Compliance
 
 on:
+  pull_request:
+    paths:
+      - "**/pyproject.toml"
+  # Since we test PRs, there is no need to run the workflow at each
+  # merge on `main`. Let's use a cron job instead.
+  schedule:
+    - cron: "0 0 * * *" # every day at midnight
+  # FIXME: remove the following
   push:
     branches:
       - massi/license-checker
@@ -8,9 +16,9 @@ on:
 
 jobs:
   license_check_vanilla:
+    name: Core dependencies
     env:
       REQUIREMENTS_FILE: requirements_vanilla.txt
-
     runs-on: ubuntu-latest
     steps:
     - name: Checkout the code
@@ -53,10 +61,64 @@ jobs:
       if: ${{ always() }}
       run: echo "${{ steps.license_check_report.outputs.report }}"
 
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
+      with:
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                    "alt_text": "Actor"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                  }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                    "alt_text": "Github logo"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                  }
+                ]
+              }
+            ]
+          }
+
+
   license_check_all:
+    name: All dependencies
     env:
       REQUIREMENTS_FILE: requirements_all.txt
-
     runs-on: ubuntu-latest
     steps:
     - name: Checkout the code
@@ -91,10 +153,64 @@ jobs:
       if: ${{ always() }}
       run: echo "${{ steps.license_check_report.outputs.report }}"
 
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
+      with:
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                    "alt_text": "Actor"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                  }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                    "alt_text": "Github logo"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                  }
+                ]
+              }
+            ]
+          }
+
+
   license_check_all_GPU:
+    name: All dependencies - GPU
     env:
       REQUIREMENTS_FILE: requirements_all_gpu.txt
-
     runs-on: ubuntu-latest
     steps:
     - name: Checkout the code
@@ -128,3 +244,56 @@ jobs:
     - name: Print report
       if: ${{ always() }}
       run: echo "${{ steps.license_check_report.outputs.report }}"
+
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
+      with:
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                    "alt_text": "Actor"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                  }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                    "alt_text": "Github logo"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                  }
+                ]
+              }
+            ]
+          }
