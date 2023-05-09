@@ -310,7 +310,7 @@ class PromptNode(BaseComponent):
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these input parameters. Returns the output of the prompt model.
