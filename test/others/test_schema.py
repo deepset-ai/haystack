@@ -520,44 +520,50 @@ def test_table_document_to_dict(table_doc, table_doc_dict):
 
 
 @pytest.mark.unit
-def test_document_from_json(text_doc, text_doc_with_embedding, text_doc_json, text_doc_with_embedding_json):
-    # With embedding
+def test_document_from_json_with_embedding(text_doc_with_embedding, text_doc_with_embedding_json):
     text_doc_emb_from_json = Document.from_json(text_doc_with_embedding_json)
     assert text_doc_with_embedding == text_doc_emb_from_json
 
-    # No embedding
+
+@pytest.mark.unit
+def test_document_from_json_without_embedding(text_doc, text_doc_json):
     text_doc_no_emb_from_json = Document.from_json(text_doc_json)
     assert text_doc == text_doc_no_emb_from_json
 
 
 @pytest.mark.unit
-def test_document_to_json(text_doc, text_doc_with_embedding, text_doc_json, text_doc_with_embedding_json):
-    # With embedding
+def test_document_to_json_with_embedding(text_doc_with_embedding, text_doc_with_embedding_json):
     text_doc_emb_to_json = json.loads(text_doc_with_embedding.to_json())
     assert json.loads(text_doc_with_embedding_json) == text_doc_emb_to_json
 
-    # No embedding
+
+@pytest.mark.unit
+def test_document_to_json_without_embedding(text_doc, text_doc_json):
     text_doc_no_emb_to_json = json.loads(text_doc.to_json())
     assert json.loads(text_doc_json) == text_doc_no_emb_to_json
 
 
 @pytest.mark.unit
-def test_table_doc_from_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
-    # With embedding
+def test_table_doc_from_json_with_embedding(table_doc_with_embedding, table_doc_with_embedding_json):
     table_doc_emb_from_json = Document.from_json(table_doc_with_embedding_json)
     assert table_doc_with_embedding == table_doc_emb_from_json
 
-    # No embedding
+
+@pytest.mark.unit
+def test_table_doc_from_json_without_embedding(table_doc, table_doc_json):
     table_doc_no_emb_from_json = Document.from_json(table_doc_json)
     assert table_doc == table_doc_no_emb_from_json
 
 
 @pytest.mark.unit
-def test_table_doc_to_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
+def test_table_doc_to_json_with_embedding(table_doc_with_embedding, table_doc_with_embedding_json):
     # With embedding
     table_doc_emb_to_json = json.loads(table_doc_with_embedding.to_json())
     assert json.loads(table_doc_with_embedding_json) == table_doc_emb_to_json
 
+
+@pytest.mark.unit
+def test_table_doc_to_json_without_embedding(table_doc, table_doc_json):
     # No embedding
     table_doc_no_emb_to_json = json.loads(table_doc.to_json())
     assert json.loads(table_doc_json) == table_doc_no_emb_to_json
