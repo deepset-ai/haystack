@@ -11,7 +11,7 @@ class ConversationSummaryMemory(ConversationMemory):
 
     def __init__(
         self,
-        pn: PromptNode,
+        prompt_node: PromptNode,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
         input_key: str = "input",
         output_key: str = "output",
@@ -21,7 +21,7 @@ class ConversationSummaryMemory(ConversationMemory):
         Initialize ConversationSummaryMemory with a PromptNode, optional prompt_template,
         input and output keys, and a summary_frequency.
 
-        :param pn: A PromptNode object for generating conversation summaries.
+        :param prompt_node: A PromptNode object for generating conversation summaries.
         :param prompt_template: Optional prompt template as a string or PromptTemplate object.
         :param input_key: input key, default is "input".
         :param output_key: output key, default is "output".
@@ -29,12 +29,14 @@ class ConversationSummaryMemory(ConversationMemory):
         """
         super().__init__(input_key, output_key)
         self.save_count = 0
-        self.pn = pn
+        self.prompt_node = prompt_node
 
         template = (
-            prompt_template if prompt_template is not None else pn.default_prompt_template or "conversational-summary"
+            prompt_template
+            if prompt_template is not None
+            else prompt_node.default_prompt_template or "conversational-summary"
         )
-        self.template = pn.get_prompt_template(template)
+        self.template = prompt_node.get_prompt_template(template)
         self.summary_frequency = summary_frequency
         self.summary = ""
 
@@ -57,7 +59,7 @@ class ConversationSummaryMemory(ConversationMemory):
         """
         chat_transcript = self.load()
         self.clear()
-        return self.pn.prompt(self.template, chat_transcript=chat_transcript)[0]
+        return self.prompt_node.prompt(self.template, chat_transcript=chat_transcript)[0]
 
     def needs_summary(self) -> bool:
         """
