@@ -36,23 +36,29 @@ def _create_id(
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
+EQUALS_BY_TYPE = {
+    Path: lambda self, other: self.absolute() == other.absolute(),
+    numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
+    pandas.DataFrame: lambda self, other: self.equals(other),
+}
+
+
 def _metadata_is_equal(meta1, meta2) -> bool:
     """
     Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
     """
     if type(meta1) != type(meta2):
         return False
+
     if isinstance(meta1, dict):
         if meta1.keys() != meta2.keys():
             return False
-        for key in meta1.keys():
-            return all(_metadata_is_equal(meta1[key], meta2[key]) for key in meta1)
-    if isinstance(meta1, Path):
-        return meta1.absolute() == meta2.absolute()
-    if isinstance(meta1, numpy.ndarray):
-        return meta1.shape == meta2.shape and (meta1 == meta2).all()
-    if isinstance(meta1, pandas.DataFrame):
-        return meta1.equals(meta2)
+        return all(_metadata_is_equal(meta1[key], meta2[key]) for key in meta1)
+
+    for type_, equals in EQUALS_BY_TYPE.items():
+        if isinstance(meta1, type_):
+            return equals(meta1, meta2)
+
     return meta1 == meta2
 
 
@@ -91,7 +97,7 @@ class Document:
         Compares documents for equality. Does not compare `content` directly, because differences there always reflect
         on the ID, compares `embedding` properly, and checks the metadata taking care of embeddings and other objects.
         """
-        if (
+        return (
             type(self) == type(other)
             and getattr(self, "id") == getattr(other, "id")
             and
@@ -109,9 +115,7 @@ class Document:
                 )
             )
             and _metadata_is_equal(getattr(self, "metadata"), getattr(other, "metadata"))
-        ):
-            return True
-        return False
+        )
 
     def __post_init__(self):
         """
