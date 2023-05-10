@@ -9,54 +9,74 @@ from haystack.preview.dataclasses.document import _create_id
 
 @pytest.mark.unit
 def test_simple_text_document_equality():
-    assert Document(content="test content") == Document(content="test content")
+    doc1 = Document(content="test content")
+    doc2 = Document(content="test content")
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
 def test_simple_table_document_equality():
-    assert Document(content=pd.DataFrame([1, 2]), content_type="table") == Document(
-        content=pd.DataFrame([1, 2]), content_type="table"
-    )
+    doc1 = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    doc2 = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
 def test_simple_image_document_equality():
-    assert Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image") == Document(
-        content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image"
-    )
+    doc1 = Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image")
+    doc2 = Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image")
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
 def test_equality_with_embeddings():
-    assert Document(content="test content", embedding=np.array([10, 10])) == Document(
-        content="test content", embedding=np.array([10, 10])
-    )
+    doc1 = Document(content="test content", embedding=np.array([10, 10]))
+    doc2 = Document(content="test content", embedding=np.array([10, 10]))
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_equality_with_embeddings_shape_check():
+    doc1 = Document(content="test content", embedding=np.array([10, 10]))
+    doc2 = Document(content="test content", embedding=np.array([[[10, 10]]]))
+    assert doc1 != doc2
 
 
 @pytest.mark.unit
 def test_equality_with_scores():
-    assert Document(content="test content", score=100) == Document(content="test content", score=100.0)
+    doc1 = Document(content="test content", score=100)
+    doc2 = Document(content="test content", score=100)
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
 def test_equality_with_simple_metadata():
-    assert Document(content="test content", metadata={"value": 1, "another": "value"}) == Document(
-        content="test content", metadata={"value": 1, "another": "value"}
-    )
+    doc1 = Document(content="test content", metadata={"value": 1, "another": "value"})
+    doc2 = Document(content="test content", metadata={"value": 1, "another": "value"})
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
 def test_equality_with_nested_metadata():
-    assert Document(content="test content", metadata={"value": {"another": "value"}}) == Document(
-        content="test content", metadata={"value": {"another": "value"}}
-    )
+    doc1 = Document(content="test content", metadata={"value": {"another": "value"}})
+    doc2 = Document(content="test content", metadata={"value": {"another": "value"}})
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
 def test_equality_with_metadata_with_objects():
-    assert Document(
-        content="test content", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__)}
-    ) == Document(content="test content", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__)})
+    class TestObject:
+        def __eq__(self, other):
+            if type(self) == type(other):
+                return True
+
+    doc1 = Document(
+        content="test content", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__), "obj": TestObject()}
+    )
+    doc2 = Document(
+        content="test content", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__), "obj": TestObject()}
+    )
+    assert doc1 == doc2
 
 
 @pytest.mark.unit

@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from dataclasses import asdict, dataclass, field
 
+import numpy
 import pandas
 
 from haystack.preview.utils.import_utils import optional_import
@@ -38,6 +39,26 @@ def _create_id(
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
+def _metadata_is_equal(meta1, meta2) -> bool:
+    """
+    Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
+    """
+    if type(meta1) != type(meta2):
+        return False
+    if isinstance(meta1, dict):
+        if meta1.keys() != meta2.keys():
+            return False
+        for key in meta1.keys():
+            return all(_metadata_is_equal(meta1[key], meta2[key]) for key in meta1)
+    if isinstance(meta1, Path):
+        return meta1.absolute() == meta2.absolute()
+    if isinstance(meta1, numpy.ndarray):
+        return meta1.shape == meta2.shape and (meta1 == meta2).all()
+    if isinstance(meta1, pandas.DataFrame):
+        return meta1.equals(meta2)
+    return meta1 == meta2
+
+
 @dataclass(frozen=True)
 class Document:
     """
@@ -58,9 +79,7 @@ class Document:
     """
 
     id: str = field(default_factory=str)
-    content: Any = field(
-        default_factory=lambda: None, compare=False, hash=False
-    )  # No need to compare directly two docs on content because the ID will always differ if the content does.
+    content: Any = field(default_factory=lambda: None)
     content_type: ContentType = "text"
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
@@ -70,10 +89,37 @@ class Document:
     def __str__(self):
         return f"{self.__class__.__name__}('{self.content}')"
 
+    def __eq__(self, other):
+        """
+        Compares documents for equality. Does not compare `content` directly, because differences there always reflect
+        on the ID, compares `embedding` properly, and checks the metadata taking care of embeddings and other objects.
+        """
+        if (
+            type(self) == type(other)
+            and getattr(self, "id") == getattr(other, "id")
+            and
+            # No need to compare directly two docs on content because the ID will always differ if the content does.
+            getattr(self, "content_type") == getattr(other, "content_type")
+            and getattr(self, "id_hash_keys") == getattr(other, "id_hash_keys")
+            and getattr(self, "score") == getattr(other, "score")
+            and (
+                (getattr(self, "embedding") is None and getattr(other, "embedding") is None)
+                or (
+                    getattr(self, "embedding") is not None
+                    and getattr(other, "embedding") is not None
+                    and getattr(self, "embedding").shape == getattr(other, "embedding").shape
+                    and (getattr(self, "embedding") == (getattr(other, "embedding"))).all()
+                )
+            )
+            and _metadata_is_equal(getattr(self, "metadata"), getattr(other, "metadata"))
+        ):
+            return True
+        return False
+
     def __post_init__(self):
         """
-        Generate the ID based on the init parameters and make sure that content_type
-        matches the actual type of content.
+        Generate the ID based on the init parameters and make sure that `content_type` matches the actual type of
+        content.
         """
         # Validate content_type
         if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
