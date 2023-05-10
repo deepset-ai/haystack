@@ -79,16 +79,16 @@ class TestTranscriber(BaseTestComponent):
         assert hasattr(transcriber, "_model") and transcriber._model is None
 
     @pytest.mark.unit
-    def test_init_missing_whisper_lib(self, monkeypatch):
-        monkeypatch.setitem(sys.modules, "whisper", FakeModule(spec=MagicMock(), message="test message"))
+    def test_init_missing_whisper_lib_local_model(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "whisper", FakeModule(spec=MagicMock(), message="test"))
         with pytest.raises(ValueError, match="audio extra"):
             WhisperTranscriber(model_name_or_path="large-v2")
 
     @pytest.mark.unit
-    def test_init_missing_whisper_lib(self, monkeypatch):
-        monkeypatch.setitem(sys.modules, "whisper", FakeModule(spec=MagicMock(), message="test message"))
-        with pytest.raises(ValueError, match="audio extra"):
-            WhisperTranscriber(model_name_or_path="large-v2")
+    def test_init_missing_whisper_lib_remote_model(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "whisper", FakeModule(spec=MagicMock(), message="test"))
+        # Should not fail if the lib is missing and we're using API
+        WhisperTranscriber(model_name_or_path="whisper-1", api_key="doesn't matter")
 
     @pytest.mark.unit
     def test_warmup_remote_model(self, monkeypatch):
