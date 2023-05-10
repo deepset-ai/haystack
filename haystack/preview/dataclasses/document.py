@@ -100,9 +100,8 @@ class Document:
         return (
             type(self) == type(other)
             and getattr(self, "id") == getattr(other, "id")
-            and
             # No need to compare directly two docs on content because the ID will always differ if the content does.
-            getattr(self, "content_type") == getattr(other, "content_type")
+            and getattr(self, "content_type") == getattr(other, "content_type")
             and getattr(self, "id_hash_keys") == getattr(other, "id_hash_keys")
             and getattr(self, "score") == getattr(other, "score")
             and (
