@@ -1,5 +1,5 @@
 from pathlib import Path
-import hashlib
+import pytest
 import pandas as pd
 import numpy as np
 
@@ -9,6 +9,7 @@ from haystack.preview import Document
 from haystack.preview.dataclasses.document import _create_id
 
 
+@pytest.mark.unit
 def test_init_document_same_meta_as_main_fields():
     """
     This is forbidden to prevent later issues with `Document.flatten()`
@@ -17,6 +18,7 @@ def test_init_document_same_meta_as_main_fields():
         Document(content="test content", metadata={"score": "10/10"})
 
 
+@pytest.mark.unit
 def test_default_text_document_to_dict():
     assert Document(content="test content").to_dict() == {
         "id": _create_id(classname=Document.__name__, content="test content"),
@@ -29,6 +31,7 @@ def test_default_text_document_to_dict():
     }
 
 
+@pytest.mark.unit
 def test_default_text_document_from_dict():
     assert Document.from_dict(
         {
@@ -43,6 +46,7 @@ def test_default_text_document_from_dict():
     ) == Document(content="test content")
 
 
+@pytest.mark.unit
 def test_default_table_document_to_dict():
     df = pd.DataFrame([1, 2])
     dictionary = Document(content=df, content_type="table").to_dict()
@@ -60,6 +64,7 @@ def test_default_table_document_to_dict():
     }
 
 
+@pytest.mark.unit
 def test_default_table_document_from_dict():
     df = pd.DataFrame([1, 2])
     assert Document.from_dict(
@@ -75,6 +80,7 @@ def test_default_table_document_from_dict():
     ) == Document(content=df, content_type="table")
 
 
+@pytest.mark.unit
 def test_default_image_document_to_dict():
     path = Path(__file__).parent / "test_files" / "apple.jpg"
     assert Document(content=path, content_type="image").to_dict() == {
@@ -88,6 +94,7 @@ def test_default_image_document_to_dict():
     }
 
 
+@pytest.mark.unit
 def test_default_image_document_from_dict():
     path = Path(__file__).parent / "test_files" / "apple.jpg"
     assert Document.from_dict(
@@ -103,6 +110,7 @@ def test_default_image_document_from_dict():
     ) == Document(content=path, content_type="image")
 
 
+@pytest.mark.unit
 def test_document_with_most_attributes_to_dict():
     """
     This tests also id_hash_keys
@@ -135,6 +143,7 @@ def test_document_with_most_attributes_to_dict():
     }
 
 
+@pytest.mark.unit
 def test_document_with_most_attributes_from_dict():
     embedding = np.zeros([10, 10])
     assert Document.from_dict(
