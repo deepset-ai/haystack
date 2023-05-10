@@ -53,35 +53,42 @@ class DocumentStoreBaseTests:
         """
         return first_list.sort(key=lambda d: d.id) == second_list.sort(key=lambda d: d.id)
 
+    @pytest.mark.unit
     def test_count_empty(self, docstore):
         assert docstore.count_documents() == 0
 
+    @pytest.mark.unit
     def test_count_not_empty(self, docstore):
         self.direct_write(
             docstore, [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
         )
         assert docstore.count_documents() == 3
 
+    @pytest.mark.unit
     def test_no_filter_empty(self, docstore):
         assert docstore.filter_documents() == []
         assert docstore.filter_documents(filters={}) == []
 
+    @pytest.mark.unit
     def test_no_filter_not_empty(self, docstore):
         docs = [Document(content="test doc")]
         self.direct_write(docstore, docs)
         assert docstore.filter_documents() == docs
         assert docstore.filter_documents(filters={}) == docs
 
+    @pytest.mark.unit
     def test_filter_simple_value(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": "2020"})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
 
+    @pytest.mark.unit
     def test_filter_simple_list_single_element(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": ["2020"]})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
 
+    @pytest.mark.unit
     def test_filter_simple_list(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": ["2020", "2021"]})
@@ -89,41 +96,49 @@ class DocumentStoreBaseTests:
             result, [doc for doc in filterable_docs if doc.metadata.get("year") in ["2020", "2021"]]
         )
 
+    @pytest.mark.unit
     def test_incorrect_filter_name(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"non_existing_meta_field": ["whatever"]})
         assert len(result) == 0
 
+    @pytest.mark.unit
     def test_incorrect_filter_type(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         with pytest.raises(ValueError, match="dictionaries or lists"):
             docstore.filter_documents(filters="something odd")
 
+    @pytest.mark.unit
     def test_incorrect_filter_value(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": ["nope"]})
         assert len(result) == 0
 
+    @pytest.mark.unit
     def test_incorrect_filter_nesting(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         with pytest.raises(ValueError, match="malformed"):
             docstore.filter_documents(filters={"number": {"year": "2020"}})
 
+    @pytest.mark.unit
     def test_deeper_incorrect_filter_nesting(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         with pytest.raises(ValueError, match="malformed"):
             docstore.filter_documents(filters={"number": {"year": {"month": "01"}}})
 
+    @pytest.mark.unit
     def test_eq_filter_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$eq": "2020"}})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
 
+    @pytest.mark.unit
     def test_eq_filter_implicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": "2020"})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
 
+    @pytest.mark.unit
     def test_in_filter_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$in": ["2020", "2021", "n.a."]}})
@@ -131,6 +146,7 @@ class DocumentStoreBaseTests:
             result, [doc for doc in filterable_docs if doc.metadata.get("year") in ["2020", "2021"]]
         )
 
+    @pytest.mark.unit
     def test_in_filter_implicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": ["2020", "2021", "n.a."]})
@@ -138,11 +154,13 @@ class DocumentStoreBaseTests:
             result, [doc for doc in filterable_docs if doc.metadata.get("year") in ["2020", "2021"]]
         )
 
+    @pytest.mark.unit
     def test_ne_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$ne": "2020"}})
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") != "2020"])
 
+    @pytest.mark.unit
     def test_nin_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
@@ -150,6 +168,7 @@ class DocumentStoreBaseTests:
             result, [doc for doc in filterable_docs if doc.metadata.get("year") not in ["2020", "2021"]]
         )
 
+    @pytest.mark.unit
     def test_gt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gt": 0.0}})
@@ -157,6 +176,7 @@ class DocumentStoreBaseTests:
             result, [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] > 0]
         )
 
+    @pytest.mark.unit
     def test_gte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$gte": -2.0}})
@@ -165,6 +185,7 @@ class DocumentStoreBaseTests:
             [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] >= -2.0],
         )
 
+    @pytest.mark.unit
     def test_lt_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lt": 0.0}})
@@ -172,6 +193,7 @@ class DocumentStoreBaseTests:
             result, [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] < 0]
         )
 
+    @pytest.mark.unit
     def test_lte_filter(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 2.0}})
@@ -180,6 +202,7 @@ class DocumentStoreBaseTests:
             [doc for doc in filterable_docs if "number" in doc.metadata.keys() and doc.metadata["number"] <= 2.0],
         )
 
+    @pytest.mark.unit
     def test_filter_simple_explicit_and_with_multikey_dict(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 1, "$gte": -1}}})
@@ -192,6 +215,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_simple_explicit_and_with_list(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 1}, {"$gte": -1}]}})
@@ -204,6 +228,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_simple_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         result = docstore.filter_documents(filters={"number": {"$lte": 1, "$gte": -1}})
@@ -216,6 +241,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_explicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$and": {"number": {"$and": {"$lte": 1, "$gte": -1}}, "name": {"$in": ["name_0", "name_1"]}}}
@@ -234,6 +260,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_implicit_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {"number": {"$lte": 1, "$gte": -1}, "name": ["name_0", "name_1"]}
@@ -252,6 +279,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_simple_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$in": ["name_0", "name_1"]}, "number": {"$lt": 1.0}}}
@@ -268,6 +296,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_or(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {"$or": {"name": {"$or": [{"$eq": "name_0"}, {"$eq": "name_1"}]}, "number": {"$lt": 1.0}}}
@@ -284,6 +313,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_and_or_explicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {
@@ -305,6 +335,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_and_or_implicit(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {
@@ -327,6 +358,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_or_and(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters_simplified = {
@@ -351,6 +383,7 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_filter_nested_multiple_identical_operators_same_level(self, docstore, filterable_docs):
         self.direct_write(docstore, filterable_docs)
         filters = {
@@ -372,11 +405,13 @@ class DocumentStoreBaseTests:
             ],
         )
 
+    @pytest.mark.unit
     def test_write(self, docstore):
         doc = Document(content="test doc")
         docstore.write_documents(documents=[doc])
         assert self.direct_access(docstore, doc_id=doc.id) == doc
 
+    @pytest.mark.unit
     def test_write_duplicate_fail(self, docstore):
         doc = Document(content="test doc")
         self.direct_write(docstore, [doc])
@@ -384,12 +419,14 @@ class DocumentStoreBaseTests:
             docstore.write_documents(documents=[doc])
         assert self.direct_access(docstore, doc_id=doc.id) == doc
 
+    @pytest.mark.unit
     def test_write_duplicate_skip(self, docstore):
         doc = Document(content="test doc")
         self.direct_write(docstore, [doc])
         docstore.write_documents(documents=[doc], duplicates="skip")
         assert self.direct_access(docstore, doc_id=doc.id) == doc
 
+    @pytest.mark.unit
     def test_write_duplicate_overwrite(self, docstore):
         doc1 = Document(content="test doc 1")
         doc2 = Document(content="test doc 2")
@@ -400,18 +437,22 @@ class DocumentStoreBaseTests:
         docstore.write_documents(documents=[doc1], duplicates="overwrite")
         assert self.direct_access(docstore, doc_id=doc1.id) == doc1
 
+    @pytest.mark.unit
     def test_write_not_docs(self, docstore):
         with pytest.raises(ValueError, match="Please provide a list of Documents"):
             docstore.write_documents(["not a document for sure"])
 
+    @pytest.mark.unit
     def test_write_not_list(self, docstore):
         with pytest.raises(ValueError, match="Please provide a list of Documents"):
             docstore.write_documents("not a list actually")
 
+    @pytest.mark.unit
     def test_delete_empty(self, docstore):
         with pytest.raises(MissingDocumentError):
             docstore.delete_documents(["test"])
 
+    @pytest.mark.unit
     def test_delete_not_empty(self, docstore):
         doc = Document(content="test doc")
         self.direct_write(docstore, [doc])
@@ -421,6 +462,7 @@ class DocumentStoreBaseTests:
         with pytest.raises(Exception):
             assert self.direct_access(docstore, doc_id=doc.id)
 
+    @pytest.mark.unit
     def test_delete_not_empty_nonexisting(self, docstore):
         doc = Document(content="test doc")
         self.direct_write(docstore, [doc])
