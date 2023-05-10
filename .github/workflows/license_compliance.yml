@@ -50,13 +50,6 @@ jobs:
         #   FIXME: to be removed once we stop depending on torch with the vanilla install
         exclude: '(?i)^(certifi|num2words|tqdm|nvidia-).*'
 
-    # We keep the license inventory on FOSSA
-    - name: Send license report to Fossa
-      uses: fossas/fossa-action@v1.3.1
-      continue-on-error: true  # not critical
-      with:
-        api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
-
     - name: Print report
       if: ${{ always() }}
       run: echo "${{ steps.license_check_report.outputs.report }}"
@@ -240,6 +233,13 @@ jobs:
         # - pyzmq is flagged because dual-licensed, but we assume using BSD
         # - tqdm is MLP but there are no better alternatives
         exclude: '(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*'
+
+    # We keep the license inventory on FOSSA
+    - name: Send license report to Fossa
+      uses: fossas/fossa-action@v1.3.1
+      continue-on-error: true  # not critical
+      with:
+        api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
 
     - name: Print report
       if: ${{ always() }}
