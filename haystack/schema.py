@@ -20,7 +20,9 @@ from dataclasses import asdict
 
 import mmh3
 import numpy as np
+from numpy import ndarray
 import pandas as pd
+from pandas import DataFrame
 
 from pydantic import BaseConfig, Field
 from pydantic.json import pydantic_encoder
@@ -29,11 +31,18 @@ from pydantic.json import pydantic_encoder
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
+from haystack import is_imported
+
 
 logger = logging.getLogger(__name__)
 
 
+if not is_imported("pandas"):
+    DataFrame = object
+
+
 BaseConfig.arbitrary_types_allowed = True
+
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
@@ -43,12 +52,12 @@ FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 @dataclass
 class Document:
     id: str
-    content: Union[str, pd.DataFrame]
+    content: Union[str, DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     id_hash_keys: List[str] = Field(default=["content"])
     score: Optional[float] = None
-    embedding: Optional[np.ndarray] = None
+    embedding: Optional[ndarray] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -56,12 +65,12 @@ class Document:
     # don't need to passed by the user in init and are rather initialized automatically in the init
     def __init__(
         self,
-        content: Union[str, pd.DataFrame],
+        content: Union[str, DataFrame],
         content_type: ContentTypes = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
-        embedding: Optional[np.ndarray] = None,
+        embedding: Optional[ndarray] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
         """
@@ -184,7 +193,7 @@ class Document:
                 continue
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
-                if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
+                if self.content_type == "table" and isinstance(self.content, DataFrame):
                     v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
@@ -230,7 +239,7 @@ class Document:
                 k = field_map[k]
                 _new_doc[k] = v
 
-        # Convert list of rows to pd.DataFrame
+        # Convert list of rows to DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
             _new_doc["content"] = dataframe_from_list(_new_doc["content"])
 
@@ -358,7 +367,7 @@ class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
-    context: Optional[Union[str, pd.DataFrame]] = None
+    context: Optional[Union[str, DataFrame]] = None
     offsets_in_document: Optional[Union[List[Span], List[TableCell]]] = None
     offsets_in_context: Optional[Union[List[Span], List[TableCell]]] = None
     document_ids: Optional[List[str]] = None
@@ -832,7 +841,7 @@ def dataframe_from_list(list_df: List[List]) -> pd.DataFrame:
 
 
 class EvaluationResult:
-    def __init__(self, node_results: Optional[Dict[str, pd.DataFrame]] = None) -> None:
+    def __init__(self, node_results: Optional[Dict[str, DataFrame]] = None) -> None:
         """
         A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
@@ -902,7 +911,7 @@ class EvaluationResult:
 
         :param node_results: The evaluation Dataframes per pipeline node.
         """
-        self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
+        self.node_results: Dict[str, DataFrame] = {} if node_results is None else node_results
 
     def __getitem__(self, key: str):
         return self.node_results.__getitem__(key)
@@ -910,7 +919,7 @@ class EvaluationResult:
     def __delitem__(self, key: str):
         self.node_results.__delitem__(key)
 
-    def __setitem__(self, key: str, value: pd.DataFrame):
+    def __setitem__(self, key: str, value: DataFrame):
         self.node_results.__setitem__(key, value)
 
     def __contains__(self, key: str):
@@ -919,7 +928,7 @@ class EvaluationResult:
     def __len__(self):
         return self.node_results.__len__()
 
-    def append(self, key: str, value: pd.DataFrame):
+    def append(self, key: str, value: DataFrame):
         if value is not None and len(value) > 0:
             if key in self.node_results:
                 self.node_results[key] = pd.concat([self.node_results[key], value])
@@ -1210,7 +1219,7 @@ class EvaluationResult:
 
     def _calculate_node_metrics(
         self,
-        df: pd.DataFrame,
+        df: DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
@@ -1244,7 +1253,7 @@ class EvaluationResult:
 
         return {**answer_metrics, **document_metrics}
 
-    def _filter_eval_mode(self, df: pd.DataFrame, eval_mode: str) -> pd.DataFrame:
+    def _filter_eval_mode(self, df: DataFrame, eval_mode: str) -> DataFrame:
         if "eval_mode" in df.columns:
             df = df[df["eval_mode"] == eval_mode]
         else:
@@ -1253,7 +1262,7 @@ class EvaluationResult:
 
     def _calculate_answer_metrics(
         self,
-        df: pd.DataFrame,
+        df: DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
@@ -1275,11 +1284,11 @@ class EvaluationResult:
 
     def _build_answer_metrics_df(
         self,
-        answers: pd.DataFrame,
+        answers: DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """
         Builds a dataframe containing answer metrics (columns) per multilabel (index).
         Answer metrics are:
@@ -1335,7 +1344,7 @@ class EvaluationResult:
             }
             df_records.append(query_metrics)
 
-        metrics_df = pd.DataFrame.from_records(df_records, index=multilabel_ids)
+        metrics_df = DataFrame.from_records(df_records, index=multilabel_ids)
         return metrics_df
 
     def _get_documents_df(self):
@@ -1350,7 +1359,7 @@ class EvaluationResult:
 
     def _calculate_document_metrics(
         self,
-        df: pd.DataFrame,
+        df: DataFrame,
         simulated_top_k_retriever: int = -1,
         document_relevance_criterion: Literal[
             "document_id",
@@ -1378,7 +1387,7 @@ class EvaluationResult:
 
     def _build_document_metrics_df(
         self,
-        documents: pd.DataFrame,
+        documents: DataFrame,
         simulated_top_k_retriever: int = -1,
         document_relevance_criterion: Literal[
             "document_id",
@@ -1391,7 +1400,7 @@ class EvaluationResult:
             "document_id_and_context_and_answer",
             "document_id_or_answer",
         ] = "document_id_or_answer",
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """
         Builds a dataframe containing document metrics (columns) per pair of query and gold document ids (index).
         Document metrics are:
@@ -1539,7 +1548,7 @@ class EvaluationResult:
                 }
             )
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
+        metrics_df = DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
         return metrics_df
 
     def save(self, out_dir: Union[str, Path], **to_csv_kwargs):
@@ -1548,8 +1557,8 @@ class EvaluationResult:
         The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
 
         :param out_dir: Path to the target folder the csvs will be saved.
-        :param to_csv_kwargs: kwargs to be passed to pd.DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
-                        This method uses different default values than pd.DataFrame.to_csv() for the following parameters:
+        :param to_csv_kwargs: kwargs to be passed to DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
+                        This method uses different default values than DataFrame.to_csv() for the following parameters:
                         index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)

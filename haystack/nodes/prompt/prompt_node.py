@@ -97,7 +97,7 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
-        self.prompt_templates: Dict[str, PromptTemplate] = {pt.template_name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
+        self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
@@ -193,13 +193,13 @@ class PromptNode(BaseComponent):
         :param prompt_template: The PromptTemplate object to be added.
         :return: None
         """
-        if prompt_template.template_name in self.prompt_templates:
+        if prompt_template.name in self.prompt_templates:
             raise ValueError(
-                f"Prompt template {prompt_template.template_name} already exists. "
+                f"Prompt template {prompt_template.name} already exists. "
                 f"Select a different name for this prompt template."
             )
 
-        self.prompt_templates[prompt_template.template_name] = prompt_template  # type: ignore
+        self.prompt_templates[prompt_template.name] = prompt_template  # type: ignore
 
     def remove_prompt_template(self, prompt_template: str) -> PromptTemplate:
         """
@@ -244,7 +244,7 @@ class PromptNode(BaseComponent):
         :param prompt_template: The prompt template to be checked.
         :return: True if the prompt template is supported, False otherwise.
         """
-        template_name = prompt_template if isinstance(prompt_template, str) else prompt_template.template_name
+        template_name = prompt_template if isinstance(prompt_template, str) else prompt_template.name
         return template_name in self.prompt_templates
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None] = None) -> Optional[PromptTemplate]:
@@ -288,9 +288,7 @@ class PromptNode(BaseComponent):
         default_prompt_template = self.get_prompt_template()
         if default_prompt_template:
             output_parser = default_prompt_template.output_parser
-        return PromptTemplate(
-            template_name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser
-        )
+        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser)
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """
