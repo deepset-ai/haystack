@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Union, Dict, Optional, Callable
+from typing import Union, Dict
 
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer
 
@@ -48,8 +48,13 @@ class HFTokenStreamingHandler(TextStreamer):
         self.token_handler(token_received=token_to_send, **{})
 
 
-class DefaultPromptResizer(Callable[[str], dict]):
-    def __init__(self, model_name_or_path: str, model_max_length: int, max_length: Optional[int] = 100):
+class DefaultPromptHandler:
+    """
+    DefaultPromptHandler resizes the prompt to ensure that the prompt and answer token lengths together
+    are within the model_max_length.
+    """
+
+    def __init__(self, model_name_or_path: str, model_max_length: int, max_length: int = 100):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.model_max_length = model_max_length
         self.max_length = max_length

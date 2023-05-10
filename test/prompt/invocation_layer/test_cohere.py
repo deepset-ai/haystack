@@ -18,13 +18,13 @@ def test_default_constructor():
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 100
     assert layer.model_input_kwargs == {}
-    assert layer.prompt_resizer.model_max_length == 4096
+    assert layer.prompt_handler.model_max_length == 4096
 
     layer = CohereInvocationLayer(model_name_or_path="base", api_key="some_fake_key")
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 100
     assert layer.model_input_kwargs == {}
-    assert layer.prompt_resizer.model_max_length == 2048
+    assert layer.prompt_handler.model_max_length == 2048
 
 
 @pytest.mark.unit
