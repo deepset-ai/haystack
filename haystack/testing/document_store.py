@@ -7,6 +7,7 @@ import numpy as np
 from haystack.schema import Document, Label, Answer, Span
 from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
+from haystack.utils import export_answers_to_csv, export_labels_to_csv, export_answers_to_dataframe
 
 
 @pytest.mark.document_store
@@ -24,7 +25,8 @@ class DocumentStoreBaseTestAbstract:
             documents.append(
                 Document(
                     content=f"A Foo Document {i}",
-                    meta={"name": f"name_{i}", "year": "2020", "month": "01", "numbers": [2, 4]},
+                    meta={"name": f"name_{i}", "year": "2020",
+                          "month": "01", "numbers": [2, 4]},
                     embedding=np.random.rand(768).astype(np.float32),
                 )
             )
@@ -32,7 +34,8 @@ class DocumentStoreBaseTestAbstract:
             documents.append(
                 Document(
                     content=f"A Bar Document {i}",
-                    meta={"name": f"name_{i}", "year": "2021", "month": "02", "numbers": [-2, -4]},
+                    meta={"name": f"name_{i}", "year": "2021",
+                          "month": "02", "numbers": [-2, -4]},
                     embedding=np.random.rand(768).astype(np.float32),
                 )
             )
@@ -40,7 +43,8 @@ class DocumentStoreBaseTestAbstract:
             documents.append(
                 Document(
                     content=f"Document {i} without embeddings",
-                    meta={"name": f"name_{i}", "no_embedding": True, "month": "03"},
+                    meta={"name": f"name_{i}",
+                          "no_embedding": True, "month": "03"},
                 )
             )
 
@@ -58,7 +62,8 @@ class DocumentStoreBaseTestAbstract:
                     is_correct_answer=False,
                     # create a mix set of labels
                     origin="user-feedback" if i % 2 else "gold-label",
-                    answer=None if not i else Answer(f"the answer is {i}", document_ids=[d.id]),
+                    answer=None if not i else Answer(
+                        f"the answer is {i}", document_ids=[d.id]),
                     meta={"name": f"label_{i}", "year": f"{2020 + i}"},
                 )
             )
@@ -85,8 +90,10 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_write_with_duplicate_doc_ids(self, ds):
         duplicate_documents = [
-            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
-            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
+            Document(content="Doc1", id_hash_keys=[
+                     "content"], meta={"key1": "value1"}),
+            Document(content="Doc1", id_hash_keys=[
+                     "content"], meta={"key1": "value1"}),
         ]
         ds.write_documents(duplicate_documents, duplicate_documents="skip")
         results = ds.get_all_documents()
@@ -121,9 +128,12 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_get_all_document_filter_duplicate_text_value(self, ds):
         documents = [
-            Document(content="duplicated", meta={"meta_field": "0"}, id_hash_keys=["meta"]),
-            Document(content="duplicated", meta={"meta_field": "1", "name": "file.txt"}, id_hash_keys=["meta"]),
-            Document(content="Doc2", meta={"name": "file_2.txt"}, id_hash_keys=["meta"]),
+            Document(content="duplicated", meta={
+                     "meta_field": "0"}, id_hash_keys=["meta"]),
+            Document(content="duplicated", meta={
+                     "meta_field": "1", "name": "file.txt"}, id_hash_keys=["meta"]),
+            Document(content="Doc2", meta={
+                     "name": "file_2.txt"}, id_hash_keys=["meta"]),
         ]
         ds.write_documents(documents)
         documents = ds.get_all_documents(filters={"meta_field": ["1"]})
@@ -153,7 +163,8 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_get_all_documents_with_incorrect_filter_name(self, ds, documents):
         ds.write_documents(documents)
-        result = ds.get_all_documents(filters={"non_existing_meta_field": ["whatever"]})
+        result = ds.get_all_documents(
+            filters={"non_existing_meta_field": ["whatever"]})
         assert len(result) == 0
 
     @pytest.mark.integration
@@ -175,9 +186,11 @@ class DocumentStoreBaseTestAbstract:
     def test_in_filters(self, ds, documents):
         ds.write_documents(documents)
 
-        result = ds.get_all_documents(filters={"year": {"$in": ["2020", "2021", "n.a."]}})
+        result = ds.get_all_documents(
+            filters={"year": {"$in": ["2020", "2021", "n.a."]}})
         assert len(result) == 6
-        result = ds.get_all_documents(filters={"year": ["2020", "2021", "n.a."]})
+        result = ds.get_all_documents(
+            filters={"year": ["2020", "2021", "n.a."]})
         assert len(result) == 6
 
     @pytest.mark.integration
@@ -191,7 +204,8 @@ class DocumentStoreBaseTestAbstract:
     def test_nin_filters(self, ds, documents):
         ds.write_documents(documents)
 
-        result = ds.get_all_documents(filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
+        result = ds.get_all_documents(
+            filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
         assert len(result) == 3
 
     @pytest.mark.integration
@@ -214,18 +228,21 @@ class DocumentStoreBaseTestAbstract:
     def test_compound_filters(self, ds, documents):
         ds.write_documents(documents)
 
-        result = ds.get_all_documents(filters={"year": {"$lte": "2021", "$gte": "2020"}})
+        result = ds.get_all_documents(
+            filters={"year": {"$lte": "2021", "$gte": "2020"}})
         assert len(result) == 6
 
     @pytest.mark.integration
     def test_simplified_filters(self, ds, documents):
         ds.write_documents(documents)
 
-        filters = {"$and": {"year": {"$lte": "2021", "$gte": "2020"}, "name": {"$in": ["name_0", "name_1"]}}}
+        filters = {"$and": {"year": {"$lte": "2021", "$gte": "2020"},
+                            "name": {"$in": ["name_0", "name_1"]}}}
         result = ds.get_all_documents(filters=filters)
         assert len(result) == 4
 
-        filters_simplified = {"year": {"$lte": "2021", "$gte": "2020"}, "name": ["name_0", "name_1"]}
+        filters_simplified = {"year": {"$lte": "2021",
+                                       "$gte": "2020"}, "name": ["name_0", "name_1"]}
         result = ds.get_all_documents(filters=filters_simplified)
         assert len(result) == 4
 
@@ -291,8 +308,10 @@ class DocumentStoreBaseTestAbstract:
 
         filters = {
             "$or": [
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": {"$gte": "2020"}}},
-                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": {"$lt": "2021"}}},
+                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": {
+                    "$gte": "2020"}}},
+                {"$and": {"name": {"$in": ["name_0", "name_1"]}, "year": {
+                    "$lt": "2021"}}},
             ]
         }
         result = ds.get_all_documents(filters=filters)
@@ -375,7 +394,8 @@ class DocumentStoreBaseTestAbstract:
                 {"content": "dict_without_meta", "id": "1"},
                 {"content": "dict_with_meta", "meta_field": "test2", "id": "2"},
                 Document(content="document_object_without_meta", id="3"),
-                Document(content="document_object_with_meta", meta={"meta_field": "test4"}, id="4"),
+                Document(content="document_object_with_meta",
+                         meta={"meta_field": "test4"}, id="4"),
             ]
         )
         assert not ds.get_document_by_id("1").meta
@@ -408,7 +428,8 @@ class DocumentStoreBaseTestAbstract:
         ds.write_documents(documents)
         docs_to_delete = ds.get_all_documents(filters={"year": ["2020"]})
         # this should delete only 1 document out of the 3 ids passed
-        ds.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={"name": ["name_0"]})
+        ds.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={
+                            "name": ["name_0"]})
         assert ds.get_document_count() == 8
 
     @pytest.mark.integration
@@ -519,7 +540,8 @@ class DocumentStoreBaseTestAbstract:
         # Test to exclude situations like Weaviate not returning more than 100 docs by default
         #   https://github.com/deepset-ai/haystack/issues/1893
         docs_to_write = [
-            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}",
+                "embedding": np.random.rand(768).astype(np.float32)}
             for i in range(1000)
         ]
         ds.write_documents(docs_to_write)
@@ -530,7 +552,8 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_custom_embedding_field(self, ds):
         ds.embedding_field = "custom_embedding_field"
-        doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
+        doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(
+            768).astype(np.float32)}
         ds.write_documents([doc_to_write])
         documents = ds.get_all_documents(return_embedding=True)
         assert len(documents) == 1
@@ -553,65 +576,109 @@ class DocumentStoreBaseTestAbstract:
         assert np.linalg.norm(VEC_1) - 1 < 0.01
 
 
-
+    # unit test for export_labels_to_dataframe
     @pytest.mark.unit
-    def test_export_answers_to_csv():
-        agg_results = [
-            {
-                "query": "What is the capital of France?",
-                "answers": [
-                    {
-                        "answer": "Paris",
-                        "context": "Paris is the capital and largest city of France."
-                    },
-                    {
-                        "answer": "Paris",
-                        "context": "The capital of France is Paris."
-                    }
-                ]
-            },
-            {
-                "query": "Who wrote Romeo and Juliet?",
-                "answers": [
-                    {
-                        "answer": "William Shakespeare",
-                        "context": "Romeo and Juliet is a tragedy written by William Shakespeare."
-                    }
-                ]
-            }
-        ]
+    def test_export_labels_to_dataframe(self):
+        label = Label(
+            query="question1",
+            answer=Answer(
+                answer="answer",
+                type="extractive",
+                score=0.0,
+                context="something " * 10_000,
+                offsets_in_document=[Span(start=12, end=14)],
+                offsets_in_context=[Span(start=12, end=14)],
+            ),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="something " * 10_000, id="123"),
+            origin="gold-label",
+        )
+        df = BaseDocumentStore.export_labels_to_dataframe([label])
+        assert len(df) == 1
+        assert df["query"][0] == "question1"
+        assert df["answer"][0] == "answer"
+        assert df["offset_start_in_doc"][0] == 12
+        assert df["offset_end_in_doc"][0] == 14
+        assert df["offset_start_in_context"][0] == 12
+        assert df["offset_end_in_context"][0] == 14
+        assert df["is_correct_answer"][0] == True
+        assert df["is_correct_document"][0] == True
+        assert df["origin"][0] == "gold-label"
+        assert df["document_id"][0] == "123"
+        assert df["document_text"][0] == "something " * 10_000
+        assert df["document_score"][0] == 0.0
+        assert df["document_meta"][0] == {}
+        assert df["document_content_hash"][0] == "f3b2c5f0f0f0f0f0f0f0f0f0f0f0f0f0"
 
-        expected_data = {
-            "query": [
-                "What is the capital of France?",
-                "What is the capital of France?",
-                "Who wrote Romeo and Juliet?"
-            ],
-            "prediction": ["Paris", "Paris", "William Shakespeare"],
-            "prediction_rank": [1, 2, 1],
-            "prediction_context": [
-                "Paris is the capital and largest city of France.",
-                "The capital of France is Paris.",
-                "Romeo and Juliet is a tragedy written by William Shakespeare."
-            ]
-        }
+    # unit test for export_labels_to_csv
+    @pytest.mark.unit
+    def test_export_labels_to_csv(self, tmp_path):
+        label = Label(
+            query="question1",
+            answer=Answer(
+                answer="answer",
+                type="extractive",
+                score=0.0,
+                context="something " * 10_000,
+                offsets_in_document=[Span(start=12, end=14)],
+                offsets_in_context=[Span(start=12, end=14)],
+            ),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="something " * 10_000, id="123"),
+            origin="gold-label",
+        )
+        BaseDocumentStore.export_labels_to_csv([label], tmp_path / "labels.csv")
+        df = pd.read_csv(tmp_path / "labels.csv")
+        assert len(df) == 1
+        assert df["query"][0] == "question1"
+        assert df["answer"][0] == "answer"
+        assert df["offset_start_in_doc"][0] == 12
+        assert df["offset_end_in_doc"][0] == 14
+        assert df["offset_start_in_context"][0] == 12
+        assert df["offset_end_in_context"][0] == 14
+        assert df["is_correct_answer"][0] == True
+        assert df["is_correct_document"][0] == True
+        assert df["origin"][0] == "gold-label"
+        assert df["document_id"][0] == "123"
+        assert df["document_text"][0] == "something " * 10_000
+        assert df["document_score"][0] == 0.0
+        assert df["document_meta"][0] == {}
+        assert df["document_content_hash"][0] == "f3b2c5f0f0f0f0f0f0f0f0f0f0f0f0f0"
 
-        expected_df = pd.DataFrame(expected_data)
-
-        # Test export to CSV
-        output_file = "answers.csv"
-        export_answers_to_csv(agg_results, output_file)
-        df = pd.read_csv(output_file)
-        assert_frame_equal(df, expected_df)
-
-        # Test export to Excel
-        output_file = "answers.xlsx"
-        export_answers_to_excel(agg_results, output_file)
-        df = pd.read_excel(output_file)
-        assert_frame_equal(df, expected_df)
-
-        # Clean up temporary files
-        import os
-        os.remove("answers.csv")
-        os.remove("answers.xlsx")
-
+    # unit test for export_labels_to_excel
+    @pytest.mark.unit
+    def test_export_labels_to_excel(self, tmp_path):
+        label = Label(
+            query="question1",
+            answer=Answer(
+                answer="answer",
+                type="extractive",
+                score=0.0,
+                context="something " * 10_000,
+                offsets_in_document=[Span(start=12, end=14)],
+                offsets_in_context=[Span(start=12, end=14)],
+            ),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="something " * 10_000, id="123"),
+            origin="gold-label",
+        )
+        BaseDocumentStore.export_labels_to_excel([label], tmp_path / "labels.xlsx")
+        df = pd.read_excel(tmp_path / "labels.xlsx")
+        assert len(df) == 1
+        assert df["query"][0] == "question1"
+        assert df["answer"][0] == "answer"
+        assert df["offset_start_in_doc"][0] == 12
+        assert df["offset_end_in_doc"][0] == 14
+        assert df["offset_start_in_context"][0] == 12
+        assert df["offset_end_in_context"][0] == 14
+        assert df["is_correct_answer"][0] == True
+        assert df["is_correct_document"][0] == True
+        assert df["origin"][0] == "gold-label"
+        assert df["document_id"][0] == "123"
+        assert df["document_text"][0] == "something " * 10_000
+        assert df["document_score"][0] == 0.0
+        assert df["document_meta"][0] == {}
+        assert df["document_content_hash"][0] == "f3b2c5f0f0f0f0f0f0f0f0f0f0f0f0f0"
