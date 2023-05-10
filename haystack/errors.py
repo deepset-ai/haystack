@@ -232,17 +232,7 @@ class AnthropicUnauthorizedError(AnthropicError):
         super().__init__(message=message, status_code=401, send_message_in_event=send_message_in_event)
 
 
-class CohereInferenceError(NodeError):
-    """Exception for issues that occur in the Cohere inference node"""
-
-    def __init__(
-        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
-    ):
-        super().__init__(message=message, send_message_in_event=send_message_in_event)
-        self.status_code = status_code
-
-
-class CohereInferenceLimitError(CohereInferenceError):
+class CohereInferenceLimitError(CohereError):
     """Exception for issues that occur in the Cohere inference node due to rate limiting"""
 
     def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):

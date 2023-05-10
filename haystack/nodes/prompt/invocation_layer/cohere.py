@@ -6,7 +6,7 @@ import logging
 import requests
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
-from haystack.errors import CohereInferenceLimitError, CohereInferenceError, CohereUnauthorizedError
+from haystack.errors import CohereInferenceLimitError, CohereUnauthorizedError, CohereError
 from haystack.nodes.prompt.invocation_layer import (
     PromptModelInvocationLayer,
     TokenStreamingHandler,
@@ -186,7 +186,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             if res.status_code == 401:
                 raise CohereUnauthorizedError(f"API key is invalid: {res.text}")
 
-            raise CohereInferenceError(
+            raise CohereError(
                 f"Cohere model returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
                 status_code=res.status_code,
             )
