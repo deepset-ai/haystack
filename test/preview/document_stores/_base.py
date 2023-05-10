@@ -47,7 +47,6 @@ class DocumentStoreBaseTests:
 
         return documents
 
-    @pytest.mark.unit
     def contains_same_docs(self, first_list: List[Document], second_list: List[Document]) -> bool:
         """
         Utility to compare two lists of documents for equality regardless of the order od the documents.
