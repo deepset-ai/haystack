@@ -1,25 +1,25 @@
-from typing import List, Any, Dict, Literal, Optional, TYPE_CHECKING
+from typing import List, Any, Dict, Literal, Optional
 
 import json
 import hashlib
 import logging
 from pathlib import Path
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 
-from haystack.preview.utils.import_utils import optional_import
-
-# We need to do this dance because ndarray is an optional dependency used as a type by dataclass
-if TYPE_CHECKING:
-    from numpy import ndarray
-else:
-    ndarray = optional_import("numpy", "ndarray", "You won't be able to use embeddings.", __name__)
-
-DataFrame = optional_import("pandas", "DataFrame", "You won't be able to use table related features.", __name__)
+import numpy
+import pandas
 
 
 logger = logging.getLogger(__name__)
+
 ContentType = Literal["text", "table", "image", "audio"]
-PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {"text": str, "table": DataFrame, "image": Path, "audio": Path}
+
+PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {
+    "text": str,
+    "table": pandas.DataFrame,
+    "image": Path,
+    "audio": Path,
+}
 
 
 def _create_id(
@@ -61,7 +61,7 @@ class Document:
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
     id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
     score: Optional[float] = field(default=None, compare=True)
-    embedding: Optional[ndarray] = field(default=None, repr=False)
+    embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
         return f"{self.__class__.__name__}('{self.content}')"
@@ -77,6 +77,11 @@ class Document:
                 f"The type of content ({type(self.content)}) does not match the "
                 f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
             )
+        # Validate metadata
+        for key in self.metadata:
+            if key in [field.name for field in fields(self)]:
+                raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
+
         # Check if id_hash_keys are all present in the meta
         for key in self.id_hash_keys:
             if key not in self.metadata:
@@ -108,3 +113,13 @@ class Document:
     def from_json(cls, data, **json_kwargs):
         dictionary = json.loads(data, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
+
+    def flatten(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary with all the fields of the document and the metadata on the same level.
+        This allows filtering by all document fields, not only the metadata.
+        """
+        dictionary = self.to_dict()
+        metadata = dictionary.pop("metadata", {})
+        dictionary = {**dictionary, **metadata}
+        return dictionary

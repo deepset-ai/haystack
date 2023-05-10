@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict, List, Optional, Union
 
 import logging
@@ -82,6 +83,8 @@ class RAGenerator(BaseGenerator):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
+        This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `RAGenerator`.
+
         Load a RAG model from Transformers along with passage_embedding_model.
         See https://huggingface.co/transformers/model_doc/rag.html for more details
 
@@ -110,6 +113,12 @@ class RAGenerator(BaseGenerator):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        warnings.warn(
+            "`RAGenerator` component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `RAGenerator`.",
+            category=DeprecationWarning,
+        )
+
         super().__init__(progress_bar=progress_bar)
 
         self.model_name_or_path = model_name_or_path
@@ -345,6 +354,8 @@ class Seq2SeqGenerator(BaseGenerator):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
+        This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `Seq2SeqGenerator`.
+
         :param model_name_or_path: A Hugging Face model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5, and so on.
         :param input_converter: An optional callable to prepare model input for the underlying language model
                                 specified in the `model_name_or_path` parameter. The required `__call__` method signature for
@@ -367,6 +378,11 @@ class Seq2SeqGenerator(BaseGenerator):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        warnings.warn(
+            "`Seq2SeqGenerator` component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `Seq2SeqGenerator`.",
+            category=DeprecationWarning,
+        )
         super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
