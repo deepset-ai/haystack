@@ -8,10 +8,6 @@ on:
   # merge on `main`. Let's use a cron job instead.
   schedule:
     - cron: "0 0 * * *" # every day at midnight
-  # FIXME: remove the following
-  push:
-    branches:
-      - massi/license-checker
 
 
 jobs:
