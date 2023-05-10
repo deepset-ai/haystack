@@ -551,3 +551,67 @@ class DocumentStoreBaseTestAbstract:
         VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
         BaseDocumentStore.normalize_embedding(VEC_1)
         assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+
+
+    @pytest.mark.unit
+    def test_export_answers_to_csv():
+        agg_results = [
+            {
+                "query": "What is the capital of France?",
+                "answers": [
+                    {
+                        "answer": "Paris",
+                        "context": "Paris is the capital and largest city of France."
+                    },
+                    {
+                        "answer": "Paris",
+                        "context": "The capital of France is Paris."
+                    }
+                ]
+            },
+            {
+                "query": "Who wrote Romeo and Juliet?",
+                "answers": [
+                    {
+                        "answer": "William Shakespeare",
+                        "context": "Romeo and Juliet is a tragedy written by William Shakespeare."
+                    }
+                ]
+            }
+        ]
+
+        expected_data = {
+            "query": [
+                "What is the capital of France?",
+                "What is the capital of France?",
+                "Who wrote Romeo and Juliet?"
+            ],
+            "prediction": ["Paris", "Paris", "William Shakespeare"],
+            "prediction_rank": [1, 2, 1],
+            "prediction_context": [
+                "Paris is the capital and largest city of France.",
+                "The capital of France is Paris.",
+                "Romeo and Juliet is a tragedy written by William Shakespeare."
+            ]
+        }
+
+        expected_df = pd.DataFrame(expected_data)
+
+        # Test export to CSV
+        output_file = "answers.csv"
+        export_answers_to_csv(agg_results, output_file)
+        df = pd.read_csv(output_file)
+        assert_frame_equal(df, expected_df)
+
+        # Test export to Excel
+        output_file = "answers.xlsx"
+        export_answers_to_excel(agg_results, output_file)
+        df = pd.read_excel(output_file)
+        assert_frame_equal(df, expected_df)
+
+        # Clean up temporary files
+        import os
+        os.remove("answers.csv")
+        os.remove("answers.xlsx")
+
