@@ -99,12 +99,6 @@ class DocumentStoreBaseTests:
         assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("page") == "100"])
 
     @pytest.mark.unit
-    def test_filter_simple_value(self, docstore, filterable_docs):
-        self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"year": "2020"})
-        assert self.contains_same_docs(result, [doc for doc in filterable_docs if doc.metadata.get("year") == "2020"])
-
-    @pytest.mark.unit
     def test_filter_simple_list_single_element(self, docstore, filterable_docs):
         docstore.write_documents(filterable_docs)
         result = docstore.filter_documents(filters={"page": ["100"]})
@@ -470,14 +464,9 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_filter_simple_implicit_and_with_sibling_dicts(self, docstore, filterable_docs):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": [{"$lte": 2.0}, {"$gte": 0.0}]})
-
-    @pytest.mark.unit
     def test_filter_simple_explicit_and_with_multikey_dict(self, docstore, filterable_docs):
-        self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 1, "$gte": -1}}})
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 0, "$gte": -2}}})
         assert self.contains_same_docs(
             result,
             [
@@ -488,14 +477,9 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_filter_simple_explicit_and_with_multi_key_dict(self, docstore, filterable_docs):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": {"$lte": 2.0, "$gte": 0.0}}})
-
-    @pytest.mark.unit
     def test_filter_simple_explicit_and_with_list(self, docstore, filterable_docs):
-        self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 1}, {"$gte": -1}]}})
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 2}, {"$gte": 0}]}})
         assert self.contains_same_docs(
             result,
             [
@@ -506,14 +490,9 @@ class DocumentStoreBaseTests:
         )
 
     @pytest.mark.unit
-    def test_filter_simple_explicit_and_with_sibling_dicts(self, docstore, filterable_docs):
-        docstore.write_documents(filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$and": [{"$lte": 2.0}, {"$gte": 0.0}]}})
-
-    @pytest.mark.unit
     def test_filter_simple_implicit_and(self, docstore, filterable_docs):
-        self.direct_write(docstore, filterable_docs)
-        result = docstore.filter_documents(filters={"number": {"$lte": 1, "$gte": -1}})
+        docstore.write_documents(filterable_docs)
+        result = docstore.filter_documents(filters={"number": {"$lte": 2.0, "$gte": 0}})
         assert self.contains_same_docs(
             result,
             [
@@ -742,7 +721,7 @@ class DocumentStoreBaseTests:
         docstore.delete_documents([doc.id])
 
         with pytest.raises(Exception):
-            assert self.direct_access(docstore, doc_id=doc.id)
+            assert docstore.filter_documents(filters={"id": doc.id})
 
     @pytest.mark.unit
     def test_delete_not_empty_nonexisting(self, docstore):
