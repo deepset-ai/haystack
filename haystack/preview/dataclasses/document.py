@@ -53,7 +53,7 @@ class DocumentEncoder(json.JSONEncoder):
             return str(obj)
         try:
             return json.JSONEncoder.default(self, obj)
-        except TypeError as exc:
+        except TypeError:
             return json.JSONEncoder.default(self, str(obj))
 
 
@@ -63,9 +63,9 @@ class DocumentDecoder(json.JSONDecoder):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(object_hook=self.object_hook)
+        super().__init__(object_hook=self.document_decoder)
 
-    def object_hook(self, dictionary):
+    def document_decoder(self, dictionary):
         # Decode content types
         if "content_type" in dictionary:
             if dictionary["content_type"] == "table":
