@@ -1,0 +1,16 @@
+{
+  "content": "some text",
+  "content_type": "text",
+  "score": null,
+  "meta": {},
+  "id_hash_keys": [
+    "content"
+  ],
+  "embedding": [
+    1.1,
+    2.2,
+    3.3,
+    4.4
+  ],
+  "id": "doc2"
+}

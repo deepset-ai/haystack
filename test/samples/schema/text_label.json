@@ -1,0 +1,40 @@
+{
+  "id": "text_label_1",
+  "query": "some",
+  "document": {
+    "id": "doc_1",
+    "content": "some text",
+    "content_type": "text",
+    "meta": {},
+    "id_hash_keys": [
+      "content"
+    ],
+    "score": null,
+    "embedding": null
+  },
+  "is_correct_answer": true,
+  "is_correct_document": true,
+  "origin": "user-feedback",
+  "answer": {
+    "answer": "an answer",
+    "type": "extractive",
+    "score": 0.1,
+    "context": null,
+    "offsets_in_document": [
+      {
+        "start": 1,
+        "end": 3
+      }
+    ],
+    "offsets_in_context": null,
+    "document_ids": [
+      "doc_1"
+    ],
+    "meta": {}
+  },
+  "pipeline_id": null,
+  "created_at": "2023-05-02 11:43:56",
+  "updated_at": null,
+  "meta": {},
+  "filters": null
+}

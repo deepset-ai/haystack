@@ -475,6 +475,7 @@ class Answer:
         return (
             isinstance(other, self.__class__)
             and is_content_equal
+            and getattr(other, "answer", None) == self.answer
             and getattr(other, "type", None) == self.type
             and getattr(other, "score", None) == self.score
             and getattr(other, "offsets_in_document", None) == self.offsets_in_document
