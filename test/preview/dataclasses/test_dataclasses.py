@@ -3,8 +3,19 @@ import pytest
 import pandas as pd
 import numpy as np
 
+import pytest
+
 from haystack.preview import Document
 from haystack.preview.dataclasses.document import _create_id
+
+
+@pytest.mark.unit
+def test_init_document_same_meta_as_main_fields():
+    """
+    This is forbidden to prevent later issues with `Document.flatten()`
+    """
+    with pytest.raises(ValueError, match="score"):
+        Document(content="test content", metadata={"score": "10/10"})
 
 
 @pytest.mark.unit
@@ -158,3 +169,60 @@ def test_document_with_most_attributes_from_dict():
         score=0.99,
         embedding=embedding,
     )
+
+
+def test_flatten_text_document_no_meta():
+    assert Document(content="test content").flatten() == {
+        "id": _create_id(classname=Document.__name__, content="test content"),
+        "content": "test content",
+        "content_type": "text",
+        "id_hash_keys": [],
+        "score": None,
+        "embedding": None,
+    }
+
+
+def test_flatten_text_document():
+    assert Document(content="test content", metadata={"name": "document name", "page": 123}).flatten() == {
+        "id": _create_id(classname=Document.__name__, content="test content"),
+        "content": "test content",
+        "content_type": "text",
+        "name": "document name",
+        "page": 123,
+        "id_hash_keys": [],
+        "score": None,
+        "embedding": None,
+    }
+
+
+def test_flatten_table_document():
+    df = pd.DataFrame([1, 2])
+    flat = Document(content=df, content_type="table", metadata={"table-name": "table title", "section": 3}).flatten()
+
+    dataframe = flat.pop("content")
+    assert dataframe.equals(df)
+    assert flat == {
+        "id": _create_id(classname=Document.__name__, content=df),
+        "content_type": "table",
+        "table-name": "table title",
+        "section": 3,
+        "id_hash_keys": [],
+        "score": None,
+        "embedding": None,
+    }
+
+
+def test_flatten_image_document():
+    path = Path(__file__).parent / "test_files" / "apple.jpg"
+    assert Document(
+        content=path, content_type="image", metadata={"image title": "The Apple", "year": 1993}
+    ).flatten() == {
+        "id": _create_id(classname=Document.__name__, content=path),
+        "content": path,
+        "content_type": "image",
+        "image title": "The Apple",
+        "year": 1993,
+        "id_hash_keys": [],
+        "score": None,
+        "embedding": None,
+    }
