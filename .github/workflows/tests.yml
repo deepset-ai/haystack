@@ -145,6 +145,7 @@ jobs:
           - pipelines
           - utils
           - others
+          - modeling
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
