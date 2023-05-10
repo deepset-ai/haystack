@@ -4,7 +4,7 @@ import json
 import hashlib
 import logging
 from pathlib import Path
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 
 import numpy
 import pandas
@@ -77,6 +77,11 @@ class Document:
                 f"The type of content ({type(self.content)}) does not match the "
                 f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
             )
+        # Validate metadata
+        for key in self.metadata:
+            if key in [field.name for field in fields(self)]:
+                raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
+
         # Check if id_hash_keys are all present in the meta
         for key in self.id_hash_keys:
             if key not in self.metadata:
@@ -108,3 +113,13 @@ class Document:
     def from_json(cls, data, **json_kwargs):
         dictionary = json.loads(data, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
+
+    def flatten(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary with all the fields of the document and the metadata on the same level.
+        This allows filtering by all document fields, not only the metadata.
+        """
+        dictionary = self.to_dict()
+        metadata = dictionary.pop("metadata", {})
+        dictionary = {**dictionary, **metadata}
+        return dictionary
