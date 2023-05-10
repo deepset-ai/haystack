@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 
 import torch
 import yaml
+import prompthub_py
 
 from haystack.nodes.base import BaseComponent
 
@@ -97,7 +98,6 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
-        self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
@@ -105,6 +105,7 @@ class PromptNode(BaseComponent):
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
         self.debug = debug
+        self._prompt_templates = {}
 
         if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
             self.default_prompt_template
@@ -129,6 +130,16 @@ class PromptNode(BaseComponent):
             self.prompt_model = model_name_or_path
         else:
             raise ValueError("model_name_or_path must be either a string or a PromptModel object")
+
+    @property
+    def prompt_templates(self, name):
+        """
+        Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
+        """
+        if not name in self._prompt_templates:
+            prompt = prompthub_py.fetch(name)
+            self._prompt_templates[name] = prompt.text
+        return self._prompt_templates[name]
 
     def __call__(self, *args, **kwargs) -> List[Any]:
         """
