@@ -254,14 +254,15 @@ def test_generation_kwargs_from_prompt_node_call():
 def test_generation_kwargs_from_prompt_node_run():
     the_question = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying HF model
-    node = PromptNode(output_variable='results')
+    node = PromptNode(output_variable="results")
     with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
-        node.run(query=the_question,
-                 prompt_template="{query}",
-                 generation_kwargs={"do_sample": True, "test": True})
+        node.run(query=the_question, prompt_template="{query}", generation_kwargs={"do_sample": True, "test": True})
 
         mock_call.assert_called_with(
-            the_question, {}, {"do_sample": True, "test": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100}, {}
+            the_question,
+            {},
+            {"do_sample": True, "test": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
+            {},
         )
 
 
