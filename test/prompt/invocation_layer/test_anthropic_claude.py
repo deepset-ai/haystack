@@ -90,7 +90,34 @@ def test_invoke_with_kwargs():
         "top_p": -1,
         "top_k": -1,
         "stream": False,
-        "stop_sequences": ["stop", "here"],
+        "stop_sequences": ["stop", "here", "\n\nHuman: "],
+    }
+    mock_request.assert_called_once()
+    assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)
+
+
+@pytest.mark.unit
+def test_invoke_with_none_stop_words():
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer"):
+        layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
+
+    # Create a fake response
+    mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
+        mock_request.return_value = mock_response
+        res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=None)
+    assert len(res) == 1
+    assert res[0] == "some_result"
+
+    expected_data = {
+        "model": "claude-v1",
+        "prompt": "\n\nHuman: Some prompt\n\nAssistant: ",
+        "max_tokens_to_sample": 300,
+        "temperature": 1,
+        "top_p": -1,
+        "top_k": -1,
+        "stream": False,
+        "stop_sequences": ["\n\nHuman: "],
     }
     mock_request.assert_called_once()
     assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)

@@ -98,7 +98,12 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         stream = (
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
-        stop_words = kwargs_with_defaults.get("stop_words", [human_prompt])
+        stop_words = kwargs_with_defaults.get("stop_words") or [human_prompt]
+
+        # The human prompt must always be in the stop words list, if it's not
+        # in there after the user specified some custom ones we append it
+        if human_prompt not in stop_words:
+            stop_words.append(human_prompt)
 
         # As specified by Anthropic the prompt must contain both
         # the human and assistant prompt to be valid:
