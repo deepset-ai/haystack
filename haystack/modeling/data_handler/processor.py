@@ -381,7 +381,7 @@ class SquadProcessor(Processor):
         doc_stride: int = 128,
         max_query_length: int = 64,
         proxies: Optional[dict] = None,
-        max_answers: int = None,
+        max_answers: Optional[int] = None,
         **kwargs,
     ):
         """
@@ -633,8 +633,9 @@ class SquadProcessor(Processor):
                     for i, answer in enumerate(basket.raw["answers"]):
                         if i >= self.max_answers:
                             logger.warning(
-                                f"Found a sample with more answers ({len(basket.raw['answers'])}) than "
-                                f"max_answers ({self.max_answers}). These will be ignored."
+                                "Found a sample with more answers (%d) than "
+                                "max_answers (%d). These will be ignored."
+                                % (len(basket.raw["answers"]), self.max_answers)
                             )
                             break
                         # Calculate start and end relative to document

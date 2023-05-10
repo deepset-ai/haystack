@@ -1,5 +1,6 @@
 import logging
 
+import pytest
 from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.processor import SquadProcessor
@@ -298,6 +299,7 @@ def test_dataset_from_dicts_qa_labelconversion(samples_path, caplog=None):
                     ], f"Processing labels for {model} has changed."
 
 
+@pytest.mark.integration
 def test_dataset_from_dicts_auto_determine_max_answers(samples_path, caplog=None):
     """
     Squadprocessor should determine the number of answers for the pytorch dataset by the maximum of the data.
@@ -311,6 +313,7 @@ def test_dataset_from_dicts_auto_determine_max_answers(samples_path, caplog=None
     assert len(dataset[0][tensor_names.index("labels")]) == 2
 
 
+@pytest.mark.integration
 def test_dataset_from_dicts_truncate_max_answers(samples_path, caplog=None):
     """
     Test that it is possible to manually set the number of answers, truncating the answers in the data.
