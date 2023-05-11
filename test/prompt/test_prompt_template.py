@@ -87,13 +87,13 @@ def test_prompt_template_deserialization(mock_prompt_model):
 
     loaded_generator = loaded_pipe.get_node("Generator")
     assert isinstance(loaded_generator, PromptNode)
-    assert isinstance(loaded_generator._default_prompt_template, PromptTemplate)
-    assert loaded_generator._default_prompt_template.name == "custom-question-answering"
+    assert isinstance(loaded_generator.default_prompt_template, PromptTemplate)
+    assert loaded_generator.default_prompt_template.name == "custom-question-answering"
     assert (
-        loaded_generator._default_prompt_template.prompt_text
+        loaded_generator.default_prompt_template.prompt_text
         == "Given the context please answer the question. Context: {context}; Question: {query}; Answer:"
     )
-    assert isinstance(loaded_generator._default_prompt_template.output_parser, AnswerParser)
+    assert isinstance(loaded_generator.default_prompt_template.output_parser, AnswerParser)
 
 
 class TestPromptTemplateSyntax:
