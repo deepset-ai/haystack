@@ -1,4 +1,5 @@
 import os
+import datetime
 from typing import Any, Dict, Optional, List, Union
 import uuid
 import logging
@@ -160,6 +161,14 @@ def send_pipeline_event(  # type: ignore
             docstore = pipeline.get_document_store()
             if docstore:
                 event_properties["pipeline.document_store"] = docstore.__class__.__name__
+
+            # Track how much time has passed since the last run
+            now = datetime.datetime.now()
+            if pipeline.last_run:
+                event_properties["pipeline.since_last_run"] = (now - pipeline.last_run).total_seconds()
+            else:
+                event_properties["pipeline.since_last_run"] = 0
+            pipeline.last_run = now
 
             # Add an entry for each node class and classify the pipeline by its root node
             for node in pipeline.graph.nodes:

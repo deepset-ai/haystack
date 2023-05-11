@@ -73,6 +73,7 @@ class Pipeline:
         self.graph = DiGraph()
         self.config_hash = None
         self.last_config_hash = None
+        self.last_run = None
 
     @property
     def root_node(self) -> Optional[str]:
