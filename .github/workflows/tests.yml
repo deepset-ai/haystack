@@ -137,8 +137,6 @@ jobs:
           - ubuntu-latest
           - windows-latest
         topic:
-          # WARNING: When updating this list remember to also update the
-          # carryforward field in the upload-coverage job
           - document_stores
           - nodes
           - agents
@@ -227,14 +225,12 @@ jobs:
 
   upload-coverage:
     needs: unit-tests
-    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
         uses: coverallsapp/github-action@v2
         with:
           parallel-finished: true
-          carryforward: "document_stores,nodes,agents,preview,prompt,pipelines,utils,others,modeling"
 
   integration-tests-elasticsearch:
     name: Integration / Elasticsearch / ${{ matrix.os }}
