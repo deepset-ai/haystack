@@ -217,7 +217,7 @@ class PromptNode(BaseComponent):
         :param prompt_template: The prompt template name to be checked.
         :return: True if the prompt template is supported, False otherwise.
         """
-        return template_name in self._prompt_templates_cache or self.prompt_template_exists_in_hub(template_name)
+        return template_name in self._prompt_templates_cache or self._prompt_template_exists_in_hub(template_name)
 
     @tenacity.retry(
         reraise=True,
@@ -225,7 +225,7 @@ class PromptNode(BaseComponent):
         wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
     )
-    def prompt_template_exists_in_hub(self, name):
+    def _prompt_template_exists_in_hub(self, name):
         """
         Returns True if the prompt exists in the Hub, False otherwise.
 
@@ -245,7 +245,7 @@ class PromptNode(BaseComponent):
         wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
     )
-    def get_prompt_template_from_hub(self, name):
+    def _get_prompt_template_from_hub(self, name):
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
         """
@@ -284,16 +284,16 @@ class PromptNode(BaseComponent):
         if prompt_template in self._prompt_templates_cache:
             return self._prompt_templates_cache[prompt_template]
 
-        # if it's not a string or looks like a prompt template name
-        if re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
-            return self.get_prompt_template_from_hub(prompt_template)
-
         # If it's a path to a YAML file
         if Path(prompt_template).exists():
             with open(prompt_template, "r", encoding="utf-8") as yaml_file:
                 prompt_template_parsed = yaml.safe_load(yaml_file.read())
                 if isinstance(prompt_template_parsed, dict):
                     return PromptTemplate(**prompt_template_parsed)
+
+        # if it's not a string or looks like a prompt template name
+        if re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
+            return self._get_prompt_template_from_hub(prompt_template)
 
         # Otherwise, it must be a prompt_text
         prompt_text = prompt_template
