@@ -29,6 +29,7 @@ jobs:
 
     - name: Get direct dependencies, all extras
       run: |
+        pip install toml
         python .github/utils/pyproject_to_requirements.py pyproject.toml --extra all > ${{ env.REQUIREMENTS_FILE }}
 
     - name: Check Licenses
