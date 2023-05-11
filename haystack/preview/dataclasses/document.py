@@ -4,7 +4,7 @@ import json
 import hashlib
 import logging
 from pathlib import Path
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import dataclass, field, fields
 
 import numpy
 import pandas
@@ -19,6 +19,12 @@ PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {
     "table": pandas.DataFrame,
     "image": Path,
     "audio": Path,
+}
+
+EQUALS_BY_TYPE = {
+    Path: lambda self, other: self.absolute() == other.absolute(),
+    numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
+    pandas.DataFrame: lambda self, other: self.equals(other),
 }
 
 
@@ -36,38 +42,31 @@ def _create_id(
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
-EQUALS_BY_TYPE = {
-    Path: lambda self, other: self.absolute() == other.absolute(),
-    numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
-    pandas.DataFrame: lambda self, other: self.equals(other),
-}
-
-
-def _metadata_is_equal(meta1, meta2) -> bool:
+def _safe_equals(obj_1, obj_2) -> bool:
     """
     Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
     """
-    if type(meta1) != type(meta2):
+    if type(obj_1) != type(obj_2):
         return False
 
-    if isinstance(meta1, dict):
-        if meta1.keys() != meta2.keys():
+    if isinstance(obj_1, dict):
+        if obj_1.keys() != obj_2.keys():
             return False
-        return all(_metadata_is_equal(meta1[key], meta2[key]) for key in meta1)
+        return all(_safe_equals(obj_1[key], obj_2[key]) for key in obj_1)
 
     for type_, equals in EQUALS_BY_TYPE.items():
-        if isinstance(meta1, type_):
-            return equals(meta1, meta2)
+        if isinstance(obj_1, type_):
+            return equals(obj_1, obj_2)
 
-    return meta1 == meta2
+    return obj_1 == obj_2
 
 
 @dataclass(frozen=True)
 class Document:
     """
     Base data class containing some data to be queried.
-    Can contain text snippets, tables, file paths to files like images or audios.
-    Documents can be sorted by score, serialized to/from dictionary and JSON, and are immutable.
+    Can contain text snippets, tables, and file paths to images or audios.
+    Documents can be sorted by score, saved to/from dictionary and JSON, and are immutable.
 
     Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
     the ID should change.  To avoid keeping IDs in sync with the content by using properties, and asking docstores to
@@ -75,7 +74,7 @@ class Document:
     Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
     `Document.from_dict()`.
 
-    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the id hash.
+    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the ID hash.
     In case of file-based documents (images, audios), the content that is hashed is the file paths,
     so if the file is moved, the hash is different, but if the file is modified without renaming it, the has will
     not differ.
@@ -94,27 +93,12 @@ class Document:
 
     def __eq__(self, other):
         """
-        Compares documents for equality. Does not compare `content` directly, because differences there always reflect
-        on the ID, compares `embedding` properly, and checks the metadata taking care of embeddings and other objects.
+        Compares documents for equality. Compares `embedding` properly and checks the metadata taking care of
+        embeddings, paths, dataframes, nested dictionaries and other objects.
         """
-        return (
-            type(self) == type(other)
-            and getattr(self, "id") == getattr(other, "id")
-            # No need to compare directly two docs on content because the ID will always differ if the content does.
-            and getattr(self, "content_type") == getattr(other, "content_type")
-            and getattr(self, "id_hash_keys") == getattr(other, "id_hash_keys")
-            and getattr(self, "score") == getattr(other, "score")
-            and (
-                (getattr(self, "embedding") is None and getattr(other, "embedding") is None)
-                or (
-                    getattr(self, "embedding") is not None
-                    and getattr(other, "embedding") is not None
-                    and getattr(self, "embedding").shape == getattr(other, "embedding").shape
-                    and (getattr(self, "embedding") == (getattr(other, "embedding"))).all()
-                )
-            )
-            and _metadata_is_equal(getattr(self, "metadata"), getattr(other, "metadata"))
-        )
+        if type(self) == type(other):
+            return _safe_equals(self.flatten(), other.flatten())
+        return False
 
     def __post_init__(self):
         """
@@ -150,17 +134,29 @@ class Document:
         object.__setattr__(self, "id", hashed_content)
 
     def to_dict(self):
-        return asdict(self)
+        """
+        Saves the Document into a dictionary.
+        """
+        return self.__dict__
 
     def to_json(self, **json_kwargs):
+        """
+        Saves the Document into a JSON string that can be later loaded back.
+        """
         return json.dumps(self.to_dict(), **json_kwargs)
 
     @classmethod
     def from_dict(cls, dictionary):
+        """
+        Creates a new Document object from a dictionary of its fields.
+        """
         return cls(**dictionary)
 
     @classmethod
     def from_json(cls, data, **json_kwargs):
+        """
+        Creates a new Document object from a JSON string.
+        """
         dictionary = json.loads(data, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
 

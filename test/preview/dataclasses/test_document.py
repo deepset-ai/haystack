@@ -1,12 +1,19 @@
 from pathlib import Path
+import dataclasses
+
 import pytest
 import pandas as pd
 import numpy as np
 
-import pytest
-
 from haystack.preview import Document
 from haystack.preview.dataclasses.document import _create_id
+
+
+@pytest.mark.unit
+def test_document_is_immutable():
+    doc = Document(content="test content")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        doc.content = "won't work"
 
 
 @pytest.mark.unit
