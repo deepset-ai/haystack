@@ -4,7 +4,8 @@ name: Linting
 on:
   pull_request:
     paths-ignore:
-      - "**.py"
+      - "haystack/**/*.py"
+      - "rest_api/**/*.py"
       - "**/pyproject.toml"
 
 jobs:
