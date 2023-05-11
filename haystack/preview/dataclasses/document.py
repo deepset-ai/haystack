@@ -4,7 +4,7 @@ import json
 import hashlib
 import logging
 from pathlib import Path
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, asdict
 
 import numpy
 import pandas
@@ -84,7 +84,7 @@ class Document:
     content: Any = field(default_factory=lambda: None)
     content_type: ContentType = "text"
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
+    id_hash_keys: List[str] = field(default_factory=list, hash=False)
     score: Optional[float] = field(default=None, compare=True)
     embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
@@ -97,7 +97,7 @@ class Document:
         embeddings, paths, dataframes, nested dictionaries and other objects.
         """
         if type(self) == type(other):
-            return _safe_equals(self.flatten(), other.flatten())
+            return _safe_equals(self.to_dict(), other.to_dict())
         return False
 
     def __post_init__(self):
@@ -137,7 +137,7 @@ class Document:
         """
         Saves the Document into a dictionary.
         """
-        return self.__dict__
+        return asdict(self)
 
     def to_json(self, **json_kwargs):
         """
