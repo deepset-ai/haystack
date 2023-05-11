@@ -42,7 +42,9 @@ jobs:
         # Exclusions in the vanilla distribution must be explicitly motivated
         #
         # - tqdm is MLP but there are no better alternatives
-        exclude: '(?i)^(tqdm).*'
+        # - PyMuPDF is optional
+        # - pinecone-client is
+        exclude: '(?i)^(PyMuPDF|tqdm|pinecone-client).*'
 
     # We keep the license inventory on FOSSA
     - name: Send license report to Fossa
