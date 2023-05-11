@@ -1,9 +1,9 @@
 import argparse
 import re
 import sys
-import toml
 from pathlib import Path
 
+import toml
 
 matcher = re.compile(r"farm-haystack\[(.+)\]")
 parser = argparse.ArgumentParser(
@@ -13,10 +13,10 @@ parser.add_argument("pyproject_path")
 parser.add_argument("--extra", default="")
 
 
-def resolve(target: str, extras: dict, results: set):
+def resolve(target: str, extras: dict, results: set) -> set:
     if target not in extras:
         results.add(target)
-        return results
+        return
 
     for t in extras[target]:
         m = matcher.match(t)
