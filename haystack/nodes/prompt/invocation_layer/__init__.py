@@ -6,3 +6,4 @@ from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandle
 from haystack.nodes.prompt.invocation_layer.hugging_face import HFLocalInvocationLayer
 from haystack.nodes.prompt.invocation_layer.hugging_face_inference import HFInferenceEndpointInvocationLayer
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
+from haystack.nodes.prompt.invocation_layer.anthropic_claude import AnthropicClaudeInvocationLayer

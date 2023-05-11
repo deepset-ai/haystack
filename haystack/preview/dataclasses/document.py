@@ -1,28 +1,31 @@
-from typing import List, Any, Dict, Literal, Optional, TYPE_CHECKING, Type
+from typing import List, Any, Dict, Literal, Optional, Type
 
 import json
 import hashlib
 import logging
 from pathlib import Path
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields, asdict
 
 import numpy
 import pandas
 
-from haystack.preview.utils.import_utils import optional_import
-
-# We need to do this dance because ndarray is an optional dependency used as a type by dataclass
-if TYPE_CHECKING:
-    from numpy import ndarray
-else:
-    ndarray = optional_import("numpy", "ndarray", "You won't be able to use embeddings.", __name__)
-
-DataFrame = optional_import("pandas", "DataFrame", "You won't be able to use table related features.", __name__)
-
 
 logger = logging.getLogger(__name__)
+
 ContentType = Literal["text", "table", "image", "audio"]
-PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {"text": str, "table": DataFrame, "image": Path, "audio": Path}
+
+PYTHON_TYPES_FOR_CONTENT: Dict[ContentType, type] = {
+    "text": str,
+    "table": pandas.DataFrame,
+    "image": Path,
+    "audio": Path,
+}
+
+EQUALS_BY_TYPE = {
+    Path: lambda self, other: self.absolute() == other.absolute(),
+    numpy.ndarray: lambda self, other: self.shape == other.shape and (self == other).all(),
+    pandas.DataFrame: lambda self, other: self.equals(other),
+}
 
 
 def _create_id(
@@ -39,6 +42,25 @@ def _create_id(
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
 
+def _safe_equals(obj_1, obj_2) -> bool:
+    """
+    Compares two dictionaries for equality, taking arrays, dataframes and other objects into account.
+    """
+    if type(obj_1) != type(obj_2):
+        return False
+
+    if isinstance(obj_1, dict):
+        if obj_1.keys() != obj_2.keys():
+            return False
+        return all(_safe_equals(obj_1[key], obj_2[key]) for key in obj_1)
+
+    for type_, equals in EQUALS_BY_TYPE.items():
+        if isinstance(obj_1, type_):
+            return equals(obj_1, obj_2)
+
+    return obj_1 == obj_2
+
+
 class DocumentEncoder(json.JSONEncoder):
     """
     Encodes more exotic datatypes like pandas dataframes or file paths.
@@ -47,7 +69,7 @@ class DocumentEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, numpy.ndarray):
             return obj.tolist()
-        if isinstance(obj, DataFrame):
+        if isinstance(obj, pandas.DataFrame):
             return obj.to_json()
         if isinstance(obj, Path):
             return str(obj)
@@ -62,7 +84,7 @@ class DocumentDecoder(json.JSONDecoder):
     Decodes more exotic datatypes like pandas dataframes or file paths.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_, **__):
         super().__init__(object_hook=self.document_decoder)
 
     def document_decoder(self, dictionary):
@@ -84,8 +106,8 @@ class DocumentDecoder(json.JSONDecoder):
 class Document:
     """
     Base data class containing some data to be queried.
-    Can contain text snippets, tables, file paths to files like images or audios.
-    Documents can be sorted by score, serialized to/from dictionary and JSON, and are immutable.
+    Can contain text snippets, tables, and file paths to images or audios.
+    Documents can be sorted by score, saved to/from dictionary and JSON, and are immutable.
 
     Immutability is due to the fact that the document's ID depends on its content, so upon changing the content, also
     the ID should change.  To avoid keeping IDs in sync with the content by using properties, and asking docstores to
@@ -93,7 +115,7 @@ class Document:
     Document, consider using `to_dict()`, modifying the dict, and then create a new Document object using
     `Document.from_dict()`.
 
-    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the id hash.
+    Note that `id_hash_keys` are referring to keys in the metadata. `content` is always included in the ID hash.
     In case of file-based documents (images, audios), the content that is hashed is the file paths,
     so if the file is moved, the hash is different, but if the file is modified without renaming it, the has will
     not differ.
@@ -103,17 +125,26 @@ class Document:
     content: Any = field(default_factory=lambda: None)
     content_type: ContentType = "text"
     metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
-    id_hash_keys: List[str] = field(default_factory=lambda: [], hash=False)
+    id_hash_keys: List[str] = field(default_factory=list, hash=False)
     score: Optional[float] = field(default=None, compare=True)
-    embedding: Optional[ndarray] = field(default=None)
+    embedding: Optional[numpy.ndarray] = field(default=None, repr=False)
 
     def __str__(self):
         return f"{self.__class__.__name__}('{self.content}')"
 
+    def __eq__(self, other):
+        """
+        Compares documents for equality. Compares `embedding` properly and checks the metadata taking care of
+        embeddings, paths, dataframes, nested dictionaries and other objects.
+        """
+        if type(self) == type(other):
+            return _safe_equals(self.to_dict(), other.to_dict())
+        return False
+
     def __post_init__(self):
         """
-        Generate the ID based on the init parameters and make sure that content_type
-        matches the actual type of content.
+        Generate the ID based on the init parameters and make sure that `content_type` matches the actual type of
+        content.
         """
         # Validate content_type
         if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
@@ -121,6 +152,11 @@ class Document:
                 f"The type of content ({type(self.content)}) does not match the "
                 f"content type: '{self.content_type}' expects '{PYTHON_TYPES_FOR_CONTENT[self.content_type]}'."
             )
+        # Validate metadata
+        for key in self.metadata:
+            if key in [field.name for field in fields(self)]:
+                raise ValueError(f"Cannot name metadata fields as top-level document fields, like '{key}'.")
+
         # Check if id_hash_keys are all present in the meta
         for key in self.id_hash_keys:
             if key not in self.metadata:
@@ -139,16 +175,38 @@ class Document:
         object.__setattr__(self, "id", hashed_content)
 
     def to_dict(self):
+        """
+        Saves the Document into a dictionary.
+        """
         return asdict(self)
 
     def to_json(self, json_encoder: Optional[Type[DocumentEncoder]] = None, **json_kwargs):
+        """
+        Saves the Document into a JSON string that can be later loaded back.
+        """
         return json.dumps(self.to_dict(), cls=json_encoder or DocumentEncoder, **json_kwargs)
 
     @classmethod
     def from_dict(cls, dictionary):
+        """
+        Creates a new Document object from a dictionary of its fields.
+        """
         return cls(**dictionary)
 
     @classmethod
     def from_json(cls, data, json_decoder: Optional[Type[DocumentDecoder]] = None, **json_kwargs):
+        """
+        Creates a new Document object from a JSON string.
+        """
         dictionary = json.loads(data, cls=json_decoder or DocumentDecoder, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
+
+    def flatten(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary with all the fields of the document and the metadata on the same level.
+        This allows filtering by all document fields, not only the metadata.
+        """
+        dictionary = self.to_dict()
+        metadata = dictionary.pop("metadata", {})
+        dictionary = {**dictionary, **metadata}
+        return dictionary
