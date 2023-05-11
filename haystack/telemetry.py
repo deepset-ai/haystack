@@ -146,8 +146,10 @@ def send_pipeline_event(  # type: ignore
                 telemetry.send_event(event_name="Public Demo", event_properties=event_properties)
                 return
 
-            # Send this event only if the pipeline config has changed
+            # If pipeline config has not changed, send only config hash
             if pipeline.last_config_hash == pipeline.config_hash:
+                event_properties = {"pipeline.config_hash": pipeline.config_hash}
+                telemetry.send_event(event_name="Pipeline", event_properties=event_properties)
                 return
             pipeline.last_config_hash = pipeline.config_hash
 
