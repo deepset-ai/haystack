@@ -22,13 +22,13 @@ from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
 from haystack.nodes.prompt.shapers import BaseOutputParser
 from haystack.nodes.prompt.prompt_model import PromptModel
-from haystack.nodes.prompt.prompt_template import PromptTemplate, get_predefined_prompt_templates
+from haystack.nodes.prompt.prompt_template import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-PROMPTHUB_TIMEOUT = os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30)
-PROMPTHUB_BACKOFF = os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10)
-PROMPTHUB_MAX_RETRIES = os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5)
+PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
+PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
+PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 class PromptNode(BaseComponent):
@@ -110,22 +110,14 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
-        self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
+        self.default_prompt_template = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
         self.debug = debug
-        self._prompt_templates_cache = {}
-
-        if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
-            self.default_prompt_template
-        ):
-            raise ValueError(
-                f"Prompt template {self.default_prompt_template} not found. "
-                "Either provide a custom PromptTemplate object or select an existing prompt name from the PromptHub."
-            )
+        self._prompt_templates_cache: Dict[str, PromptTemplate] = {}
 
         if isinstance(model_name_or_path, str):
             self.prompt_model = PromptModel(
@@ -156,7 +148,7 @@ class PromptNode(BaseComponent):
             kwargs.pop("prompt_template")
             return self.prompt(prompt_template, *args, **kwargs)
         else:
-            return self.prompt(self.default_prompt_template, *args, **kwargs)
+            return self.prompt(self._default_prompt_template, *args, **kwargs)
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[Any]:
         """
@@ -199,25 +191,18 @@ class PromptNode(BaseComponent):
                 results.extend(output)
         return results
 
-    def set_default_prompt_template(self, prompt_template: Union[str, PromptTemplate]) -> "PromptNode":
+    @property
+    def default_prompt_template(self):
+        return self._default_prompt_template
+
+    @default_prompt_template.setter
+    def default_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]):
         """
         Sets the default prompt template for the node.
         :param prompt_template: The prompt template to be set as default.
         :return: The current PromptNode object.
         """
-        if not self.is_supported_template(prompt_template):
-            raise ValueError(f"{prompt_template} not supported.")
-
-        self.default_prompt_template = prompt_template
-        return self
-
-    def is_supported_template(self, template_name: str) -> bool:
-        """
-        Checks if a prompt template is supported.
-        :param prompt_template: The prompt template name to be checked.
-        :return: True if the prompt template is supported, False otherwise.
-        """
-        return template_name in self._prompt_templates_cache or self._prompt_template_exists_in_hub(template_name)
+        self._default_prompt_template = self.get_prompt_template(prompt_template)
 
     @tenacity.retry(
         reraise=True,
@@ -272,7 +257,7 @@ class PromptNode(BaseComponent):
             :return: The prompt template object.
         """
         # None means we're asking for the default prompt template
-        prompt_template = prompt_template or self.default_prompt_template
+        prompt_template = prompt_template or self._default_prompt_template
         if prompt_template is None:
             return None
 
@@ -298,7 +283,7 @@ class PromptNode(BaseComponent):
         # Otherwise, it must be a prompt_text
         prompt_text = prompt_template
         output_parser: Optional[BaseOutputParser] = None
-        default_prompt_template = self.default_prompt_template
+        default_prompt_template = self._default_prompt_template
         if default_prompt_template:
             output_parser = default_prompt_template.output_parser
         return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser)
@@ -309,10 +294,10 @@ class PromptNode(BaseComponent):
         :param prompt_template: The name of the prompt template.
         :return: The list of parameters for the prompt template.
         """
-        if not self.is_supported_template(prompt_template):
-            raise ValueError(f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}")
-
-        return list(self._prompt_templates_cache[prompt_template].prompt_params)
+        template = self.get_prompt_template(prompt_template)
+        if template:
+            return list(template.prompt_params)
+        return []
 
     def run(
         self,
@@ -422,7 +407,7 @@ class PromptNode(BaseComponent):
         for query, docs, invocation_context, prompt_template in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"], inputs["prompt_templates"]
         ):
-            prompt_template = self.get_prompt_template(self.default_prompt_template)
+            prompt_template = self.get_prompt_template(self._default_prompt_template)
             output_variable = self.output_variable or prompt_template.output_variable or "results"
             results = self.run(
                 query=query, documents=docs, invocation_context=invocation_context, prompt_template=prompt_template

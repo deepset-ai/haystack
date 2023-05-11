@@ -50,7 +50,7 @@ def test_prompt_passing_template(mock_model):
 def test_prompt_call_with_no_kwargs(mock_model, mocked_prompt):
     node = PromptNode()
     node()
-    mocked_prompt.assert_called_once_with(node.default_prompt_template)
+    mocked_prompt.assert_called_once_with(node._default_prompt_template)
 
 
 @pytest.mark.unit
@@ -59,7 +59,7 @@ def test_prompt_call_with_no_kwargs(mock_model, mocked_prompt):
 def test_prompt_call_with_custom_kwargs(mock_model, mocked_prompt):
     node = PromptNode()
     node(some_kwarg="some_value")
-    mocked_prompt.assert_called_once_with(node.default_prompt_template, some_kwarg="some_value")
+    mocked_prompt.assert_called_once_with(node._default_prompt_template, some_kwarg="some_value")
 
 
 @pytest.mark.unit
@@ -93,7 +93,7 @@ def test_get_prompt_template_no_default_template(mock_model):
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_get_prompt_template_with_default_template(mock_model):
     node = PromptNode()
-    node.set_default_prompt_template("question-answering")
+    node.default_prompt_template("question-answering")
 
     template = node.get_prompt_template()
     assert template.name == "question-answering"
