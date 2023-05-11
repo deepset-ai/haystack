@@ -13,7 +13,7 @@ parser.add_argument("pyproject_path")
 parser.add_argument("--extra", default="")
 
 
-def resolve(target: str, extras: dict, results: set) -> set:
+def resolve(target: str, extras: dict, results: set):
     if target not in extras:
         results.add(target)
         return
