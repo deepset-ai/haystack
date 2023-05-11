@@ -25,59 +25,6 @@ def get_api_key(request):
 
 
 @pytest.mark.unit
-def test_add_and_remove_template():
-    with patch("haystack.nodes.prompt.prompt_node.PromptModel"):
-        node = PromptNode()
-
-    # Verifies default
-    assert len(node.get_prompt_template_names()) == 14
-
-    # Add a fake template
-    fake_template = PromptTemplate(name="fake-template", prompt_text="Fake prompt")
-    node.add_prompt_template(fake_template)
-    assert len(node.get_prompt_template_names()) == 15
-    assert "fake-template" in node.get_prompt_template_names()
-
-    # Verify that adding the same template throws an expection
-    with pytest.raises(ValueError) as e:
-        node.add_prompt_template(fake_template)
-        assert e.match(
-            "Prompt template fake-template already exists. Select a different name for this prompt template."
-        )
-
-    # Verify template is correctly removed
-    assert node.remove_prompt_template("fake-template")
-    assert len(node.get_prompt_template_names()) == 14
-    assert "fake-template" not in node.get_prompt_template_names()
-
-    # Verify that removing the same template throws an expection
-    with pytest.raises(ValueError) as e:
-        node.remove_prompt_template("fake-template")
-        assert e.match("Prompt template fake-template does not exist")
-
-
-@pytest.mark.unit
-@patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_prompt_after_adding_template(mock_model):
-    # Make model always return something positive on invoke
-    mock_model.return_value.invoke.return_value = ["positive"]
-
-    # Create a template
-    template = PromptTemplate(
-        name="fake-sentiment-analysis",
-        prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: {documents}; Answer:",
-    )
-
-    # Execute prompt
-    node = PromptNode()
-    node.add_prompt_template(template)
-    result = node.prompt("fake-sentiment-analysis", documents=["Berlin is an amazing city."])
-
-    assert result == ["positive"]
-
-
-@pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_prompt_passing_template(mock_model):
     # Make model always return something positive on invoke
@@ -137,30 +84,9 @@ def test_prompt_call_with_custom_kwargs_and_template(mock_model, mocked_prompt):
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_without_default_template(mock_model):
+def test_get_prompt_template_no_default_template(mock_model):
     node = PromptNode()
     assert node.get_prompt_template() is None
-
-    template = node.get_prompt_template("question-answering")
-    assert template.name == "question-answering"
-
-    template = node.get_prompt_template(PromptTemplate(name="fake-template", prompt_text=""))
-    assert template.name == "fake-template"
-
-    with pytest.raises(ValueError) as e:
-        node.get_prompt_template("some-unsupported-template")
-        assert e.match("some-unsupported-template not supported, select one of:")
-
-    fake_yaml_prompt = "name: fake-yaml-template\nprompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "fake-yaml-template"
-
-    fake_yaml_prompt = "- prompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "custom-at-query-time"
-
-    template = node.get_prompt_template("some prompt")
-    assert template.name == "custom-at-query-time"
 
 
 @pytest.mark.unit
@@ -172,24 +98,61 @@ def test_get_prompt_template_with_default_template(mock_model):
     template = node.get_prompt_template()
     assert template.name == "question-answering"
 
-    template = node.get_prompt_template("sentiment-analysis")
-    assert template.name == "sentiment-analysis"
 
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_name_from_hub(mock_model):
+    node = PromptNode()
+    template = node.get_prompt_template("question-answering")
+    assert template.name == "question-answering"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_local_file(mock_model, tmp_path):
+    with open(tmp_path / "local_prompt_template.yml", "w") as ptf:
+        ptf.write(
+            """
+name: deepset/question-answering
+prompt_text: |
+            Given the context please answer the question. Context: {join(documents)};
+            Question: {query};
+            Answer:
+description: A simple prompt to answer a question given a set of documents
+tags:
+  - question-answering
+meta:
+  authors:
+    - vblagoje
+version: v0.1.1
+"""
+        )
+    node = PromptNode()
+    template = node.get_prompt_template(str(tmp_path / "local_prompt_template.yml"))
+    assert template.name == "question-answering"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_object(mock_model):
+    node = PromptNode()
     template = node.get_prompt_template(PromptTemplate(name="fake-template", prompt_text=""))
     assert template.name == "fake-template"
 
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_wrong_template_name(mock_model):
+    node = PromptNode()
     with pytest.raises(ValueError) as e:
         node.get_prompt_template("some-unsupported-template")
         assert e.match("some-unsupported-template not supported, select one of:")
 
-    fake_yaml_prompt = "name: fake-yaml-template\nprompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "fake-yaml-template"
 
-    fake_yaml_prompt = "- prompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "custom-at-query-time"
-
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_only_template_text(mock_model):
+    node = PromptNode()
     template = node.get_prompt_template("some prompt")
     assert template.name == "custom-at-query-time"
 
