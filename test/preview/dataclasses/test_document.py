@@ -1,12 +1,19 @@
 from pathlib import Path
+import dataclasses
+
 import pytest
 import pandas as pd
 import numpy as np
 
-import pytest
-
 from haystack.preview import Document
 from haystack.preview.dataclasses.document import _create_id
+
+
+@pytest.mark.unit
+def test_document_is_immutable():
+    doc = Document(content="test content")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        doc.content = "won't work"
 
 
 @pytest.mark.unit
@@ -16,6 +23,78 @@ def test_init_document_same_meta_as_main_fields():
     """
     with pytest.raises(ValueError, match="score"):
         Document(content="test content", metadata={"score": "10/10"})
+
+
+@pytest.mark.unit
+def test_simple_text_document_equality():
+    doc1 = Document(content="test content")
+    doc2 = Document(content="test content")
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_simple_table_document_equality():
+    doc1 = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    doc2 = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_simple_image_document_equality():
+    doc1 = Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image")
+    doc2 = Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image")
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_equality_with_embeddings():
+    doc1 = Document(content="test content", embedding=np.array([10, 10]))
+    doc2 = Document(content="test content", embedding=np.array([10, 10]))
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_equality_with_embeddings_shape_check():
+    doc1 = Document(content="test content", embedding=np.array([10, 10]))
+    doc2 = Document(content="test content", embedding=np.array([[[10, 10]]]))
+    assert doc1 != doc2
+
+
+@pytest.mark.unit
+def test_equality_with_scores():
+    doc1 = Document(content="test content", score=100)
+    doc2 = Document(content="test content", score=100)
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_equality_with_simple_metadata():
+    doc1 = Document(content="test content", metadata={"value": 1, "another": "value"})
+    doc2 = Document(content="test content", metadata={"value": 1, "another": "value"})
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_equality_with_nested_metadata():
+    doc1 = Document(content="test content", metadata={"value": {"another": "value"}})
+    doc2 = Document(content="test content", metadata={"value": {"another": "value"}})
+    assert doc1 == doc2
+
+
+@pytest.mark.unit
+def test_equality_with_metadata_with_objects():
+    class TestObject:
+        def __eq__(self, other):
+            if type(self) == type(other):
+                return True
+
+    doc1 = Document(
+        content="test content", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__), "obj": TestObject()}
+    )
+    doc2 = Document(
+        content="test content", metadata={"value": np.array([0, 1, 2]), "path": Path(__file__), "obj": TestObject()}
+    )
+    assert doc1 == doc2
 
 
 @pytest.mark.unit
@@ -66,18 +145,17 @@ def test_default_table_document_to_dict():
 
 @pytest.mark.unit
 def test_default_table_document_from_dict():
-    df = pd.DataFrame([1, 2])
     assert Document.from_dict(
         {
-            "id": _create_id(classname=Document.__name__, content=df),
-            "content": df,
+            "id": _create_id(classname=Document.__name__, content=pd.DataFrame([1, 2])),
+            "content": pd.DataFrame([1, 2]),
             "content_type": "table",
             "metadata": {},
             "id_hash_keys": [],
             "score": None,
             "embedding": None,
         }
-    ) == Document(content=df, content_type="table")
+    ) == Document(content=pd.DataFrame([1, 2]), content_type="table")
 
 
 @pytest.mark.unit
@@ -96,18 +174,17 @@ def test_default_image_document_to_dict():
 
 @pytest.mark.unit
 def test_default_image_document_from_dict():
-    path = Path(__file__).parent / "test_files" / "apple.jpg"
     assert Document.from_dict(
         {
-            "id": _create_id(classname=Document.__name__, content=path),
-            "content": path,
+            "id": _create_id(classname=Document.__name__, content=Path(__file__).parent / "test_files" / "apple.jpg"),
+            "content": Path(__file__).parent / "test_files" / "apple.jpg",
             "content_type": "image",
             "metadata": {},
             "id_hash_keys": [],
             "score": None,
             "embedding": None,
         }
-    ) == Document(content=path, content_type="image")
+    ) == Document(content=Path(__file__).parent / "test_files" / "apple.jpg", content_type="image")
 
 
 @pytest.mark.unit
