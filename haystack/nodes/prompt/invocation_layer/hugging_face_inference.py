@@ -136,7 +136,6 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
 
-        kwargs_with_defaults.update(kwargs)
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         params = {
             "best_of": kwargs_with_defaults.get("best_of", None),
@@ -156,7 +155,9 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             "typical_p": kwargs_with_defaults.get("typical_p", None),
             "watermark": kwargs_with_defaults.get("watermark", False),
         }
-        response = self._post(data={"inputs": prompt, "parameters": params, "stream": stream}, stream=stream)
+        response: requests.Response = self._post(
+            data={"inputs": prompt, "parameters": params, "stream": stream}, stream=stream
+        )
         if not stream:
             output = json.loads(response.text)
             generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
@@ -167,14 +168,23 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             )
         return generated_texts
 
-    def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler, stop_words=None):
+    def _process_streaming_response(
+        self, response: requests.Response, stream_handler: TokenStreamingHandler, stop_words: List[str]
+    ) -> List[str]:
+        """
+        Stream the response and invoke the stream_handler on each token.
+
+        :param response: The response object from the server
+        :param stream_handler: The handler to invoke on each token
+        :param stop_words: The stop words to ignore
+        """
         client = sseclient.SSEClient(response)
         tokens: List[str] = []
         try:
             for event in client.events():
                 if event.data != TokenStreamingHandler.DONE_MARKER:
                     event_data = json.loads(event.data)
-                    token: str = self._extract_token(event_data)
+                    token: Optional[str] = self._extract_token(event_data)
                     # if valid token and not a stop words (we don't want to return stop words)
                     if token and token.strip() not in stop_words:
                         tokens.append(stream_handler(token, event_data=event_data))
@@ -182,7 +192,11 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             client.close()
         return ["".join(tokens)]  # return a list of strings just like non-streaming
 
-    def _extract_token(self, event_data: Dict[str, Any]):
+    def _extract_token(self, event_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract the token from the event data. If the token is a special token, return None.
+        param event_data: The event data from the streaming response
+        """
         # extract token from event data and only consider non-special tokens
         return event_data["token"]["text"] if not event_data["token"]["special"] else None
 
