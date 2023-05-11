@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 
 import torch
 import yaml
-import prompthub_py
+import prompthub
 
 from haystack.nodes.base import BaseComponent
 
@@ -137,7 +137,7 @@ class PromptNode(BaseComponent):
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
         """
         if not name in self._prompt_templates:
-            prompt = prompthub_py.fetch(name)
+            prompt = prompthub.fetch(name)
             self._prompt_templates[name] = prompt.text
         return self._prompt_templates[name]
 
