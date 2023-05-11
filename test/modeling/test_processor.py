@@ -234,7 +234,7 @@ def test_batch_encoding_flatten_rename():
         pass
 
 
-def test_dataset_from_dicts_qa_labelconversion(samples_path, caplog=None):
+def test_dataset_from_dicts_qa_label_conversion(samples_path, caplog=None):
     if caplog:
         caplog.set_level(logging.CRITICAL)
 
@@ -249,7 +249,7 @@ def test_dataset_from_dicts_qa_labelconversion(samples_path, caplog=None):
 
     for model in models:
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
-        processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
+        processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None, max_answers=6)
 
         for sample_type in sample_types:
             dicts = processor.file_to_dicts(samples_path / "qa" / f"{sample_type}.json")
@@ -302,8 +302,9 @@ def test_dataset_from_dicts_qa_labelconversion(samples_path, caplog=None):
 @pytest.mark.integration
 def test_dataset_from_dicts_auto_determine_max_answers(samples_path, caplog=None):
     """
-    Squadprocessor should determine the number of answers for the pytorch dataset by the maximum of the data.
-    In the case of vanilla.json, there is only one question with two answers. Therefore, it should be two.
+    SquadProcessor should determine the number of answers for the pytorch dataset based on
+    the maximum number of answers for each question. Vanilla.json has one question with two answers,
+    so the number of answers should be two.
     """
     model = "deepset/roberta-base-squad2"
     tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)

@@ -403,10 +403,9 @@ class SquadProcessor(Processor):
         :param max_query_length: Maximum length of the question (in number of subword tokens)
         :param proxies: proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
-        :param max_answers: Number of answers to be converted. QA dev or train sets can contain multi-way annotations,
-                            which are converted to arrays of max_answer length.
-                            If max_answers is not set, it will be set to the maximum number of answers for any question.
-                            If max_answers is less than the maximum number of answers, the answers will be truncated.
+        :param max_answers: Number of answers to be converted. QA sets can contain multi-way annotations, which are converted to arrays of max_answer length.
+                            Adjusts to maximum number of answers in the first processed datasets if not set.
+                            Truncates or pads to max_answer length if set.
         :param kwargs: placeholder for passing generic parameters
         """
         self.ph_output_type = "per_token_squad"
@@ -618,6 +617,8 @@ class SquadProcessor(Processor):
         Converts answers that are pure strings into the token based representation with start and end token offset.
         Can handle multiple answers per question document pair as is common for development/text sets
         """
+        assert isinstance(self.max_answers, int), "max_answers must be set before calling _convert_answers()"
+        self.max_answers = int(self.max_answers)
         for basket in baskets:
             error_in_answer = False
             for sample in basket.samples:  # type: ignore
@@ -634,8 +635,9 @@ class SquadProcessor(Processor):
                         if i >= self.max_answers:
                             logger.warning(
                                 "Found a sample with more answers (%d) than "
-                                "max_answers (%d). These will be ignored."
-                                % (len(basket.raw["answers"]), self.max_answers)
+                                "max_answers (%d). These will be ignored.",
+                                len(basket.raw["answers"]),
+                                self.max_answers,
                             )
                             break
                         # Calculate start and end relative to document
