@@ -108,7 +108,6 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
         )
 
-        kwargs_with_defaults.update(kwargs)
         # see https://docs.cohere.com/reference/generate
         params = {
             "end_sequences": kwargs_with_defaults.get("end_sequences", stop_words),
