@@ -7,45 +7,65 @@ import pandas as pd
 
 
 @pytest.fixture
-def text_labels():
-    return [
-        Label(
-            query="some",
-            answer=Answer(
-                answer="an answer",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[Span(start=1, end=3)],
-            ),
-            document=Document(content="some text", content_type="text"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
+def text_label():
+    return Label(
+        query="some",
+        answer=Answer(
+            answer="an answer",
+            type="extractive",
+            score=0.1,
+            document_ids=["doc_1"],
+            offsets_in_document=[Span(start=1, end=3)],
         ),
-        Label(
-            query="some",
-            answer=Answer(answer="annother answer", type="extractive", score=0.1, document_ids=["123"]),
-            document=Document(content="some text", content_type="text"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
-        ),
-        Label(
-            query="some",
-            answer=Answer(
-                answer="an answer",
-                type="extractive",
-                score=0.1,
-                document_ids=["123"],
-                offsets_in_document=[Span(start=1, end=3)],
-            ),
-            document=Document(content="some text", content_type="text"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            origin="user-feedback",
-        ),
-    ]
+        document=Document(content="some text", content_type="text", id="doc_1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        id="text_label_1",
+    )
+
+
+@pytest.fixture
+def text_label_dict():
+    return {
+        "id": "text_label_1",
+        "query": "some",
+        "document": {
+            "id": "doc_1",
+            "content": "some text",
+            "content_type": "text",
+            "meta": {},
+            "id_hash_keys": ["content"],
+            "score": None,
+            "embedding": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "answer": {
+            "answer": "an answer",
+            "type": "extractive",
+            "score": 0.1,
+            "context": None,
+            "offsets_in_document": [{"start": 1, "end": 3}],
+            "offsets_in_context": None,
+            "document_ids": ["doc_1"],
+            "meta": {},
+        },
+        "pipeline_id": None,
+        "created_at": "2023-05-02 11:43:56",
+        "updated_at": None,
+        "meta": {},
+        "filters": None,
+    }
+
+
+@pytest.fixture
+def text_label_json(samples_path):
+    with open(samples_path / "schema" / "text_label.json") as f1:
+        data = json.load(f1)
+    return data
 
 
 @pytest.fixture
@@ -130,6 +150,27 @@ def text_answer():
 
 
 @pytest.fixture
+def text_answer_dict():
+    return {
+        "answer": "an answer",
+        "type": "extractive",
+        "score": 0.1,
+        "context": "abc",
+        "offsets_in_document": [{"start": 1, "end": 10}],
+        "offsets_in_context": [{"start": 3, "end": 5}],
+        "document_ids": ["123"],
+        "meta": {},
+    }
+
+
+@pytest.fixture
+def text_answer_json(samples_path):
+    with open(samples_path / "schema" / "text_answer.json") as f1:
+        data = json.load(f1)
+    return data
+
+
+@pytest.fixture
 def table_answer():
     return Answer(
         answer="text_2",
@@ -161,6 +202,43 @@ def table_answer_json(samples_path):
     with open(samples_path / "schema" / "table_answer.json") as f1:
         data = json.load(f1)
     return data
+
+
+@pytest.fixture
+def text_doc():
+    return Document(content="some text", content_type="text", id="doc1")
+
+
+@pytest.fixture
+def text_doc_dict():
+    return {
+        "content": "some text",
+        "content_type": "text",
+        "score": None,
+        "meta": {},
+        "id_hash_keys": ["content"],
+        "embedding": None,
+        "id": "doc1",
+    }
+
+
+@pytest.fixture
+def text_doc_json(samples_path):
+    with open(samples_path / "schema" / "text_doc.json") as f1:
+        json_str = f1.read()
+    return json_str
+
+
+@pytest.fixture
+def text_doc_with_embedding():
+    return Document(content="some text", content_type="text", id="doc2", embedding=np.array([1.1, 2.2, 3.3, 4.4]))
+
+
+@pytest.fixture
+def text_doc_with_embedding_json(samples_path):
+    with open(samples_path / "schema" / "text_doc_emb.json") as f1:
+        json_str = f1.read()
+    return json_str
 
 
 @pytest.fixture
@@ -242,29 +320,73 @@ def test_no_answer_label():
 
 
 @pytest.mark.unit
-def test_equal_label(text_labels):
-    assert text_labels[2] == text_labels[0]
-    assert text_labels[1] != text_labels[0]
+def test_text_labels_with_identical_fields_are_equal(text_label):
+    text_label_copy = Label(
+        query="some",
+        answer=Answer(
+            answer="an answer",
+            type="extractive",
+            score=0.1,
+            document_ids=["doc_1"],
+            offsets_in_document=[Span(start=1, end=3)],
+        ),
+        document=Document(content="some text", content_type="text", id="doc_1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        id="text_label_1",
+    )
+    assert text_label == text_label_copy
 
 
 @pytest.mark.unit
-def test_label_to_json(text_labels):
-    text_label_json = text_labels[0].to_json()
+def test_text_labels_with_different_fields_are_not_equal(text_label):
+    text_label_different = Label(
+        query="some",
+        answer=Answer(
+            answer="different answer",
+            type="extractive",
+            score=0.1,
+            document_ids=["doc_1"],
+            offsets_in_document=[Span(start=5, end=15)],
+        ),
+        document=Document(content="some text", content_type="text", id="doc_1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        created_at="2023-05-02 11:43:56",
+        id="text_label_1",
+    )
+    assert text_label != text_label_different
+
+
+@pytest.mark.unit
+def test_label_from_json(text_label, text_label_json):
     text_label_from_json = Label.from_json(text_label_json)
-    assert text_label_from_json == text_labels[0]
-    assert text_label_from_json.answer.offsets_in_document[0].start == 1
+    assert text_label_from_json == text_label
 
 
 @pytest.mark.unit
-def test_label_to_dict(text_labels):
-    text_label_dict = text_labels[0].to_dict()
+def test_label_to_json(text_label, text_label_json):
+    text_label_to_json = json.loads(text_label.to_json())
+    assert text_label_to_json == text_label_json
+
+
+@pytest.mark.unit
+def test_text_label_from_dict(text_label, text_label_dict):
     text_label_from_dict = Label.from_dict(text_label_dict)
-    assert text_label_from_dict == text_labels[0]
-    assert text_label_from_dict.answer.offsets_in_document[0].start == 1
+    assert text_label_from_dict == text_label
 
 
 @pytest.mark.unit
-def test_labels_with_identical_fields_are_equal(table_label):
+def test_text_label_to_dict(text_label, text_label_dict):
+    text_label_to_dict = text_label.to_dict()
+    assert text_label_to_dict == text_label_dict
+
+
+@pytest.mark.unit
+def test_table_labels_with_identical_fields_are_equal(table_label):
     table_label_copy = Label(
         query="some",
         answer=Answer(
@@ -287,7 +409,7 @@ def test_labels_with_identical_fields_are_equal(table_label):
 
 
 @pytest.mark.unit
-def test_labels_with_different_fields_are_not_equal(table_label):
+def test_table_labels_with_different_fields_are_not_equal(table_label):
     table_label_different = Label(
         query="some",
         answer=Answer(
@@ -334,24 +456,25 @@ def test_table_label_to_dict(table_label, table_label_dict):
 
 
 @pytest.mark.unit
-def test_answer_to_json(text_answer):
-    a = text_answer
-    j = a.to_json()
-    assert type(j) == str
-    assert len(j) > 30
-    a_new = Answer.from_json(j)
-    assert type(a_new.offsets_in_document[0]) == Span
-    assert a_new == a
+def test_answer_to_json(text_answer, text_answer_json):
+    text_answer_to_json = json.loads(text_answer.to_json())
+    assert text_answer_to_json == text_answer_json
 
 
 @pytest.mark.unit
-def test_answer_to_dict(text_answer):
-    a = text_answer
-    j = a.to_dict()
-    assert type(j) == dict
-    a_new = Answer.from_dict(j)
-    assert type(a_new.offsets_in_document[0]) == Span
-    assert a_new == a
+def test_answer_from_json(text_answer, text_answer_json):
+    text_answer_from_json = Answer.from_json(text_answer_json)
+    assert text_answer_from_json == text_answer
+
+
+@pytest.mark.unit
+def test_answer_to_dict(text_answer, text_answer_dict):
+    assert text_answer.to_dict() == text_answer_dict
+
+
+@pytest.mark.unit
+def test_answer_from_dict(text_answer, text_answer_dict):
+    assert text_answer == Answer.from_dict(text_answer_dict)
 
 
 @pytest.mark.unit
@@ -377,11 +500,13 @@ def test_table_answer_from_dict(table_answer, table_answer_dict):
 
 
 @pytest.mark.unit
-def test_document_from_dict():
-    doc = Document(
-        content="this is the content of the document", meta={"some": "meta"}, id_hash_keys=["content", "meta"]
-    )
-    assert doc == Document.from_dict(doc.to_dict())
+def test_document_from_dict(text_doc, text_doc_dict):
+    assert text_doc == Document.from_dict(text_doc_dict)
+
+
+@pytest.mark.unit
+def test_document_to_dict(text_doc, text_doc_dict):
+    assert text_doc.to_dict() == text_doc_dict
 
 
 @pytest.mark.unit
@@ -395,51 +520,50 @@ def test_table_document_to_dict(table_doc, table_doc_dict):
 
 
 @pytest.mark.unit
-def test_doc_to_json():
-    # With embedding
-    doc_with_embedding = Document(
-        content="some text",
-        content_type="text",
-        id_hash_keys=["meta"],
-        score=0.99988,
-        meta={"name": "doc1"},
-        embedding=np.random.rand(768).astype(np.float32),
-    )
-    doc_emb_json = doc_with_embedding.to_json()
-    doc_emb_from_json = Document.from_json(doc_emb_json)
-    assert doc_with_embedding == doc_emb_from_json
-
-    # No embedding
-    doc_with_no_embedding = Document(
-        content="some text",
-        content_type="text",
-        score=0.99988,
-        meta={"name": "doc1"},
-        id_hash_keys=["meta"],
-        embedding=None,
-    )
-    doc_no_emb_json = doc_with_no_embedding.to_json()
-    doc_no_emb_from_json = Document.from_json(doc_no_emb_json)
-    assert doc_with_no_embedding == doc_no_emb_from_json
+def test_document_from_json_with_embedding(text_doc_with_embedding, text_doc_with_embedding_json):
+    text_doc_emb_from_json = Document.from_json(text_doc_with_embedding_json)
+    assert text_doc_with_embedding == text_doc_emb_from_json
 
 
 @pytest.mark.unit
-def test_table_doc_from_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
-    # With embedding
+def test_document_from_json_without_embedding(text_doc, text_doc_json):
+    text_doc_no_emb_from_json = Document.from_json(text_doc_json)
+    assert text_doc == text_doc_no_emb_from_json
+
+
+@pytest.mark.unit
+def test_document_to_json_with_embedding(text_doc_with_embedding, text_doc_with_embedding_json):
+    text_doc_emb_to_json = json.loads(text_doc_with_embedding.to_json())
+    assert json.loads(text_doc_with_embedding_json) == text_doc_emb_to_json
+
+
+@pytest.mark.unit
+def test_document_to_json_without_embedding(text_doc, text_doc_json):
+    text_doc_no_emb_to_json = json.loads(text_doc.to_json())
+    assert json.loads(text_doc_json) == text_doc_no_emb_to_json
+
+
+@pytest.mark.unit
+def test_table_doc_from_json_with_embedding(table_doc_with_embedding, table_doc_with_embedding_json):
     table_doc_emb_from_json = Document.from_json(table_doc_with_embedding_json)
     assert table_doc_with_embedding == table_doc_emb_from_json
 
-    # No embedding
+
+@pytest.mark.unit
+def test_table_doc_from_json_without_embedding(table_doc, table_doc_json):
     table_doc_no_emb_from_json = Document.from_json(table_doc_json)
     assert table_doc == table_doc_no_emb_from_json
 
 
 @pytest.mark.unit
-def test_table_doc_to_json(table_doc, table_doc_with_embedding, table_doc_json, table_doc_with_embedding_json):
+def test_table_doc_to_json_with_embedding(table_doc_with_embedding, table_doc_with_embedding_json):
     # With embedding
     table_doc_emb_to_json = json.loads(table_doc_with_embedding.to_json())
     assert json.loads(table_doc_with_embedding_json) == table_doc_emb_to_json
 
+
+@pytest.mark.unit
+def test_table_doc_to_json_without_embedding(table_doc, table_doc_json):
     # No embedding
     table_doc_no_emb_to_json = json.loads(table_doc.to_json())
     assert json.loads(table_doc_json) == table_doc_no_emb_to_json
@@ -548,7 +672,7 @@ def test_aggregate_labels_with_labels():
     label = MultiLabel(labels=[label1_with_filter1, label2_with_filter1])
     assert label.filters == {"name": ["filename1"]}
     with pytest.raises(ValueError):
-        label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
+        _ = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
 
 
 @pytest.mark.unit
