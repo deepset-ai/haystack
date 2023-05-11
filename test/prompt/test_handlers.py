@@ -3,7 +3,7 @@ import pytest
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_prompt_handler_basics():
     handler = DefaultPromptHandler(model_name_or_path="gpt2", model_max_length=20, max_length=10)
     assert callable(handler)
@@ -12,7 +12,7 @@ def test_prompt_handler_basics():
     assert handler.max_length == 100
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_gpt2_prompt_handler():
     # test gpt2 BPE based tokenizer
     handler = DefaultPromptHandler(model_name_or_path="gpt2", model_max_length=20, max_length=10)
@@ -36,7 +36,7 @@ def test_gpt2_prompt_handler():
     }
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_flan_prompt_handler():
     # test google/flan-t5-xxl tokenizer
     handler = DefaultPromptHandler(model_name_or_path="google/flan-t5-xxl", model_max_length=20, max_length=10)
