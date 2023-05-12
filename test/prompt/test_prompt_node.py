@@ -740,6 +740,37 @@ def test_simple_pipeline_yaml(tmp_path):
     assert result["results"][0] == "positive"
 
 
+@pytest.mark.integration
+def test_simple_pipeline_yaml_with_customized_params(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            """
+            version: ignore
+            components:
+            - name: Prompter
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: Prompter
+                inputs:
+                - Query
+        """
+        )
+    the_question = "What is the capital of Germany?"
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+    with patch.object(HFLocalInvocationLayer, "invoke", MagicMock()) as mock_call:
+        result = pipeline.run(
+            query=the_question,
+            params={"Prompter": {"prompt_template": "{query}", "generation_kwargs": {"do_sample": True}}},
+        )
+
+        mock_call.assert_called_with(
+            prompt=the_question, stop_words=None, top_k=1, query=the_question, generation_kwargs={"do_sample": True}
+        )
+
+
 @pytest.mark.skip
 @pytest.mark.integration
 def test_simple_pipeline_yaml_with_default_params(tmp_path):
