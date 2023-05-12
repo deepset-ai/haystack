@@ -598,6 +598,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -718,6 +722,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -815,6 +823,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -864,6 +876,10 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
