@@ -5,8 +5,6 @@ import inspect
 
 from typing import Any, Optional, Dict, List, Union
 
-from haystack.utils.mmh3 import hash128
-
 try:
     from typing import Literal
 except ImportError:
@@ -146,6 +144,7 @@ class Document:
         or a selection of the content.
         :param id_hash_keys: Optional list of fields that should be dynamically used to generate the hash.
         """
+        from haystack.utils.mmh3 import hash128
 
         if id_hash_keys is None:
             return "{:02x}".format(hash128(str(self.content)))
