@@ -8,7 +8,7 @@ if _sys.version_info > (3, 0):
         return range(a, b, c)
 
     def xencode(x):
-        if isinstance(x, bytes) or isinstance(x, bytearray):
+        if isinstance(x, (bytes, bytearray)):
             return x
         else:
             return x.encode()
