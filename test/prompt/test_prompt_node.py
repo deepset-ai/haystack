@@ -93,7 +93,7 @@ def test_get_prompt_template_no_default_template(mock_model):
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_get_prompt_template_with_default_template(mock_model):
     node = PromptNode()
-    node.default_prompt_template("question-answering")
+    node.default_prompt_template = "question-answering"
 
     template = node.get_prompt_template()
     assert template.name == "question-answering"
