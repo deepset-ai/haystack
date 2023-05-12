@@ -19,13 +19,7 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import (
-    AutoConfig,
-    DPRContextEncoderTokenizerFast,
-    DPRQuestionEncoderTokenizerFast,
-    DPRContextEncoderTokenizer,
-    DPRQuestionEncoderTokenizer,
-)
+from transformers import AutoConfig, AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
@@ -191,7 +185,7 @@ class DensePassageRetriever(DenseRetriever):
             )
 
         # Init & Load Encoders
-        self.query_tokenizer = DPRQuestionEncoderTokenizerFast.from_pretrained(
+        self.query_tokenizer = AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -203,7 +197,7 @@ class DensePassageRetriever(DenseRetriever):
             model_type="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
+        self.passage_tokenizer = AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
