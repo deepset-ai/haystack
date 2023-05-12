@@ -59,7 +59,6 @@ dependencies = [
   "dill",  # pickle extension for (de-)serialization
   "tqdm",  # progress bars in model download and training scripts
   "networkx",  # graphs library
-  "mmh3",  # fast hashing function (murmurhash3)
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
   "azure-ai-formrecognizer>=3.2.0b2",  # forms reader

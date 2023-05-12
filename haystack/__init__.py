@@ -31,7 +31,6 @@ generalimport(
     "magic",
     "markdown",
     "mlflow",
-    "mmh3",
     "more_itertools",
     "networkx",
     "nltk",
