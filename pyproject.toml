@@ -218,6 +218,7 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
+  "toml",
 ]
 
 formatting = [
