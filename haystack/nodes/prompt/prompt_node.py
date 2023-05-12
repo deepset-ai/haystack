@@ -114,6 +114,7 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
+        self._default_prompt_template = None
         self.default_prompt_template = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
