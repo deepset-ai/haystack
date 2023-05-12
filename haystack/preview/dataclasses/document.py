@@ -36,8 +36,6 @@ def _create_id(
     """
     content_to_hash = f"{classname}:{content}"
     if id_hash_keys:
-        if not metadata:
-            raise ValueError("If 'id_hash_keys' is provided, you must provide 'metadata' too.")
         content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
@@ -72,11 +70,11 @@ class DocumentEncoder(json.JSONEncoder):
         if isinstance(obj, pandas.DataFrame):
             return obj.to_json()
         if isinstance(obj, Path):
-            return str(obj)
+            return str(obj.absolute())
         try:
             return json.JSONEncoder.default(self, obj)
         except TypeError:
-            return json.JSONEncoder.default(self, str(obj))
+            return str(obj)
 
 
 class DocumentDecoder(json.JSONDecoder):
@@ -147,6 +145,11 @@ class Document:
         content.
         """
         # Validate content_type
+        if not self.content_type in PYTHON_TYPES_FOR_CONTENT:
+            raise ValueError(
+                f"Content type unknown: '{self.content_type}'. "
+                f"Choose among: {', '.join(PYTHON_TYPES_FOR_CONTENT.keys())}"
+            )
         if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
             raise ValueError(
                 f"The type of content ({type(self.content)}) does not match the "
