@@ -84,7 +84,7 @@ class DocumentDecoder(json.JSONDecoder):
     Decodes more exotic datatypes like pandas dataframes or file paths.
     """
 
-    def __init__(self, object_hook=None, *_, **__):
+    def __init__(self, *_, object_hook=None, **__):
         super().__init__(object_hook=object_hook or self.document_decoder)
 
     def document_decoder(self, dictionary):
