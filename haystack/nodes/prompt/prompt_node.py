@@ -31,6 +31,10 @@ PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
 PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
+class PromptNotFoundError(Exception):
+    ...
+
+
 class PromptNode(BaseComponent):
     """
     The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode
@@ -217,12 +221,10 @@ class PromptNode(BaseComponent):
         Might raise HTTPError.
         """
         try:
-            prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+            self._get_prompt_template_from_hub(name)
             return True
-        except HTTPError as http_error:
-            if http_error.response.status_code != 404:
-                raise http_error
-        return False
+        except PromptNotFoundError:
+            return False
 
     @tenacity.retry(
         reraise=True,
@@ -233,13 +235,15 @@ class PromptNode(BaseComponent):
     def _get_prompt_template_from_hub(self, name):
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
+
+        Raises ValueError if the prom
         """
         try:
             prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
         except HTTPError as http_error:
             if http_error.response.status_code != 404:
                 raise http_error
-            raise ValueError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
         return PromptTemplate(name=name, prompt_text=prompt_data.text)
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None] = None) -> Optional[PromptTemplate]:
