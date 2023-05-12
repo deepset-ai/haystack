@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Callable, Dict, List, Optional, Union, Generator
 
 try:
     from typing import Literal
@@ -50,7 +50,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scoring_batch_size: int = 500000,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_bm25: bool = False,
-        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
+        bm25_tokenize_with: Optional[Union[str, Callable[[str], List[str]]]] = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
         bm25_parameters: Optional[Dict] = None,
     ):
@@ -84,7 +84,8 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                         parameter is not used and a single cpu device is used for inference.
         :param use_bm25: Whether to build a sparse representation of documents based on BM25.
                          `use_bm25=True` is required to connect `BM25Retriever` to this Document Store.
-        :param bm25_tokenization_regex: The regular expression to use for tokenization of the text.
+        :param bm25_tokenize_with: Either a regular expression to use for tokenization of the text or a callable that accepts text
+                                   and returns tokens.
         :param bm25_algorithm: The specific BM25 implementation to adopt.
                                Parameter options : ( 'BM25Okapi', 'BM25L', 'BM25Plus')
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
@@ -108,7 +109,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
         self.use_bm25 = use_bm25
-        self.bm25_tokenization_regex = bm25_tokenization_regex
+        self.bm25_tokenize_with = bm25_tokenize_with
         self.bm25_algorithm = bm25_algorithm
         self.bm25_parameters = bm25_parameters
         self.bm25: Dict[str, rank_bm25.BM25] = {}
@@ -124,12 +125,19 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.main_device = self.devices[0]
 
     @property
-    def bm25_tokenization_regex(self):
+    def bm25_tokenize_with(self):
         return self._tokenizer
 
-    @bm25_tokenization_regex.setter
-    def bm25_tokenization_regex(self, regex_string: str):
-        self._tokenizer = re.compile(regex_string).findall
+    @bm25_tokenize_with.setter
+    def bm25_tokenize_with(self, pattern_or_callable: Optional[Union[str, Callable[[str], List[str]]]]):
+        if isinstance(pattern_or_callable, str):
+            self._tokenizer = re.compile(pattern_or_callable).findall
+        elif isinstance(pattern_or_callable, Callable):
+            self._tokenizer = pattern_or_callable
+        else:
+            raise TypeError(
+                f'Invalid type {type(pattern_or_callable)} for bm25_tokenize_with. Accepted types are "str" and "Callable".'
+            )
 
     @property
     def bm25_algorithm(self):
@@ -226,7 +234,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             )
 
         tokenized_corpus = [
-            self.bm25_tokenization_regex(doc)
+            self._tokenizer(doc)
             for doc in tqdm(textual_documents, unit=" docs", desc="Updating BM25 representation...")
         ]
         self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
@@ -986,7 +994,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         if query is None:
             return []
 
-        tokenized_query = self.bm25_tokenization_regex(query.lower())
+        tokenized_query = self._tokenizer(query.lower())
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         if scale_score is True:
             # scaling probability from BM25
