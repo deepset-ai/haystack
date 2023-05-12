@@ -932,7 +932,7 @@ class EvaluationResult:
     def append(self, key: str, value: DataFrame):
         if value is not None and len(value) > 0:
             if key in self.node_results:
-                self.node_results[key] = pd.concat([self.node_results[key], value]).reset_index()
+                self.node_results[key] = pd.concat([self.node_results[key], value]).reset_index(drop=True)
             else:
                 self.node_results[key] = value
 
