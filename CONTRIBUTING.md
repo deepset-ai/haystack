@@ -54,7 +54,7 @@ pip install --upgrade pip
 # Install Haystack in editable mode
 pip install -e '.[dev]'
 ```
-Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change.
+Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all,dev]' ` command. Introducing new components or changing their interface requires a schema change.
 This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
 
 Last, install the pre-commit hooks with:
@@ -278,7 +278,7 @@ We formally define three scopes for tests in Haystack with different requirement
 - Might not be possible to run locally due to system and hardware requirements
 - **Goal: being confident in releasing Haystack**
 
-> **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to 
+> **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to
 classify your tests or where to place them.
 
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store
