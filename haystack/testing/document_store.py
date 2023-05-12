@@ -20,7 +20,7 @@ class DocumentStoreBaseTestAbstract:
     @pytest.fixture
     def documents(self):
         documents = []
-        for i in range(3):
+        for i in range(4):
             documents.append(
                 Document(
                     content=f"A Foo Document {i}",
@@ -41,6 +41,13 @@ class DocumentStoreBaseTestAbstract:
                 Document(
                     content=f"Document {i} without embeddings",
                     meta={"name": f"name_{i}", "no_embedding": True, "month": "03"},
+                )
+            )
+
+            documents.append(
+                Document(
+                    content=f"Document:{i}, type:key-value, more:dashes",
+                    meta={"name": f"name_{i}", "no_embedding": True},
                 )
             )
 
