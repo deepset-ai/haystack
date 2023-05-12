@@ -147,7 +147,8 @@ def send_pipeline_event(  # type: ignore
                 return
 
             # If pipeline config has not changed, send an event every 100 runs
-            if pipeline.last_config_hash == pipeline.config_hash and pipeline.runs % 100 == 0:
+            SEND_EVENT_EVERY_N_RUNS = 100
+            if pipeline.last_config_hash == pipeline.config_hash and pipeline.runs % SEND_EVENT_EVERY_N_RUNS == 0:
                 event_properties = {"pipeline.config_hash": pipeline.config_hash, "pipeline.runs": pipeline.runs}
                 telemetry.send_event(event_name="Pipeline", event_properties=event_properties)
                 return

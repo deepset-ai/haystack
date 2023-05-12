@@ -72,6 +72,7 @@ class Pipeline:
     def __init__(self):
         self.graph = DiGraph()
         self.config_hash = None
+        self.last_config_hash = None
         self.runs = 0
 
     @property
