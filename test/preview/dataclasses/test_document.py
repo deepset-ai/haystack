@@ -1,5 +1,6 @@
 from pathlib import Path
 import dataclasses
+import textwrap
 
 import pytest
 import pandas as pd
@@ -251,90 +252,87 @@ def test_document_with_most_attributes_from_dict():
 @pytest.mark.unit
 def test_default_text_document_to_json():
     doc_id = _create_id(classname=Document.__name__, content="test content")
-    assert (
-        Document(content="test content").to_json(indent=4).strip()
-        == """{
-    "id": \""""
+    doc_1 = Document(content="test content").to_json(indent=4).strip()
+    doc_2 = textwrap.dedent(
+        """    {
+        "id": \""""
         + doc_id
         + """\",
-    "content": "test content",
-    "content_type": "text",
-    "metadata": {},
-    "id_hash_keys": [],
-    "score": null,
-    "embedding": null
-}
-""".strip()
-    )
+        "content": "test content",
+        "content_type": "text",
+        "metadata": {},
+        "id_hash_keys": [],
+        "score": null,
+        "embedding": null
+    }"""
+    ).strip()
+    assert doc_1 == doc_2
 
 
 @pytest.mark.unit
 def test_default_text_document_from_json():
     doc_id = _create_id(classname=Document.__name__, content="test content")
-    assert Document(content="test content") == Document.from_json(
-        """{
-    "id": \""""
+    doc_1 = Document(content="test content")
+    doc_2 = Document.from_json(
+        """{"id": \""""
         + doc_id
         + """\",
-    "content": "test content",
-    "content_type": "text",
-    "metadata": {},
-    "id_hash_keys": [],
-    "score": null,
-    "embedding": null
-}
-"""
+        "content": "test content",
+        "content_type": "text",
+        "metadata": {},
+        "id_hash_keys": [],
+        "score": null,
+        "embedding": null
+    }"""
     )
+    assert doc_1 == doc_2
 
 
 @pytest.mark.unit
 def test_default_table_document_to_json():
     df = pd.DataFrame([1, 2])
     doc_id = _create_id(classname=Document.__name__, content=df)
-    assert (
-        Document(content=df, content_type="table").to_json(indent=4).strip()
-        == """{
-    "id": \""""
+    doc_1 = Document(content=df, content_type="table").to_json(indent=4).strip()
+    doc_2 = textwrap.dedent(
+        """    {
+        "id": \""""
         + doc_id
         + """\",
-    "content": \""""
+        "content": \""""
         + df.to_json().replace('"', '\\"')
         + """\",
-    "content_type": "table",
-    "metadata": {},
-    "id_hash_keys": [],
-    "score": null,
-    "embedding": null
-}
-""".strip()
-    )
+        "content_type": "table",
+        "metadata": {},
+        "id_hash_keys": [],
+        "score": null,
+        "embedding": null
+    }"""
+    ).strip()
+    assert doc_1 == doc_2
 
 
 # Waiting for https://github.com/deepset-ai/haystack/pull/4860
 @pytest.mark.unit
 def test_default_table_document_from_json():
     df = pd.DataFrame([1, 2])
-    doc_id = _create_id(classname=Document.__name__, content=df)
-
-    ref_doc = Document(content=df, content_type="table")
-    loaded_doc = Document.from_json(
+    doc_id = _create_id(classname=Document.__name__, content=pd.DataFrame([1, 2]))
+    doc_1 = Document(content=df, content_type="table")
+    doc_2 = Document.from_json(
         """{
-    "id": \""""
+        "id": \""""
         + doc_id
         + """\",
-    "content": \""""
-        + df.to_json().replace('"', '\\"')
+        "content": \""""
+        + pd.DataFrame([1, 2]).to_json().replace('"', '\\"')
         + """\",
-    "content_type": "table",
-    "metadata": {},
-    "id_hash_keys": [],
-    "score": null,
-    "embedding": null
-}
-"""
+        "content_type": "table",
+        "metadata": {},
+        "id_hash_keys": [],
+        "score": null,
+        "embedding": null
+    }"""
     )
-    assert df.equals(loaded_doc.content)
-    assert loaded_doc == ref_doc
+    assert doc_1 == doc_2
 
 
 @pytest.mark.unit
@@ -350,23 +348,25 @@ def test_to_json_custom_encoder():
 
     doc_id = _create_id(classname=Document.__name__, content="test content")
     doc = Document(content="test content", metadata={"some object": TestClass()})
+    doc_json = doc.to_json(indent=4, json_encoder=TestEncoder).strip()
 
     assert (
-        doc.to_json(indent=4, json_encoder=TestEncoder).strip()
-        == """{
-    "id": \""""
-        + doc_id
-        + """\",
-    "content": "test content",
-    "content_type": "text",
-    "metadata": {
-        "some object": "<<CUSTOM ENCODING>>"
-    },
-    "id_hash_keys": [],
-    "score": null,
-    "embedding": null
-}
-""".strip()
+        doc_json
+        == textwrap.dedent(
+            """    {
+        "id": \""""
+            + doc_id
+            + """\",
+        "content": "test content",
+        "content_type": "text",
+        "metadata": {
+            "some object": "<<CUSTOM ENCODING>>"
+        },
+        "id_hash_keys": [],
+        "score": null,
+        "embedding": null
+    }"""
+        ).strip()
     )
 
 
@@ -391,20 +391,19 @@ def test_from_json_custom_decoder():
     doc = Document(content="test content", metadata={"some object": TestClass()})
 
     assert doc == Document.from_json(
-        """{
-    "id": \""""
+        """    {
+        "id": \""""
         + doc_id
         + """\",
-    "content": "test content",
-    "content_type": "text",
-    "metadata": {
-        "some object": "<<CUSTOM ENCODING>>"
-    },
-    "id_hash_keys": [],
-    "score": null,
-    "embedding": null
-}
-""",
+        "content": "test content",
+        "content_type": "text",
+        "metadata": {
+            "some object": "<<CUSTOM ENCODING>>"
+        },
+        "id_hash_keys": [],
+        "score": null,
+        "embedding": null
+    }""",
         json_decoder=TestDecoder,
     )
 

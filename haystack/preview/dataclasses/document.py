@@ -84,8 +84,8 @@ class DocumentDecoder(json.JSONDecoder):
     Decodes more exotic datatypes like pandas dataframes or file paths.
     """
 
-    def __init__(self, *_, **__):
-        super().__init__(object_hook=self.document_decoder)
+    def __init__(self, object_hook=None, *_, **__):
+        super().__init__(object_hook=object_hook or self.document_decoder)
 
     def document_decoder(self, dictionary):
         # Decode content types
@@ -96,8 +96,8 @@ class DocumentDecoder(json.JSONDecoder):
                 dictionary["content"] = Path(dictionary.get("content", None))
 
         # Decode embeddings
-        if "embedding" in dictionary:
-            dictionary["embedding"] = numpy.array(dictionary.get("embedding", None))
+        if "embedding" in dictionary and dictionary.get("embedding"):
+            dictionary["embedding"] = numpy.array(dictionary.get("embedding"))
 
         return dictionary
 
