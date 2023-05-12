@@ -72,7 +72,7 @@ class Pipeline:
     def __init__(self):
         self.graph = DiGraph()
         self.config_hash = None
-        self.last_config_hash = None
+        self.runs = 0
 
     @property
     def root_node(self) -> Optional[str]:
@@ -492,6 +492,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        self.runs += 1
+
         send_pipeline_event(
             pipeline=self,
             query=query,
@@ -640,6 +642,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        self.runs += 1
+
         send_pipeline_event(
             pipeline=self,
             queries=queries,

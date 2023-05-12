@@ -146,16 +146,18 @@ def send_pipeline_event(  # type: ignore
                 telemetry.send_event(event_name="Public Demo", event_properties=event_properties)
                 return
 
-            # If pipeline config has not changed, send only config hash
-            if pipeline.last_config_hash == pipeline.config_hash:
-                event_properties = {"pipeline.config_hash": pipeline.config_hash}
+            # If pipeline config has not changed, send an event every 100 runs
+            if pipeline.last_config_hash == pipeline.config_hash and pipeline.runs % 100 == 0:
+                event_properties = {"pipeline.config_hash": pipeline.config_hash, "pipeline.runs": pipeline.runs}
                 telemetry.send_event(event_name="Pipeline", event_properties=event_properties)
                 return
             pipeline.last_config_hash = pipeline.config_hash
+            pipeline.runs = 1
 
             event_properties = {
                 "pipeline.classname": pipeline.__class__.__name__,
                 "pipeline.config_hash": pipeline.config_hash,
+                "pipeline.runs": pipeline.runs,
             }
 
             # Add document store
