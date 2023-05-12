@@ -29,6 +29,7 @@ from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, Auto
 from transformers.models.auto.feature_extraction_auto import FEATURE_EXTRACTOR_MAPPING_NAMES
 from transformers.models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES
 
+from haystack import is_imported
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
 
@@ -40,11 +41,15 @@ logger = logging.getLogger(__name__)
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
 
+if not is_imported("transformers"):
+    TOKENIZER_MAPPING_NAMES = {}
+    FEATURE_EXTRACTOR_MAPPING_NAMES = {}
+
+
 FEATURE_EXTRACTORS = {
     **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
     **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
 }
-
 
 DEFAULT_EXTRACTION_PARAMS = {
     AutoTokenizer: {
