@@ -50,7 +50,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scoring_batch_size: int = 500000,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_bm25: bool = False,
-        bm25_tokenize_with: Optional[Union[str, Callable[[str], List[str]]]] = r"(?u)\b\w\w+\b",
+        bm25_tokenize_with: Union[str, Callable[[str], List[str]]] = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
         bm25_parameters: Optional[Dict] = None,
     ):
@@ -129,7 +129,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         return self._tokenizer
 
     @bm25_tokenize_with.setter
-    def bm25_tokenize_with(self, pattern_or_callable: Optional[Union[str, Callable[[str], List[str]]]]):
+    def bm25_tokenize_with(self, pattern_or_callable: Union[str, Callable[[str], List[str]]]):
         if isinstance(pattern_or_callable, str):
             self._tokenizer = re.compile(pattern_or_callable).findall
         elif isinstance(pattern_or_callable, Callable):
