@@ -416,7 +416,7 @@ def test_default_image_document_to_json():
 
 
 @pytest.mark.unit
-def test_default_text_document_from_json():
+def test_default_image_document_from_json():
     path = Path(__file__).parent / "test_files" / "apple.jpg"
     doc_id = _create_id(classname=Document.__name__, content=path)
     doc_1 = Document(content=path, content_type="image")
@@ -461,7 +461,7 @@ def test_full_document_to_json(tmp_path):
         "metadata": {
             "some object": "<the object>",
             "a path": \""""
-        + str((tmp_path / "test.txt").absolute())
+        + str((tmp_path / "test.txt").absolute()).replace("\\\\", "\\")
         + """\"
         },
         "id_hash_keys": [],
@@ -493,7 +493,7 @@ def test_full_document_from_json(tmp_path):
         "content_type": "text",
         "metadata": {
             "a path": \""""
-        + str((tmp_path / "test.txt").absolute())
+        + str((tmp_path / "test.txt").absolute()).replace("\\", "\\\\")
         + """\"
         },
         "id_hash_keys": [],

@@ -34,6 +34,8 @@ def _create_id(
     """
     Creates a hash of the content given that acts as the document's ID.
     """
+    if not metadata:
+        metadata = {}
     content_to_hash = f"{classname}:{content}"
     if id_hash_keys:
         content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
@@ -145,7 +147,7 @@ class Document:
         content.
         """
         # Validate content_type
-        if not self.content_type in PYTHON_TYPES_FOR_CONTENT:
+        if self.content_type not in PYTHON_TYPES_FOR_CONTENT:
             raise ValueError(
                 f"Content type unknown: '{self.content_type}'. "
                 f"Choose among: {', '.join(PYTHON_TYPES_FOR_CONTENT.keys())}"
