@@ -1,3 +1,4 @@
+import logging
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -13,7 +14,7 @@ def test_default_constructor():
     Test that the default constructor sets the correct values
     """
 
-    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="fake_model", api_key="some_fake_key")
+    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key")
 
     assert layer.api_key == "some_fake_key"
     assert layer.max_length == 100
@@ -30,7 +31,7 @@ def test_constructor_with_model_kwargs():
     model_kwargs_rejected = {"fake_param": 0.7, "another_fake_param": 1}
 
     layer = HFInferenceEndpointInvocationLayer(
-        model_name_or_path="fake_model", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
+        model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
     )
     assert layer.model_input_kwargs == model_kwargs
     assert len(model_kwargs_rejected) == 2
@@ -41,7 +42,7 @@ def test_invoke_with_no_kwargs():
     """
     Test that invoke raises an error if no prompt is provided
     """
-    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="fake_model", api_key="some_fake_key")
+    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key")
     with pytest.raises(ValueError) as e:
         layer.invoke()
         assert e.match("No prompt provided.")
@@ -154,6 +155,45 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler):
         # if stream_handler is not used then stream is always False
         else:
             assert not called_kwargs["stream"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "model_name_or_path", ["google/flan-t5-xxl", "OpenAssistant/oasst-sft-1-pythia-12b", "bigscience/bloomz"]
+)
+def test_ensure_token_limit_no_resize(model_name_or_path):
+    # In this test case we assume that no prompt resizing is needed for all models
+    handler = HFInferenceEndpointInvocationLayer("fake_api_key", model_name_or_path, max_length=100)
+
+    # Define prompt and expected results
+    prompt = "This is a test prompt."
+
+    resized_prompt = handler._ensure_token_limit(prompt)
+
+    # Verify the results
+    assert resized_prompt == prompt
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "model_name_or_path", ["google/flan-t5-xxl", "OpenAssistant/oasst-sft-1-pythia-12b", "bigscience/bloomz"]
+)
+def test_ensure_token_limit_resize(caplog, model_name_or_path):
+    # In this test case we assume prompt resizing is needed for all models
+    handler = HFInferenceEndpointInvocationLayer("fake_api_key", model_name_or_path, max_length=5, model_max_length=10)
+
+    # Define prompt and expected results
+    prompt = "This is a test prompt that will be resized because model_max_length is 10 and max_length is 5."
+    with caplog.at_level(logging.WARN):
+        resized_prompt = handler._ensure_token_limit(prompt)
+        assert "The prompt has been truncated" in caplog.text
+
+    # Verify the results
+    assert resized_prompt != prompt
+    assert (
+        "This is a test" in resized_prompt
+        and "because model_max_length is 10 and max_length is 5" not in resized_prompt
+    )
 
 
 @pytest.mark.unit

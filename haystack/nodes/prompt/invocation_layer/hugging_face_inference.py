@@ -18,6 +18,7 @@ from haystack.nodes.prompt.invocation_layer import (
     TokenStreamingHandler,
     DefaultTokenStreamingHandler,
 )
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 from haystack.utils.requests import request_with_retry
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 "do_sample",
                 "max_new_tokens",
                 "max_time",
+                "model_max_length",
                 "num_return_sequences",
                 "repetition_penalty",
                 "return_full_text",
@@ -90,6 +92,13 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
         self.prompt_preprocessors["oasst"] = lambda prompt: f"<|prompter|>{prompt}<|endoftext|><|assistant|>"
+
+        # we pop the model_max_length from the model_input_kwargs as it is not sent to the model
+        # but used to truncate the prompt if needed
+        model_max_length = self.model_input_kwargs.pop("model_max_length", 1024)
+        self.prompt_handler = DefaultPromptHandler(
+            model_name_or_path=model_name_or_path, model_max_length=model_max_length, max_length=self.max_length or 100
+        )
 
     def preprocess_prompt(self, prompt: str):
         for key, prompt_preprocessor in self.prompt_preprocessors.items():
@@ -245,8 +254,19 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         return response
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        # TODO: new implementation incoming for all layers, let's omit this for now
-        return prompt
+        # the prompt for this model will be of the type str
+        resize_info = self.prompt_handler(prompt)  # type: ignore
+        if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
+            logger.warning(
+                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+                "answer length (%s tokens) fit within the max token limit (%s tokens). "
+                "Shorten the prompt to prevent it from being cut off",
+                resize_info["prompt_length"],
+                max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
+                resize_info["max_length"],
+                resize_info["model_max_length"],
+            )
+        return resize_info["resized_prompt"]
 
     @staticmethod
     def is_inference_endpoint(model_name_or_path: str) -> bool:
