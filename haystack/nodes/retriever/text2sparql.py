@@ -27,6 +27,8 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
+        The Text2SparqlRetriever component is deprecated and will be removed in future versions.
+
         Init the Retriever by providing a knowledge graph and a pre-trained BART model
 
         :param knowledge_graph: An instance of BaseKnowledgeGraph on which to execute SPARQL queries.

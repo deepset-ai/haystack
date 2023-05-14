@@ -10,8 +10,16 @@ import pandas as pd
 import requests
 from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
-from elasticsearch import Elasticsearch
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+
+
+try:
+    from elasticsearch import Elasticsearch
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
+
 
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
@@ -27,7 +35,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
 
-from ..conftest import SAMPLES_PATH, MockRetriever, fail_at_version
+from ..conftest import MockBaseRetriever, fail_at_version
 
 
 # TODO check if we this works with only "memory" arg
@@ -129,38 +137,6 @@ def test_tfidf_retriever_multiple_indexes():
 
     assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
     assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
-
-
-class MockBaseRetriever(MockRetriever):
-    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
-        self.document_store = document_store
-        self.mock_document = mock_document
-
-    def retrieve(
-        self,
-        query: str,
-        filters: dict,
-        top_k: Optional[int],
-        index: str,
-        headers: Optional[Dict[str, str]],
-        scale_score: bool,
-    ):
-        return [self.mock_document]
-
-    def retrieve_batch(
-        self,
-        queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
-        top_k: Optional[int] = None,
-        index: str = None,
-        headers: Optional[Dict[str, str]] = None,
-        batch_size: Optional[int] = None,
-        scale_score: bool = None,
-    ):
-        return [[self.mock_document] for _ in range(len(queries))]
-
-    def embed_documents(self, documents: List[Document]):
-        return np.full((len(documents), 768), 0.5)
 
 
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
@@ -657,7 +633,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 
 
 @pytest.mark.embedding_dim(128)
-def test_table_text_retriever_training(tmp_path, document_store):
+def test_table_text_retriever_training(tmp_path, document_store, samples_path):
     retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
@@ -667,7 +643,7 @@ def test_table_text_retriever_training(tmp_path, document_store):
     )
 
     retriever.train(
-        data_dir=SAMPLES_PATH / "mmr",
+        data_dir=samples_path / "mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
@@ -1044,10 +1020,10 @@ def table_docs() -> List[Document]:
 
 
 @pytest.fixture
-def image_docs() -> List[Document]:
+def image_docs(samples_path) -> List[Document]:
     return [
-        Document(content=str(SAMPLES_PATH / "images" / imagefile), content_type="image")
-        for imagefile in os.listdir(SAMPLES_PATH / "images")
+        Document(content=str(samples_path / "images" / imagefile), content_type="image")
+        for imagefile in os.listdir(samples_path / "images")
     ]
 
 
@@ -1117,7 +1093,7 @@ def test_multimodal_retriever_query():
 
 
 @pytest.mark.integration
-def test_multimodal_image_retrieval(image_docs: List[Document]):
+def test_multimodal_image_retrieval(image_docs: List[Document], samples_path):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
@@ -1127,12 +1103,12 @@ def test_multimodal_image_retrieval(image_docs: List[Document]):
     retriever.document_store.update_embeddings(retriever=retriever)
 
     results = retriever.retrieve(query="What's a cat?")
-    assert str(results[0].content) == str(SAMPLES_PATH / "images" / "cat.jpg")
+    assert str(results[0].content) == str(samples_path / "images" / "cat.jpg")
 
 
 @pytest.mark.skip("Not working yet as intended")
 @pytest.mark.integration
-def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document]):
+def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document], samples_path):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
@@ -1150,7 +1126,7 @@ def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: 
     text_results = [result for result in results if result.content_type == "text"]
     image_results = [result for result in results if result.content_type == "image"]
 
-    assert str(image_results[0].content) == str(SAMPLES_PATH / "images" / "paris.jpg")
+    assert str(image_results[0].content) == str(samples_path / "images" / "paris.jpg")
     assert text_results[0].content == "My name is Christelle and I live in Paris"
 
 

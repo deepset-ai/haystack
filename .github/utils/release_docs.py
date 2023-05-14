@@ -31,7 +31,7 @@ def get_versions():
     url = "https://dash.readme.com/api/v1/version"
     res = requests.get(url, auth=ReadmeAuth(), timeout=30)
     res.raise_for_status()
-    return [v["version_clean"] for v in res.json()]
+    return [v["version"] for v in res.json()]
 
 
 def create_new_unstable(current, new):
@@ -63,7 +63,7 @@ def promote_unstable_to_stable(unstable, stable):
 def calculate_new_unstable(version):
     # version must be formatted like so <major>.<minor>
     major, minor = version.split(".")
-    return f"{major}.{int(minor) + 1}.0-unstable"
+    return f"{major}.{int(minor) + 1}-unstable"
 
 
 if __name__ == "__main__":
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         sys.exit("Version must be formatted like so <major>.<minor>")
 
     # This two are the version that we must have published in the end
-    new_stable = f"{args.new_version}.0"
+    new_stable = f"{args.new_version}"
     new_unstable = calculate_new_unstable(args.new_version)
 
     versions = get_versions()

@@ -1,0 +1,48 @@
+name: Dependency checker
+
+on:
+  push:
+    branches:
+      - main
+      # release branches have the form v1.9.x
+      - 'v[0-9].*[0-9].x'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - "!.github/**/*.py"
+      - "!rest_api/**/*.py"
+      - "!test/*"
+
+env:
+  PYTHON_VERSION: "3.8"
+
+jobs:
+
+  base-install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Haystack with no extras
+      run: pip install .
+
+    - name: Import Haystack
+      run: python -c 'import haystack'

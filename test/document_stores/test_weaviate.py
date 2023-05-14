@@ -1,16 +1,14 @@
+import uuid
+import json
+from unittest import mock
+
 import pytest
+import numpy as np
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
-
-import uuid
-from unittest.mock import MagicMock
-
-import numpy as np
-import pytest
-
-from haystack.schema import Document
+from haystack.document_stores import weaviate
 
 embedding_dim = 768
 
@@ -60,6 +58,23 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
             )
 
         return documents
+
+    @pytest.fixture()
+    def mocked_ds(self):
+        """
+        This fixture provides an instance of the WeaviateDocumentStore equipped with a mocked Weaviate client.
+        """
+
+        class DSMock(WeaviateDocumentStore):
+            pass
+
+        mocked_client = mock.MagicMock()
+        mocked_client.Client().is_ready.return_value = True
+        mocked_client.Client().schema.contains.return_value = False
+        weaviate.client = mocked_client
+        mocked_ds = DSMock()
+
+        return mocked_ds
 
     @pytest.mark.skip(reason="Weaviate does not support labels")
     @pytest.mark.integration
@@ -207,7 +222,7 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         ds.write_documents(documents)
         # This test verifies that deleting an object by its ID does not first require fetching all documents. This fixes
         # a bug, as described in https://github.com/deepset-ai/haystack/issues/2898
-        ds.get_all_documents = MagicMock(wraps=ds.get_all_documents)
+        ds.get_all_documents = mock.MagicMock(wraps=ds.get_all_documents)
 
         assert ds.get_document_count() == 9
 
@@ -258,3 +273,166 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         ds.write_documents(documents)
         assert ds.get_embedding_count() == 9
+
+    @pytest.mark.unit
+    def test__get_current_properties(self, mocked_ds):
+        mocked_ds.weaviate_client.schema.get.return_value = json.loads(
+            """
+{
+  "classes": [{
+    "class": "Document",
+    "properties": [
+        {
+        "name": "hasWritten",
+        "dataType": ["Article"]
+        },
+        {
+        "name": "hitCounter",
+        "dataType": ["int"]
+        }
+    ]
+  }]
+} """
+        )
+        # Ensure we dropped the cross-reference property
+        assert mocked_ds._get_current_properties() == ["hitCounter"]
+
+    @pytest.mark.unit
+    def test_dict_metadata(self, mocked_ds):
+        """
+        Tests that metadata of type dict is converted to JSON string when writing to Weaviate and converted
+        back to dict when reading from Weaviate.
+        """
+        doc = Document(content="test", meta={"dict_field": {"key": "value"}})
+        # Test writing as JSON string
+        mocked_ds.write_documents([doc])
+        mocked_ds.weaviate_client.batch.add_data_object.assert_called_with(
+            data_object={
+                "content": json.dumps(doc.content),
+                "content_type": doc.content_type,
+                "id_hash_keys": doc.id_hash_keys,
+                "dict_field": json.dumps(doc.meta["dict_field"]),
+            },
+            class_name=mock.ANY,
+            uuid=mock.ANY,
+            vector=mock.ANY,
+        )
+
+        # Test retrieving as dict
+        mocked_ds.weaviate_client.query.get().do.return_value = json.loads(
+            """
+            {
+              "data": {
+                "Get": {
+                  "Document": [
+                    {
+                      "content": "\\"test\\"",
+                      "content_type": "text",
+                      "dict_field": "{\\"key\\": \\"value\\"}",
+                      "id_hash_keys": ["content"]
+                    }
+                  ]
+                }
+              }
+            }
+            """
+        )
+        mocked_ds.get_document_count = mock.MagicMock(return_value=1)
+        mocked_ds.weaviate_client.schema.get.return_value = json.loads(
+            """
+            {
+              "classes": [
+                {
+                  "class": "Document",
+                  "description": "Haystack index, it's a class in Weaviate",
+                  "properties": [
+                    {
+                      "dataType": ["text"],
+                      "description": "Document Content (e.g. the text)",
+                      "name": "content",
+                      "tokenization": "word"
+                    },
+                    {
+                      "dataType": ["text"],
+                      "description": "JSON dynamic property dict_field",
+                      "name": "dict_field",
+                      "tokenization": "whitespace"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+        )
+        retrieved_docs = mocked_ds.get_all_documents()
+        assert retrieved_docs[0].meta["dict_field"] == {"key": "value"}
+
+    @pytest.mark.unit
+    def test_list_of_dict_metadata(self, mocked_ds):
+        """
+        Tests that metadata of type list of dict is converted to list of JSON string when writing to Weaviate and
+        converted back to list of dict when reading from Weaviate.
+        """
+        doc = Document(content="test", meta={"list_dict_field": [{"key": "value"}, {"key": "value"}]})
+        # Test writing as list of JSON strings
+        mocked_ds.write_documents([doc])
+        mocked_ds.weaviate_client.batch.add_data_object.assert_called_with(
+            data_object={
+                "content": json.dumps(doc.content),
+                "content_type": doc.content_type,
+                "id_hash_keys": doc.id_hash_keys,
+                "list_dict_field": [json.dumps(item) for item in doc.meta["list_dict_field"]],
+            },
+            class_name=mock.ANY,
+            uuid=mock.ANY,
+            vector=mock.ANY,
+        )
+
+        # Test retrieving as list of dict
+        mocked_ds.weaviate_client.query.get().do.return_value = json.loads(
+            """
+            {
+              "data": {
+                "Get": {
+                  "Document": [
+                    {
+                      "content": "\\"test\\"",
+                      "content_type": "text",
+                      "list_dict_field": ["{\\"key\\": \\"value\\"}", "{\\"key\\": \\"value\\"}"],
+                      "id_hash_keys": ["content"]
+                    }
+                  ]
+                }
+              }
+            }
+            """
+        )
+        mocked_ds.get_document_count = mock.MagicMock(return_value=1)
+        mocked_ds.weaviate_client.schema.get.return_value = json.loads(
+            """
+            {
+              "classes": [
+                {
+                  "class": "Document",
+                  "description": "Haystack index, it's a class in Weaviate",
+                  "properties": [
+                    {
+                      "dataType": ["text"],
+                      "description": "Document Content (e.g. the text)",
+                      "name": "content",
+                      "tokenization": "word"
+                    },
+                    {
+                      "dataType": ["text[]"],
+                      "description": "JSON dynamic property dict_field",
+                      "name": "list_dict_field",
+                      "tokenization": "whitespace"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+        )
+        retrieved_docs = mocked_ds.get_all_documents()
+        assert retrieved_docs[0].meta["list_dict_field"] == [{"key": "value"}, {"key": "value"}]

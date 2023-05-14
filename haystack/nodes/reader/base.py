@@ -1,5 +1,6 @@
-import itertools
 from typing import List, Optional, Sequence, Tuple, Union
+import itertools
+import logging
 
 from abc import abstractmethod
 from copy import deepcopy
@@ -7,10 +8,13 @@ from functools import wraps
 from time import perf_counter
 
 import numpy as np
-from scipy.special import expit
 
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
+from haystack.utils.scipy_utils import expit
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseReader(BaseComponent):

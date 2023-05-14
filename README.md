@@ -49,7 +49,7 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 
 🛠️ **[Tools](https://docs.haystack.deepset.ai/docs/agent#tools):** You can think of a Tool as an expert, that is able to do something really well. Such as a calculator, good at mathematics. Or a [WebRetriever](https://docs.haystack.deepset.ai/docs/agent#web-tools), good at retrieving pages from the internet. A Node or pipeline in Haystack can also be used as a Tool. A Tool is a component that is used by an Agent, to resolve complex queries.
 
-**[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
+🗂️ **[DocumentStores](https://docs.haystack.deepset.ai/docs/document_store):** A DocumentStore is database where you store your text data for Haystack to access. Haystack DocumentStores are available with ElasticSearch, Opensearch, Weaviate, Pinecone, FAISS and more. For a full list of available DocumentStores, check out our [documentation](https://docs.haystack.deepset.ai/docs/document_store).
 
 ## What to Build with Haystack
 
@@ -71,19 +71,19 @@ An example pipeline would consist of one `Retriever` Node and one `Reader` Node.
 -   **Continuous Learning**: Collect new training data from user feedback in production & improve your models continuously.
 
 ## Resources
-|                                                                                               |                                                                                                                                                                                                                                                   |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 📒 [Docs](https://docs.haystack.deepset.ai)                                             | Components, Pipeline Nodes, Guides, API Reference                                                                                                                                                                                                 |
+|                                                                        |                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📒 [Docs](https://docs.haystack.deepset.ai)                             | Components, Pipeline Nodes, Guides, API Reference                                                                                                                                                                                                 |
 | 💾 [Installation](https://github.com/deepset-ai/haystack#-installation) | How to install Haystack                                                                                                                                                                                                                           |
-| 🎓 [Tutorials](https://haystack.deepset.ai/tutorials)     | See what Haystack can do with our Notebooks & Scripts                                                                                                                                                                                             |
-| 🎉 [Haystack Extras](https://github.com/deepset-ai/haystack-extras)               | A repository that lists extra Haystack packages and components that can be installed separately.                                                                                                                                                                                             |
-| 🔰 [Demos](https://github.com/deepset-ai/haystack-demos)           | A repository containing Haystack demo applications with Docker Compose and a REST API                                                                                                                                                                                  |
-| 🖖 [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community)   | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
-| 💙 [Contributing](https://github.com/deepset-ai/haystack#heart-contributing)             | We welcome all contributions!                                                                                                                                                                                                                     |
-| 📊 [Benchmarks](https://haystack.deepset.ai/benchmarks/)                             | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
-| 🔭 [Roadmap](https://haystack.deepset.ai/overview/roadmap)                           | Public roadmap of Haystack                                                                                                                                                                                                                        |
-| 📰 [Blog](https://haystack.deepset.ai/blog)                                             | Learn about the latest with Haystack and NLP                                                                                                                                                                   |
-| ☎️ [Jobs](https://www.deepset.ai/jobs)                                                   | We're hiring! Have a look at our open positions                                                                                                                                                                                                   |
+| 🎓 [Tutorials](https://haystack.deepset.ai/tutorials)                   | See what Haystack can do with our Notebooks & Scripts                                                                                                                                                                                             |
+| 🎉 [Haystack Extras](https://github.com/deepset-ai/haystack-extras)     | A repository that lists extra Haystack packages and components that can be installed separately.                                                                                                                                                  |
+| 🔰 [Demos](https://github.com/deepset-ai/haystack-demos)                | A repository containing Haystack demo applications with Docker Compose and a REST API                                                                                                                                                             |
+| 🖖 [Community](https://github.com/deepset-ai/haystack#-community)       | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
+| 💙 [Contributing](https://github.com/deepset-ai/haystack#-contributing) | We welcome all contributions!                                                                                                                                                                                                                     |
+| 📊 [Benchmarks](https://haystack.deepset.ai/benchmarks/)                | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
+| 🔭 [Roadmap](https://haystack.deepset.ai/overview/roadmap)              | Public roadmap of Haystack                                                                                                                                                                                                                        |
+| 📰 [Blog](https://haystack.deepset.ai/blog)                             | Learn about the latest with Haystack and NLP                                                                                                                                                                                                      |
+| ☎️ [Jobs](https://www.deepset.ai/jobs)                                  | We're hiring! Have a look at our open positions                                                                                                                                                                                                   |
 
 
 ## 💾 Installation
@@ -94,22 +94,50 @@ For a detailed installation guide see [the official documentation](https://docs.
 
 Use [pip](https://github.com/pypa/pip) to install a basic version of Haystack's latest release:
 
-```
-    pip install farm-haystack
+```sh
+pip install farm-haystack
 ```
 
-This command installs everything needed for basic Pipelines that use an Elasticsearch DocumentStore.
+This command installs everything needed for basic Pipelines that use an in-memory DocumentStore.
 
 **Full Installation**
 
-To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray, install further dependencies. The following command installs the latest version of Haystack and all its dependencies from the main branch:
+To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray,
+you need to install further dependencies. The following command installs the [latest release](https://github.com/deepset-ai/haystack/releases) of Haystack and all its dependencies:
 
-```
-pip install --upgrade pip
+```bash
 pip install 'farm-haystack[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
-**Installing the REST API** Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
+If you want to try out the newest features that are not in an official release yet, you can install the unstable version from the main branch with the following command:
+
+```sh
+pip install git+https://github.com/deepset-ai/haystack.git@main#egg=farm-haystack
+```
+
+To be able to make changes to Haystack code, install with the following commands:
+
+```bash
+# Clone the repo
+git clone https://github.com/deepset-ai/haystack.git
+
+# Move into the cloned folder
+cd haystack
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install Haystack in editable mode (-e) with the development tools
+pip install -e '.[dev]'
+```
+
+If you want to contribute to the Haystack repo, check our [Contributor Guidelines](#💙-contributing) first.
+
+See the list of [dependencies](https://github.com/deepset-ai/haystack/blob/main/pyproject.toml) to check which ones you want to install (for example, `[all]`, `[dev]`, or other).
+
+**Installing the REST API**
+
+Haystack comes packaged with a REST API so that you can deploy it as a service. Run the following command from the root directory of the Haystack repo to install REST_API:
 
 ```
 pip install rest_api/
@@ -145,12 +173,17 @@ Here's a list of organizations that we know about from our community. Don't hesi
 
 -   [Airbus](https://www.airbus.com/en)
 -   [Alcatel-Lucent](https://www.al-enterprise.com/)
+-   [Apple](https://www.apple.com/)
 -   [BetterUp](https://www.betterup.com/)
 -   [Databricks](https://www.databricks.com/)
+-   [Datadog](https://www.datadoghq.com/)
 -   [Deepset](https://deepset.ai/)
 -   [Etalab](https://www.etalab.gouv.fr/)
 -   [Infineon](https://www.infineon.com/)
+-   [Intelijus](https://www.intelijus.ai/)
 -   [LEGO](https://www.lego.com/)
+-   [Netflix](https://netflix.com)
 -   [Nvidia](https://www.nvidia.com/en-us/)
+-   [PostHog](https://posthog.com/)
 -   [Rakuten](https://www.rakuten.com/)
 -   [Sooth.ai](https://sooth.ai/)

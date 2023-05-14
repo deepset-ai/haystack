@@ -9,10 +9,12 @@ loaders:
         "image",
         "markdown",
         "pdf",
+        "pdf_ocr",
         "parsr",
         "azure",
         "tika",
         "txt",
+        "json",
       ]
     ignore_when_discovered: ["__init__"]
 processors:
@@ -36,4 +38,3 @@ renderer:
     add_method_class_prefix: true
     add_member_class_prefix: false
     filename: file_converters_api.md
-

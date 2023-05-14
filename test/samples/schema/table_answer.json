@@ -1,0 +1,35 @@
+{
+  "answer": "text_2",
+  "type": "extractive",
+  "score": 0.1,
+  "context": [
+    [
+      "col1",
+      "col2"
+    ],
+    [
+      "text_1",
+      1
+    ],
+    [
+      "text_2",
+      2
+    ]
+  ],
+  "offsets_in_document": [
+    {
+      "row": 1,
+      "col": 0
+    }
+  ],
+  "offsets_in_context": [
+    {
+      "row": 1,
+      "col": 0
+    }
+  ],
+  "document_ids": [
+    "123"
+  ],
+  "meta": {}
+}

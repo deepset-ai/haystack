@@ -17,7 +17,6 @@ from haystack.schema import Document, Label, Answer
 DC_API_ENDPOINT = "https://dc.example.com/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
-SAMPLES_PATH = Path(__file__).parent.parent / "samples"
 
 
 @pytest.fixture
@@ -133,8 +132,8 @@ class TestDeepsetCloudDocumentStore:
                 in caplog.text
             )
 
-    def test_documents(self, ds):
-        with open(SAMPLES_PATH / "dc" / "documents-stream.response", "r") as f:
+    def test_documents(self, ds, samples_path):
+        with open(samples_path / "dc" / "documents-stream.response", "r") as f:
             documents_stream_response = f.read()
             docs = [json.loads(l) for l in documents_stream_response.splitlines()]
             filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
@@ -189,8 +188,8 @@ class TestDeepsetCloudDocumentStore:
         for doc in docs_by_id:
             assert doc.meta["file_id"] == first_doc.meta["file_id"]
 
-    def test_query(self, ds):
-        with open(SAMPLES_PATH / "dc" / "query_winterfell.response", "r") as f:
+    def test_query(self, ds, samples_path):
+        with open(samples_path / "dc" / "query_winterfell.response", "r") as f:
             query_winterfell_response = f.read()
             query_winterfell_docs = json.loads(query_winterfell_response)
             query_winterfell_filtered_docs = [

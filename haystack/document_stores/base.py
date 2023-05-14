@@ -17,6 +17,7 @@ from haystack.errors import DuplicateDocumentError, DocumentStoreError, Haystack
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.utils.labels import aggregate_labels
+from haystack.utils.scipy_utils import expit
 
 
 logger = logging.getLogger(__name__)
@@ -31,14 +32,11 @@ except (ImportError, ModuleNotFoundError):
         return f
 
 
-@njit  # (fastmath=True)
-def expit(x: float) -> float:
-    return 1 / (1 + np.exp(-x))
-
-
 class BaseKnowledgeGraph(BaseComponent):
     """
     Base class for implementing Knowledge Graphs.
+
+    The BaseKnowledgeGraph component is deprecated and will be removed in future versions.
     """
 
     def __init__(self):

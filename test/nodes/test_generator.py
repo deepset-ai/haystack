@@ -5,11 +5,32 @@ from unittest.mock import patch
 import pytest
 
 from haystack.schema import Document
-from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator
+from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator, RAGenerator
 from haystack.pipelines import GenerativeQAPipeline
 from haystack.nodes import PromptTemplate
 
 import logging
+from ..conftest import fail_at_version
+
+
+@pytest.mark.unit
+@fail_at_version(1, 18)
+def test_seq2seq_deprecation():
+    with pytest.warns(DeprecationWarning):
+        try:
+            Seq2SeqGenerator("non_existing_model/model")
+        except OSError:
+            pass
+
+
+@pytest.mark.unit
+@fail_at_version(1, 18)
+def test_rag_deprecation():
+    with pytest.warns(DeprecationWarning):
+        try:
+            RAGenerator("non_existing_model/model")
+        except OSError:
+            pass
 
 
 @pytest.mark.integration
