@@ -135,10 +135,10 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         prompt = self.preprocess_prompt(prompt)
         stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
-        if kwargs:
-            if "max_new_tokens" not in kwargs_with_defaults:
-                kwargs_with_defaults["max_new_tokens"] = self.max_length
-            kwargs_with_defaults.update(kwargs)
+
+        if "max_new_tokens" not in kwargs_with_defaults:
+            kwargs_with_defaults["max_new_tokens"] = self.max_length
+        kwargs_with_defaults.update(kwargs)
 
         # either stream is True (will use default handler) or stream_handler is provided
         stream = (
@@ -167,14 +167,12 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         response: requests.Response = self._post(
             data={"inputs": prompt, "parameters": params, "stream": stream}, stream=stream
         )
-        if not stream:
+        if stream:
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            generated_texts = self._process_streaming_response(response, handler, stop_words)
+        else:
             output = json.loads(response.text)
             generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
-        else:
-            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            generated_texts = self._process_streaming_response(
-                response=response, stream_handler=handler, stop_words=stop_words
-            )
         return generated_texts
 
     def _process_streaming_response(
@@ -216,11 +214,11 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         attempts: int = HF_RETRIES,
         status_codes: Optional[List[int]] = None,
         timeout: float = HF_TIMEOUT,
-        **kwargs,
     ) -> requests.Response:
         """
         Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST invocation.
         :param data: The data to be sent to the model.
+        :param stream: Whether to stream the response.
         :param attempts: The number of attempts to make.
         :param status_codes: The status codes to retry on.
         :param timeout: The timeout for the request.
@@ -266,7 +264,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 resize_info["max_length"],
                 resize_info["model_max_length"],
             )
-        return resize_info["resized_prompt"]
+        return str(resize_info["resized_prompt"])
 
     @staticmethod
     def is_inference_endpoint(model_name_or_path: str) -> bool:

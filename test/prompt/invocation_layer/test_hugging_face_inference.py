@@ -150,8 +150,9 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler):
             assert called_kwargs["stream"]
             # and stream_handler is passed as an instance of TokenStreamingHandler
             called_args, called_kwargs = mock_post_stream.call_args
-            assert "stream_handler" in called_kwargs
-            assert isinstance(called_kwargs["stream_handler"], TokenStreamingHandler)
+            assert isinstance(called_args[1], TokenStreamingHandler) or isinstance(
+                called_kwargs["stream_handler"], TokenStreamingHandler
+            )
         # if stream_handler is not used then stream is always False
         else:
             assert not called_kwargs["stream"]
