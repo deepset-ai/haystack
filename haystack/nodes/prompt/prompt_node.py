@@ -8,16 +8,8 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 
 import torch
 import yaml
-import tenacity
-import prompthub
-from requests import HTTPError, RequestException, JSONDecodeError
 
 from haystack.nodes.base import BaseComponent
-from haystack.environment import (
-    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
-    HAYSTACK_REMOTE_API_BACKOFF_SEC,
-    HAYSTACK_REMOTE_API_MAX_RETRIES,
-)
 from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
 from haystack.nodes.prompt.shapers import BaseOutputParser
@@ -25,14 +17,6 @@ from haystack.nodes.prompt.prompt_model import PromptModel
 from haystack.nodes.prompt.prompt_template import PromptTemplate
 
 logger = logging.getLogger(__name__)
-
-PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
-PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
-PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
-
-
-class PromptNotFoundError(Exception):
-    ...
 
 
 class PromptNode(BaseComponent):
@@ -209,44 +193,6 @@ class PromptNode(BaseComponent):
         """
         self._default_prompt_template = self.get_prompt_template(prompt_template)
 
-    @tenacity.retry(
-        reraise=True,
-        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
-        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
-        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
-    )
-    def _prompt_template_exists_in_hub(self, name):
-        """
-        Returns True if the prompt exists in the Hub, False otherwise.
-
-        Might raise HTTPError.
-        """
-        try:
-            self._get_prompt_template_from_hub(name)
-            return True
-        except PromptNotFoundError:
-            return False
-
-    @tenacity.retry(
-        reraise=True,
-        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
-        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
-        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
-    )
-    def _get_prompt_template_from_hub(self, name):
-        """
-        Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
-
-        Raises ValueError if the prom
-        """
-        try:
-            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
-        except HTTPError as http_error:
-            if http_error.response.status_code != 404:
-                raise http_error
-            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
-        return PromptTemplate(name=name, prompt_text=prompt_data.text)
-
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None] = None) -> Optional[PromptTemplate]:
         """
         Resolves a prompt template.
@@ -274,24 +220,9 @@ class PromptNode(BaseComponent):
         if prompt_template in self._prompt_templates_cache:
             return self._prompt_templates_cache[prompt_template]
 
-        # If it's a path to a YAML file
-        if Path(prompt_template).exists():
-            with open(prompt_template, "r", encoding="utf-8") as yaml_file:
-                prompt_template_parsed = yaml.safe_load(yaml_file.read())
-                if isinstance(prompt_template_parsed, dict):
-                    return PromptTemplate(**prompt_template_parsed)
-
-        # if it's not a string or looks like a prompt template name
-        if re.fullmatch(r"[-a-zA-Z0-9_]+", prompt_template):
-            return self._get_prompt_template_from_hub(prompt_template)
-
-        # Otherwise, it must be a prompt_text
-        prompt_text = prompt_template
-        output_parser: Optional[BaseOutputParser] = None
-        default_prompt_template = self._default_prompt_template
-        if default_prompt_template:
-            output_parser = default_prompt_template.output_parser
-        return PromptTemplate(name="custom-at-query-time", prompt_text=prompt_text, output_parser=output_parser)
+        if self._default_prompt_template:
+            output_parser = self._default_prompt_template.output_parser
+        return PromptTemplate(name=prompt_template, output_parser=output_parser)
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """

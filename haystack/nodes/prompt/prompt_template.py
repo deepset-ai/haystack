@@ -1,10 +1,17 @@
 from typing import Optional, List, Union, Tuple, Dict, Iterator, Any
 import logging
+import re
 import os
 import ast
 import json
+import yaml
+from pathlib import Path
 from abc import ABC
 from uuid import uuid4
+
+import tenacity
+import prompthub
+from requests import HTTPError, RequestException, JSONDecodeError
 
 from haystack.errors import NodeError
 from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
@@ -19,6 +26,11 @@ from haystack.nodes.prompt.shapers import (  # pylint: disable=unused-import
     format_string,
 )
 from haystack.schema import Document, MultiLabel
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +40,14 @@ PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = json.loads(
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
 PROMPT_TEMPLATE_STR_REPLACE = {'"': "'"}
+
+PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
+PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
+PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
+
+class PromptNotFoundError(Exception):
+    ...
 
 
 class BasePromptTemplate(BaseComponent):
@@ -184,7 +204,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
     """
 
     def __init__(
-        self, name: str, prompt_text: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None
+        self,
+        name: Optional[str] = None,
+        prompt_text: Optional[str] = None,
+        output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None,
     ):
         """
          Creates a PromptTemplate instance.
@@ -199,6 +222,23 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 ```
         """
         super().__init__()
+
+        if not name:
+            name = "custom-at-query-time"
+        else:
+            if not prompt_text:
+                # If it's a path to a YAML file
+                if Path(name).exists():
+                    with open(name, "r", encoding="utf-8") as yaml_file:
+                        prompt_template_parsed = yaml.safe_load(yaml_file.read())
+                        if not isinstance(prompt_template_parsed, dict):
+                            raise ValueError("The prompt loaded is not a prompt YAML file.")
+                        name = prompt_template_parsed["name"]
+                        prompt_text = prompt_template_parsed["prompt_text"]
+
+                # if it's not a string or looks like a prompt template name
+                elif re.fullmatch(r"[-a-zA-Z0-9_/]+", name):
+                    name, prompt_text = self._get_prompt_template_from_hub(name)
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
         for strip in PROMPT_TEMPLATE_STRIPS:
@@ -240,6 +280,44 @@ class PromptTemplate(BasePromptTemplate, ABC):
     @property
     def output_variable(self) -> Optional[str]:
         return self.output_parser.output_variable if self.output_parser else None
+
+    @tenacity.retry(
+        reraise=True,
+        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
+        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
+        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
+    )
+    def _prompt_template_exists_in_hub(self, name):
+        """
+        Returns True if the prompt exists in the Hub, False otherwise.
+
+        Might raise HTTPError.
+        """
+        try:
+            self._get_prompt_template_from_hub(name)
+            return True
+        except PromptNotFoundError:
+            return False
+
+    @tenacity.retry(
+        reraise=True,
+        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
+        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
+        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
+    )
+    def _get_prompt_template_from_hub(self, name):
+        """
+        Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
+
+        Raises ValueError if the prom
+        """
+        try:
+            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+        except HTTPError as http_error:
+            if http_error.response.status_code != 404:
+                raise http_error
+            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+        return name, prompt_data.text
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """

@@ -1,7 +1,9 @@
 from typing import Set, Type, List
-from unittest.mock import patch
+import textwrap
+from unittest.mock import patch, MagicMock
 
 import pytest
+import prompthub
 
 from haystack.nodes.prompt import PromptTemplate
 from haystack.nodes.prompt.prompt_node import PromptNode
@@ -11,8 +13,62 @@ from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
 
+def mock_prompthub():
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._get_prompt_template_from_hub") as mock_prompthub:
+        mock_prompthub.side_effect = [
+            ("deepset/test-prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
+        ]
+        yield mock_prompthub
+
+
 @pytest.mark.unit
-def test_prompt_templates():
+def test_prompt_templates_from_hub():
+    with patch("haystack.nodes.prompt.prompt_template.prompthub") as mock_prompthub:
+        PromptTemplate(name="deepset/question-answering")
+        mock_prompthub.fetch.assert_called_with("deepset/question-answering", timeout=30)
+
+
+@pytest.mark.unit
+def test_prompt_templates_from_file(tmp_path):
+    path = tmp_path / "test-prompt.yml"
+    with open(path, "a") as yamlfile:
+        yamlfile.write(
+            textwrap.dedent(
+                """
+        name: deepset/question-answering
+        prompt_text: |
+                    Given the context please answer the question. Context: {join(documents)};
+                    Question: {query};
+                    Answer:
+        description: A simple prompt to answer a question given a set of documents
+        tags:
+        - question-answering
+        meta:
+        authors:
+            - vblagoje
+        version: v0.1.1
+        """
+            )
+        )
+    p = PromptTemplate(name=str(path.absolute()))
+    assert p.name == "deepset/question-answering"
+    assert "Given the context please answer the question" in p.prompt_text
+
+
+@pytest.mark.unit
+def test_prompt_templates_on_the_fly():
+    with patch("haystack.nodes.prompt.prompt_template.yaml") as mocked_yaml:
+        with patch("haystack.nodes.prompt.prompt_template.prompthub") as mocked_ph:
+            p = PromptTemplate(
+                prompt_text="This is a test prompt. Use your knowledge to answer this question: {question}"
+            )
+            assert p.name == "custom-at-query-time"
+            mocked_ph.fetch.assert_not_called()
+            mocked_yaml.safe_load.assert_not_called()
+
+
+@pytest.mark.unit
+def test_custom_prompt_templates():
     p = PromptTemplate("t1", "Here is some fake template with variable {foo}")
     assert set(p.prompt_params) == {"foo"}
 
