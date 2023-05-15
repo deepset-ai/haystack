@@ -76,7 +76,7 @@ class TransformersImageToText(BaseImageToText):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
-        Load a an Image-to-Text model from transformers.
+        Load an Image-to-Text model from transformers.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model.
                                    To find these models:
