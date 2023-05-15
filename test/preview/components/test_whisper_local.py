@@ -78,9 +78,7 @@ class TestTranscriber(BaseTestComponent):
     @pytest.mark.unit
     def test_transcribe_to_documents(self, mock_models):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
-        output = comp.transcribe_to_documents(
-            audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"]
-        )
+        output = comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
         assert output == [
             Document(
                 content="test transcription",
