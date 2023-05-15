@@ -1,1 +1,0 @@
-from haystack.preview.components.audio.whisper_local import LocalWhisperTranscriber

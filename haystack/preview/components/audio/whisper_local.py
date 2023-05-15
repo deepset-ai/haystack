@@ -104,9 +104,6 @@ class LocalWhisperTranscriber:
         :returns: a list of transcriptions.
         """
         self.warm_up()
-        if not self._model:
-            raise ValueError("WhisperTranscriber._transcribe_locally() can't work without a local model.")
-
         return_segments = kwargs.pop("return_segments", None)
         transcriptions = []
         for audio_file in audio_files:
