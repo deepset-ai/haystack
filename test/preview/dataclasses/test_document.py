@@ -403,7 +403,7 @@ def test_default_image_document_to_json():
         + doc_id
         + """\",
         "content": \""""
-        + str(path.absolute())
+        + str(path.absolute()).replace("\\\\", "\\")
         + """\",
         "content_type": "image",
         "metadata": {},
@@ -425,7 +425,7 @@ def test_default_image_document_from_json():
         + doc_id
         + """\",
         "content": \""""
-        + str(path.absolute())
+        + str(path.absolute()).replace("\\", "\\\\")
         + """\",
         "content_type": "image",
         "metadata": {},
