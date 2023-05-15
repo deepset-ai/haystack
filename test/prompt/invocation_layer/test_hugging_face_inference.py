@@ -72,57 +72,114 @@ def test_invoke_with_stop_words():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("using_constructor", [True, False])
 @pytest.mark.parametrize("stream", [True, False])
-def test_streaming_stream_param(using_constructor, stream):
+def test_streaming_stream_param_in_constructor(stream):
     """
-    Test stream parameter is correctly passed to HTTP POST request
+    Test stream parameter is correctly passed to HTTP POST request via constructor
     """
-    if using_constructor:
-        layer = HFInferenceEndpointInvocationLayer(
-            model_name_or_path="google/flan-t5-xxl", api_key="fake_key", stream=stream
-        )
-    else:
-        layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="fake_key")
+    layer = HFInferenceEndpointInvocationLayer(
+        model_name_or_path="google/flan-t5-xxl", api_key="fake_key", stream=stream
+    )
     with unittest.mock.patch(
         "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
     ) as mock_post:
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
-        if using_constructor:
-            layer.invoke(prompt="Tell me hello")
-        else:
-            layer.invoke(prompt="Tell me hello", stream=stream)
+        layer.invoke(prompt="Tell me hello")
 
-        assert mock_post.called
+    assert mock_post.called
 
-        # Check if stop_words are passed to _post as stop parameter
-        called_args, called_kwargs = mock_post.call_args
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, called_kwargs = mock_post.call_args
 
-        # stream is always passed to _post
-        assert "stream" in called_kwargs
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
 
-        # Check if stream is True, then stream is passed as True to _post
-        if stream:
-            assert called_kwargs["stream"]
-        # Check if stream is False, then stream is passed as False to _post
-        else:
-            assert not called_kwargs["stream"]
+    # Check if stream is True, then stream is passed as True to _post
+    if stream:
+        assert called_kwargs["stream"]
+    # Check if stream is False, then stream is passed as False to _post
+    else:
+        assert not called_kwargs["stream"]
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("using_constructor", [True, False])
-@pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
-def test_streaming_stream_handler_param(using_constructor, stream_handler):
+@pytest.mark.parametrize("stream", [True, False])
+def test_streaming_stream_param_in_method(stream):
     """
-    Test stream_handler parameter is correctly passed to HTTP POST request
+    Test stream parameter is correctly passed to HTTP POST request via method
     """
-    if using_constructor:
-        layer = HFInferenceEndpointInvocationLayer(
-            model_name_or_path="google/flan-t5-xxl", api_key="fake_key", stream_handler=stream_handler
-        )
+    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="fake_key")
+    with unittest.mock.patch(
+        "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
+    ) as mock_post:
+        # Mock the response, need to return a list of dicts
+        mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
+        layer.invoke(prompt="Tell me hello", stream=stream)
+
+    assert mock_post.called
+
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, called_kwargs = mock_post.call_args
+
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
+
+    # Check if stream is True, then stream is passed as True to _post
+    if stream:
+        assert called_kwargs["stream"]
+    # Check if stream is False, then stream is passed as False to _post
     else:
-        layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="fake_key")
+        assert not called_kwargs["stream"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
+def test_streaming_stream_handler_param_in_constructor(stream_handler):
+    """
+    Test stream_handler parameter is correctly passed to HTTP POST request via constructor
+    """
+    layer = HFInferenceEndpointInvocationLayer(
+        model_name_or_path="google/flan-t5-xxl", api_key="fake_key", stream_handler=stream_handler
+    )
+
+    with unittest.mock.patch(
+        "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
+    ) as mock_post, unittest.mock.patch(
+        "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._process_streaming_response"
+    ) as mock_post_stream:
+        # Mock the response, need to return a list of dicts
+        mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
+        layer.invoke(prompt="Tell me hello")
+
+    assert mock_post.called
+
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, called_kwargs = mock_post.call_args
+
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
+
+    # if stream_handler is used then stream is always True
+    if stream_handler:
+        assert called_kwargs["stream"]
+        # and stream_handler is passed as an instance of TokenStreamingHandler
+        called_args, called_kwargs = mock_post_stream.call_args
+        assert isinstance(called_args[1], TokenStreamingHandler) or isinstance(
+            called_kwargs["stream_handler"], TokenStreamingHandler
+        )
+    # if stream_handler is not used then stream is always False
+    else:
+        assert not called_kwargs["stream"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
+def test_streaming_stream_handler_param_in_method(stream_handler):
+    """
+    Test stream_handler parameter is correctly passed to HTTP POST request via method
+    """
+    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="fake_key")
 
     with unittest.mock.patch(
         "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
@@ -132,30 +189,27 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler):
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
 
-        if using_constructor:
-            layer.invoke(prompt="Tell me hello")
-        else:
-            layer.invoke(prompt="Tell me hello", stream_handler=stream_handler)
+        layer.invoke(prompt="Tell me hello", stream_handler=stream_handler)
 
-        assert mock_post.called
+    assert mock_post.called
 
-        # Check if stop_words are passed to _post as stop parameter
-        called_args, called_kwargs = mock_post.call_args
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, called_kwargs = mock_post.call_args
 
-        # stream is always passed to _post
-        assert "stream" in called_kwargs
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
 
-        # if stream_handler is used then stream is always True
-        if stream_handler:
-            assert called_kwargs["stream"]
-            # and stream_handler is passed as an instance of TokenStreamingHandler
-            called_args, called_kwargs = mock_post_stream.call_args
-            assert isinstance(called_args[1], TokenStreamingHandler) or isinstance(
-                called_kwargs["stream_handler"], TokenStreamingHandler
-            )
-        # if stream_handler is not used then stream is always False
-        else:
-            assert not called_kwargs["stream"]
+    # if stream_handler is used then stream is always True
+    if stream_handler:
+        assert called_kwargs["stream"]
+        # and stream_handler is passed as an instance of TokenStreamingHandler
+        called_args, called_kwargs = mock_post_stream.call_args
+        assert isinstance(called_args[1], TokenStreamingHandler) or isinstance(
+            called_kwargs["stream_handler"], TokenStreamingHandler
+        )
+    # if stream_handler is not used then stream is always False
+    else:
+        assert not called_kwargs["stream"]
 
 
 @pytest.mark.integration
