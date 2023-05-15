@@ -5,7 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 import torch
-import haystack.preview.components.audio.whisper_local as whisper_local
+import whisper
 
 from haystack.preview import component, Document
 
@@ -51,7 +51,7 @@ class LocalWhisperTranscriber:
         Loads the model.
         """
         if not self._model:
-            self._model = whisper_local.load_model(self.model_name, device=self.device)
+            self._model = whisper.load_model(self.model_name, device=self.device)
 
     def run(self, audio_files: List[Path], whisper_params: Dict[str, Any]) -> Output:
         """
@@ -85,10 +85,12 @@ class LocalWhisperTranscriber:
             transcription.
         """
         transcriptions = self._raw_transcribe(audio_files=audio_files, **kwargs)
-        return [
-            Document(content=transcript.pop("text"), metadata={"audio_file": audio, **transcript})
-            for audio, transcript in zip(audio_files, transcriptions)
-        ]
+        documents = []
+        for audio, transcript in zip(audio_files, transcriptions):
+            content = transcript.pop("text")
+            doc = Document(content=content, metadata={"audio_file": audio, **transcript})
+            documents.append(doc)
+        return documents
 
     def _raw_transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Dict[str, Any]]:
         """
