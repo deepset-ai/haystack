@@ -49,7 +49,10 @@ class ConversationSummaryMemory(ConversationMemory):
             - window_size: integer specifying the number of most recent conversation snippets to load.
         :return: A formatted string containing the conversation history with the latest summary.
         """
-        return f"{self.summary}\n {super().load(keys, **kwargs)}"
+        if self.has_unsummarized_snippets():
+            return f"{self.summary}\n{super().load(keys, window_size=self.unsummarized_snippets())}"
+        else:
+            return self.summary
 
     def summarize(self) -> str:
         """
@@ -57,9 +60,9 @@ class ConversationSummaryMemory(ConversationMemory):
 
         :return: A string containing the generated summary.
         """
-        chat_transcript = self.load()
-        self.clear()
-        return self.prompt_node.prompt(self.template, chat_transcript=chat_transcript)[0]
+        most_recent_chat_snippets = self.load(window_size=self.summary_frequency)
+        pn_response = self.prompt_node.prompt(self.template, chat_transcript=most_recent_chat_snippets)
+        return pn_response[0]
 
     def needs_summary(self) -> bool:
         """
@@ -68,6 +71,20 @@ class ConversationSummaryMemory(ConversationMemory):
         :return: True if a new summary should be generated, otherwise False.
         """
         return self.save_count % self.summary_frequency == 0
+
+    def unsummarized_snippets(self) -> int:
+        """
+        Returns how many conversation snippets have not been summarized.
+        :return: The number of conversation snippets that have not been summarized.
+        """
+        return self.save_count % self.summary_frequency
+
+    def has_unsummarized_snippets(self) -> bool:
+        """
+        Returns True if there are any conversation snippets that have not been summarized.
+        :return: True if there are unsummarized snippets, otherwise False.
+        """
+        return self.unsummarized_snippets() != 0
 
     def save(self, data: Dict[str, Any]) -> None:
         """

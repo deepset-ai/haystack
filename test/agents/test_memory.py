@@ -65,25 +65,49 @@ def test_conversation_memory_window_size():
 
 @pytest.mark.unit
 def test_conversation_summary_memory(mocked_prompt_node):
-    mocked_prompt_node.prompt.return_value = ["This is a fake summary definitely."]
+    summary = "This is a fake summary definitely."
+    mocked_prompt_node.prompt.return_value = [summary]
     summary_mem = ConversationSummaryMemory(mocked_prompt_node)
 
     # Test saving and loading without summaries
     data1: Dict[str, Any] = {"input": "Hello", "output": "Hi there"}
     summary_mem.save(data1)
-    assert summary_mem.load() == "\n Human: Hello\nAI: Hi there\n"
+    assert summary_mem.load() == "\nHuman: Hello\nAI: Hi there\n"
 
     data2: Dict[str, Any] = {"input": "How are you?", "output": "I'm doing well, thanks."}
     summary_mem.save(data2)
-    assert summary_mem.load() == "\n Human: Hello\nAI: Hi there\nHuman: How are you?\nAI: I'm doing well, thanks.\n"
+    assert summary_mem.load() == "\nHuman: Hello\nAI: Hi there\nHuman: How are you?\nAI: I'm doing well, thanks.\n"
 
     # Test summarization
     data3: Dict[str, Any] = {"input": "What's the weather like?", "output": "It's sunny outside."}
     summary_mem.save(data3)
-    assert summary_mem.load() == "This is a fake summary definitely.\n "
+    assert summary_mem.load() == summary
 
     summary_mem.clear()
-    assert summary_mem.load() == "\n "
+    assert summary_mem.load() == ""
+
+
+@pytest.mark.unit
+def test_conversation_summary_memory_lower_summary_frequency(mocked_prompt_node):
+    summary = "This is a fake summary definitely."
+    mocked_prompt_node.prompt.return_value = [summary]
+    summary_mem = ConversationSummaryMemory(mocked_prompt_node, summary_frequency=2)
+
+    data1: Dict[str, Any] = {"input": "Hello", "output": "Hi there"}
+    summary_mem.save(data1)
+    assert summary_mem.load() == "\nHuman: Hello\nAI: Hi there\n"
+
+    data2: Dict[str, Any] = {"input": "How are you?", "output": "I'm doing well, thanks."}
+    summary_mem.save(data2)
+    assert summary_mem.load() == summary
+
+    # Test summarization
+    data3: Dict[str, Any] = {"input": "What's the weather like?", "output": "It's sunny outside."}
+    summary_mem.save(data3)
+    assert summary_mem.load() == summary + "\nHuman: What's the weather like?\nAI: It's sunny outside.\n"
+
+    summary_mem.clear()
+    assert summary_mem.load() == "\n"
 
 
 @pytest.mark.unit
@@ -92,15 +116,15 @@ def test_conversation_summary_memory_with_template(mocked_prompt_node, mocked_pr
 
     data1: Dict[str, Any] = {"input": "Hello", "output": "Hi there"}
     summary_mem.save(data1)
-    assert summary_mem.load() == "\n Human: Hello\nAI: Hi there\n"
+    assert summary_mem.load() == "\nHuman: Hello\nAI: Hi there\n"
 
     data2: Dict[str, Any] = {"input": "How are you?", "output": "I'm doing well, thanks."}
     summary_mem.save(data2)
-    assert summary_mem.load() == "\n Human: Hello\nAI: Hi there\nHuman: How are you?\nAI: I'm doing well, thanks.\n"
+    assert summary_mem.load() == "\nHuman: Hello\nAI: Hi there\nHuman: How are you?\nAI: I'm doing well, thanks.\n"
 
     data3: Dict[str, Any] = {"input": "What's the weather like?", "output": "It's sunny outside."}
     summary_mem.save(data3)
-    assert summary_mem.load() == "This is a summary.\n "
+    assert summary_mem.load() == "This is a summary."
 
     summary_mem.clear()
-    assert summary_mem.load() == "\n "
+    assert summary_mem.load() == ""
