@@ -1,3 +1,4 @@
+import copy
 import logging
 
 import pytest
@@ -312,6 +313,11 @@ def test_dataset_from_dicts_auto_determine_max_answers(samples_path, caplog=None
     dicts = processor.file_to_dicts(samples_path / "qa" / "vanilla.json")
     dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts, indices=[1])
     assert len(dataset[0][tensor_names.index("labels")]) == 2
+    # check that a max_answers will be adjusted when processing a different dataset with the same SquadProcessor
+    dicts_more_answers = copy.deepcopy(dicts)
+    dicts_more_answers[0]["qas"][0]["answers"] = dicts_more_answers[0]["qas"][0]["answers"] * 3
+    dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts_more_answers, indices=[1])
+    assert len(dataset[0][tensor_names.index("labels")]) == 6
 
 
 @pytest.mark.integration
