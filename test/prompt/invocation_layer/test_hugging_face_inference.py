@@ -125,12 +125,14 @@ def test_streaming_stream_param_in_method(stream):
     # stream is always passed to _post
     assert "stream" in called_kwargs
 
-    # Check if stream is True, then stream is passed as True to _post
-    if stream:
-        assert called_kwargs["stream"]
-    # Check if stream is False, then stream is passed as False to _post
-    else:
-        assert not called_kwargs["stream"]
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, called_kwargs = mock_post.call_args
+
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
+
+    # Assert that the 'stream' parameter passed to _post is the same as the one used in layer.invoke()
+    assert called_kwargs["stream"] == stream
 
 
 @pytest.mark.unit
@@ -160,17 +162,14 @@ def test_streaming_stream_handler_param_in_constructor(stream_handler):
     # stream is always passed to _post
     assert "stream" in called_kwargs
 
-    # if stream_handler is used then stream is always True
+    assert called_kwargs["stream"] == (stream_handler is not None)
+    # if stream_handler is used then...
     if stream_handler:
-        assert called_kwargs["stream"]
-        # and stream_handler is passed as an instance of TokenStreamingHandler
+        # ... stream_handler is passed as an instance of TokenStreamingHandler
         called_args, called_kwargs = mock_post_stream.call_args
         assert isinstance(called_args[1], TokenStreamingHandler) or isinstance(
             called_kwargs["stream_handler"], TokenStreamingHandler
         )
-    # if stream_handler is not used then stream is always False
-    else:
-        assert not called_kwargs["stream"]
 
 
 @pytest.mark.unit
@@ -196,20 +195,16 @@ def test_streaming_stream_handler_param_in_method(stream_handler):
     # Check if stop_words are passed to _post as stop parameter
     called_args, called_kwargs = mock_post.call_args
 
-    # stream is always passed to _post
-    assert "stream" in called_kwargs
+    # stream is always correctly passed to _post
+    assert called_kwargs["stream"] == (stream_handler is not None)
 
-    # if stream_handler is used then stream is always True
+    # if stream_handler is used then...
     if stream_handler:
-        assert called_kwargs["stream"]
-        # and stream_handler is passed as an instance of TokenStreamingHandler
+        # ... stream_handler is passed as an instance of TokenStreamingHandler
         called_args, called_kwargs = mock_post_stream.call_args
         assert isinstance(called_args[1], TokenStreamingHandler) or isinstance(
             called_kwargs["stream_handler"], TokenStreamingHandler
         )
-    # if stream_handler is not used then stream is always False
-    else:
-        assert not called_kwargs["stream"]
 
 
 @pytest.mark.integration
