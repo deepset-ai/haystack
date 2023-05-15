@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 from test.test_components.test_accumulate import Accumulate
 from test.test_components.test_add_value import AddFixedValue
 from test.test_components.test_double import Double
