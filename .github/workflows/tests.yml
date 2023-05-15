@@ -155,7 +155,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,dev]
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
@@ -1051,7 +1051,7 @@ jobs:
           sudo apt-get install ffmpeg
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,dev]
 
       - name: Run tests
         env:
@@ -1138,7 +1138,7 @@ jobs:
       # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,dev]
 
       - name: Run tests
         env:
@@ -1252,7 +1252,7 @@ jobs:
           sudo apt-get install libsndfile1 ffmpeg
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,dev]
 
       - name: Cache HF models
         id: cache-hf-models
@@ -1371,7 +1371,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all]
+        run: pip install .[all,dev]
 
       - name: Run tests
         env:

@@ -77,7 +77,7 @@ dependencies = [
   "sentence-transformers>=2.2.0",
 
   # OpenAI tokenizer
-  "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.3.2; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
 
   # Schema validation
   "jsonschema",
@@ -219,6 +219,7 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
+  "toml",
 ]
 
 formatting = [
@@ -228,11 +229,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,dev,onnx,beir,metrics]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,dev,onnx-gpu,metrics]",
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics]",
 ]
 
 [project.scripts]
