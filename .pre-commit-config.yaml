@@ -15,6 +15,17 @@ repos:
     - id: mixed-line-ending  # normalizes line endings
     #- id: no-commit-to-branch  # prevents committing to main
 
+- repo: https://github.com/johannsdg/pre-commit-license-headers
+  rev: v0.1.0
+  hooks:
+    - id: check-license-headers
+      args:
+        - "--template"
+        - |
+          # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+          #
+          # SPDX-License-Identifier: Apache-2.0
+          
 - repo: https://github.com/psf/black
   rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in pyproject.toml
   hooks:
