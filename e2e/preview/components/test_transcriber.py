@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from haystack.preview.components import LocalWhisperTranscriber
