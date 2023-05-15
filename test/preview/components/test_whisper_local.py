@@ -5,9 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 import whisper
-from generalimport import FakeModule, MissingOptionalDependency
 
-from haystack import is_imported
 from haystack.preview.dataclasses import Document
 from haystack.preview.components import LocalWhisperTranscriber
 
