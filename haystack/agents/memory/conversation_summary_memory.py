@@ -50,7 +50,8 @@ class ConversationSummaryMemory(ConversationMemory):
         :return: A formatted string containing the conversation history with the latest summary.
         """
         if self.has_unsummarized_snippets():
-            return f"{self.summary}\n{super().load(keys, window_size=self.unsummarized_snippets())}"
+            unsummarized = super().load(keys=keys, window_size=self.unsummarized_snippets())
+            return f"{self.summary}\n{unsummarized}"
         else:
             return self.summary
 
@@ -103,4 +104,5 @@ class ConversationSummaryMemory(ConversationMemory):
         Clear the conversation history and the summary.
         """
         super().clear()
+        self.save_count = 0
         self.summary = ""
