@@ -104,18 +104,16 @@ class LocalWhisperTranscriber:
         :returns: a list of transcriptions.
         """
         self.warm_up()
-        if not self._model:
-            raise ValueError("WhisperTranscriber._transcribe_locally() can't work without a local model.")
-
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = []
         for audio_file in audio_files:
             if isinstance(audio_file, (str, Path)):
                 audio_file = open(audio_file, "rb")
 
-            transcription = self._model.transcribe(audio_file.name, **kwargs)
+            # mypy compains that _model is not guaranteed to be not None. It is: check self.warm_up()
+            transcription = self._model.transcribe(audio_file.name, **kwargs)  # type: ignore
             if not return_segments:
                 transcription.pop("segments", None)
-
             transcriptions.append(transcription)
+
         return transcriptions
