@@ -396,14 +396,14 @@ def test_default_table_document_from_json():
 def test_default_image_document_to_json():
     path = Path(__file__).parent / "test_files" / "apple.jpg"
     doc_id = _create_id(classname=Document.__name__, content=path)
-    doc_1 = Document(content=path, content_type="image").to_json(indent=4).strip()
+    doc_1 = Document(content=path, content_type="image").to_json(indent=4).strip().replace("\\", "\\\\")
     doc_2 = textwrap.dedent(
         """    {
         "id": \""""
         + doc_id
         + """\",
         "content": \""""
-        + str(path.absolute()).replace("\\\\", "\\")
+        + str(path.absolute())
         + """\",
         "content_type": "image",
         "metadata": {},
@@ -450,7 +450,7 @@ def test_full_document_to_json(tmp_path):
         embedding=np.array([1, 2, 3, 4]),
     )
 
-    doc_json = doc_1.to_json(indent=4).strip()
+    doc_json = doc_1.to_json(indent=4).strip().replace("\\", "\\\\")
     doc_2 = textwrap.dedent(
         """    {
         "id": \""""
@@ -461,7 +461,7 @@ def test_full_document_to_json(tmp_path):
         "metadata": {
             "some object": "<the object>",
             "a path": \""""
-        + str((tmp_path / "test.txt").absolute()).replace("\\\\", "\\")
+        + str((tmp_path / "test.txt").absolute())
         + """\"
         },
         "id_hash_keys": [],
