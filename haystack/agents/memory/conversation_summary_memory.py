@@ -61,7 +61,7 @@ class ConversationSummaryMemory(ConversationMemory):
 
         :return: A string containing the generated summary.
         """
-        most_recent_chat_snippets = self.load(window_size=self.summary_frequency)
+        most_recent_chat_snippets = super().load(window_size=self.summary_frequency)
         pn_response = self.prompt_node.prompt(self.template, chat_transcript=most_recent_chat_snippets)
         return pn_response[0]
 
@@ -97,7 +97,7 @@ class ConversationSummaryMemory(ConversationMemory):
         super().save(data)
         self.save_count += 1
         if self.needs_summary():
-            self.summary = self.summarize()
+            self.summary += self.summarize()
 
     def clear(self) -> None:
         """
