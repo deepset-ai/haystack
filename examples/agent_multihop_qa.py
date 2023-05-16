@@ -1,6 +1,7 @@
 import os
 
 from haystack.agents import Agent, Tool
+from haystack.agents.base import ToolsManager
 from haystack.nodes import PromptNode, PromptTemplate
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.pipelines import WebQAPipeline
@@ -12,6 +13,16 @@ if not search_key:
 openai_key = os.environ.get("OPENAI_API_KEY")
 if not openai_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
+
+
+pn = PromptNode(
+    "gpt-3.5-turbo",
+    api_key=openai_key,
+    max_length=256,
+    default_prompt_template="question-answering-with-document-scores",
+)
+web_retriever = WebRetriever(api_key=search_key)
+pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=pn)
 
 few_shot_prompt = """
 You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions correctly, you have access to the following tools:
@@ -73,19 +84,9 @@ Question: {query}
 Thought:
 """
 few_shot_agent_template = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
-agent_prompt_node = PromptNode(
+prompt_node = PromptNode(
     "gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
 )
-agent = Agent(prompt_node=agent_prompt_node, prompt_template=few_shot_agent_template)
-
-qa_prompt_node = PromptNode(
-    "gpt-3.5-turbo",
-    api_key=openai_key,
-    max_length=256,
-    default_prompt_template="question-answering-with-document-scores",
-)
-web_retriever = WebRetriever(api_key=search_key)
-pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=qa_prompt_node)
 
 web_qa_tool = Tool(
     name="Search",
@@ -93,7 +94,18 @@ web_qa_tool = Tool(
     description="useful for when you need to Google questions.",
     output_variable="results",
 )
-agent.add_tool(web_qa_tool)
 
-result = agent.run("What year was the creator of the Python programming language born?")
-print(f"\n{result}")
+agent = Agent(
+    prompt_node=prompt_node, prompt_template=few_shot_agent_template, tools_manager=ToolsManager([web_qa_tool])
+)
+
+hotpot_questions = [
+    "What year was the father of the Princes in the Tower born?",
+    "Name the movie in which the daughter of Noel Harrison plays Violet Trefusis.",
+    "Where was the actress who played the niece in the Priest film born?",
+    "Which author is English: John Braine or Studs Terkel?",
+]
+
+for question in hotpot_questions:
+    result = agent.run(query=question)
+    print(f"\n{result}")
