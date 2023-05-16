@@ -335,9 +335,7 @@ class PromptNode(BaseComponent):
                 - prompt template name: Uses the prompt template registered with the given name.
                 - prompt template yaml: Uses the prompt template specified by the given YAML.
                 - prompt text: Uses a copy of the default prompt template with the given prompt text.
-        :param generation_kwargs: The generation_kwargs are used to customize text generation for the underlying pipeline. See Hugging
-        Face [docs](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
-        for more details.
+        :param generation_kwargs: The generation_kwargs are used to customize text generation for the underlying pipeline.
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
