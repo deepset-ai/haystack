@@ -368,7 +368,12 @@ class PromptNode(BaseComponent):
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
         prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
-        output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
+
+        try:
+            output_variable = self.output_variable or prompt_template_resolved.output_variable
+        except:
+            output_variable = "results"
+
         invocation_context[output_variable] = results
         invocation_context["prompts"] = prompt_collector
         final_result: Dict[str, Any] = {output_variable: results, "invocation_context": invocation_context}
