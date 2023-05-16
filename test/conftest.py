@@ -424,7 +424,7 @@ class MockPromptNode(PromptNode):
                 "Thought: Let's think step-by-step, I first need to {generated_text}",
             )
         else:
-            return PromptTemplate(name="", prompt_text="")
+            return PromptTemplate(name="test", prompt_text="test")
 
 
 @pytest.fixture
