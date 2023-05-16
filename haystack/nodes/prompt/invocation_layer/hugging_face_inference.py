@@ -111,6 +111,11 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         if "top_k" in kwargs:
             top_k = kwargs.pop("top_k")
             kwargs["num_return_sequences"] = top_k
+
+        if "generation_kwargs" in kwargs:
+            generation_kwargs = kwargs.pop("generation_kwargs")
+            kwargs.update(generation_kwargs)
+
         kwargs_with_defaults.update(kwargs)
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         accepted_params = [

@@ -91,7 +91,9 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             kwargs["stop_words"] = kwargs.pop("stop_sequence")
         if "max_tokens_to_sample" in kwargs:
             kwargs["max_length"] = kwargs.pop("max_tokens_to_sample")
-
+        if "generation_kwargs" in kwargs:
+            generation_kwargs = kwargs.pop("generation_kwargs")
+            kwargs.update(generation_kwargs)
         kwargs_with_defaults.update(kwargs)
 
         # Stream the response either in explicitly specified or if a custom handler is set
