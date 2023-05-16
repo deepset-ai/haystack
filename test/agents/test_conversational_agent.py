@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 from haystack.agents.conversational import ConversationalAgent
 from haystack.agents.memory import ConversationSummaryMemory, ConversationMemory, NoMemory
-from haystack.agents.types import PromptParametersResolver
 from haystack.nodes import PromptNode
 
 
@@ -13,7 +12,7 @@ def test_init():
     agent = ConversationalAgent(prompt_node)
     # Test normal case
     assert isinstance(agent.memory, ConversationMemory)
-    assert isinstance(agent.prompt_parameters_resolver, PromptParametersResolver)
+    assert callable(agent.prompt_parameters_resolver)
     assert agent.max_steps == 2
     assert agent.final_answer_pattern == r"^([\s\S]+)$"
 

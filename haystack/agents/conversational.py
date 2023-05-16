@@ -1,8 +1,7 @@
-from typing import Union, Optional, Callable
+from typing import Optional, Callable
 
 from haystack.agents import Agent
 from haystack.agents.memory import Memory, ConversationMemory
-from haystack.agents.types import PromptParametersResolver
 from haystack.nodes import PromptNode
 
 
@@ -38,7 +37,7 @@ class ConversationalAgent(Agent):
         self,
         prompt_node: PromptNode,
         memory: Optional[Memory] = None,
-        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        prompt_parameters_resolver: Optional[Callable] = None,
     ):
         """
         Creates a new ConversationalAgent instance
@@ -46,8 +45,8 @@ class ConversationalAgent(Agent):
         :param prompt_node: A PromptNode used to communicate with LLM.
         :param memory: A memory instance for storing conversation history and other relevant data, defaults to
         ConversationMemory.
-        :param prompt_parameters_resolver: An optional resolver or callable for resolving prompt template parameters,
-        defaults to CallablePromptParametersResolver that simply returns the query and the conversation history.
+        :param prompt_parameters_resolver: An optional callable for resolving prompt template parameters,
+        defaults to a callable that returns a dictionary with the query and the conversation history.
         """
         super().__init__(
             prompt_node=prompt_node,

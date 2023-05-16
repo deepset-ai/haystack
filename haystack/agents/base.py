@@ -12,7 +12,7 @@ from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
-from haystack.agents.types import Color, AgentTokenStreamingHandler, PromptParametersResolver
+from haystack.agents.types import Color, AgentTokenStreamingHandler
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
@@ -203,14 +203,6 @@ class ToolsManager:
         return None, None
 
 
-class CallablePromptParametersResolver(PromptParametersResolver):
-    def __init__(self, prompt_callable: Callable[..., Dict[str, Any]]):
-        self.callable = prompt_callable
-
-    def resolve(self, query: str, **kwargs) -> Dict[str, Any]:
-        return self.callable(query, **kwargs)
-
-
 class Agent:
     """
     An Agent answers queries using the tools you give to it. The tools are pipelines or nodes. The Agent uses a large
@@ -233,7 +225,7 @@ class Agent:
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
         tools_manager: Optional[ToolsManager] = None,
         memory: Optional[Memory] = None,
-        prompt_parameters_resolver: Optional[Union[PromptParametersResolver, Callable]] = None,
+        prompt_parameters_resolver: Optional[Callable] = None,
         max_steps: int = 8,
         final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
     ):
@@ -246,12 +238,15 @@ class Agent:
         choosing tools to answer queries step-by-step. You can use the default `zero-shot-react` template or create a
         new template in a similar format.
         with `add_tool()` before running the Agent.
-        :param tools: A list of tools to add to the Agent. Each tool must have a unique name. You can also add tools
-        with `add_tool()` before running the Agent.
+        :param tools_manager: A ToolsManager instance that the Agent uses to run tools. Each tool must have a unique name.
+        You can also add tools with `add_tool()` before running the Agent.
+        :param memory: A Memory instance that the Agent uses to store information between iterations.
+        :param prompt_parameters_resolver: A callable that takes query, agent, and agent_step as parameters and returns
+        a dictionary of parameters to pass to the prompt_template. The default is a callable that returns a dictionary
+        of keys and values needed for the React agent prompt template.
         :param max_steps: The number of times the Agent can run a tool +1 to let it infer it knows the final answer.
             Set it to at least 2, so that the Agent can run one a tool once and then infer it knows the final answer.
-            The default is 5.
-        text the Agent generated.
+            The default is 8.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
         self.max_steps = max_steps
@@ -266,20 +261,16 @@ class Agent:
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        react_parameter_resolver: Callable[[str, Any], Dict[str, Any]] = lambda query, **kwargs: {
+        react_parameter_resolver: Callable[
+            [str, Agent, AgentStep, Dict[str, Any]], Dict[str, Any]
+        ] = lambda query, agent, agent_step, **kwargs: {
             "query": query,
-            "tool_names": kwargs["agent"].tm.get_tool_names(),
-            "tool_names_with_descriptions": kwargs["agent"].tm.get_tool_names_with_descriptions(),
-            "transcript": kwargs["agent_step"].transcript,
+            "tool_names": agent.tm.get_tool_names(),
+            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
+            "transcript": agent_step.transcript,
         }
         self.prompt_parameters_resolver = (
-            CallablePromptParametersResolver(prompt_parameters_resolver)
-            if callable(prompt_parameters_resolver)
-            else (
-                prompt_parameters_resolver
-                if prompt_parameters_resolver
-                else CallablePromptParametersResolver(react_parameter_resolver)
-            )
+            prompt_parameters_resolver if prompt_parameters_resolver else react_parameter_resolver
         )
         self.final_answer_pattern = final_answer_pattern
         # Resolve model name to check if it's a streaming model
@@ -408,7 +399,7 @@ class Agent:
 
     def _plan(self, query, current_step):
         # first resolve prompt template params
-        template_params = self.prompt_parameters_resolver.resolve(query=query, agent=self, agent_step=current_step)
+        template_params = self.prompt_parameters_resolver(query=query, agent=self, agent_step=current_step)
 
         # if prompt node has no default prompt template, use agent's prompt template
         if self.prompt_node.default_prompt_template is None:
