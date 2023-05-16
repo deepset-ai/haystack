@@ -93,6 +93,7 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
+        self._prompt_templates_cache: Dict[str, PromptTemplate] = {}
         self._default_prompt_template = None
         self.default_prompt_template = default_prompt_template
         self.output_variable: Optional[str] = output_variable
@@ -101,7 +102,6 @@ class PromptNode(BaseComponent):
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
         self.debug = debug
-        self._prompt_templates_cache: Dict[str, PromptTemplate] = {}
 
         if isinstance(model_name_or_path, str):
             self.prompt_model = PromptModel(
@@ -218,7 +218,9 @@ class PromptNode(BaseComponent):
         output_parser = None
         if self._default_prompt_template:
             output_parser = self._default_prompt_template.output_parser
-        return PromptTemplate(name=prompt_template, output_parser=output_parser)
+        template = PromptTemplate(name=prompt_template, output_parser=output_parser)
+        self._prompt_templates_cache[prompt_template] = template
+        return template
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """
