@@ -240,6 +240,10 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 elif re.fullmatch(r"[-a-zA-Z0-9_/]+", name):
                     name, prompt_text = self._get_prompt_template_from_hub(name)
 
+                else:
+                    prompt_text = name
+                    name = "custom-at-query-time"
+
         if not name or not prompt_text:
             raise ValueError("You must provide either name, prompt_text, or both.")
 

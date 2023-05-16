@@ -11,6 +11,16 @@ from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, DefaultTokenStreamingHandler
 
 
+@pytest.fixture
+def mock_prompthub():
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._get_prompt_template_from_hub") as mock_prompthub:
+        mock_prompthub.side_effect = lambda name: (
+            name,
+            "This is a test prompt. Use your knowledge to answer this question: {question}",
+        )
+        yield mock_prompthub
+
+
 def skip_test_for_invalid_key(prompt_model):
     if prompt_model.api_key is not None and prompt_model.api_key == "KEY_NOT_FOUND":
         pytest.skip("No API key found, skipping test")
@@ -91,29 +101,29 @@ def test_get_prompt_template_no_default_template(mock_model):
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_with_default_template(mock_model):
+def test_get_prompt_template_with_default_template(mock_model, mock_prompthub):
     node = PromptNode()
-    node.default_prompt_template = "question-answering"
+    node.default_prompt_template = "deepset/test-prompt"
 
     template = node.get_prompt_template()
-    assert template.name == "question-answering"
+    assert template.name == "deepset/test-prompt"
 
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_name_from_hub(mock_model):
+def test_get_prompt_template_name_from_hub(mock_model, mock_prompthub):
     node = PromptNode()
-    template = node.get_prompt_template("question-answering")
-    assert template.name == "question-answering"
+    template = node.get_prompt_template("deepset/test-prompt")
+    assert template.name == "deepset/test-prompt"
 
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_local_file(mock_model, tmp_path):
+def test_get_prompt_template_local_file(mock_model, tmp_path, mock_prompthub):
     with open(tmp_path / "local_prompt_template.yml", "w") as ptf:
         ptf.write(
             """
-name: deepset/question-answering
+name: my_prompts/question-answering
 prompt_text: |
             Given the context please answer the question. Context: {join(documents)};
             Question: {query};
@@ -129,12 +139,13 @@ version: v0.1.1
         )
     node = PromptNode()
     template = node.get_prompt_template(str(tmp_path / "local_prompt_template.yml"))
-    assert template.name == "question-answering"
+    assert template.name == "my_prompts/question-answering"
+    assert "Given the context" in template.prompt_text
 
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_object(mock_model):
+def test_get_prompt_template_object(mock_model, mock_prompthub):
     node = PromptNode()
     template = node.get_prompt_template(PromptTemplate(name="fake-template", prompt_text=""))
     assert template.name == "fake-template"
@@ -143,15 +154,20 @@ def test_get_prompt_template_object(mock_model):
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_get_prompt_template_wrong_template_name(mock_model):
-    node = PromptNode()
-    with pytest.raises(ValueError) as e:
-        node.get_prompt_template("some-unsupported-template")
-        assert e.match("some-unsupported-template not supported, select one of:")
+    with patch("haystack.nodes.prompt.prompt_template.prompthub") as mock_prompthub:
+
+        def not_found(*a, **k):
+            raise ValueError("'some-unsupported-template' not supported!")
+
+        mock_prompthub.fetch.side_effect = not_found
+        node = PromptNode()
+        with pytest.raises(ValueError, match="not supported") as e:
+            node.get_prompt_template("some-unsupported-template")
 
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_only_template_text(mock_model):
+def test_get_prompt_template_only_template_text(mock_model, mock_prompthub):
     node = PromptNode()
     template = node.get_prompt_template("some prompt")
     assert template.name == "custom-at-query-time"
