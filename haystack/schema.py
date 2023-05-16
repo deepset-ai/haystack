@@ -30,7 +30,8 @@ from pydantic.json import pydantic_encoder
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
-from haystack import is_imported, hash128
+from haystack import is_imported
+from haystack.mmh3 import hash128
 
 
 logger = logging.getLogger(__name__)
