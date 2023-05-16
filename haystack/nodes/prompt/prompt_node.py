@@ -1,18 +1,13 @@
 from collections import defaultdict
 import copy
 import logging
-import re
-import os
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 import torch
-import yaml
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
-from haystack.nodes.prompt.shapers import BaseOutputParser
 from haystack.nodes.prompt.prompt_model import PromptModel
 from haystack.nodes.prompt.prompt_template import PromptTemplate
 

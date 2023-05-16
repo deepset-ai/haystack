@@ -4,11 +4,11 @@ import re
 import os
 import ast
 import json
-import yaml
 from pathlib import Path
 from abc import ABC
 from uuid import uuid4
 
+import yaml
 import tenacity
 import prompthub
 from requests import HTTPError, RequestException, JSONDecodeError
@@ -239,6 +239,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 # if it's not a string or looks like a prompt template name
                 elif re.fullmatch(r"[-a-zA-Z0-9_/]+", name):
                     name, prompt_text = self._get_prompt_template_from_hub(name)
+
+        if not name or not prompt_text:
+            raise ValueError("You must provide either name, prompt_text, or both.")
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
         for strip in PROMPT_TEMPLATE_STRIPS:
