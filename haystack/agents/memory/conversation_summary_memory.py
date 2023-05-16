@@ -50,10 +50,19 @@ class ConversationSummaryMemory(ConversationMemory):
         :return: A formatted string containing the conversation history with the latest summary.
         """
         if self.has_unsummarized_snippets():
-            unsummarized = super().load(keys=keys, window_size=self.unsummarized_snippets())
+            unsummarized = self.load_recent_snippets(window_size=self.unsummarized_snippets())
             return f"{self.summary}\n{unsummarized}"
         else:
             return self.summary
+
+    def load_recent_snippets(self, window_size: int = 1) -> str:
+        """
+        Load the most recent conversation snippets as a formatted string.
+
+        :param window_size: integer specifying the number of most recent conversation snippets to load.
+        :return: A formatted string containing the most recent conversation snippets.
+        """
+        return super().load(window_size=window_size)
 
     def summarize(self) -> str:
         """
@@ -61,7 +70,7 @@ class ConversationSummaryMemory(ConversationMemory):
 
         :return: A string containing the generated summary.
         """
-        most_recent_chat_snippets = self.load(window_size=self.summary_frequency)
+        most_recent_chat_snippets = self.load_recent_snippets(window_size=self.summary_frequency)
         pn_response = self.prompt_node.prompt(self.template, chat_transcript=most_recent_chat_snippets)
         return pn_response[0]
 
@@ -97,7 +106,7 @@ class ConversationSummaryMemory(ConversationMemory):
         super().save(data)
         self.save_count += 1
         if self.needs_summary():
-            self.summary = self.summarize()
+            self.summary += self.summarize()
 
     def clear(self) -> None:
         """
