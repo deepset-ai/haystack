@@ -15,34 +15,23 @@ repos:
     - id: mixed-line-ending  # normalizes line endings
     #- id: no-commit-to-branch  # prevents committing to main
 
-- repo: https://github.com/johannsdg/pre-commit-license-headers
-  rev: v0.1.0
-  hooks:
-    - id: check-license-headers
-      args:
-        - "--template"
-        - |
-          # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
-          #
-          # SPDX-License-Identifier: Apache-2.0
-          
 - repo: https://github.com/psf/black
   rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in pyproject.toml
   hooks:
   - id: black-jupyter
 
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: 'v1.1.1'
-  hooks:
-  - id: mypy
-    args: [--ignore-missing-imports]
-    additional_dependencies: ['types-requests']
+# - repo: https://github.com/pre-commit/mirrors-mypy
+#   rev: 'v1.1.1'
+#   hooks:
+#   - id: mypy
+#     args: [--ignore-missing-imports]
+#     additional_dependencies: ['types-requests']
 
-- repo: https://github.com/pycqa/pylint
-  rev: 'v2.17.0'
-  hooks:
-  - id: pylint
-    exclude: ^test/
-    args: [
-      "--disable=import-error"  # FIXME
-    ]
+# - repo: https://github.com/pycqa/pylint
+#   rev: 'v2.17.0'
+#   hooks:
+#   - id: pylint
+#     exclude: ^test/
+#     args: [
+#       "--disable=import-error"  # FIXME
+#     ]

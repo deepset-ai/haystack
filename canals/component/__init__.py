@@ -2,4 +2,5 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from canals.component.component import component
-from canals.component.save_init_params import set_default_component_attributes
+from canals.component.decorators import save_init_params
+from canals.component.input_output import ComponentInput, ComponentOutput

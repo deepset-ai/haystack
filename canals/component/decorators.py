@@ -12,11 +12,9 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 
-def set_default_component_attributes(init_func):
+def save_init_params(init_func):
     """
-    Decorator that prepares a few default attributes for each component:
-     - saves the init parameters of a component in self._init_parameters
-     - makes sure the `self.defaults` dictionary exists
+    Decorator that saves the init parameters of a component in `self._init_parameters`
     """
 
     @wraps(init_func)
@@ -38,8 +36,22 @@ def set_default_component_attributes(init_func):
             _init_parameters = {**_init_parameters, **self._init_parameters}
         self._init_parameters = _init_parameters
 
+    return wrapper_save_init_parameters
+
+
+def init_defaults(init_func):
+    """
+    Decorator that makes sure the `self.defaults` dictionary exists
+    """
+
+    @wraps(init_func)
+    def wrapper_create_defaults_dict(self, *args, **kwargs):
+
+        # Call the actual __init__ function with the arguments
+        init_func(self, *args, **kwargs)
+
         # Makes sure the component has a defaults dictionary the pipeline can use
         if not hasattr(self, "defaults"):
             self.defaults = {}
 
-    return wrapper_save_init_parameters
+    return wrapper_create_defaults_dict

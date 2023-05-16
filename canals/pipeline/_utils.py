@@ -1,16 +1,15 @@
-# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
-#
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai> SPDX-License-Identifier: Apache-2.0
 from typing import Tuple, Optional, List, Iterable, Dict, Any
 
 import logging
 import inspect
 import itertools
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 
 import networkx
 
 from canals.errors import PipelineConnectError, PipelineValidationError
+from canals.component.input_output import fields, ComponentInput, ComponentOutput
 
 
 logger = logging.getLogger(__name__)
@@ -44,16 +43,15 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
     """
     Find a component's input sockets.
     """
-    run_signature = inspect.signature(component.run)
+    run_signature = inspect.signature(component.__class__.run)
 
-    input_sockets = {}
-    for param in run_signature.parameters:
-        name = run_signature.parameters[param].name
-        variadic = run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
-        annotation = run_signature.parameters[param].annotation
+    input_annotation = run_signature.parameters["data"].annotation
+    if not input_annotation or input_annotation == inspect.Parameter.empty:
+        input_annotation = component.input_type
 
-        socket = InputSocket(name=name, type=annotation, variadic=variadic)
-        input_sockets[socket.name] = socket
+    input_sockets = {
+        field.name: InputSocket(name=field.name, type=field.type, variadic=False) for field in fields(input_annotation)
+    }
 
     return input_sockets
 
@@ -153,20 +151,30 @@ def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     }
 
 
-def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, inputs_values: Dict[str, Dict[str, Any]]):
+def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_values: Dict[str, ComponentInput]):
+    """
+    Make sure all the inputs nodes are receiving all the values they need, either from the Pipeline's input or from
+    other nodes.
+    """
     valid_inputs = find_pipeline_inputs(graph)
     for node, sockets in valid_inputs.items():
-        if node in inputs_values:
+        if node in input_values:
             for socket in sockets:
                 node_instance = graph.nodes[node]["instance"]
                 input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
-                if not input_in_node_defaults and not socket.name in inputs_values[node]:
+                if not input_in_node_defaults and not socket.name in input_values[node].names():
                     raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
-def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, inputs_values: Dict[str, Dict[str, Any]]):
-    for node, input_data in inputs_values.items():
-        for socket_name in input_data.keys():
+def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, input_values: Dict[str, ComponentInput]):
+    """
+    Make sure that every input node is only receiving input values from EITHER the pipeline's input or another node,
+    but never from both.
+    """
+    for node, input_data in input_values.items():
+        for socket_name in input_data.names():
+            if not getattr(input_data, socket_name):
+                continue
             if not socket_name in graph.nodes[node]["input_sockets"].keys():
                 raise ValueError(f"Component {node} is not expecting any input value called {socket_name}")
 
@@ -176,11 +184,10 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
 
 
 def validate_pipeline_input(  # pylint: disable=too-many-branches
-    graph: networkx.MultiDiGraph, inputs_values: Dict[str, Dict[str, Any]]
+    graph: networkx.MultiDiGraph, input_values: Dict[str, ComponentInput]
 ) -> Dict[str, Dict[str, Any]]:
     """
     Make sure the pipeline is properly built and that the input received makes sense.
-
     Returns the input values, validated and updated at need.
     """
     input_components = find_pipeline_inputs(graph)
@@ -188,21 +195,21 @@ def validate_pipeline_input(  # pylint: disable=too-many-branches
         raise PipelineValidationError("This pipeline has no inputs.")
 
     # Make sure the input keys are all nodes of the pipeline
-    unknown_components = [key for key in inputs_values.keys() if not key in graph.nodes]
+    unknown_components = [key for key in input_values.keys() if not key in graph.nodes]
     if unknown_components:
         raise ValueError(f"Pipeline received data for unknown component(s): {', '.join(unknown_components)}")
 
     # Make sure all necessary sockets are connected
-    _validate_input_sockets_are_connected(graph, inputs_values)
+    _validate_input_sockets_are_connected(graph, input_values)
 
     # Make sure that the pipeline input is only sent to nodes that won't receive data from other nodes
-    _validate_nodes_receive_only_expected_input(graph, inputs_values)
+    _validate_nodes_receive_only_expected_input(graph, input_values)
 
     # Make sure variadic input components are receiving lists
     for component in input_components.keys():
-        if graph.nodes[component]["variadic_input"] and component in inputs_values.keys():
-            for key, value in inputs_values[component].items():  # should be just one
+        if graph.nodes[component]["variadic_input"] and component in input_values.keys():
+            for key, value in input_values[component].items():  # should be just one
                 if not isinstance(value, Iterable):
-                    inputs_values[component][key] = [value]
+                    input_values[component][key] = [value]
 
-    return inputs_values
+    return input_values

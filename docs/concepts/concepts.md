@@ -24,7 +24,7 @@ For example, the following is a Component that sums up two numbers:
 
 ```python
 from dataclasses import dataclass
-from canals import component
+from canals.component import component
 
 @component
 class AddTwoValues:
@@ -61,7 +61,7 @@ This is a simple example of how a Pipeline is created:
 
 
 ```python
-from canals import Pipeline, component
+from canals.pipeline import Pipeline
 
 # Some Canals components
 from my_components import AddTwoValues, MultiplyTwoValues

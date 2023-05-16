@@ -1,29 +1,35 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from typing import List
+
 from dataclasses import dataclass
 
 import pytest
 
 from canals.testing import BaseTestComponent
-from canals import component
+from canals.component import component, ComponentInput, ComponentOutput
 
 
 @component
 class Sum:
     """
     Sums the values of all the input connections together.
-
-    Multi input, single output component. Order of input connections is irrelevant.
     """
 
     @dataclass
-    class Output:
+    class Input(ComponentInput):
+        values: List[int]
+
+        def __init__(self, *values: int):
+            self.values = list(values)
+
+    @dataclass
+    class Output(ComponentOutput):
         total: int
 
-    def run(self, *value: int) -> Output:
-        total = sum(value)
-        return Sum.Output(total=total)
+    def run(self, data: Input) -> Output:
+        return Sum.Output(total=sum(data.values))
 
 
 class TestSum(BaseTestComponent):
@@ -33,18 +39,18 @@ class TestSum(BaseTestComponent):
 
     def test_sum_no_values(self):
         component = Sum()
-        results = component.run()
+        results = component.run(Sum.Input())
         assert results == Sum.Output(total=0)
         assert component._init_parameters == {}
 
     def test_sum_one_value(self):
         component = Sum()
-        results = component.run(10)
+        results = component.run(Sum.Input(10))
         assert results == Sum.Output(total=10)
         assert component._init_parameters == {}
 
     def test_sum_few_values(self):
         component = Sum()
-        results = component.run(10, 11, 12)
+        results = component.run(Sum.Input(10, 11, 12))
         assert results == Sum.Output(total=33)
         assert component._init_parameters == {}

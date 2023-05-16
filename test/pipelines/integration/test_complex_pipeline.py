@@ -6,7 +6,7 @@ from pprint import pprint
 import logging
 
 from canals.pipeline import Pipeline
-from test.test_components import (
+from test.sample_components import (
     Accumulate,
     AddFixedValue,
     Greet,

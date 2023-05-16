@@ -5,7 +5,8 @@ import logging
 import inspect
 
 from canals.errors import ComponentError
-from canals.component.save_init_params import set_default_component_attributes
+from canals.component.decorators import save_init_params, init_defaults
+from canals.component.input_output import ComponentInput, ComponentOutput
 
 
 logger = logging.getLogger(__name__)
@@ -131,48 +132,48 @@ def component(class_):
     # Its value is set to the desired component name: normally it is the class name, but it can technically be customized.
     class_.__canals_component__ = class_.__name__
 
+    # Check for Input
+    if not hasattr(class_, "Input") and not hasattr(class_, "input_type"):
+        raise ComponentError(
+            "Components must either have an Input dataclass or a 'input_type' property that returns such dataclass"
+        )
+    # if not isinstance(class_.Input, ComponentInput):
+    #     raise ComponentError("Input must inherit from ComponentInput")
+
+    # Check for Output
+    if not hasattr(class_, "Output") and not hasattr(class_, "output_type"):
+        raise ComponentError(
+            "Components must either have an Output dataclass or a 'output_type' property that returns such dataclass"
+        )
+    # if not isinstance(class_.Output, ComponentOutput):
+    #     raise ComponentError("Output must inherit from ComponentOutput")
+
     # Check for run()
     if not hasattr(class_, "run"):
         raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
     run_signature = inspect.signature(class_.run)
 
-    # Check the run() signature for keyword variadic arguments
-    if any(run_signature.parameters[param].kind == inspect.Parameter.VAR_KEYWORD for param in run_signature.parameters):
-        raise ComponentError(
-            f"{class_.__name__} can't have variadic keyword arguments like **kwargs in its 'run()' method."
-        )
+    # run() must take a single input param
+    if len(run_signature.parameters) != 2:
+        raise ComponentError("run() must accept only a single parameter called 'data'.")
 
-    # Check the run() signature for missing types in positional variadic arguments
-    if any(
-        run_signature.parameters[param].kind == inspect.Parameter.VAR_POSITIONAL
-        and run_signature.parameters[param].annotation == inspect.Parameter.empty
-        for param in run_signature.parameters
-    ):
-        raise ComponentError(
-            f"{class_.__name__} must type also variadic arguments like *args in its 'run()' method.\n"
-            "Hint: variadic arguments are typed in singular form, so if your component takes an arbitrary number of "
-            "strings, the signature of run() should look like 'def run(self, *my_strings: str) -> Output:'."
-        )
+    # The input param must be called data
+    if not "data" in run_signature.parameters:
+        raise ComponentError("run() must accept a parameter called 'data'.")
 
-    # Check the run() signature for other missing types
-    missing_types = [
-        parameter
-        for parameter in list(run_signature.parameters)[1:]  # First is 'self' and it doesn't matter.
-        if run_signature.parameters[parameter].annotation == inspect.Parameter.empty
-    ]
-    if missing_types:
-        raise ComponentError(
-            f"{class_.__name__}.run() must declare types for all its parameters, "
-            f"but these parameters are not typed: {', '.join(missing_types)}."
-        )
+    # Either give a self.input_type function or type 'data' with the Input dataclass
+    if not hasattr(class_, "input_type") and run_signature.parameters["data"].annotation != class_.Input:
+        raise ComponentError(f"'data' must be typed and the type must be {class_.__name__}.Input.")
 
     # Check for the return types
-    if run_signature.return_annotation == inspect.Parameter.empty:
-        if not hasattr(class_, "output_type"):
-            raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
+    if not hasattr(class_, "output_type") and run_signature.return_annotation == inspect.Parameter.empty:
+        raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
 
     # Automatically registers all the init parameters in an instance attribute called `_init_parameters`.
-    # See `save_init_parameters()`.
-    class_.__init__ = set_default_component_attributes(class_.__init__)
+    # See `save_init_params()`.
+    class_.__init__ = save_init_params(class_.__init__)
+
+    # Makes sure the self.defaults dictionary is always present
+    class_.__init__ = init_defaults(class_.__init__)
 
     return class_

@@ -132,7 +132,7 @@ Here is an example of a simple component that adds two values together and retur
 
 ```python
 from dataclasses import dataclass
-from canals import component
+from canals.component import component
 
 @component
 class AddTwoValues:
@@ -157,7 +157,7 @@ Here is an example of a variadic component that adds all the incoming values tog
 
 ```python
 from dataclasses import dataclass
-from canals import component
+from canals.component import component
 
 @component
 class Sum:
@@ -182,7 +182,7 @@ This is an example of how to use `self.output_type()` in practice.
 
 ```python
 from dataclasses import make_dataclass
-from canals import component
+from canals.component import component
 
 @component
 class Remainder:

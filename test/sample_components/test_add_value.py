@@ -1,9 +1,13 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import pytest
+from typing import Optional
+
 from dataclasses import dataclass
-from canals import component
+
+import pytest
+
+from canals.component import component, ComponentInput, ComponentOutput
 from canals.testing.test_component import BaseTestComponent
 
 
@@ -14,14 +18,20 @@ class AddFixedValue:
     """
 
     @dataclass
-    class Output:
+    class Input(ComponentInput):
+        value: int
+        add: int
+
+    @dataclass
+    class Output(ComponentOutput):
         value: int
 
-    def __init__(self, add: int = 1):
-        self.defaults = {"add": add}
+    def __init__(self, add: Optional[int] = 1):
+        if add:
+            self.defaults = {"add": add}
 
-    def run(self, value: int, add: int) -> Output:
-        return AddFixedValue.Output(value=value + add)
+    def run(self, data: Input) -> Output:
+        return AddFixedValue.Output(value=data.value + data.add)
 
 
 class TestAddFixedValue(BaseTestComponent):
@@ -30,7 +40,8 @@ class TestAddFixedValue(BaseTestComponent):
         return [AddFixedValue(), AddFixedValue(add=2)]
 
     def test_addvalue(self):
+
         component = AddFixedValue()
-        results = component.run(value=50, add=10)
+        results = component.run(AddFixedValue.Input(value=50, add=10))
         assert results == AddFixedValue.Output(value=60)
         assert component._init_parameters == {}
