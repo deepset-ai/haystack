@@ -5,8 +5,6 @@ import inspect
 
 from typing import Any, Optional, Dict, List, Union
 
-from haystack.mmh3 import hash128
-
 try:
     from typing import Literal
 except ImportError:
@@ -32,7 +30,7 @@ from pydantic.json import pydantic_encoder
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
-from haystack import is_imported
+from haystack import is_imported, hash128
 
 
 logger = logging.getLogger(__name__)
