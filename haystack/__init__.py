@@ -93,6 +93,7 @@ from haystack.schema import Document, Answer, Label, MultiLabel, Span, Evaluatio
 from haystack.nodes.base import BaseComponent
 from haystack.pipelines.base import Pipeline
 from haystack.environment import set_pytorch_secure_model_loading
+from haystack.mmh3 import hash128
 
 
 # Enables torch's secure model loading through setting an env var.

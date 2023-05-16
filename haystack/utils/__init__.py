@@ -29,4 +29,3 @@ from haystack.utils.experiment_tracking import (
 )
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.utils.labels import aggregate_labels
-from haystack.utils.mmh3 import hash128

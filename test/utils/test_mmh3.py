@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.utils.mmh3 import hash128
+from haystack.mmh3 import hash128
 
 
 @pytest.mark.unit
