@@ -34,7 +34,7 @@ if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine ==
 
 if USE_TIKTOKEN:
     import tiktoken  # pylint: disable=import-error
-    from tiktoken.model import MODEL_TO_ENCODING
+    from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
 else:
     logger.warning(
         "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
@@ -97,11 +97,18 @@ def _openai_text_completion_tokenization_details(model_name: str):
     """
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
-    model_tokenizer = MODEL_TO_ENCODING.get(model_name) if USE_TIKTOKEN else None
 
-    # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
-    if model_name == "gpt-35-turbo" and USE_TIKTOKEN:
-        model_tokenizer = "cl100k_base"
+    if USE_TIKTOKEN:
+        if model_name == "gpt-35-turbo":
+            # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
+            model_tokenizer = "cl100k_base"
+        elif model_name in MODEL_TO_ENCODING:
+            model_tokenizer = MODEL_TO_ENCODING[model_name]
+        else:
+            for model_prefix, tokenizer in MODEL_PREFIX_TO_ENCODING.items():
+                if model_name.startswith(model_prefix):
+                    model_tokenizer = tokenizer
+                    break
 
     if model_tokenizer:
         # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
