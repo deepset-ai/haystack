@@ -1,10 +1,53 @@
+import pytest
 from unittest.mock import patch
 
 import pytest
 from tenacity import wait_none
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
-from haystack.utils.openai_utils import openai_request
+from haystack.utils.openai_utils import openai_request, _openai_text_completion_tokenization_details
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_default():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="text-ada-001")
+    assert tokenizer_name == "r50k_base"
+    assert max_tokens_limit == 2049
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_davinci():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="text-davinci-003")
+    assert tokenizer_name == "p50k_base"
+    assert max_tokens_limit == 4097
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt3_5_azure():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-35-turbo")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 4096
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt3_5():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 4096
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_4():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 8192
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_4_32k():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-32k")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 32768
 
 
 @pytest.mark.unit

@@ -9,10 +9,108 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 
-
 jobs:
+  license_check_direct:
+    name: Direct dependencies only
+    env:
+      REQUIREMENTS_FILE: requirements_direct.txt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Get direct dependencies, all extras
+      run: |
+        pip install toml
+        python .github/utils/pyproject_to_requirements.py pyproject.toml --extra all > ${{ env.REQUIREMENTS_FILE }}
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        requirements: ${{ env.REQUIREMENTS_FILE }}
+        fail: 'Copyleft,Other,Error'
+        # Exclusions in the vanilla distribution must be explicitly motivated
+        #
+        # - tqdm is MLP but there are no better alternatives
+        # - PyMuPDF is optional
+        # - pinecone-client is optional
+        # - psycopg2 is optional
+        exclude: '(?i)^(PyMuPDF|tqdm|pinecone-client|psycopg2).*'
+
+    # We keep the license inventory on FOSSA
+    - name: Send license report to Fossa
+      uses: fossas/fossa-action@v1.3.1
+      continue-on-error: true  # not critical
+      with:
+        api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
+
+    - uses: slackapi/slack-github-action@v1.23.0
+      if: failure() && github.ref == 'refs/heads/main'
+      with:
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
+                    "alt_text": "Actor"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
+                  }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "image",
+                    "image_url": "https://github.githubassets.com/favicons/favicon.png",
+                    "alt_text": "Github logo"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
+                  }
+                ]
+              }
+            ]
+          }
+
+
   license_check_vanilla:
-    name: Core dependencies
+    name: Core dependencies, no extras
     env:
       REQUIREMENTS_FILE: requirements_vanilla.txt
     runs-on: ubuntu-latest
@@ -105,7 +203,7 @@ jobs:
 
 
   license_check_all:
-    name: All dependencies
+    name: All extras
     env:
       REQUIREMENTS_FILE: requirements_all.txt
     runs-on: ubuntu-latest
@@ -197,7 +295,7 @@ jobs:
 
 
   license_check_all_GPU:
-    name: All dependencies - GPU
+    name: All extras, GPU version
     env:
       REQUIREMENTS_FILE: requirements_all_gpu.txt
     runs-on: ubuntu-latest
@@ -229,13 +327,6 @@ jobs:
         # - pyzmq is flagged because dual-licensed, but we assume using BSD
         # - tqdm is MLP but there are no better alternatives
         exclude: '(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*'
-
-    # We keep the license inventory on FOSSA
-    - name: Send license report to Fossa
-      uses: fossas/fossa-action@v1.3.1
-      continue-on-error: true  # not critical
-      with:
-        api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
 
     - name: Print report
       if: ${{ always() }}
