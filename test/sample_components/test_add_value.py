@@ -44,4 +44,4 @@ class TestAddFixedValue(BaseTestComponent):
         component = AddFixedValue()
         results = component.run(AddFixedValue.Input(value=50, add=10))
         assert results == AddFixedValue.Output(value=60)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}

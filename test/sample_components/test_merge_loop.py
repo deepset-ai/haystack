@@ -20,21 +20,21 @@ class MergeLoop:
 
     def __init__(self, expected_type: type):
         self.expected_type = expected_type
-        self._init_parameters = {"expected_type": expected_type.__name__}
+        self.init_parameters = {"expected_type": expected_type.__name__}
 
     @property
-    def input_type(self) -> VariadicComponentInput:
+    def input_type(self):
         @dataclass
         class Input(VariadicComponentInput):
-            values: List[self.expected_type]
+            values: List[self.expected_type]  # type: ignore
 
         return Input
 
     @property
-    def output_type(self) -> ComponentOutput:
+    def output_type(self):
         @dataclass
         class Output(ComponentOutput):
-            value: self.expected_type
+            value: self.expected_type  # type: ignore
 
         return Output
 

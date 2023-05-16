@@ -57,9 +57,8 @@ class ComponentInput(BaseIODataclass, metaclass=Optionalize):
     Represents the input of a component.
     """
 
-    _component_input = (
-        True  # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
-    )
+    # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
+    _component_input = True
 
 
 class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):
@@ -67,10 +66,9 @@ class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):
     Represents the input of a variadic component.
     """
 
+    # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
     _component_input = True
-    _variadic_component_input = (
-        True  # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
-    )
+    _variadic_component_input = True
 
 
 class ComponentOutput(BaseIODataclass):
@@ -78,6 +76,5 @@ class ComponentOutput(BaseIODataclass):
     Represents the output of a component.
     """
 
-    _component_output = (
-        True  # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
-    )
+    # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
+    _component_output = True

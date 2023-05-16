@@ -38,16 +38,16 @@ class TestSum(BaseTestComponent):
         component = Sum()
         results = component.run(Sum.Input())
         assert results == Sum.Output(total=0)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}
 
     def test_sum_one_value(self):
         component = Sum()
         results = component.run(Sum.Input(10))
         assert results == Sum.Output(total=10)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}
 
     def test_sum_few_values(self):
         component = Sum()
         results = component.run(Sum.Input(10, 11, 12))
         assert results == Sum.Output(total=33)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}

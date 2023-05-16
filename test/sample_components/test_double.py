@@ -43,4 +43,4 @@ class TestDouble(BaseTestComponent):
         component = Double()
         results = component.run(Double.Input(value=10))
         assert results == Double.Output(value=20)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}

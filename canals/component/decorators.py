@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 def save_init_params(init_func):
     """
-    Decorator that saves the init parameters of a component in `self._init_parameters`
+    Decorator that saves the init parameters of a component in `self.init_parameters`
     """
 
     @wraps(init_func)
-    def wrapper_save_init_parameters(self, *args, **kwargs):
+    def wrapper_saveinit_parameters(self, *args, **kwargs):
 
         # Call the actual __init__ function with the arguments
         init_func(self, *args, **kwargs)
@@ -31,12 +31,12 @@ def save_init_params(init_func):
         args_as_kwargs = {arg_name: arg for arg, arg_name in zip(args, arg_names)}
 
         # Collect and store all the init parameters, preserving whatever the components might have already added there
-        _init_parameters = {**args_as_kwargs, **kwargs}
-        if hasattr(self, "_init_parameters"):
-            _init_parameters = {**_init_parameters, **self._init_parameters}
-        self._init_parameters = _init_parameters
+        init_parameters = {**args_as_kwargs, **kwargs}
+        if hasattr(self, "init_parameters"):
+            init_parameters = {**init_parameters, **self.init_parameters}
+        self.init_parameters = init_parameters
 
-    return wrapper_save_init_parameters
+    return wrapper_saveinit_parameters
 
 
 def init_defaults(init_func):

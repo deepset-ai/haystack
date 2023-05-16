@@ -26,11 +26,15 @@ For example, let's imagine we have two components with the following I/O declare
 class ComponentA:
 
     @dataclass
-    class Output:
+    class Input(ComponentInput):
+        input_value: int
+
+    @dataclass
+    class Output(ComponentOutput):
         intermediate_value: str
 
-    def run(self, input_value: int) -> Output:
-        return ComponentA.output(intermediate_value="hello")
+    def run(self, data: Input) -> Output:
+        return ComponentA.Output(intermediate_value="hello")
 
 @component
 class ComponentB:
@@ -39,8 +43,8 @@ class ComponentB:
     class Output:
         output_value: List[int]
 
-    def run(self, intermediate_value: str) -> Output:
-        return ComponentB.output(output_value=[1, 2, 3])
+    def run(self, data: Input) -> Output:
+        return ComponentB.Output(output_value=[1, 2, 3])
 ```
 
 This is the behavior of `Pipeline.connect()`:

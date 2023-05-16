@@ -41,4 +41,4 @@ class TestSubtract(BaseTestComponent):
         component = Subtract()
         results = component.run(Subtract.Input(first_value=10, second_value=7))
         assert results == Subtract.Output(difference=3)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}

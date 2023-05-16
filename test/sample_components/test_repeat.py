@@ -47,10 +47,10 @@ class TestRepeat(BaseTestComponent):
         component = Repeat()
         results = component.run(Repeat.Input(value=10))
         assert results == component.output_type(output_1=10, output_2=10, output_3=10)
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}
 
     def test_repeat_init(self):
         component = Repeat(outputs=["one", "two"])
         results = component.run(Repeat.Input(value=10))
         assert results == component.output_type(one=10, two=10)
-        assert component._init_parameters == {"outputs": ["one", "two"]}
+        assert component.init_parameters == {"outputs": ["one", "two"]}

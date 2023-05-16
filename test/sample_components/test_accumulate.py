@@ -45,7 +45,7 @@ class Accumulate:
         else:
             self.function = self._load_function(function)
             # 'function' is not serializable by default, so we serialize it manually.
-            self._init_parameters = {"function": self._save_function(function)}
+            self.init_parameters = {"function": self._save_function(function)}
 
     def run(self, data: Input) -> Output:
         self.state = self.function(self.state, data.value)
@@ -103,7 +103,7 @@ class TestAccumulate(BaseTestComponent):
         assert results == Accumulate.Output(value=11)
         assert component.state == 11
 
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}
 
     def test_accumulate_callable(self):
         component = Accumulate(function=my_subtract)
@@ -116,7 +116,7 @@ class TestAccumulate(BaseTestComponent):
         assert results == Accumulate.Output(value=-11)
         assert component.state == -11
 
-        assert component._init_parameters == {
+        assert component.init_parameters == {
             "function": "test.sample_components.test_accumulate.my_subtract",
         }
 
@@ -131,6 +131,6 @@ class TestAccumulate(BaseTestComponent):
         assert results == Accumulate.Output(value=-11)
         assert component.state == -11
 
-        assert component._init_parameters == {
+        assert component.init_parameters == {
             "function": "test.sample_components.test_accumulate.my_subtract",
         }
