@@ -12,7 +12,7 @@ from collections import OrderedDict
 import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
-from canals.component.input_output import ComponentInput, ComponentOutput
+from canals.component.input_output import ComponentInput
 from canals.draw import draw, RenderingEngines
 from canals.pipeline._utils import (
     InputSocket,
@@ -279,7 +279,7 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Dict[str, Any]], debug: bool = False) -> Dict[str, Any]:
+    def run(self, data: Dict[str, ComponentInput], debug: bool = False) -> Dict[str, Any]:
         """
         Runs the pipeline.
 
@@ -350,7 +350,7 @@ class Pipeline:
                     "inputs_buffer": list(inputs_buffer.items()),
                     "pipeline_output": pipeline_output,
                 }
-            logger.debug("> Queue at step %s: %s", step, {k: v for k, v in inputs_buffer.items()})
+            logger.debug("> Queue at step %s: %s", step, {k: list(v.keys()) for k, v in inputs_buffer.items()})
 
             component, inputs = inputs_buffer.popitem(last=False)  # FIFO
 

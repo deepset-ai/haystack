@@ -6,7 +6,6 @@ import inspect
 
 from canals.errors import ComponentError
 from canals.component.decorators import save_init_params, init_defaults
-from canals.component.input_output import ComponentInput, ComponentOutput
 
 
 logger = logging.getLogger(__name__)
@@ -137,16 +136,16 @@ def component(class_):
         raise ComponentError(
             "Components must either have an Input dataclass or a 'input_type' property that returns such dataclass"
         )
-    # if not isinstance(class_.Input, ComponentInput):
-    #     raise ComponentError("Input must inherit from ComponentInput")
+    if hasattr(class_, "Input") and not hasattr(class_.Input, "_component_input"):
+        raise ComponentError(f"{class_.__name__}.Input must inherit from ComponentInput")
 
     # Check for Output
     if not hasattr(class_, "Output") and not hasattr(class_, "output_type"):
         raise ComponentError(
             "Components must either have an Output dataclass or a 'output_type' property that returns such dataclass"
         )
-    # if not isinstance(class_.Output, ComponentOutput):
-    #     raise ComponentError("Output must inherit from ComponentOutput")
+    if hasattr(class_, "Output") and not hasattr(class_.Output, "_component_output"):
+        raise ComponentError(f"{class_.__name__}.Output must inherit from ComponentOutput")
 
     # Check for run()
     if not hasattr(class_, "run"):

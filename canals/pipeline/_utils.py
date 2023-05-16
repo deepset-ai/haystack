@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai> SPDX-License-Identifier: Apache-2.0
-from typing import Tuple, Optional, List, Iterable, Dict, Any, get_args
+from typing import Tuple, Optional, List, Iterable, Dict, get_args
 
 import logging
 import inspect
@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import networkx
 
 from canals.errors import PipelineConnectError, PipelineValidationError
-from canals.component.input_output import fields, ComponentInput, ComponentOutput, VariadicComponentInput
+from canals.component.input_output import fields, ComponentInput
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
     input_annotation = run_signature.parameters["data"].annotation
     if not input_annotation or input_annotation == inspect.Parameter.empty:
         input_annotation = component.input_type
-    variadic = hasattr(input_annotation, "_variadic_input")
+    variadic = hasattr(input_annotation, "_variadic_component_input")
 
     input_sockets = {}
     for field in fields(input_annotation):
@@ -188,7 +188,7 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
 
 def validate_pipeline_input(  # pylint: disable=too-many-branches
     graph: networkx.MultiDiGraph, input_values: Dict[str, ComponentInput]
-) -> Dict[str, Dict[str, Any]]:
+) -> Dict[str, ComponentInput]:
     """
     Make sure the pipeline is properly built and that the input received makes sense.
     Returns the input values, validated and updated at need.
@@ -213,6 +213,6 @@ def validate_pipeline_input(  # pylint: disable=too-many-branches
         if graph.nodes[component]["variadic_input"] and component in input_values.keys():
             for key, value in input_values[component].__dict__.items():  # should be just one
                 if not isinstance(value, Iterable):
-                    input_values[component][key] = [value]
+                    setattr(input_values[component], key, [value])
 
     return input_values

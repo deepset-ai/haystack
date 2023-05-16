@@ -1,40 +1,25 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional
 import logging
 import inspect
-from functools import wraps
-from dataclasses import fields, dataclass
-
-from canals.component.decorators import save_init_params
-
+from dataclasses import fields
 
 logger = logging.getLogger(__name__)
 
 
-def uncooperative_save_init_params(init_func):
-    """
-    Decorator that saves the init parameters of a component in `self._init_parameters`
-    """
+class BaseIODataclass:
+    def names(self):
+        """
+        Returns the name of all the fields of this dataclass.
+        """
+        return [field.name for field in fields(self)]
 
-    @wraps(init_func)
-    def wrapper_save_init_parameters(self, *args, **kwargs):
-
-        # Convert all args into kwargs
-        sig = inspect.signature(init_func)
-        arg_names = list(sig.parameters.keys())
-        if any(arg_names) and arg_names[0] in ["self", "cls"]:
-            arg_names.pop(0)
-        args_as_kwargs = {arg_name: arg for arg, arg_name in zip(args, arg_names)}
-
-        # Collect and store all the init parameters, preserving whatever the components might have already added there
-        _init_parameters = {**args_as_kwargs, **kwargs}
-        if hasattr(self, "_init_parameters"):
-            _init_parameters = {**_init_parameters, **self._init_parameters}
-        self._init_parameters = _init_parameters
-
-    return wrapper_save_init_parameters
+    def to_dict(self):
+        """
+        Returns a dictionary representation of this dataclass.
+        """
+        return self.__dict__
 
 
 class Optionalize(type):
@@ -49,21 +34,9 @@ class Optionalize(type):
         return obj
 
 
-class ComponentInput(metaclass=Optionalize):
-    """
-    Represents the input of a component.
-    """
-
-    def names(self):
-        return [field.name for field in fields(self)]
-
-    def to_dict(self):
-        return self.__dict__
-
-
 class Variadic(type):
     """
-    Makes all the fields of the dataclass optional by setting None as their default value.
+    Adds the proper checks to a variadic input dataclass and adds a suitable init.
     """
 
     def __call__(cls, *args, **kwargs):
@@ -79,23 +52,32 @@ class Variadic(type):
         return obj
 
 
-class VariadicComponentInput(metaclass=Variadic):
-    _variadic_input = True
+class ComponentInput(BaseIODataclass, metaclass=Optionalize):
+    """
+    Represents the input of a component.
+    """
 
-    def names(self):
-        return [field.name for field in fields(self)]
-
-    def to_dict(self):
-        return self.__dict__
+    _component_input = (
+        True  # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
+    )
 
 
-class ComponentOutput:
+class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):
+    """
+    Represents the input of a variadic component.
+    """
+
+    _component_input = True
+    _variadic_component_input = (
+        True  # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
+    )
+
+
+class ComponentOutput(BaseIODataclass):
     """
     Represents the output of a component.
     """
 
-    def names(self):
-        return [field.name for field in fields(self)]
-
-    def to_dict(self):
-        return self.__dict__
+    _component_output = (
+        True  # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
+    )
