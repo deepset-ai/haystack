@@ -2100,7 +2100,7 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
-def test_load_evaluation_result_w_empty_document_ids(tmp_path):
+def test_load_evaluation_result_w_none_values(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
@@ -2174,3 +2174,6 @@ def test_load_evaluation_result_w_empty_document_ids(tmp_path):
     eval_result = EvaluationResult.load(tmp_path)
     assert "Reader" in eval_result
     assert len(eval_result) == 1
+    assert eval_result["Reader"].iloc[0].answer is None
+    assert eval_result["Reader"].iloc[0].context is None
+    assert eval_result["Reader"].iloc[0].document_ids is None
