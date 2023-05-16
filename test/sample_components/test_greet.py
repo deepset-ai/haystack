@@ -24,14 +24,18 @@ class Greet:
     @dataclass
     class Input(ComponentInput):
         value: int
-        message: str = "\nGreeting component says: Hi! The value is {value}\n"
-        log_level: str = "INFO"
+        message: str
+        log_level: str
 
     @dataclass
     class Output(ComponentOutput):
         value: int
 
-    def __init__(self, message: Optional[str] = None, log_level: Optional[str] = None):
+    def __init__(
+        self,
+        message: Optional[str] = "\nGreeting component says: Hi! The value is {value}\n",
+        log_level: Optional[str] = "INFO",
+    ):
         """
         :param message: the message to log. Can use `{value}` to embed the value.
         :param log_level: the level to log at.
@@ -44,6 +48,7 @@ class Greet:
         """
         Logs a greeting message without affecting the value passing on the connection.
         """
+        print(data.log_level)
         level = getattr(logging, data.log_level, None)
         if not level:
             raise ValueError(f"This log level does not exist: {data.log_level}")

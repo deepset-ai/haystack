@@ -15,9 +15,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_pipeline(tmp_path):
     accumulator = Accumulate()
+    merge_loop = MergeLoop(expected_type=int)
 
     pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_component("merge", MergeLoop(expected_type=int))
+    pipeline.add_component("merge", merge_loop)
     pipeline.add_component("sum", Sum())
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -34,12 +35,12 @@ def test_pipeline(tmp_path):
     pipeline.draw(tmp_path / "looping_and_merge_pipeline.png")
 
     results = pipeline.run(
-        {"merge": {"value": 8}, "sum": {"value": 2}},
+        {"merge": merge_loop.input_type(8), "sum": Sum.Input(2)},
     )
     pprint(results)
     print("accumulate: ", accumulator.state)
 
-    assert results == {"sum": {"total": 23}}
+    assert results == {"sum": Sum.Output(total=23)}
     assert accumulator.state == 19
 
 

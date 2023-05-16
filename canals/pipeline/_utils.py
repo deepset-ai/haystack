@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai> SPDX-License-Identifier: Apache-2.0
-from typing import Tuple, Optional, List, Iterable, Dict, Any
+from typing import Tuple, Optional, List, Iterable, Dict, Any, get_args
 
 import logging
 import inspect
@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import networkx
 
 from canals.errors import PipelineConnectError, PipelineValidationError
-from canals.component.input_output import fields, ComponentInput, ComponentOutput
+from canals.component.input_output import fields, ComponentInput, ComponentOutput, VariadicComponentInput
 
 
 logger = logging.getLogger(__name__)
@@ -48,10 +48,13 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
     input_annotation = run_signature.parameters["data"].annotation
     if not input_annotation or input_annotation == inspect.Parameter.empty:
         input_annotation = component.input_type
+    variadic = hasattr(input_annotation, "_variadic_input")
 
-    input_sockets = {
-        field.name: InputSocket(name=field.name, type=field.type, variadic=False) for field in fields(input_annotation)
-    }
+    input_sockets = {}
+    for field in fields(input_annotation):
+        # Unwrap list type to get the internal type, if the argument is variadic
+        type_ = get_args(field.type)[0] if variadic else field.type
+        input_sockets[field.name] = InputSocket(name=field.name, type=type_, variadic=variadic)
 
     return input_sockets
 
@@ -208,7 +211,7 @@ def validate_pipeline_input(  # pylint: disable=too-many-branches
     # Make sure variadic input components are receiving lists
     for component in input_components.keys():
         if graph.nodes[component]["variadic_input"] and component in input_values.keys():
-            for key, value in input_values[component].items():  # should be just one
+            for key, value in input_values[component].__dict__.items():  # should be just one
                 if not isinstance(value, Iterable):
                     input_values[component][key] = [value]
 

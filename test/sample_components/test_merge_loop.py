@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component, VariadicComponentInput, ComponentOutput
 from canals.testing import BaseTestComponent
 
 
@@ -15,10 +15,7 @@ from canals.testing import BaseTestComponent
 class MergeLoop:
     """
     Takes two input components and returns the first one that is not None.
-
     In case both received a value, priority is given to 'first'.
-
-    Always initialize this class by passing the expected type, like: `MergeLoop(expected_type=int)`.
     """
 
     def __init__(self, expected_type: type):
@@ -26,13 +23,10 @@ class MergeLoop:
         self._init_parameters = {"expected_type": expected_type.__name__}
 
     @property
-    def input_type(self) -> ComponentInput:
+    def input_type(self) -> VariadicComponentInput:
         @dataclass
-        class Input(ComponentInput):
+        class Input(VariadicComponentInput):
             values: List[self.expected_type]
-
-            def __init__(self, *values: self.expected_type):
-                self.values = list(values)
 
         return Input
 

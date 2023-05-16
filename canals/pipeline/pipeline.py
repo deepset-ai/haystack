@@ -560,21 +560,19 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
+            input_class = instance.Input if hasattr(instance, "Input") else instance.input_type
+
             # If the node is variadic, unpack the input
             if self.graph.nodes[name]["variadic_input"]:
                 inputs = list(inputs.values())[0]
-                output_dataclass = instance.run(*inputs)
+                input_dataclass = input_class(*inputs)
 
             # Otherwise pass the inputs as kwargs after adding the component's own defaults to them
             else:
-                print(instance.defaults, inputs)
-
                 inputs = {**instance.defaults, **inputs}
-                input_dataclass = instance.Input(**inputs)
+                input_dataclass = input_class(**inputs)
 
-                print(input_dataclass.__dict__)
-
-                output_dataclass = instance.run(input_dataclass)
+            output_dataclass = instance.run(input_dataclass)
 
             # Unwrap the output
             logger.debug("   '%s' outputs: %s\n", name, output_dataclass.__dict__)
@@ -610,7 +608,7 @@ class Pipeline:
 
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
-            if is_decision_node_for_loop and node_results[from_socket.name] is None:
+            if is_decision_node_for_loop and getattr(node_results, from_socket.name) is None:
                 if networkx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(

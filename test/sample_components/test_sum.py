@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import pytest
 
 from canals.testing import BaseTestComponent
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component, VariadicComponentInput, ComponentOutput
 
 
 @component
@@ -18,11 +18,8 @@ class Sum:
     """
 
     @dataclass
-    class Input(ComponentInput):
+    class Input(VariadicComponentInput):
         values: List[int]
-
-        def __init__(self, *values: int):
-            self.values = list(values)
 
     @dataclass
     class Output(ComponentOutput):

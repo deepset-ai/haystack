@@ -61,6 +61,34 @@ class ComponentInput(metaclass=Optionalize):
         return self.__dict__
 
 
+class Variadic(type):
+    """
+    Makes all the fields of the dataclass optional by setting None as their default value.
+    """
+
+    def __call__(cls, *args, **kwargs):
+        if kwargs:
+            raise ValueError(f"{cls.__name__} accepts only an unnamed list of positional parameters.")
+
+        obj = cls.__new__(cls, *args)
+
+        if len(inspect.signature(obj.__init__).parameters) != 1:
+            raise ValueError(f"{cls.__name__} accepts only one variadic positional parameter.")
+
+        obj.__init__(list(args))
+        return obj
+
+
+class VariadicComponentInput(metaclass=Variadic):
+    _variadic_input = True
+
+    def names(self):
+        return [field.name for field in fields(self)]
+
+    def to_dict(self):
+        return self.__dict__
+
+
 class ComponentOutput:
     """
     Represents the output of a component.

@@ -31,10 +31,10 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "variable_decision_pipeline.png")
 
-    results = pipeline.run({"add_one": {"value": 1}})
+    results = pipeline.run({"add_one": AddFixedValue.Input(value=1)})
     pprint(results)
 
-    assert results == {"add_one_again": {"value": 6}}
+    assert results == {"add_one_again": AddFixedValue.Output(value=6)}
 
 
 if __name__ == "__main__":
