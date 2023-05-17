@@ -1682,7 +1682,7 @@ def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     get_component_definitions(pipeline.get_config())
 
 
-def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
+def test_pipeline_env_vars_do_not_modify__component_config(caplog, monkeypatch):
     class DummyNode(MockNode):
         def __init__(self, replaceable: str):
             self.replaceable = replaceable
@@ -1697,7 +1697,10 @@ def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
     original_pipeline_config = deepcopy(pipeline.get_config())
 
     no_env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=False)
-    env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+
+    with caplog.at_level(logging.INFO):
+        env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+        assert "overwritten with environment variable 'NODE_PARAMS_REPLACEABLE' value '***'." in caplog.text
 
     new_component_config = deepcopy(node._component_config)
     new_pipeline_config = deepcopy(pipeline.get_config())
@@ -2074,3 +2077,16 @@ def test_update_config_hash():
         assert test_pipeline.config_hash == None
         test_pipeline.update_config_hash()
         assert test_pipeline.config_hash == "a30d3273de0d70e63e8cd91d915255b3"
+
+
+@pytest.mark.unit
+def test_load_from_config_w_param_that_equals_component_name():
+    config = {
+        "version": "ignore",
+        "components": [{"name": "node", "type": "InMemoryDocumentStore", "params": {"index": "node"}}],
+        "pipelines": [{"name": "indexing", "nodes": [{"name": "node", "inputs": ["File"]}]}],
+    }
+
+    pipeline = Pipeline.load_from_config(pipeline_config=config)
+    assert pipeline.components["node"].name == "node"
+    assert pipeline.components["node"].index == "node"

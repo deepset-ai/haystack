@@ -41,7 +41,7 @@ class BiAdaptiveModel(nn.Module):
         language_model2: LanguageModel,
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
-        device: torch.device = torch.device("cuda"),
+        device: Optional[torch.device] = None,
         lm1_output_types: Optional[Union[str, List[str]]] = None,
         lm2_output_types: Optional[Union[str, List[str]]] = None,
         loss_aggregation_fn: Optional[Callable] = None,
@@ -74,6 +74,9 @@ class BiAdaptiveModel(nn.Module):
                                     Note: The loss at this stage is per sample, i.e one tensor of
                                     shape (batchsize) per prediction head.
         """
+        if not device:
+            device = torch.device("cuda")
+
         if lm1_output_types is None:
             lm1_output_types = ["per_sequence"]
         if lm2_output_types is None:

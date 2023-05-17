@@ -4,11 +4,11 @@ from typing import Optional, Union, List, Dict, Any, Tuple
 from unittest.mock import patch, Mock, MagicMock
 
 import pytest
-from transformers import AutoTokenizer, GenerationConfig
+from transformers import GenerationConfig, TextStreamer
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
-from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
+from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, DefaultTokenStreamingHandler
 
 
 def skip_test_for_invalid_key(prompt_model):
@@ -28,14 +28,14 @@ def get_api_key(request):
 def test_add_and_remove_template():
     with patch("haystack.nodes.prompt.prompt_node.PromptModel"):
         node = PromptNode()
-
+    total_count = 16
     # Verifies default
-    assert len(node.get_prompt_template_names()) == 14
+    assert len(node.get_prompt_template_names()) == total_count
 
     # Add a fake template
     fake_template = PromptTemplate(name="fake-template", prompt_text="Fake prompt")
     node.add_prompt_template(fake_template)
-    assert len(node.get_prompt_template_names()) == 15
+    assert len(node.get_prompt_template_names()) == total_count + 1
     assert "fake-template" in node.get_prompt_template_names()
 
     # Verify that adding the same template throws an expection
@@ -47,7 +47,7 @@ def test_add_and_remove_template():
 
     # Verify template is correctly removed
     assert node.remove_prompt_template("fake-template")
-    assert len(node.get_prompt_template_names()) == 14
+    assert len(node.get_prompt_template_names()) == total_count
     assert "fake-template" not in node.get_prompt_template_names()
 
     # Verify that removing the same template throws an expection
@@ -335,10 +335,23 @@ def test_prompt_node_streaming_handler_on_call(mock_model):
     mock_handler = Mock()
     node = PromptNode()
     node.prompt_model = mock_model
-    node("What are some of the best cities in the world to live and why?", stream=True, stream_handler=mock_handler)
+    node("Irrelevant prompt", stream=True, stream_handler=mock_handler)
     # Verify model has been constructed with expected model_kwargs
     mock_model.invoke.assert_called_once()
     assert mock_model.invoke.call_args_list[0].kwargs["stream_handler"] == mock_handler
+
+
+@pytest.mark.unit
+def test_prompt_node_hf_model_streaming():
+    # tests that HF streaming handler is passed to the HF pipeline run_single method as "streamer" kwarg with
+    # the required HF type transformers.generation.streamers.TextStreamer
+
+    pn = PromptNode(model_kwargs={"stream_handler": DefaultTokenStreamingHandler()})
+    with patch.object(pn.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+        pn("Irrelevant prompt")
+        args, kwargs = mock_call.call_args
+        assert "streamer" in args[2]
+        assert isinstance(args[2]["streamer"], TextStreamer)
 
 
 @pytest.mark.unit

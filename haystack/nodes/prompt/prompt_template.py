@@ -268,9 +268,14 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 if param in kwargs:
                     params_dict[param] = kwargs[param]
 
-        if set(params_dict.keys()) != set(self.prompt_params):
-            available_params = set(list(params_dict.keys()) + list(set(kwargs.keys())))
-            raise ValueError(f"Expected prompt parameters {self.prompt_params} but got {list(available_params)}.")
+        if not set(self.prompt_params).issubset(params_dict.keys()):
+            available_params = {*params_dict.keys(), *kwargs.keys()}
+            provided = set(self.prompt_params).intersection(available_params)
+            message = f"only {list(provided)}" if provided else "none of these parameters"
+            raise ValueError(
+                f"Expected prompt parameters {self.prompt_params} to be provided but got "
+                f"{message}. Make sure to provide all template parameters."
+            )
 
         template_dict = {"_at_least_one_prompt": True}
         for id, call in self._prompt_params_functions.items():
@@ -427,6 +432,14 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
             "---\n\n"
             "Question: {query}\n"
-            "Thought: Let's think step-by-step, I first need to ",
+            "Thought: Let's think step-by-step, I first need to {transcript}",
+        ),
+        PromptTemplate(
+            name="conversational-agent",
+            prompt_text="The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:",
+        ),
+        PromptTemplate(
+            name="conversational-summary",
+            prompt_text="Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:",
         ),
     ]

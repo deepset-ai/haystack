@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, Dict, Union, Tuple, List
 
 import requests
+
 from haystack.errors import DatasetsError
 from haystack.schema import Document
 
