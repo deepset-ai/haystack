@@ -274,3 +274,14 @@ def test_update_hash():
     assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
     agent.update_hash()
     assert agent.hash == "5ac8eca2f92c9545adcce3682b80d4c5"
+
+
+def test_invalid_agent_template():
+    pn = PromptNode()
+    with pytest.raises(ValueError, match="some_non_existing_template not supported"):
+        Agent(prompt_node=pn, prompt_template="some_non_existing_template")
+
+    # if prompt_template is None, then we'll use zero-shot-react
+    a = Agent(prompt_node=pn, prompt_template=None)
+    assert isinstance(a.prompt_template, PromptTemplate)
+    assert a.prompt_template.name == "zero-shot-react"
