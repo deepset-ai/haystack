@@ -183,9 +183,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
     PromptTemplate is a template for the prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what a prompt template may look like:
 
     ```python
-        PromptTemplate(name="sentiment-analysis",
-                   prompt_text="Give a sentiment for this context. Answer with positive, negative
-                   or neutral. Context: {documents}; Answer:")
+        PromptTemplate("Give a sentiment for this context. Answer with positive, negative or neutral. Context: {documents}; Answer:")
     ```
 
     Optionally, you can declare prompt parameters using f-string syntax in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
@@ -392,106 +390,3 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     def __repr__(self):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
-
-
-def get_predefined_prompt_templates() -> List[PromptTemplate]:
-    return [
-        PromptTemplate(
-            name="question-answering",
-            prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
-            "{query}; Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="question-answering-per-document",
-            prompt_text="Given the context please answer the question. Context: {documents}; Question: "
-            "{query}; Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="question-answering-with-references",
-            prompt_text="Create a concise and informative answer (no more than 50 words) for a given question "
-            "based solely on the given documents. You must only use information from the given documents. "
-            "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
-            "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. "
-            "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
-            "{join(documents, delimiter=new_line, pattern=new_line+'Document[$idx]: $content', str_replace={new_line: ' ', '[': '(', ']': ')'})} \n Question: {query}; Answer: ",
-            output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]"),
-        ),
-        PromptTemplate(
-            name="question-answering-with-document-scores",
-            prompt_text="Answer the following question using the paragraphs below as sources. "
-            "An answer should be short, a few words at most.\n"
-            "Paragraphs:\n{documents}\n"
-            "Question: {query}\n\n"
-            "Instructions: Consider all the paragraphs above and their corresponding scores to generate "
-            "the answer. While a single paragraph may have a high score, it's important to consider all "
-            "paragraphs for the same answer candidate to answer accurately.\n\n"
-            "After having considered all possibilities, the final answer is:\n",
-        ),
-        PromptTemplate(
-            name="question-generation",
-            prompt_text="Given the context please generate a question. Context: {documents}; Question:",
-        ),
-        PromptTemplate(
-            name="conditioned-question-generation",
-            prompt_text="Please come up with a question for the given context and the answer. "
-            "Context: {documents}; Answer: {answers}; Question:",
-        ),
-        PromptTemplate(name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
-        PromptTemplate(
-            name="question-answering-check",
-            prompt_text="Does the following context contain the answer to the question? "
-            "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="sentiment-analysis",
-            prompt_text="Please give a sentiment for this context. Answer with positive, "
-            "negative or neutral. Context: {documents}; Answer:",
-        ),
-        PromptTemplate(
-            name="multiple-choice-question-answering",
-            prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
-            "Options: {options}; Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="topic-classification",
-            prompt_text="Categories: {options}; What category best describes: {documents}; Answer:",
-        ),
-        PromptTemplate(
-            name="language-detection",
-            prompt_text="Detect the language in the following context and answer with the "
-            "name of the language. Context: {documents}; Answer:",
-        ),
-        PromptTemplate(
-            name="translation",
-            prompt_text="Translate the following context to {target_language}. Context: {documents}; Translation:",
-        ),
-        PromptTemplate(
-            name="zero-shot-react",
-            prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
-            "correctly, you have access to the following tools:\n\n"
-            "{tool_names_with_descriptions}\n\n"
-            "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
-            "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
-            "for a final answer, respond with the `Final Answer:`\n\n"
-            "Use the following format:\n\n"
-            "Question: the question to be answered\n"
-            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
-            "Tool: pick one of {tool_names} \n"
-            "Tool Input: the input for the tool\n"
-            "Observation: the tool will respond with the result\n"
-            "...\n"
-            "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
-            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
-            "---\n\n"
-            "Question: {query}\n"
-            "Thought: Let's think step-by-step, I first need to ",
-        ),
-        PromptTemplate(
-            name="conversational-summary",
-            prompt_text="Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:",
-        ),
-    ]

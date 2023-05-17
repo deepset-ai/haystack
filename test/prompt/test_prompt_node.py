@@ -147,8 +147,9 @@ version: v0.1.1
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_get_prompt_template_object(mock_model, mock_prompthub):
     node = PromptNode()
-    template = node.get_prompt_template(PromptTemplate(name="fake-template", prompt_text=""))
-    assert template.name == "fake-template"
+    original_template = PromptTemplate("fake-template")
+    template = node.get_prompt_template(original_template)
+    assert template == original_template
 
 
 @pytest.mark.unit
@@ -1077,7 +1078,7 @@ class TestTokenLimit:
         reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     def test_openai_token_limit_warning(self, caplog):
-        tt = PromptTemplate(name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:")
+        tt = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
         prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])

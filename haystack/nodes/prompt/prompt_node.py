@@ -218,7 +218,7 @@ class PromptNode(BaseComponent):
         output_parser = None
         if self._default_prompt_template:
             output_parser = self._default_prompt_template.output_parser
-        template = PromptTemplate(name=prompt_template, output_parser=output_parser)
+        template = PromptTemplate(prompt_template, output_parser=output_parser)
         self._prompt_templates_cache[prompt_template] = template
         return template
 
