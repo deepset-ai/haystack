@@ -14,6 +14,7 @@ HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
 HAYSTACK_DOCKER_CONTAINER = "HAYSTACK_DOCKER_CONTAINER"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
+SEND_EVENT_EVERY_N_RUNS = 100
 
 
 logger = logging.getLogger(__name__)
@@ -146,14 +147,18 @@ def send_pipeline_event(  # type: ignore
                 telemetry.send_event(event_name="Public Demo", event_properties=event_properties)
                 return
 
-            # Send this event only if the pipeline config has changed
-            if pipeline.last_config_hash == pipeline.config_hash:
+            # If pipeline config has not changed, send an event every SEND_EVENT_EVERY_N_RUNS runs
+            if pipeline.last_config_hash == pipeline.config_hash and pipeline.runs % SEND_EVENT_EVERY_N_RUNS == 0:
+                event_properties = {"pipeline.config_hash": pipeline.config_hash, "pipeline.runs": pipeline.runs}
+                telemetry.send_event(event_name="Pipeline", event_properties=event_properties)
                 return
             pipeline.last_config_hash = pipeline.config_hash
+            pipeline.runs = 1
 
             event_properties = {
                 "pipeline.classname": pipeline.__class__.__name__,
                 "pipeline.config_hash": pipeline.config_hash,
+                "pipeline.runs": pipeline.runs,
             }
 
             # Add document store

@@ -65,7 +65,13 @@ from pathlib import Path
 from itertools import islice
 
 from tqdm.auto import tqdm
-from elasticsearch import Elasticsearch
+
+try:
+    from elasticsearch import Elasticsearch
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
@@ -221,7 +227,7 @@ def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers:
     for retrieved_doc in retrieved_docs:
         retrieved_doc_id = retrieved_doc.meta.get("name", "")
         retrieved_doc_text = retrieved_doc.content
-        if any(answer.lower() in retrieved_doc_text.lower() for answer in answers):
+        if any(str(answer).lower() in retrieved_doc_text.lower() for answer in answers):
             continue
         list_hard_neg_ctxs.append({"title": retrieved_doc_id, "text": retrieved_doc_text, "passage_id": ""})
 

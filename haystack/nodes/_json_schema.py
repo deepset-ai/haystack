@@ -55,6 +55,10 @@ def field_singleton_schema(
     known_models: TypeModelSet,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Set[str]]:
     try:
+        # Typing with optional dependencies is really tricky. Let's just use Any for now. To be fixed.
+        if isinstance(field.type_, ForwardRef):
+            logger.debug(field.type_)
+            field.type_ = Any
         return _field_singleton_schema(
             field,
             by_alias=by_alias,
@@ -211,7 +215,10 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     # Create the model with Pydantic and extract the schema
     model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)
-    model.update_forward_refs(**model.__dict__)
+    try:
+        model.update_forward_refs(**model.__dict__)
+    except NameError as exc:
+        logger.debug("%s", str(exc))
     params_schema = model.schema()
 
     # Pydantic v1 patch to generate JSON schemas including Optional fields

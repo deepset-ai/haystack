@@ -10,8 +10,16 @@ import pandas as pd
 import requests
 from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
-from elasticsearch import Elasticsearch
-from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+from transformers import PreTrainedTokenizerFast
+
+
+try:
+    from elasticsearch import Elasticsearch
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
+
 
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
@@ -27,7 +35,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
 
-from ..conftest import MockRetriever, fail_at_version
+from ..conftest import MockBaseRetriever, fail_at_version
 
 
 # TODO check if we this works with only "memory" arg
@@ -129,38 +137,6 @@ def test_tfidf_retriever_multiple_indexes():
 
     assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
     assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
-
-
-class MockBaseRetriever(MockRetriever):
-    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
-        self.document_store = document_store
-        self.mock_document = mock_document
-
-    def retrieve(
-        self,
-        query: str,
-        filters: dict,
-        top_k: Optional[int],
-        index: str,
-        headers: Optional[Dict[str, str]],
-        scale_score: bool,
-    ):
-        return [self.mock_document]
-
-    def retrieve_batch(
-        self,
-        queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
-        top_k: Optional[int] = None,
-        index: str = None,
-        headers: Optional[Dict[str, str]] = None,
-        batch_size: Optional[int] = None,
-        scale_score: bool = None,
-    ):
-        return [[self.mock_document] for _ in range(len(queries))]
-
-    def embed_documents(self, documents: List[Document]):
-        return np.full((len(documents), 768), 0.5)
 
 
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
@@ -602,8 +578,8 @@ def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
@@ -645,9 +621,9 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.table_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.table_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.table_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True

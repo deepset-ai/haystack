@@ -73,6 +73,7 @@ class Pipeline:
         self.graph = DiGraph()
         self.config_hash = None
         self.last_config_hash = None
+        self.runs = 0
 
     @property
     def root_node(self) -> Optional[str]:
@@ -492,6 +493,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        self.runs += 1
+
         send_pipeline_event(
             pipeline=self,
             query=query,
@@ -640,6 +643,8 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
+        self.runs += 1
+
         send_pipeline_event(
             pipeline=self,
             queries=queries,
@@ -2103,7 +2108,7 @@ class Pipeline:
                 # Component params can reference to other components. For instance, a Retriever can reference a
                 # DocumentStore defined in the YAML. All references should be recursively resolved.
                 if (
-                    isinstance(value, str) and value in definitions.keys()
+                    isinstance(value, str) and value in definitions.keys() and value != name
                 ):  # check if the param value is a reference to another component.
                     if value not in components.keys():  # check if the referenced component is already loaded.
                         cls._load_or_get_component(name=value, definitions=definitions, components=components)

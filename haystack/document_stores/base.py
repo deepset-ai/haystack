@@ -35,6 +35,8 @@ except (ImportError, ModuleNotFoundError):
 class BaseKnowledgeGraph(BaseComponent):
     """
     Base class for implementing Knowledge Graphs.
+
+    The BaseKnowledgeGraph component is deprecated and will be removed in future versions.
     """
 
     def __init__(self):

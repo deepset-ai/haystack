@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023-present deepset <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 # https://pylint.pycqa.org/en/latest/development_guide/how_tos/custom_checkers.html
 
 from typing import TYPE_CHECKING, Optional, List, Any

@@ -1,8 +1,11 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest import mock
+from pathlib import Path
 
 import haystack
-from haystack.modeling.model.feature_extraction import FeatureExtractor, FEATURE_EXTRACTORS
+from haystack.errors import ModelingError
+from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 
 class MockedAutoTokenizer:
@@ -24,11 +27,8 @@ class MockedAutoConfig:
         return cls()
 
 
-@pytest.fixture(autouse=True)
-def mock_autotokenizer(request, monkeypatch):
-    # Do not patch integration tests
-    if "integration" in request.keywords:
-        return
+@pytest.fixture()
+def mock_autotokenizer(monkeypatch):
     monkeypatch.setattr(
         haystack.modeling.model.feature_extraction, "FEATURE_EXTRACTORS", {"mocked": MockedAutoTokenizer}
     )
@@ -36,30 +36,77 @@ def mock_autotokenizer(request, monkeypatch):
     monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoTokenizer", MockedAutoTokenizer)
 
 
-#
-# Unit tests
-#
+@pytest.mark.unit
+def test_get_tokenizer_from_HF():
+    with mock.patch("haystack.modeling.model.feature_extraction.AutoConfig") as mocked_ac:
+        from haystack.modeling.model.feature_extraction import FEATURE_EXTRACTORS
+
+        FEATURE_EXTRACTORS["test"] = mock.MagicMock()
+        FEATURE_EXTRACTORS["test"].__name__ = "Test"
+        mocked_ac.from_pretrained.return_value.model_type = "test"
+        FeatureExtractor(pretrained_model_name_or_path="test-model-name")
+        FEATURE_EXTRACTORS["test"].from_pretrained.assert_called_with(
+            pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
+        )
+        # clean up
+        FEATURE_EXTRACTORS.pop("test")
 
 
-def test_init_str():
-    tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name")
-
-    tokenizer.feature_extractor.mocker.from_pretrained.assert_called_with(
-        pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
-    )
-
-
-def test_init_path(tmp_path):
-    tokenizer = FeatureExtractor(pretrained_model_name_or_path=tmp_path / "test-path")
-
-    tokenizer.feature_extractor.mocker.from_pretrained.assert_called_with(
-        pretrained_model_name_or_path=str(tmp_path / "test-path"), revision=None, use_fast=True, use_auth_token=None
-    )
+@pytest.mark.unit
+def test_get_tokenizer_from_HF_not_found():
+    with mock.patch("haystack.modeling.model.feature_extraction.AutoConfig") as mocked_ac:
+        mocked_ac.from_pretrained.return_value.model_type = "does_not_exist"
+        with pytest.raises(ModelingError):
+            FeatureExtractor(pretrained_model_name_or_path="test-model-name")
 
 
-#
-# Integration tests
-#
+@pytest.mark.unit
+def test_get_tokenizer_from_path_fast():
+    here = Path(__file__).resolve().parent
+    mocked_model_folder = here / "samples/test_get_tokenizer_from_path"
+    with mock.patch("haystack.modeling.model.feature_extraction.transformers") as mocked_tf:
+        mocked_tf.TestTokenizerFast.__class__.__name__ = "Test Class"
+        FeatureExtractor(pretrained_model_name_or_path=mocked_model_folder)
+        mocked_tf.TestTokenizerFast.from_pretrained.assert_called_with(
+            pretrained_model_name_or_path=str(mocked_model_folder), revision=None, use_fast=True, use_auth_token=None
+        )
+
+
+@pytest.mark.unit
+def test_get_tokenizer_from_path():
+    here = Path(__file__).resolve().parent
+    mocked_model_folder = here / "samples/test_get_tokenizer_from_path"
+    with mock.patch("haystack.modeling.model.feature_extraction.transformers") as mocked_tf:
+        mocked_tf.TestTokenizer.__class__.__name__ = "Test Class"
+        FeatureExtractor(pretrained_model_name_or_path=mocked_model_folder)
+        mocked_tf.TestTokenizerFast.from_pretrained.assert_called_with(
+            pretrained_model_name_or_path=str(mocked_model_folder), revision=None, use_fast=True, use_auth_token=None
+        )
+
+
+@pytest.mark.unit
+def test_get_tokenizer_from_path_class_doesnt_exist():
+    here = Path(__file__).resolve().parent
+    mocked_model_folder = here / "samples/test_get_tokenizer_from_path"
+    with pytest.raises(AttributeError, match="module transformers has no attribute TestTokenizer"):
+        FeatureExtractor(pretrained_model_name_or_path=mocked_model_folder)
+
+
+@pytest.mark.unit
+def test_get_tokenizer_keep_accents():
+    here = Path(__file__).resolve().parent
+    mocked_model_folder = here / "samples/test_get_tokenizer_from_path"
+    with mock.patch("haystack.modeling.model.feature_extraction.transformers") as mocked_tf:
+        mocked_tf.TestTokenizer.__class__.__name__ = "Test Class"
+        FeatureExtractor(pretrained_model_name_or_path=mocked_model_folder, keep_accents=True)
+        mocked_tf.TestTokenizerFast.from_pretrained.assert_called_with(
+            pretrained_model_name_or_path=str(mocked_model_folder),
+            revision=None,
+            use_fast=True,
+            use_auth_token=None,
+            keep_accents=True,
+        )
+
 
 FEATURE_EXTRACTORS_TO_TEST = ["bert-base-cased"]
 
