@@ -128,17 +128,9 @@ def test_extract_final_answer():
     ]
 
     for example, expected_answer in zip(match_examples, expected_answers):
-        agent_step = AgentStep(prompt_node_response=example)
-        final_answer = agent_step.extract_final_answer()
-        assert final_answer == expected_answer
-
-
-@pytest.mark.unit
-def test_format_answer():
-    step = AgentStep(prompt_node_response="have the final answer to the question.\nFinal Answer: Florida")
-    formatted_answer = step.final_answer(query="query")
-    assert formatted_answer["query"] == "query"
-    assert formatted_answer["answers"] == [Answer(answer="Florida", type="generative")]
+        agent_step = AgentStep(prompt_node_response=example, final_answer_pattern=r"Final Answer\s*:\s*(.*)")
+        final_answer = agent_step.final_answer(query="irrelevant")
+        assert final_answer["answers"][0].answer == expected_answer
 
 
 @pytest.mark.unit
@@ -229,7 +221,7 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
         ),
     )
 
-    agent = Agent(prompt_node=prompt_node)
+    agent = Agent(prompt_node=prompt_node, max_steps=12)
     agent.add_tool(
         Tool(
             name="Search",
@@ -282,3 +274,14 @@ def test_update_hash():
     assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
     agent.update_hash()
     assert agent.hash == "5ac8eca2f92c9545adcce3682b80d4c5"
+
+
+def test_invalid_agent_template():
+    pn = PromptNode()
+    with pytest.raises(ValueError, match="some_non_existing_template not supported"):
+        Agent(prompt_node=pn, prompt_template="some_non_existing_template")
+
+    # if prompt_template is None, then we'll use zero-shot-react
+    a = Agent(prompt_node=pn, prompt_template=None)
+    assert isinstance(a.prompt_template, PromptTemplate)
+    assert a.prompt_template.name == "zero-shot-react"
