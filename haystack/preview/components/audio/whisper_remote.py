@@ -7,10 +7,9 @@ from pathlib import Path
 from dataclasses import dataclass
 
 import requests
-from tenacity import retry, wait_exponential, retry_if_not_result
 
 from haystack.preview import component, Document
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.preview.utils.requests_with_retry import request_with_retry
 
 
 logger = logging.getLogger(__name__)
@@ -37,20 +36,23 @@ class RemoteWhisperTranscriber:
     class Output:
         documents: List[Document]
 
-    def __init__(self, api_key: str, model_name_or_path: WhisperRemoteModel = "whisper-1"):
+    def __init__(self, api_key: str, model_name: WhisperRemoteModel = "whisper-1"):
         """
         Transcribes a list of audio files into a list of Documents.
 
         :param api_key: OpenAI API key.
         :param model_name_or_path: Name of the model to use. It now accepts only `whisper-1`.
         """
-        if model_name_or_path not in get_args(WhisperRemoteModel):
+        if model_name not in get_args(WhisperRemoteModel):
             raise ValueError(
                 f"Model name not recognized. Choose one among: " f"{', '.join(get_args(WhisperRemoteModel))}."
             )
+        if not api_key:
+            raise ValueError("API key is None.")
 
         self.api_key = api_key
-        self.model_name = model_name_or_path
+
+        self.model_name = model_name
 
     def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None) -> Output:
         """
@@ -106,7 +108,7 @@ class RemoteWhisperTranscriber:
         """
         translate = kwargs.pop("translate", False)
         url = f"https://api.openai.com/v1/audio/{'translations' if translate else 'transcriptions'}"
-        data = {"model": "whisper-1", **kwargs}
+        data = {"model": self.model_name, **kwargs}
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
         transcriptions = []
@@ -117,7 +119,6 @@ class RemoteWhisperTranscriber:
             transcriptions.append(transcription)
         return transcriptions
 
-    @retry(retry=retry_if_not_result(bool), wait=wait_exponential(min=1, max=10))
     def _invoke_api(self, audio: BinaryIO, url: str, data: Dict[str, Any], headers: Dict[str, Any]) -> Dict[str, Any]:
         """
         Calls a remote Whisper model through OpenAI Whisper API. This function auto-retries at most ten times.
@@ -129,16 +130,7 @@ class RemoteWhisperTranscriber:
         :returns: the JSON response of the API.
         """
         request_files = ("file", (audio.name, audio, "application/octet-stream"))
-        response = requests.post(url=url, data=data, headers=headers, files=[request_files], timeout=OPENAI_TIMEOUT)
-
-        if response.status_code != 200:
-            if response.status_code == 429:
-                raise OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
-            raise OpenAIError(
-                f"OpenAI returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}",
-                status_code=response.status_code,
-            )
-
+        response = request_with_retry(
+            method="post", url=url, data=data, headers=headers, files=[request_files], timeout=OPENAI_TIMEOUT
+        )
         return json.loads(response.content)
