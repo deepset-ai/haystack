@@ -120,8 +120,7 @@ class ConversationalAgentWithTools(Agent):
         ConversationSummaryMemory if no memory is provided.
         :param prompt_parameters_resolver: An optional callable for resolving prompt template parameters,
         defaults to keys: query, tool_names, tool_names_with_descriptions, transcript. Their values are set appropriately.
-        :param final_answer_pattern: A string or AgentAnswerParser instance for parsing the final answer, defaults to
-        a regex pattern capturing "Final Answer: " followed by any text.
+        :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
         """
         super().__init__(
             prompt_node=prompt_node,
