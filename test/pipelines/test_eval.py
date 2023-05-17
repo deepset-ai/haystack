@@ -598,6 +598,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -718,6 +722,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -815,6 +823,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -864,6 +876,10 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -2084,7 +2100,7 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
-def test_load_evaluation_result_w_empty_document_ids(tmp_path):
+def test_load_evaluation_result_w_none_values(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
@@ -2158,3 +2174,6 @@ def test_load_evaluation_result_w_empty_document_ids(tmp_path):
     eval_result = EvaluationResult.load(tmp_path)
     assert "Reader" in eval_result
     assert len(eval_result) == 1
+    assert eval_result["Reader"].iloc[0].answer is None
+    assert eval_result["Reader"].iloc[0].context is None
+    assert eval_result["Reader"].iloc[0].document_ids is None

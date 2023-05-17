@@ -932,7 +932,7 @@ class EvaluationResult:
     def append(self, key: str, value: DataFrame):
         if value is not None and len(value) > 0:
             if key in self.node_results:
-                self.node_results[key] = pd.concat([self.node_results[key], value])
+                self.node_results[key] = pd.concat([self.node_results[key], value]).reset_index(drop=True)
             else:
                 self.node_results[key] = value
 
@@ -1620,6 +1620,7 @@ class EvaluationResult:
         node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}
         # backward compatibility mappings
         for df in node_results.values():
+            df.replace(to_replace=np.nan, value=None, inplace=True)
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
             # convert single document_id to list
             if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:
