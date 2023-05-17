@@ -251,19 +251,21 @@ def test_generation_kwargs_from_prompt_node_call():
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["google/flan-t5-base", "gpt-3.5-turbo"], indirect=True)
+@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
 def test_generation_kwargs_from_prompt_node_run(prompt_model):
+    skip_test_for_invalid_key(prompt_model)
     the_question = "What does 42 mean?"
     # test that generation_kwargs are passed to the underlying invocation layer
-    node = PromptNode(model_name_or_path=prompt_model)
-    with patch.object(node.prompt_model.model_invocation_layer.pipe, "run_single", MagicMock()) as mock_call:
+    node = PromptNode(prompt_model)
+    with patch.object(node.prompt_model.model_invocation_layer, "invoke", MagicMock()) as mock_call:
         node.run(query=the_question, prompt_template="{query}", generation_kwargs={"do_sample": True, "test": True})
 
         mock_call.assert_called_with(
-            the_question,
-            {},
-            {"do_sample": True, "test": True, "num_return_sequences": 1, "num_beams": 1, "max_length": 100},
-            {},
+            prompt=the_question,
+            stop_words=None,
+            top_k=1,
+            query=the_question,
+            generation_kwargs={"do_sample": True, "test": True},
         )
 
 
