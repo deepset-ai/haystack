@@ -284,21 +284,21 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
             mocked_client.Client().schema.contains.return_value = False
             mocked_client.Client().schema.get.return_value = json.loads(
                 """
-                {
-                "classes": [{
-                    "class": "Document",
-                    "properties": [
-                        {
-                        "name": "hasWritten",
-                        "dataType": ["Article"]
-                        },
-                        {
-                        "name": "hitCounter",
-                        "dataType": ["int"]
-                        }
-                    ]
-                }]
-                } """
+{
+  "classes": [{
+    "class": "Document",
+    "properties": [
+        {
+        "name": "hasWritten",
+        "dataType": ["Article"]
+        },
+        {
+        "name": "hitCounter",
+        "dataType": ["int"]
+        }
+    ]
+  }]
+} """
             )
             ds = WeaviateDocumentStore()
             # Ensure we dropped the cross-reference property
