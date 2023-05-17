@@ -1,10 +1,11 @@
 import copy
 import logging
+from pathlib import Path
 
 import pytest
 from transformers import AutoTokenizer
 
-from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.data_handler.processor import SquadProcessor, _is_json
 
 
 # during inference (parameter return_baskets = False) we do not convert labels
@@ -298,6 +299,17 @@ def test_dataset_from_dicts_qa_label_conversion(samples_path, caplog=None):
                         12,
                         12,
                     ], f"Processing labels for {model} has changed."
+
+
+@pytest.mark.unit
+def test_is_json_identifies_json_objects():
+    """Test that _is_json correctly identifies json objects"""
+    # Paths to json files should be considered json
+    assert _is_json(Path("processor_config.json"))
+    # dicts should be considered json
+    assert _is_json({"a": 1})
+    # non-serializable objects should not be considered json
+    assert not _is_json(AutoTokenizer)
 
 
 @pytest.mark.integration

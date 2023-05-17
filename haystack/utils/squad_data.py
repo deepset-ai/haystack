@@ -5,12 +5,11 @@ import json
 import random
 import pandas as pd
 from tqdm.auto import tqdm
-import mmh3
 
 from haystack import is_imported
+from haystack.mmh3 import hash128
 from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
-
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ class SquadData:
             title = document.get("title", "")
             for paragraph in document["paragraphs"]:
                 context = paragraph["context"]
-                document_id = paragraph.get("document_id", "{:02x}".format(mmh3.hash128(str(context), signed=False)))
+                document_id = paragraph.get("document_id", "{:02x}".format(hash128(str(context))))
                 for question in paragraph["qas"]:
                     q = question["question"]
                     id = question["id"]

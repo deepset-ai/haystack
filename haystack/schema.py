@@ -18,7 +18,6 @@ import json
 import ast
 from dataclasses import asdict
 
-import mmh3
 import numpy as np
 from numpy import ndarray
 import pandas as pd
@@ -32,6 +31,7 @@ from pydantic.json import pydantic_encoder
 from pydantic.dataclasses import dataclass
 
 from haystack import is_imported
+from haystack.mmh3 import hash128
 
 
 logger = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ class Document:
         """
 
         if id_hash_keys is None:
-            return "{:02x}".format(mmh3.hash128(str(self.content), signed=False))
+            return "{:02x}".format(hash128(str(self.content)))
 
         final_hash_key = ""
         for attr in id_hash_keys:
@@ -163,7 +163,7 @@ class Document:
                 "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
-        return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
+        return "{:02x}".format(hash128(final_hash_key))
 
     def to_dict(self, field_map: Optional[Dict[str, Any]] = None) -> Dict:
         """
