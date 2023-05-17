@@ -203,17 +203,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
     [PromptTemplates](https://docs.haystack.deepset.ai/docs/prompt_node#prompttemplates).
     """
 
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        prompt_text: Optional[str] = None,
-        output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None,
-    ):
+    def __init__(self, prompt: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None):
         """
          Creates a PromptTemplate instance.
 
-        :param name: The name of the prompt template (for example, "sentiment-analysis", "question-generation"). You can specify your own name but it must be unique.
-        :param prompt_text: The prompt text, including prompt parameters.
+        :param prompt: The name of the prompt template on the PromptHub (for example, "sentiment-analysis",
+            "question-generation"), a Path to a local file, or the text of a new prompt, including its parameters.
         :param output_parser: A parser that applied to the model output.
                 For example, to convert the model output to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
@@ -222,30 +217,24 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 ```
         """
         super().__init__()
+        name, prompt_text = None, None
 
-        if not name:
-            name = "custom-at-query-time"
+        # If it's a path to a YAML file
+        if Path(prompt).exists():
+            with open(prompt, "r", encoding="utf-8") as yaml_file:
+                prompt_template_parsed = yaml.safe_load(yaml_file.read())
+                if not isinstance(prompt_template_parsed, dict):
+                    raise ValueError("The prompt loaded is not a prompt YAML file.")
+                name = prompt_template_parsed["name"]
+                prompt_text = prompt_template_parsed["prompt_text"]
+
+        # if it's not a string or looks like a prompt template name
+        elif re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
+            name, prompt_text = self._get_prompt_template_from_hub(prompt)
+
         else:
-            if not prompt_text:
-                # If it's a path to a YAML file
-                if Path(name).exists():
-                    with open(name, "r", encoding="utf-8") as yaml_file:
-                        prompt_template_parsed = yaml.safe_load(yaml_file.read())
-                        if not isinstance(prompt_template_parsed, dict):
-                            raise ValueError("The prompt loaded is not a prompt YAML file.")
-                        name = prompt_template_parsed["name"]
-                        prompt_text = prompt_template_parsed["prompt_text"]
-
-                # if it's not a string or looks like a prompt template name
-                elif re.fullmatch(r"[-a-zA-Z0-9_/]+", name):
-                    name, prompt_text = self._get_prompt_template_from_hub(name)
-
-                else:
-                    prompt_text = name
-                    name = "custom-at-query-time"
-
-        if not name or not prompt_text:
-            raise ValueError("You must provide either name, prompt_text, or both.")
+            prompt_text = prompt
+            name = "custom-at-query-time"
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
         for strip in PROMPT_TEMPLATE_STRIPS:
