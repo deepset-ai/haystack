@@ -103,6 +103,7 @@ def test_tool_invocation():
 @pytest.mark.unit
 def test_extract_tool_name_and_tool_multi_line_input(tools_manager):
     # new pattern being supported but with backward compatibility for the old
+
     text = (
         "We need to find out the following information:\n"
         "1. What city was Jeremy McKinnon born in?\n"
@@ -111,5 +112,34 @@ def test_extract_tool_name_and_tool_multi_line_input(tools_manager):
         "Tool Input: Where was Jeremy\n McKinnon born\n and where did he grow up?"
     )
 
+    text2 = (
+        "We need to find out the following information:\n"
+        "1. What city was Jeremy McKinnon born in?\n"
+        "2. What's the capital of Germany?\n"
+        "Tool: Search\n"
+        "Tool Input:"
+    )
+
     tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(text)
     assert tool_name == "Search" and tool_input == "Where was Jeremy\n McKinnon born\n and where did he grow up?"
+
+    text2 = (
+        "We need to find out the following information:\n"
+        "1. What city was Jeremy McKinnon born in?\n"
+        "2. What's the capital of Germany?\n"
+        "Tool: Search\n"
+        "Tool Input:"
+    )
+    tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(text2)
+    assert tool_name == "Search" and tool_input == ""
+
+
+@pytest.mark.unit
+def test_extract_tool_name_and_empty_tool_input(tools_manager):
+    examples = [
+        "need to find out what city he was born.\nTool: Search\nTool Input:",
+        "need to find out what city he was born.\nTool: Search\nTool Input:  ",
+    ]
+    for example in examples:
+        tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(example)
+        assert tool_name == "Search" and tool_input == ""
