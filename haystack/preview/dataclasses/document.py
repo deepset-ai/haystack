@@ -1,4 +1,4 @@
-from typing import List, Any, Dict, Literal, Optional
+from typing import List, Any, Dict, Literal, Optional, Type
 
 import json
 import hashlib
@@ -34,10 +34,10 @@ def _create_id(
     """
     Creates a hash of the content given that acts as the document's ID.
     """
+    if not metadata:
+        metadata = {}
     content_to_hash = f"{classname}:{content}"
     if id_hash_keys:
-        if not metadata:
-            raise ValueError("If 'id_hash_keys' is provided, you must provide 'metadata' too.")
         content_to_hash = ":".join([content_to_hash, *[str(metadata.get(key, "")) for key in id_hash_keys]])
     return hashlib.sha256(str(content_to_hash).encode("utf-8")).hexdigest()
 
@@ -59,6 +59,47 @@ def _safe_equals(obj_1, obj_2) -> bool:
             return equals(obj_1, obj_2)
 
     return obj_1 == obj_2
+
+
+class DocumentEncoder(json.JSONEncoder):
+    """
+    Encodes more exotic datatypes like pandas dataframes or file paths.
+    """
+
+    def default(self, obj):
+        if isinstance(obj, numpy.ndarray):
+            return obj.tolist()
+        if isinstance(obj, pandas.DataFrame):
+            return obj.to_json()
+        if isinstance(obj, Path):
+            return str(obj.absolute())
+        try:
+            return json.JSONEncoder.default(self, obj)
+        except TypeError:
+            return str(obj)
+
+
+class DocumentDecoder(json.JSONDecoder):
+    """
+    Decodes more exotic datatypes like pandas dataframes or file paths.
+    """
+
+    def __init__(self, *_, object_hook=None, **__):
+        super().__init__(object_hook=object_hook or self.document_decoder)
+
+    def document_decoder(self, dictionary):
+        # Decode content types
+        if "content_type" in dictionary:
+            if dictionary["content_type"] == "table":
+                dictionary["content"] = pandas.read_json(dictionary.get("content", None))
+            elif dictionary["content_type"] == "image":
+                dictionary["content"] = Path(dictionary.get("content", None))
+
+        # Decode embeddings
+        if "embedding" in dictionary and dictionary.get("embedding"):
+            dictionary["embedding"] = numpy.array(dictionary.get("embedding"))
+
+        return dictionary
 
 
 @dataclass(frozen=True)
@@ -106,6 +147,11 @@ class Document:
         content.
         """
         # Validate content_type
+        if self.content_type not in PYTHON_TYPES_FOR_CONTENT:
+            raise ValueError(
+                f"Content type unknown: '{self.content_type}'. "
+                f"Choose among: {', '.join(PYTHON_TYPES_FOR_CONTENT.keys())}"
+            )
         if not isinstance(self.content, PYTHON_TYPES_FOR_CONTENT[self.content_type]):
             raise ValueError(
                 f"The type of content ({type(self.content)}) does not match the "
@@ -139,11 +185,11 @@ class Document:
         """
         return asdict(self)
 
-    def to_json(self, **json_kwargs):
+    def to_json(self, json_encoder: Optional[Type[DocumentEncoder]] = None, **json_kwargs):
         """
         Saves the Document into a JSON string that can be later loaded back.
         """
-        return json.dumps(self.to_dict(), **json_kwargs)
+        return json.dumps(self.to_dict(), cls=json_encoder or DocumentEncoder, **json_kwargs)
 
     @classmethod
     def from_dict(cls, dictionary):
@@ -153,11 +199,11 @@ class Document:
         return cls(**dictionary)
 
     @classmethod
-    def from_json(cls, data, **json_kwargs):
+    def from_json(cls, data, json_decoder: Optional[Type[DocumentDecoder]] = None, **json_kwargs):
         """
         Creates a new Document object from a JSON string.
         """
-        dictionary = json.loads(data, **json_kwargs)
+        dictionary = json.loads(data, cls=json_decoder or DocumentDecoder, **json_kwargs)
         return cls.from_dict(dictionary=dictionary)
 
     def flatten(self) -> Dict[str, Any]:
