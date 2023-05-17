@@ -283,24 +283,6 @@ class PromptTemplate(BasePromptTemplate, ABC):
         wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
     )
-    def _prompt_template_exists_in_hub(self, name):
-        """
-        Returns True if the prompt exists in the Hub, False otherwise.
-
-        Might raise HTTPError.
-        """
-        try:
-            self._get_prompt_template_from_hub(name)
-            return True
-        except PromptNotFoundError:
-            return False
-
-    @tenacity.retry(
-        reraise=True,
-        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
-        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
-        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
-    )
     def _get_prompt_template_from_hub(self, name):
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
