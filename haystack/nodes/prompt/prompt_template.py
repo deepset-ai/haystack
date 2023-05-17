@@ -164,8 +164,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     ```python
         PromptTemplate(name="sentiment-analysis",
-                   prompt_text="Give a sentiment for this context. Answer with positive, negative
-                   or neutral. Context: {documents}; Answer:")
+                   prompt_text="Give a sentiment for this context. Answer with positive, negative"
+                   "or neutral. Context: {documents}; Answer:")
     ```
 
     Optionally, you can declare prompt parameters using f-string syntax in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
