@@ -285,14 +285,14 @@ def test_update_hash():
 
 
 @pytest.mark.unit
-def test_process_results_fails_for_dict():
+def test_tool_fails_processing_dict_result():
     tool = Tool(name="name", pipeline_or_node=MockPromptNode(), description="description")
     with pytest.raises(ValueError):
         tool._process_result({"answer": "answer"})
 
 
 @pytest.mark.unit
-def test_process_results_handles_answer_and_document():
+def test_tool_processes_answer_result_and_document_result():
     tool = Tool(name="name", pipeline_or_node=MockPromptNode(), description="description")
     assert tool._process_result(Answer(answer="answer")) == "answer"
     assert tool._process_result(Document(content="content")) == "content"
