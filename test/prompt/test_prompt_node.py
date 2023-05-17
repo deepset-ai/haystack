@@ -28,14 +28,14 @@ def get_api_key(request):
 def test_add_and_remove_template():
     with patch("haystack.nodes.prompt.prompt_node.PromptModel"):
         node = PromptNode()
-
+    total_count = 15
     # Verifies default
-    assert len(node.get_prompt_template_names()) == 14
+    assert len(node.get_prompt_template_names()) == total_count
 
     # Add a fake template
     fake_template = PromptTemplate(name="fake-template", prompt_text="Fake prompt")
     node.add_prompt_template(fake_template)
-    assert len(node.get_prompt_template_names()) == 15
+    assert len(node.get_prompt_template_names()) == total_count + 1
     assert "fake-template" in node.get_prompt_template_names()
 
     # Verify that adding the same template throws an expection
@@ -47,7 +47,7 @@ def test_add_and_remove_template():
 
     # Verify template is correctly removed
     assert node.remove_prompt_template("fake-template")
-    assert len(node.get_prompt_template_names()) == 14
+    assert len(node.get_prompt_template_names()) == total_count
     assert "fake-template" not in node.get_prompt_template_names()
 
     # Verify that removing the same template throws an expection
