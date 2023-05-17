@@ -52,7 +52,7 @@ class RemoteWhisperTranscriber:
         self.api_key = api_key
         self.model_name = model_name_or_path
 
-    def run(self, audio_files: List[Path], whisper_params: Dict[str, Any]) -> Output:
+    def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None) -> Output:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -66,6 +66,8 @@ class RemoteWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
+        if not whisper_params:
+            whisper_params = {}
         documents = self.transcribe(audio_files, **whisper_params)
         return RemoteWhisperTranscriber.Output(documents)
 
@@ -84,6 +86,8 @@ class RemoteWhisperTranscriber:
         documents = []
         for audio, transcript in zip(audio_files, transcriptions):
             content = transcript.pop("text")
+            if not isinstance(audio, (str, Path)):
+                audio = "<<binary stream>>"
             doc = Document(content=content, metadata={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents
@@ -108,8 +112,8 @@ class RemoteWhisperTranscriber:
         transcriptions = []
         for audio_file in audio_files:
             if isinstance(audio_file, (str, Path)):
-                with open(audio_file, "rb") as audio_file:
-                    transcription = self._invoke_api(audio_file, url, data, headers)
+                audio_file = open(audio_file, "rb")
+            transcription = self._invoke_api(audio_file, url, data, headers)
             transcriptions.append(transcription)
         return transcriptions
 
