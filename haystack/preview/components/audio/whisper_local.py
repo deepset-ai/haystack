@@ -40,7 +40,8 @@ class LocalWhisperTranscriber:
         """
         if model_name_or_path not in get_args(WhisperLocalModel):
             raise ValueError(
-                f"Model name not recognized. Choose one among: " f"{', '.join(get_args(WhisperLocalModel))}."
+                f"Model name '{model_name_or_path}' not recognized. Choose one among: "
+                f"{', '.join(get_args(WhisperLocalModel))}."
             )
         self.model_name = model_name_or_path
         self.device = torch.device(device) if device else torch.device("cpu")
@@ -53,7 +54,7 @@ class LocalWhisperTranscriber:
         if not self._model:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
-    def run(self, audio_files: List[Path], whisper_params: Dict[str, Any]) -> Output:
+    def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None) -> Output:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -67,6 +68,8 @@ class LocalWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
+        if not whisper_params:
+            whisper_params = {}
         documents = self.transcribe(audio_files, **whisper_params)
         return LocalWhisperTranscriber.Output(documents)
 
@@ -88,6 +91,8 @@ class LocalWhisperTranscriber:
         documents = []
         for audio, transcript in zip(audio_files, transcriptions):
             content = transcript.pop("text")
+            if not isinstance(audio, (str, Path)):
+                audio = "<<binary stream>>"
             doc = Document(content=content, metadata={"audio_file": audio, **transcript})
             documents.append(doc)
         return documents

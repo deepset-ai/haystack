@@ -10,7 +10,7 @@ from haystack.preview.components import LocalWhisperTranscriber
 from test.preview.components.base import BaseTestComponent
 
 
-SAMPLES_PATH = Path(__file__).parent.parent / "test_files"
+SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
 
 class Test_LocalWhisperTranscriber(BaseTestComponent):
@@ -26,6 +26,11 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
         assert transcriber.model_name == "large-v2"
         assert transcriber.device == torch.device("cpu")
         assert transcriber._model is None
+
+    @pytest.mark.unit
+    def test_init_wrong_model(self):
+        with pytest.raises(ValueError, match="Model name 'whisper-1' not recognized"):
+            LocalWhisperTranscriber(model_name_or_path="whisper-1")
 
     @pytest.mark.unit
     def test_warmup(self):
@@ -44,6 +49,25 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             mocked_whisper.load_model.assert_called_once()
 
     @pytest.mark.unit
+    def test_run(self):
+        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp._model = MagicMock()
+        comp._model.transcribe.return_value = {
+            "text": "test transcription",
+            "other_metadata": ["other", "meta", "data"],
+        }
+        results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
+        expected = Document(
+            content="test transcription",
+            metadata={
+                "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
+                "other_metadata": ["other", "meta", "data"],
+            },
+        )
+        assert isinstance(results, LocalWhisperTranscriber.Output)
+        assert results.documents == [expected]
+
+    @pytest.mark.unit
     def test_transcribe_to_documents(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
@@ -51,12 +75,12 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             "text": "test transcription",
             "other_metadata": ["other", "meta", "data"],
         }
-        assert comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"]) == [
-            Document(
-                content="test transcription",
-                metadata={
-                    "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
-                    "other_metadata": ["other", "meta", "data"],
-                },
-            )
-        ]
+        results = comp.transcribe(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
+        expected = Document(
+            content="test transcription",
+            metadata={
+                "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
+                "other_metadata": ["other", "meta", "data"],
+            },
+        )
+        assert results == [expected]
