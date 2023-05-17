@@ -317,7 +317,7 @@ class Agent:
             self.callback_manager.on_new_token += lambda token, **kwargs: print_text(token, color=agent_color)
         else:
             self.callback_manager.on_agent_step += lambda agent_step: print_text(
-                agent_step.prompt_node_response + "\n", color=agent_color
+                agent_step.prompt_node_response, end="\n", color=agent_color
             )
 
     def add_tool(self, tool: Tool):
