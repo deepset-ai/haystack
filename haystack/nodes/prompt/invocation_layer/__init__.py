@@ -7,3 +7,4 @@ from haystack.nodes.prompt.invocation_layer.hugging_face import HFLocalInvocatio
 from haystack.nodes.prompt.invocation_layer.hugging_face_inference import HFInferenceEndpointInvocationLayer
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
 from haystack.nodes.prompt.invocation_layer.anthropic_claude import AnthropicClaudeInvocationLayer
+from haystack.nodes.prompt.invocation_layer.cohere import CohereInvocationLayer

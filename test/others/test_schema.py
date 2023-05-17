@@ -1,6 +1,6 @@
 import json
 
-from haystack.schema import Document, Label, Answer, Span, MultiLabel, TableCell, _dict_factory
+from haystack.schema import Document, EvaluationResult, Label, Answer, Span, MultiLabel, TableCell, _dict_factory
 import pytest
 import numpy as np
 import pandas as pd
@@ -1062,3 +1062,19 @@ def test_dict_factory():
     assert result["key1"] == "some_value"
     assert result["key2"] == ["val1", "val2"]
     assert result["key3"] == [["col1", "col2"], [1, 3], [2, 4]]
+
+
+@pytest.mark.unit
+def test_evaluation_result_append():
+    df1 = pd.DataFrame({"col1": [1, 2], "index": [3, 4]})
+    df2 = pd.DataFrame({"col1": [5, 6], "index": [7, 8]})
+    df_expected = pd.DataFrame({"col1": [1, 2, 5, 6], "index": [3, 4, 7, 8]})
+
+    eval_result = EvaluationResult()
+    eval_result.append("test", df1)
+    pd.testing.assert_frame_equal(eval_result["test"], df1)
+    assert isinstance(eval_result["test"].index, pd.RangeIndex)
+
+    eval_result.append("test", df2)
+    pd.testing.assert_frame_equal(eval_result["test"], df_expected)
+    assert isinstance(eval_result["test"].index, pd.RangeIndex)
