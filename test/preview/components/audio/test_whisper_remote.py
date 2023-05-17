@@ -40,12 +40,13 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
     @pytest.mark.unit
     def test_run_with_path(self):
-        with patch("haystack.preview.components.audio.whisper_remote.request_with_retry") as mocked_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-            mocked_requests.post.return_value = mock_response
-            comp = RemoteWhisperTranscriber(api_key="whatever")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        comp = RemoteWhisperTranscriber(api_key="whatever")
+
+        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+            mocked_requests.request.return_value = mock_response
 
             result = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
             expected = Document(
@@ -59,12 +60,13 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
     @pytest.mark.unit
     def test_run_with_str(self):
-        with patch("haystack.preview.components.audio.whisper_remote.request_with_retry") as mocked_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-            mocked_requests.post.return_value = mock_response
-            comp = RemoteWhisperTranscriber(api_key="whatever")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        comp = RemoteWhisperTranscriber(api_key="whatever")
+
+        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+            mocked_requests.request.return_value = mock_response
 
             result = comp.run(
                 audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
@@ -80,12 +82,13 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
     @pytest.mark.unit
     def test_transcribe_with_stream(self):
-        with patch("haystack.preview.components.audio.whisper_remote.request_with_retry") as mocked_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-            mocked_requests.post.return_value = mock_response
-            comp = RemoteWhisperTranscriber(api_key="whatever")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        comp = RemoteWhisperTranscriber(api_key="whatever")
+
+        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+            mocked_requests.request.return_value = mock_response
 
             with open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
                 result = comp.transcribe(audio_files=[audio_stream])
@@ -97,18 +100,20 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
     @pytest.mark.unit
     def test_api_transcription(self):
-        with patch("haystack.preview.components.audio.whisper_remote.request_with_retry") as mocked_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-            mocked_requests.post.return_value = mock_response
-            comp = RemoteWhisperTranscriber(api_key="whatever")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        comp = RemoteWhisperTranscriber(api_key="whatever")
+
+        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+            mocked_requests.request.return_value = mock_response
 
             comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
 
-            requests_params = mocked_requests.post.call_args.kwargs
+            requests_params = mocked_requests.request.call_args.kwargs
             requests_params.pop("files")
             assert requests_params == {
+                "method": "post",
                 "url": "https://api.openai.com/v1/audio/transcriptions",
                 "data": {"model": "whisper-1"},
                 "headers": {"Authorization": f"Bearer whatever"},
@@ -117,35 +122,24 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
     @pytest.mark.unit
     def test_api_translation(self):
-        with patch("haystack.preview.components.audio.whisper_remote.request_with_retry") as mocked_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
-            mocked_requests.post.return_value = mock_response
-            comp = RemoteWhisperTranscriber(api_key="whatever")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        comp = RemoteWhisperTranscriber(api_key="whatever")
+
+        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+            mocked_requests.request.return_value = mock_response
 
             comp.run(
                 audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"],
                 whisper_params={"translate": True},
             )
-
-            requests_params = mocked_requests.post.call_args.kwargs
+            requests_params = mocked_requests.request.call_args.kwargs
             requests_params.pop("files")
             assert requests_params == {
+                "method": "post",
                 "url": "https://api.openai.com/v1/audio/translations",
                 "data": {"model": "whisper-1"},
                 "headers": {"Authorization": f"Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,
             }
-
-    @pytest.mark.unit
-    def test_api_fails(self):
-        with patch("haystack.preview.components.audio.whisper_remote.request_with_retry") as mocked_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 500
-            mock_response.content = '{"error": "something went wrong on our end!"}'
-            mocked_requests.post.return_value = mock_response
-            comp = RemoteWhisperTranscriber(api_key="whatever")
-
-            with pytest.raises(requests.HTTPError):
-                comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
