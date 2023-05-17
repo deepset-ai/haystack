@@ -49,7 +49,7 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             mocked_whisper.load_model.assert_called_once()
 
     @pytest.mark.unit
-    def test_run(self):
+    def test_run_with_path(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
         comp._model.transcribe.return_value = {
@@ -68,7 +68,28 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
         assert results.documents == [expected]
 
     @pytest.mark.unit
-    def test_transcribe_to_documents(self):
+    def test_run_with_str(self):
+        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp._model = MagicMock()
+        comp._model.transcribe.return_value = {
+            "text": "test transcription",
+            "other_metadata": ["other", "meta", "data"],
+        }
+        results = comp.run(
+            audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
+        )
+        expected = Document(
+            content="test transcription",
+            metadata={
+                "audio_file": str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute()),
+                "other_metadata": ["other", "meta", "data"],
+            },
+        )
+        assert isinstance(results, LocalWhisperTranscriber.Output)
+        assert results.documents == [expected]
+
+    @pytest.mark.unit
+    def test_transcribe(self):
         comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
         comp._model = MagicMock()
         comp._model.transcribe.return_value = {
@@ -82,5 +103,22 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
                 "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
                 "other_metadata": ["other", "meta", "data"],
             },
+        )
+        assert results == [expected]
+
+    @pytest.mark.unit
+    def test_transcribe_stream(self):
+        comp = LocalWhisperTranscriber(model_name_or_path="large-v2")
+        comp._model = MagicMock()
+        comp._model.transcribe.return_value = {
+            "text": "test transcription",
+            "other_metadata": ["other", "meta", "data"],
+        }
+        results = comp.transcribe(
+            audio_files=[open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb")]
+        )
+        expected = Document(
+            content="test transcription",
+            metadata={"audio_file": "<<binary stream>>", "other_metadata": ["other", "meta", "data"]},
         )
         assert results == [expected]
