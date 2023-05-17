@@ -434,4 +434,8 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "Question: {query}\n"
             "Thought: Let's think step-by-step, I first need to ",
         ),
+        PromptTemplate(
+            name="conversational-summary",
+            prompt_text="Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:",
+        ),
     ]
