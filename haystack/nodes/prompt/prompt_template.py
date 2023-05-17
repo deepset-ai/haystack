@@ -432,7 +432,11 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
             "---\n\n"
             "Question: {query}\n"
-            "Thought: Let's think step-by-step, I first need to ",
+            "Thought: Let's think step-by-step, I first need to {transcript}",
+        ),
+        PromptTemplate(
+            name="conversational-agent",
+            prompt_text="The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:",
         ),
         PromptTemplate(
             name="conversational-summary",
