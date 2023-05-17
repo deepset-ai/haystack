@@ -7,7 +7,7 @@ from test.conftest import MockRetriever, MockPromptNode
 from unittest import mock
 import pytest
 
-from haystack import BaseComponent, Answer
+from haystack import BaseComponent, Answer, Document
 from haystack.agents import Agent, AgentStep
 from haystack.agents.base import Tool, ToolsManager
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
@@ -274,6 +274,20 @@ def test_update_hash():
     assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
     agent.update_hash()
     assert agent.hash == "5ac8eca2f92c9545adcce3682b80d4c5"
+
+
+@pytest.mark.unit
+def test_tool_fails_processing_dict_result():
+    tool = Tool(name="name", pipeline_or_node=MockPromptNode(), description="description")
+    with pytest.raises(ValueError):
+        tool._process_result({"answer": "answer"})
+
+
+@pytest.mark.unit
+def test_tool_processes_answer_result_and_document_result():
+    tool = Tool(name="name", pipeline_or_node=MockPromptNode(), description="description")
+    assert tool._process_result(Answer(answer="answer")) == "answer"
+    assert tool._process_result(Document(content="content")) == "content"
 
 
 def test_invalid_agent_template():
