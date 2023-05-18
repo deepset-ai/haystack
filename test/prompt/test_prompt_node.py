@@ -42,9 +42,8 @@ def test_prompt_passing_template(mock_model):
 
     # Create a template
     template = PromptTemplate(
-        name="fake-sentiment-analysis",
-        prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: {documents}; Answer:",
+        "Please give a sentiment for this context. Answer with positive, "
+        "negative or neutral. Context: {documents}; Answer:"
     )
 
     # Execute prompt
@@ -269,10 +268,7 @@ def test_stop_words(prompt_model):
     )
     assert "capital" in r[0] or "Germany" in r[0]
 
-    tt = PromptTemplate(
-        name="question-generation-copy",
-        prompt_text="Given the context please generate a question. Context: {documents}; Question:",
-    )
+    tt = PromptTemplate("Given the context please generate a question. Context: {documents}; Question:")
     # with custom prompt template
     r = node.prompt(tt, documents=["Berlin is the capital of Germany."])
     assert r[0] == "What is the" or r[0] == "What city is the"
@@ -479,7 +475,7 @@ def test_pipeline_with_qa_with_references(prompt_model):
 @pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
 def test_pipeline_with_prompt_text_at_query_time(prompt_model):
     skip_test_for_invalid_key(prompt_model)
-    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+    node = PromptNode(prompt_model, default_prompt_template="test prompt template text", top_k=1)
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -568,8 +564,7 @@ def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
             - name: template_with_nested_shaper
               type: PromptTemplate
               params:
-                name: custom-template-with-nested-shaper
-                prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
+                prompt: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
                 output_parser:
                   type: AnswerParser
             - name: p1
@@ -633,8 +628,7 @@ def test_complex_pipeline_with_qa(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
     prompt_template = PromptTemplate(
-        name="question-answering-new",
-        prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
+        "Given the context please answer the question. Context: {documents}; Question: {query}; Answer:"
     )
     node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
@@ -833,8 +827,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
             - name: question_generation_template
               type: PromptTemplate
               params:
-                name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
+                prompt: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
@@ -913,8 +906,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
             - name: question_generation_template
               type: PromptTemplate
               params:
-                name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
+                prompt: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
@@ -987,8 +979,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
             - name: question_generation_template
               type: PromptTemplate
               params:
-                name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
+                prompt: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel_openai
@@ -1063,9 +1054,7 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 class TestTokenLimit:
     @pytest.mark.integration
     def test_hf_token_limit_warning(self, caplog):
-        prompt_template = PromptTemplate(
-            name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:"
-        )
+        prompt_template = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
         with caplog.at_level(logging.WARNING):
             node = PromptNode("google/flan-t5-small", devices=["cpu"])
             node.prompt(prompt_template, documents=["Berlin is an amazing city."])
@@ -1133,8 +1122,7 @@ class TestRunBatch:
         skip_test_for_invalid_key(prompt_model)
 
         prompt_template = PromptTemplate(
-            name="question-answering-new",
-            prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
+            "Given the context please answer the question. Context: {documents}; Question: {query}; Answer:"
         )
         node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
