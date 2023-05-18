@@ -43,7 +43,7 @@ DOCUMENTS = [
 ]
 
 
-@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
+@pytest.mark.parametrize("name", ["faiss", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
 def test_cosine_similarity(name, tmp_path):
     documents = [Document.from_dict(d) for d in DOCUMENTS]
     with document_store(name, documents, tmp_path) as ds:
@@ -64,7 +64,7 @@ def test_cosine_similarity(name, tmp_path):
 
             expected_emb = original_emb
             # embeddings of document stores which only support dot product out of the box must be normalized
-            if name in ["faiss", "milvus", "weaviate", "opensearch_faiss"]:
+            if name in ["faiss", "weaviate", "opensearch_faiss"]:
                 expected_emb = original_emb / np.linalg.norm(original_emb)
 
             # check if the stored embedding was normalized or not
@@ -77,7 +77,7 @@ def test_cosine_similarity(name, tmp_path):
             assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
+@pytest.mark.parametrize("name", ["faiss", "weaviate", "opensearch_faiss", "elasticsearch", "memory"])
 def test_update_embeddings_cosine_similarity(name, tmp_path):
     # clear embeddings and convert to Document
     documents = deepcopy(DOCUMENTS)
@@ -116,7 +116,7 @@ def test_update_embeddings_cosine_similarity(name, tmp_path):
 
             expected_emb = original_emb
             # embeddings of document stores which only support dot product out of the box must be normalized
-            if name in ["faiss", "milvus", "weaviate", "opensearch_faiss"]:
+            if name in ["faiss", "weaviate", "opensearch_faiss"]:
                 expected_emb = original_emb / np.linalg.norm(original_emb)
 
             # check if the stored embedding was normalized or not
@@ -129,7 +129,7 @@ def test_update_embeddings_cosine_similarity(name, tmp_path):
             assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.parametrize("name", ["faiss", "milvus", "weaviate", "memory", "elasticsearch", "opensearch_faiss"])
+@pytest.mark.parametrize("name", ["faiss", "weaviate", "memory", "elasticsearch", "opensearch_faiss"])
 def test_cosine_sanity_check(name, tmp_path):
     VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
     VEC_2 = np.array([0.4, 0.5, 0.6], dtype="float32")

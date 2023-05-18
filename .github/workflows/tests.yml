@@ -1059,7 +1059,7 @@ jobs:
           TESSDATA_PREFIX: "/usr/share/tesseract-ocr/4.00/tessdata"
         # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
         run: |
-          pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
+          pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not weaviate and not pinecone and not integration and not unit" test/${{ matrix.folder }} --document_store_type=memory
 
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'
@@ -1146,7 +1146,7 @@ jobs:
           TESSDATA_PREFIX: 'C:\Program Files\Tesseract-OCR\tessdata'
         # as confusing as it seems, we skip tests marked as unit here as it means they have been migrated to the right job already
         run: |
-          pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+          pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not weaviate and not pinecone and not integration and not unit" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
       - uses: slackapi/slack-github-action@v1.23.0
         if: failure() && github.ref == 'refs/heads/main'

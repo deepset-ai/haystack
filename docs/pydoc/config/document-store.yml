@@ -9,7 +9,6 @@ loaders:
         "memory",
         "sql",
         "faiss",
-        "milvus",
         "weaviate",
         "graphdb",
         "deepsetcloud",

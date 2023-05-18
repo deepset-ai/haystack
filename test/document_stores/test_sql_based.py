@@ -43,7 +43,7 @@ DOCUMENTS = [
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 @pytest.mark.parametrize("batch_size", [4, 6])
 def test_update_docs(document_store, retriever, batch_size):
     # initial write
@@ -66,7 +66,7 @@ def test_update_docs(document_store, retriever, batch_size):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["milvus", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_update_existing_docs(document_store, retriever):
     document_store.duplicate_documents = "overwrite"
     old_document = Document(content="text_1")

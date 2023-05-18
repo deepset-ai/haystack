@@ -106,18 +106,6 @@ def document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif name == "milvus":
-        document_store = MilvusDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=f"sqlite:///{tmp_path}/haystack_test.db",
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-            recreate_index=recreate_index,
-        )
-
     elif name == "weaviate":
         document_store = WeaviateDocumentStore(
             index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=recreate_index
