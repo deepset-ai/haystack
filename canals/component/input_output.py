@@ -36,7 +36,7 @@ class Optionalize(type):
 
 class Variadic(type):
     """
-    Adds the proper checks to a variadic input dataclass and adds a suitable init.
+    Adds the proper checks to a variadic input dataclass and packs the args into a list for the `__init__` call.
     """
 
     def __call__(cls, *args, **kwargs):
@@ -66,12 +66,13 @@ class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):
     Represents the input of a variadic component.
     """
 
+    # VariadicComponentInput can't inherit from ComponentInput due to metaclasses clashes
     # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
     _component_input = True
     _variadic_component_input = True
 
 
-class ComponentOutput(BaseIODataclass):
+class ComponentOutput(BaseIODataclass, metaclass=Optionalize):
     """
     Represents the output of a component.
     """

@@ -22,8 +22,8 @@ class Parity:
 
     @dataclass
     class Output(ComponentOutput):
-        even: int  # Can't use Optional or connections will fail (can't send a 'Optional[int]' into a strict 'int')
-        odd: int
+        even: Optional[int] = None
+        odd: Optional[int] = None
 
     def run(self, data: Input) -> Output:
         """
@@ -31,8 +31,8 @@ class Parity:
         """
         remainder = data.value % 2
         if remainder:
-            return Parity.Output(even=None, odd=data.value)  # type: ignore  # (mypy doesn't like the missing Optional)
-        return Parity.Output(even=data.value, odd=None)  # type: ignore  # (mypy doesn't like the missing Optional)
+            return Parity.Output(odd=data.value)
+        return Parity.Output(even=data.value)
 
 
 class TestParity(BaseTestComponent):
@@ -43,6 +43,6 @@ class TestParity(BaseTestComponent):
     def test_parity(self):
         component = Parity()
         results = component.run(Parity.Input(value=1))
-        assert results == Parity.Output(even=None, odd=1)  # type: ignore  #(mypy doesn't like the missing Optional)
+        assert results == Parity.Output(odd=1)
         results = component.run(Parity.Input(value=2))
-        assert results == Parity.Output(even=2, odd=None)  # type: ignore  #(mypy doesn't like the missing Optional)
+        assert results == Parity.Output(even=2)
