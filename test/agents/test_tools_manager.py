@@ -126,7 +126,7 @@ def test_extract_tool_name_and_tool_multi_line_input(tools_manager):
     assert tool_name == "Search" and tool_input == ""
 
     # Case where the tool name and tool input are provided with extra whitespaces
-    text3 = "   Tool:   Search   \n" "   Tool Input:   What is the tallest building in the world?   "
+    text3 = "   Tool:   Search   \n   Tool Input:   What is the tallest building in the world?   "
     tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(text3)
     assert tool_name.strip() == "Search" and tool_input.strip() == "What is the tallest building in the world?"
 
