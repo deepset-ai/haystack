@@ -8,6 +8,9 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
+      
+env:
+  COVERALLS_NOISY: true
 
 jobs:
   mypy:
