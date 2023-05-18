@@ -141,12 +141,12 @@ def test_extract_tool_name_and_tool_multi_line_input(tools_manager):
     assert tool_name is None and tool_input is None
 
     # Case where neither the tool name nor the tool input is provided
-    text5 = "We need to find out the following information:\n" "1. What is the population of India?"
+    text5 = "We need to find out the following information:\n 1. What is the population of India?"
     tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(text5)
     assert tool_name is None and tool_input is None
 
     # Case where the tool name and tool input are provided with extra whitespaces and new lines
-    text6 = "   Tool:   Search   \n" "   Tool Input:   \nWhat is the tallest \nbuilding in the world?   "
+    text6 = "   Tool:   Search   \n   Tool Input:   \nWhat is the tallest \nbuilding in the world?   "
     tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(text6)
     assert tool_name.strip() == "Search" and tool_input.strip() == "What is the tallest \nbuilding in the world?"
 
