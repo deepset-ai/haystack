@@ -2,7 +2,6 @@
 
 from typing import Generator, Optional, Dict, List, Set, Union, Any
 
-import warnings
 import logging
 import collections
 from pathlib import Path
