@@ -8,7 +8,7 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
-      
+    
 env:
   COVERALLS_NOISY: true
 
@@ -120,3 +120,4 @@ jobs:
           path-to-lcov: coverage.xml
           flag-name: ${{ matrix.os }}
           parallel: true
+          debug: true
