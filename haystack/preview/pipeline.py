@@ -3,7 +3,7 @@ import inspect
 
 from pathlib import Path
 
-from canals import (
+from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
     load_pipelines as load_canals_pipelines,

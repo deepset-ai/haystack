@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import torch
 import whisper
 
-from haystack.preview import component, Document
+from haystack.preview import component, ComponentInput, ComponentOutput, Document
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,12 @@ class LocalWhisperTranscriber:
     """
 
     @dataclass
-    class Output:
+    class Input(ComponentInput):
+        audio_files: List[Path]
+        whisper_params: Optional[Dict[str, Any]] = None
+
+    @dataclass
+    class Output(ComponentOutput):
         documents: List[Document]
 
     def __init__(self, model_name_or_path: WhisperLocalModel = "large", device: Optional[str] = None):
@@ -54,7 +59,7 @@ class LocalWhisperTranscriber:
         if not self._model:
             self._model = whisper.load_model(self.model_name, device=self.device)
 
-    def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None) -> Output:
+    def run(self, data: Input) -> Output:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -68,9 +73,9 @@ class LocalWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        if not whisper_params:
-            whisper_params = {}
-        documents = self.transcribe(audio_files, **whisper_params)
+        if not data.whisper_params:
+            data.whisper_params = {}
+        documents = self.transcribe(data.audio_files, **data.whisper_params)
         return LocalWhisperTranscriber.Output(documents)
 
     def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:

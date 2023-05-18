@@ -14,9 +14,11 @@ SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
 
 class Test_LocalWhisperTranscriber(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [LocalWhisperTranscriber(model_name_or_path="large-v2")]
+    @pytest.mark.unit
+    def test_save_load(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(
+            LocalWhisperTranscriber(model_name_or_path="large-v2"), tmp_path
+        )
 
     @pytest.mark.unit
     def test_init(self):
@@ -56,7 +58,11 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             "text": "test transcription",
             "other_metadata": ["other", "meta", "data"],
         }
-        results = comp.run(audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"])
+        results = comp.run(
+            LocalWhisperTranscriber.Input(
+                audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"]
+            )
+        )
         expected = Document(
             content="test transcription",
             metadata={
@@ -76,7 +82,9 @@ class Test_LocalWhisperTranscriber(BaseTestComponent):
             "other_metadata": ["other", "meta", "data"],
         }
         results = comp.run(
-            audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
+            LocalWhisperTranscriber.Input(
+                audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
+            )
         )
         expected = Document(
             content="test transcription",
