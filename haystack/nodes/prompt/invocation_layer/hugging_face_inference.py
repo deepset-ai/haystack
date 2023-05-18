@@ -57,11 +57,6 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid Hugging Face token. "
                 f"Your token is available in your Hugging Face settings page."
             )
-        valid_model_name_or_path = isinstance(model_name_or_path, str) and model_name_or_path
-        if not valid_model_name_or_path:
-            raise ValueError(
-                f"model_name_or_path {model_name_or_path} must be a valid Hugging Face inference endpoint URL."
-            )
         self.api_key = api_key
         self.max_length = max_length
 
@@ -96,9 +91,19 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         # we pop the model_max_length from the model_input_kwargs as it is not sent to the model
         # but used to truncate the prompt if needed
         model_max_length = self.model_input_kwargs.pop("model_max_length", 1024)
-        self.prompt_handler = DefaultPromptHandler(
-            model_name_or_path=model_name_or_path, model_max_length=model_max_length, max_length=self.max_length or 100
-        )
+
+        if HFInferenceEndpointInvocationLayer.is_inference_endpoint(model_name_or_path):
+            # as we are using the deployed HF inference endpoint, we don't know the model name
+            # we'll use gpt2 BPE tokenizer for prompt length calculation
+            self.prompt_handler = DefaultPromptHandler(
+                model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
+            )
+        else:
+            self.prompt_handler = DefaultPromptHandler(
+                model_name_or_path=model_name_or_path,
+                model_max_length=model_max_length,
+                max_length=self.max_length or 100,
+            )
 
     def preprocess_prompt(self, prompt: str):
         for key, prompt_preprocessor in self.prompt_preprocessors.items():

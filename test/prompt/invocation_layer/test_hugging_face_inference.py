@@ -33,8 +33,37 @@ def test_constructor_with_model_kwargs():
     layer = HFInferenceEndpointInvocationLayer(
         model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
     )
-    assert layer.model_input_kwargs == model_kwargs
-    assert len(model_kwargs_rejected) == 2
+    assert "temperature" in layer.model_input_kwargs
+    assert "do_sample" in layer.model_input_kwargs
+    assert "stream" in layer.model_input_kwargs
+    assert "fake_param" not in layer.model_input_kwargs
+    assert "another_fake_param" not in layer.model_input_kwargs
+
+
+@pytest.mark.unit
+def test_set_model_max_length():
+    """
+    Test that model max length is set correctly
+    """
+    layer = HFInferenceEndpointInvocationLayer(
+        model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key", model_max_length=2048
+    )
+    assert layer.prompt_handler.model_max_length == 2048
+
+
+@pytest.mark.unit
+def test_url():
+    """
+    Test that the url is correctly set in the constructor
+    """
+    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key")
+    assert layer.url == "https://api-inference.huggingface.co/models/google/flan-t5-xxl"
+
+    layer = HFInferenceEndpointInvocationLayer(
+        model_name_or_path="https://23445.us-east-1.aws.endpoints.huggingface.cloud", api_key="some_fake_key"
+    )
+
+    assert layer.url == "https://23445.us-east-1.aws.endpoints.huggingface.cloud"
 
 
 @pytest.mark.unit
@@ -272,6 +301,38 @@ def test_ensure_token_limit_resize(caplog, model_name_or_path):
         "This is a test" in resized_prompt
         and "because model_max_length is 10 and max_length is 5" not in resized_prompt
     )
+
+
+@pytest.mark.unit
+def test_oasst_prompt_preprocessing():
+    model_name = "OpenAssistant/oasst-sft-1-pythia-12b"
+
+    layer = HFInferenceEndpointInvocationLayer("fake_api_key", model_name)
+    with unittest.mock.patch(
+        "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
+    ) as mock_post:
+        # Mock the response, need to return a list of dicts
+        mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
+        result = layer.invoke(prompt="Tell me hello")
+
+    assert result == ["Hello"]
+    assert mock_post.called
+
+    called_args, called_kwargs = mock_post.call_args
+    # OpenAssistant/oasst-sft-1-pythia-12b prompts are preprocessed and wrapped in tokens below
+    assert called_kwargs["data"]["inputs"] == "<|prompter|>Tell me hello<|endoftext|><|assistant|>"
+
+
+@pytest.mark.unit
+def test_invalid_key():
+    with pytest.raises(ValueError, match="must be a valid Hugging Face token"):
+        layer = HFInferenceEndpointInvocationLayer("", "irrelevant_model_name")
+
+
+@pytest.mark.unit
+def test_invalid_model():
+    with pytest.raises(ValueError, match="cannot be None or empty string"):
+        layer = HFInferenceEndpointInvocationLayer("fake_api", "")
 
 
 @pytest.mark.unit
