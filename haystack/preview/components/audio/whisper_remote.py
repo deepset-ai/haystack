@@ -6,9 +6,7 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass
 
-import requests
-
-from haystack.preview import component, Document
+from haystack.preview import component, ComponentInput, ComponentOutput, Document
 from haystack.preview.utils.requests_with_retry import request_with_retry
 
 
@@ -33,7 +31,12 @@ class RemoteWhisperTranscriber:
     """
 
     @dataclass
-    class Output:
+    class Input(ComponentInput):
+        audio_files: List[Path]
+        whisper_params: Optional[Dict[str, Any]] = None
+
+    @dataclass
+    class Output(ComponentOutput):
         documents: List[Document]
 
     def __init__(self, api_key: str, model_name: WhisperRemoteModel = "whisper-1"):
@@ -54,7 +57,7 @@ class RemoteWhisperTranscriber:
 
         self.model_name = model_name
 
-    def run(self, audio_files: List[Path], whisper_params: Optional[Dict[str, Any]] = None) -> Output:
+    def run(self, data: Input) -> Output:
         """
         Transcribe the audio files into a list of Documents, one for each input file.
 
@@ -68,9 +71,9 @@ class RemoteWhisperTranscriber:
             alignment data. Another key called `audio_file` contains the path to the audio file used for the
             transcription.
         """
-        if not whisper_params:
-            whisper_params = {}
-        documents = self.transcribe(audio_files, **whisper_params)
+        if not data.whisper_params:
+            data.whisper_params = {}
+        documents = self.transcribe(data.audio_files, **data.whisper_params)
         return RemoteWhisperTranscriber.Output(documents)
 
     def transcribe(self, audio_files: Sequence[Union[str, Path, BinaryIO]], **kwargs) -> List[Document]:
@@ -115,22 +118,12 @@ class RemoteWhisperTranscriber:
         for audio_file in audio_files:
             if isinstance(audio_file, (str, Path)):
                 audio_file = open(audio_file, "rb")
-            transcription = self._invoke_api(audio_file, url, data, headers)
+
+            request_files = ("file", (audio_file.name, audio_file, "application/octet-stream"))
+            response = request_with_retry(
+                method="post", url=url, data=data, headers=headers, files=[request_files], timeout=OPENAI_TIMEOUT
+            )
+            transcription = json.loads(response.content)
+
             transcriptions.append(transcription)
         return transcriptions
-
-    def _invoke_api(self, audio: BinaryIO, url: str, data: Dict[str, Any], headers: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Calls a remote Whisper model through OpenAI Whisper API. This function auto-retries at most ten times.
-
-        :param audio: the binary stream of audio to upload (a handle to the audio file, for example)
-        :param url: the constructed API URL
-        :param data: the data parameters to send to Whisper
-        :param headers: the request headers with the API key
-        :returns: the JSON response of the API.
-        """
-        request_files = ("file", (audio.name, audio, "application/octet-stream"))
-        response = request_with_retry(
-            method="post", url=url, data=data, headers=headers, files=[request_files], timeout=OPENAI_TIMEOUT
-        )
-        return json.loads(response.content)
