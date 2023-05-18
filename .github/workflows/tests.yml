@@ -110,3 +110,10 @@ jobs:
 
       - name: Run
         run: hatch run cov
+
+      - name: Coverage
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.xml
+          flag-name: ${{ matrix.os }}
+          parallel: true
