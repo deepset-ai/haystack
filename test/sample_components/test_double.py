@@ -35,9 +35,8 @@ from canals.testing import BaseTestComponent
 
 
 class TestDouble(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Double()]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Double(), tmp_path)
 
     def test_double_default(self):
         component = Double()

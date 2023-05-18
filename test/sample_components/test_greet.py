@@ -58,14 +58,19 @@ class Greet:
 
 
 class TestGreet(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [
-            Greet(),
-            Greet(message="Hello, that's {value}"),
-            Greet(log_level="WARNING"),
-            Greet(message="Hello, that's {value}", log_level="WARNING"),
-        ]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Greet(), tmp_path)
+
+    def test_saveload_message(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Greet(message="Hello, that's {value}"), tmp_path)
+
+    def test_saveload_loglevel(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Greet(log_level="WARNING"), tmp_path)
+
+    def test_saveload_message_and_loglevel(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(
+            Greet(message="Hello, that's {value}", log_level="WARNING"), tmp_path
+        )
 
     def test_greet_message(self, caplog):
         caplog.set_level(logging.WARNING)

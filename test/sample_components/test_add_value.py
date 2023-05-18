@@ -35,12 +35,13 @@ class AddFixedValue:
 
 
 class TestAddFixedValue(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [AddFixedValue(), AddFixedValue(add=2)]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(AddFixedValue(), tmp_path)
+
+    def test_saveload_add(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(AddFixedValue(add=2), tmp_path)
 
     def test_addvalue(self):
-
         component = AddFixedValue()
         results = component.run(AddFixedValue.Input(value=50, add=10))
         assert results == AddFixedValue.Output(value=60)

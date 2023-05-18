@@ -30,9 +30,8 @@ class Sum:
 
 
 class TestSum(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Sum()]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Sum(), tmp_path)
 
     def test_sum_no_values(self):
         component = Sum()

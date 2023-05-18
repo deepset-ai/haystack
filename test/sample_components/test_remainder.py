@@ -46,9 +46,11 @@ class Remainder:
 
 
 class TestRemainder(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Remainder(), Remainder(divisor=1)]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(), tmp_path)
+
+    def test_saveload_divisor(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Remainder(divisor=1), tmp_path)
 
     def test_remainder_default(self):
         component = Remainder()

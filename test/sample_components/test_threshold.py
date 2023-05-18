@@ -46,9 +46,11 @@ class Threshold:
 
 
 class TestThreshold(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Threshold()]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Threshold(), tmp_path)
+
+    def test_saveload_threshold(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Threshold(threshold=3), tmp_path)
 
     def test_threshold(self):
         component = Threshold()

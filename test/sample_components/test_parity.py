@@ -36,9 +36,8 @@ class Parity:
 
 
 class TestParity(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Parity()]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Parity(), tmp_path)
 
     def test_parity(self):
         component = Parity()

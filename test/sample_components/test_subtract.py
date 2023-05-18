@@ -33,9 +33,8 @@ class Subtract:
 
 
 class TestSubtract(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Subtract()]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Subtract(), tmp_path)
 
     def test_subtract(self):
         component = Subtract()

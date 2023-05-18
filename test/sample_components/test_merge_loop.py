@@ -1,11 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List
+from typing import List, Union
+import builtins
 
 from dataclasses import dataclass
-
-import pytest
 
 from canals.component import component, VariadicComponentInput, ComponentOutput
 from canals.testing import BaseTestComponent
@@ -18,9 +17,14 @@ class MergeLoop:
     In case both received a value, priority is given to 'first'.
     """
 
-    def __init__(self, expected_type: type):
-        self.expected_type = expected_type
-        self.init_parameters = {"expected_type": expected_type.__name__}
+    def __init__(self, expected_type: Union[type, str]):
+        if isinstance(expected_type, str):
+            type_ = getattr(builtins, expected_type)
+        else:
+            type_ = expected_type
+
+        self.expected_type = type_
+        self.init_parameters = {"expected_type": type_.__name__}
 
     @property
     def input_type(self):
@@ -51,15 +55,16 @@ class MergeLoop:
 
 
 class TestMergeLoop(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
+    def test_saveload_builtin_type(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(MergeLoop(expected_type=int), tmp_path)
 
-        # Serialization is broken :'(
-        return [
-            # MergeLoop(expected_type=int),
-            # MergeLoop(expected_type=str),
-            # MergeLoop(expected_type=List[str])
-        ]
+    # TODO
+    # def test_saveload_complex_type(self, tmp_path):
+    #     self.assert_can_be_saved_and_loaded_in_pipeline(MergeLoop(expected_type=List[int]), tmp_path)
+
+    # def test_saveload_object_type(self, tmp_path):
+    #     class MyObject: ...
+    #     self.assert_can_be_saved_and_loaded_in_pipeline(MergeLoop(expected_type=MyObject()), tmp_path)
 
     def test_merge_first(self):
         component = MergeLoop(expected_type=int)

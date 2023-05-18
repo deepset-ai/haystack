@@ -39,9 +39,11 @@ class Repeat:
 
 
 class TestRepeat(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [Repeat(), Repeat(outputs=["one", "two"])]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Repeat(), tmp_path)
+
+    def test_saveload_outputs(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Repeat(outputs=["one", "two"]), tmp_path)
 
     def test_repeat_default(self):
         component = Repeat()

@@ -85,13 +85,16 @@ def my_subtract(first, second):
 
 
 class TestAccumulate(BaseTestComponent):
-    @pytest.fixture
-    def components(self):
-        return [
-            Accumulate(),
-            Accumulate(function=my_subtract),
-            Accumulate(function="test.sample_components.test_accumulate.my_subtract"),
-        ]
+    def test_saveload_default(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Accumulate(), tmp_path)
+
+    def test_saveload_function_as_string(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(
+            Accumulate(function="test.sample_components.test_accumulate.my_subtract"), tmp_path
+        )
+
+    def test_saveload_function_as_callable(self, tmp_path):
+        self.assert_can_be_saved_and_loaded_in_pipeline(Accumulate(function=my_subtract), tmp_path)
 
     def test_accumulate_default(self):
         component = Accumulate()
