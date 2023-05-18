@@ -196,10 +196,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         password: Optional[str] = None,
         client_secret: Optional[str] = None,
         access_token: Optional[str] = None,
-        expires_in: int = 60,
+        expires_in: Optional[int] = 60,
         refresh_token: Optional[str] = None,
-        scope: str = "offline_access",
-    ) -> Optional[Union[AuthClientPassword, AuthClientCredentials, AuthBearerToken]]:
+        scope: Optional[str] = "offline_access",
+    ) -> Optional[Union["AuthClientPassword", "AuthClientCredentials", "AuthBearerToken"]]:
         if username and password:
             return AuthClientPassword(username, password, scope=scope)
         elif client_secret:
