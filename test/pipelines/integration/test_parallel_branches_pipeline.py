@@ -5,7 +5,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.test_components import AddFixedValue, Repeat, Double
+from test.sample_components import AddFixedValue, Repeat, Double
 
 import logging
 
@@ -31,13 +31,13 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "parallel_branches_pipeline.png")
 
-    results = pipeline.run({"add_one": {"value": 1}})
+    results = pipeline.run({"add_one": AddFixedValue.Input(value=1)})
     pprint(results)
 
     assert results == {
-        "add_one_again": {"value": 6},
-        "add_ten": {"value": 12},
-        "double": {"value": 4},
+        "add_one_again": AddFixedValue.Output(value=6),
+        "add_ten": AddFixedValue.Output(value=12),
+        "double": Double.Output(value=4),
     }
 
 

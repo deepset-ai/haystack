@@ -5,7 +5,7 @@ from dataclasses import is_dataclass
 
 import pytest
 
-from canals import Pipeline, save_pipelines, load_pipelines, marshal_pipelines
+from canals.pipeline import Pipeline, save_pipelines, load_pipelines, marshal_pipelines
 
 #
 # TODO right now the tests iterate on components, so it's not always clear which component fails the tests.

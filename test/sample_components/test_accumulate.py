@@ -8,7 +8,7 @@ from importlib import import_module
 from dataclasses import dataclass
 
 import pytest
-from canals import component
+from canals.component import component, ComponentInput, ComponentOutput
 from canals.testing import BaseTestComponent
 
 
@@ -20,12 +20,14 @@ class Accumulate:
 
     Example of how to deal with serialization when some of the parameters
     are not directly serializable.
-
-    Stateful, single input, single output component.
     """
 
     @dataclass
-    class Output:
+    class Input(ComponentInput):
+        value: int
+
+    @dataclass
+    class Output(ComponentOutput):
         value: int
 
     def __init__(self, function: Optional[Union[Callable, str]] = None):
@@ -43,10 +45,10 @@ class Accumulate:
         else:
             self.function = self._load_function(function)
             # 'function' is not serializable by default, so we serialize it manually.
-            self._init_parameters = {"function": self._save_function(function)}
+            self.init_parameters = {"function": self._save_function(function)}
 
-    def run(self, value: int) -> Output:
-        self.state = self.function(self.state, value)
+    def run(self, data: Input) -> Output:
+        self.state = self.function(self.state, data.value)
         return Accumulate.Output(value=self.state)
 
     def _load_function(self, function: Union[Callable, str]):
@@ -88,47 +90,47 @@ class TestAccumulate(BaseTestComponent):
         return [
             Accumulate(),
             Accumulate(function=my_subtract),
-            Accumulate(function="test.test_components.test_accumulate.my_subtract"),
+            Accumulate(function="test.sample_components.test_accumulate.my_subtract"),
         ]
 
     def test_accumulate_default(self):
         component = Accumulate()
-        results = component.run(value=10)
+        results = component.run(Accumulate.Input(value=10))
         assert results == Accumulate.Output(value=10)
         assert component.state == 10
 
-        results = component.run(value=1)
+        results = component.run(Accumulate.Input(value=1))
         assert results == Accumulate.Output(value=11)
         assert component.state == 11
 
-        assert component._init_parameters == {}
+        assert component.init_parameters == {}
 
     def test_accumulate_callable(self):
         component = Accumulate(function=my_subtract)
 
-        results = component.run(value=10)
+        results = component.run(Accumulate.Input(value=10))
         assert results == Accumulate.Output(value=-10)
         assert component.state == -10
 
-        results = component.run(value=1)
+        results = component.run(Accumulate.Input(value=1))
         assert results == Accumulate.Output(value=-11)
         assert component.state == -11
 
-        assert component._init_parameters == {
-            "function": "test.test_components.test_accumulate.my_subtract",
+        assert component.init_parameters == {
+            "function": "test.sample_components.test_accumulate.my_subtract",
         }
 
     def test_accumulate_string(self):
-        component = Accumulate(function="test.test_components.test_accumulate.my_subtract")
+        component = Accumulate(function="test.sample_components.test_accumulate.my_subtract")
 
-        results = component.run(value=10)
+        results = component.run(Accumulate.Input(value=10))
         assert results == Accumulate.Output(value=-10)
         assert component.state == -10
 
-        results = component.run(value=1)
+        results = component.run(Accumulate.Input(value=1))
         assert results == Accumulate.Output(value=-11)
         assert component.state == -11
 
-        assert component._init_parameters == {
-            "function": "test.test_components.test_accumulate.my_subtract",
+        assert component.init_parameters == {
+            "function": "test.sample_components.test_accumulate.my_subtract",
         }

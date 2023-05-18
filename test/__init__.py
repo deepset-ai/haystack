@@ -1,3 +1,3 @@
-# SPDX-FileCopyrightText: 2023-present U.N. Owen <void@some.where>
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: Apache-2.0

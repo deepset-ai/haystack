@@ -6,7 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.test_components import AddFixedValue, Remainder, Double, Sum
+from test.sample_components import AddFixedValue, Remainder, Double, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -35,13 +35,13 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "variable_decision_and_merge_pipeline.png")
 
-    results = pipeline.run({"add_one": {"value": 1}})
+    results = pipeline.run({"add_one": AddFixedValue.Input(value=1)})
     pprint(results)
-    assert results == {"sum": {"total": 14}}
+    assert results == {"sum": Sum.Output(total=14)}
 
-    results = pipeline.run({"add_one": {"value": 2}})
+    results = pipeline.run({"add_one": AddFixedValue.Input(value=2)})
     pprint(results)
-    assert results == {"sum": {"total": 17}}
+    assert results == {"sum": Sum.Output(total=17)}
 
 
 if __name__ == "__main__":
