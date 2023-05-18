@@ -11,14 +11,14 @@
     <img alt="Tests" src="https://github.com/deepset-ai/canals/workflows/Tests/badge.svg?branch=main">
 </a>
 [![Coverage Status](https://coveralls.io/repos/github/deepset-ai/canals/badge.svg?branch=main)](https://coveralls.io/github/deepset-ai/canals?branch=main)
-<a href="https://docs.haystack.deepset.ai">
+<a href="https://deepset-ai.github.io/canals/">
     <img alt="Documentation" src="https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdeepset-ai.github.io/canals/">
 </a>
-<a href="https://github.com/deepset-ai/haystack/commits/main">
+<a href="https://github.com/deepset-ai/canals/commits/main">
     <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/canals">
 </a>
 <a href="https://pepy.tech/project/canals">
-    <img alt="Downloads" src="https://pepy.tech/badge/canals/month">
+    <img alt="Monthly Downloads" src="https://pepy.tech/badge/canals/month">
 </a>
 <a href="https://github.com/deepset-ai/canals">
     <img alt="Stars" src="https://shields.io/github/stars/deepset-ai/canals?style=social">
