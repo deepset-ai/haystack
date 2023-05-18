@@ -63,12 +63,12 @@ def test_invoke_with_stop_words():
 
         layer.invoke(prompt="Tell me hello", stop_words=stop_words)
 
-        assert mock_post.called
+    assert mock_post.called
 
-        # Check if stop_words are passed to _post as stop parameter
-        called_args, called_kwargs = mock_post.call_args
-        assert "stop" in called_kwargs["data"]["parameters"]
-        assert called_kwargs["data"]["parameters"]["stop"] == stop_words
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, called_kwargs = mock_post.call_args
+    assert "stop" in called_kwargs["data"]["parameters"]
+    assert called_kwargs["data"]["parameters"]["stop"] == stop_words
 
 
 @pytest.mark.unit
