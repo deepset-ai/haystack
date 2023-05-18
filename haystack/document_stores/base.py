@@ -32,35 +32,6 @@ except (ImportError, ModuleNotFoundError):
         return f
 
 
-class BaseKnowledgeGraph(BaseComponent):
-    """
-    Base class for implementing Knowledge Graphs.
-
-    The BaseKnowledgeGraph component is deprecated and will be removed in future versions.
-    """
-
-    def __init__(self):
-        warnings.warn(
-            "The BaseKnowledgeGraph component is deprecated and will be removed in future versions.",
-            category=DeprecationWarning,
-        )
-        super().__init__()
-
-    outgoing_edges = 1
-
-    def run(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):  # type: ignore
-        result = self.query(sparql_query=sparql_query, index=index, headers=headers)
-        output = {"sparql_result": result}
-        return output, "output_1"
-
-    def run_batch(self):
-        raise NotImplementedError("run_batch is not implemented for KnowledgeGraphs.")
-
-    @abstractmethod
-    def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
-        raise NotImplementedError
-
-
 class BaseDocumentStore(BaseComponent):
     """
     Base class for implementing Document Stores.

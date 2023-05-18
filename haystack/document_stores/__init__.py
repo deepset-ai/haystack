@@ -1,5 +1,5 @@
 from haystack.utils.import_utils import safe_import
-from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, KeywordDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, KeywordDocumentStore
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
@@ -20,7 +20,3 @@ FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumen
 PineconeDocumentStore = safe_import("haystack.document_stores.pinecone", "PineconeDocumentStore", "pinecone")
 MilvusDocumentStore = safe_import("haystack.document_stores.milvus", "MilvusDocumentStore", "milvus")
 WeaviateDocumentStore = safe_import("haystack.document_stores.weaviate", "WeaviateDocumentStore", "weaviate")
-GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDBKnowledgeGraph", "graphdb")
-InMemoryKnowledgeGraph = safe_import(
-    "haystack.document_stores.memory_knowledgegraph", "InMemoryKnowledgeGraph", "inmemorygraph"
-)
