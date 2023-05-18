@@ -120,7 +120,7 @@ class ToolsManager:
     def __init__(
         self,
         tools: Optional[List[Tool]] = None,
-        tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*',
+        tool_pattern: str = r"Tool:\s*(\w+)\s*Tool Input:\s*(?:\"([\s\S]*?)\"|((?:.|\n)*))\s*",
     ):
         """
         :param tools: A list of tools to add to the ToolManager. Each tool must have a unique name.
@@ -198,7 +198,7 @@ class ToolsManager:
         tool_match = re.search(self.tool_pattern, llm_response)
         if tool_match:
             tool_name = tool_match.group(1)
-            tool_input = tool_match.group(3)
+            tool_input = tool_match.group(2) or tool_match.group(3)
             return tool_name.strip('" []\n').strip(), tool_input.strip('" \n')
         return None, None
 
