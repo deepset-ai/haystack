@@ -70,7 +70,7 @@ def test_cosine_similarity(name, tmp_path):
             # check if the stored embedding was normalized or not
             np.testing.assert_allclose(
                 expected_emb, result_emb, rtol=0.2, atol=5e-07
-            )  # high tolerance necessary for Milvus 2
+            )  # high tolerance was necessary for Milvus 2
 
             # check if the score is plausible for cosine similarity
             cosine_score = np.dot(result_emb, query) / (np.linalg.norm(result_emb) * np.linalg.norm(query))
@@ -122,7 +122,7 @@ def test_update_embeddings_cosine_similarity(name, tmp_path):
             # check if the stored embedding was normalized or not
             np.testing.assert_allclose(
                 expected_emb, result_emb, rtol=0.2, atol=5e-07
-            )  # high tolerance necessary for Milvus 2
+            )  # high tolerance was necessary for Milvus 2
 
             # check if the score is plausible for cosine similarity
             cosine_score = np.dot(result_emb, query) / (np.linalg.norm(result_emb) * np.linalg.norm(query))

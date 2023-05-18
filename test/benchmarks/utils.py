@@ -4,7 +4,6 @@ from haystack.document_stores import InMemoryDocumentStore
 from haystack.document_stores import ElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_stores.elasticsearch import Elasticsearch
 from haystack.document_stores import FAISSDocumentStore
-from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes import BM25Retriever, TfidfRetriever
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes import FARMReader

@@ -11,7 +11,6 @@ from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
-    MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
     FAISSDocumentStore,
