@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
-from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+from transformers import PreTrainedTokenizerFast
 
 
 try:
@@ -578,8 +578,8 @@ def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
@@ -621,9 +621,9 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.table_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.table_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.table_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
