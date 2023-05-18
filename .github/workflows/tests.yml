@@ -8,7 +8,7 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
-      
+    
 env:
   COVERALLS_NOISY: true
 
@@ -115,8 +115,9 @@ jobs:
         run: hatch run cov
 
       - name: Coverage
+        if: matrix.os == 'ubuntu-latest'
         uses: coverallsapp/github-action@v2
         with:
           path-to-lcov: coverage.xml
-          flag-name: ${{ matrix.os }}
-          parallel: true
+          parallel: false
+          debug: true

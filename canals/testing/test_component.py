@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from canals import Pipeline, save_pipelines, load_pipelines
+from canals.pipeline import Pipeline, save_pipelines, load_pipelines
 
 #
 # TODO right now the tests iterate on components, so it's not always clear which component fails the tests.

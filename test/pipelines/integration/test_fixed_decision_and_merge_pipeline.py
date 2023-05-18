@@ -6,7 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.test_components import AddFixedValue, Parity, Double, Subtract
+from test.sample_components import AddFixedValue, Parity, Double, Subtract
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -33,13 +33,23 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "fixed_decision_and_merge_pipeline.png")
 
-    results = pipeline.run({"add_one": {"value": 1}, "add_two": {"add": 2}})
+    results = pipeline.run(
+        {
+            "add_one": AddFixedValue.Input(value=1),
+            "add_two": AddFixedValue.Input(add=2),
+        }
+    )
     pprint(results)
-    assert results == {"add_two": {"value": 8}}
+    assert results == {"add_two": AddFixedValue.Output(value=8)}
 
-    results = pipeline.run({"add_one": {"value": 2}, "add_two": {"add": 2}})
+    results = pipeline.run(
+        {
+            "add_one": AddFixedValue.Input(value=2),
+            "add_two": AddFixedValue.Input(add=2),
+        }
+    )
     pprint(results)
-    assert results == {"diff": {"difference": 7}}
+    assert results == {"diff": Subtract.Output(difference=7)}
 
 
 if __name__ == "__main__":

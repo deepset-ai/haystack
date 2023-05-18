@@ -12,6 +12,7 @@ from collections import OrderedDict
 import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
+from canals.component.input_output import ComponentInput
 from canals.draw import draw, RenderingEngines
 from canals.pipeline._utils import (
     InputSocket,
@@ -278,7 +279,7 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, Dict[str, Any]], debug: bool = False) -> Dict[str, Any]:
+    def run(self, data: Dict[str, ComponentInput], debug: bool = False) -> Dict[str, Any]:
         """
         Runs the pipeline.
 
@@ -321,12 +322,17 @@ class Pipeline:
         # if debug:
         #     os.makedirs("debug", exist_ok=True)
 
-        data = validate_pipeline_input(self.graph, inputs_values=data)
+        data = validate_pipeline_input(self.graph, input_values=data)
         self._clear_visits_count()
         self.warm_up()
 
         logger.info("Pipeline execution started.")
-        inputs_buffer = OrderedDict(data)
+        inputs_buffer = OrderedDict(
+            {
+                node: {key: value for key, value in input_data.__dict__.items() if value is not None}
+                for node, input_data in data.items()
+            }
+        )
         pipeline_output: Dict[str, Dict[str, Any]] = {}
 
         if debug:
@@ -554,19 +560,22 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
+            input_class = instance.Input if hasattr(instance, "Input") else instance.input_type
+
             # If the node is variadic, unpack the input
             if self.graph.nodes[name]["variadic_input"]:
                 inputs = list(inputs.values())[0]
-                output_dataclass = instance.run(*inputs)
+                input_dataclass = input_class(*inputs)
 
             # Otherwise pass the inputs as kwargs after adding the component's own defaults to them
             else:
                 inputs = {**instance.defaults, **inputs}
-                output_dataclass = instance.run(**inputs)
+                input_dataclass = input_class(**inputs)
+
+            output_dataclass = instance.run(input_dataclass)
 
             # Unwrap the output
-            output = output_dataclass.__dict__
-            logger.debug("   '%s' outputs: %s\n", name, output)
+            logger.debug("   '%s' outputs: %s\n", name, output_dataclass.__dict__)
 
         except Exception as e:
             raise PipelineRuntimeError(
@@ -574,7 +583,7 @@ class Pipeline:
                 "See the stacktrace above for more information."
             ) from e
 
-        return output
+        return output_dataclass
 
     def _route_output(
         self,
@@ -599,7 +608,7 @@ class Pipeline:
 
             # If this is a decision node and a loop is involved, we add to the input buffer only the nodes
             # that received their expected output and we leave the others out of the queue.
-            if is_decision_node_for_loop and node_results[from_socket.name] is None:
+            if is_decision_node_for_loop and getattr(node_results, from_socket.name) is None:
                 if networkx.has_path(self.graph, target_node, node_name):
                     # In case we're choosing to leave a loop, do not put the loop's node in the buffer.
                     logger.debug(
@@ -617,12 +626,14 @@ class Pipeline:
                 # edge that did not receive input.
                 if not target_node in inputs_buffer:
                     inputs_buffer[target_node] = {}  # Create the buffer for the downstream node if it's not there yet
-                if node_results.get(from_socket.name, None):
+
+                value_to_route = getattr(node_results, from_socket.name, None)
+                if value_to_route:
                     if to_socket.variadic:
                         if not to_socket.name in inputs_buffer[target_node].keys():
                             inputs_buffer[target_node][to_socket.name] = []
-                        inputs_buffer[target_node][to_socket.name].append(node_results[from_socket.name])
+                        inputs_buffer[target_node][to_socket.name].append(value_to_route)
                     else:
-                        inputs_buffer[target_node][to_socket.name] = node_results[from_socket.name]
+                        inputs_buffer[target_node][to_socket.name] = value_to_route
 
         return inputs_buffer

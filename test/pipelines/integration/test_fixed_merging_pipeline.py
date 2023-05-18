@@ -5,7 +5,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.test_components import AddFixedValue, Subtract
+from test.sample_components import AddFixedValue, Subtract
 
 import logging
 
@@ -33,13 +33,13 @@ def test_pipeline(tmp_path):
 
     results = pipeline.run(
         {
-            "first_addition": {"value": 1},
-            "third_addition": {"value": 1},
+            "first_addition": AddFixedValue.Input(value=1),
+            "third_addition": AddFixedValue.Input(value=1),
         }
     )
     pprint(results)
 
-    assert results == {"fourth_addition": {"value": 3}}
+    assert results == {"fourth_addition": AddFixedValue.Output(value=3)}
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from pathlib import Path
 from pprint import pprint
 
 from canals.pipeline import Pipeline
-from test.test_components import AddFixedValue, Parity, Double
+from test.sample_components import AddFixedValue, Parity, Double
 
 import logging
 
@@ -29,13 +29,13 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "fixed_decision_pipeline.png")
 
-    results = pipeline.run({"add_one": {"value": 1}})
+    results = pipeline.run({"add_one": AddFixedValue.Input(value=1)})
     pprint(results)
-    assert results == {"add_three": {"value": 15}}
+    assert results == {"add_three": AddFixedValue.Output(value=15)}
 
-    results = pipeline.run({"add_one": {"value": 2}})
+    results = pipeline.run({"add_one": AddFixedValue.Input(value=2)})
     pprint(results)
-    assert results == {"double": {"value": 6}}
+    assert results == {"double": Double.Output(value=6)}
 
 
 if __name__ == "__main__":
