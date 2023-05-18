@@ -1,10 +1,6 @@
 import time
 import logging
 import subprocess
-from pathlib import Path
-from typing import Union, Tuple
-
-import requests
 
 
 logger = logging.getLogger(__name__)
