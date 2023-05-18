@@ -149,9 +149,11 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 
 You can find some of our hosted demos with instructions to run them locally too on our [haystack-demos](https://github.com/deepset-ai/haystack-demos) repository
 
-🐥 **[Should I follow?](https://huggingface.co/spaces/deepset/should-i-follow) - Twitter demo**
+:dizzy: **[Reduce Hallucinations with Retrieval Augmentation](https://huggingface.co/spaces/deepset/retrieval-augmentation-svb) - Generative QA with LLMs**
 
-🌎 **[Explore The World](https://haystack-demo.deepset.ai/) demo**
+🐥 **[Should I follow?](https://huggingface.co/spaces/deepset/should-i-follow) - Summarizing tweets with LLMs**
+
+🌎 **[Explore The World](https://haystack-demo.deepset.ai/) - Extractive Question Answering**
 
 ### 🖖 Community
 

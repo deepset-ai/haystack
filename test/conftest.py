@@ -329,7 +329,7 @@ class MockBaseRetriever(MockRetriever):
 
 
 class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
         pass
 
 

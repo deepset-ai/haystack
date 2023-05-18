@@ -12,10 +12,11 @@ class WebSearch(BaseComponent):
     of the underlying search engine provider, provides common interface for all providers, and makes it possible to use various
     search engines.
 
-    WebSerach currently supports the following search engines providers (bridges):
+    WebSearch currently supports the following search engines providers (bridges):
     - SerperDev (default)
     - SerpAPI
     - BingAPI
+    - GoogleAPI
 
     """
 
