@@ -6,6 +6,7 @@
 </p>
 
 [![PyPI - Version](https://img.shields.io/pypi/v/canals.svg)](https://pypi.org/project/canals)
+[![Coverage Status](https://coveralls.io/repos/github/deepset-ai/canals/badge.svg?branch=main)](https://coveralls.io/github/deepset-ai/canals?branch=main)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/canals.svg)](https://pypi.org/project/canals)
 
 Canals is a **component orchestration engine**. Components are Python objects that can execute a task, like reading a file, performing calculations, or making API calls. Canals connects these objects together: it builds a graph of components and takes care of managing their execution order, making sure that each object receives the input it expects from the other components of the pipeline.
