@@ -212,12 +212,11 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     country_finder = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
-            name="country_finder",
-            prompt_text="When I give you a name of the city, respond with the country where the city is located.\n"
+            "When I give you a name of the city, respond with the country where the city is located.\n"
             "City: Rome\nCountry: Italy\n"
             "City: Berlin\nCountry: Germany\n"
             "City: Belgrade\nCountry: Serbia\n"
-            "City: {query}?\nCountry: ",
+            "City: {query}?\nCountry: "
         ),
     )
 
