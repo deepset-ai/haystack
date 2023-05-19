@@ -7,11 +7,11 @@ from hashlib import md5
 from typing import List, Optional, Union, Dict, Any, Tuple
 
 from events import Events
-from transformers import Tool as TransformersTool
+from transformers import Tool as OGTransformersTool
+
 from haystack import Pipeline, BaseComponent, Answer, Document
-from haystack.agents.memory import Memory, NoMemory
-from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
+from haystack.agents.memory import Memory, NoMemory
 from haystack.agents.types import Color, AgentTokenStreamingHandler
 from haystack.agents.utils import print_text, STREAMING_CAPABLE_MODELS
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
@@ -26,16 +26,19 @@ from haystack.pipelines import (
     RetrieverQuestionGenerationPipeline,
     WebQAPipeline,
 )
+from haystack.telemetry import send_event
 
 logger = logging.getLogger(__name__)
 
 
-class TransformersToolAdapter:
-    def __init__(self, tool: TransformersTool):
-        self.transformers_tool = tool
+class BaseTool:
+    def __init__(self, name: str, description: str, logging_color: Color = Color.YELLOW):
+        self.name = name
+        self.description = description
+        self.logging_color = logging_color
 
-    def __call__(self, *args, **kwargs):
-        return self.transformers_tool(*args, **kwargs)
+    def run(self, tool_input: str, params: Optional[dict] = None) -> str:
+        raise NotImplementedError
 
 
 class Tool:
@@ -71,7 +74,6 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
-            TransformersToolAdapter,
         ],
         description: str,
         output_variable: str = "results",
@@ -84,9 +86,7 @@ class Tool:
             )
         self.name = name
         self.pipeline_or_node = pipeline_or_node
-        self.description = description
-        self.output_variable = output_variable
-        self.logging_color = logging_color
+        super().__init__(name=name, description=description, logging_color=logging_color, output_variable=output_variable)
 
     def run(self, tool_input: str, params: Optional[dict] = None) -> str:
         # We can only pass params to pipelines but not to nodes
@@ -94,8 +94,6 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
-        elif isinstance(self.pipeline_or_node, TransformersToolAdapter):
-            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
@@ -123,6 +121,27 @@ class Tool:
                 return str(result)
 
 
+class TransformersTool(BaseTool):
+    def __init__(self, tool: Union[str, OGTransformersTool], logging_color: Color = Color.YELLOW, output_variable: str = "results"):
+        if isinstance(tool, str):
+            from transformers import load_tool
+            self.transformers_tool = load_tool(tool)
+        elif isinstance(tool, OGTransformersTool):
+            self.transformers_tool = tool
+        else:
+            raise Exception(f"Invalid tool type: {type(tool)}. It must be either a string or a transformers Tool object.")
+        super().__init__(name=self.transformers_tool.name, description=self.transformers_tool.description, logging_color=logging_color)
+
+    def run(self, tool_input: str, params: Optional[dict] = None) -> str:
+        result = self.transformers_tool(tool_input)
+        if not isinstance(result, str):
+            raise Exception(f"Transformers tool {self.name} returned a result of type {type(result)} but only support for strings is implemented.")
+        return result
+
+    def __call__(self, *args, **kwargs):
+        return self.transformers_tool(*args, **kwargs)
+
+
 class ToolsManager:
     """
     The ToolsManager manages tools for an Agent.
@@ -142,7 +161,7 @@ class ToolsManager:
         self.tool_pattern = tool_pattern
         self.callback_manager = Events(("on_tool_start", "on_tool_finish", "on_tool_error"))
 
-    def add_tool(self, tool: Tool):
+    def add_tool(self, tool: Tool) -> None:
         """
         Add a tool to the Agent. This also updates the PromptTemplate for the Agent's PromptNode with the tool name.
 
