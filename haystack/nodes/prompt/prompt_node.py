@@ -8,11 +8,12 @@ from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
 from haystack.nodes.prompt.prompt_model import PromptModel
 from haystack.nodes.prompt.prompt_template import PromptTemplate
+from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler
 from haystack.lazy_imports import LazyImport
 
-with LazyImport() as torch_import:
+with LazyImport() as torch_and_transformers_import:
     import torch
-
+    from transformers import TextIteratorStreamer
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class PromptNode(BaseComponent):
     """
 
     outgoing_edges: int = 1
+    OUTPUT_VARIABLE_ITERATOR: str = "iterator"
 
     def __init__(
         self,
@@ -155,6 +157,7 @@ class PromptNode(BaseComponent):
 
         # kwargs override model kwargs
         kwargs = {**self._prepare_model_kwargs(), **kwargs}
+        is_iterator = False
         template_to_fill = self.get_prompt_template(prompt_template)
         if template_to_fill:
             # prompt template used, yield prompts from inputs args
@@ -165,10 +168,15 @@ class PromptNode(BaseComponent):
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
-                results.extend(output)
+                if isinstance(output, TextIteratorStreamer):
+                    is_iterator = True
+                    results.append(output)
+                else:
+                    results.extend(output)
 
-            kwargs["prompts"] = prompt_collector
-            results = template_to_fill.post_process(results, **kwargs)
+            if not is_iterator:
+                kwargs["prompts"] = prompt_collector
+                results = template_to_fill.post_process(results, **kwargs)
         else:
             # straightforward prompt, no templates used
             for prompt in list(args):
@@ -177,7 +185,11 @@ class PromptNode(BaseComponent):
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
-                results.extend(output)
+                if isinstance(output, TextIteratorStreamer):
+                    is_iterator = True
+                    results.append(output)
+                else:
+                    results.extend(output)
         return results
 
     @property
@@ -242,6 +254,9 @@ class PromptNode(BaseComponent):
         invocation_context: Optional[Dict[str, Any]] = None,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
+        stream: Optional[bool] = None,
+        return_iterator: Optional[bool] = None,
+        stream_handler: Optional[TokenStreamingHandler] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these input parameters. Returns the output of the prompt model.
@@ -267,6 +282,12 @@ class PromptNode(BaseComponent):
                 - prompt template yaml: Uses the prompt template specified by the given YAML.
                 - prompt text: Uses a copy of the default prompt template with the given prompt text.
         :param generation_kwargs: The generation_kwargs are used to customize text generation for the underlying pipeline.
+        :param stream: whether the PromptNode enables the token streaming mode. You can assign a stream_handler to
+        handle these streaming tokens.
+        :param return_iterator: whether the PromptNode output includes a streaming iterator of TextIteratorStreamer.
+        If True, the run() function run in non-blocked mode and return a iterator in output['iterator'].
+        :param stream_handler: a customized stream handler of TokenStreamingHandler to handle the token streaming.
+        if return_iterator is True, stream_handler is not support.
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
@@ -294,6 +315,15 @@ class PromptNode(BaseComponent):
         if generation_kwargs:
             invocation_context.update(generation_kwargs)
 
+        if stream != None:
+            invocation_context["stream"] = stream
+
+        if return_iterator != None:
+            invocation_context["return_iterator"] = return_iterator
+
+        if stream_handler:
+            invocation_context["stream_handler"] = stream_handler
+
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
         prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
@@ -302,6 +332,9 @@ class PromptNode(BaseComponent):
             output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
         except:
             output_variable = "results"
+
+        if stream and return_iterator:
+            output_variable = PromptNode.OUTPUT_VARIABLE_ITERATOR
 
         invocation_context[output_variable] = results
         invocation_context["prompts"] = prompt_collector
@@ -318,6 +351,9 @@ class PromptNode(BaseComponent):
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         invocation_contexts: Optional[List[Dict[str, Any]]] = None,
         prompt_templates: Optional[List[Union[str, PromptTemplate]]] = None,
+        stream: Optional[bool] = None,
+        return_iterator: Optional[bool] = None,
+        stream_handler: Optional[TokenStreamingHandler] = None,
     ):
         """
         Runs PromptNode in batch mode.
@@ -352,8 +388,17 @@ class PromptNode(BaseComponent):
         ):
             prompt_template = self.get_prompt_template(self.default_prompt_template)
             output_variable = self.output_variable or prompt_template.output_variable or "results"
+            if stream and return_iterator:
+                output_variable = PromptNode.OUTPUT_VARIABLE_ITERATOR
+
             results = self.run(
-                query=query, documents=docs, invocation_context=invocation_context, prompt_template=prompt_template
+                query=query,
+                documents=docs,
+                invocation_context=invocation_context,
+                prompt_template=prompt_template,
+                stream=stream,
+                return_iterator=return_iterator,
+                stream_handler=stream_handler,
             )[0]
             all_results[output_variable].append(results[output_variable])
             all_results["invocation_contexts"].append(results["invocation_context"])

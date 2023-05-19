@@ -1,6 +1,7 @@
 from typing import Optional, Union, List, Dict, Any
 import logging
 import os
+from threading import Thread
 
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
@@ -20,6 +21,7 @@ with LazyImport() as torch_and_transformers_import:
         PreTrainedTokenizerFast,
         GenerationConfig,
         Pipeline,
+        TextIteratorStreamer,
     )
     from transformers.pipelines import get_task
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
@@ -104,6 +106,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # save stream settings and stream_handler for pipeline invocation
         self.stream_handler = kwargs.get("stream_handler", None)
         self.stream = kwargs.get("stream", False)
+        self.return_iterator = kwargs.get("return_iterator", False)
 
         # save generation_kwargs for pipeline invocation
         self.generation_kwargs = kwargs.get("generation_kwargs", {})
@@ -177,6 +180,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         }
         return pipeline_kwargs
 
+    def _run_pipe_task(self, prompt, model_input_kwargs):
+        output = self.pipe(prompt, **model_input_kwargs)
+        logger.debug("The final output: %s", output)
+
     def invoke(self, *args, **kwargs):
         """
         It takes a prompt and returns a list of generated texts using the local Hugging Face transformers model
@@ -191,7 +198,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # either stream is True (will use default handler) or stream_handler is provided for custom handler
         stream = kwargs.get("stream", self.stream)
         stream_handler = kwargs.get("stream_handler", self.stream_handler)
+        return_iterator = kwargs.get("return_iterator", self.return_iterator)
         stream = stream or stream_handler is not None
+
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
@@ -245,8 +254,15 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 model_input_kwargs["max_length"] = self.max_length
 
             if stream:
-                stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
-                model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
+                if return_iterator:
+                    iterator = TextIteratorStreamer(self.pipe.tokenizer, skip_prompt=True)
+                    model_input_kwargs["streamer"] = iterator
+                    thread = Thread(target=self._run_pipe_task, args=[prompt, model_input_kwargs])
+                    thread.start()
+                    return iterator
+                else:
+                    stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
+                    model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
 
             output = self.pipe(prompt, **model_input_kwargs)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]

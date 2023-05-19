@@ -5,14 +5,15 @@ import time
 import json
 
 from pydantic import BaseConfig
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 import haystack
 from haystack import Pipeline
+from haystack.nodes.prompt import PromptNode
 
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
 from rest_api.schema import QueryRequest, QueryResponse
-
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
@@ -58,6 +59,21 @@ def query(request: QueryRequest):
         return result
 
 
+@router.post("/query-streaming", response_model=StreamingResponse)
+def query_streaming(request: QueryRequest):
+    """
+    This streaming endpoint receives the question as a string and allows the requester to set
+    additional parameters that will be passed on to the Haystack pipeline.
+    """
+    with concurrency_limiter.run():
+        iterator = _get_streaming_iterator(query_pipeline, request)
+        if iterator == None:
+            raise HTTPException(
+                status_code=501, detail="The pipeline cannot support the streaming mode. The PromptNode is not found!"
+            )
+        return StreamingResponse(iterator, media_type="text/event-stream")
+
+
 def _process_request(pipeline, request) -> Dict[str, Any]:
     start_time = time.time()
 
@@ -74,3 +90,21 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
         json.dumps({"request": request, "response": result, "time": f"{(time.time() - start_time):.2f}"}, default=str)
     )
     return result
+
+
+def _get_streaming_iterator(pipeline, request=None):
+    params = request.params or {}
+    components = pipeline.components
+    node_name = None
+    iterator = None
+    for name in components.keys():
+        if isinstance(components[name], PromptNode):
+            node_name = name
+
+    if node_name != None:
+        streaming_param = {"stream": True, "return_iterator": True}
+        params[node_name].update(streaming_param)
+        # only one streaming iterator is support for rest_api
+        iterator = pipeline.run(query=request.query, params=params)["iterator"][0]
+
+    return iterator
