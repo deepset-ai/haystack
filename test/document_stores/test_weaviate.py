@@ -4,6 +4,7 @@ from unittest import mock
 
 import pytest
 import numpy as np
+import weaviate
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
