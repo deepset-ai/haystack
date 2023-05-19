@@ -11,6 +11,7 @@ from transformers import (
     PreTrainedTokenizer,
     PreTrainedTokenizerFast,
     GenerationConfig,
+    PreTrainedModel,
 )
 from transformers.pipelines import get_task
 
@@ -73,74 +74,45 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 self.devices[0],
             )
 
-        # Due to reflective construction of all invocation layers we might receive some
-        # unknown kwargs, so we need to take only the relevant.
-        # For more details refer to Hugging Face pipeline documentation
-        # Do not use `device_map` AND `device` at the same time as they will conflict
-        model_input_kwargs = {
-            key: kwargs[key]
-            for key in [
-                "model_kwargs",
-                "trust_remote_code",
-                "revision",
-                "feature_extractor",
-                "tokenizer",
-                "config",
-                "use_fast",
-                "torch_dtype",
-                "device_map",
-                "generation_kwargs",
-                "model_max_length",
-                "stream",
-                "stream_handler",
-            ]
-            if key in kwargs
-        }
-        # flatten model_kwargs one level
-        if "model_kwargs" in model_input_kwargs:
-            mkwargs = model_input_kwargs.pop("model_kwargs")
-            model_input_kwargs.update(mkwargs)
+        model_kwargs = kwargs.get("model_kwargs", {})
 
+        model: PreTrainedModel = kwargs.get("model", None)
         # save stream settings and stream_handler for pipeline invocation
-        self.stream_handler = model_input_kwargs.pop("stream_handler", None)
-        self.stream = model_input_kwargs.pop("stream", False)
+        self.stream_handler = kwargs.get("stream_handler", None)
+        self.stream = kwargs.get("stream", False)
 
         # save generation_kwargs for pipeline invocation
-        self.generation_kwargs = model_input_kwargs.pop("generation_kwargs", {})
-        model_max_length = model_input_kwargs.pop("model_max_length", None)
+        self.generation_kwargs = kwargs.get("generation_kwargs", {})
+        model_max_length = kwargs.get("model_max_length", None)
 
-        torch_dtype = model_input_kwargs.get("torch_dtype")
+        torch_dtype = kwargs.get("torch_dtype", None)
         if torch_dtype is not None:
-            if isinstance(torch_dtype, str):
-                if "torch." in torch_dtype:
-                    torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
-                elif torch_dtype == "auto":
-                    torch_dtype_resolved = torch_dtype
-                else:
-                    raise ValueError(
-                        f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
-                    )
-            elif isinstance(torch_dtype, torch.dtype):
-                torch_dtype_resolved = torch_dtype
-            else:
-                raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
-            model_input_kwargs["torch_dtype"] = torch_dtype_resolved
+            torch_dtype = self.extract_torch_dtype(torch_dtype)
 
-        if len(model_input_kwargs) > 0:
-            logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
+        device_map = kwargs.get("device_map", None)
 
         # If task_name is not provided, get the task name from the model name or path (uses HFApi)
-        if "task_name" in kwargs:
-            self.task_name = kwargs.get("task_name")
-        else:
-            self.task_name = get_task(model_name_or_path, use_auth_token=use_auth_token)
+        self.task_name = (
+            kwargs.get("task_name")
+            if "task_name" in kwargs
+            else get_task(model_name_or_path, use_auth_token=use_auth_token)
+        )
 
         self.pipe = pipeline(
             task=self.task_name,  # task_name is used to determine the pipeline type
-            model=model_name_or_path,
-            device=self.devices[0] if "device_map" not in model_input_kwargs else None,
+            model=model or model_name_or_path,
+            config=kwargs.get("config", None),
+            tokenizer=kwargs.get("tokenizer", None),
+            feature_extractor=kwargs.get("feature_extractor", None),
+            revision=kwargs.get("revision", None),
+            # as device and device_map are mutually exclusive, we set device to None if device_map is provided
+            device=self.devices[0] if device_map is None else None,
+            device_map=device_map,
             use_auth_token=self.use_auth_token,
-            model_kwargs=model_input_kwargs,
+            torch_dtype=torch_dtype,
+            trust_remote_code=kwargs.get("trust_remote_code", False),
+            model_kwargs=model_kwargs,
+            pipeline_class=kwargs.get("pipeline_class", None),
         )
         # This is how the default max_length is determined for Text2TextGenerationPipeline shown here
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
@@ -172,14 +144,15 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         stop_words = kwargs.pop("stop_words", None)
         top_k = kwargs.pop("top_k", None)
         # either stream is True (will use default handler) or stream_handler is provided for custom handler
-        stream = kwargs.get("stream", self.stream) or kwargs.get("stream_handler", self.stream_handler) is not None
+        stream = kwargs.get("stream", self.stream)
+        stream_handler = kwargs.get("stream_handler", self.stream_handler)
+        stream = stream or stream_handler is not None
         if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
             # Consider only Text2TextGenerationPipeline and TextGenerationPipeline relevant, ignore others
             # For more details refer to Hugging Face Text2TextGenerationPipeline and TextGenerationPipeline
             # documentation
-            # TODO resolve these kwargs from the pipeline signature
             model_input_kwargs = {
                 key: kwargs[key]
                 for key in [
@@ -227,7 +200,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 model_input_kwargs["max_length"] = self.max_length
 
             if stream:
-                stream_handler: TokenStreamingHandler = kwargs.pop("stream_handler", DefaultTokenStreamingHandler())
+                stream_handler: TokenStreamingHandler = stream_handler or DefaultTokenStreamingHandler()
                 model_input_kwargs["streamer"] = HFTokenStreamingHandler(self.pipe.tokenizer, stream_handler)
 
             output = self.pipe(prompt, **model_input_kwargs)
@@ -269,6 +242,23 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         )
         return decoded_string
 
+    @staticmethod
+    def extract_torch_dtype(torch_dtype):
+        if isinstance(torch_dtype, str):
+            if "torch." in torch_dtype:
+                torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
+            elif torch_dtype == "auto":
+                torch_dtype_resolved = torch_dtype
+            else:
+                raise ValueError(
+                    f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
+                )
+        elif isinstance(torch_dtype, torch.dtype):
+            torch_dtype_resolved = torch_dtype
+        else:
+            raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
+        return torch_dtype_resolved
+
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         task_name: Optional[str] = None
@@ -300,4 +290,5 @@ class StopWordsCriteria(StoppingCriteria):
         self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        return any(torch.isin(input_ids[-1], self.stop_words["input_ids"]))
+        stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
+        return any(all(stop_word) for stop_word in stop_result)
