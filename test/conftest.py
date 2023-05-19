@@ -22,7 +22,6 @@ from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
-    MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
     FAISSDocumentStore,
@@ -138,7 +137,6 @@ def pytest_collection_modifyitems(config, items):
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
-        "milvus": [pytest.mark.milvus, pytest.mark.skip],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
@@ -178,7 +176,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate", "pinecone"}
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -662,7 +660,7 @@ def mock_pinecone(monkeypatch):
         monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "weaviate", "pinecone"])
 def document_store_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -767,18 +765,6 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
-        )
-
-    elif document_store_type == "milvus":
-        document_store = MilvusDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=get_sql_url(tmp_path),
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-            recreate_index=recreate_index,
         )
 
     elif document_store_type == "weaviate":

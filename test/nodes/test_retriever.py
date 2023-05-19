@@ -45,15 +45,12 @@ from ..conftest import MockBaseRetriever, fail_at_version
         ("mdr", "elasticsearch"),
         ("mdr", "faiss"),
         ("mdr", "memory"),
-        ("mdr", "milvus"),
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus"),
         ("bm25", "elasticsearch"),
         ("bm25", "memory"),
         ("bm25", "weaviate"),
@@ -276,9 +273,7 @@ def test_elasticsearch_custom_query():
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
     document_store.return_embedding = True
@@ -300,9 +295,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs_with_ids):
