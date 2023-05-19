@@ -178,7 +178,6 @@ Here's a list of organizations that we know about from our community. Don't hesi
 -   [Apple](https://www.apple.com/)
 -   [BetterUp](https://www.betterup.com/)
 -   [Databricks](https://www.databricks.com/)
--   [Datadog](https://www.datadoghq.com/)
 -   [Deepset](https://deepset.ai/)
 -   [Etalab](https://www.etalab.gouv.fr/)
 -   [Infineon](https://www.infineon.com/)
