@@ -122,7 +122,7 @@ class Tool:
 
 
 class TransformersTool(BaseTool):
-    def __init__(self, tool: Union[str, OGTransformersTool], logging_color: Color = Color.YELLOW, output_variable: str = "results"):
+    def __init__(self, tool: Union[str, OGTransformersTool], logging_color: Color = Color.YELLOW):
         if isinstance(tool, str):
             from transformers import load_tool
             self.transformers_tool = load_tool(tool)
