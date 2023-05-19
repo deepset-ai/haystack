@@ -78,8 +78,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -146,8 +149,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -211,8 +217,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -259,8 +268,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -315,8 +327,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -363,8 +378,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -411,8 +429,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -469,8 +490,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -519,8 +543,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -567,8 +594,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -615,8 +645,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -663,8 +696,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -729,8 +765,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -788,8 +827,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -892,8 +934,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
@@ -965,8 +1010,11 @@ jobs:
         id: calculator
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
-          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
-          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
 
       - name: Send event to Datadog
         if: (success() || failure()) && github.ref_name == 'main'
