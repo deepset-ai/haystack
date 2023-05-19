@@ -76,6 +76,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -147,6 +148,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -215,6 +217,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -266,6 +269,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -325,6 +329,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -376,6 +381,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -427,6 +433,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -488,6 +495,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -541,6 +549,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -592,6 +601,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -643,6 +653,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -694,6 +705,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -763,6 +775,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -825,6 +838,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -932,6 +946,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
@@ -1008,6 +1023,7 @@ jobs:
 
       - name: Calculate alert data
         id: calculator
+        shell: bash
         if: (success() || failure()) && github.ref_name == 'main'
         run: |
           if [ "${{ job.status }}" = "success" ]; then
