@@ -182,7 +182,7 @@ Here's a list of organizations that we know about from our community. Don't hesi
 -   [Etalab](https://www.etalab.gouv.fr/)
 -   [Infineon](https://www.infineon.com/)
 -   [Intelijus](https://www.intelijus.ai/)
--   [LEGO](https://www.lego.com/)
+-   [LEGO](https://github.com/larsbaunwall/bricky#readme)
 -   [Netflix](https://netflix.com)
 -   [Nvidia](https://www.nvidia.com/en-us/)
 -   [PostHog](https://posthog.com/)
