@@ -184,7 +184,7 @@ Here's a list of organizations that we know about from our community. Don't hesi
 -   [Intel](https://github.com/intel/open-domain-question-and-answer#readme)
 -   [Intelijus](https://www.intelijus.ai/)
 -   [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
--   [LEGO](https://www.lego.com/)
+-   [LEGO](https://github.com/larsbaunwall/bricky#readme)
 -   [Netflix](https://netflix.com)
 -   [Nvidia](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/)
 -   [PostHog](https://github.com/PostHog/max-ai#readme)
