@@ -7,7 +7,7 @@ from hashlib import md5
 from typing import List, Optional, Union, Dict, Any, Tuple
 
 from events import Events
-
+from transformers import Tool as TransformersTool
 from haystack import Pipeline, BaseComponent, Answer, Document
 from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
@@ -28,6 +28,14 @@ from haystack.pipelines import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TransformersToolAdapter:
+    def __init__(self, tool: TransformersTool):
+        self.transformers_tool = tool
+
+    def __call__(self, *args, **kwargs):
+        return self.transformers_tool(*args, **kwargs)
 
 
 class Tool:
@@ -63,6 +71,7 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
+            TransformersToolAdapter,
         ],
         description: str,
         output_variable: str = "results",
@@ -85,6 +94,8 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        elif isinstance(self.pipeline_or_node, TransformersToolAdapter):
+            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)

@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from haystack import Pipeline, Answer, Document
-from haystack.agents.base import ToolsManager, Tool
+from haystack.agents.base import ToolsManager, Tool, TransformersToolAdapter
 
 
 @pytest.fixture
@@ -160,3 +160,14 @@ def test_extract_tool_name_and_empty_tool_input(tools_manager):
     for example in examples:
         tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(example)
         assert tool_name == "Search" and tool_input == ""
+
+
+@pytest.mark.unit
+def test_transformer_tool_integration():
+    from transformers import load_tool
+
+    tool = load_tool("lysandre/hf-model-downloads")
+
+    hf_tool = Tool(name=tool.name, pipeline_or_node=TransformersToolAdapter(tool), description=tool.description)
+    res = hf_tool.run("question-answering")
+    print(res)
