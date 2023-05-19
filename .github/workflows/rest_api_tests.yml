@@ -63,58 +63,30 @@ jobs:
             exit 1
           fi
 
-      - uses: slackapi/slack-github-action@v1.23.0
-        if: failure() && github.ref == 'refs/heads/main'
+      - name: Calculate alert data
+        id: calculator
+        if: (success() || failure()) && github.ref_name == 'main'
+        run: |
+          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
+          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
         with:
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "image",
-                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
-                      "alt_text": "Actor"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
-                  }
-                },
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
-                    }
-                  ]
-                },
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "image",
-                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
-                      "alt_text": "Github logo"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
-                    }
-                  ]
-                }
-              ]
-            }
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   rest_api:
     needs: black
@@ -143,55 +115,27 @@ jobs:
         run: |
           pytest ${{ env.PYTEST_PARAMS }} rest_api/
 
-      - uses: slackapi/slack-github-action@v1.23.0
-        if: failure() && github.ref == 'refs/heads/main'
+      - name: Calculate alert data
+        id: calculator
+        if: (success() || failure()) && github.ref_name == 'main'
+        run: |
+          [ "${{ job.status }}" = "success" ] && echo "alert_type=success" >> "$GITHUB_OUTPUT"
+          [ "${{ job.status }}" = "failure" ] && echo "alert_type=error" >> "$GITHUB_OUTPUT"
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
         with:
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "image",
-                      "image_url": "https://avatars.githubusercontent.com/u/${{ github.actor_id }}?v=4",
-                      "alt_text": "Actor"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*<https://github.com/${{ github.actor }}|${{ github.actor }}>*"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Job ${{ github.job }} in workflow <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/workflow/|${{ github.workflow }}>"
-                  }
-                },
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "Triggered by ${{ github.event_name }} for ${{ github.ref_type }} `${{ github.ref_name }}`"
-                    }
-                  ]
-                },
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "image",
-                      "image_url": "https://github.githubassets.com/favicons/favicon.png",
-                      "alt_text": "Github logo"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "<https://github.com/${{ github.repository }}/|${{ github.repository }}> Run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/|#${{ github.run_number }} | Attempt #${{ github.run_attempt }}>"
-                    }
-                  ]
-                }
-              ]
-            }
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
