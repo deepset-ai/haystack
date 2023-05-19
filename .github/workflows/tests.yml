@@ -94,7 +94,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -167,7 +168,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -237,7 +239,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -290,7 +293,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -351,7 +355,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -404,7 +409,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -457,7 +463,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -520,7 +527,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -575,7 +583,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -628,7 +637,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -681,7 +691,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
@@ -734,7 +745,8 @@ jobs:
               tags:
                 - "project:${{ github.repository }}"
                 - "job:${{ github.job }}"
-                - "workflow:${{ github.run_id }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
