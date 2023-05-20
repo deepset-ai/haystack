@@ -1,39 +1,13 @@
-<p align="center">
+<div align="center">
   <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/haystack_logo_colored.png" alt="Haystack"></a>
-</p>
+</div>
 
-<p>
-    <a href="https://github.com/deepset-ai/haystack/actions/workflows/tests.yml">
-        <img alt="Tests" src="https://github.com/deepset-ai/haystack/workflows/Tests/badge.svg?branch=main">
-    </a>
-    <a href="https://github.com/deepset-ai/haystack-json-schema/actions/workflows/schemas.yml">
-        <img alt="Schemas" src="https://github.com/deepset-ai/haystack-json-schema/actions/workflows/schemas.yml/badge.svg">
-    </a>
-    <a href="https://docs.haystack.deepset.ai">
-        <img alt="Documentation" src="https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai">
-    </a>
-    <a href="https://app.fossa.com/projects/custom%2B24445%2Fgithub.com%2Fdeepset-ai%2Fhaystack?ref=badge_shield">
-        <img alt="FOSSA Status" src="https://app.fossa.com/api/projects/custom%2B24445%2Fgithub.com%2Fdeepset-ai%2Fhaystack.svg?type=shield"/>
-    </a>
-    <a href="https://github.com/deepset-ai/haystack/releases">
-        <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
-    </a>
-    <a href="https://github.com/deepset-ai/haystack/commits/main">
-        <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/haystack">
-    </a>
-    <a href="https://pepy.tech/project/farm-haystack">
-        <img alt="Downloads" src="https://pepy.tech/badge/farm-haystack/month">
-    </a>
-    <a href="https://www.deepset.ai/jobs">
-        <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
-    </a>
-        <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
-        <img alt="Twitter" src="https://img.shields.io/badge/follow-%40deepset_ai-1DA1F2?logo=twitter">
-    </a>
-    <a href="https://discord.com/invite/qZxjM4bAHU">
-        <img alt="chat on Discord" src="https://img.shields.io/discord/993534733298450452?logo=discord">
-    </a>
-</p>
+|         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![Docker image release](https://github.com/deepset-ai/haystack/actions/workflows/docker_release.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/docker_release.yml) [![Schemas](https://github.com/deepset-ai/haystack/actions/workflows/schemas.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/schemas.yml) |
+| Docs    | [![Sync docs with Readme](https://github.com/deepset-ai/haystack/actions/workflows/readme_sync.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/readme_sync.yml) ![Website](https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai)                                                                                                                                                                                                          |
+| Package | ![PyPI](https://img.shields.io/pypi/v/farm-haystack) ![PyPI - Downloads](https://img.shields.io/pypi/dm/farm-haystack?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/farm-haystack?logo=python&logoColor=gold) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml)                                                      |
+| Meta    | ![Discord](https://img.shields.io/discord/993534733298450452?logo=discord) ![Twitter Follow](https://img.shields.io/twitter/follow/deepset_ai)                                                                                                                                                                                                                                                                                                                                                                                |
 
 [Haystack](https://haystack.deepset.ai/) is an end-to-end NLP framework that enables you to build NLP applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform question answering, answer generation, semantic document search, or build tools that are capable of complex decision making and query resolution, you can use the state-of-the-art NLP models with Haystack to build end-to-end NLP applications solving your use case.
 
