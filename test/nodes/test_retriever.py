@@ -27,7 +27,6 @@ from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.search_engine import WebSearch
-from haystack.nodes.retriever import Text2SparqlRetriever
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -1271,21 +1270,3 @@ def test_web_retriever_mode_snippets(monkeypatch):
     web_retriever = WebRetriever(api_key="", top_search_results=2)
     result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
     assert result == expected_search_results["documents"]
-
-
-@fail_at_version(1, 17)
-def test_text_2_sparql_retriever_deprecation():
-    BartForConditionalGeneration = object()
-    BartTokenizer = object()
-    with patch.multiple(
-        "haystack.nodes.retriever.text2sparql", BartForConditionalGeneration=DEFAULT, BartTokenizer=DEFAULT
-    ):
-        knowledge_graph = Mock()
-        with pytest.warns(DeprecationWarning) as w:
-            Text2SparqlRetriever(knowledge_graph)
-
-            assert len(w) == 1
-            assert (
-                w[0].message.args[0]
-                == "The Text2SparqlRetriever component is deprecated and will be removed in future versions."
-            )
