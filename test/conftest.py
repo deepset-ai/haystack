@@ -396,9 +396,10 @@ class MockPromptNode(PromptNode):
     def __init__(self):
         self.default_prompt_template = None
         self.model_name_or_path = ""
+        self.mock_prompt_response = ""
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
-        return [""]
+        return [self.mock_prompt_response]
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
         if prompt_template == "think-step-by-step":

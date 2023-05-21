@@ -125,6 +125,29 @@ def test_run_tool():
 
 
 @pytest.mark.unit
+def test_run_tool_with_result():
+    pn = MockPromptNode()
+    pn.mock_prompt_response = (
+        "need to find out what city he was born.\nTool: Retriever\nTool Input: Where was Jeremy McKinnon born"
+    )
+    agent = Agent(prompt_node=pn, max_steps=3)
+    retriever = MockRetriever()
+    agent.add_tool(
+        Tool(
+            name="Retriever",
+            pipeline_or_node=retriever,
+            description="useful for when you need to retrieve documents from your index",
+            output_variable="documents",
+        )
+    )
+
+    result = agent.run("Where does Christelle live?")
+    assert result["tool_results"] == [
+        {"name": "Retriever", "result": "[]", "unprocessed_result": ({"documents": []}, "output_1")}
+    ]
+
+
+@pytest.mark.unit
 def test_extract_tool_name_and_tool_input():
     tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
     pn_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
