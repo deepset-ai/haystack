@@ -4,11 +4,11 @@ from unittest import mock
 
 import pytest
 import numpy as np
+import weaviate
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
-from haystack.document_stores import weaviate
 
 embedding_dim = 768
 
@@ -64,17 +64,10 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         This fixture provides an instance of the WeaviateDocumentStore equipped with a mocked Weaviate client.
         """
-
-        class DSMock(WeaviateDocumentStore):
-            pass
-
-        mocked_client = mock.MagicMock()
-        mocked_client.Client().is_ready.return_value = True
-        mocked_client.Client().schema.contains.return_value = False
-        weaviate.client = mocked_client
-        mocked_ds = DSMock()
-
-        return mocked_ds
+        with mock.patch("haystack.document_stores.weaviate.client") as mocked_client:
+            mocked_client.Client().is_ready.return_value = True
+            mocked_client.Client().schema.contains.return_value = False
+            yield WeaviateDocumentStore()
 
     @pytest.mark.skip(reason="Weaviate does not support labels")
     @pytest.mark.integration

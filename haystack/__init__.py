@@ -44,7 +44,6 @@ generalimport(
     "posthog",
     "protobuf",
     "psycopg2",
-    "pymilvus",
     "pytesseract",
     "quantulum3",
     "rank_bm25",

@@ -29,7 +29,6 @@ changelog:
         - topic:document_store
         - topic:elasticsearch
         - topic:faiss
-        - topic:milvus
         - topic:weaviate
         - topic:pinecone
         - topic:sql

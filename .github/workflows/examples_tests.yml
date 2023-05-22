@@ -1,0 +1,77 @@
+name: Examples tests
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - examples/**
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+  PYTHON_VERSION: "3.8"
+
+jobs:
+  tests:
+    name: Examples
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: elasticsearch:7.17.6
+        env:
+          discovery.type: "single-node"
+          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+        ports:
+          - 9200:9200
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Haystack
+        run: pip install .[all,dev]
+
+      - name: Run
+        run: pytest examples/
+
+      - name: Calculate alert data
+        id: calculator
+        if: (success() || failure()) && github.ref_name == 'main'
+        shell: bash
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -7,7 +7,7 @@ from haystack.nodes import EmbeddingRetriever, TableTextRetriever
 from ..conftest import document_store
 
 
-@pytest.mark.parametrize("name", ["elasticsearch", "faiss", "memory", "milvus"])
+@pytest.mark.parametrize("name", ["elasticsearch", "faiss", "memory"])
 def test_update_embeddings(name, tmp_path):
     documents = []
     for i in range(6):

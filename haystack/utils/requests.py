@@ -8,7 +8,9 @@ import requests
 logger = logging.getLogger(__file__)
 
 
-def request_with_retry(attempts: int = 3, status_codes: Optional[List[int]] = None, **kwargs) -> requests.Response:
+def request_with_retry(
+    attempts: int = 3, status_codes_to_retry: Optional[List[int]] = None, **kwargs
+) -> requests.Response:
     """
     request_with_retry is a simple wrapper function that executes an HTTP request
     with a configurable exponential backoff retry on failures.
@@ -25,7 +27,7 @@ def request_with_retry(attempts: int = 3, status_codes: Optional[List[int]] = No
     res = request_with_retry(method="GET", url="https://example.com", attempts=10)
 
     # Sending an HTTP request with custom HTTP codes to retry
-    res = request_with_retry(method="GET", url="https://example.com", status_codes=[408, 503])
+    res = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=[408, 503])
 
     # Sending an HTTP request with custom timeout in seconds
     res = request_with_retry(method="GET", url="https://example.com", timeout=5)
@@ -44,7 +46,7 @@ def request_with_retry(attempts: int = 3, status_codes: Optional[List[int]] = No
         url="https://example.com",
         auth=CustomAuth(),
         attempts=10,
-        status_codes[408, 503],
+        status_codes_to_retry=[408, 503],
         timeout=5
     )
 
@@ -52,16 +54,20 @@ def request_with_retry(attempts: int = 3, status_codes: Optional[List[int]] = No
     res = request_with_retry(method="POST", url="https://example.com", data={"key": "value"}, attempts=10)
 
     # Retry all 5xx status codes
-    res = request_with_retry(method="GET", url="https://example.com", status_codes=list(range(500, 600)))
+    res = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=list(range(500, 600)))
 
     :param attempts: Maximum number of attempts to retry the request, defaults to 3
-    :param status_codes: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429, 503]
+    :param status_codes_to_retry: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429, 503]:
+        - `408: Request Timeout`
+        - `418`
+        - `429: Too Many Requests`
+        - `503: Service Unavailable`
     :param **kwargs: Optional arguments that ``request`` takes.
     :return: :class:`Response <Response>` object
     """
 
-    if status_codes is None:
-        status_codes = [408, 418, 429, 503]
+    if status_codes_to_retry is None:
+        status_codes_to_retry = [408, 418, 429, 503]
 
     @retry(
         reraise=True,
@@ -72,11 +78,10 @@ def request_with_retry(attempts: int = 3, status_codes: Optional[List[int]] = No
         after=after_log(logger, logging.DEBUG),
     )
     def run():
-        # We ignore the missing-timeout Pylint rule as we set a default
-        kwargs.setdefault("timeout", 10)
-        res = requests.request(**kwargs)  # pylint: disable=missing-timeout
+        timeout = kwargs.pop("timeout", 10)
+        res = requests.request(**kwargs, timeout=timeout)
 
-        if res.status_code in status_codes:
+        if res.status_code in status_codes_to_retry:
             # We raise only for the status codes that must trigger a retry
             res.raise_for_status()
 

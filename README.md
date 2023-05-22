@@ -149,9 +149,11 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 
 You can find some of our hosted demos with instructions to run them locally too on our [haystack-demos](https://github.com/deepset-ai/haystack-demos) repository
 
-🐥 **[Should I follow?](https://huggingface.co/spaces/deepset/should-i-follow) - Twitter demo**
+:dizzy: **[Reduce Hallucinations with Retrieval Augmentation](https://huggingface.co/spaces/deepset/retrieval-augmentation-svb) - Generative QA with LLMs**
 
-🌎 **[Explore The World](https://haystack-demo.deepset.ai/) demo**
+🐥 **[Should I follow?](https://huggingface.co/spaces/deepset/should-i-follow) - Summarizing tweets with LLMs**
+
+🌎 **[Explore The World](https://haystack-demo.deepset.ai/) - Extractive Question Answering**
 
 ### 🖖 Community
 
@@ -176,14 +178,15 @@ Here's a list of organizations that we know about from our community. Don't hesi
 -   [Apple](https://www.apple.com/)
 -   [BetterUp](https://www.betterup.com/)
 -   [Databricks](https://www.databricks.com/)
--   [Datadog](https://www.datadoghq.com/)
 -   [Deepset](https://deepset.ai/)
--   [Etalab](https://www.etalab.gouv.fr/)
+-   [Etalab](https://www.deepset.ai/blog/improving-on-site-search-for-government-agencies-etalab)
 -   [Infineon](https://www.infineon.com/)
+-   [Intel](https://github.com/intel/open-domain-question-and-answer#readme)
 -   [Intelijus](https://www.intelijus.ai/)
--   [LEGO](https://www.lego.com/)
+-   [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
+-   [LEGO](https://github.com/larsbaunwall/bricky#readme)
 -   [Netflix](https://netflix.com)
--   [Nvidia](https://www.nvidia.com/en-us/)
--   [PostHog](https://posthog.com/)
+-   [Nvidia](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/)
+-   [PostHog](https://github.com/PostHog/max-ai#readme)
 -   [Rakuten](https://www.rakuten.com/)
--   [Sooth.ai](https://sooth.ai/)
+-   [Sooth.ai](https://www.deepset.ai/blog/advanced-neural-search-with-sooth-ai)
