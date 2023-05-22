@@ -260,13 +260,7 @@ def test_generation_kwargs_from_prompt_node_run(prompt_model):
     with patch.object(node.prompt_model.model_invocation_layer, "invoke", MagicMock()) as mock_call:
         node.run(query=the_question, prompt_template="{query}", generation_kwargs={"do_sample": True})
 
-        mock_call.assert_called_with(
-            prompt=the_question,
-            stop_words=None,
-            top_k=1,
-            query=the_question,
-            do_sample=True
-        )
+        mock_call.assert_called_with(prompt=the_question, stop_words=None, top_k=1, query=the_question, do_sample=True)
 
 
 @pytest.mark.integration
@@ -769,9 +763,7 @@ def test_simple_pipeline_yaml_with_customized_params(tmp_path):
             params={"Prompter": {"prompt_template": "{query}", "generation_kwargs": {"do_sample": True}}},
         )
 
-        mock_call.assert_called_with(
-            prompt=the_question, stop_words=None, top_k=1, query=the_question, do_sample=True
-        )
+        mock_call.assert_called_with(prompt=the_question, stop_words=None, top_k=1, query=the_question, do_sample=True)
 
 
 @pytest.mark.skip
