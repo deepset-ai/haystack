@@ -192,7 +192,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     "max_new_tokens",
                     "num_beams",
                     "do_sample",
-                    "num_return_sequences"
+                    "num_return_sequences",
+                    "max_length"
                 ]
                 if key in kwargs
             }
