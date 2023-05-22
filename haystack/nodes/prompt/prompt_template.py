@@ -296,7 +296,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
 
-        Raises ValueError if the prom
+        Raises PromptNotFoundError if the prompt is not present in the hub.
         """
         try:
             prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
