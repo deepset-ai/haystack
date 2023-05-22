@@ -126,7 +126,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
 
     """
     for dep in schema["dependencies"]:
-        if not dep in sys.modules.keys():
+        if not dep in sys.modules:
             raise ValueError(
                 f"You're loading a pipeline that depends on '{dep}', which is not in sys.modules. "
                 "You need to import it before loading the pipelines."
@@ -195,11 +195,11 @@ def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__ca
     # Collect all modules
     for module in modules_to_search:
 
-        if not module in sys.modules.keys():
+        if not module in sys.modules:
             raise ValueError(f"{module} is not imported.")
 
         for name, entity in getmembers(sys.modules.get(module, None), ismodule):
-            if f"{module}.{name}" in sys.modules.keys():
+            if f"{module}.{name}" in sys.modules:
                 modules_to_search.append(f"{module}.{name}")
 
         logger.debug("Searching under %s...", module)
