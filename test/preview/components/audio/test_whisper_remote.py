@@ -10,15 +10,12 @@ from haystack.preview.components.audio.whisper_remote import RemoteWhisperTransc
 from test.preview.components.base import BaseTestComponent
 
 
-SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
-
-
 class TestRemoteWhisperTranscriber(BaseTestComponent):
     """
     Tests for RemoteWhisperTranscriber.
     """
 
-    @pytest.fixture
+    @pytest.mark.unit
     def test_save_load(self, tmp_path):
         self.assert_can_be_saved_and_loaded_in_pipeline(RemoteWhisperTranscriber(api_key="just a test"), tmp_path)
 
@@ -39,7 +36,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
             RemoteWhisperTranscriber(api_key=None)
 
     @pytest.mark.unit
-    def test_run_with_path(self):
+    def test_run_with_path(self, preview_samples_path):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
@@ -50,20 +47,20 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
             result = comp.run(
                 RemoteWhisperTranscriber.Input(
-                    audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"]
+                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"]
                 )
             )
             expected = Document(
                 content="test transcription",
                 metadata={
-                    "audio_file": SAMPLES_PATH / "audio" / "this is the content of the document.wav",
+                    "audio_file": preview_samples_path / "audio" / "this is the content of the document.wav",
                     "other_metadata": ["other", "meta", "data"],
                 },
             )
             assert result.documents == [expected]
 
     @pytest.mark.unit
-    def test_run_with_str(self):
+    def test_run_with_str(self, preview_samples_path):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
@@ -74,20 +71,24 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
             result = comp.run(
                 RemoteWhisperTranscriber.Input(
-                    audio_files=[str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute())]
+                    audio_files=[
+                        str((preview_samples_path / "audio" / "this is the content of the document.wav").absolute())
+                    ]
                 )
             )
             expected = Document(
                 content="test transcription",
                 metadata={
-                    "audio_file": str((SAMPLES_PATH / "audio" / "this is the content of the document.wav").absolute()),
+                    "audio_file": str(
+                        (preview_samples_path / "audio" / "this is the content of the document.wav").absolute()
+                    ),
                     "other_metadata": ["other", "meta", "data"],
                 },
             )
             assert result.documents == [expected]
 
     @pytest.mark.unit
-    def test_transcribe_with_stream(self):
+    def test_transcribe_with_stream(self, preview_samples_path):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
@@ -96,7 +97,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         with patch("haystack.utils.requests.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
-            with open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
+            with open(preview_samples_path / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
                 result = comp.transcribe(audio_files=[audio_stream])
                 expected = Document(
                     content="test transcription",
@@ -105,7 +106,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
                 assert result == [expected]
 
     @pytest.mark.unit
-    def test_api_transcription(self):
+    def test_api_transcription(self, preview_samples_path):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
@@ -116,7 +117,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
             comp.run(
                 RemoteWhisperTranscriber.Input(
-                    audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"]
+                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"]
                 )
             )
             requests_params = mocked_requests.request.call_args.kwargs
@@ -130,7 +131,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
             }
 
     @pytest.mark.unit
-    def test_api_translation(self):
+    def test_api_translation(self, preview_samples_path):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
@@ -141,7 +142,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
             comp.run(
                 RemoteWhisperTranscriber.Input(
-                    audio_files=[SAMPLES_PATH / "audio" / "this is the content of the document.wav"],
+                    audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"],
                     whisper_params={"translate": True},
                 )
             )
