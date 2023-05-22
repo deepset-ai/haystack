@@ -310,6 +310,7 @@ class PromptNode(BaseComponent):
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
         prompt_template: Optional[Union[str, PromptTemplate]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these input parameters. Returns the output of the prompt model.
@@ -334,6 +335,7 @@ class PromptNode(BaseComponent):
                 - prompt template name: Uses the prompt template registered with the given name.
                 - prompt template yaml: Uses the prompt template specified by the given YAML.
                 - prompt text: Uses a copy of the default prompt template with the given prompt text.
+        :param generation_kwargs: The generation_kwargs are used to customize text generation for the underlying pipeline.
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.
@@ -357,6 +359,9 @@ class PromptNode(BaseComponent):
 
         if "prompt_template" not in invocation_context.keys():
             invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
+
+        if generation_kwargs:
+            invocation_context.update(generation_kwargs)
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
