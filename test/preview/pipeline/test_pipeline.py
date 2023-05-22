@@ -3,11 +3,11 @@ from dataclasses import dataclass
 
 import pytest
 
-from haystack.preview import Pipeline, component, NoSuchStoreError
+from haystack.preview import Pipeline, component, NoSuchStoreError, ComponentInput, ComponentOutput
 
 
 class MockStore:
-    pass
+    ...
 
 
 @pytest.mark.unit
@@ -35,12 +35,17 @@ def test_pipeline_stores_in_params():
     @component
     class MockComponent:
         @dataclass
-        class Output:
+        class Input(ComponentInput):
+            value: int
+            stores: Dict[str, Any]
+
+        @dataclass
+        class Output(ComponentOutput):
             value: int
 
-        def run(self, value: int, stores: Dict[str, Any]) -> Output:
-            assert stores == {"first_store": store_1, "second_store": store_2}
-            return MockComponent.Output(value=value)
+        def run(self, data: Input) -> Output:
+            assert data.stores == {"first_store": store_1, "second_store": store_2}
+            return MockComponent.Output(value=data.value)
 
     pipe = Pipeline()
     pipe.add_component("component", MockComponent())

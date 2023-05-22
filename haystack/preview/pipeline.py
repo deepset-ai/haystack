@@ -63,7 +63,7 @@ class Pipeline(CanalsPipeline):
         for node_name in self.graph.nodes:
             node = self.graph.nodes[node_name]["instance"]
             # Get node inputs
-            input_params = inspect.signature(node.run).parameters
+            input_params = find_input_sockets()
             # If the node needs a store adds the list of stores to its default inputs
             if "stores" in input_params:
                 if not hasattr(node, "defaults"):
