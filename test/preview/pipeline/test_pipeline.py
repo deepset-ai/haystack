@@ -53,4 +53,4 @@ def test_pipeline_stores_in_params():
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
 
-    pipe.run(data={"component": {"value": None}})
+    pipe.run(data={"component": MockComponent.Input(value=1)})
