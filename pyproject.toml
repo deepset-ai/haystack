@@ -99,5 +99,4 @@ disable = [
   "line-too-long",
   "missing-class-docstring",
   "missing-module-docstring",
-  "consider-iterating-dictionary",  # horrible style imho :)
 ]
