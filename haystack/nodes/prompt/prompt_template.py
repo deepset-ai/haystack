@@ -234,7 +234,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 # In case of errors, let's directly assume this is a text prompt
                 logger.info(
                     "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not.",
-                    str(exc)
+                    str(exc),
                 )
                 prompt_text = prompt
                 name = "custom-at-query-time"
