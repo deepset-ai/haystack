@@ -48,7 +48,7 @@ def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     }
 
 
-def validate_pipeline_input(  # pylint: disable=too-many-branches
+def validate_pipeline_input(
     graph: networkx.MultiDiGraph, input_values: Dict[str, ComponentInput]
 ) -> Dict[str, ComponentInput]:
     """
@@ -56,7 +56,7 @@ def validate_pipeline_input(  # pylint: disable=too-many-branches
     Returns the input values, validated and updated at need.
     """
     input_components = find_pipeline_inputs(graph)
-    if not find_pipeline_inputs(graph):
+    if not any(sockets for sockets in find_pipeline_inputs(graph).values()):
         raise PipelineValidationError("This pipeline has no inputs.")
 
     # Make sure the input keys are all nodes of the pipeline
@@ -145,12 +145,12 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
     """
     valid_inputs = find_pipeline_inputs(graph)
     for node, sockets in valid_inputs.items():
-        if node in input_values:
-            for socket in sockets:
-                node_instance = graph.nodes[node]["instance"]
-                input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
-                if not input_in_node_defaults and not socket.name in input_values[node].names():
-                    raise ValueError(f"Missing input: {node}.{socket.name}")
+        for socket in sockets:
+            node_instance = graph.nodes[node]["instance"]
+            input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
+            inputs_for_node = input_values.get(node)
+            if not input_in_node_defaults and (not inputs_for_node or not socket.name in inputs_for_node.names()):
+                raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
 def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, input_values: Dict[str, ComponentInput]):
