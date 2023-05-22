@@ -30,6 +30,13 @@ def test_basic_invocation_only_inputs(mock_function):
 
 
 @pytest.mark.unit
+def test_basic_invocation_empty_documents_list(mock_function):
+    shaper = Shaper(func="test_function", inputs={"a": "query", "b": "documents"}, outputs=["c"])
+    results, _ = shaper.run(query="test query", documents=[])
+    assert results["invocation_context"]["c"] == []
+
+
+@pytest.mark.unit
 def test_multiple_outputs(mock_function_two_outputs):
     shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c", "d"])
     results, _ = shaper.run(query="test")
