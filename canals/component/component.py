@@ -4,6 +4,8 @@
 import logging
 import inspect
 
+from dataclasses import is_dataclass
+
 from canals.errors import ComponentError
 from canals.component.decorators import save_init_params, init_defaults
 
@@ -185,22 +187,64 @@ def component(class_):
     # Its value is set to the desired component name: normally it is the class name, but it can technically be customized.
     class_.__canals_component__ = class_.__name__
 
-    # Check for Input
+    # Check that inputs respects all constraints
+    _check_input(class_)
+
+    # Check that outputs respects all constraints
+    _check_output(class_)
+
+    # Check that the run method respects all constraints
+    _check_run_signature(class_)
+
+    # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
+    # See `save_init_params()`.
+    class_.__init__ = save_init_params(class_.__init__)
+
+    # Makes sure the self.defaults dictionary is always present
+    class_.__init__ = init_defaults(class_.__init__)
+
+    return class_
+
+
+def _check_input(class_):
+    """
+    Check that the component's input respects all constraints
+    """
     if not hasattr(class_, "Input") and not hasattr(class_, "input_type"):
         raise ComponentError(
             "Components must either have an Input dataclass or a 'input_type' property that returns such dataclass"
         )
-    if hasattr(class_, "Input") and not hasattr(class_.Input, "_component_input"):
-        raise ComponentError(f"{class_.__name__}.Input must inherit from ComponentInput")
+    if hasattr(class_, "Input"):
+        if not is_dataclass(class_.Input):
+            raise ComponentError(f"{class_.__name__}.Input must be a dataclass")
+        if not hasattr(class_.Input, "_component_input"):
+            raise ComponentError(f"{class_.__name__}.Input must inherit from ComponentInput")
+        if (
+            hasattr(class_.Input, "_variadic_component_input")
+            and len(inspect.signature(class_.Input.__init__).parameters) != 2
+        ):
+            raise ComponentError("Variadic inputs can contain only one variadic positional parameter.")
 
-    # Check for Output
+
+def _check_output(class_):
+    """
+    Check that the component's output respects all constraints
+    """
     if not hasattr(class_, "Output") and not hasattr(class_, "output_type"):
         raise ComponentError(
             "Components must either have an Output dataclass or a 'output_type' property that returns such dataclass"
         )
-    if hasattr(class_, "Output") and not hasattr(class_.Output, "_component_output"):
-        raise ComponentError(f"{class_.__name__}.Output must inherit from ComponentOutput")
+    if hasattr(class_, "Output"):
+        if not is_dataclass(class_.Output):
+            raise ComponentError(f"{class_.__name__}.Output must be a dataclass")
+        if not hasattr(class_.Output, "_component_output"):
+            raise ComponentError(f"{class_.__name__}.Output must inherit from ComponentOutput")
 
+
+def _check_run_signature(class_):
+    """
+    Check that the component's run() method exists and respects all constraints
+    """
     # Check for run()
     if not hasattr(class_, "run"):
         raise ComponentError(f"{class_.__name__} must have a 'run()' method. See the docs for more information.")
@@ -221,12 +265,3 @@ def component(class_):
     # Check for the return types
     if not hasattr(class_, "output_type") and run_signature.return_annotation == inspect.Parameter.empty:
         raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
-
-    # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
-    # See `save_init_params()`.
-    class_.__init__ = save_init_params(class_.__init__)
-
-    # Makes sure the self.defaults dictionary is always present
-    class_.__init__ = init_defaults(class_.__init__)
-
-    return class_

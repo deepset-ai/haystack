@@ -16,11 +16,8 @@ import networkx
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.component.input_output import ComponentInput
 from canals.draw import draw, convert_for_debug, RenderingEngines
-from canals.pipeline.sockets import (
-    InputSocket,
-    OutputSocket,
-    find_input_sockets,
-    find_output_sockets,
+from canals.pipeline.sockets import InputSocket, OutputSocket, find_input_sockets, find_output_sockets
+from canals.pipeline.validation import (
     find_unambiguous_connection,
     parse_connection_name,
     validate_pipeline_input,
