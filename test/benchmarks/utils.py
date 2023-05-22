@@ -4,12 +4,11 @@ from haystack.document_stores import InMemoryDocumentStore
 from haystack.document_stores import ElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_stores.elasticsearch import Elasticsearch
 from haystack.document_stores import FAISSDocumentStore
-from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes import BM25Retriever, TfidfRetriever
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes import FARMReader
 from haystack.nodes import TransformersReader
-from haystack.utils import launch_milvus, launch_es, launch_opensearch
+from haystack.utils import launch_es, launch_opensearch
 from haystack.modeling.data_handler.processor import http_get
 
 import logging
@@ -52,24 +51,6 @@ def get_document_store(document_store_type, similarity="dot_product", index="doc
         client = Elasticsearch()
         client.indices.delete(index="haystack_test*", ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document", similarity=similarity, timeout=3000)
-    elif document_store_type in ("milvus_flat", "milvus_hnsw"):
-        launch_milvus()
-        if document_store_type == "milvus_flat":
-            index_type = "FLAT"
-            index_param = None
-            search_param = None
-        elif document_store_type == "milvus_hnsw":
-            index_type = "HNSW"
-            index_param = {"M": 64, "efConstruction": 80}
-            search_param = {"ef": 20}
-        document_store = MilvusDocumentStore(
-            similarity=similarity,
-            index_type=index_type,
-            index_param=index_param,
-            search_param=search_param,
-            index=index,
-        )
-        assert document_store.get_document_count(index="eval_document") == 0
     elif document_store_type in ("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"

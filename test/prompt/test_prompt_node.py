@@ -28,7 +28,7 @@ def get_api_key(request):
 def test_add_and_remove_template():
     with patch("haystack.nodes.prompt.prompt_node.PromptModel"):
         node = PromptNode()
-    total_count = 15
+    total_count = 16
     # Verifies default
     assert len(node.get_prompt_template_names()) == total_count
 
