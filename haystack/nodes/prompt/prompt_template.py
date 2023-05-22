@@ -220,7 +220,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         try:
             # if it looks like a prompt template name
             if re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
-                name, prompt_text = self._get_prompt_template_from_hub(prompt)
+                name = prompt
+                prompt_text = self._fetch_from_prompthub(prompt)
 
             # if it's a path to a YAML file
             elif Path(prompt).exists():
@@ -292,7 +293,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
     )
-    def _get_prompt_template_from_hub(self, name):
+    def _fetch_from_prompthub(self, name) -> str:
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
 
@@ -304,7 +305,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             if http_error.response.status_code != 404:
                 raise http_error
             raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
-        return name, prompt_data.text
+        return prompt_data.text
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
