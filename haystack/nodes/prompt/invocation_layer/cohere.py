@@ -155,7 +155,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         **kwargs,
     ) -> requests.Response:
         """
-        Post data to the Cohere inference model. It takes in a prompt and returns a list of responses using a REST
+        Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST
         invocation.
         :param data: The data to be sent to the model.
         :param stream: Whether to stream the response.
@@ -204,7 +204,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
                 resize_info["max_length"],
                 resize_info["model_max_length"],
             )
-        return str(resize_info["resized_prompt"])
+        return prompt
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
