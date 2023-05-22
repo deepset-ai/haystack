@@ -250,17 +250,25 @@ def test_generation_kwargs_from_prompt_node_call():
         )
 
 
-@pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
-def test_generation_kwargs_from_prompt_node_run(prompt_model):
-    skip_test_for_invalid_key(prompt_model)
-    the_question = "What does 42 mean?"
-    # test that generation_kwargs are passed to the underlying invocation layer
-    node = PromptNode(prompt_model)
-    with patch.object(node.prompt_model.model_invocation_layer, "invoke", MagicMock()) as mock_call:
-        node.run(query=the_question, prompt_template="{query}", generation_kwargs={"do_sample": True})
+@pytest.mark.unit
+def test_generation_kwargs_are_passed_to_prompt_model_invoke():
+    prompt = "What does 42 mean?"
 
-        mock_call.assert_called_with(prompt=the_question, stop_words=None, top_k=1, query=the_question, do_sample=True)
+    mock_prompt_model = Mock()
+    # This is set so this mock can pass isinstance() checks run in
+    # PromptNode.__init__
+    mock_prompt_model.__class__ = PromptModel
+    mock_prompt_model.invoke.return_value = []
+    mock_prompt_model._ensure_token_limit.return_value = prompt
+
+    # Create PromptNode using the mocked PromptModel
+    node = PromptNode(model_name_or_path=mock_prompt_model)
+    node.run(query=prompt, prompt_template="{query}", generation_kwargs={"do_sample": True})
+
+    # Verify the do_sample keyword argument is passed to PromptModel.invoke()
+    mock_prompt_model.invoke.assert_called_once_with(
+        prompt, stop_words=None, top_k=1, query="What does 42 mean?", do_sample=True
+    )
 
 
 @pytest.mark.integration
@@ -735,35 +743,6 @@ def test_simple_pipeline_yaml(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
     assert result["results"][0] == "positive"
-
-
-@pytest.mark.integration
-def test_simple_pipeline_yaml_with_customized_params(tmp_path):
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(
-            """
-            version: ignore
-            components:
-            - name: Prompter
-              type: PromptNode
-            pipelines:
-            - name: query
-              nodes:
-              - name: Prompter
-                inputs:
-                - Query
-        """
-        )
-    the_question = "What is the capital of Germany?"
-    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-
-    with patch.object(HFLocalInvocationLayer, "invoke", MagicMock()) as mock_call:
-        result = pipeline.run(
-            query=the_question,
-            params={"Prompter": {"prompt_template": "{query}", "generation_kwargs": {"do_sample": True}}},
-        )
-
-        mock_call.assert_called_with(prompt=the_question, stop_words=None, top_k=1, query=the_question, do_sample=True)
 
 
 @pytest.mark.skip
