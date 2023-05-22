@@ -10,7 +10,6 @@ loaders:
         "sql",
         "faiss",
         "weaviate",
-        "graphdb",
         "deepsetcloud",
         "pinecone",
         "search_engine",

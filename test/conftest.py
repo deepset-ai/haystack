@@ -139,8 +139,6 @@ def pytest_collection_modifyitems(config, items):
         "faiss": [pytest.mark.faiss],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
-        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
-        "graphdb": [pytest.mark.integration],
     }
     for item in items:
         for name, markers in name_to_markers.items():

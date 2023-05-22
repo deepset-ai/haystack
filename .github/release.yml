@@ -33,7 +33,6 @@ changelog:
         - topic:pinecone
         - topic:sql
         - topic:knowledge_graph
-        - topic:graphdb
     - title: REST API
       labels:
         - topic:api
