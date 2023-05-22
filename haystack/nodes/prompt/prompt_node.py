@@ -368,7 +368,7 @@ class PromptNode(BaseComponent):
         prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
 
         try:
-            output_variable = self.output_variable or prompt_template_resolved.output_variable
+            output_variable = self.output_variable or prompt_template_resolved.output_variable or "results"
         except:
             output_variable = "results"
 
