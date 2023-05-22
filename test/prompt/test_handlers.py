@@ -58,3 +58,21 @@ def test_flan_prompt_handler():
         "model_max_length": 20,
         "new_prompt_length": 10,
     }
+
+    # test corner cases
+    assert handler("") == {
+        "prompt_length": 0,
+        "resized_prompt": "",
+        "max_length": 10,
+        "model_max_length": 20,
+        "new_prompt_length": 0,
+    }
+
+    # test corner case
+    assert handler(None) == {
+        "prompt_length": 0,
+        "resized_prompt": None,
+        "max_length": 10,
+        "model_max_length": 20,
+        "new_prompt_length": 0,
+    }
