@@ -230,10 +230,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
                         raise ValueError("The prompt loaded is not a prompt YAML file.")
                     name = prompt_template_parsed["name"]
                     prompt_text = prompt_template_parsed["prompt_text"]
-            except OSError as e:
+            except OSError as exc:
                 # In case of errors, let's directly assume this is a text prompt
-                logging.info(
-                    "There was an error checking whether this prompt is a file. Haystack will assume it's not."
+                logger.info(
+                    "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not."
+                    str(exc)
                 )
                 prompt_text = prompt
                 name = "custom-at-query-time"
