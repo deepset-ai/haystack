@@ -217,29 +217,31 @@ class PromptTemplate(BasePromptTemplate, ABC):
         super().__init__()
         name, prompt_text = None, None
 
-        # if it looks like a prompt template name
-        if re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
-            name, prompt_text = self._get_prompt_template_from_hub(prompt)
+        try:
+            # if it looks like a prompt template name
+            if re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
+                name, prompt_text = self._get_prompt_template_from_hub(prompt)
 
-        # if it's a path to a YAML file
-        elif Path(prompt).exists():
-            try:
+            # if it's a path to a YAML file
+            elif Path(prompt).exists():
                 with open(prompt, "r", encoding="utf-8") as yaml_file:
                     prompt_template_parsed = yaml.safe_load(yaml_file.read())
                     if not isinstance(prompt_template_parsed, dict):
                         raise ValueError("The prompt loaded is not a prompt YAML file.")
                     name = prompt_template_parsed["name"]
                     prompt_text = prompt_template_parsed["prompt_text"]
-            except OSError as exc:
-                # In case of errors, let's directly assume this is a text prompt
-                logger.info(
-                    "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not.",
-                    str(exc),
-                )
+
+            # Otherwise it's a on-the-fly prompt text
+            else:
                 prompt_text = prompt
                 name = "custom-at-query-time"
 
-        else:
+        except OSError as exc:
+            logger.info(
+                "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not.",
+                str(exc),
+            )
+            # In case of errors, let's directly assume this is a text prompt
             prompt_text = prompt
             name = "custom-at-query-time"
 
