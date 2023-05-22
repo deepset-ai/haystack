@@ -181,7 +181,7 @@ You can control which tests to run using Pytest markers, let's see how.
 
 In most cases you rather want to run a **subset of tests** locally that are related to your dev, and the most important
 option to reduce the number of tests in a meaningful way, is to run tests only for a list of **selected document stores**.
-This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, milvus, weaviate, pinecone"`).
+This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, weaviate, pinecone"`).
 
 For example, calling `pytest . --document_store_type="memory"` will run all the document store tests using the
 InMemoryDocumentStore only, skipping the others (the logs will show which ones). The `InMemoryDocument` store is a very
@@ -201,15 +201,8 @@ pytest . --document_store_type="memory,elasticsearch"
 # Elasticsearch
 docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
 
-# Milvus
-wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-docker-compose up -d
-
 # Weaviate
 docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
-
-# GraphDB
-docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
 # Tika
 docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
