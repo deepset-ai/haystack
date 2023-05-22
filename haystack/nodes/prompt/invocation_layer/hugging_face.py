@@ -85,11 +85,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         self.generation_kwargs = kwargs.get("generation_kwargs", {})
         model_max_length = kwargs.get("model_max_length", None)
 
-        torch_dtype = kwargs.get("torch_dtype", None)
-        if torch_dtype is not None:
-            torch_dtype = self.extract_torch_dtype(torch_dtype)
+        torch_dtype = self._extract_torch_dtype(**kwargs)
 
         device_map = kwargs.get("device_map", None)
+        # as device and device_map are mutually exclusive, we set device to None if device_map is provided
+        device = self.devices[0] if device_map is None else None
 
         # If task_name is not provided, get the task name from the model name or path (uses HFApi)
         self.task_name = (
@@ -105,8 +105,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             tokenizer=kwargs.get("tokenizer", None),
             feature_extractor=kwargs.get("feature_extractor", None),
             revision=kwargs.get("revision", None),
-            # as device and device_map are mutually exclusive, we set device to None if device_map is provided
-            device=self.devices[0] if device_map is None else None,
+            device=device,
             device_map=device_map,
             use_auth_token=self.use_auth_token,
             torch_dtype=torch_dtype,
@@ -242,21 +241,23 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         )
         return decoded_string
 
-    @staticmethod
-    def extract_torch_dtype(torch_dtype):
-        if isinstance(torch_dtype, str):
-            if "torch." in torch_dtype:
-                torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
-            elif torch_dtype == "auto":
+    def _extract_torch_dtype(self, **kwargs) -> Optional[torch.dtype]:
+        torch_dtype_resolved = None
+        torch_dtype = kwargs.get("torch_dtype", None)
+        if torch_dtype is not None:
+            if isinstance(torch_dtype, str):
+                if "torch." in torch_dtype:
+                    torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
+                elif torch_dtype == "auto":
+                    torch_dtype_resolved = torch_dtype
+                else:
+                    raise ValueError(
+                        f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
+                    )
+            elif isinstance(torch_dtype, torch.dtype):
                 torch_dtype_resolved = torch_dtype
             else:
-                raise ValueError(
-                    f"torch_dtype should be a torch.dtype, a string with 'torch.' prefix or the string 'auto', got {torch_dtype}"
-                )
-        elif isinstance(torch_dtype, torch.dtype):
-            torch_dtype_resolved = torch_dtype
-        else:
-            raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
+                raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
         return torch_dtype_resolved
 
     @classmethod

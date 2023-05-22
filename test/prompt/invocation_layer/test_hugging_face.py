@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import transformers
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
@@ -21,7 +22,7 @@ def test_constructor_with_model_name():
     """
     Test that the constructor sets the pipeline with the model name (if provided)
     """
-    layer = HFLocalInvocationLayer()
+    layer = HFLocalInvocationLayer("google/flan-t5-base")
 
     assert isinstance(layer.pipe.model, T5ForConditionalGeneration)
     assert isinstance(layer.pipe.tokenizer, T5TokenizerFast)
@@ -30,13 +31,15 @@ def test_constructor_with_model_name():
 @pytest.mark.unit
 def test_constructor_with_model_name_and_device_map():
     """
-    Test that the constructor sets the pipeline with the model name and device map
+    Test that the constructor with device_map works in cases where it is provided alone or with devices
     """
 
     layer = HFLocalInvocationLayer(device_map="auto")
 
     assert isinstance(layer.pipe.model, T5ForConditionalGeneration)
     assert isinstance(layer.pipe.tokenizer, T5TokenizerFast)
+
+    layer = HFLocalInvocationLayer(device_map="auto", devices=["cpu"])
 
 
 @pytest.mark.integration
@@ -128,7 +131,7 @@ def test_streaming_stream_handler_param_in_constructor():
 
 
 @pytest.mark.integration
-def test_supports():
+def test_supports(tmp_path):
     """
     Test that supports returns True correctly for HFLocalInvocationLayer
     """
@@ -138,7 +141,7 @@ def test_supports():
     assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
 
     # some HF local model directory, let's use the one from test/prompt/invocation_layer
-    assert HFLocalInvocationLayer.supports("../invocation_layer")
+    assert HFLocalInvocationLayer.supports(str(tmp_path))
 
     # but not some non text2text-generation or non text-generation model
     # i.e image classification model
@@ -167,7 +170,7 @@ def test_stop_words_criteria_set():
     assert isinstance(kwargs["stopping_criteria"][0], StopWordsCriteria)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 @pytest.mark.parametrize("stop_words", [["good"], ["hello", "good"], ["hello", "good", "health"]])
 def test_stop_words_single_token(stop_words):
     """
@@ -189,7 +192,7 @@ def test_stop_words_single_token(stop_words):
     assert "health" not in result[0]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_stop_words_multiple_token():
     """
     Test that stop words criteria is used and that it works for multi-token words
