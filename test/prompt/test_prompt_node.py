@@ -196,6 +196,59 @@ def test_invalid_template_params(mock_model, mock_prompthub):
         node.prompt("question-answering-per-document", some_crazy_key="Berlin is the capital of Germany.")
 
 
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_node_streaming_iterator_on_call(mock_model):
+    """
+    Verifies that invoke function of PromptNode receives the corrected arguments,
+    when calling PromptNode with stream and return_iterator is True
+    """
+    node = PromptNode()
+    node.prompt_model = mock_model
+    node("Irrelevant prompt", stream=True, return_iterator=True)
+    # Verify model has been constructed with expected model_kwargs
+    mock_model.invoke.assert_called_once()
+    assert mock_model.invoke.call_args_list[0].kwargs["stream"] == True
+    assert mock_model.invoke.call_args_list[0].kwargs["return_iterator"] == True
+
+
+@pytest.mark.unit
+def test_prompt_node_hf_model_streaming_iterator_output():
+    """
+    Verifies PromptNode output when constructing PromptNode with return_iterator and stream of model_kwargs is True,
+    the returned output should be a iterator of transformers.generation.streamers.TextIteratorStreamer.
+    """
+    pn = PromptNode(model_kwargs={"stream": True, "return_iterator": True})
+    iterator = pn("What is the capital of Germany?")[0]
+    answer = ""
+    for token in iterator:
+        answer += token
+    assert "berlin" in answer.casefold()
+
+
+@pytest.mark.unit
+def test_prompt_node_hf_model_pipeline_with_streaming_mode():
+    """
+    Verifies PromptNode output when constructing PromptNode with return_iterator and stream of model_kwargs is True,
+    the returned output should be a iterator of transformers.generation.streamers.TextIteratorStreamer.
+    """
+    node = PromptNode(output_variable="result")
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    query = "What is the capital of Germany?"
+    param = {"prompt_node": {"stream": True, "return_iterator": True}}
+    # test non-blocked streaming iterator mode.
+    iterator = pipe.run(query=query, params=param)["iterator"][0]
+    answer = ""
+    for token in iterator:
+        answer += token
+    assert "berlin" in answer.casefold()
+    param = {"prompt_node": {"stream": True}}
+    # test blocked streaming mode.
+    result = pipe.run(query=query, params=param)
+    assert "berlin" in result["result"][0].casefold()
+
+
 @pytest.mark.skip
 @pytest.mark.integration
 @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)

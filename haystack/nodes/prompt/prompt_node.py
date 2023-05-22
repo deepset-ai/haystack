@@ -324,7 +324,7 @@ class PromptNode(BaseComponent):
         if stream_handler:
             invocation_context["stream_handler"] = stream_handler
 
-        results = self(prompt_collector=prompt_collector, **invocation_context)
+        results = self(query, prompt_collector=prompt_collector, **invocation_context)
 
         prompt_template_resolved: PromptTemplate = invocation_context.pop("prompt_template")
 
