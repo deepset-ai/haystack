@@ -81,6 +81,25 @@ def test_find_input_sockets_one_regular_object_type_input():
     assert sockets == expected
 
 
+def test_find_input_sockets_one_union_type_input():
+    @component
+    class MockComponent:
+        @dataclass
+        class Input(ComponentInput):
+            input_value: Union[str, int]
+
+        @dataclass
+        class Output(ComponentOutput):
+            output_value: int
+
+        def run(self, data: Input) -> Output:
+            return MockComponent.Output(output_value=1)
+
+    comp = MockComponent()
+    with pytest.raises(ValueError, match="Components do not support Union types for connections"):
+        find_input_sockets(comp)
+
+
 def test_find_input_sockets_one_optional_builtin_type_input():
     @component
     class MockComponent:
@@ -99,25 +118,6 @@ def test_find_input_sockets_one_optional_builtin_type_input():
     sockets = find_input_sockets(comp)
     expected = {"input_value": InputSocket(name="input_value", type=int, variadic=False)}
     assert sockets == expected
-
-
-def test_find_input_sockets_one_union_type_input():
-    @component
-    class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: Union[str, int]
-
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
-
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
-
-    comp = MockComponent()
-    with pytest.raises(ValueError, match="Components do not support Union types for connections"):
-        find_input_sockets(comp)
 
 
 def test_find_input_sockets_one_optional_object_type_input():

@@ -68,6 +68,9 @@ def find_output_sockets(component) -> Dict[str, OutputSocket]:
 
     output_sockets = {}
     for field in fields(return_annotation):
+        if hasattr(field.type, "__name__") and field.type.__name__ == "Union":
+            raise ValueError("Components do not support Union types for connections yet.")
+
         # Unwrap Optionals
         #   Note: we're forced to use type() == type() due to an explicit limitation of the typing library,
         #   that disables `issubclass` on typing classes.
