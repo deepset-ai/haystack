@@ -172,12 +172,12 @@ def test_get_prompt_template_only_template_text(mock_model, mock_prompthub):
     assert template.name == "custom-at-query-time"
 
 
-@pytest.mark.integration
-def test_invalid_template_params():
-    # TODO: This can be a PromptTemplate unit test
-    node = PromptNode("google/flan-t5-small", devices=["cpu"])
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_invalid_template_params(mock_model, mock_prompthub):
+    node = PromptNode()
     with pytest.raises(ValueError, match="Expected prompt parameters"):
-        node.prompt("question-answering-per-document", {"some_crazy_key": "Berlin is the capital of Germany."})
+        node.prompt("question-answering-per-document", some_crazy_key="Berlin is the capital of Germany.")
 
 
 @pytest.mark.integration
@@ -239,7 +239,10 @@ def test_stop_words(prompt_model):
     node = PromptNode(prompt_model, stop_words=["capital"])
 
     # with default prompt template and stop words set in PN
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    r = node.prompt(
+        "Given the context please generate a question.\nContext: {documents};\nQuestion:",
+        documents=["Berlin is the capital of Germany."],
+    )
     assert r[0] == "What is the" or r[0] == "What city is the"
 
     # test stop words for both HF and OpenAI
@@ -247,11 +250,18 @@ def test_stop_words(prompt_model):
     node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
 
     # with default prompt template and stop words set in PN
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    r = node.prompt(
+        "Given the context please generate a question.\nContext: {documents};\nQuestion:",
+        documents=["Berlin is the capital of Germany."],
+    )
     assert r[0] == "What is the" or r[0] == "What city is the"
 
     # with default prompt template and stop words set in kwargs (overrides PN stop words)
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."], stop_words=None)
+    r = node.prompt(
+        "Given the context please generate a question.\nContext: {documents};\nQuestion:",
+        documents=["Berlin is the capital of Germany."],
+        stop_words=None,
+    )
     assert "capital" in r[0] or "Germany" in r[0]
 
     # simple prompting
@@ -1080,7 +1090,10 @@ class TestRunBatch:
     def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
         skip_test_for_invalid_key(prompt_model)
 
-        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+        node = PromptNode(
+            prompt_model,
+            default_prompt_template="Please give a sentiment for this context. Answer with positive, negative or neutral. Context: {documents}; Answer:",
+        )
 
         pipe = Pipeline()
         pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -1098,7 +1111,11 @@ class TestRunBatch:
     def test_simple_pipeline_batch_no_query_multiple_doc_list(self, prompt_model):
         skip_test_for_invalid_key(prompt_model)
 
-        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
+        node = PromptNode(
+            prompt_model,
+            default_prompt_template="Please give a sentiment for this context. Answer with positive, negative or neutral. Context: {documents}; Answer:",
+            output_variable="out",
+        )
 
         pipe = Pipeline()
         pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
