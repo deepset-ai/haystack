@@ -45,7 +45,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+        with patch("haystack.utils.requests.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             result = comp.run(
@@ -69,7 +69,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+        with patch("haystack.utils.requests.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             result = comp.run(
@@ -93,7 +93,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+        with patch("haystack.utils.requests.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             with open(SAMPLES_PATH / "audio" / "this is the content of the document.wav", "rb") as audio_stream:
@@ -111,7 +111,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+        with patch("haystack.utils.requests.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             comp.run(
@@ -136,7 +136,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
         comp = RemoteWhisperTranscriber(api_key="whatever")
 
-        with patch("haystack.preview.utils.requests_with_retry.requests") as mocked_requests:
+        with patch("haystack.utils.requests.requests") as mocked_requests:
             mocked_requests.request.return_value = mock_response
 
             comp.run(

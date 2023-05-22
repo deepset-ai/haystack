@@ -6,9 +6,8 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass
 
+from haystack.utils.requests import request_with_retry
 from haystack.preview import component, ComponentInput, ComponentOutput, Document
-from haystack.preview.utils.requests_with_retry import request_with_retry
-
 
 logger = logging.getLogger(__name__)
 
