@@ -8,18 +8,16 @@ from dataclasses import fields
 logger = logging.getLogger(__name__)
 
 
-class BaseIODataclass:
+class BaseIODataclass:  # pylint: disable=too-few-public-methods
+    """
+    Base class for input and output classes of components.
+    """
+
     def names(self):
         """
         Returns the name of all the fields of this dataclass.
         """
         return [field.name for field in fields(self)]
-
-    def to_dict(self):
-        """
-        Returns a dictionary representation of this dataclass.
-        """
-        return self.__dict__
 
 
 class Optionalize(type):
@@ -52,7 +50,7 @@ class Variadic(type):
         return obj
 
 
-class ComponentInput(BaseIODataclass, metaclass=Optionalize):
+class ComponentInput(BaseIODataclass, metaclass=Optionalize):  # pylint: disable=too-few-public-methods
     """
     Represents the input of a component.
     """
@@ -61,7 +59,7 @@ class ComponentInput(BaseIODataclass, metaclass=Optionalize):
     _component_input = True
 
 
-class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):
+class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):  # pylint: disable=too-few-public-methods
     """
     Represents the input of a variadic component.
     """
@@ -72,7 +70,7 @@ class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):
     _variadic_component_input = True
 
 
-class ComponentOutput(BaseIODataclass, metaclass=Optionalize):
+class ComponentOutput(BaseIODataclass, metaclass=Optionalize):  # pylint: disable=too-few-public-methods
     """
     Represents the output of a component.
     """
