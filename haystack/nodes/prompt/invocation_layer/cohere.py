@@ -101,11 +101,6 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
             )
         stop_words = kwargs.pop("stop_words", None)
         kwargs_with_defaults = self.model_input_kwargs
-
-        if "generation_kwargs" in kwargs:
-            generation_kwargs = kwargs.pop("generation_kwargs")
-            kwargs.update(generation_kwargs)
-
         kwargs_with_defaults.update(kwargs)
 
         # either stream is True (will use default handler) or stream_handler is provided

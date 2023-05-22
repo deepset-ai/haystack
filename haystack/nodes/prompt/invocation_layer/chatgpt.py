@@ -55,9 +55,6 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
                 top_k = kwargs.pop("top_k")
                 kwargs["n"] = top_k
                 kwargs["best_of"] = top_k
-            if "generation_kwargs" in kwargs:
-                generation_kwargs = kwargs.pop("generation_kwargs")
-                kwargs.update(generation_kwargs)
             kwargs_with_defaults.update(kwargs)
 
         stream = (
