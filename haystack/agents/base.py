@@ -206,6 +206,19 @@ class ToolsManager:
         return None, None
 
 
+def react_parameter_resolver(query: str, agent: Agent, agent_step: AgentStep, **kwargs) -> Dict[str, Any]:
+    """
+    A parameter resolver for ReAct based agents that returns the query, the tool names, the tool names
+    with descriptions, and the transcript (internal monologue).
+    """
+    return {
+        "query": query,
+        "tool_names": agent.tm.get_tool_names(),
+        "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
+        "transcript": agent_step.transcript,
+    }
+
+
 class Agent:
     """
     An Agent answers queries using the tools you give to it. The tools are pipelines or nodes. The Agent uses a large
@@ -268,14 +281,6 @@ class Agent:
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        react_parameter_resolver: Callable[
-            [str, Agent, AgentStep, Dict[str, Any]], Dict[str, Any]
-        ] = lambda query, agent, agent_step, **kwargs: {
-            "query": query,
-            "tool_names": agent.tm.get_tool_names(),
-            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-            "transcript": agent_step.transcript,
-        }
         self.prompt_parameters_resolver = (
             prompt_parameters_resolver if prompt_parameters_resolver else react_parameter_resolver
         )

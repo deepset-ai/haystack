@@ -1,7 +1,7 @@
 from typing import Optional, Callable, Union
 
 from haystack.agents import Agent
-from haystack.agents.base import ToolsManager
+from haystack.agents.base import ToolsManager, react_parameter_resolver
 from haystack.agents.memory import Memory, ConversationMemory, ConversationSummaryMemory
 from haystack.nodes import PromptNode, PromptTemplate
 
@@ -130,11 +130,6 @@ class ConversationalAgentWithTools(Agent):
             memory=memory if memory else ConversationSummaryMemory(prompt_node),
             prompt_parameters_resolver=prompt_parameters_resolver
             if prompt_parameters_resolver
-            else lambda query, agent, agent_step, **kwargs: {
-                "query": query,
-                "tool_names": agent.tm.get_tool_names(),
-                "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-                "transcript": agent_step.transcript,
-            },
+            else react_parameter_resolver,
             final_answer_pattern=final_answer_pattern,
         )

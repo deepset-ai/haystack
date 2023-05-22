@@ -1,7 +1,7 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, call
 
-from haystack.agents import Tool
+from haystack.agents import Tool, Agent, AgentStep
 from haystack.agents.conversational import ConversationalAgentWithTools
 from haystack.agents.memory import ConversationSummaryMemory, NoMemory
 from haystack.nodes import PromptNode
@@ -49,9 +49,33 @@ def test_agent_with_memory(prompt_node):
 
 @pytest.mark.unit
 def test_run(prompt_node):
+    """
+    Test that the invocation of ConversationalAgentWithTools run method in turn invokes _step of the Agent superclass
+    Make sure that the agent is starting from the correct step 1, and max_steps is 5
+    """
+    mock_step = Mock(spec=Agent._step)
+
+    # Replace the original _step method with the mock
+    Agent._step = mock_step
+
+    # Initialize agent
+    prompt_node = PromptNode()
     agent = ConversationalAgentWithTools(prompt_node)
 
-    # Mock the Agent run method
-    agent.run = MagicMock(return_value="Hello")
-    assert agent.run("query") == "Hello"
-    agent.run.assert_called_once_with("query")
+    # Run agent
+    agent.run(query="query")
+
+    assert mock_step.call_count == 1
+
+    # Check the parameters passed to _step method
+    assert mock_step.call_args[0][0] == "query"
+    agent_step = mock_step.call_args[0][1]
+    expected_agent_step = AgentStep(
+        current_step=1,
+        max_steps=5,
+        prompt_node_response="",
+        final_answer_pattern=r"Final Answer\s*:\s*(.*)",
+        transcript="",
+    )
+    # compare the string representation of the objects
+    assert str(agent_step) == str(expected_agent_step)
