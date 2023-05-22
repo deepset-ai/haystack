@@ -215,7 +215,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 ```
         """
         super().__init__()
-        name, prompt_text = None, None
+        name, prompt_text = "", ""
 
         try:
             # if it looks like a prompt template name
