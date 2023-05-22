@@ -27,103 +27,115 @@ try:
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship, sessionmaker, aliased
     from sqlalchemy.sql import case, null
+
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "sql", ie)
 
+
+from haystack import is_imported
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
+if not is_imported("sqlalchemy"):
+    Base = object
+    ArrayType = object
+    ORMBase = object
+    DocumentORM = object
+    MetaDocumentORM = object
+    LabelORM = object
+    MetaLabelORM = object
+
+else:
+    Base = declarative_base()  # type: Any
+
+    class ArrayType(TypeDecorator):
+        impl = String
+        cache_ok = True
+
+        def process_bind_param(self, value, dialect):
+            return json.dumps(value)
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                return json.loads(value)
+            return value
+
+    class ORMBase(Base):
+        __abstract__ = True
+
+        id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
+        created_at = Column(DateTime, server_default=func.now())
+        updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
+
+    class DocumentORM(ORMBase):
+        __tablename__ = "document"
+
+        content = Column(JSON, nullable=False)
+        content_type = Column(Text, nullable=True)
+        # primary key in combination with id to allow the same doc in different indices
+        index = Column(String(100), nullable=False, primary_key=True)
+        vector_id = Column(String(100), nullable=True)
+        # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
+        meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
+
+        __table_args__ = (UniqueConstraint("index", "vector_id", name="index_vector_id_uc"),)
+
+    class MetaDocumentORM(ORMBase):
+        __tablename__ = "meta_document"
+
+        name = Column(String(100), index=True)
+        value = Column(ArrayType(1000), index=True)
+        documents = relationship("DocumentORM", back_populates="meta")
+
+        document_id = Column(String(100), nullable=False, index=True)
+        document_index = Column(String(100), nullable=False, index=True)
+        __table_args__ = (  # type: ignore
+            ForeignKeyConstraint(
+                [document_id, document_index],
+                [DocumentORM.id, DocumentORM.index],
+                ondelete="CASCADE",
+                onupdate="CASCADE",
+            ),
+            {},
+        )
+
+    class LabelORM(ORMBase):
+        __tablename__ = "label"
+
+        index = Column(String(100), nullable=False, primary_key=True)
+        query = Column(Text, nullable=False)
+        answer = Column(JSON, nullable=True)
+        document = Column(JSON, nullable=False)
+        no_answer = Column(Boolean, nullable=False)
+        origin = Column(String(100), nullable=False)
+        is_correct_answer = Column(Boolean, nullable=False)
+        is_correct_document = Column(Boolean, nullable=False)
+        pipeline_id = Column(String(500), nullable=True)
+
+        meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
+
+    class MetaLabelORM(ORMBase):
+        __tablename__ = "meta_label"
+
+        name = Column(String(100), index=True)
+        value = Column(String(1000), index=True)
+        labels = relationship("LabelORM", back_populates="meta")
+
+        label_id = Column(String(100), nullable=False, index=True)
+        label_index = Column(String(100), nullable=False, index=True)
+        __table_args__ = (  # type: ignore
+            ForeignKeyConstraint(
+                [label_id, label_index], [LabelORM.id, LabelORM.index], ondelete="CASCADE", onupdate="CASCADE"
+            ),
+            {},
+        )
+
+
 logger = logging.getLogger(__name__)
-Base = declarative_base()  # type: Any
-
-
-class ArrayType(TypeDecorator):
-    impl = String
-    cache_ok = True
-
-    def process_bind_param(self, value, dialect):
-        return json.dumps(value)
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            return json.loads(value)
-        return value
-
-
-class ORMBase(Base):
-    __abstract__ = True
-
-    id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
-
-
-class DocumentORM(ORMBase):
-    __tablename__ = "document"
-
-    content = Column(JSON, nullable=False)
-    content_type = Column(Text, nullable=True)
-    # primary key in combination with id to allow the same doc in different indices
-    index = Column(String(100), nullable=False, primary_key=True)
-    vector_id = Column(String(100), nullable=True)
-    # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
-    meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
-
-    __table_args__ = (UniqueConstraint("index", "vector_id", name="index_vector_id_uc"),)
-
-
-class MetaDocumentORM(ORMBase):
-    __tablename__ = "meta_document"
-
-    name = Column(String(100), index=True)
-    value = Column(ArrayType(1000), index=True)
-    documents = relationship("DocumentORM", back_populates="meta")
-
-    document_id = Column(String(100), nullable=False, index=True)
-    document_index = Column(String(100), nullable=False, index=True)
-    __table_args__ = (  # type: ignore
-        ForeignKeyConstraint(
-            [document_id, document_index], [DocumentORM.id, DocumentORM.index], ondelete="CASCADE", onupdate="CASCADE"
-        ),
-        {},
-    )
-
-
-class LabelORM(ORMBase):
-    __tablename__ = "label"
-
-    index = Column(String(100), nullable=False, primary_key=True)
-    query = Column(Text, nullable=False)
-    answer = Column(JSON, nullable=True)
-    document = Column(JSON, nullable=False)
-    no_answer = Column(Boolean, nullable=False)
-    origin = Column(String(100), nullable=False)
-    is_correct_answer = Column(Boolean, nullable=False)
-    is_correct_document = Column(Boolean, nullable=False)
-    pipeline_id = Column(String(500), nullable=True)
-
-    meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
-
-
-class MetaLabelORM(ORMBase):
-    __tablename__ = "meta_label"
-
-    name = Column(String(100), index=True)
-    value = Column(String(1000), index=True)
-    labels = relationship("LabelORM", back_populates="meta")
-
-    label_id = Column(String(100), nullable=False, index=True)
-    label_index = Column(String(100), nullable=False, index=True)
-    __table_args__ = (  # type: ignore
-        ForeignKeyConstraint(
-            [label_id, label_index], [LabelORM.id, LabelORM.index], ondelete="CASCADE", onupdate="CASCADE"
-        ),
-        {},
-    )
 
 
 class SQLDocumentStore(BaseDocumentStore):

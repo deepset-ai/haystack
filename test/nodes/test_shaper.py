@@ -30,6 +30,13 @@ def test_basic_invocation_only_inputs(mock_function):
 
 
 @pytest.mark.unit
+def test_basic_invocation_empty_documents_list(mock_function):
+    shaper = Shaper(func="test_function", inputs={"a": "query", "b": "documents"}, outputs=["c"])
+    results, _ = shaper.run(query="test query", documents=[])
+    assert results["invocation_context"]["c"] == []
+
+
+@pytest.mark.unit
 def test_multiple_outputs(mock_function_two_outputs):
     shaper = Shaper(func="two_output_test_function", inputs={"a": "query"}, outputs=["c", "d"])
     results, _ = shaper.run(query="test")
@@ -838,7 +845,7 @@ def test_strings_to_answers_after_prompt_node_yaml(tmp_path):
               - name: prompt_template_raw_qa_per_document
                 type: PromptTemplate
                 params:
-                  template_name: raw-question-answering-per-document
+                  name: raw-question-answering-per-document
                   prompt_text: 'Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer:'
 
               - name: prompt_node_raw_qa

@@ -115,7 +115,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             stop_words = ["\n", "<|endoftext|>"]
         if prompt_template is None:
             prompt_template = PromptTemplate(
-                template_name="question-answering-with-examples",
+                name="question-answering-with-examples",
                 prompt_text="Please answer the question according to the above context."
                 "\n===\nContext: {examples_context}\n===\n{examples}\n\n"
                 "===\nContext: {context}\n===\n{query}",
@@ -170,6 +170,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
+        max_tokens: Optional[int] = None,
         timeout: Union[float, Tuple[float, float]] = OPENAI_TIMEOUT,
     ):
         """
@@ -193,6 +194,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param query: The query you want to provide. It's a string.
         :param documents: List of Documents in which to search for the Answer.
         :param top_k: The maximum number of Answers to return.
+        :param max_tokens: The maximum number of tokens the generated Answer can have.
         :param timeout: How many seconds to wait for the server to send data before giving up,
             as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
             Defaults to 10 seconds.
@@ -208,7 +210,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens or self.max_tokens,
             "stop": self.stop_words,
             "n": top_k,
             "temperature": self.temperature,
