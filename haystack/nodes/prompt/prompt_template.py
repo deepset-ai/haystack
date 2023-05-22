@@ -233,7 +233,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             except OSError as exc:
                 # In case of errors, let's directly assume this is a text prompt
                 logger.info(
-                    "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not."
+                    "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not.",
                     str(exc)
                 )
                 prompt_text = prompt
