@@ -9,9 +9,7 @@ from haystack.nodes import PromptNode
 @pytest.mark.unit
 def test_init():
     with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
-        mock_prompthub.side_effect = [
-            ("test prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
-        ]
+        mock_prompthub.side_effect = [("This is a test prompt. Use your knowledge to answer this question: {question}")]
         prompt_node = PromptNode()
         agent = ConversationalAgent(prompt_node)
 
@@ -36,9 +34,7 @@ def test_init_with_summary_memory():
 @pytest.mark.unit
 def test_init_with_no_memory():
     with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
-        mock_prompthub.side_effect = [
-            ("test prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
-        ]
+        mock_prompthub.side_effect = [("This is a test prompt. Use your knowledge to answer this question: {question}")]
         prompt_node = PromptNode()
         # Test with no memory
         agent = ConversationalAgent(prompt_node, memory=NoMemory())
@@ -48,9 +44,7 @@ def test_init_with_no_memory():
 @pytest.mark.unit
 def test_run():
     with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
-        mock_prompthub.side_effect = [
-            ("test prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
-        ]
+        mock_prompthub.side_effect = [("This is a test prompt. Use your knowledge to answer this question: {question}")]
         prompt_node = PromptNode()
         agent = ConversationalAgent(prompt_node)
 
