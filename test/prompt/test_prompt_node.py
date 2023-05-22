@@ -59,7 +59,7 @@ def test_prompt_passing_template(mock_model):
 def test_prompt_call_with_no_kwargs(mock_model, mocked_prompt):
     node = PromptNode()
     node()
-    mocked_prompt.assert_called_once_with(node._default_prompt_template)
+    mocked_prompt.assert_called_once_with(node._default_prompt)
 
 
 @pytest.mark.unit
@@ -68,7 +68,7 @@ def test_prompt_call_with_no_kwargs(mock_model, mocked_prompt):
 def test_prompt_call_with_custom_kwargs(mock_model, mocked_prompt):
     node = PromptNode()
     node(some_kwarg="some_value")
-    mocked_prompt.assert_called_once_with(node._default_prompt_template, some_kwarg="some_value")
+    mocked_prompt.assert_called_once_with(node._default_prompt, some_kwarg="some_value")
 
 
 @pytest.mark.unit
