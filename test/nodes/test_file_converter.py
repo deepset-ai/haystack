@@ -20,7 +20,6 @@ from haystack.nodes import (
     MarkdownConverter,
     ParsrConverter,
     PDFToTextConverter,
-    PDFToTextOCRConverter,
     PreProcessor,
     TextConverter,
     TikaConverter,
@@ -30,7 +29,7 @@ from ..conftest import fail_at_version
 
 
 @pytest.mark.tika
-@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter])
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_convert(Converter, samples_path):
     converter = Converter()
     document = converter.run(file_paths=samples_path / "pdf" / "sample_pdf_1.pdf")[0]["documents"][0]
@@ -197,34 +196,26 @@ def test_pdf_parallel_ocr(Converter, samples_path):
     assert pages[-1] == "This is the page 50 of the document."
 
 
-@pytest.mark.unit
-@fail_at_version(1, 17)
-@patch("haystack.nodes.file_converter.image.ImageToTextConverter.__new__")
-def test_deprecated_ocr_node(mock):
-    with pytest.warns(DeprecationWarning):
-        PDFToTextOCRConverter()
-
-
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_encoding():
     with pytest.warns(DeprecationWarning):
         converter = PDFToTextConverter(encoding="utf-8")
 
 
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_encoding_in_convert_method(samples_path):
     converter = PDFToTextConverter()
     with pytest.warns(DeprecationWarning):
         converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf", encoding="utf-8")
 
 
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_keep_physical_layout():
     with pytest.warns(DeprecationWarning):
         converter = PDFToTextConverter(keep_physical_layout=True)
 
 
-@fail_at_version(1, 17)
+@fail_at_version(1, 18)
 def test_deprecated_keep_physical_layout_in_convert_method(samples_path):
     converter = PDFToTextConverter()
     with pytest.warns(DeprecationWarning):
