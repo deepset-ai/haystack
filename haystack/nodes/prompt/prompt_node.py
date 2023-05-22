@@ -360,8 +360,8 @@ class PromptNode(BaseComponent):
         if "prompt_template" not in invocation_context.keys():
             invocation_context["prompt_template"] = self.get_prompt_template(prompt_template)
 
-        if generation_kwargs and "generation_kwargs" not in invocation_context.keys():
-            invocation_context["generation_kwargs"] = generation_kwargs
+        if generation_kwargs:
+            invocation_context.update(generation_kwargs)
 
         results = self(prompt_collector=prompt_collector, **invocation_context)
 
