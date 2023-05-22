@@ -829,6 +829,11 @@ def samples_path():
     return Path(__file__).parent / "samples"
 
 
+@pytest.fixture
+def preview_samples_path():
+    return Path(__file__).parent / "preview" / "test_files"
+
+
 @pytest.fixture(autouse=True)
 def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     """

@@ -1,14 +1,15 @@
-from typing import List, Dict, Union, Any, Tuple, Optional, Callable
-import inspect
+from typing import List, Dict, Any, Optional, Callable
 
 from pathlib import Path
 
-from canals import (
+from canals.component import ComponentInput
+from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
     load_pipelines as load_canals_pipelines,
     save_pipelines as save_canals_pipelines,
 )
+from canals.pipeline.sockets import find_input_sockets
 
 
 class NoSuchStoreError(PipelineError):
@@ -54,22 +55,23 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(self, data: Union[Dict[str, Any], List[Tuple[str, Any]]], debug: bool = False):
+    def run(self, data: Dict[str, ComponentInput], debug: bool = False):
         """
         Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
         """
-
         # Get all nodes in this pipelines instance
         for node_name in self.graph.nodes:
-            node = self.graph.nodes[node_name]["instance"]
             # Get node inputs
-            input_params = inspect.signature(node.run).parameters
-            # If the node needs a store adds the list of stores to its default inputs
+            node = self.graph.nodes[node_name]["instance"]
+            input_params = find_input_sockets(node)
+
+            # If the node needs a store, adds the list of stores to its default inputs
             if "stores" in input_params:
                 if not hasattr(node, "defaults"):
                     setattr(node, "defaults", {})
                 node.defaults["stores"] = self.stores
 
+        # Run the pipeline
         super().run(data=data, debug=debug)
 
 
