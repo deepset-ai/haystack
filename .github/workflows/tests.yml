@@ -8,7 +8,7 @@ on:
     paths:
       - "**.py"
       - "**/pyproject.toml"
-    
+
 env:
   COVERALLS_NOISY: true
 
@@ -90,10 +90,15 @@ jobs:
           fi
 
   tests:
-    name: Unit / ${{ matrix.os }}
+    name: Unit / Python ${{ matrix.version }} / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
         os:
           - ubuntu-latest
           - windows-latest
@@ -106,7 +111,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
+          python-version: ${{ matrix.version }}
 
       - name: Install Canals
         run: pip install .[mermaid,dev]
@@ -115,7 +120,7 @@ jobs:
         run: hatch run cov
 
       - name: Coverage
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.version == 3.11
         uses: coverallsapp/github-action@v2
         with:
           path-to-lcov: coverage.xml
