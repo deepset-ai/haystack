@@ -14,7 +14,7 @@ from haystack.schema import Answer, Document
 
 
 def mock_prompthub():
-    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._get_prompt_template_from_hub") as mock_prompthub:
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
         mock_prompthub.side_effect = [
             ("deepset/test-prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
         ]

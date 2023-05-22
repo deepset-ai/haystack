@@ -8,7 +8,7 @@ from haystack.nodes import PromptNode
 
 @pytest.mark.unit
 def test_init():
-    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._get_prompt_template_from_hub") as mock_prompthub:
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
         mock_prompthub.side_effect = [
             ("test prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
         ]
@@ -35,7 +35,7 @@ def test_init_with_summary_memory():
 
 @pytest.mark.unit
 def test_init_with_no_memory():
-    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._get_prompt_template_from_hub") as mock_prompthub:
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
         mock_prompthub.side_effect = [
             ("test prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
         ]
@@ -47,7 +47,7 @@ def test_init_with_no_memory():
 
 @pytest.mark.unit
 def test_run():
-    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._get_prompt_template_from_hub") as mock_prompthub:
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
         mock_prompthub.side_effect = [
             ("test prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
         ]
