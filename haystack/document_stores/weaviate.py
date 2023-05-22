@@ -54,7 +54,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
     (See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
-    Some of the key differences in contrast to FAISS & Milvus:
+    Some of the key differences in contrast to FAISS:
     1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
     3. Has less variety of ANN algorithms, as of now only HNSW.

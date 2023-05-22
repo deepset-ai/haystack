@@ -40,7 +40,6 @@ from haystack.nodes.retriever import (
     FilterRetriever,
     MultihopEmbeddingRetriever,
     TfidfRetriever,
-    Text2SparqlRetriever,
     TableTextRetriever,
     MultiModalRetriever,
     WebRetriever,

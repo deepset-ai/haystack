@@ -110,12 +110,6 @@ only-faiss-gpu = [
 faiss-gpu = [
   "farm-haystack[sql,only-faiss-gpu]",
 ]
-only-milvus = [
-  "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-]
-milvus = [
-  "farm-haystack[sql,only-milvus]",
-]
 weaviate = [
   "weaviate-client<3.19.0",
 ]
@@ -125,22 +119,14 @@ only-pinecone = [
 pinecone = [
   "farm-haystack[sql,only-pinecone]",
 ]
-graphdb = [
-  "SPARQLWrapper",
-  "rdflib!=6.3.2", # GPL-2.0-only license issue
-]
-inmemorygraph = [
-  "SPARQLWrapper",
-  "rdflib!=6.3.2", # GPL-2.0-only license issue
-]
 opensearch = [
   "opensearch-py>=2",
 ]
 docstores = [
-  "farm-haystack[elasticsearch,faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch]",
 ]
 docstores-gpu = [
-  "farm-haystack[elasticsearch,faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
 audio = [
   "openai-whisper"
@@ -346,11 +332,9 @@ markers = [
   "ocr: requires Tesseract",
 
   "elasticsearch: requires Elasticsearch container",
-  "graphdb: requires GraphDB container",
   "weaviate: requires Weaviate container",
   "pinecone: requires Pinecone credentials",
   "faiss: uses FAISS",
-  "milvus: requires a Milvus 2 setup",
   "opensearch",
   "document_store",
 ]
