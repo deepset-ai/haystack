@@ -43,7 +43,7 @@ DOCUMENTS = [
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 @pytest.mark.parametrize("batch_size", [4, 6])
 def test_update_docs(document_store, retriever, batch_size):
     # initial write
@@ -61,12 +61,12 @@ def test_update_docs(document_store, retriever, batch_size):
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         # original input vec is normalized as faiss only stores normalized vectors
         a = updated_embedding / np.linalg.norm(updated_embedding)
-        assert np.allclose(a[0], stored_doc.embedding, rtol=0.2)  # high tolerance necessary for Milvus 2
+        assert np.allclose(a[0], stored_doc.embedding, rtol=0.2)  # high tolerance was necessary for Milvus 2
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["milvus", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_update_existing_docs(document_store, retriever):
     document_store.duplicate_documents = "overwrite"
     old_document = Document(content="text_1")
@@ -94,7 +94,7 @@ def test_update_existing_docs(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_update_with_empty_store(document_store, retriever):
     # Call update with empty doc store
     document_store.update_embeddings(retriever=retriever)
@@ -109,7 +109,7 @@ def test_update_with_empty_store(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     pipe = DocumentSearchPipeline(retriever=retriever)
@@ -121,7 +121,7 @@ def test_finding(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_delete_docs_with_filters_multivalue(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -137,7 +137,7 @@ def test_delete_docs_with_filters_multivalue(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_delete_docs_with_filters(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -153,7 +153,7 @@ def test_delete_docs_with_filters(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_delete_docs_with_many_filters(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -169,7 +169,7 @@ def test_delete_docs_with_many_filters(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_delete_docs_by_id(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -189,7 +189,7 @@ def test_delete_docs_by_id(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_delete_docs_by_id_with_filters(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -215,7 +215,7 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_get_docs_with_filters_one_value(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -229,7 +229,7 @@ def test_get_docs_with_filters_one_value(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_get_docs_with_filters_many_values(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -243,7 +243,7 @@ def test_get_docs_with_filters_many_values(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_get_docs_with_many_filters(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -259,7 +259,7 @@ def test_get_docs_with_many_filters(document_store, retriever):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_pipeline(document_store, retriever):
     documents = [
         {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
