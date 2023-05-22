@@ -7,6 +7,40 @@ import pytest
 from canals.component import component, ComponentInput, VariadicComponentInput, ComponentOutput, ComponentError
 
 
+def test_input_required():
+
+    with pytest.raises(
+        ComponentError,
+        match="Components must either have an Input dataclass or a 'input_type' property that returns such dataclass",
+    ):
+
+        @component
+        class MockComponent:
+            @dataclass
+            class Output(ComponentOutput):
+                output_value: int
+
+            def run(self, data) -> Output:
+                return MockComponent.Output(output_value=1)
+
+
+def test_output_required():
+
+    with pytest.raises(
+        ComponentError,
+        match="Components must either have an Output dataclass or a 'output_type' property that returns such dataclass",
+    ):
+
+        @component
+        class MockComponent:
+            @dataclass
+            class Input(ComponentInput):
+                input_value: int
+
+            def run(self, data: Input):
+                return 1
+
+
 def test_input_as_class():
     @component
     class MockComponent:
