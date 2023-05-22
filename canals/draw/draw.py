@@ -8,7 +8,7 @@ from pathlib import Path
 
 import networkx
 
-from canals.pipeline._utils import find_pipeline_inputs, find_pipeline_outputs
+from canals.pipeline.sockets import find_pipeline_inputs, find_pipeline_outputs
 from canals.draw.graphviz import to_agraph
 from canals.draw.mermaid import to_mermaid_image, to_mermaid_text
 
@@ -43,6 +43,16 @@ def draw(
         raise ValueError(f"Unknown rendering engine '{engine}'. Choose one from: {get_args(RenderingEngines)}.")
 
     logger.debug("Pipeline diagram saved at %s", path)
+
+
+def convert_for_debug(
+    graph: networkx.MultiDiGraph,
+) -> Any:
+    """
+    Renders the pipeline graph with additional debug information into a text file that Mermaid can later render.
+    """
+    graph = _prepare_for_drawing(graph=graph, style_map={})
+    return to_mermaid_text(graph=graph)
 
 
 def convert(

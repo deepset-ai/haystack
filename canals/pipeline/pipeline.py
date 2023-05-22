@@ -1,8 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Any, Dict, List, Tuple, Literal
+from typing import Optional, Any, Dict, List, Tuple, Literal, Union
 
+import os
+import json
 import datetime
 import logging
 from pathlib import Path
@@ -13,8 +15,8 @@ import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.component.input_output import ComponentInput
-from canals.draw import draw, RenderingEngines
-from canals.pipeline._utils import (
+from canals.draw import draw, convert_for_debug, RenderingEngines
+from canals.pipeline.sockets import (
     InputSocket,
     OutputSocket,
     find_input_sockets,
@@ -39,6 +41,7 @@ class Pipeline:
         self,
         metadata: Optional[Dict[str, Any]] = None,
         max_loops_allowed: int = 100,
+        debug_path: Union[Path, str] = Path(".canals_debug/"),
     ):
         """
         Creates the Pipeline.
@@ -48,11 +51,13 @@ class Pipeline:
                 this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
                 `save_pipelines()/load_pipelines()`.
             max_loops_allowed: how many times the pipeline can run the same node before throwing an exception.
+            debug_path: when debug is enabled in `run()`, where to save the debug data.
         """
         self.metadata = metadata or {}
         self.max_loops_allowed = max_loops_allowed
         self.graph = networkx.MultiDiGraph()
         self.debug: Dict[int, Dict[str, Any]] = {}
+        self.debug_path = Path(debug_path)
 
     def __eq__(self, other) -> bool:
         """
@@ -337,7 +342,7 @@ class Pipeline:
 
         if debug:
             logger.info("Debug mode ON.")
-            self.debug = {}
+        self.debug = {}
 
         # *** PIPELINE EXECUTION LOOP ***
         # We select the nodes to run by popping them in FIFO order from the inputs buffer.
@@ -345,11 +350,7 @@ class Pipeline:
         while inputs_buffer:
             step += 1
             if debug:
-                self.debug[step] = {
-                    "time": datetime.datetime.now(),
-                    "inputs_buffer": list(inputs_buffer.items()),
-                    "pipeline_output": pipeline_output,
-                }
+                self._record_pipeline_step(step, inputs_buffer, pipeline_output)
             logger.debug("> Queue at step %s: %s", step, {k: list(v.keys()) for k, v in inputs_buffer.items()})
 
             component, inputs = inputs_buffer.popitem(last=False)  # FIFO
@@ -387,15 +388,30 @@ class Pipeline:
                 )
 
         if debug:
-            self.debug[step + 1] = {
-                "time": datetime.datetime.now(),
-                "inputs_buffer": list(inputs_buffer.items()),
-                "pipeline_output": pipeline_output,
-            }
+            self._record_pipeline_step(step + 1, inputs_buffer, pipeline_output)
+
+            # Save to json
+            os.makedirs(self.debug_path, exist_ok=True)
+            with open(self.debug_path / "data.json", "w", encoding="utf-8") as datafile:
+                json.dump(self.debug, datafile, indent=4, default=str)
+
+            # Store in the output
             pipeline_output["_debug"] = self.debug  # type: ignore
 
         logger.info("Pipeline executed successfully.")
         return pipeline_output
+
+    def _record_pipeline_step(self, step, inputs_buffer, pipeline_output):
+        """
+        Stores a snapshot of this step into the self.debug dictionary of the pipeline.
+        """
+        mermaid_graph = convert_for_debug(deepcopy(self.graph))
+        self.debug[step] = {
+            "time": datetime.datetime.now(),
+            "inputs_buffer": list(inputs_buffer.items()),
+            "pipeline_output": pipeline_output,
+            "diagram": mermaid_graph,
+        }
 
     def _clear_visits_count(self):
         """

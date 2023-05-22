@@ -1,4 +1,6 @@
-# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai> SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 from typing import Tuple, Optional, List, Iterable, Dict, Any, get_args
 
 import logging
