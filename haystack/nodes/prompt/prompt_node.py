@@ -371,7 +371,7 @@ class PromptNode(BaseComponent):
             output_variable = self.output_variable or prompt_template_resolved.output_variable
         except:
             output_variable = "results"
-        
+
         invocation_context[output_variable] = results
         invocation_context["prompts"] = prompt_collector
         final_result: Dict[str, Any] = {output_variable: results, "invocation_context": invocation_context}
