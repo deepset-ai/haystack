@@ -186,9 +186,9 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         """
         Stream the response and invoke the stream_handler on each token.
 
-        :param response: The response object from the server
-        :param stream_handler: The handler to invoke on each token
-        :param stop_words: The stop words to ignore
+        :param response: The response object from the server.
+        :param stream_handler: The handler to invoke on each token.
+        :param stop_words: The stop words to ignore.
         """
         client = sseclient.SSEClient(response)
         tokens: List[str] = []
@@ -207,7 +207,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
     def _extract_token(self, event_data: Dict[str, Any]) -> Optional[str]:
         """
         Extract the token from the event data. If the token is a special token, return None.
-        param event_data: The event data from the streaming response
+        param event_data: Event data from the streaming response.
         """
         # extract token from event data and only consider non-special tokens
         return event_data["token"]["text"] if not event_data["token"]["special"] else None
@@ -263,7 +263,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
             logger.warning(
                 "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
                 "answer length (%s tokens) fit within the max token limit (%s tokens). "
-                "Shorten the prompt to prevent it from being cut off",
+                "Shorten the prompt to prevent it from being cut off.",
                 resize_info["prompt_length"],
                 max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
                 resize_info["max_length"],
