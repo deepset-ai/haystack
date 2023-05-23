@@ -79,7 +79,7 @@ dependencies = [
   "sentence-transformers>=2.2.0",
 
   # OpenAI tokenizer
-  "tiktoken>=0.3.2; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.3.2",
 
   # Schema validation
   "jsonschema",

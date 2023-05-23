@@ -9,7 +9,6 @@ from haystack.nodes.prompt import PromptTemplate
 from haystack.utils.openai_utils import (
     load_openai_tokenizer,
     openai_request,
-    count_openai_tokens,
     _openai_text_completion_tokenization_details,
     _check_openai_finish_reason,
 )
@@ -265,7 +264,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         construct the context) are thrown away until the prompt length fits within the MAX_TOKENS_LIMIT.
         """
         full_prompt = self._fill_prompt(query, documents)
-        n_full_prompt_tokens = count_openai_tokens(text=full_prompt, tokenizer=self._tokenizer)
+        n_full_prompt_tokens = len(self._tokenizer.encode(full_prompt))
 
         # for length restrictions of prompt see: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
         leftover_token_len = self.MAX_TOKENS_LIMIT - n_full_prompt_tokens - self.max_tokens
@@ -279,7 +278,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
             # Reversing the order of documents b/c we want to throw away less relevant docs first
             for doc in reversed(documents):
                 skipped_docs += 1
-                n_skipped_tokens += count_openai_tokens(text=doc.content, tokenizer=self._tokenizer)
+                n_skipped_tokens += len(self._tokenizer.encode(doc.content))
+
                 # Only skip enough tokens to fit within the MAX_TOKENS_LIMIT
                 if n_skipped_tokens >= abs(leftover_token_len):
                     break
@@ -287,7 +287,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             # Throw away least relevant docs
             input_docs = documents[:-skipped_docs]
             full_prompt = self._fill_prompt(query, input_docs)
-            n_full_prompt_tokens = count_openai_tokens(text=full_prompt, tokenizer=self._tokenizer)
+            n_full_prompt_tokens = len(self._tokenizer.encode(full_prompt))
 
             if len(input_docs) == 0:
                 logger.warning(
