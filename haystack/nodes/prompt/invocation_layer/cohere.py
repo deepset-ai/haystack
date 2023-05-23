@@ -155,7 +155,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         **kwargs,
     ) -> requests.Response:
         """
-        Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST
+        Post data to the Cohere inference model. It takes in a prompt and returns a list of responses using a REST
         invocation.
         :param data: The data to be sent to the model.
         :param stream: Whether to stream the response.
@@ -192,19 +192,21 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         return response
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        # the prompt for this model will be of the type str
-        resize_info = self.prompt_handler(prompt)  # type: ignore
+        if isinstance(prompt, List):
+            raise ValueError("Cohere invocation layer doesn't support a dictionary as prompt")
+
+        resize_info = self.prompt_handler(prompt)
         if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
             logger.warning(
                 "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
                 "answer length (%s tokens) fit within the max token limit (%s tokens). "
-                "Shorten the prompt to prevent it from being cut off",
+                "Reduce the length of the prompt to prevent it from being cut off.",
                 resize_info["prompt_length"],
                 max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
                 resize_info["max_length"],
                 resize_info["model_max_length"],
             )
-        return prompt
+        return str(resize_info["resized_prompt"])
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
