@@ -5,11 +5,6 @@ import inspect
 
 from typing import Any, Optional, Dict, List, Union
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
-
 from pathlib import Path
 from uuid import uuid4
 import logging
@@ -17,6 +12,12 @@ import time
 import json
 import ast
 from dataclasses import asdict
+
+# The Literal type from typing_extension is safer to use as
+# the one from typing has different bugs in the different versions.
+# For more info see typing_extensions official docs:
+# https://typing-extensions.readthedocs.io/en/latest/#Literal
+from typing_extensions import Literal
 
 import numpy as np
 from numpy import ndarray
