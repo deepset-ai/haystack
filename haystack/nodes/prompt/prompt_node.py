@@ -94,6 +94,10 @@ class PromptNode(BaseComponent):
         )
         super().__init__()
         self._prompt_templates_cache: Dict[str, PromptTemplate] = {}
+
+        # self._default_template needs to be initialized here because the setter self.default_prompt_template uses
+        # self.get_prompt_template(), which in turn checks is there is any default already set.
+        self._default_template = None
         self.default_prompt_template = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
@@ -202,7 +206,7 @@ class PromptNode(BaseComponent):
             :return: The prompt template object.
         """
         # None means we're asking for the default prompt template
-        prompt_template = prompt_template or self.default_prompt_template
+        prompt_template = prompt_template or self._default_template
         if prompt_template is None:
             return None
 
