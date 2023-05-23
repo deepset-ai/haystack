@@ -98,6 +98,3 @@ topic:knowledge_graph:
 topic:dc_document_store:
 - haystack/document_stores/deepsetcloud.py
 - test/document_stores/test_deepsetcloud.py
-topic:graphdb:
-- haystack/document_stores/graphdb.py
-- test/document_stores/test_knowledge_graph.py

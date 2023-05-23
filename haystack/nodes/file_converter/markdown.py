@@ -10,7 +10,7 @@ try:
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
-    _optional_component_not_installed(__name__, "preprocessing", ie)
+    _optional_component_not_installed(__name__, "file-conversion", ie)
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
