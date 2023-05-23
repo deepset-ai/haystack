@@ -6,7 +6,6 @@ import sseclient
 
 from haystack.errors import OpenAIError
 from haystack.utils.openai_utils import (
-    USE_TIKTOKEN,
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
@@ -192,14 +191,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             self.max_tokens_limit,
         )
 
-        if USE_TIKTOKEN:
-            tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
-        else:
-            tokenized_payload = self._tokenizer.tokenize(prompt)
-            decoded_string = self._tokenizer.convert_tokens_to_string(
-                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
-            )
+        tokenized_payload = self._tokenizer.encode(prompt)
+        decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
         return decoded_string
 
     @classmethod
