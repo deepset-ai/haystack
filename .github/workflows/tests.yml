@@ -132,12 +132,13 @@ jobs:
       - name: Install Canals (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install graphviz
-          python -m pip install --global-option=build_ext `
-                --global-option="-IC:\Program Files\Graphviz\include" `
-                --global-option="-LC:\Program Files\Graphviz\lib" `
-                pygraphviz
-          pip install .[mermaid,graphviz,dev]
+          # Doesn't seem to work in CI :(
+          # choco install graphviz
+          # python -m pip install --global-option=build_ext `
+          #       --global-option="-IC:\Program Files\Graphviz\include" `
+          #       --global-option="-LC:\Program Files\Graphviz\lib" `
+          #       pygraphviz
+          pip install .[mermaid,dev]
 
       - name: Run
         run: hatch run cov
