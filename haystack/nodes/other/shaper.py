@@ -740,7 +740,7 @@ class Shaper(BaseComponent):
         if labels and "labels" not in invocation_context.keys():
             invocation_context["labels"] = labels
 
-        if documents and "documents" not in invocation_context.keys():
+        if documents != None and "documents" not in invocation_context.keys():
             invocation_context["documents"] = documents
 
         if meta and "meta" not in invocation_context.keys():
