@@ -131,7 +131,7 @@ class PromptNode(BaseComponent):
             kwargs.pop("prompt_template")
             return self.prompt(prompt_template, *args, **kwargs)
         else:
-            return self.prompt(self._default_template, *args, **kwargs)
+            return self.prompt(self.default_prompt_template, *args, **kwargs)
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[Any]:
         """
@@ -202,7 +202,7 @@ class PromptNode(BaseComponent):
             :return: The prompt template object.
         """
         # None means we're asking for the default prompt template
-        prompt_template = prompt_template or self._default_template
+        prompt_template = prompt_template or self.default_prompt_template
         if prompt_template is None:
             return None
 
@@ -215,8 +215,8 @@ class PromptNode(BaseComponent):
             return self._prompt_templates_cache[prompt_template]
 
         output_parser = None
-        if self._default_template:
-            output_parser = self._default_template.output_parser
+        if self.default_prompt_template:
+            output_parser = self.default_prompt_template.output_parser
         template = PromptTemplate(prompt_template, output_parser=output_parser)
         self._prompt_templates_cache[prompt_template] = template
         return template
@@ -345,7 +345,7 @@ class PromptNode(BaseComponent):
         for query, docs, invocation_context, prompt_template in zip(
             inputs["queries"], inputs["documents"], inputs["invocation_contexts"], inputs["prompt_templates"]
         ):
-            prompt_template = self.get_prompt_template(self._default_template)
+            prompt_template = self.get_prompt_template(self.default_prompt_template)
             output_variable = self.output_variable or prompt_template.output_variable or "results"
             results = self.run(
                 query=query, documents=docs, invocation_context=invocation_context, prompt_template=prompt_template
