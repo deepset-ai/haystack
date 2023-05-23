@@ -15,15 +15,6 @@ def to_agraph(graph: networkx.MultiDiGraph) -> AGraph:
     """
     Renders a pipeline graph using PyGraphViz. You need to install it and all its system dependencies for it to work.
     """
-    for node in graph.nodes:
-        if graph.nodes[node].get("style") == "running":
-            graph.nodes[node]["color"] = "red"
-            graph.nodes[node]["penwidth"] = 3
-
-        if graph.nodes[node].get("style") == "queued":
-            graph.nodes[node]["color"] = "#0f0"
-            graph.nodes[node]["penwidth"] = 3
-
     for inp, outp, key, data in graph.out_edges("input", keys=True, data=True):
         data["style"] = "dashed"
         graph.add_edge(inp, outp, key=key, **data)

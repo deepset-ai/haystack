@@ -20,8 +20,6 @@ MERMAID_STYLED_TEMPLATE = """
 
 style IN  fill:#fff,stroke:#fff,stroke-width:1px
 style OUT fill:#fff,stroke:#fff,stroke-width:1px
-classDef running fill:#fff,stroke:#f00,stroke-width:2px
-classDef queued fill:#fff,stroke:#0f0,stroke-width:2px
 linkStyle default stroke-width:2px,stroke-dasharray: 5 5;
 {solid_arrows}
 """
