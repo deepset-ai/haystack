@@ -22,7 +22,6 @@ from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
-    MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
     FAISSDocumentStore,
@@ -138,11 +137,8 @@ def pytest_collection_modifyitems(config, items):
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
-        "milvus": [pytest.mark.milvus, pytest.mark.skip],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
-        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
-        "graphdb": [pytest.mark.integration],
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -178,7 +174,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate", "pinecone"}
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -329,7 +325,7 @@ class MockBaseRetriever(MockRetriever):
 
 
 class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
         pass
 
 
@@ -402,9 +398,8 @@ class MockPromptNode(PromptNode):
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
         if prompt_template == "think-step-by-step":
-            return PromptTemplate(
-                name="think-step-by-step",
-                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+            p = PromptTemplate(
+                "You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
                 "correctly, you have access to the following tools:\n\n"
                 "{tool_names_with_descriptions}\n\n"
                 "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
@@ -421,10 +416,11 @@ class MockPromptNode(PromptNode):
                 "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
                 "---\n\n"
                 "Question: {query}\n"
-                "Thought: Let's think step-by-step, I first need to {generated_text}",
+                "Thought: Let's think step-by-step, I first need to {generated_text}"
             )
+            p.name = "think-step-by-step"
         else:
-            return PromptTemplate(name="", prompt_text="")
+            return PromptTemplate("test prompt")
 
 
 @pytest.fixture
@@ -662,7 +658,7 @@ def mock_pinecone(monkeypatch):
         monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "weaviate", "pinecone"])
 def document_store_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -769,18 +765,6 @@ def get_document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif document_store_type == "milvus":
-        document_store = MilvusDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=get_sql_url(tmp_path),
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-            recreate_index=recreate_index,
-        )
-
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=recreate_index
@@ -843,6 +827,11 @@ def haystack_openai_config(request, haystack_azure_conf):
 @pytest.fixture
 def samples_path():
     return Path(__file__).parent / "samples"
+
+
+@pytest.fixture
+def preview_samples_path():
+    return Path(__file__).parent / "preview" / "test_files"
 
 
 @pytest.fixture(autouse=True)
