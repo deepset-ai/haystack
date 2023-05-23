@@ -136,6 +136,15 @@ def test_validate_pipeline_input_pipeline_with_no_inputs():
         pipe.run({})
 
 
+def test_validate_pipeline_input_pipeline_with_no_inputs_and_variadic_node():
+    pipe = Pipeline()
+    pipe.add_component("comp1", Double())
+    pipe.add_component("comp2", Sum())
+    pipe.connect("comp1", "comp2")
+    pipe.connect("comp2", "comp1")
+    pipe.run({})
+
+
 def test_validate_pipeline_input_unknown_component():
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
@@ -184,7 +193,7 @@ def test_validate_pipeline_input_only_expected_input_is_present_including_unknow
         pipe.run({"comp1": AddFixedValue.Input(value=1, add=3)})
 
 
-def test_validate_pipeline_input_only_expected_input_is_present_defaults_dont_interfere():
+def test_validate_pipeline_input_only_expected_input_is_present_and_defaults_dont_interfere():
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue(add=10))
     pipe.add_component("comp2", Double())
