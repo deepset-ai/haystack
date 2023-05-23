@@ -154,15 +154,15 @@ def test_validate_pipeline_input_all_necessary_input_is_present():
         pipe.run({})
 
 
-# def test_validate_pipeline_input_all_necessary_input_is_present_considering_defaults():
-#     pipe = Pipeline()
-#     pipe.add_component("comp1", AddFixedValue())
-#     pipe.add_component("comp2", Double())
-#     pipe.connect("comp1", "comp2")
-#     pipe.run({"comp1": AddFixedValue.Input(value=1)})
-#     pipe.run({"comp1": AddFixedValue.Input(value=1, add=1)})
-#     with pytest.raises(ValueError, match="Missing input: comp1.value"):
-#         pipe.run({"comp1": AddFixedValue.Input(add=1)})
+def test_validate_pipeline_input_all_necessary_input_is_present_considering_defaults():
+    pipe = Pipeline()
+    pipe.add_component("comp1", AddFixedValue())
+    pipe.add_component("comp2", Double())
+    pipe.connect("comp1", "comp2")
+    pipe.run({"comp1": AddFixedValue.Input(value=1)})
+    pipe.run({"comp1": AddFixedValue.Input(value=1, add=1)})
+    with pytest.raises(ValueError, match="Missing input: comp1.value"):
+        pipe.run({"comp1": AddFixedValue.Input(add=1)})
 
 
 def test_validate_pipeline_input_only_expected_input_is_present():
@@ -174,17 +174,14 @@ def test_validate_pipeline_input_only_expected_input_is_present():
         pipe.run({"comp1": Double.Input(value=1), "comp2": Double.Input(value=1)})
 
 
-# def test_validate_pipeline_input_only_expected_input_is_present_including_unknown_names():
-#     pipe = Pipeline()
-#     pipe.add_component("comp1", Double())
-#     pipe.add_component("comp2", Double())
-#     pipe.connect("comp1", "comp2")
+def test_validate_pipeline_input_only_expected_input_is_present_including_unknown_names():
+    pipe = Pipeline()
+    pipe.add_component("comp1", Double())
+    pipe.add_component("comp2", Double())
+    pipe.connect("comp1", "comp2")
 
-#     wrong_input = Double.Input(value=1)
-#     setattr(wrong_input, "test_value", 1)
-
-#     with pytest.raises(ValueError, match="Component comp1 is not expecting any input value called test_value"):
-#         pipe.run({"comp1": wrong_input})
+    with pytest.raises(ValueError, match="Component comp1 is not expecting any input value called add"):
+        pipe.run({"comp1": AddFixedValue.Input(value=1, add=3)})
 
 
 def test_validate_pipeline_input_only_expected_input_is_present_defaults_dont_interfere():

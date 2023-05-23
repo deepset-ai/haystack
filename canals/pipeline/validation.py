@@ -149,7 +149,12 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
             node_instance = graph.nodes[node]["instance"]
             input_in_node_defaults = hasattr(node_instance, "defaults") and socket.name in node_instance.defaults
             inputs_for_node = input_values.get(node)
-            if not input_in_node_defaults and (not inputs_for_node or not socket.name in inputs_for_node.names()):
+            missing_input_value = (
+                not inputs_for_node
+                or not socket.name in inputs_for_node.names()
+                or not getattr(inputs_for_node, socket.name)
+            )
+            if missing_input_value and not input_in_node_defaults and not socket.variadic:
                 raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
@@ -163,7 +168,10 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
             if not getattr(input_data, socket_name):
                 continue
             if not socket_name in graph.nodes[node]["input_sockets"].keys():
-                raise ValueError(f"Component {node} is not expecting any input value called {socket_name}")
+                raise ValueError(
+                    f"Component {node} is not expecting any input value called {socket_name}. "
+                    "Are you using the correct Input class?"
+                )
 
             taken_by = graph.nodes[node]["input_sockets"][socket_name].taken_by
             if taken_by:
