@@ -178,13 +178,13 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         self,
         data: Dict,
         attempts: int = ANTHROPIC_MAX_RETRIES,
-        status_codes: Optional[List[int]] = None,
+        status_codes_to_retry: Optional[List[int]] = None,
         timeout: float = ANTHROPIC_TIMEOUT,
         **kwargs,
     ):
         """
         Post data to Anthropic.
-        Retries request in case it fails with any code in status_codes
+        Retries request in case it fails with any code in status_codes_to_retry
         or with timeout.
         All kwargs are passed to ``requests.request``, so it accepts the same arguments.
         Returns a ``requests.Response`` object.
@@ -197,13 +197,13 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         :raises AnthropicError: Raised if requests fail for any other reason.
         :return: :class:`Response <Response>` object
         """
-        if status_codes is None:
-            status_codes = [429]
+        if status_codes_to_retry is None:
+            status_codes_to_retry = [429]
 
         try:
             res = request_with_retry(
                 attempts=attempts,
-                status_codes=status_codes,
+                status_codes_to_retry=status_codes_to_retry,
                 method="POST",
                 url="https://api.anthropic.com/v1/complete",
                 headers={"x-api-key": self.api_key, "Content-Type": "application/json"},
