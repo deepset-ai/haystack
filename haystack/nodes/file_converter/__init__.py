@@ -17,9 +17,6 @@ MarkdownConverter = safe_import(
 ImageToTextConverter = safe_import(
     "haystack.nodes.file_converter.image", "ImageToTextConverter", "ocr"
 )  # Has optional dependencies
-PDFToTextOCRConverter = safe_import(
-    "haystack.nodes.file_converter.pdf_ocr", "PDFToTextOCRConverter", "ocr"
-)  # Has optional dependencies
 
 # Try to use PyMuPDF, if not available fall back to xpdf
 try:

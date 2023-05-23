@@ -12,7 +12,6 @@ from haystack.nodes.file_converter import (
     ImageToTextConverter,
     MarkdownConverter,
     PDFToTextConverter,
-    PDFToTextOCRConverter,
     TikaConverter,
     TikaXHTMLParser,
     TextConverter,
