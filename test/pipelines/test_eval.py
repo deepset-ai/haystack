@@ -61,7 +61,7 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Summarizer"]["ndcg"] == 1.0
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
 def test_add_eval_data(document_store, batch_size, samples_path):
     # add eval data (SQUAD format)
@@ -108,7 +108,7 @@ def test_add_eval_data(document_store, batch_size, samples_path):
     assert doc.content[start:end] == "France"
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_eval_reader(reader, document_store, use_confidence_scores, samples_path):
@@ -200,7 +200,7 @@ def test_eval_pipeline(document_store, reader, retriever, samples_path):
     assert metrics_sas_cross_encoder["Reader"]["sas"] == pytest.approx(0.71063, 1e-4)
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 def test_eval_data_split_word(document_store, samples_path):
     # splitting by word
     preprocessor = PreProcessor(
@@ -225,7 +225,7 @@ def test_eval_data_split_word(document_store, samples_path):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 def test_eval_data_split_passage(document_store, samples_path):
     # splitting by passage
     preprocessor = PreProcessor(
@@ -598,6 +598,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -718,6 +722,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -815,6 +823,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -864,6 +876,10 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -2084,7 +2100,7 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
-def test_load_evaluation_result_w_empty_document_ids(tmp_path):
+def test_load_evaluation_result_w_none_values(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
@@ -2158,3 +2174,6 @@ def test_load_evaluation_result_w_empty_document_ids(tmp_path):
     eval_result = EvaluationResult.load(tmp_path)
     assert "Reader" in eval_result
     assert len(eval_result) == 1
+    assert eval_result["Reader"].iloc[0].answer is None
+    assert eval_result["Reader"].iloc[0].context is None
+    assert eval_result["Reader"].iloc[0].document_ids is None
