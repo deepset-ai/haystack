@@ -52,8 +52,7 @@ dependencies = [
   # waiting for the release. For more info see this issue:
   # https://github.com/pydantic/pydantic/issues/5821
   "typing_extensions==4.5.0",
-  "transformers[torch]==4.29.1",
-  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
+  "transformers[torch,sentencepiece]==4.29.1",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
