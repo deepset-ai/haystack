@@ -36,7 +36,7 @@ def test_request_with_retry_failing_request_and_expected_status_code(mock_reques
 
     # Make request with expected status code and verify error is raised
     with pytest.raises(requests.HTTPError):
-        request_with_retry(method="GET", url="https://example.com", timeout=1, attempts=2, status_codes=[408])
+        request_with_retry(method="GET", url="https://example.com", timeout=1, attempts=2, status_codes_to_retry=[408])
 
     # Veries request has been retried the expected number of times
     assert mock_request.call_count == 2
@@ -52,7 +52,7 @@ def test_request_with_retry_failing_request_and_ignored_status_code(mock_request
 
     # Make request with status code that won't trigger a retry and verify error is raised
     with pytest.raises(requests.HTTPError):
-        request_with_retry(method="GET", url="https://example.com", timeout=1, status_codes=[404])
+        request_with_retry(method="GET", url="https://example.com", timeout=1, status_codes_to_retry=[404])
 
     # Verify request has not been retried
     mock_request.assert_called_once()

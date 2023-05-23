@@ -9,7 +9,6 @@ loaders:
         "image",
         "markdown",
         "pdf",
-        "pdf_ocr",
         "parsr",
         "azure",
         "tika",

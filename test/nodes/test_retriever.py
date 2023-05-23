@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from boilerpy3.extractors import ArticleExtractor
 from pandas.testing import assert_frame_equal
-from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+from transformers import PreTrainedTokenizerFast
 
 
 try:
@@ -27,7 +27,6 @@ from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.search_engine import WebSearch
-from haystack.nodes.retriever import Text2SparqlRetriever
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -45,15 +44,12 @@ from ..conftest import MockBaseRetriever, fail_at_version
         ("mdr", "elasticsearch"),
         ("mdr", "faiss"),
         ("mdr", "memory"),
-        ("mdr", "milvus"),
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus"),
         ("bm25", "elasticsearch"),
         ("bm25", "memory"),
         ("bm25", "weaviate"),
@@ -276,9 +272,7 @@ def test_elasticsearch_custom_query():
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
     document_store.return_embedding = True
@@ -300,9 +294,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "weaviate", "pinecone"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs_with_ids):
@@ -578,8 +570,8 @@ def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
@@ -621,9 +613,9 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
     assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
-    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.table_tokenizer, DPRContextEncoderTokenizerFast)
-    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.passage_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.table_tokenizer, PreTrainedTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, PreTrainedTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
     assert loaded_retriever.table_tokenizer.do_lower_case == True
     assert loaded_retriever.query_tokenizer.do_lower_case == True
@@ -1278,21 +1270,3 @@ def test_web_retriever_mode_snippets(monkeypatch):
     web_retriever = WebRetriever(api_key="", top_search_results=2)
     result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
     assert result == expected_search_results["documents"]
-
-
-@fail_at_version(1, 17)
-def test_text_2_sparql_retriever_deprecation():
-    BartForConditionalGeneration = object()
-    BartTokenizer = object()
-    with patch.multiple(
-        "haystack.nodes.retriever.text2sparql", BartForConditionalGeneration=DEFAULT, BartTokenizer=DEFAULT
-    ):
-        knowledge_graph = Mock()
-        with pytest.warns(DeprecationWarning) as w:
-            Text2SparqlRetriever(knowledge_graph)
-
-            assert len(w) == 1
-            assert (
-                w[0].message.args[0]
-                == "The Text2SparqlRetriever component is deprecated and will be removed in future versions."
-            )

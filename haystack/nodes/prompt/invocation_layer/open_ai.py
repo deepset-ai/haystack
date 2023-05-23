@@ -6,12 +6,10 @@ import sseclient
 
 from haystack.errors import OpenAIError
 from haystack.utils.openai_utils import (
-    USE_TIKTOKEN,
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
     _check_openai_finish_reason,
-    count_openai_tokens,
 )
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
@@ -177,7 +175,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = count_openai_tokens(cast(str, prompt), self._tokenizer)
+        n_prompt_tokens = len(self._tokenizer.encode(cast(str, prompt)))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
@@ -192,14 +190,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             self.max_tokens_limit,
         )
 
-        if USE_TIKTOKEN:
-            tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
-        else:
-            tokenized_payload = self._tokenizer.tokenize(prompt)
-            decoded_string = self._tokenizer.convert_tokens_to_string(
-                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
-            )
+        tokenized_payload = self._tokenizer.encode(prompt)
+        decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
         return decoded_string
 
     @classmethod

@@ -189,6 +189,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     "clean_up_tokenization_spaces",
                     "truncation",
                     "generation_kwargs",
+                    "max_new_tokens",
+                    "num_beams",
+                    "do_sample",
+                    "num_return_sequences",
+                    "max_length",
                 ]
                 if key in kwargs
             }
@@ -217,7 +222,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     model_input_kwargs["num_beams"] = top_k
             # max_new_tokens is used for text-generation and max_length for text2text-generation
             if is_text_generation:
-                model_input_kwargs["max_new_tokens"] = self.max_length
+                model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
             else:
                 model_input_kwargs["max_length"] = self.max_length
 

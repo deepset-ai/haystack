@@ -1,4 +1,4 @@
 pydoc-markdown==4.6.4
 # pin docspec while waiting for https://github.com/NiklasRosenstein/docspec/issues/91 to be fixed
 docspec-python<2.1.0
-requests==2.28.2
+requests==2.31.0
