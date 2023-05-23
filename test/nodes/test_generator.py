@@ -158,10 +158,8 @@ def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
         pytest.skip("No API key found, skipping test")
 
     lfqa_prompt = PromptTemplate(
-        name="lfqa",
-        prompt_text="""
-        Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and the given question.
-        \n===\Paragraphs: {context}\n===\n{query}""",
+        """Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and
+        the given question.\n===\Paragraphs: {context}\n===\n{query}"""
     )
     node = OpenAIAnswerGenerator(
         api_key=haystack_openai_config["api_key"],
