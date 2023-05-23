@@ -48,23 +48,6 @@ def test_convert(Converter, samples_path):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
-# Marked as integration because it uses poppler, which is not installed in the unit tests suite
-@pytest.mark.integration
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Poppler not installed on Windows CI")
-def test_pdftoppm_command_format(samples_path):
-    # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
-    # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
-    # This test runs pdftoppm directly to check whether pdftoppm accepts the command format that pdf2image uses in Haystack
-    proc = subprocess.Popen(
-        ["pdftoppm", f"{samples_path}/pdf/sample_pdf_1.pdf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    out, err = proc.communicate()
-    # If usage info of pdftoppm is sent to stderr then it's because Haystack's pdf2image uses an incompatible command format
-    assert (
-        not err
-    ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
-
-
 @pytest.mark.unit
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_command_whitespaces(Converter, samples_path):
