@@ -113,8 +113,20 @@ jobs:
         with:
           python-version: ${{ matrix.version }}
 
+      - name: Install Graphviz
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt install graphviz graphviz-dev
+
+      - name: Install Graphviz
+        if: matrix.os == 'macos-latest'
+        run: brew install graphviz
+
+      - name: Install Graphviz
+        if: matrix.os == 'windows-latest'
+        run: choco install graphviz
+
       - name: Install Canals
-        run: pip install .[mermaid,dev]
+        run: pip install .[mermaid,graphviz,dev]
 
       - name: Run
         run: hatch run cov
