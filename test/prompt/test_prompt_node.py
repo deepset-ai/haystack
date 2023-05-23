@@ -11,6 +11,15 @@ from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, DefaultTokenStreamingHandler
 
 
+@pytest.fixture
+def mock_prompthub():
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
+        mock_prompthub.side_effect = (
+            lambda name: "This is a test prompt. Use your knowledge to answer this question: {question}"
+        )
+        yield mock_prompthub
+
+
 def skip_test_for_invalid_key(prompt_model):
     if prompt_model.api_key is not None and prompt_model.api_key == "KEY_NOT_FOUND":
         pytest.skip("No API key found, skipping test")
@@ -25,59 +34,6 @@ def get_api_key(request):
 
 
 @pytest.mark.unit
-def test_add_and_remove_template():
-    with patch("haystack.nodes.prompt.prompt_node.PromptModel"):
-        node = PromptNode()
-    total_count = 16
-    # Verifies default
-    assert len(node.get_prompt_template_names()) == total_count
-
-    # Add a fake template
-    fake_template = PromptTemplate(name="fake-template", prompt_text="Fake prompt")
-    node.add_prompt_template(fake_template)
-    assert len(node.get_prompt_template_names()) == total_count + 1
-    assert "fake-template" in node.get_prompt_template_names()
-
-    # Verify that adding the same template throws an expection
-    with pytest.raises(ValueError) as e:
-        node.add_prompt_template(fake_template)
-        assert e.match(
-            "Prompt template fake-template already exists. Select a different name for this prompt template."
-        )
-
-    # Verify template is correctly removed
-    assert node.remove_prompt_template("fake-template")
-    assert len(node.get_prompt_template_names()) == total_count
-    assert "fake-template" not in node.get_prompt_template_names()
-
-    # Verify that removing the same template throws an expection
-    with pytest.raises(ValueError) as e:
-        node.remove_prompt_template("fake-template")
-        assert e.match("Prompt template fake-template does not exist")
-
-
-@pytest.mark.unit
-@patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_prompt_after_adding_template(mock_model):
-    # Make model always return something positive on invoke
-    mock_model.return_value.invoke.return_value = ["positive"]
-
-    # Create a template
-    template = PromptTemplate(
-        name="fake-sentiment-analysis",
-        prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: {documents}; Answer:",
-    )
-
-    # Execute prompt
-    node = PromptNode()
-    node.add_prompt_template(template)
-    result = node.prompt("fake-sentiment-analysis", documents=["Berlin is an amazing city."])
-
-    assert result == ["positive"]
-
-
-@pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_prompt_passing_template(mock_model):
     # Make model always return something positive on invoke
@@ -85,9 +41,8 @@ def test_prompt_passing_template(mock_model):
 
     # Create a template
     template = PromptTemplate(
-        name="fake-sentiment-analysis",
-        prompt_text="Please give a sentiment for this context. Answer with positive, "
-        "negative or neutral. Context: {documents}; Answer:",
+        "Please give a sentiment for this context. Answer with positive, "
+        "negative or neutral. Context: {documents}; Answer:"
     )
 
     # Execute prompt
@@ -137,69 +92,92 @@ def test_prompt_call_with_custom_kwargs_and_template(mock_model, mocked_prompt):
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_without_default_template(mock_model):
+def test_get_prompt_template_no_default_template(mock_model):
     node = PromptNode()
     assert node.get_prompt_template() is None
 
-    template = node.get_prompt_template("question-answering")
-    assert template.name == "question-answering"
 
-    template = node.get_prompt_template(PromptTemplate(name="fake-template", prompt_text=""))
-    assert template.name == "fake-template"
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_with_default_template(mock_model, mock_prompthub):
+    node = PromptNode()
+    node.default_prompt_template = "deepset/test-prompt"
 
-    with pytest.raises(ValueError) as e:
-        node.get_prompt_template("some-unsupported-template")
-        assert e.match("some-unsupported-template not supported, select one of:")
+    template = node.get_prompt_template()
+    assert template.name == "deepset/test-prompt"
 
-    fake_yaml_prompt = "name: fake-yaml-template\nprompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "fake-yaml-template"
 
-    fake_yaml_prompt = "- prompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "custom-at-query-time"
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_name_from_hub(mock_model, mock_prompthub):
+    node = PromptNode()
+    template = node.get_prompt_template("deepset/test-prompt")
+    assert template.name == "deepset/test-prompt"
 
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_local_file(mock_model, tmp_path, mock_prompthub):
+    with open(tmp_path / "local_prompt_template.yml", "w") as ptf:
+        ptf.write(
+            """
+name: my_prompts/question-answering
+prompt_text: |
+            Given the context please answer the question. Context: {join(documents)};
+            Question: {query};
+            Answer:
+description: A simple prompt to answer a question given a set of documents
+tags:
+  - question-answering
+meta:
+  authors:
+    - vblagoje
+version: v0.1.1
+"""
+        )
+    node = PromptNode()
+    template = node.get_prompt_template(str(tmp_path / "local_prompt_template.yml"))
+    assert template.name == "my_prompts/question-answering"
+    assert "Given the context" in template.prompt_text
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_object(mock_model, mock_prompthub):
+    node = PromptNode()
+    original_template = PromptTemplate("fake-template")
+    template = node.get_prompt_template(original_template)
+    assert template == original_template
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_wrong_template_name(mock_model):
+    with patch("haystack.nodes.prompt.prompt_template.prompthub") as mock_prompthub:
+
+        def not_found(*a, **k):
+            raise ValueError("'some-unsupported-template' not supported!")
+
+        mock_prompthub.fetch.side_effect = not_found
+        node = PromptNode()
+        with pytest.raises(ValueError, match="not supported") as e:
+            node.get_prompt_template("some-unsupported-template")
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_only_template_text(mock_model, mock_prompthub):
+    node = PromptNode()
     template = node.get_prompt_template("some prompt")
     assert template.name == "custom-at-query-time"
 
 
 @pytest.mark.unit
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
-def test_get_prompt_template_with_default_template(mock_model):
+def test_invalid_template_params(mock_model, mock_prompthub):
     node = PromptNode()
-    node.set_default_prompt_template("question-answering")
-
-    template = node.get_prompt_template()
-    assert template.name == "question-answering"
-
-    template = node.get_prompt_template("sentiment-analysis")
-    assert template.name == "sentiment-analysis"
-
-    template = node.get_prompt_template(PromptTemplate(name="fake-template", prompt_text=""))
-    assert template.name == "fake-template"
-
-    with pytest.raises(ValueError) as e:
-        node.get_prompt_template("some-unsupported-template")
-        assert e.match("some-unsupported-template not supported, select one of:")
-
-    fake_yaml_prompt = "name: fake-yaml-template\nprompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "fake-yaml-template"
-
-    fake_yaml_prompt = "- prompt_text: fake prompt text"
-    template = node.get_prompt_template(fake_yaml_prompt)
-    assert template.name == "custom-at-query-time"
-
-    template = node.get_prompt_template("some prompt")
-    assert template.name == "custom-at-query-time"
-
-
-@pytest.mark.integration
-def test_invalid_template_params():
-    # TODO: This can be a PromptTemplate unit test
-    node = PromptNode("google/flan-t5-small", devices=["cpu"])
     with pytest.raises(ValueError, match="Expected prompt parameters"):
-        node.prompt("question-answering-per-document", {"some_crazy_key": "Berlin is the capital of Germany."})
+        node.prompt("question-answering-per-document", some_crazy_key="Berlin is the capital of Germany.")
 
 
 @pytest.mark.integration
@@ -282,7 +260,10 @@ def test_stop_words(prompt_model):
     node = PromptNode(prompt_model, stop_words=["capital"])
 
     # with default prompt template and stop words set in PN
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    r = node.prompt(
+        "Given the context please generate a question.\nContext: {documents};\nQuestion:",
+        documents=["Berlin is the capital of Germany."],
+    )
     assert r[0] == "What is the" or r[0] == "What city is the"
 
     # test stop words for both HF and OpenAI
@@ -290,11 +271,18 @@ def test_stop_words(prompt_model):
     node = PromptNode(prompt_model, stop_words=["capital", "Germany"])
 
     # with default prompt template and stop words set in PN
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."])
+    r = node.prompt(
+        "Given the context please generate a question.\nContext: {documents};\nQuestion:",
+        documents=["Berlin is the capital of Germany."],
+    )
     assert r[0] == "What is the" or r[0] == "What city is the"
 
     # with default prompt template and stop words set in kwargs (overrides PN stop words)
-    r = node.prompt("question-generation", documents=["Berlin is the capital of Germany."], stop_words=None)
+    r = node.prompt(
+        "Given the context please generate a question.\nContext: {documents};\nQuestion:",
+        documents=["Berlin is the capital of Germany."],
+        stop_words=None,
+    )
     assert "capital" in r[0] or "Germany" in r[0]
 
     # simple prompting
@@ -310,10 +298,7 @@ def test_stop_words(prompt_model):
     )
     assert "capital" in r[0] or "Germany" in r[0]
 
-    tt = PromptTemplate(
-        name="question-generation-copy",
-        prompt_text="Given the context please generate a question. Context: {documents}; Question:",
-    )
+    tt = PromptTemplate("Given the context please generate a question. Context: {documents}; Question:")
     # with custom prompt template
     r = node.prompt(tt, documents=["Berlin is the capital of Germany."])
     assert r[0] == "What is the" or r[0] == "What city is the"
@@ -520,7 +505,7 @@ def test_pipeline_with_qa_with_references(prompt_model):
 @pytest.mark.parametrize("prompt_model", ["openai", "azure"], indirect=True)
 def test_pipeline_with_prompt_text_at_query_time(prompt_model):
     skip_test_for_invalid_key(prompt_model)
-    node = PromptNode(prompt_model, default_prompt_template="question-answering-with-references", top_k=1)
+    node = PromptNode(prompt_model, default_prompt_template="test prompt template text", top_k=1)
 
     pipe = Pipeline()
     pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -609,8 +594,7 @@ def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
             - name: template_with_nested_shaper
               type: PromptTemplate
               params:
-                name: custom-template-with-nested-shaper
-                prompt_text: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
+                prompt: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
                 output_parser:
                   type: AnswerParser
             - name: p1
@@ -674,8 +658,7 @@ def test_complex_pipeline_with_qa(prompt_model):
     skip_test_for_invalid_key(prompt_model)
 
     prompt_template = PromptTemplate(
-        name="question-answering-new",
-        prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
+        "Given the context please answer the question. Context: {documents}; Question: {query}; Answer:"
     )
     node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
@@ -874,8 +857,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
             - name: question_generation_template
               type: PromptTemplate
               params:
-                name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
+                prompt: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
@@ -954,8 +936,7 @@ def test_complex_pipeline_with_with_dummy_node_between_prompt_nodes_yaml(tmp_pat
             - name: question_generation_template
               type: PromptTemplate
               params:
-                name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
+                prompt: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel
@@ -1028,8 +1009,7 @@ def test_complex_pipeline_with_all_features(tmp_path, haystack_openai_config):
             - name: question_generation_template
               type: PromptTemplate
               params:
-                name: question-generation-new
-                prompt_text: "Given the context please generate a question. Context: {{documents}}; Question:"
+                prompt: "Given the context please generate a question. Context: {{documents}}; Question:"
             - name: p1
               params:
                 model_name_or_path: pmodel_openai
@@ -1104,9 +1084,7 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 class TestTokenLimit:
     @pytest.mark.integration
     def test_hf_token_limit_warning(self, caplog):
-        prompt_template = PromptTemplate(
-            name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:"
-        )
+        prompt_template = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
         with caplog.at_level(logging.WARNING):
             node = PromptNode("google/flan-t5-small", devices=["cpu"])
             node.prompt(prompt_template, documents=["Berlin is an amazing city."])
@@ -1119,7 +1097,7 @@ class TestTokenLimit:
         reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     def test_openai_token_limit_warning(self, caplog):
-        tt = PromptTemplate(name="too-long-temp", prompt_text="Repeating text" * 200 + "Docs: {documents}; Answer:")
+        tt = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
         prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
         with caplog.at_level(logging.WARNING):
             _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
@@ -1133,7 +1111,10 @@ class TestRunBatch:
     def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
         skip_test_for_invalid_key(prompt_model)
 
-        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
+        node = PromptNode(
+            prompt_model,
+            default_prompt_template="Please give a sentiment for this context. Answer with positive, negative or neutral. Context: {documents}; Answer:",
+        )
 
         pipe = Pipeline()
         pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -1151,7 +1132,11 @@ class TestRunBatch:
     def test_simple_pipeline_batch_no_query_multiple_doc_list(self, prompt_model):
         skip_test_for_invalid_key(prompt_model)
 
-        node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis", output_variable="out")
+        node = PromptNode(
+            prompt_model,
+            default_prompt_template="Please give a sentiment for this context. Answer with positive, negative or neutral. Context: {documents}; Answer:",
+            output_variable="out",
+        )
 
         pipe = Pipeline()
         pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
@@ -1174,8 +1159,7 @@ class TestRunBatch:
         skip_test_for_invalid_key(prompt_model)
 
         prompt_template = PromptTemplate(
-            name="question-answering-new",
-            prompt_text="Given the context please answer the question. Context: {documents}; Question: {query}; Answer:",
+            "Given the context please answer the question. Context: {documents}; Question: {query}; Answer:"
         )
         node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 

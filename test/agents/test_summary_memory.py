@@ -9,9 +9,7 @@ from haystack.agents.memory import ConversationSummaryMemory
 @pytest.fixture
 def mocked_prompt_node():
     mock_prompt_node = MagicMock(spec=PromptNode)
-    mock_prompt_node.default_prompt_template = PromptTemplate(
-        "conversational-summary", "Summarize the conversation: {chat_transcript}"
-    )
+    mock_prompt_node.default_prompt_template = PromptTemplate("Summarize the conversation: {chat_transcript}")
     mock_prompt_node.prompt.return_value = ["This is a summary."]
     return mock_prompt_node
 
@@ -127,7 +125,7 @@ def test_conversation_summary_is_accumulating(mocked_prompt_node):
 
 @pytest.mark.unit
 def test_conversation_summary_memory_with_template(mocked_prompt_node):
-    pt = PromptTemplate("conversational-summary", "Summarize the conversation: {chat_transcript}")
+    pt = PromptTemplate("Summarize the conversation: {chat_transcript}")
     summary_mem = ConversationSummaryMemory(mocked_prompt_node, prompt_template=pt)
 
     data1: Dict[str, Any] = {"input": "Hello", "output": "Hi there"}

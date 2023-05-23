@@ -398,9 +398,8 @@ class MockPromptNode(PromptNode):
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
         if prompt_template == "think-step-by-step":
-            return PromptTemplate(
-                name="think-step-by-step",
-                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+            p = PromptTemplate(
+                "You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
                 "correctly, you have access to the following tools:\n\n"
                 "{tool_names_with_descriptions}\n\n"
                 "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
@@ -417,10 +416,11 @@ class MockPromptNode(PromptNode):
                 "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
                 "---\n\n"
                 "Question: {query}\n"
-                "Thought: Let's think step-by-step, I first need to {generated_text}",
+                "Thought: Let's think step-by-step, I first need to {generated_text}"
             )
+            p.name = "think-step-by-step"
         else:
-            return PromptTemplate(name="", prompt_text="")
+            return PromptTemplate("test prompt")
 
 
 @pytest.fixture

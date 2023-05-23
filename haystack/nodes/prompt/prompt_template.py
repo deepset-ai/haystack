@@ -1,10 +1,17 @@
 from typing import Optional, List, Union, Tuple, Dict, Iterator, Any
 import logging
+import re
 import os
 import ast
 import json
+from pathlib import Path
 from abc import ABC
 from uuid import uuid4
+
+import yaml
+import tenacity
+import prompthub
+from requests import HTTPError, RequestException, JSONDecodeError
 
 from haystack.errors import NodeError
 from haystack.environment import HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS
@@ -19,6 +26,11 @@ from haystack.nodes.prompt.shapers import (  # pylint: disable=unused-import
     format_string,
 )
 from haystack.schema import Document, MultiLabel
+from haystack.environment import (
+    HAYSTACK_REMOTE_API_TIMEOUT_SEC,
+    HAYSTACK_REMOTE_API_BACKOFF_SEC,
+    HAYSTACK_REMOTE_API_MAX_RETRIES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +40,14 @@ PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = json.loads(
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
 PROMPT_TEMPLATE_STR_REPLACE = {'"': "'"}
+
+PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
+PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
+PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
+
+class PromptNotFoundError(Exception):
+    ...
 
 
 class BasePromptTemplate(BaseComponent):
@@ -163,9 +183,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
     PromptTemplate is a template for the prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what a prompt template may look like:
 
     ```python
-        PromptTemplate(name="sentiment-analysis",
-                   prompt_text="Give a sentiment for this context. Answer with positive, negative"
-                   "or neutral. Context: {documents}; Answer:")
+        PromptTemplate("Give a sentiment for this context. Answer with positive, negative or neutral. Context: {documents}; Answer:")
     ```
 
     Optionally, you can declare prompt parameters using f-string syntax in the PromptTemplate. Prompt parameters are input parameters that need to be filled in
@@ -183,14 +201,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
     [PromptTemplates](https://docs.haystack.deepset.ai/docs/prompt_node#prompttemplates).
     """
 
-    def __init__(
-        self, name: str, prompt_text: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None
-    ):
+    def __init__(self, prompt: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None):
         """
          Creates a PromptTemplate instance.
 
-        :param name: The name of the prompt template (for example, "sentiment-analysis", "question-generation"). You can specify your own name but it must be unique.
-        :param prompt_text: The prompt text, including prompt parameters.
+        :param prompt: The name of the prompt template on the PromptHub (for example, "sentiment-analysis",
+            "question-generation"), a Path to a local file, or the text of a new prompt, including its parameters.
         :param output_parser: A parser that applied to the model output.
                 For example, to convert the model output to an Answer object, you can use `AnswerParser`.
                 Instead of BaseOutputParser instances, you can also pass dictionaries defining the output parsers. For example:
@@ -199,6 +215,36 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 ```
         """
         super().__init__()
+        name, prompt_text = "", ""
+
+        try:
+            # if it looks like a prompt template name
+            if re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
+                name = prompt
+                prompt_text = self._fetch_from_prompthub(prompt)
+
+            # if it's a path to a YAML file
+            elif Path(prompt).exists():
+                with open(prompt, "r", encoding="utf-8") as yaml_file:
+                    prompt_template_parsed = yaml.safe_load(yaml_file.read())
+                    if not isinstance(prompt_template_parsed, dict):
+                        raise ValueError("The prompt loaded is not a prompt YAML file.")
+                    name = prompt_template_parsed["name"]
+                    prompt_text = prompt_template_parsed["prompt_text"]
+
+            # Otherwise it's a on-the-fly prompt text
+            else:
+                prompt_text = prompt
+                name = "custom-at-query-time"
+
+        except OSError as exc:
+            logger.info(
+                "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not.",
+                str(exc),
+            )
+            # In case of errors, let's directly assume this is a text prompt
+            prompt_text = prompt
+            name = "custom-at-query-time"
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
         for strip in PROMPT_TEMPLATE_STRIPS:
@@ -240,6 +286,26 @@ class PromptTemplate(BasePromptTemplate, ABC):
     @property
     def output_variable(self) -> Optional[str]:
         return self.output_parser.output_variable if self.output_parser else None
+
+    @tenacity.retry(
+        reraise=True,
+        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
+        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
+        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
+    )
+    def _fetch_from_prompthub(self, name) -> str:
+        """
+        Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
+
+        Raises PromptNotFoundError if the prompt is not present in the hub.
+        """
+        try:
+            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+        except HTTPError as http_error:
+            if http_error.response.status_code != 404:
+                raise http_error
+            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+        return prompt_data.text
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
@@ -336,110 +402,3 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     def __repr__(self):
         return f"PromptTemplate(name={self.name}, prompt_text={self.prompt_text}, prompt_params={self.prompt_params})"
-
-
-def get_predefined_prompt_templates() -> List[PromptTemplate]:
-    return [
-        PromptTemplate(
-            name="question-answering",
-            prompt_text="Given the context please answer the question. Context: {join(documents)}; Question: "
-            "{query}; Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="question-answering-per-document",
-            prompt_text="Given the context please answer the question. Context: {documents}; Question: "
-            "{query}; Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="question-answering-with-references",
-            prompt_text="Create a concise and informative answer (no more than 50 words) for a given question "
-            "based solely on the given documents. You must only use information from the given documents. "
-            "Use an unbiased and journalistic tone. Do not repeat text. Cite the documents using Document[number] notation. "
-            "If multiple documents contain the answer, cite those documents like ‘as stated in Document[number], Document[number], etc.’. "
-            "If the documents do not contain the answer to the question, say that ‘answering is not possible given the available information.’\n"
-            "{join(documents, delimiter=new_line, pattern=new_line+'Document[$idx]: $content', str_replace={new_line: ' ', '[': '(', ']': ')'})} \n Question: {query}; Answer: ",
-            output_parser=AnswerParser(reference_pattern=r"Document\[(\d+)\]"),
-        ),
-        PromptTemplate(
-            name="question-answering-with-document-scores",
-            prompt_text="Answer the following question using the paragraphs below as sources. "
-            "An answer should be short, a few words at most.\n"
-            "Paragraphs:\n{documents}\n"
-            "Question: {query}\n\n"
-            "Instructions: Consider all the paragraphs above and their corresponding scores to generate "
-            "the answer. While a single paragraph may have a high score, it's important to consider all "
-            "paragraphs for the same answer candidate to answer accurately.\n\n"
-            "After having considered all possibilities, the final answer is:\n",
-        ),
-        PromptTemplate(
-            name="question-generation",
-            prompt_text="Given the context please generate a question. Context: {documents}; Question:",
-        ),
-        PromptTemplate(
-            name="conditioned-question-generation",
-            prompt_text="Please come up with a question for the given context and the answer. "
-            "Context: {documents}; Answer: {answers}; Question:",
-        ),
-        PromptTemplate(name="summarization", prompt_text="Summarize this document: {documents} Summary:"),
-        PromptTemplate(
-            name="question-answering-check",
-            prompt_text="Does the following context contain the answer to the question? "
-            "Context: {documents}; Question: {query}; Please answer yes or no! Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="sentiment-analysis",
-            prompt_text="Please give a sentiment for this context. Answer with positive, "
-            "negative or neutral. Context: {documents}; Answer:",
-        ),
-        PromptTemplate(
-            name="multiple-choice-question-answering",
-            prompt_text="Question:{query} ; Choose the most suitable option to answer the above question. "
-            "Options: {options}; Answer:",
-            output_parser=AnswerParser(),
-        ),
-        PromptTemplate(
-            name="topic-classification",
-            prompt_text="Categories: {options}; What category best describes: {documents}; Answer:",
-        ),
-        PromptTemplate(
-            name="language-detection",
-            prompt_text="Detect the language in the following context and answer with the "
-            "name of the language. Context: {documents}; Answer:",
-        ),
-        PromptTemplate(
-            name="translation",
-            prompt_text="Translate the following context to {target_language}. Context: {documents}; Translation:",
-        ),
-        PromptTemplate(
-            name="zero-shot-react",
-            prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
-            "correctly, you have access to the following tools:\n\n"
-            "{tool_names_with_descriptions}\n\n"
-            "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
-            "selecting appropriate tools and their inputs; tools will respond with observations. When you are ready "
-            "for a final answer, respond with the `Final Answer:`\n\n"
-            "Use the following format:\n\n"
-            "Question: the question to be answered\n"
-            "Thought: Reason if you have the final answer. If yes, answer the question. If not, find out the missing information needed to answer it.\n"
-            "Tool: pick one of {tool_names} \n"
-            "Tool Input: the input for the tool\n"
-            "Observation: the tool will respond with the result\n"
-            "...\n"
-            "Final Answer: the final answer to the question, make it short (1-5 words)\n\n"
-            "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
-            "---\n\n"
-            "Question: {query}\n"
-            "Thought: Let's think step-by-step, I first need to {transcript}",
-        ),
-        PromptTemplate(
-            name="conversational-agent",
-            prompt_text="The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:",
-        ),
-        PromptTemplate(
-            name="conversational-summary",
-            prompt_text="Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:",
-        ),
-    ]

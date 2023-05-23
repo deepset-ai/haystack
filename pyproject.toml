@@ -58,6 +58,7 @@ dependencies = [
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
   "generalimport", # Optional imports
+  "prompthub-py",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
