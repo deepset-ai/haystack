@@ -113,20 +113,20 @@ jobs:
         with:
           python-version: ${{ matrix.version }}
 
-      - name: Install Canals
+      - name: Install Canals (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt install graphviz graphviz-dev
           pip install .[mermaid,graphviz,dev]
 
-      - name: Install Graphviz
+      - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew install graphviz
           pip install .[mermaid,graphviz,dev]
 
       # Pygraphviz and Windows don't work together
-      - name: Install Graphviz
+      - name: Install Canals (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           # choco install graphviz
