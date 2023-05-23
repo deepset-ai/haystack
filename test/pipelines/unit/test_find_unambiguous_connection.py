@@ -5,7 +5,6 @@ import pytest
 
 from canals.errors import PipelineConnectError
 from canals.component import component, ComponentInput, ComponentOutput
-from canals.pipeline import Pipeline
 from canals.pipeline.sockets import find_input_sockets, find_output_sockets
 from canals.pipeline.connections import find_unambiguous_connection
 
