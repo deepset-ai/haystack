@@ -38,15 +38,6 @@ def load_openai_tokenizer(tokenizer_name: str):
     return tiktoken.get_encoding(tokenizer_name)
 
 
-def count_openai_tokens(text: str, tokenizer) -> int:
-    """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
-
-    :param text: A string to be tokenized.
-    :param tokenizer: An OpenAI tokenizer.
-    """
-    return len(tokenizer.encode(text))
-
-
 def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> int:
     """Count the number of tokens in `messages` based on the OpenAI `tokenizer` provided.
 

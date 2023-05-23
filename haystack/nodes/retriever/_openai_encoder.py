@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
-from haystack.utils.openai_utils import count_openai_tokens, load_openai_tokenizer, openai_request
+from haystack.utils.openai_utils import load_openai_tokenizer, openai_request
 from haystack.telemetry import send_event
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         Ensure that length of the text is within the maximum length of the model.
         OpenAI v1 embedding models have a limit of 2046 tokens, and v2 models have a limit of 8191 tokens.
         """
-        n_tokens = count_openai_tokens(text, self._tokenizer)
+        n_tokens = len(self._tokenizer.encode(text))
         if n_tokens <= self.max_seq_len:
             return text
 
