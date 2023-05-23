@@ -192,9 +192,8 @@ class RAGenerator(BaseGenerator):
             truncation=True,
         )
 
-        return (
-            contextualized_inputs["input_ids"].to(self.devices[0]),
-            contextualized_inputs["attention_mask"].to(self.devices[0]),
+        return contextualized_inputs["input_ids"].to(self.devices[0]), contextualized_inputs["attention_mask"].to(
+            self.devices[0]
         )
 
     def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> torch.Tensor:
