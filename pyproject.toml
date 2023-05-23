@@ -48,6 +48,10 @@ classifiers = [
 dependencies = [
   "requests",
   "pydantic",
+  # FIXME: typing_extensions 4.6.0 broke Pydantic, so we pin it temporarily
+  # waiting for the release. For more info see this issue:
+  # https://github.com/pydantic/pydantic/issues/5821
+  "typing_extensions==4.5.0",
   "transformers[torch]==4.29.1",
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "pandas",
@@ -184,7 +188,6 @@ dev = [
   "pre-commit",
   # Type check
   "mypy",
-  "typing_extensions; python_version < '3.8'",
   # Test
   "pytest",
   "pytest-cov",
