@@ -61,7 +61,8 @@ def find_unambiguous_connection(
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}' with '{to_node}': more than one connection is possible "
                 "between these components. Please specify the connection name, like: "
-                f"pipeline.connect('component_1.output_value', 'component_2.input_value').\n{connections_status_str}"
+                f"pipeline.connect('{from_node}.{possible_connections[0][0].name}', "
+                f"'{to_node}.{possible_connections[0][1].name}').\n{connections_status_str}"
             )
 
     return possible_connections[0]
