@@ -150,7 +150,7 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         data: Dict[str, Any],
         stream: bool = False,
         attempts: int = RETRIES,
-        status_codes: Optional[List[int]] = None,
+        status_codes_to_retry: Optional[List[int]] = None,
         timeout: float = TIMEOUT,
         **kwargs,
     ) -> requests.Response:
@@ -160,17 +160,17 @@ class CohereInvocationLayer(PromptModelInvocationLayer):
         :param data: The data to be sent to the model.
         :param stream: Whether to stream the response.
         :param attempts: The number of attempts to make.
-        :param status_codes: The status codes to retry on.
+        :param status_codes_to_retry: The status codes to retry on.
         :param timeout: The timeout for the request.
         :return: The response from the model as a requests.Response object.
         """
         response: requests.Response
-        if status_codes is None:
-            status_codes = [429]
+        if status_codes_to_retry is None:
+            status_codes_to_retry = [429]
         try:
             response = request_with_retry(
                 method="POST",
-                status_codes=status_codes,
+                status_codes_to_retry=status_codes_to_retry,
                 attempts=attempts,
                 url=self.url,
                 headers=self.headers,
