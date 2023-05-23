@@ -116,7 +116,7 @@ jobs:
       - name: Install Canals (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt install graphviz graphviz-dev
+          sudo apt install graphviz libgraphviz-dev
           pip install .[mermaid,graphviz,dev]
 
       - name: Install Canals (MacOS)
