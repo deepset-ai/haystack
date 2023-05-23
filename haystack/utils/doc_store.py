@@ -1,10 +1,6 @@
 import time
 import logging
 import subprocess
-from pathlib import Path
-from typing import Union, Tuple
-
-import requests
 
 
 logger = logging.getLogger(__name__)
@@ -116,35 +112,3 @@ def stop_service(document_store, delete_container=False):
         stop_weaviate(delete_container)
     else:
         logger.warning("No support yet for auto stopping the service behind a %s", type(document_store))
-
-
-def launch_milvus(sleep=15, delete_existing=False, timeout: Union[float, Tuple[float, float]] = 10.0):
-    """Start a Milvus server via Docker
-
-    :param sleep: How many seconds to wait after Milvus container is launched. Defaults to 15.
-    :param delete_existing: Unused. Defaults to False.
-    :param timeout: How many seconds to wait for the server to send data before giving up,
-        as a float, or a :ref:`(connect timeout, read timeout) <timeouts>` tuple.
-        Defaults to 10 seconds.
-    """
-    logger.debug("Starting Milvus ...")
-
-    milvus_dir = Path.home() / "milvus"
-    milvus_dir.mkdir(exist_ok=True)
-
-    request = requests.get(
-        "https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml",
-        timeout=timeout,
-    )
-    with open(milvus_dir / "docker-compose.yml", "wb") as f:
-        f.write(request.content)
-
-    status = subprocess.run([f"cd {milvus_dir} && docker-compose up -d"], shell=True)
-
-    if status.returncode:
-        logger.warning(
-            "Tried to start Milvus through Docker but this failed. "
-            "It is likely that there is already an existing Milvus instance running. "
-        )
-    else:
-        time.sleep(sleep)
