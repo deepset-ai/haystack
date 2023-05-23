@@ -27,6 +27,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
   "networkx",  # Pipeline graphs
+  "generalimport", # Optional pygraphviz
 ]
 
 [project.optional-dependencies]
