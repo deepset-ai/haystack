@@ -56,7 +56,6 @@ dependencies = [
   "generalimport", # Optional imports
 
   # Utils
-  "dill",  # pickle extension for (de-)serialization
   "tqdm",  # progress bars in model download and training scripts
   "networkx",  # graphs library
   "quantulum3",  # quantities extraction from text
