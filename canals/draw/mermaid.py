@@ -7,6 +7,8 @@ import base64
 import requests
 import networkx
 
+from canals.errors import PipelineDrawingError
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +50,15 @@ def to_mermaid_image(graph: networkx.MultiDiGraph):
             logger.warning("Failed to draw the pipeline: https://mermaid.ink/img/ returned status %s", resp.status_code)
             logger.info("Exact URL requested: %s", url)
             logger.warning("No pipeline diagram will be saved.")
-            return None
+            resp.raise_for_status()
+
     except Exception as exc:  # pylint: disable=broad-except
         logger.warning("Failed to draw the pipeline: could not connect to https://mermaid.ink/img/ (%s)", exc)
         logger.info("Exact URL requested: %s", url)
         logger.warning("No pipeline diagram will be saved.")
-        return None
+        raise PipelineDrawingError(
+            "There was an issue with https://mermaid.ink/, see the stacktrace for details."
+        ) from exc
 
     return resp.content
 

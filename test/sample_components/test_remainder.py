@@ -20,7 +20,6 @@ class Remainder:
     @dataclass
     class Input(ComponentInput):
         value: int
-        add: int = 1
 
     def __init__(self, divisor: int = 2):
         if divisor == 0:

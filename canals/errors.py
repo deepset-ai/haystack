@@ -17,6 +17,10 @@ class PipelineValidationError(PipelineError):
     pass
 
 
+class PipelineDrawingError(PipelineError):
+    pass
+
+
 class PipelineMaxLoops(PipelineError):
     pass
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import networkx
 
-from canals.pipeline.sockets import find_pipeline_inputs, find_pipeline_outputs
+from canals.pipeline.validation import find_pipeline_inputs, find_pipeline_outputs
 from canals.draw.graphviz import to_agraph
 from canals.draw.mermaid import to_mermaid_image, to_mermaid_text
 
