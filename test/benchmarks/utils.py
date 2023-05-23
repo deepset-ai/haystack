@@ -110,7 +110,8 @@ def load_eval_data(eval_set_file: Path):
     else:
         raise ValueError(
             f"Unsupported file format: {eval_set_file.suffix}. Provide a SQuAD-style .json or a .csv file containing "
-            f"the columns 'question' and 'context'."
+            f"the columns 'question' and 'context' for Retriever evaluations and additionally 'text' (containing the "
+            f"answer string) for Reader evaluations."
         )
 
     return labels, queries
