@@ -123,7 +123,13 @@ jobs:
 
       - name: Install Graphviz
         if: matrix.os == 'windows-latest'
-        run: choco install graphviz
+        run: |
+          choco install graphviz
+          # Installs pygraphviz here because it needs to be built with special flags
+          pip install --global-option=build_ext `
+                      --global-option="-IC:\Program Files\Graphviz\include" `
+                      --global-option="-LC:\Program Files\Graphviz\lib" `
+                      pygraphviz
 
       - name: Install Canals
         run: pip install .[mermaid,graphviz,dev]
