@@ -117,12 +117,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt install graphviz libgraphviz-dev
+          pip install pygraphviz
           pip install .[mermaid,graphviz,dev]
 
       - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew install graphviz
+          pip install pygraphviz
           pip install .[mermaid,graphviz,dev]
 
       # Pygraphviz and Windows don't work together
