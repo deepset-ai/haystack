@@ -51,7 +51,7 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
     # Text received previously by the handler
     previous_text = ""
 
-    def __call__(self, text: str) -> str:
+    def __call__(self, token_received: str, **kwargs) -> str:
         """
         When the handler is called directly with a response string from Anthropic
         we split it comparing with the previously received text by this handler
@@ -60,20 +60,20 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
         If the text is completely different from the previously received one we
         replace it and return it in full.
 
-        :param text: Text response received by Anthropic backend.
-        :type text: str
+        :param token_received: Text response received by Anthropic backend.
+        :type token_received: str
         :return: The part of text that has not been received previously.
         :rtype: str
         """
-        if self.previous_text not in text:
+        if self.previous_text not in token_received:
             # The handler is being reused, we want to handle this case gracefully
             # so we just cleanup the previously received text and keep going
             self.previous_text = ""
 
         previous_text_length = len(self.previous_text)
-        chopped_text = text[previous_text_length:]
+        chopped_text = token_received[previous_text_length:]
         print(chopped_text, flush=True, end="")
-        self.previous_text = text
+        self.previous_text = token_received
         return chopped_text
 
 
