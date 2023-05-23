@@ -95,8 +95,8 @@ class PromptNode(BaseComponent):
         super().__init__()
         self._prompt_templates_cache: Dict[str, PromptTemplate] = {}
 
-        # self._default_template needs to be initialized here because the setter self.default_prompt_template uses
-        # self.get_prompt_template(), which in turn checks is there is any default already set.
+        # If we don't set _default_template here Pylint fails with error W0201 because it can't see that
+        # it's set in default_prompt_template, so we set it explicitly to None to avoid it failing
         self._default_template = None
         self.default_prompt_template = default_prompt_template
         self.output_variable: Optional[str] = output_variable
