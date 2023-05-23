@@ -4,11 +4,11 @@ from unittest import mock
 
 import pytest
 import numpy as np
+import weaviate
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
-from haystack.document_stores import weaviate
 
 embedding_dim = 768
 
@@ -64,17 +64,10 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         This fixture provides an instance of the WeaviateDocumentStore equipped with a mocked Weaviate client.
         """
-
-        class DSMock(WeaviateDocumentStore):
-            pass
-
-        mocked_client = mock.MagicMock()
-        mocked_client.Client().is_ready.return_value = True
-        mocked_client.Client().schema.contains.return_value = False
-        weaviate.client = mocked_client
-        mocked_ds = DSMock()
-
-        return mocked_ds
+        with mock.patch("haystack.document_stores.weaviate.client") as mocked_client:
+            mocked_client.Client().is_ready.return_value = True
+            mocked_client.Client().schema.contains.return_value = False
+            yield WeaviateDocumentStore()
 
     @pytest.mark.skip(reason="Weaviate does not support labels")
     @pytest.mark.integration
@@ -273,6 +266,26 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         """
         ds.write_documents(documents)
         assert ds.get_embedding_count() == 9
+
+    @pytest.mark.unit
+    def test__get_auth_secret(self):
+        # Test with username and password
+        secret = WeaviateDocumentStore._get_auth_secret("user", "pass", scope="some_scope")
+        assert isinstance(secret, weaviate.AuthClientPassword)
+
+        # Test with client_secret
+        secret = WeaviateDocumentStore._get_auth_secret(client_secret="client_secret_value", scope="some_scope")
+        assert isinstance(secret, weaviate.AuthClientCredentials)
+
+        # Test with access_token
+        secret = WeaviateDocumentStore._get_auth_secret(
+            access_token="access_token_value", expires_in=3600, refresh_token="refresh_token_value"
+        )
+        assert isinstance(secret, weaviate.AuthBearerToken)
+
+        # Test with no authentication method
+        secret = WeaviateDocumentStore._get_auth_secret()
+        assert secret is None
 
     @pytest.mark.unit
     def test__get_current_properties(self, mocked_ds):
