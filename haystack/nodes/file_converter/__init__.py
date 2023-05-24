@@ -20,7 +20,7 @@ ImageToTextConverter = safe_import(
 )  # Has optional dependencies
 
 # Try to use PyMuPDF, if not available fall back to xpdf
-if is_imported("fitz"):
-    from haystack.nodes.file_converter.pdf import PDFToTextConverter
-else:
+from haystack.nodes.file_converter.pdf import PDFToTextConverter
+
+if not is_imported("fitz"):
     from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore
