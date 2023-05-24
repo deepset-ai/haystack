@@ -13,6 +13,7 @@ from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
 
+@pytest.fixture
 def mock_prompthub():
     with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
         mock_prompthub.side_effect = [
@@ -26,6 +27,14 @@ def test_prompt_templates_from_hub():
     with patch("haystack.nodes.prompt.prompt_template.prompthub") as mock_prompthub:
         PromptTemplate("deepset/question-answering")
         mock_prompthub.fetch.assert_called_with("deepset/question-answering", timeout=30)
+
+
+@pytest.mark.unit
+def test_prompt_templates_from_default_set(mock_prompthub):
+    p = PromptTemplate("question-answering")
+    assert p.name == "question-answering"
+    assert "Given the context please answer the question." in p.prompt_text
+    mock_prompthub.assert_not_called()
 
 
 @pytest.mark.unit
