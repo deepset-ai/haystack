@@ -324,47 +324,37 @@ class PromptTemplate(BasePromptTemplate, ABC):
         super().__init__()
         name, prompt_text = "", ""
 
-        try:
-            if prompt in LEGACY_DEFAULT_TEMPLATES:
-                warnings.warn(
-                    f"You're using a legacy prompt template '{prompt}', "
-                    "we strongly suggest you use prompts from the official Haystack PromptHub: "
-                    "https://prompthub.deepset.ai/"
-                )
-                name = prompt
-                prompt_text = LEGACY_DEFAULT_TEMPLATES[prompt]["prompt"]
-                output_parser = LEGACY_DEFAULT_TEMPLATES[prompt].get("output_parser")
-
-            # if it looks like a prompt template name
-            elif re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
-                name = prompt
-                try:
-                    prompt_text = self._fetch_from_prompthub(prompt)
-                except HTTPError as http_error:
-                    if http_error.response.status_code != 404:
-                        raise http_error
-                    raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
-
-            # if it's a path to a YAML file
-            elif Path(prompt).exists():
-                with open(prompt, "r", encoding="utf-8") as yaml_file:
-                    prompt_template_parsed = yaml.safe_load(yaml_file.read())
-                    if not isinstance(prompt_template_parsed, dict):
-                        raise ValueError("The prompt loaded is not a prompt YAML file.")
-                    name = prompt_template_parsed["name"]
-                    prompt_text = prompt_template_parsed["prompt_text"]
-
-            # Otherwise it's a on-the-fly prompt text
-            else:
-                prompt_text = prompt
-                name = "custom-at-query-time"
-
-        except OSError as exc:
-            logger.info(
-                "There was an error checking whether this prompt is a file (%s). Haystack will assume it's not.",
-                str(exc),
+        if prompt in LEGACY_DEFAULT_TEMPLATES:
+            warnings.warn(
+                f"You're using a legacy prompt template '{prompt}', "
+                "we strongly suggest you use prompts from the official Haystack PromptHub: "
+                "https://prompthub.deepset.ai/"
             )
-            # In case of errors, let's directly assume this is a text prompt
+            name = prompt
+            prompt_text = LEGACY_DEFAULT_TEMPLATES[prompt]["prompt"]
+            output_parser = LEGACY_DEFAULT_TEMPLATES[prompt].get("output_parser")
+
+        # if it looks like a prompt template name
+        elif re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
+            name = prompt
+            try:
+                prompt_text = self._fetch_from_prompthub(prompt)
+            except HTTPError as http_error:
+                if http_error.response.status_code != 404:
+                    raise http_error
+                raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+
+        # if it's a path to a YAML file
+        elif len(prompt) < 255 and Path(prompt).exists():
+            with open(prompt, "r", encoding="utf-8") as yaml_file:
+                prompt_template_parsed = yaml.safe_load(yaml_file.read())
+                if not isinstance(prompt_template_parsed, dict):
+                    raise ValueError("The prompt loaded is not a prompt YAML file.")
+                name = prompt_template_parsed["name"]
+                prompt_text = prompt_template_parsed["prompt_text"]
+
+        # Otherwise it's a on-the-fly prompt text
+        else:
             prompt_text = prompt
             name = "custom-at-query-time"
 
@@ -411,17 +401,20 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     @tenacity.retry(
         reraise=True,
-        wait=tenacity.wait_exponential(),
-        retry=tenacity.retry_if_exception_type((HTTPError, TimeoutError)),
+        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
+        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
-        before=tenacity.before_log(logger, logging.DEBUG),
-        after=tenacity.after_log(logger, logging.DEBUG),
     )
     def _fetch_from_prompthub(self, name) -> str:
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
         """
-        prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+        try:
+            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+        except HTTPError as http_error:
+            if http_error.response.status_code != 404:
+                raise http_error
+            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
         return prompt_data.text
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
