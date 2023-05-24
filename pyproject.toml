@@ -48,12 +48,17 @@ classifiers = [
 dependencies = [
   "requests",
   "pydantic",
+  # FIXME: typing_extensions 4.6.0 broke Pydantic, so we pin it temporarily
+  # waiting for the release. For more info see this issue:
+  # https://github.com/pydantic/pydantic/issues/5821
+  "typing_extensions==4.5.0",
   "transformers[torch]==4.29.1",
   "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
   "generalimport", # Optional imports
+  "prompthub-py",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
@@ -75,7 +80,7 @@ dependencies = [
   "sentence-transformers>=2.2.0",
 
   # OpenAI tokenizer
-  "tiktoken>=0.3.2; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
+  "tiktoken>=0.3.2",
 
   # Schema validation
   "jsonschema",
@@ -184,7 +189,6 @@ dev = [
   "pre-commit",
   # Type check
   "mypy",
-  "typing_extensions; python_version < '3.8'",
   # Test
   "pytest",
   "pytest-cov",

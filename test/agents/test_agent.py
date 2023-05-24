@@ -177,7 +177,7 @@ def test_tool_result_extraction(reader, retriever_with_docs):
     assert result == "Paris" or result == "Madrid"
 
     # PromptNode as a Tool
-    pt = PromptTemplate("test", "Here is a question: {query}, Answer:")
+    pt = PromptTemplate("Here is a question: {query}, Answer:")
     pn = PromptNode(default_prompt_template=pt)
 
     t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
@@ -212,12 +212,11 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     country_finder = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
-            name="country_finder",
-            prompt_text="When I give you a name of the city, respond with the country where the city is located.\n"
+            "When I give you a name of the city, respond with the country where the city is located.\n"
             "City: Rome\nCountry: Italy\n"
             "City: Berlin\nCountry: Germany\n"
             "City: Belgrade\nCountry: Serbia\n"
-            "City: {query}?\nCountry: ",
+            "City: {query}?\nCountry: "
         ),
     )
 
