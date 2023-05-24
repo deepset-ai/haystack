@@ -23,4 +23,4 @@ ImageToTextConverter = safe_import(
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
 
 if not is_imported("fitz"):
-    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable=reimported
+    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable
