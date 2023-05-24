@@ -19,9 +19,7 @@ def launch_es(sleep=15, delete_existing=False, java_opts: Optional[str] = None):
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
 
-    java_opts_str = ""
-    if java_opts is not None:
-        java_opts_str = f"-e ES_JAVA_OPTS='{java_opts}' "
+    java_opts_str = f"-e ES_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
 
     command = (
         f"docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d "
@@ -50,9 +48,7 @@ def launch_opensearch(sleep=15, delete_existing=False, local_port=9200, java_opt
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
 
-    java_opts_str = ""
-    if java_opts is not None:
-        java_opts_str = f"-e OPENSEARCH_JAVA_OPTS='{java_opts}' "
+    java_opts_str = f"-e OPENSEARCH_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
 
     command = (
         f"docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d "
