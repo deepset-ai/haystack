@@ -25,10 +25,12 @@ def test_init():
 
 @pytest.mark.unit
 def test_init_with_summary_memory():
-    prompt_node = PromptNode(default_prompt_template="this is a test")
-    # Test with summary memory
-    agent = ConversationalAgent(prompt_node, memory=ConversationSummaryMemory(prompt_node))
-    assert isinstance(agent.memory, ConversationSummaryMemory)
+    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
+        mock_prompthub.side_effect = [("This is a test prompt. Use your knowledge to answer this question: {question}")]
+        prompt_node = PromptNode(default_prompt_template="this is a test")
+        # Test with summary memory
+        agent = ConversationalAgent(prompt_node, memory=ConversationSummaryMemory(prompt_node))
+        assert isinstance(agent.memory, ConversationSummaryMemory)
 
 
 @pytest.mark.unit
