@@ -21,12 +21,7 @@ Provide a clear and concise answer, no longer than 10-20 words.
 \n\n Paragraphs: {documents} \n\n Question: {query} \n\n Answer:
 """
 
-prompt_node = PromptNode(
-    "gpt-3.5-turbo",
-    default_prompt_template=PromptTemplate("lfqa", prompt_text=prompt_text),
-    api_key=openai_key,
-    max_length=256,
-)
+prompt_node = PromptNode("gpt-3.5-turbo", default_prompt_template=PromptTemplate(prompt_text), api_key=openai_key)
 
 web_retriever = WebRetriever(api_key=search_key, top_search_results=3, mode="snippets")
 pipeline = WebQAPipeline(retriever=web_retriever, prompt_node=prompt_node)
