@@ -7,7 +7,7 @@ import prompthub
 
 from haystack.nodes.prompt import PromptTemplate
 from haystack.nodes.prompt.prompt_node import PromptNode
-from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError
+from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError, LEGACY_DEFAULT_TEMPLATES
 from haystack.nodes.prompt.shapers import AnswerParser
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
@@ -30,10 +30,10 @@ def test_prompt_templates_from_hub():
 
 
 @pytest.mark.unit
-def test_prompt_templates_from_default_set(mock_prompthub):
+def test_prompt_templates_from_legacy_set(mock_prompthub):
     p = PromptTemplate("question-answering")
     assert p.name == "question-answering"
-    assert "Given the context please answer the question." in p.prompt_text
+    assert p.prompt_text == LEGACY_DEFAULT_TEMPLATES["question-answering"]["prompt"]
     mock_prompthub.assert_not_called()
 
 
