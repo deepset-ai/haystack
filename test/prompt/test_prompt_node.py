@@ -9,6 +9,7 @@ from transformers import GenerationConfig, TextStreamer
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, DefaultTokenStreamingHandler
+from haystack.nodes.prompt.legacy_default_templates import LEGACY_DEFAULT_TEMPLATES
 
 
 @pytest.fixture
@@ -95,6 +96,15 @@ def test_prompt_call_with_custom_kwargs_and_template(mock_model, mocked_prompt):
 def test_get_prompt_template_no_default_template(mock_model):
     node = PromptNode()
     assert node.get_prompt_template() is None
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_get_prompt_template_from_legacy_default_template(mock_model):
+    node = PromptNode()
+    template = node.get_prompt_template("question-answering")
+    assert template.name == "custom-at-query-time"
+    assert template.prompt_text == LEGACY_DEFAULT_TEMPLATES["question-answering"].prompt_text
 
 
 @pytest.mark.unit
