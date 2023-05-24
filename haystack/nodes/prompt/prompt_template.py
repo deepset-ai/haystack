@@ -338,7 +338,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
             # if it looks like a prompt template name
             elif re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
                 name = prompt
-                prompt_text = self._fetch_from_prompthub(prompt)
+                try:
+                    prompt_text = self._fetch_from_prompthub(prompt)
+                except HTTPError as http_error:
+                    if http_error.response.status_code != 404:
+                        raise http_error
+                    raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
 
             # if it's a path to a YAML file
             elif Path(prompt).exists():
@@ -406,22 +411,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     @tenacity.retry(
         reraise=True,
-        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
-        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
+        wait=tenacity.wait_exponential(),
+        retry=tenacity.retry_if_exception_type((HTTPError, TimeoutError)),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
+        before=tenacity.before_log(logger, logging.DEBUG),
+        after=tenacity.after_log(logger, logging.DEBUG),
     )
     def _fetch_from_prompthub(self, name) -> str:
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
-
-        Raises PromptNotFoundError if the prompt is not present in the hub.
         """
-        try:
-            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
-        except HTTPError as http_error:
-            if http_error.response.status_code != 404:
-                raise http_error
-            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+        prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
         return prompt_data.text
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
