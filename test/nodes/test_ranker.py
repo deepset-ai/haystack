@@ -1,12 +1,12 @@
 import pytest
 import math
 
-from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
 from haystack.nodes.ranker.sentence_transformers import SentenceTransformersRanker
 
 
+@pytest.mark.integration
 def test_ranker(ranker):
     query = "What is the most important building in King's Landing that has a religious background?"
     docs = [
@@ -39,6 +39,7 @@ def test_ranker(ranker):
     assert results[0] == docs[4]
 
 
+@pytest.mark.integration
 def test_ranker_batch_single_query_single_doc_list(ranker):
     query = "What is the most important building in King's Landing that has a religious background?"
     docs = [
@@ -71,6 +72,7 @@ def test_ranker_batch_single_query_single_doc_list(ranker):
     assert results[0] == docs[4]
 
 
+@pytest.mark.integration
 def test_ranker_batch_single_query_multiple_doc_lists(ranker):
     query = "What is the most important building in King's Landing that has a religious background?"
     docs = [
@@ -106,6 +108,7 @@ def test_ranker_batch_single_query_multiple_doc_lists(ranker):
         assert reranked_docs[0] == docs[4]
 
 
+@pytest.mark.integration
 def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker):
     query_1 = "What is the most important building in King's Landing that has a religious background?"
     query_2 = "How is Angola's climate characterized?"
@@ -142,6 +145,7 @@ def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker):
     assert results[1][0] == docs[1]
 
 
+@pytest.mark.integration
 def test_ranker_two_logits(ranker_two_logits):
     assert isinstance(ranker_two_logits, BaseRanker)
     assert isinstance(ranker_two_logits, SentenceTransformersRanker)
@@ -176,6 +180,7 @@ def test_ranker_two_logits(ranker_two_logits):
     assert results[0] == docs[4]
 
 
+@pytest.mark.integration
 def test_ranker_returns_normalized_score(ranker):
     query = "What is the most important building in King's Landing that has a religious background?"
 
@@ -193,6 +198,7 @@ def test_ranker_returns_normalized_score(ranker):
     assert math.isclose(precomputed_score, score, rel_tol=0.01)
 
 
+@pytest.mark.integration
 def test_ranker_returns_raw_score_when_no_scaling():
     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2", scale_score=False)
     query = "What is the most important building in King's Landing that has a religious background?"
@@ -211,6 +217,7 @@ def test_ranker_returns_raw_score_when_no_scaling():
     assert math.isclose(precomputed_score, score, rel_tol=0.001)
 
 
+@pytest.mark.integration
 def test_ranker_returns_raw_score_for_two_logits(ranker_two_logits):
     query = "Welches ist das wichtigste Gebäude in Königsmund, das einen religiösen Hintergrund hat?"
     docs = [
@@ -227,6 +234,7 @@ def test_ranker_returns_raw_score_for_two_logits(ranker_two_logits):
     assert math.isclose(precomputed_score, score, rel_tol=0.001)
 
 
+@pytest.mark.integration
 def test_predict_batch_returns_correct_number_of_docs(ranker):
     docs = [Document(content=f"test {number}") for number in range(5)]
 
