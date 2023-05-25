@@ -178,3 +178,42 @@ def test_supports():
 
     # doesn't support other models that have base substring only i.e. google/flan-t5-base
     assert not CohereInvocationLayer.supports("google/flan-t5-base")
+
+
+@pytest.mark.unit
+def test_ensure_token_limit_fails_if_called_with_list():
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="some_fake_key")
+    with pytest.raises(ValueError):
+        layer._ensure_token_limit(prompt=[])
+
+
+@pytest.mark.unit
+def test_ensure_token_limit_with_small_max_length(caplog):
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="some_fake_key", max_length=10)
+    res = layer._ensure_token_limit(prompt="Short prompt")
+
+    assert res == "Short prompt"
+    assert not caplog.records
+
+    res = layer._ensure_token_limit(prompt="This is a very very very very very much longer prompt")
+    assert res == "This is a very very very very very much longer prompt"
+    assert not caplog.records
+
+
+@pytest.mark.unit
+def test_ensure_token_limit_with_huge_max_length(caplog):
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="some_fake_key", max_length=4090)
+    res = layer._ensure_token_limit(prompt="Short prompt")
+
+    assert res == "Short prompt"
+    assert not caplog.records
+
+    res = layer._ensure_token_limit(prompt="This is a very very very very very much longer prompt")
+    assert res == "This is a very very very"
+    assert len(caplog.records) == 1
+    expected_message_log = (
+        "The prompt has been truncated from 11 tokens to 6 tokens so that the prompt length and "
+        "answer length (4090 tokens) fit within the max token limit (4096 tokens). "
+        "Reduce the length of the prompt to prevent it from being cut off."
+    )
+    assert caplog.records[0].message == expected_message_log

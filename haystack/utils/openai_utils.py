@@ -2,12 +2,12 @@
 import os
 import logging
 import platform
-import sys
 import json
 from typing import Dict, Union, Tuple, Optional, List
 import requests
 import tenacity
-from transformers import GPT2TokenizerFast
+import tiktoken
+from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, OpenAIUnauthorizedError
 from haystack.environment import (
@@ -22,23 +22,9 @@ logger = logging.getLogger(__name__)
 machine = platform.machine().lower()
 system = platform.system()
 
-
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 OPENAI_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
-
-
-USE_TIKTOKEN = False
-if sys.version_info >= (3, 8) and (machine in ["amd64", "x86_64"] or (machine == "arm64" and system == "Darwin")):
-    USE_TIKTOKEN = True
-
-if USE_TIKTOKEN:
-    import tiktoken  # pylint: disable=import-error
-    from tiktoken.model import MODEL_TO_ENCODING, MODEL_PREFIX_TO_ENCODING
-else:
-    logger.warning(
-        "OpenAI tiktoken module is not available for Python < 3.8,Linux ARM64 and AARCH64. Falling back to GPT2TokenizerFast."
-    )
 
 
 def load_openai_tokenizer(tokenizer_name: str):
@@ -47,25 +33,9 @@ def load_openai_tokenizer(tokenizer_name: str):
 
     :param tokenizer_name: The name of the tokenizer to load.
     """
-    if USE_TIKTOKEN:
-        logger.debug("Using tiktoken %s tokenizer", tokenizer_name)
-        tokenizer = tiktoken.get_encoding(tokenizer_name)
-    else:
-        logger.debug("Using GPT2TokenizerFast tokenizer")
-        tokenizer = GPT2TokenizerFast.from_pretrained(tokenizer_name)
-    return tokenizer
 
-
-def count_openai_tokens(text: str, tokenizer) -> int:
-    """Count the number of tokens in `text` based on the provided OpenAI `tokenizer`.
-
-    :param text: A string to be tokenized.
-    :param tokenizer: An OpenAI tokenizer.
-    """
-    if USE_TIKTOKEN:
-        return len(tokenizer.encode(text))
-    else:
-        return len(tokenizer.tokenize(text))
+    logger.debug("Using tiktoken %s tokenizer", tokenizer_name)
+    return tiktoken.get_encoding(tokenizer_name)
 
 
 def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> int:
@@ -80,10 +50,7 @@ def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> i
     for message in messages:
         num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
         for key, value in message.items():
-            if USE_TIKTOKEN:
-                num_tokens += len(tokenizer.encode(value))
-            else:
-                num_tokens += len(tokenizer.tokenize(value))
+            num_tokens += len(tokenizer.encode(value))
             if key == "name":  # if there's a name, the role is omitted
                 num_tokens += -1  # role is always required and always 1 token
     num_tokens += 2  # every reply is primed with <im_start>assistant
@@ -98,17 +65,16 @@ def _openai_text_completion_tokenization_details(model_name: str):
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
 
-    if USE_TIKTOKEN:
-        if model_name == "gpt-35-turbo":
-            # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
-            model_tokenizer = "cl100k_base"
-        elif model_name in MODEL_TO_ENCODING:
-            model_tokenizer = MODEL_TO_ENCODING[model_name]
-        else:
-            for model_prefix, tokenizer in MODEL_PREFIX_TO_ENCODING.items():
-                if model_name.startswith(model_prefix):
-                    model_tokenizer = tokenizer
-                    break
+    if model_name == "gpt-35-turbo":
+        # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
+        model_tokenizer = "cl100k_base"
+    elif model_name in MODEL_TO_ENCODING:
+        model_tokenizer = MODEL_TO_ENCODING[model_name]
+    else:
+        for model_prefix, tokenizer in MODEL_PREFIX_TO_ENCODING.items():
+            if model_name.startswith(model_prefix):
+                model_tokenizer = tokenizer
+                break
 
     if model_tokenizer:
         # Based on OpenAI models page, 'davinci' considers have 2049 tokens,

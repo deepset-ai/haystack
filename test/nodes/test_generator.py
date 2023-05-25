@@ -33,6 +33,7 @@ def test_rag_deprecation():
             pass
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 def test_rag_token_generator(rag_generator, docs_with_true_emb):
@@ -43,6 +44,7 @@ def test_rag_token_generator(rag_generator, docs_with_true_emb):
     assert "berlin" in answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
@@ -82,6 +84,7 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true
     assert "Germany" in answers[0].answer, answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
@@ -158,10 +161,8 @@ def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
         pytest.skip("No API key found, skipping test")
 
     lfqa_prompt = PromptTemplate(
-        name="lfqa",
-        prompt_text="""
-        Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and the given question.
-        \n===\Paragraphs: {context}\n===\n{query}""",
+        """Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and
+        the given question.\n===\Paragraphs: {context}\n===\n{query}"""
     )
     node = OpenAIAnswerGenerator(
         api_key=haystack_openai_config["api_key"],
