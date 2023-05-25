@@ -48,8 +48,9 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
     only the newly generated part.
     """
 
-    # Text received previously by the handler
-    previous_text = ""
+    def __init__(self, token_handler: TokenStreamingHandler):
+        self.token_handler = token_handler
+        self.previous_text = ""
 
     def __call__(self, token_received: str, **kwargs) -> str:
         """
@@ -72,7 +73,7 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
 
         previous_text_length = len(self.previous_text)
         chopped_text = token_received[previous_text_length:]
-        print(chopped_text, flush=True, end="")
+        self.token_handler(chopped_text)
         self.previous_text = token_received
         return chopped_text
 

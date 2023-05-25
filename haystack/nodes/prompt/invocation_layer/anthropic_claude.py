@@ -10,7 +10,11 @@ from tokenizers import Tokenizer, Encoding
 
 from haystack.errors import AnthropicError, AnthropicRateLimitError, AnthropicUnauthorizedError
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
-from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, AnthropicTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import (
+    TokenStreamingHandler,
+    AnthropicTokenStreamingHandler,
+    DefaultTokenStreamingHandler,
+)
 from haystack.utils.requests import request_with_retry
 from haystack.environment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
 
@@ -129,7 +133,8 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
         # Anthropic streamed response always includes the whole string that has been
         # streamed until that point, so we use a stream handler built ad hoc for this
         # invocation layer.
-        handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", AnthropicTokenStreamingHandler())
+        handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+        handler = AnthropicTokenStreamingHandler(handler)
         client = sseclient.SSEClient(res)
         tokens = []
         try:
