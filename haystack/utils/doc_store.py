@@ -1,6 +1,7 @@
 import time
 import logging
 import subprocess
+from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -9,7 +10,7 @@ OPENSEARCH_CONTAINER_NAME = "opensearch"
 WEAVIATE_CONTAINER_NAME = "weaviate"
 
 
-def launch_es(sleep=15, delete_existing=False):
+def launch_es(sleep=15, delete_existing=False, java_opts: Optional[str] = None):
     """
     Start an Elasticsearch server via Docker.
     """
@@ -17,12 +18,17 @@ def launch_es(sleep=15, delete_existing=False):
     logger.debug("Starting Elasticsearch ...")
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
-    status = subprocess.run(
-        [
-            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.17.6'
-        ],
-        shell=True,
+
+    java_opts_str = f"-e ES_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
+
+    command = (
+        f"docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d "
+        f'-p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" '
+        f"{java_opts_str}"
+        f"--name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.17.6"
     )
+
+    status = subprocess.run([command], shell=True)
     if status.returncode:
         logger.warning(
             "Tried to start Elasticsearch through Docker but this failed. "
@@ -32,7 +38,7 @@ def launch_es(sleep=15, delete_existing=False):
         time.sleep(sleep)
 
 
-def launch_opensearch(sleep=15, delete_existing=False, local_port=9200):
+def launch_opensearch(sleep=15, delete_existing=False, local_port=9200, java_opts: Optional[str] = None):
     """
     Start an OpenSearch server via Docker.
     """
@@ -41,12 +47,17 @@ def launch_opensearch(sleep=15, delete_existing=False, local_port=9200):
     # docker rm only succeeds if the container is stopped, not if it is running
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
-    status = subprocess.run(
-        [
-            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p {local_port}:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.3.5'
-        ],
-        shell=True,
+
+    java_opts_str = f"-e OPENSEARCH_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
+
+    command = (
+        f"docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d "
+        f'-p {local_port}:9200 -p 9600:9600 -e "discovery.type=single-node" '
+        f"{java_opts_str}"
+        f"--name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.3.5"
     )
+
+    status = subprocess.run([command], shell=True)
     if status.returncode:
         logger.warning(
             "Tried to start OpenSearch through Docker but this failed. "
@@ -56,12 +67,14 @@ def launch_opensearch(sleep=15, delete_existing=False, local_port=9200):
         time.sleep(sleep)
 
 
-def launch_weaviate(sleep=15):
+def launch_weaviate(sleep=15, delete_existing=False):
     """
     Start a Weaviate server via Docker.
     """
 
     logger.debug("Starting Weaviate ...")
+    if delete_existing:
+        _ = subprocess.run([f"docker rm --force {WEAVIATE_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
             f"docker start {WEAVIATE_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --name {WEAVIATE_CONTAINER_NAME} semitechnologies/weaviate:latest"
