@@ -37,11 +37,8 @@ def test_gpt2_prompt_handler():
 
 
 @pytest.mark.integration
-def test_flan_prompt_handler():
-    # test google/flan-t5-xxl tokenizer
+def test_flan_prompt_handler_no_resize():
     handler = DefaultPromptHandler(model_name_or_path="google/flan-t5-xxl", model_max_length=20, max_length=10)
-
-    # test no resize
     assert handler("This is a test") == {
         "prompt_length": 5,
         "resized_prompt": "This is a test",
@@ -50,7 +47,10 @@ def test_flan_prompt_handler():
         "new_prompt_length": 5,
     }
 
-    # test resize
+
+@pytest.mark.integration
+def test_flan_prompt_handler_resize():
+    handler = DefaultPromptHandler(model_name_or_path="google/flan-t5-xxl", model_max_length=20, max_length=10)
     assert handler("This is a prompt that will be resized because it is longer than allowed") == {
         "prompt_length": 17,
         "resized_prompt": "This is a prompt that will be re",
@@ -59,7 +59,10 @@ def test_flan_prompt_handler():
         "new_prompt_length": 10,
     }
 
-    # test corner cases
+
+@pytest.mark.integration
+def test_flan_prompt_handler_empty_string():
+    handler = DefaultPromptHandler(model_name_or_path="google/flan-t5-xxl", model_max_length=20, max_length=10)
     assert handler("") == {
         "prompt_length": 0,
         "resized_prompt": "",
@@ -68,7 +71,10 @@ def test_flan_prompt_handler():
         "new_prompt_length": 0,
     }
 
-    # test corner case
+
+@pytest.mark.integration
+def test_flan_prompt_handler_none():
+    handler = DefaultPromptHandler(model_name_or_path="google/flan-t5-xxl", model_max_length=20, max_length=10)
     assert handler(None) == {
         "prompt_length": 0,
         "resized_prompt": None,
