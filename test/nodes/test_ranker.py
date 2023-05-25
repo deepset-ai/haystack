@@ -239,5 +239,17 @@ def test_predict_batch_returns_correct_number_of_docs(ranker):
     docs = [Document(content=f"test {number}") for number in range(5)]
 
     assert len(ranker.predict("where is test 3?", docs, top_k=4)) == 4
-
     assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=2, top_k=4)) == 4
+
+    assert len(ranker.predict_batch(["where is test 3?", "where is test 4?"], docs, batch_size=2, top_k=4)) == 4
+
+
+@pytest.mark.integration
+def test_batch_multiple_queries_multiple_doc_lists(ranker):
+    queries = ["where is test 3?", "where is test 4?"]
+    docs = [[Document(content=f"test 1"), Document(content=f"test 3")], [Document(content=f"test 4")]]
+    prediction = ranker.predict_batch(queries, docs, batch_size=2, top_k=4)
+    assert isinstance(prediction, list)
+    assert isinstance(prediction[0], list)
+    assert len(prediction[0]) == 2
+    assert len(prediction[1]) == 1
