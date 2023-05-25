@@ -2,6 +2,7 @@ from collections import defaultdict
 import copy
 import logging
 from typing import Dict, List, Optional, Tuple, Union, Any
+import warnings
 
 import torch
 
@@ -10,6 +11,7 @@ from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
 from haystack.nodes.prompt.prompt_model import PromptModel
 from haystack.nodes.prompt.prompt_template import PromptTemplate
+from haystack.nodes.prompt.legacy_default_templates import LEGACY_DEFAULT_TEMPLATES
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +215,14 @@ class PromptNode(BaseComponent):
         # PromptTemplate instances simply go through
         if isinstance(prompt_template, PromptTemplate):
             return prompt_template
+
+        if prompt_template in LEGACY_DEFAULT_TEMPLATES:
+            warnings.warn(
+                f"You're using a legacy prompt template '{prompt_template}', "
+                "we strongly suggest you use prompts from the official Haystack PromptHub: "
+                "https://prompthub.deepset.ai/"
+            )
+            return LEGACY_DEFAULT_TEMPLATES[prompt_template]
 
         # If it's the name of a template that was used already
         if prompt_template in self._prompt_templates_cache:
