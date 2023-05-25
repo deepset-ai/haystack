@@ -6,7 +6,7 @@ and retriever-reader pipelines.
 ## Defining configuration
 
 To run a benchmark, you need to create a configuration file first. This file should be a Pipeline YAML file that
-contains both the querying and optionally the indexing pipeline in case the querying pipeline includes a retriever.
+contains both the querying and, optionally, the indexing pipeline, in case the querying pipeline includes a retriever.
 
 The configuration file should also have a **`benchmark_config`** section that includes the following information:
 
@@ -67,7 +67,7 @@ python run.py [--output OUTPUT] config
 The script takes the following arguments:
 
 - `config`: This is the path to your configuration file.
-- `--output`: This is an optional path where benchmark results should be saved. If not provided, the script will create a JSON-file with the same name as the specified config file.
+- `--output`: This is an optional path where benchmark results should be saved. If not provided, the script will create a JSON file with the same name as the specified config file.
 
 ## Metrics
 
