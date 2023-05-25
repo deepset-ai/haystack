@@ -65,7 +65,7 @@ PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 #############################################################################
 
 
-LEGACY_DEFAULT_TEMPLATES = {
+LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # DO NOT ADD ANY NEW TEMPLATE IN HERE!
     "question-answering": {
         "prompt": "Given the context please answer the question. Context: {join(documents)}; Question: "
