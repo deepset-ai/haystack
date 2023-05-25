@@ -103,8 +103,20 @@ jobs:
 
       # This step should only run when we release a new minor, so
       # that we can tag the most recent image without the version number.
-      # For example, if the previous step builds `deepset/haystack:cpu-1.8.0`,
-      # this builds `deepset/haystack:cpu`
+      # For example, if the previous step builds `deepset/haystack:base-cpu-1.8.0`,
+      # this builds `deepset/haystack:base-cpu`
+      - name: Build base images no version in tag
+        uses: docker/bake-action@v2
+        if: steps.version.outputs.comparison-result == '>'
+        env:
+          IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
+          HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
+        with:
+          workdir: docker
+          targets: base-${{ matrix.target }}-latest
+          push: true
+
+      # Following the logic of the previous step, this step should only run when we release a new minor.
       - name: Build api images no version in tag
         uses: docker/bake-action@v2
         if: steps.version.outputs.comparison-result == '>'

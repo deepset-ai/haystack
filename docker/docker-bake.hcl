@@ -26,6 +26,10 @@ group "base" {
   targets = ["base-cpu", "base-gpu"]
 }
 
+group "base-latest" {
+  targets = ["base-cpu-latest", "base-gpu-latest"]
+}
+
 group "api" {
   targets = ["cpu", "gpu"]
 }
@@ -50,6 +54,12 @@ target "base-cpu" {
   platforms = ["linux/amd64", "linux/arm64"]
 }
 
+target "base-cpu-latest" {
+  inherits = ["base-cpu"]
+  tags = ["${IMAGE_NAME}:base-cpu"]
+  platforms = ["linux/amd64", "linux/arm64"]
+}
+
 target "base-gpu" {
   dockerfile = "Dockerfile.base"
   tags = ["${IMAGE_NAME}:base-gpu-${IMAGE_TAG_SUFFIX}"]
@@ -61,6 +71,12 @@ target "base-gpu" {
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,file-conversion,ocr,onnx-gpu,metrics]"
   }
+  platforms = ["linux/amd64", "linux/arm64"]
+}
+
+target "base-gpu-latest" {
+  inherits = ["base-gpu"]
+  tags = ["${IMAGE_NAME}:base-gpu"]
   platforms = ["linux/amd64", "linux/arm64"]
 }
 
