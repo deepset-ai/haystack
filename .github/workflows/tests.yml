@@ -193,10 +193,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       elasticsearch:
-        image: elasticsearch:7.17.6
+        image: elasticsearch:8.7.1
         env:
           discovery.type: "single-node"
+          xpack.security.enabled: "false"
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+          ELASTIC_CLIENT_APIVERSIONING: 1
         ports:
           - 9200:9200
     steps:
