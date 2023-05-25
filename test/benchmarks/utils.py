@@ -85,6 +85,11 @@ def load_eval_data(eval_set_file: Path):
     Load evaluation data from a file.
     :param eval_set_file: Path to the evaluation data file.
     """
+    if not os.path.exists(eval_set_file):
+        raise FileNotFoundError(f"The file {eval_set_file} does not exist.")
+    elif os.path.isdir(eval_set_file):
+        raise IsADirectoryError(f"The path {eval_set_file} is a directory, not a file.")
+
     if eval_set_file.suffix == ".json":
         _, labels = eval_data_from_json(str(eval_set_file))
         queries = [label.query for label in labels]
