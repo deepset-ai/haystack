@@ -1,6 +1,9 @@
 import os
 import tarfile
 import tempfile
+import logging
+from typing import Dict, Union, Callable
+from pathlib import Path
 
 import pandas as pd
 
@@ -9,11 +12,14 @@ from haystack.document_stores import eval_data_from_json
 from haystack.utils import launch_es, launch_opensearch, launch_weaviate
 from haystack.modeling.data_handler.processor import http_get
 
-import logging
-from typing import Dict, Union
-from pathlib import Path
-
 logger = logging.getLogger(__name__)
+
+
+DOCUMENT_STORE_LAUNCHERS: Dict[str, Callable] = {
+    "ElasticsearchDocumentStore": launch_es,
+    "OpenSearchDocumentStore": launch_opensearch,
+    "WeaviateDocumentStore": launch_weaviate,
+}
 
 
 def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
@@ -46,13 +52,14 @@ def launch_document_store(document_store: str, n_docs: int = 0):
     """
     Launch a DocumentStore Docker container.
     """
-    java_opts = None if n_docs < 500000 else "-Xms4096m -Xmx4096m"
-    if document_store == "ElasticsearchDocumentStore":
-        launch_es(sleep=30, delete_existing=True, java_opts=java_opts)
-    elif document_store == "OpenSearchDocumentStore":
-        launch_opensearch(sleep=30, delete_existing=True, java_opts=java_opts)
-    elif document_store == "WeaviateDocumentStore":
-        launch_weaviate(sleep=30, delete_existing=True)
+    if document_store in DOCUMENT_STORE_LAUNCHERS:
+        launch_method = DOCUMENT_STORE_LAUNCHERS[document_store]
+
+        if document_store in ["ElasticsearchDocumentStore", "OpenSearchDocumentStore"]:
+            java_opts = None if n_docs < 500000 else "-Xms4096m -Xmx4096m"
+            launch_method(sleep=30, delete_existing=True, java_opts=java_opts)
+        else:
+            launch_method(sleep=30, delete_existing=True)
 
 
 def download_from_url(url: str, target_dir: Union[str, Path]):
@@ -115,3 +122,10 @@ def load_eval_data(eval_set_file: Path):
         )
 
     return labels, queries
+
+
+def register_launch_document_store(document_store_name: str, launch_method: Callable):
+    """
+    Register a DocumentStore launch method.
+    """
+    DOCUMENT_STORE_LAUNCHERS[document_store_name] = launch_method
