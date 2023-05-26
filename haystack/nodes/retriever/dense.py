@@ -1954,7 +1954,9 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         use_gpu: bool = True,
         batch_size: int = 32,
         max_seq_len: int = 512,
-        model_format: str = "farm",
+        model_format: Literal[
+            "farm", "transformers", "sentence_transformers", "retribert", "openai", "cohere", None
+        ] = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
