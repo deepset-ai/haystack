@@ -1542,6 +1542,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.api_key = api_key
+        self.api_base = api_base
         self.api_version = azure_api_version
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
