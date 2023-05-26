@@ -52,7 +52,7 @@ def run_benchmark(pipeline_yaml: Path) -> Dict:
         results = benchmark_retriever(indexing_pipeline, querying_pipeline, documents_dir, labels_file)
 
     # Reader pipeline
-    elif pipeline_contains_retriever:
+    elif pipeline_contains_reader:
         results = benchmark_reader(querying_pipeline, labels_file)
 
     # Unsupported pipeline type
