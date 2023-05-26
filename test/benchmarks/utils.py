@@ -158,3 +158,20 @@ def get_retriever_config(pipeline: Pipeline) -> Tuple[str, Union[int, str]]:
     retriever_top_k = retriever.top_k
 
     return retriever_type, retriever_top_k
+
+
+def contains_reader(pipeline: Pipeline) -> bool:
+    """
+    Check if a pipeline contains a Reader component.
+    :param pipeline: Pipeline
+    """
+    components = [comp for comp in pipeline.components.values()]
+    return any(isinstance(comp, BaseReader) for comp in components)
+
+
+def contains_retriever(pipeline: Pipeline) -> bool:
+    """
+    Check if a pipeline contains a Retriever component.
+    """
+    components = [comp for comp in pipeline.components.values()]
+    return any(isinstance(comp, BaseRetriever) for comp in components)
