@@ -315,7 +315,7 @@ def test_stop_words_criteria_set():
     assert isinstance(kwargs["stopping_criteria"][0], StopWordsCriteria)
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 @pytest.mark.parametrize("stop_words", [["good"], ["hello", "good"], ["hello", "good", "health"]])
 def test_stop_words_single_token(stop_words):
     """
@@ -337,7 +337,7 @@ def test_stop_words_single_token(stop_words):
     assert "health" not in result[0]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_stop_words_multiple_token():
     """
     Test that stop words criteria is used and that it works for multi-token words
@@ -361,7 +361,7 @@ def test_stop_words_multiple_token():
     assert "health" not in result[0]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_stop_words_not_being_found():
     # simple test with words not broken down into multiple tokens
     layer = HFLocalInvocationLayer()
