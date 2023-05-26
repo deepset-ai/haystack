@@ -5,7 +5,6 @@ import shutil
 import logging
 from pathlib import Path
 
-import dill
 import numpy
 from tqdm.auto import tqdm
 import torch
@@ -510,7 +509,6 @@ class Trainer:
                 "cuda_rng_state": torch.cuda.get_rng_state() if torch.cuda.is_available() else None,
             },
             checkpoint_path / "trainer",
-            pickle_module=dill,
         )
 
         checkpoint_name = f"epoch_{self.from_epoch}_step_{self.from_step-1}"
