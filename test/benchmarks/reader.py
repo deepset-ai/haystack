@@ -53,7 +53,6 @@ def benchmark_reader(pipeline: Pipeline, labels_file: Path) -> Dict:
 
     except Exception:
         tb = traceback.format_exc()
-        components = {comp_name: comp.type for comp_name, comp in pipeline.components.items()}
         logging.error("##### The following Error was raised while running querying run:")
         logging.error(tb)
         readers = pipeline.get_nodes_by_class(BaseReader)
