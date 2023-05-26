@@ -100,7 +100,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         pipeline_kwargs = self._prepare_pipeline_kwargs(
             task=self.task_name, model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, **kwargs
         )
-        self.pipe: Pipeline = self._create_pipeline(**pipeline_kwargs)
+        # create the transformer pipeline
+        self.pipe: Pipeline = pipeline(**pipeline_kwargs)
 
         # This is how the default max_length is determined for Text2TextGenerationPipeline shown here
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
@@ -121,17 +122,11 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 self.pipe.tokenizer.model_max_length,
             )
 
-    def _create_pipeline(self, **kwargs) -> Pipeline:
-        """
-        Creates a pipeline for the underlying model.
-        """
-        return pipeline(**kwargs)
-
     def _prepare_pipeline_kwargs(self, **kwargs) -> Dict[str, Any]:
         """
         Sanitizes and prepares the kwargs passed to the transformers pipeline function
-        For more details about pipeline kwargs in general, see
-        Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
+        For more details about pipeline kwargs in general, see Hugging Face
+        [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
         """
         # as device and device_map are mutually exclusive, we set device to None if device_map is provided
         device_map = kwargs.get("device_map", None)
