@@ -130,7 +130,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "{self.base_url}/chat/completions"
+        return f"{self.base_url}/chat/completions"
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:

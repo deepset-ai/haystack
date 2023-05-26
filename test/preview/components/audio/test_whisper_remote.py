@@ -151,7 +151,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
             requests_params.pop("files")
             assert requests_params == {
                 "method": "post",
-                "url": "{self.base_url}/audio/translations",
+                "url": "https://api.openai.com/v1/audio/translations",
                 "data": {"model": "whisper-1"},
                 "headers": {"Authorization": f"Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,

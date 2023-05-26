@@ -108,7 +108,9 @@ class WhisperTranscriber(BaseComponent):
         else:
             headers = {"Authorization": f"Bearer {self.api_key}"}
             request = PreparedRequest()
-            url: str = "{self.base_url}/audio/transcriptions" if not translate else "{self.base_url}/audio/translations"
+            url: str = (
+                f"{self.base_url}/audio/transcriptions" if not translate else f"{self.base_url}/audio/translations"
+            )
 
             request.prepare(
                 method="POST",
