@@ -1440,7 +1440,9 @@ class EmbeddingRetriever(DenseRetriever):
         use_gpu: bool = True,
         batch_size: int = 32,
         max_seq_len: int = 512,
-        model_format: Optional[str] = None,
+        model_format: Literal[
+            "farm", "transformers", "sentence_transformers", "retribert", "openai", "cohere", None
+        ] = None,
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,

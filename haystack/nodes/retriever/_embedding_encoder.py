@@ -168,6 +168,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
         num_workers: int = 0,
         use_amp: bool = False,
+        gradient_checkpointing: bool = False,
         **kwargs,
     ):
         """
@@ -190,12 +191,29 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
             "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
         :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
-        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param use_amp: Whether to use Automatic Mixed Precision (AMP).
+        :param gradient_checkpointing: Whether to use gradient checkpointing for the HuggingFace Transformers model
+            that is loaded by Sentence Transformers. Gradient checkpointing saves on GPU memory at the expenses of
+            slower training times. A general rule of thumb is that gradient checkpointing slows down training by about 20%.
         :param kwargs: Additional training keyword arguments to pass to the `SentenceTransformer.fit` function. Please
             reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
             for a full list of keyword arguments.
         """
         send_event(event_name="Training", event_properties={"class": self.__class__.__name__, "function_name": "train"})
+
+        try:
+            from sentence_transformers.models import Transformer
+        except (ImportError, ModuleNotFoundError) as ie:
+            from haystack.utils.import_utils import _optional_component_not_installed
+
+            _optional_component_not_installed(__name__, "sentence", ie)
+
+        if gradient_checkpointing:
+            # Loop over nn.Modules that make up a Sentence Transformers model
+            for module in self.embedding_model:
+                # Checks if the module is an HF Transformers model
+                if isinstance(module, Transformer):
+                    module.auto_model.gradient_checkpointing_enable()
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
