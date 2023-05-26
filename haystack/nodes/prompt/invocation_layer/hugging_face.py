@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
@@ -51,7 +51,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of HFLocalInvocationLayer might receive some unrelated
         kwargs. Only kwargs relevant to the HFLocalInvocationLayer are considered. The list of supported kwargs
-        includes: task_name, trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
+        includes: "task", "model", "config", "tokenizer", "feature_extractor", "revision", "use_auth_token",
+        "device_map", "device", "torch_dtype", "trust_remote_code", "model_kwargs", and "pipeline_class".
         For more details about pipeline kwargs in general, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
 
@@ -89,7 +90,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if "task_name" in kwargs
             else get_task(model_name_or_path, use_auth_token=use_auth_token)
         )
-        # we checks in supports method if task_name is supported but here we check again as
+        # we check in supports class method if task_name is supported but here we check again as
         # we could have gotten the task_name from kwargs
         if self.task_name is None or self.task_name not in ["text2text-generation", "text-generation"]:
             raise ValueError(
@@ -126,7 +127,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         return pipeline(**kwargs)
 
-    def _prepare_pipeline_kwargs(self, **kwargs):
+    def _prepare_pipeline_kwargs(self, **kwargs) -> Dict[str, Any]:
         """
         Sanitizes and prepares the kwargs passed to the transformers pipeline function
         For more details about pipeline kwargs in general, see
@@ -288,12 +289,12 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        task_name: Optional[str] = None
+        task_name: Optional[str] = kwargs.get("task_name", None)
         if os.path.exists(model_name_or_path):
             return True
 
         try:
-            task_name = get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
+            task_name = task_name or get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
         except RuntimeError:
             # This will fail for all non-HF models
             return False

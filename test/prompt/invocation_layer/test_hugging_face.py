@@ -275,6 +275,11 @@ def test_supports(tmp_path):
     # or some POS tagging model
     assert not HFLocalInvocationLayer.supports("vblagoje/bert-english-uncased-finetuned-pos")
 
+    # unless we specify the task name to override the default
+    assert HFLocalInvocationLayer.supports(
+        "vblagoje/bert-english-uncased-finetuned-pos", task_name="text2text-generation"
+    )
+
 
 @pytest.mark.unit
 def test_stop_words_criteria_set():
