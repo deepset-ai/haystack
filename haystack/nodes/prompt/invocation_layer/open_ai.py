@@ -27,7 +27,12 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "text-davinci-003", max_length: Optional[int] = 100, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "text-davinci-003",
+        max_length: Optional[int] = 100,
+        base_url: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
         """
          Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
@@ -48,6 +53,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
+        self.base_url = self.base_url
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.
@@ -86,7 +92,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/completions"
+        return "{self.base_url}/completions"
 
     @property
     def headers(self) -> Dict[str, str]:

@@ -40,6 +40,7 @@ class WhisperTranscriber(BaseComponent):
         self,
         api_key: Optional[str] = None,
         model_name_or_path: WhisperModel = "medium",
+        base_url: str = "https://api.openai.com/v1",
         device: Optional[Union[str, torch.device]] = None,
     ) -> None:
         """
@@ -53,7 +54,7 @@ class WhisperTranscriber(BaseComponent):
         """
         super().__init__()
         self.api_key = api_key
-
+        self.base_url = (base_url,)
         self.use_local_whisper = is_whisper_available() and self.api_key is None
 
         if self.use_local_whisper:
@@ -107,11 +108,7 @@ class WhisperTranscriber(BaseComponent):
         else:
             headers = {"Authorization": f"Bearer {self.api_key}"}
             request = PreparedRequest()
-            url: str = (
-                "https://api.openai.com/v1/audio/transcriptions"
-                if not translate
-                else "https://api.openai.com/v1/audio/translations"
-            )
+            url: str = "{self.base_url}/audio/transcriptions" if not translate else "{self.base_url}/audio/translations"
 
             request.prepare(
                 method="POST",

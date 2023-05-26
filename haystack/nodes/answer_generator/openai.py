@@ -32,6 +32,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         api_key: str,
         azure_base_url: Optional[str] = None,
         azure_deployment_name: Optional[str] = None,
+        base_url: str = "https://api.openai.com/v1",
         model: str = "text-davinci-003",
         max_tokens: int = 50,
         api_version: str = "2022-12-01",
@@ -53,6 +54,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
+        :param base_url: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
@@ -144,6 +146,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
         self.api_version = api_version
+        self.base_url = base_url
         self.model = model
         self.max_tokens = max_tokens
         self.top_k = top_k
@@ -217,7 +220,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if self.using_azure:
             url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
         else:
-            url = "https://api.openai.com/v1/completions"
+            url = f"{self.base_url}/completions"
 
         headers = {"Content-Type": "application/json"}
         if self.using_azure:

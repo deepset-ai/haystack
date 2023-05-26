@@ -20,9 +20,14 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "gpt-3.5-turbo", max_length: Optional[int] = 500, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "gpt-3.5-turbo",
+        max_length: Optional[int] = 500,
+        base_url: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
-        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+        super().__init__(api_key, model_name_or_path, max_length, base_url=base_url, **kwargs)
 
     def invoke(self, *args, **kwargs):
         """
@@ -125,7 +130,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/chat/completions"
+        return "{self.base_url}/chat/completions"
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
