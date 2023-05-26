@@ -40,6 +40,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :param model_name_or_path: The name or path of the underlying model.
         :param max_length: The maximum number of tokens the output text can have.
         :param api_key: The OpenAI API key.
+        :param base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant

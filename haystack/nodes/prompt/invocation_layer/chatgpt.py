@@ -27,6 +27,16 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         base_url: str = "https://api.openai.com/v1",
         **kwargs,
     ):
+        """
+         Creates an instance of ChatGPTInvocationLayer for OpenAI's GPT-3.5 GPT-4 models.
+
+        :param model_name_or_path: The name or path of the underlying model.
+        :param max_length: The maximum number of tokens the output text can have.
+        :param api_key: The OpenAI API key.
+        :param base_url: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param kwargs: Additional keyword arguments passed to the underlying model.
+        [documentation](https://platform.openai.com/docs/api-reference/chat).
+        """
         super().__init__(api_key, model_name_or_path, max_length, base_url=base_url, **kwargs)
 
     def invoke(self, *args, **kwargs):
