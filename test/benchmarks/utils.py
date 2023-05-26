@@ -6,7 +6,7 @@ import pandas as pd
 
 from haystack import Label, Document, Answer, Pipeline
 from haystack.document_stores import eval_data_from_json
-from haystack.nodes import BaseReader
+from haystack.nodes import BaseReader, BaseRetriever
 from haystack.utils import launch_es, launch_opensearch, launch_weaviate
 from haystack.modeling.data_handler.processor import http_get
 
@@ -140,3 +140,21 @@ def get_reader_config(pipeline: Pipeline) -> Tuple[str, str, Union[int, str]]:
     reader_top_k = reader.top_k
 
     return reader_type, reader_model, reader_top_k
+
+
+def get_retriever_config(pipeline: Pipeline) -> Tuple[str, Union[int, str]]:
+    """
+    Get the configuration of the Retriever component of a pipeline.
+    :param pipeline: Pipeline
+    :return: Tuple of Retriever type and top_k
+    """
+    retrievers = pipeline.get_nodes_by_class(BaseRetriever)
+    if not retrievers:
+        message = "No component of type Retriever found"
+        return message, message
+
+    retriever = retrievers[0]
+    retriever_type = retriever.__class__.__name__
+    retriever_top_k = retriever.top_k
+
+    return retriever_type, retriever_top_k
