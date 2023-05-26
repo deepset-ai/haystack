@@ -1,16 +1,8 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 
 import pytest
-import transformers
-from transformers import (
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    BloomForCausalLM,
-    T5ForConditionalGeneration,
-    T5TokenizerFast,
-    StoppingCriteriaList,
-    GenerationConfig,
-)
+from torch import device
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
 
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler, DefaultTokenStreamingHandler
@@ -18,31 +10,76 @@ from haystack.nodes.prompt.invocation_layer.hugging_face import StopWordsCriteri
 
 
 @pytest.mark.unit
-def test_constructor_with_model_name():
-    """
-    Test that the constructor sets the pipeline with the model name (if provided)
-    """
-    layer = HFLocalInvocationLayer("google/flan-t5-base")
+def test_constructor_with_model_name_only():
+    # Create mocked transformers pipeline with a 'tokenizer' attribute (needed in HuggingFaceLocalInvocationLayer)
+    mock_pipeline_obj = Mock()
+    mock_pipeline_obj.tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
 
-    assert isinstance(layer.pipe.model, T5ForConditionalGeneration)
-    assert isinstance(layer.pipe.tokenizer, T5TokenizerFast)
+    with patch.object(
+        HFLocalInvocationLayer, "_create_pipeline", return_value=mock_pipeline_obj
+    ) as mock_create_pipeline:
+        layer = HFLocalInvocationLayer("google/flan-t5-base")
+
+    assert layer.pipe == mock_pipeline_obj
+    mock_create_pipeline.assert_called_once()
+
+    args, kwargs = mock_create_pipeline.call_args
+
+    # device is set to cpu by default and device_map is empty
+    assert kwargs["device"] == device("cpu")
+    assert not kwargs["device_map"]
+
+    # correct task and model are set
+    assert kwargs["task"] == "text2text-generation"
+    assert kwargs["model"] == "google/flan-t5-base"
+
+    # no matter what kwargs we pass or don't pass, there are always 13 predefined kwargs passed to the pipeline
+    assert len(kwargs) == 13
+
+    # and these kwargs are passed to the pipeline
+    assert list(kwargs.keys()) == [
+        "task",
+        "model",
+        "config",
+        "tokenizer",
+        "feature_extractor",
+        "revision",
+        "use_auth_token",
+        "device_map",
+        "device",
+        "torch_dtype",
+        "trust_remote_code",
+        "model_kwargs",
+        "pipeline_class",
+    ]
 
 
 @pytest.mark.unit
 def test_constructor_with_model_name_and_device_map():
-    """
-    Test that the constructor with device_map works in cases where it is provided alone or with devices
-    """
+    # Create mocked transformers pipeline with a 'tokenizer' attribute (needed in HuggingFaceLocalInvocationLayer)
+    mock_pipeline_obj = Mock()
+    mock_pipeline_obj.tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
 
-    layer = HFLocalInvocationLayer(device_map="auto")
+    with patch.object(
+        HFLocalInvocationLayer, "_create_pipeline", return_value=mock_pipeline_obj
+    ) as mock_create_pipeline:
+        layer = HFLocalInvocationLayer("google/flan-t5-base", device="cpu", device_map="auto")
 
-    assert isinstance(layer.pipe.model, T5ForConditionalGeneration)
-    assert isinstance(layer.pipe.tokenizer, T5TokenizerFast)
+    assert layer.pipe == mock_pipeline_obj
+    mock_create_pipeline.assert_called_once()
 
-    layer = HFLocalInvocationLayer(device_map="auto", devices=["cpu"])
+    args, kwargs = mock_create_pipeline.call_args
+
+    # device is NOT set; device_map is auto
+    assert not kwargs["device"]
+    assert kwargs["device_map"] and kwargs["device_map"] == "auto"
+
+    # correct task and model are set as well
+    assert kwargs["task"] == "text2text-generation"
+    assert kwargs["model"] == "google/flan-t5-base"
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_constructor_with_custom_pretrained_model():
     """
     Test that the constructor sets the pipeline with the pretrained model (if provided)
@@ -50,18 +87,106 @@ def test_constructor_with_custom_pretrained_model():
     model = AutoModelForSeq2SeqLM.from_pretrained("hf-internal-testing/tiny-random-t5")
     tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-t5")
 
-    layer = HFLocalInvocationLayer(
-        model_name_or_path="irrelevant_when_model_is_provided",
-        model=model,
-        tokenizer=tokenizer,
-        task_name="text2text-generation",
-    )
+    # Create mocked transformers pipeline with a 'tokenizer' attribute (needed in HuggingFaceLocalInvocationLayer)
+    mock_pipeline_obj = Mock()
+    mock_pipeline_obj.tokenizer = tokenizer
 
-    assert layer.pipe.model == model
-    assert layer.pipe.tokenizer == tokenizer
+    with patch.object(
+        HFLocalInvocationLayer, "_create_pipeline", return_value=mock_pipeline_obj
+    ) as mock_create_pipeline:
+        HFLocalInvocationLayer(
+            model_name_or_path="irrelevant_when_model_is_provided",
+            model=model,
+            tokenizer=tokenizer,
+            task_name="text2text-generation",
+        )
+
+    mock_create_pipeline.assert_called_once()
+
+    args, kwargs = mock_create_pipeline.call_args
+
+    # correct tokenizer and model are set as well
+    assert kwargs["tokenizer"] == tokenizer
+    assert kwargs["model"] == model
 
 
-@pytest.mark.integration
+@pytest.mark.unit
+def test_constructor_with_invalid_kwargs():
+    # Create mocked transformers pipeline with a 'tokenizer' attribute (needed in HuggingFaceLocalInvocationLayer)
+    mock_pipeline_obj = Mock()
+    mock_pipeline_obj.tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
+
+    with patch.object(
+        HFLocalInvocationLayer, "_create_pipeline", return_value=mock_pipeline_obj
+    ) as mock_create_pipeline:
+        layer = HFLocalInvocationLayer("google/flan-t5-base", some_invalid_kwarg="invalid")
+
+    assert layer.pipe == mock_pipeline_obj
+    mock_create_pipeline.assert_called_once()
+
+    args, kwargs = mock_create_pipeline.call_args
+
+    # invalid kwargs are ignored and not passed to the pipeline
+    assert "some_invalid_kwarg" not in kwargs
+
+    # still on 13 kwargs passed to the pipeline
+    assert len(kwargs) == 13
+
+
+@pytest.mark.unit
+def test_constructor_with_all_kwargs():
+    # Create mocked transformers pipeline with a 'tokenizer' attribute (needed in HuggingFaceLocalInvocationLayer)
+    mock_pipeline_obj = Mock()
+    mock_pipeline_obj.tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
+
+    with patch.object(
+        HFLocalInvocationLayer, "_create_pipeline", return_value=mock_pipeline_obj
+    ) as mock_create_pipeline:
+        layer = HFLocalInvocationLayer(
+            "google/flan-t5-base",
+            task_name="text2text-generation",
+            tokenizer=AutoTokenizer.from_pretrained("google/flan-t5-base"),
+            config=Mock(),
+            revision="1.1",
+            device="cpu",
+            device_map="auto",
+            first_invalid_kwarg="invalid",
+            second_invalid_kwarg="invalid",
+        )
+
+    assert layer.pipe == mock_pipeline_obj
+    mock_create_pipeline.assert_called_once()
+
+    args, kwargs = mock_create_pipeline.call_args
+
+    # invalid kwargs are ignored and not passed to the pipeline
+    assert "first_invalid_kwarg" not in kwargs
+    assert "second_invalid_kwarg" not in kwargs
+
+    # correct task and model are set as well
+    assert kwargs["task"] == "text2text-generation"
+    assert not kwargs["device"]
+    assert kwargs["device_map"] and kwargs["device_map"] == "auto"
+    assert kwargs["revision"] == "1.1"
+
+    # still on 13 kwargs passed to the pipeline
+    assert len(kwargs) == 13
+
+
+@pytest.mark.unit
+def test_constructor_with_invalid_task_name():
+    # Create mocked transformers pipeline with a 'tokenizer' attribute (needed in HuggingFaceLocalInvocationLayer)
+    mock_pipeline_obj = Mock()
+    mock_pipeline_obj.tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
+
+    with patch.object(
+        HFLocalInvocationLayer, "_create_pipeline", return_value=mock_pipeline_obj
+    ) as mock_create_pipeline:
+        with pytest.raises(ValueError, match="Task name custom-text2text-generation is not supported"):
+            layer = HFLocalInvocationLayer("google/flan-t5-base", task_name="custom-text2text-generation")
+
+
+@pytest.mark.unit
 def test_text_generation_model():
     # test simple prompting with text generation model
     # by default, we force the model not return prompt text
@@ -77,7 +202,7 @@ def test_text_generation_model():
     assert len(r[0]) > 0 and r[0].startswith("Hello big science!")
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_text_generation_model_via_custom_pretrained_model():
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bigscience-small-testing")
     model = BloomForCausalLM.from_pretrained("bigscience/bigscience-small-testing")
@@ -130,7 +255,7 @@ def test_streaming_stream_handler_param_in_constructor():
     assert hf_streamer.token_handler == dtsh
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_supports(tmp_path):
     """
     Test that supports returns True correctly for HFLocalInvocationLayer
@@ -170,7 +295,7 @@ def test_stop_words_criteria_set():
     assert isinstance(kwargs["stopping_criteria"][0], StopWordsCriteria)
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 @pytest.mark.parametrize("stop_words", [["good"], ["hello", "good"], ["hello", "good", "health"]])
 def test_stop_words_single_token(stop_words):
     """
@@ -192,7 +317,7 @@ def test_stop_words_single_token(stop_words):
     assert "health" not in result[0]
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_stop_words_multiple_token():
     """
     Test that stop words criteria is used and that it works for multi-token words

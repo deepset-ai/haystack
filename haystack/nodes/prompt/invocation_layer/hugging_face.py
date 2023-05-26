@@ -11,7 +11,7 @@ from transformers import (
     PreTrainedTokenizer,
     PreTrainedTokenizerFast,
     GenerationConfig,
-    PreTrainedModel,
+    Pipeline,
 )
 from transformers.pipelines import get_task
 
@@ -73,23 +73,15 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 self.__class__.__name__,
                 self.devices[0],
             )
+        if "device" not in kwargs:
+            kwargs["device"] = self.devices[0]
 
-        model_kwargs = kwargs.get("model_kwargs", {})
-
-        model: PreTrainedModel = kwargs.get("model", None)
         # save stream settings and stream_handler for pipeline invocation
         self.stream_handler = kwargs.get("stream_handler", None)
         self.stream = kwargs.get("stream", False)
 
         # save generation_kwargs for pipeline invocation
         self.generation_kwargs = kwargs.get("generation_kwargs", {})
-        model_max_length = kwargs.get("model_max_length", None)
-
-        torch_dtype = self._extract_torch_dtype(**kwargs)
-
-        device_map = kwargs.get("device_map", None)
-        # as device and device_map are mutually exclusive, we set device to None if device_map is provided
-        device = self.devices[0] if device_map is None else None
 
         # If task_name is not provided, get the task name from the model name or path (uses HFApi)
         self.task_name = (
@@ -97,27 +89,24 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if "task_name" in kwargs
             else get_task(model_name_or_path, use_auth_token=use_auth_token)
         )
-
-        self.pipe = pipeline(
-            task=self.task_name,  # task_name is used to determine the pipeline type
-            model=model or model_name_or_path,
-            config=kwargs.get("config", None),
-            tokenizer=kwargs.get("tokenizer", None),
-            feature_extractor=kwargs.get("feature_extractor", None),
-            revision=kwargs.get("revision", None),
-            device=device,
-            device_map=device_map,
-            use_auth_token=self.use_auth_token,
-            torch_dtype=torch_dtype,
-            trust_remote_code=kwargs.get("trust_remote_code", False),
-            model_kwargs=model_kwargs,
-            pipeline_class=kwargs.get("pipeline_class", None),
+        # we checks in supports method if task_name is supported but here we check again as
+        # we could have gotten the task_name from kwargs
+        if self.task_name is None or self.task_name not in ["text2text-generation", "text-generation"]:
+            raise ValueError(
+                f"Task name {self.task_name} is not supported. "
+                f"We only support text2text-generation and text-generation tasks."
+            )
+        pipeline_kwargs = self._prepare_pipeline_kwargs(
+            task=self.task_name, model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, **kwargs
         )
+        self.pipe: Pipeline = self._create_pipeline(**pipeline_kwargs)
+
         # This is how the default max_length is determined for Text2TextGenerationPipeline shown here
         # https://huggingface.co/transformers/v4.6.0/_modules/transformers/pipelines/text2text_generation.html
         # max_length must be set otherwise HFLocalInvocationLayer._ensure_token_limit will fail.
         self.max_length = max_length or self.pipe.model.config.max_length
 
+        model_max_length = kwargs.get("model_max_length", None)
         # we allow users to override the tokenizer's model_max_length because models like T5 have relative positional
         # embeddings and can accept sequences of more than 512 tokens
         if model_max_length is not None:
@@ -130,6 +119,43 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 self.max_length,
                 self.pipe.tokenizer.model_max_length,
             )
+
+    def _create_pipeline(self, **kwargs) -> Pipeline:
+        """
+        Creates a pipeline for the underlying model.
+        """
+        return pipeline(**kwargs)
+
+    def _prepare_pipeline_kwargs(self, **kwargs):
+        """
+        Sanitizes and prepares the kwargs passed to the transformers pipeline function
+        For more details about pipeline kwargs in general, see
+        Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
+        """
+        # as device and device_map are mutually exclusive, we set device to None if device_map is provided
+        device_map = kwargs.get("device_map", None)
+        device = kwargs.get("device") if device_map is None else None
+        # prepare torch_dtype for pipeline invocation
+        torch_dtype = self._extract_torch_dtype(**kwargs)
+        # and the model (prefer model instance over model_name_or_path str identifier)
+        model = kwargs.get("model") or kwargs.get("model_name_or_path")
+
+        pipeline_kwargs = {
+            "task": kwargs.get("task", None),
+            "model": model,
+            "config": kwargs.get("config", None),
+            "tokenizer": kwargs.get("tokenizer", None),
+            "feature_extractor": kwargs.get("feature_extractor", None),
+            "revision": kwargs.get("revision", None),
+            "use_auth_token": kwargs.get("use_auth_token", None),
+            "device_map": device_map,
+            "device": device,
+            "torch_dtype": torch_dtype,
+            "trust_remote_code": kwargs.get("trust_remote_code", False),
+            "model_kwargs": kwargs.get("model_kwargs", {}),
+            "pipeline_class": kwargs.get("pipeline_class", None),
+        }
+        return pipeline_kwargs
 
     def invoke(self, *args, **kwargs):
         """
