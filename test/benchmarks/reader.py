@@ -8,7 +8,7 @@ import logging
 from haystack import Pipeline
 from haystack.nodes import BaseReader
 from haystack.utils import aggregate_labels
-from utils import load_eval_data
+from utils import load_eval_data, get_reader_config
 
 
 def benchmark_reader(pipeline: Pipeline, labels_file: Path) -> Dict:
@@ -32,10 +32,7 @@ def benchmark_reader(pipeline: Pipeline, labels_file: Path) -> Dict:
         eval_result = pipeline._generate_eval_result_from_batch_preds(predictions_batches=predictions)
         metrics = eval_result.calculate_metrics()["Reader"]
 
-        readers = pipeline.get_nodes_by_class(BaseReader)
-        reader_type = readers[0].__class__.__name__ if readers else "No component of type BaseReader found"
-        reader_model = readers[0].model_name_or_path if readers else "No component of type BaseReader found"
-        reader_top_k = readers[0].top_k if readers else "No component of type BaseReader found"
+        reader_type, reader_model, reader_top_k = get_reader_config(pipeline)
         results = {
             "reader": {
                 "exact_match": metrics["exact_match"],
@@ -53,12 +50,9 @@ def benchmark_reader(pipeline: Pipeline, labels_file: Path) -> Dict:
 
     except Exception:
         tb = traceback.format_exc()
-        components = {comp_name: comp.type for comp_name, comp in pipeline.components.items()}
         logging.error("##### The following Error was raised while running querying run:")
         logging.error(tb)
-        readers = pipeline.get_nodes_by_class(BaseReader)
-        reader_type = readers[0].__class__.__name__ if readers else "No component of type BaseReader found"
-        reader_model = readers[0].model_name_or_path if readers else "No component of type BaseReader found"
+        reader_type, reader_model, reader_top_k = get_reader_config(pipeline)
         results = {
             "reader": {
                 "exact_match": 0.0,
