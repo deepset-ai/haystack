@@ -275,22 +275,33 @@ def test_supports(tmp_path):
     """
     Test that supports returns True correctly for HFLocalInvocationLayer
     """
-    # some HF hub hosted models
-    assert HFLocalInvocationLayer.supports("google/flan-t5-base")
-    assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
-    assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
+    # mock get_task to avoid remote calls to HF hub
+    mock_get_task = Mock(return_value="text2text-generation")
+
+    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
+        assert HFLocalInvocationLayer.supports("google/flan-t5-base")
+        assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
+        assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
+        assert mock_get_task.call_count == 3
 
     # some HF local model directory, let's use the one from test/prompt/invocation_layer
     assert HFLocalInvocationLayer.supports(str(tmp_path))
 
     # but not some non text2text-generation or non text-generation model
     # i.e image classification model
-    assert not HFLocalInvocationLayer.supports("nateraw/vit-age-classifier")
+    mock_get_task = Mock(return_value="image-classification")
+    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
+        assert not HFLocalInvocationLayer.supports("nateraw/vit-age-classifier")
+        assert mock_get_task.call_count == 1
 
     # or some POS tagging model
-    assert not HFLocalInvocationLayer.supports("vblagoje/bert-english-uncased-finetuned-pos")
+    mock_get_task = Mock(return_value="pos-tagging")
+    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
+        assert not HFLocalInvocationLayer.supports("vblagoje/bert-english-uncased-finetuned-pos")
+        assert mock_get_task.call_count == 1
 
     # unless we specify the task name to override the default
+    # short-circuit the get_task call
     assert HFLocalInvocationLayer.supports(
         "vblagoje/bert-english-uncased-finetuned-pos", task_name="text2text-generation"
     )
