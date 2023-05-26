@@ -7,7 +7,7 @@ from haystack import Pipeline
 from haystack.nodes import BaseRetriever, BaseReader
 from haystack.pipelines.config import read_pipeline_config_from_yaml
 
-from utils import prepare_environment
+from utils import prepare_environment, contains_reader, contains_retriever
 from reader import benchmark_reader
 from retriever import benchmark_retriever
 from retriever_reader import benchmark_retriever_reader
@@ -34,26 +34,25 @@ def run_benchmark(pipeline_yaml: Path) -> Dict:
     labels_file = Path(benchmark_config["labels_file"])
 
     querying_pipeline = Pipeline.load_from_config(pipeline_config, pipeline_name="querying")
-    components = [comp for comp in querying_pipeline.components.values()]
+    pipeline_contains_reader = contains_reader(querying_pipeline)
+    pipeline_contains_retriever = contains_retriever(querying_pipeline)
 
     # Retriever-Reader pipeline
-    if any(isinstance(comp, BaseRetriever) for comp in components) and any(
-        isinstance(comp, BaseReader) for comp in components
-    ):
+    if pipeline_contains_retriever and pipeline_contains_reader:
         documents_dir = Path(benchmark_config["documents_directory"])
         indexing_pipeline = Pipeline.load_from_config(pipeline_config, pipeline_name="indexing")
 
         results = benchmark_retriever_reader(indexing_pipeline, querying_pipeline, documents_dir, labels_file)
 
     # Retriever pipeline
-    elif any(isinstance(comp, BaseRetriever) for comp in components):
+    elif pipeline_contains_retriever:
         documents_dir = Path(benchmark_config["documents_directory"])
         indexing_pipeline = Pipeline.load_from_config(pipeline_config, pipeline_name="indexing")
 
         results = benchmark_retriever(indexing_pipeline, querying_pipeline, documents_dir, labels_file)
 
     # Reader pipeline
-    elif any(isinstance(comp, BaseReader) for comp in components):
+    elif pipeline_contains_retriever:
         results = benchmark_reader(querying_pipeline, labels_file)
 
     # Unsupported pipeline type
