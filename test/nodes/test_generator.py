@@ -233,7 +233,9 @@ def test_openai_answer_generator_pipeline_max_tokens():
 
     # mock load_openai_tokenizer to avoid accessing the internet to init tiktoken
     with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
-        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+        openai_generator = OpenAIAnswerGenerator(
+            api_key="fake_api_key", model="text-babbage-001", top_k=1, api_base="https://api.openai.com/v1"
+        )
 
         pipeline.add_node(component=openai_generator, name="generator", inputs=["Query"])
         openai_generator.run = create_autospec(openai_generator.run)

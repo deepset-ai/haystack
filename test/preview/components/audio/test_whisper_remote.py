@@ -26,9 +26,10 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
 
     @pytest.mark.unit
     def test_init_default(self):
-        transcriber = RemoteWhisperTranscriber(api_key="just a test")
+        transcriber = RemoteWhisperTranscriber(api_key="just a test", api_base="https://api.openai.com/v1")
         assert transcriber.model_name == "whisper-1"
         assert transcriber.api_key == "just a test"
+        assert transcriber.api_base == "https://api.openai.com/v1"
 
     @pytest.mark.unit
     def test_init_no_key(self):

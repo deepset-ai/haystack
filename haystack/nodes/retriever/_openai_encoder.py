@@ -37,7 +37,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         if self.using_azure:
             self.url = f"{retriever.azure_base_url}/openai/deployments/{retriever.azure_deployment_name}/embeddings?api-version={retriever.api_version}"
         else:
-            self.url = "https://api.openai.com/v1/embeddings"
+            self.url = f"{retriever.api_base}/embeddings"
 
         self.api_key = retriever.api_key
         self.batch_size = min(64, retriever.batch_size)
