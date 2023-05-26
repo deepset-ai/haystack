@@ -4,13 +4,14 @@ import tempfile
 
 import pandas as pd
 
-from haystack import Label, Document, Answer
+from haystack import Label, Document, Answer, Pipeline
 from haystack.document_stores import eval_data_from_json
+from haystack.nodes import BaseReader
 from haystack.utils import launch_es, launch_opensearch, launch_weaviate
 from haystack.modeling.data_handler.processor import http_get
 
 import logging
-from typing import Dict, Union
+from typing import Dict, Union, Tuple
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -120,3 +121,22 @@ def load_eval_data(eval_set_file: Path):
         )
 
     return labels, queries
+
+
+def get_reader_config(pipeline: Pipeline) -> Tuple[str, str, Union[int, str]]:
+    """
+    Get the configuration of the Reader component of a pipeline.
+    :param pipeline: Pipeline
+    :return: Tuple of Reader type, model name or path, and top_k
+    """
+    readers = pipeline.get_nodes_by_class(BaseReader)
+    if not readers:
+        message = "No component of type BaseReader found"
+        return message, message, message
+
+    reader = readers[0]
+    reader_type = reader.__class__.__name__
+    reader_model = reader.model_name_or_path
+    reader_top_k = reader.top_k
+
+    return reader_type, reader_model, reader_top_k
