@@ -55,7 +55,7 @@ class WhisperTranscriber(BaseComponent):
         """
         super().__init__()
         self.api_key = api_key
-        self.base_url = (base_url,)
+        self.base_url = base_url
         self.use_local_whisper = is_whisper_available() and self.api_key is None
 
         if self.use_local_whisper:

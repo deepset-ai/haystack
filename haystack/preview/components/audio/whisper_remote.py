@@ -56,6 +56,7 @@ class RemoteWhisperTranscriber:
             raise ValueError("API key is None.")
 
         self.api_key = api_key
+        self.api_base = api_base
 
         self.model_name = model_name
 
