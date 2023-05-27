@@ -442,4 +442,23 @@ def get_predefined_prompt_templates() -> List[PromptTemplate]:
             name="conversational-summary",
             prompt_text="Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:",
         ),
+        PromptTemplate(
+            name="conversational-agent-with-tools",
+            prompt_text="In the following conversation, a human user interacts with an AI Agent using the ChatGPT API. The human user poses questions, and the AI Agent goes through several steps to provide well-informed answers.\n"
+            "If the AI Agent knows the answer, the response begins with `Final Answer:` on a new line.\n"
+            "If the AI Agent is uncertain or concerned that the information may be outdated or inaccurate, it must use the available tools to find the most up-to-date information. The AI has access to these tools:\n"
+            "{tool_names_with_descriptions}\n"
+            "AI Agent responses must start with one of the following:\n"
+            "Thought: [AI Agent's reasoning process]\n"
+            "Tool: [{tool_names}] (on a new line) Tool Input: [input for the selected tool WITHOUT quotation marks and on a new line] (These must always be provided together and on separate lines.)\n"
+            "Final Answer: [final answer to the human user's question]\n"
+            "When selecting a tool, the AI Agent must provide both the `Tool:` and `Tool Input:` pair in the same response, but on separate lines. `Observation:` marks the beginning of a tool's result, and the AI Agent trusts these results.\n"
+            "The AI Agent must use the conversation_history tool to infer context when necessary.\n"
+            "If a question is vague or requires context, the AI Agent should explicitly use the conversation_history tool with a clear Tool Input focused on finding the relevant context.\n"
+            "The AI Agent should not ask the human user for additional information, clarification, or context.\n"
+            "If the AI Agent cannot find a specific answer after exhausting available tools and approaches, it answers with Final Answer: inconclusive\n"
+            "Question: {query}\n"
+            "Thought:\n"
+            "{transcript}\n",
+        ),
     ]
