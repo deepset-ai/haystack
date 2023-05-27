@@ -9,7 +9,7 @@ from haystack.nodes import BaseRetriever
 from haystack import Pipeline
 from haystack.utils import aggregate_labels
 
-from utils import load_eval_data
+from utils import load_eval_data, get_retriever_config
 
 
 def benchmark_retriever(
@@ -104,9 +104,7 @@ def benchmark_querying(pipeline: Pipeline, eval_set: Path) -> Dict:
         eval_result = pipeline._generate_eval_result_from_batch_preds(predictions_batches=predictions)
         metrics = eval_result.calculate_metrics()["Retriever"]
 
-        retrievers = pipeline.get_nodes_by_class(BaseRetriever)
-        retriever_type = retrievers[0].__class__.__name__ if retrievers else "No component of type BaseRetriever found"
-        retriever_top_k = retrievers[0].top_k if retrievers else "No component of type BaseRetriever found"
+        retriever_type, retriever_top_k = get_retriever_config(pipeline)
         doc_store = pipeline.get_document_store()
         doc_store_type = doc_store.__class__.__name__ if doc_store else "No DocumentStore found"
         results = {
@@ -128,8 +126,7 @@ def benchmark_querying(pipeline: Pipeline, eval_set: Path) -> Dict:
         tb = traceback.format_exc()
         logging.error("##### The following Error was raised while running querying run:")
         logging.error(tb)
-        retrievers = pipeline.get_nodes_by_class(BaseRetriever)
-        retriever_type = retrievers[0].__class__.__name__ if retrievers else "No component of type BaseRetriever found"
+        retriever_type, retriever_top_k = get_retriever_config(pipeline)
         doc_store = pipeline.get_document_store()
         doc_store_type = doc_store.__class__.__name__ if doc_store else "No DocumentStore found"
         results = {
@@ -142,7 +139,7 @@ def benchmark_querying(pipeline: Pipeline, eval_set: Path) -> Dict:
             "seconds_per_query": 0,
             "recall": 0,
             "map": 0,
-            "top_k": 0,
+            "top_k": retriever_top_k,
             "date_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "error": str(tb),
         }
