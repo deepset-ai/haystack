@@ -282,7 +282,7 @@ jobs:
         api-url: https://api.datadoghq.eu
         events: |
           - title: "${{ github.job }} in ${{ github.workflow }} workflow"
-            text: "License compliance check: all available extras, GPU version"
+            text: "License compliance check: all available extras, GPU version."
             alert_type: "${{ steps.calculator.outputs.alert_type }}"
             source_type_name: "Github"
             host: ${{ github.repository_owner }}
