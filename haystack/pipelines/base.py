@@ -6,12 +6,7 @@ import itertools
 from functools import partial
 from hashlib import md5
 from time import time
-from typing import Dict, List, Optional, Any, Set, Tuple, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Dict, List, Optional, Any, Set, Tuple, Union, Literal
 
 import copy
 import json
