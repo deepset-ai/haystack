@@ -308,7 +308,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
     [PromptTemplates](https://docs.haystack.deepset.ai/docs/prompt_node#prompttemplates).
     """
 
-    def __init__(self, prompt: str, output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None):
+    def __init__(
+        self,
+        prompt: str,
+        output_parser: Optional[Union[BaseOutputParser, Dict[str, Any]]] = None,
+        prompts_cache: Path = Path.home() / ".prompthub_cache",
+    ):
         """
          Creates a PromptTemplate instance.
 
@@ -338,7 +343,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         elif re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
             name = prompt
             try:
-                prompt_text = self._fetch_from_prompthub(prompt)
+                prompt_text = self._fetch_from_prompthub(prompt, prompthub_cache=prompthub_cache)
             except HTTPError as http_error:
                 if http_error.response.status_code != 404:
                     raise http_error
@@ -405,12 +410,12 @@ class PromptTemplate(BasePromptTemplate, ABC):
         wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
         stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
     )
-    def _fetch_from_prompthub(self, name) -> str:
+    def _fetch_from_prompthub(self, name, prompthub_cache: Path) -> str:
         """
         Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
         """
         try:
-            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+            prompt_data: prompthub.Prompt = prompthub.fetch(name, cache=prompthub_cache, timeout=PROMPTHUB_TIMEOUT)
         except HTTPError as http_error:
             if http_error.response.status_code != 404:
                 raise http_error
