@@ -1,12 +1,7 @@
 import json
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union, Literal
 
 import logging
 import os

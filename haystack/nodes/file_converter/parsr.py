@@ -1,10 +1,5 @@
 import sys
-from typing import Optional, Dict, List, Any, Union, Tuple
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Optional, Dict, List, Any, Union, Tuple, Literal
 
 import json
 import copy

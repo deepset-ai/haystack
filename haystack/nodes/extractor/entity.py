@@ -18,12 +18,7 @@ Thanks for the great work!
 """
 
 import logging
-from typing import List, Union, Dict, Optional, Tuple, Any
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import List, Union, Dict, Optional, Tuple, Any, Literal
 
 import itertools
 import torch
