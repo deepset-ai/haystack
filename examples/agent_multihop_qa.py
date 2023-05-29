@@ -84,7 +84,7 @@ Question: {query}
 Thought:
 {transcript}
 """
-few_shot_agent_template = PromptTemplate("few-shot-react", prompt_text=few_shot_prompt)
+few_shot_agent_template = PromptTemplate(few_shot_prompt)
 prompt_node = PromptNode(
     "gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=512, stop_words=["Observation:"]
 )
