@@ -1,9 +1,4 @@
-from typing import List, Optional, Tuple, Dict, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import List, Optional, Tuple, Dict, Union, Literal
 
 import logging
 import itertools
