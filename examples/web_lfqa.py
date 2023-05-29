@@ -20,10 +20,7 @@ Your answer should be in your own words and be no longer than 50 words.
 """
 
 prompt_node = PromptNode(
-    "text-davinci-003",
-    default_prompt_template=PromptTemplate("lfqa", prompt_text=prompt_text),
-    api_key=openai_key,
-    max_length=256,
+    "text-davinci-003", default_prompt_template=PromptTemplate(prompt_text), api_key=openai_key, max_length=256
 )
 
 web_retriever = WebRetriever(api_key=search_key, top_search_results=2, mode="preprocessed_documents")
