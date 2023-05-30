@@ -46,6 +46,8 @@ PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
 PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
 PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
+PROMPTHUB_CACHE_PATH = os.environ.get("PROMPTHUB_CACHE_PATH", Path.home() / ".haystack" / "prompthub")
+
 
 #############################################################################
 # This templates were hardcoded in the prompt_template module. When adding
@@ -285,6 +287,36 @@ class _FstringParamsTransformer(ast.NodeTransformer):
         )
 
 
+@tenacity.retry(
+    reraise=True,
+    retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
+    wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
+    stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
+)
+def fetch_from_prompthub(name: str) -> prompthub.Prompt:
+    """
+    Looks for the given prompt in the PromptHub.
+
+    :param name: the name of the prompt on the Hub.
+    """
+    try:
+        prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
+    except HTTPError as http_error:
+        if http_error.response.status_code != 404:
+            raise http_error
+        raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+    return prompt_data
+
+
+def cache_prompt(data: prompthub.Prompt):
+    """
+    Saves the prompt to the cache. Helps avoiding naming mismatches in the cache folder.
+
+    :param data: the prompthub.Prompt object from PromptHub.
+    """
+    data.to_yaml(Path(PROMPTHUB_CACHE_PATH / f"{data.name}.yml"))
+
+
 class PromptTemplate(BasePromptTemplate, ABC):
     """
     PromptTemplate is a template for the prompt you feed to the model to instruct it what to do. For example, if you want the model to perform sentiment analysis, you simply tell it to do that in a prompt. Here's what a prompt template may look like:
@@ -379,7 +411,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
             output_parser_params = output_parser.get("params", {})
             self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
 
-    def _load_from_legacy_template(self, name: str) -> Tuple[str, BaseOutputParser]:
+    @staticmethod
+    def _load_from_legacy_template(name: str) -> Tuple[str, BaseOutputParser]:
         warnings.warn(
             f"You're using a legacy prompt template '{name}', "
             "we strongly suggest you use prompts from the official Haystack PromptHub: "
@@ -390,13 +423,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
         return prompt_text, output_parser
 
     def _load_from_prompthub(self, name: str) -> str:
+        if Path(PROMPTHUB_CACHE_PATH / f"{name}.yml").exists():
+            return self._load_from_file(name)[1]
         try:
-            prompt_text = self._fetch_from_prompthub(name)
+            data = fetch_from_prompthub(name)
+            cache_prompt(data)
+
         except HTTPError as http_error:
             if http_error.response.status_code != 404:
                 raise http_error
             raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
-        return prompt_text
+        return data.text
 
     def _load_from_file(self, path: str) -> Tuple[str, str]:
         with open(path, "r", encoding="utf-8") as yaml_file:
@@ -410,24 +447,6 @@ class PromptTemplate(BasePromptTemplate, ABC):
     @property
     def output_variable(self) -> Optional[str]:
         return self.output_parser.output_variable if self.output_parser else None
-
-    @tenacity.retry(
-        reraise=True,
-        retry=tenacity.retry_if_exception_type((HTTPError, RequestException, JSONDecodeError)),
-        wait=tenacity.wait_exponential(multiplier=PROMPTHUB_BACKOFF),
-        stop=tenacity.stop_after_attempt(PROMPTHUB_MAX_RETRIES),
-    )
-    def _fetch_from_prompthub(self, name) -> str:
-        """
-        Looks for the given prompt in the PromptHub if the prompt is not in the local cache.
-        """
-        try:
-            prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
-        except HTTPError as http_error:
-            if http_error.response.status_code != 404:
-                raise http_error
-            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
-        return prompt_data.text
 
     def prepare(self, *args, **kwargs) -> Dict[str, Any]:
         """
