@@ -298,6 +298,7 @@ def fetch_from_prompthub(name: str) -> prompthub.Prompt:
     Looks for the given prompt in the PromptHub.
 
     :param name: the name of the prompt on the Hub.
+    :returns: the Prompt object.
     """
     try:
         prompt_data: prompthub.Prompt = prompthub.fetch(name, timeout=PROMPTHUB_TIMEOUT)
