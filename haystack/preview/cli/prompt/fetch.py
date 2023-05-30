@@ -21,7 +21,7 @@ from haystack.nodes.prompt.prompt_template import PromptNotFoundError, fetch_fro
     """,
 )
 @click.argument("prompt_name", nargs=-1)
-def cache(prompt_name):
+def fetch(prompt_name):
     for name in prompt_name:
         try:
             data = fetch_from_prompthub(name)

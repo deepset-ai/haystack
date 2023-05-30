@@ -1,6 +1,6 @@
 import click
 
-from haystack.preview.cli.prompt import cache
+from haystack.preview.cli.prompt import fetch
 
 
 @click.group(short_help="Prompts related commands")
@@ -8,4 +8,4 @@ def prompt():
     pass
 
 
-prompt.add_command(cache.cache)
+prompt.add_command(fetch.fetch)

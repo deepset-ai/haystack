@@ -7,10 +7,10 @@ from haystack.nodes.prompt.prompt_template import PromptNotFoundError
 
 
 @pytest.mark.unit
-@patch("haystack.preview.cli.prompt.cache.fetch_from_prompthub")
-@patch("haystack.preview.cli.prompt.cache.cache_prompt")
-def test_prompt_cache_no_args(mock_cache, mock_fetch, cli_runner):
-    response = cli_runner.invoke(main_cli, ["prompt", "cache"])
+@patch("haystack.preview.cli.prompt.fetch.fetch_from_prompthub")
+@patch("haystack.preview.cli.prompt.fetch.cache_prompt")
+def test_prompt_fetch_no_args(mock_cache, mock_fetch, cli_runner):
+    response = cli_runner.invoke(main_cli, ["prompt", "fetch"])
     assert response.exit_code == 0
 
     mock_fetch.assert_not_called()
@@ -18,10 +18,10 @@ def test_prompt_cache_no_args(mock_cache, mock_fetch, cli_runner):
 
 
 @pytest.mark.unit
-@patch("haystack.preview.cli.prompt.cache.fetch_from_prompthub")
-@patch("haystack.preview.cli.prompt.cache.cache_prompt")
-def test_prompt_cache(mock_cache, mock_fetch, cli_runner):
-    response = cli_runner.invoke(main_cli, ["prompt", "cache", "deepset/question-generation"])
+@patch("haystack.preview.cli.prompt.fetch.fetch_from_prompthub")
+@patch("haystack.preview.cli.prompt.fetch.cache_prompt")
+def test_prompt_fetch(mock_cache, mock_fetch, cli_runner):
+    response = cli_runner.invoke(main_cli, ["prompt", "fetch", "deepset/question-generation"])
     assert response.exit_code == 0
 
     mock_fetch.assert_called_once_with("deepset/question-generation")
@@ -29,11 +29,11 @@ def test_prompt_cache(mock_cache, mock_fetch, cli_runner):
 
 
 @pytest.mark.unit
-@patch("haystack.preview.cli.prompt.cache.fetch_from_prompthub")
-@patch("haystack.preview.cli.prompt.cache.cache_prompt")
-def test_prompt_cache_with_multiple_prompts(mock_cache, mock_fetch, cli_runner):
+@patch("haystack.preview.cli.prompt.fetch.fetch_from_prompthub")
+@patch("haystack.preview.cli.prompt.fetch.cache_prompt")
+def test_prompt_fetch_with_multiple_prompts(mock_cache, mock_fetch, cli_runner):
     response = cli_runner.invoke(
-        main_cli, ["prompt", "cache", "deepset/question-generation", "deepset/conversational-agent"]
+        main_cli, ["prompt", "fetch", "deepset/question-generation", "deepset/conversational-agent"]
     )
     assert response.exit_code == 0
 
@@ -45,14 +45,14 @@ def test_prompt_cache_with_multiple_prompts(mock_cache, mock_fetch, cli_runner):
 
 
 @pytest.mark.unit
-@patch("haystack.preview.cli.prompt.cache.fetch_from_prompthub")
-@patch("haystack.preview.cli.prompt.cache.cache_prompt")
-def test_prompt_cache_with_unexisting_prompt(mock_cache, mock_fetch, cli_runner):
+@patch("haystack.preview.cli.prompt.fetch.fetch_from_prompthub")
+@patch("haystack.preview.cli.prompt.fetch.cache_prompt")
+def test_prompt_fetch_with_unexisting_prompt(mock_cache, mock_fetch, cli_runner):
     prompt_name = "deepset/martian-speak"
     error_message = f"Prompt template named '{prompt_name}' not available in the Prompt Hub."
     mock_fetch.side_effect = PromptNotFoundError(error_message)
 
-    response = cli_runner.invoke(main_cli, ["prompt", "cache", prompt_name])
+    response = cli_runner.invoke(main_cli, ["prompt", "fetch", prompt_name])
     assert response.exit_code == 1
     assert error_message in response.output
 
