@@ -18,7 +18,6 @@ generalimport(
     "beir",
     "boilerpy3",
     "canals",
-    "dill",
     "docx",
     "elasticsearch",
     "events",

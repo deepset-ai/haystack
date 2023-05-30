@@ -7,12 +7,13 @@ import prompthub
 
 from haystack.nodes.prompt import PromptTemplate
 from haystack.nodes.prompt.prompt_node import PromptNode
-from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError
+from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError, LEGACY_DEFAULT_TEMPLATES
 from haystack.nodes.prompt.shapers import AnswerParser
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
 
+@pytest.fixture
 def mock_prompthub():
     with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
         mock_prompthub.side_effect = [
@@ -26,6 +27,14 @@ def test_prompt_templates_from_hub():
     with patch("haystack.nodes.prompt.prompt_template.prompthub") as mock_prompthub:
         PromptTemplate("deepset/question-answering")
         mock_prompthub.fetch.assert_called_with("deepset/question-answering", timeout=30)
+
+
+@pytest.mark.unit
+def test_prompt_templates_from_legacy_set(mock_prompthub):
+    p = PromptTemplate("question-answering")
+    assert p.name == "question-answering"
+    assert p.prompt_text == LEGACY_DEFAULT_TEMPLATES["question-answering"]["prompt"]
+    mock_prompthub.assert_not_called()
 
 
 @pytest.mark.unit

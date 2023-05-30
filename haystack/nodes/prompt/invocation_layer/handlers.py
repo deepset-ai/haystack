@@ -72,16 +72,16 @@ class DefaultPromptHandler:
         new_prompt_length = 0
 
         if prompt:
-            prompt_length = len(self.tokenizer.tokenize(prompt))
+            tokenized_prompt = self.tokenizer.tokenize(prompt)
+            prompt_length = len(tokenized_prompt)
             if (prompt_length + self.max_length) <= self.model_max_length:
                 resized_prompt = prompt
                 new_prompt_length = prompt_length
             else:
-                tokenized_payload = self.tokenizer.tokenize(prompt)
                 resized_prompt = self.tokenizer.convert_tokens_to_string(
-                    tokenized_payload[: self.model_max_length - self.max_length]
+                    tokenized_prompt[: self.model_max_length - self.max_length]
                 )
-                new_prompt_length = len(tokenized_payload[: self.model_max_length - self.max_length])
+                new_prompt_length = len(tokenized_prompt[: self.model_max_length - self.max_length])
 
         return {
             "resized_prompt": resized_prompt,
