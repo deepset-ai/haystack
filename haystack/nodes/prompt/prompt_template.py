@@ -10,6 +10,7 @@ from abc import ABC
 from uuid import uuid4
 
 import yaml
+from platformdirs import user_data_dir
 import tenacity
 import prompthub
 from requests import HTTPError, RequestException, JSONDecodeError
@@ -46,7 +47,7 @@ PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
 PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
 PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
-PROMPTHUB_CACHE_PATH = os.environ.get("PROMPTHUB_CACHE_PATH", Path.home() / ".haystack" / "prompthub")
+PROMPTHUB_CACHE_PATH = os.environ.get("PROMPTHUB_CACHE_PATH", user_data_dir("haystack", "deepset") / "prompthub_cache")
 
 
 #############################################################################
