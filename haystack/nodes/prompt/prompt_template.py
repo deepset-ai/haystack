@@ -325,33 +325,17 @@ class PromptTemplate(BasePromptTemplate, ABC):
         name, prompt_text = "", ""
 
         if prompt in LEGACY_DEFAULT_TEMPLATES:
-            warnings.warn(
-                f"You're using a legacy prompt template '{prompt}', "
-                "we strongly suggest you use prompts from the official Haystack PromptHub: "
-                "https://prompthub.deepset.ai/"
-            )
             name = prompt
-            prompt_text = LEGACY_DEFAULT_TEMPLATES[prompt]["prompt"]
-            output_parser = LEGACY_DEFAULT_TEMPLATES[prompt].get("output_parser")
+            prompt_text, output_parser = self._load_from_legacy_template(prompt)
 
         # if it looks like a prompt template name
         elif re.fullmatch(r"[-a-zA-Z0-9_/]+", prompt):
             name = prompt
-            try:
-                prompt_text = self._fetch_from_prompthub(prompt)
-            except HTTPError as http_error:
-                if http_error.response.status_code != 404:
-                    raise http_error
-                raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+            prompt_text = self._load_from_prompthub(prompt)
 
         # if it's a path to a YAML file
         elif len(prompt) < 255 and Path(prompt).exists():
-            with open(prompt, "r", encoding="utf-8") as yaml_file:
-                prompt_template_parsed = yaml.safe_load(yaml_file.read())
-                if not isinstance(prompt_template_parsed, dict):
-                    raise ValueError("The prompt loaded is not a prompt YAML file.")
-                name = prompt_template_parsed["name"]
-                prompt_text = prompt_template_parsed["prompt_text"]
+            name, prompt_text = self._load_from_file(prompt)
 
         # Otherwise it's a on-the-fly prompt text
         else:
@@ -394,6 +378,34 @@ class PromptTemplate(BasePromptTemplate, ABC):
             output_parser_type = output_parser["type"]
             output_parser_params = output_parser.get("params", {})
             self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
+
+    def _load_from_legacy_template(self, name: str) -> Tuple[str, BaseOutputParser]:
+        warnings.warn(
+            f"You're using a legacy prompt template '{name}', "
+            "we strongly suggest you use prompts from the official Haystack PromptHub: "
+            "https://prompthub.deepset.ai/"
+        )
+        prompt_text = LEGACY_DEFAULT_TEMPLATES[name]["prompt"]
+        output_parser = LEGACY_DEFAULT_TEMPLATES[name].get("output_parser")
+        return prompt_text, output_parser
+
+    def _load_from_prompthub(self, name: str) -> str:
+        try:
+            prompt_text = self._fetch_from_prompthub(name)
+        except HTTPError as http_error:
+            if http_error.response.status_code != 404:
+                raise http_error
+            raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
+        return prompt_text
+
+    def _load_from_file(self, path: str) -> Tuple[str, str]:
+        with open(path, "r", encoding="utf-8") as yaml_file:
+            prompt_template_parsed = yaml.safe_load(yaml_file.read())
+            if not isinstance(prompt_template_parsed, dict):
+                raise ValueError("The prompt loaded is not a prompt YAML file.")
+            name = prompt_template_parsed["name"]
+            prompt_text = prompt_template_parsed["prompt_text"]
+        return name, prompt_text
 
     @property
     def output_variable(self) -> Optional[str]:
