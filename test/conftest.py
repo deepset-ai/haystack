@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 import os
 import re
-from unittest.mock import patch
 from functools import wraps
 
 import requests_cache
