@@ -4,6 +4,7 @@ from typing import Optional, Union, List, Dict, Any, Tuple
 from unittest.mock import patch, Mock, MagicMock
 
 import pytest
+from prompthub import Prompt
 from transformers import GenerationConfig, TextStreamer
 
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
@@ -14,9 +15,14 @@ from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, Defau
 
 @pytest.fixture
 def mock_prompthub():
-    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
-        mock_prompthub.side_effect = (
-            lambda name: "This is a test prompt. Use your knowledge to answer this question: {question}"
+    with patch("haystack.nodes.prompt.prompt_template.fetch_from_prompthub") as mock_prompthub:
+        mock_prompthub.return_value = Prompt(
+            name="deepset/test",
+            tags=["test"],
+            meta={"author": "test"},
+            version="v0.0.0",
+            text="This is a test prompt. Use your knowledge to answer this question: {question}",
+            description="test prompt",
         )
         yield mock_prompthub
 

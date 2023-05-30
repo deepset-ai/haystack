@@ -93,7 +93,6 @@ class PromptNode(BaseComponent):
             },
         )
         super().__init__()
-        self._prompt_templates_cache: Dict[str, PromptTemplate] = {}
 
         # If we don't set _default_template here Pylint fails with error W0201 because it can't see that
         # it's set in default_prompt_template, so we set it explicitly to None to avoid it failing
@@ -214,16 +213,10 @@ class PromptNode(BaseComponent):
         if isinstance(prompt_template, PromptTemplate):
             return prompt_template
 
-        # If it's the name of a template that was used already
-        if prompt_template in self._prompt_templates_cache:
-            return self._prompt_templates_cache[prompt_template]
-
         output_parser = None
         if self.default_prompt_template:
             output_parser = self.default_prompt_template.output_parser
-        template = PromptTemplate(prompt_template, output_parser=output_parser)
-        self._prompt_templates_cache[prompt_template] = template
-        return template
+        return PromptTemplate(prompt_template, output_parser=output_parser)
 
     def prompt_template_params(self, prompt_template: str) -> List[str]:
         """

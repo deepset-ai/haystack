@@ -47,7 +47,9 @@ PROMPTHUB_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30.0))
 PROMPTHUB_BACKOFF = float(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10.0))
 PROMPTHUB_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
-PROMPTHUB_CACHE_PATH = os.environ.get("PROMPTHUB_CACHE_PATH", user_data_dir("haystack", "deepset") / "prompthub_cache")
+PROMPTHUB_CACHE_PATH = os.environ.get(
+    "PROMPTHUB_CACHE_PATH", Path(user_data_dir("haystack", "deepset")) / "prompthub_cache"
+)
 
 
 #############################################################################
@@ -316,7 +318,9 @@ def cache_prompt(data: prompthub.Prompt):
 
     :param data: the prompthub.Prompt object from PromptHub.
     """
-    data.to_yaml(Path(PROMPTHUB_CACHE_PATH / f"{data.name}.yml"))
+    path = Path(PROMPTHUB_CACHE_PATH / f"{data.name}.yml")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data.to_yaml(path)
 
 
 class PromptTemplate(BasePromptTemplate, ABC):
@@ -429,7 +433,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
             return self._load_from_file(name)[1]
         try:
             data = fetch_from_prompthub(name)
-            cache_prompt(data)
+            if os.environ.get("PROMPTHUB_CACHE_ENABLED", "true").lower() not in ("0", "false", "f"):
+                cache_prompt(data)
 
         except HTTPError as http_error:
             if http_error.response.status_code != 404:
