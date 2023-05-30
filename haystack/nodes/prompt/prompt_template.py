@@ -70,7 +70,7 @@ PROMPTHUB_CACHE_PATH = os.environ.get(
 #############################################################################
 
 
-LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict[str, Any]] = {
+LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict] = {
     # DO NOT ADD ANY NEW TEMPLATE IN HERE!
     "question-answering": {
         "prompt": "Given the context please answer the question. Context: {join(documents)}; Question: "
@@ -318,7 +318,7 @@ def cache_prompt(data: prompthub.Prompt):
 
     :param data: the prompthub.Prompt object from PromptHub.
     """
-    path = Path(PROMPTHUB_CACHE_PATH / f"{data.name}.yml")
+    path = Path(PROMPTHUB_CACHE_PATH) / f"{data.name}.yml"
     path.parent.mkdir(parents=True, exist_ok=True)
     data.to_yaml(path)
 
@@ -417,7 +417,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             output_parser_params = output_parser.get("params", {})
             self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
 
-    def _load_from_legacy_template(self, name: str) -> Tuple[str, BaseOutputParser]:
+    def _load_from_legacy_template(self, name: str) -> Tuple[str, Any]:
         warnings.warn(
             f"You're using a legacy prompt template '{name}', "
             "we strongly suggest you use prompts from the official Haystack PromptHub: "
@@ -428,7 +428,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         return prompt_text, output_parser
 
     def _load_from_prompthub(self, name: str) -> str:
-        prompt_path = PROMPTHUB_CACHE_PATH / f"{name}.yml"
+        prompt_path = Path(PROMPTHUB_CACHE_PATH) / f"{name}.yml"
         if Path(prompt_path).exists():
             return self._load_from_file(prompt_path)[1]
         try:
@@ -442,7 +442,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             raise PromptNotFoundError(f"Prompt template named '{name}' not available in the Prompt Hub.")
         return data.text
 
-    def _load_from_file(self, path: str) -> Tuple[str, str]:
+    def _load_from_file(self, path: Union[Path, str]) -> Tuple[str, str]:
         with open(path, "r", encoding="utf-8") as yaml_file:
             prompt_template_parsed = yaml.safe_load(yaml_file.read())
             if not isinstance(prompt_template_parsed, dict):
