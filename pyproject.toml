@@ -53,7 +53,7 @@ dependencies = [
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
   "generalimport", # Optional imports
-  "prompthub-py",
+  "prompthub-py==3.0.1",
 
   # Utils
   "tqdm",  # progress bars in model download and training scripts
