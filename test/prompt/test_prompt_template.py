@@ -1,5 +1,6 @@
 from typing import Set, Type, List
 import textwrap
+import os
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -8,17 +9,35 @@ import prompthub
 from haystack.nodes.prompt import PromptTemplate
 from haystack.nodes.prompt.prompt_node import PromptNode
 from haystack.nodes.prompt.prompt_template import PromptTemplateValidationError, LEGACY_DEFAULT_TEMPLATES
+from haystack.nodes.prompt import prompt_template
 from haystack.nodes.prompt.shapers import AnswerParser
 from haystack.pipelines.base import Pipeline
 from haystack.schema import Answer, Document
 
 
 @pytest.fixture
+def enable_prompthub_cache(monkeypatch):
+    monkeypatch.setenv("PROMPTHUB_CACHE_ENABLED", True)
+
+
+@pytest.fixture
+def prompthub_cache_path(monkeypatch, tmp_path):
+    cache_path = tmp_path / "cache"
+    monkeypatch.setattr(prompt_template, "PROMPTHUB_CACHE_PATH", cache_path)
+    yield cache_path
+
+
+@pytest.fixture
 def mock_prompthub():
-    with patch("haystack.nodes.prompt.prompt_template.PromptTemplate._fetch_from_prompthub") as mock_prompthub:
-        mock_prompthub.side_effect = [
-            ("deepset/test-prompt", "This is a test prompt. Use your knowledge to answer this question: {question}")
-        ]
+    with patch("haystack.nodes.prompt.prompt_template.fetch_from_prompthub") as mock_prompthub:
+        mock_prompthub.return_value = prompthub.Prompt(
+            name="deepset/test-prompt",
+            tags=["test"],
+            meta={"author": "test"},
+            version="v0.0.0",
+            text="This is a test prompt. Use your knowledge to answer this question: {question}",
+            description="test prompt",
+        )
         yield mock_prompthub
 
 
@@ -27,6 +46,39 @@ def test_prompt_templates_from_hub():
     with patch("haystack.nodes.prompt.prompt_template.prompthub") as mock_prompthub:
         PromptTemplate("deepset/question-answering")
         mock_prompthub.fetch.assert_called_with("deepset/question-answering", timeout=30)
+
+
+@pytest.mark.unit
+def test_prompt_templates_from_hub_prompts_are_cached(prompthub_cache_path, enable_prompthub_cache, mock_prompthub):
+    PromptTemplate("deepset/test-prompt")
+    assert (prompthub_cache_path / "deepset" / "test-prompt.yml").exists()
+
+
+@pytest.mark.unit
+def test_prompt_templates_from_hub_prompts_are_not_cached_if_disabled(prompthub_cache_path, mock_prompthub):
+    PromptTemplate("deepset/test-prompt")
+    assert not (prompthub_cache_path / "deepset" / "test-prompt.yml").exists()
+
+
+@pytest.mark.unit
+def test_prompt_templates_from_hub_cached_prompts_are_used(
+    prompthub_cache_path, enable_prompthub_cache, mock_prompthub
+):
+    test_path = prompthub_cache_path / "deepset" / "another-test.yml"
+    test_path.parent.mkdir(parents=True, exist_ok=True)
+    data = prompthub.Prompt(
+        name="deepset/another-test",
+        text="this is the prompt text",
+        description="test prompt description",
+        tags=["another-test"],
+        meta={"authors": ["vblagoje"]},
+        version="v0.1.1",
+    )
+    data.to_yaml(test_path)
+
+    template = PromptTemplate("deepset/another-test")
+    mock_prompthub.fetch.assert_not_called()
+    assert template.prompt_text == "this is the prompt text"
 
 
 @pytest.mark.unit
@@ -45,10 +97,10 @@ def test_prompt_templates_from_file(tmp_path):
             textwrap.dedent(
                 """
         name: deepset/question-answering
-        prompt_text: |
-                    Given the context please answer the question. Context: {join(documents)};
-                    Question: {query};
-                    Answer:
+        text: |
+            Given the context please answer the question. Context: {join(documents)};
+            Question: {query};
+            Answer:
         description: A simple prompt to answer a question given a set of documents
         tags:
         - question-answering

@@ -54,6 +54,7 @@ dependencies = [
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
   "generalimport", # Optional imports
   "prompthub-py==3.0.1",
+  "platformdirs",
 
   # Utils
   "tqdm",  # progress bars in model download and training scripts
