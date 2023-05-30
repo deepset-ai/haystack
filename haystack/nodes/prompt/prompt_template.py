@@ -417,8 +417,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             output_parser_params = output_parser.get("params", {})
             self.output_parser = BaseComponent._create_instance(output_parser_type, output_parser_params)
 
-    @staticmethod
-    def _load_from_legacy_template(name: str) -> Tuple[str, BaseOutputParser]:
+    def _load_from_legacy_template(self, name: str) -> Tuple[str, BaseOutputParser]:
         warnings.warn(
             f"You're using a legacy prompt template '{name}', "
             "we strongly suggest you use prompts from the official Haystack PromptHub: "
@@ -429,8 +428,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
         return prompt_text, output_parser
 
     def _load_from_prompthub(self, name: str) -> str:
-        if Path(PROMPTHUB_CACHE_PATH / f"{name}.yml").exists():
-            return self._load_from_file(name)[1]
+        prompt_path = PROMPTHUB_CACHE_PATH / f"{name}.yml"
+        if Path(prompt_path).exists():
+            return self._load_from_file(prompt_path)[1]
         try:
             data = fetch_from_prompthub(name)
             if os.environ.get("PROMPTHUB_CACHE_ENABLED", "true").lower() not in ("0", "false", "f"):
@@ -448,7 +448,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             if not isinstance(prompt_template_parsed, dict):
                 raise ValueError("The prompt loaded is not a prompt YAML file.")
             name = prompt_template_parsed["name"]
-            prompt_text = prompt_template_parsed["prompt_text"]
+            prompt_text = prompt_template_parsed["text"]
         return name, prompt_text
 
     @property

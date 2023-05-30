@@ -138,10 +138,10 @@ def test_get_prompt_template_local_file(mock_model, tmp_path, mock_prompthub):
         ptf.write(
             """
 name: my_prompts/question-answering
-prompt_text: |
-            Given the context please answer the question. Context: {join(documents)};
-            Question: {query};
-            Answer:
+text: |
+    Given the context please answer the question. Context: {join(documents)};
+    Question: {query};
+    Answer:
 description: A simple prompt to answer a question given a set of documents
 tags:
   - question-answering
