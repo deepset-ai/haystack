@@ -887,7 +887,7 @@ class FARMReader(BaseReader):
                          'answer': 'Eddard,',
                          'context': "She travels with her father, Eddard, to King's Landing when he is",
                          'score': 0.9787139466668613,
-                         'offsets_in_context': [Span(start=29, end=35],
+                         'offsets_in_document': [Span(start=29, end=35],
                          'offsets_in_context': [Span(start=347, end=353],
                          'document_id': '88d1ed769d003939d3a0d28034464ab2'
                          ),...
