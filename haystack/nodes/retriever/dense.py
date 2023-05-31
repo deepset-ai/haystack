@@ -1508,7 +1508,7 @@ class EmbeddingRetriever(DenseRetriever):
                                   If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
-        :param api_base: The OpenAI API key base, defaults to `"https://api.openai.com/v1"`
+        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`
         :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
         :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
                                This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
