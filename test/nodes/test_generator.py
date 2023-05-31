@@ -12,6 +12,14 @@ from haystack.nodes import PromptTemplate
 import logging
 from ..conftest import fail_at_version
 
+def test_openai_answer_generation():
+    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
+    # make sure that we can use it with the retriever selection
+    openai_generator = OpenAIAnswerGenerator(
+            api_key="fake_api_key", model="text-babbage-001", top_k=1, api_base="http://api.openai.com/v1"
+    )
+    assert openai_generator.model == "text-babbage-001"
+    assert openai_generator.api_base == "http://api.openai.com/v1"
 
 @pytest.mark.unit
 @fail_at_version(1, 18)
@@ -234,7 +242,7 @@ def test_openai_answer_generator_pipeline_max_tokens():
     # mock load_openai_tokenizer to avoid accessing the internet to init tiktoken
     with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
         openai_generator = OpenAIAnswerGenerator(
-            api_key="fake_api_key", model="text-babbage-001", top_k=1, api_base="https://api.openai.com/v1"
+            api_key="fake_api_key", model="text-babbage-001", top_k=1
         )
 
         pipeline.add_node(component=openai_generator, name="generator", inputs=["Query"])
