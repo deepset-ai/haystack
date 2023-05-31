@@ -334,6 +334,7 @@ def test_openai_embedding_retriever_selection():
     assert er.model_format == "openai"
     assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
     assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
+    assert er.api_base == "https://api.openai.com/v1"
 
     # but also support old babbage and other text-search-<modelname>-*-001 models
     er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
