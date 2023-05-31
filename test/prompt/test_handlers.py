@@ -2,8 +2,11 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.nodes.prompt.invocation_layer.handlers import AnthropicTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import (
+    DefaultTokenStreamingHandler,
+    DefaultPromptHandler,
+    AnthropicTokenStreamingHandler,
+)
 
 
 @pytest.mark.integration
@@ -84,7 +87,7 @@ def test_flan_prompt_handler():
 @pytest.mark.unit
 @patch("builtins.print")
 def test_anthropic_token_streaming_handler(mock_print):
-    handler = AnthropicTokenStreamingHandler()
+    handler = AnthropicTokenStreamingHandler(DefaultTokenStreamingHandler())
 
     res = handler(" This")
     assert res == " This"
