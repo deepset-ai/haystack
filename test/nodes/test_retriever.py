@@ -38,7 +38,6 @@ from ..conftest import MockBaseRetriever, fail_at_version
 
 
 # TODO check if we this works with only "memory" arg
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
     [
@@ -81,7 +80,6 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
         assert res[0].meta["name"] == "filename1"
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
     [
@@ -122,7 +120,6 @@ def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_sto
     assert len(result) == 0
 
 
-@pytest.mark.integration
 def test_tfidf_retriever_multiple_indexes():
     docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
     docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
@@ -138,7 +135,6 @@ def test_tfidf_retriever_multiple_indexes():
     assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
 
 
-@pytest.mark.integration
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
     mock_document = Document(id="0", content="test")
@@ -150,7 +146,6 @@ def test_retrieval_empty_query(document_store: BaseDocumentStore):
     assert result[0]["documents"][0][0] == mock_document
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
@@ -169,7 +164,6 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
     assert res[0][0].meta["name"] == "filename1"
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["embedding", "dpr", "tfidf"], indirect=True)
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
@@ -191,7 +185,6 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
     assert res[1][0].meta["name"] == "filename2"
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["bm25"], indirect=True)
 def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
@@ -223,7 +216,6 @@ def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, docu
     assert res[1][0].meta["name"] == "filename2"
 
 
-@pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_elasticsearch_custom_query():
     client = Elasticsearch()
@@ -326,7 +318,6 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
-@pytest.mark.integration
 def test_openai_embedding_retriever_selection():
     # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
     # make sure that we can use it with the retriever selection
