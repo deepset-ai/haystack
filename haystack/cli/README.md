@@ -12,3 +12,33 @@
 This is the repository where we keep the code for the Haystack CLI.
 
 To contribute to the tutorials please check out our [Contributing Guidelines](./Contributing.md)
+
+## Available commands
+
+### `haystack prompt fetch`
+
+```
+Usage: haystack prompt fetch [OPTIONS] [PROMPT_NAME]...
+
+  Downloads a prompt from the official Haystack PromptHub and saves it locally
+  to ease use in environments with no network.
+
+  PROMPT_NAME can be specified multiple times.
+
+  PROMPTHUB_CACHE_PATH environment variable can be set to change the default
+  folder in which the prompts will be saved in.
+
+  If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for
+  Haystack invocations.
+
+  The Haystack PromptHub is https://prompthub.deepset.ai/
+
+Options:
+  --help  Show this message and exit.
+```
+
+Example usage:
+
+```
+haystack prompt fetch deepset/conversational-agent-with-tools deepset/summarization
+```
