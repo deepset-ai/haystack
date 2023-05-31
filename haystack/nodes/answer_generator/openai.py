@@ -54,7 +54,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
-        :param api_base The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`
+        :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
