@@ -41,8 +41,9 @@ def benchmark_querying(pipeline: Pipeline, eval_set: Path) -> Dict:
     """
     try:
         # Load eval data
-        labels, queries = load_eval_data(eval_set)
+        labels, _ = load_eval_data(eval_set)
         multi_labels = aggregate_labels(labels)
+        queries = [label.query for label in multi_labels]
 
         # Run querying
         start_time = perf_counter()
