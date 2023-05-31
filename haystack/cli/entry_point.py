@@ -1,7 +1,7 @@
 import click
 
 from haystack import __version__
-from haystack.preview.cli.prompt import prompt
+from haystack.cli.prompt import prompt
 
 
 @click.group()
