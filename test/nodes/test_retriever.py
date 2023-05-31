@@ -322,12 +322,12 @@ def test_openai_embedding_retriever_selection():
     # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
     # make sure that we can use it with the retriever selection
     er = EmbeddingRetriever(
-        embedding_model="text-embedding-ada-002", document_store=None, api_base="https://api.openai.com/v1"
+        embedding_model="text-embedding-ada-002", document_store=None, api_base="http://api.openai.com/v1"
     )
     assert er.model_format == "openai"
     assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
     assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
-    assert er.api_base == "https://api.openai.com/v1"
+    assert er.api_base == "http://api.openai.com/v1"
 
     # but also support old ada and other text-search-<modelname>-*-001 models
     er = EmbeddingRetriever(embedding_model="ada", document_store=None)
