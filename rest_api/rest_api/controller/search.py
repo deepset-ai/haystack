@@ -69,7 +69,7 @@ def query_streaming(request: QueryRequest):
         iterator = _get_streaming_iterator(query_pipeline, request)
         if iterator == None:
             raise HTTPException(
-                status_code=501, detail="The pipeline cannot support the streaming mode. The PromptNode is not found!"
+                status_code=501, detail="The pipeline cannot support streaming mode. The PromptNode is not found!"
             )
         return StreamingResponse(iterator, media_type="text/event-stream")
 

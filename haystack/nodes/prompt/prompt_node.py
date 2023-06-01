@@ -282,12 +282,12 @@ class PromptNode(BaseComponent):
                 - prompt template yaml: Uses the prompt template specified by the given YAML.
                 - prompt text: Uses a copy of the default prompt template with the given prompt text.
         :param generation_kwargs: The generation_kwargs are used to customize text generation for the underlying pipeline.
-        :param stream: whether the PromptNode enables the token streaming mode. You can assign a stream_handler to
+        :param stream: Enables or disables token streaming mode. You can assign a `stream_handler` to
         handle these streaming tokens.
-        :param return_iterator: whether the PromptNode output includes a streaming iterator of TextIteratorStreamer.
-        If True, the run() function run in non-blocked mode and return a iterator in output['iterator'].
-        :param stream_handler: a customized stream handler of TokenStreamingHandler to handle the token streaming.
-        if return_iterator is True, stream_handler is not support.
+        :param return_iterator: Includes a streaming iterator of the TextIteratorStreamer in output.
+            If set to True, the run() function runs in an unblocked mode and returns an iterator in output['iterator'].
+        :param stream_handler: A customized stream handler of TokenStreamingHandler.
+            If `return_iterator` is True, `stream_handler` is not supported.
         """
         # prompt_collector is an empty list, it's passed to the PromptNode that will fill it with the rendered prompts,
         # so that they can be returned by `run()` as part of the pipeline's debug output.

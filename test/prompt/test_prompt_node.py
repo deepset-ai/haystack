@@ -200,8 +200,8 @@ def test_invalid_template_params(mock_model, mock_prompthub):
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
 def test_prompt_node_streaming_iterator_on_call(mock_model):
     """
-    Verifies that invoke function of PromptNode receives the corrected arguments,
-    when calling PromptNode with stream and return_iterator is True
+    Verifies that invoke function of PromptNode receives the corrected arguments
+    when calling PromptNode with stream and return_iterator is True.
     """
     node = PromptNode()
     node.prompt_model = mock_model
@@ -215,8 +215,8 @@ def test_prompt_node_streaming_iterator_on_call(mock_model):
 @pytest.mark.unit
 def test_prompt_node_hf_model_streaming_iterator_output():
     """
-    Verifies PromptNode output when constructing PromptNode with return_iterator and stream of model_kwargs is True,
-    the returned output should be a iterator of transformers.generation.streamers.TextIteratorStreamer.
+    Verifies PromptNode output when constructing PromptNode with return_iterator and stream of model_kwargs is True.
+    The returned output should be an iterator of transformers.generation.streamers.TextIteratorStreamer.
     """
     pn = PromptNode(model_kwargs={"stream": True, "return_iterator": True})
     iterator = pn("What is the capital of Germany?")[0]
@@ -229,8 +229,8 @@ def test_prompt_node_hf_model_streaming_iterator_output():
 @pytest.mark.unit
 def test_prompt_node_hf_model_pipeline_with_streaming_mode():
     """
-    Verifies PromptNode output when constructing PromptNode with return_iterator and stream of model_kwargs is True,
-    the returned output should be a iterator of transformers.generation.streamers.TextIteratorStreamer.
+    Verifies PromptNode output when constructing PromptNode with return_iterator and stream of model_kwargs is True.
+    The returned output should be an iterator of transformers.generation.streamers.TextIteratorStreamer.
     """
     node = PromptNode(output_variable="result")
     pipe = Pipeline()
