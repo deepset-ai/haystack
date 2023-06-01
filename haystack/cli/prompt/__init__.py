@@ -1,6 +1,6 @@
 import click
 
-from haystack.preview.cli.prompt import fetch
+from haystack.cli.prompt import fetch
 
 
 @click.group(short_help="Prompts related commands")

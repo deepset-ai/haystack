@@ -112,6 +112,7 @@ jobs:
           - document_stores
           - nodes
           - agents
+          - cli
           - preview
           - prompt
           - pipelines

@@ -220,7 +220,7 @@ all-gpu = [
 ]
 
 [project.scripts]
-haystack = "haystack.preview.cli.entry_point:main"
+haystack = "haystack.cli.entry_point:main"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
