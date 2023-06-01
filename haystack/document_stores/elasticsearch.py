@@ -56,7 +56,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
-        batch_size: int = 1000,
+        batch_size: int = 10_000,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
