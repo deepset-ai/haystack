@@ -62,7 +62,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         create_index: bool = True,
         refresh_type: str = "wait_for",
         similarity: str = "dot_product",
-        timeout: int = 30,
+        timeout: int = 300,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         index_type: str = "flat",
@@ -505,7 +505,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         )
 
         logger.debug("Retriever query: %s", body)
-        result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
             self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
@@ -1518,7 +1518,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             }
                             doc_updates.append(update)
 
-                    bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                    bulk(self.client, doc_updates, refresh=self.refresh_type, headers=headers)
                     progress_bar.update(batch_size)
         finally:
             opensearch_logger.setLevel(original_log_level)
