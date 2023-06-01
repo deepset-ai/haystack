@@ -59,7 +59,8 @@ def run_benchmark(pipeline_yaml: Path) -> Dict:
     else:
         raise ValueError("Pipeline must be a retriever, reader, or retriever-reader pipeline.")
 
-    results["config_file"] = pipeline_config
+    pipeline_config["benchmark_config"] = benchmark_config
+    results["config"] = pipeline_config
     return results
 
 
