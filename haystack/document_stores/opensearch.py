@@ -362,6 +362,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if index is None:
             index = self.index
 
+        batch_size = batch_size or self.batch_size
+
         if self.knn_engine == "faiss" and self.similarity == "cosine":
             field_map = self._create_document_field_map()
             documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
