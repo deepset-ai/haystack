@@ -13,7 +13,7 @@ from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color, AgentTokenStreamingHandler
-from haystack.agents.utils import print_text
+from haystack.agents.utils import print_text, react_parameter_resolver
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -265,14 +265,6 @@ class Agent:
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        react_parameter_resolver: Callable[
-            [str, Agent, AgentStep, Dict[str, Any]], Dict[str, Any]
-        ] = lambda query, agent, agent_step, **kwargs: {
-            "query": query,
-            "tool_names": agent.tm.get_tool_names(),
-            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-            "transcript": agent_step.transcript,
-        }
         self.prompt_parameters_resolver = (
             prompt_parameters_resolver if prompt_parameters_resolver else react_parameter_resolver
         )
