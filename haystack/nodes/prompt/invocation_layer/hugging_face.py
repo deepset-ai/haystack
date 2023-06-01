@@ -124,7 +124,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     def _prepare_pipeline_kwargs(self, **kwargs) -> Dict[str, Any]:
         """
-        Sanitizes and prepares the kwargs passed to the transformers pipeline function
+        Sanitizes and prepares the kwargs passed to the transformers pipeline function.
         For more details about pipeline kwargs in general, see Hugging Face
         [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
         """
