@@ -74,6 +74,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         knn_engine: str = "nmslib",
         knn_parameters: Optional[Dict] = None,
         ivf_train_size: Optional[int] = None,
+        batch_size: int = 10_000,
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.
@@ -165,6 +166,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                index type and knn parameters). If `0`, training doesn't happen automatically but needs
                                to be triggered manually via the `train_index` method.
                                Default: `None`
+        :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
+                           memory issues, decrease the batch_size.
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -243,6 +246,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
+            batch_size=batch_size,
         )
 
         # Let the base class catch the right error from the Opensearch client
@@ -321,7 +325,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -357,6 +361,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         if index is None:
             index = self.index
+
+        batch_size = batch_size or self.batch_size
 
         if self.knn_engine == "faiss" and self.similarity == "cosine":
             field_map = self._create_document_field_map()
@@ -529,6 +535,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
+        batch_size: Optional[int] = None,
     ) -> List[List[Document]]:
         """
         Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
@@ -605,17 +612,19 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-        :return:
+                            Otherwise, raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param batch_size: Number of query embeddings to process at once. If not specified, self.batch_size is used.
         """
         if index is None:
             index = self.index
+
+        batch_size = batch_size or self.batch_size
 
         if self.index_type in ["ivf", "ivf_pq"] and not self._ivf_model_exists(index=index):
             self._ivf_index_not_trained_error(index=index, headers=headers)
 
         return super().query_by_embedding_batch(
-            query_embs, filters, top_k, index, return_embedding, headers, scale_score
+            query_embs, filters, top_k, index, return_embedding, headers, scale_score, batch_size
         )
 
     def query(
