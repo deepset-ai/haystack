@@ -74,7 +74,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         knn_engine: str = "nmslib",
         knn_parameters: Optional[Dict] = None,
         ivf_train_size: Optional[int] = None,
-        batch_size: int = 1000,
+        batch_size: int = 10_000,
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the Amazon OpenSearch Service.

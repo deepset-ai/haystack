@@ -70,7 +70,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
-        batch_size: int = 1000,
+        batch_size: int = 10_000,
     ):
         super().__init__()
 
