@@ -38,13 +38,13 @@ class DefaultTokenStreamingHandler(TokenStreamingHandler):
 
 class AnthropicTokenStreamingHandler(TokenStreamingHandler):
     """
-    Anthropic has a peculiar way of handling streaming responses
+    Anthropic has an unusual way of handling streaming responses
     as it returns all the tokens generated up to that point for each
     response.
     This makes it hard to use DefaultTokenStreamingHandler as the user
     would see the generated text printed multiple times.
 
-    This streaming handler handles the repeating text gracefully and prints
+    This streaming handler tackles the repeating text and prints
     only the newly generated part.
     """
 
@@ -54,11 +54,11 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
 
     def __call__(self, token_received: str, **kwargs) -> str:
         """
-        When the handler is called directly with a response string from Anthropic
-        we split it comparing with the previously received text by this handler
-        and returns only the part that is new.
+        When the handler is called directly with a response string from Anthropic,
+        we split it, comparing it with the previously received text by this handler,
+        and return only the new part.
 
-        If the text is completely different from the previously received one we
+        If the text is completely different from the previously received one, we
         replace it and return it in full.
 
         :param token_received: Text response received by Anthropic backend.
