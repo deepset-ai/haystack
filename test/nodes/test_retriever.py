@@ -321,13 +321,11 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
 def test_openai_embedding_retriever_selection():
     # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
     # make sure that we can use it with the retriever selection
-    er = EmbeddingRetriever(
-        embedding_model="text-embedding-ada-002", document_store=None, api_base="http://api.openai.com/v1"
-    )
+    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
     assert er.model_format == "openai"
     assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
     assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
-    assert er.api_base == "http://api.openai.com/v1"
+    assert er.api_base == "https://api.openai.com/v1"
 
     # but also support old ada and other text-search-<modelname>-*-001 models
     er = EmbeddingRetriever(embedding_model="ada", document_store=None)
@@ -1274,3 +1272,35 @@ def test_web_retriever_mode_snippets(monkeypatch):
     web_retriever = WebRetriever(api_key="", top_search_results=2)
     result = web_retriever.retrieve(query="Who is the father of Arya Stark?")
     assert result == expected_search_results["documents"]
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_default_api_base(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(embedding_model="text-embedding-ada-002", api_key="fake_api_key")
+    assert retriever.api_base == "https://api.openai.com/v1"
+
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/embeddings"
+    mock_request.reset_mock()
+
+    retriever.embed_documents(documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/embeddings"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_custom_api_base(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(
+            embedding_model="text-embedding-ada-002", api_key="fake_api_key", api_base="https://fake_api_base.com"
+        )
+    assert retriever.api_base == "https://fake_api_base.com"
+
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/embeddings"
+    mock_request.reset_mock()
+
+    retriever.embed_documents(documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/embeddings"
