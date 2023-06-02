@@ -63,6 +63,7 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
+            Callable[[Any], str],
         ],
         description: str,
         output_variable: str = "results",
@@ -85,6 +86,8 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        elif callable(self.pipeline_or_node):
+            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
