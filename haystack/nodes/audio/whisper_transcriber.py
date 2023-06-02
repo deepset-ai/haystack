@@ -40,8 +40,8 @@ class WhisperTranscriber(BaseComponent):
         self,
         api_key: Optional[str] = None,
         model_name_or_path: WhisperModel = "medium",
-        api_base: str = "https://api.openai.com/v1",
         device: Optional[Union[str, torch.device]] = None,
+        api_base: str = "https://api.openai.com/v1",
     ) -> None:
         """
         Creates a WhisperTranscriber instance.
@@ -49,9 +49,9 @@ class WhisperTranscriber(BaseComponent):
         :param api_key: OpenAI API key. If None, a local installation of Whisper is used.
         :param model_name_or_path: Name of the model to use. If using a local installation of Whisper, set this to one of the following values: "tiny", "small", "medium", "large", "large-v2". If using
         the API, set thsi value to: "whisper-1" (default).
-        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param device: Device to use for inference. Only used if you're using a local
         installation of Whisper. If None, the device is automatically selected.
+        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         """
         super().__init__()
         self.api_key = api_key

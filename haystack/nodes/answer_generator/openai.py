@@ -32,7 +32,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         api_key: str,
         azure_base_url: Optional[str] = None,
         azure_deployment_name: Optional[str] = None,
-        api_base: str = "https://api.openai.com/v1",
         model: str = "text-davinci-003",
         max_tokens: int = 50,
         api_version: str = "2022-12-01",
@@ -46,6 +45,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         progress_bar: bool = True,
         prompt_template: Optional[PromptTemplate] = None,
         context_join_str: str = " ",
+        api_base: str = "https://api.openai.com/v1",
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
@@ -54,7 +54,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
-        :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-003"`
                      (from worst to best and from cheapest to most expensive). For more information about the models,
@@ -100,6 +99,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
+        :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
         """
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):

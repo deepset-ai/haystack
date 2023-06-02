@@ -45,8 +45,8 @@ class RemoteWhisperTranscriber:
         Transcribes a list of audio files into a list of Documents.
 
         :param api_key: OpenAI API key.
+        :param model_name: Name of the model to use. It now accepts only `whisper-1`.
         :param api_base: OpenAI base URL, defaults to `"https://api.openai.com/v1"`.
-        :param model_name_or_path: Name of the model to use. It now accepts only `whisper-1`.
         """
         if model_name not in get_args(WhisperRemoteModel):
             raise ValueError(
