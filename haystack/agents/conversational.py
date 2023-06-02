@@ -1,4 +1,5 @@
 from typing import Optional, Callable, Union
+import warnings
 
 from haystack.agents.base import ToolsManager, react_parameter_resolver
 from haystack.agents import Agent
@@ -66,6 +67,11 @@ class ConversationalAgent(Agent):
         If False, the Agent will wait for the LLM to finish generating the response and then process it. The default is
         True.
         """
+
+        if tools_manager is None:
+            warnings.warn(
+                "ConversationalAgent is created without Tools. This might create unexpected answers from the Agent. You can add Tools to your ConversationalAgent with `add_tool()` method"
+            )
 
         super().__init__(
             prompt_node=prompt_node,
