@@ -1291,3 +1291,10 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         # assert the resulting body is not affected by the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
+
+    @pytest.mark.unit
+    def test_write_documents_req_for_each_batch(self, mocked_document_store, documents):
+        mocked_document_store.batch_size = 2
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
+            mocked_document_store.write_documents(documents)
+            assert mocked_bulk.call_count == 5
