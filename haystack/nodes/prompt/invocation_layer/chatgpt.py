@@ -35,7 +35,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         :param api_key: The OpenAI API key.
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param kwargs: Additional keyword arguments passed to the underlying model.
-        [documentation](https://platform.openai.com/docs/api-reference/chat).
+        [See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
         """
         super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
 
