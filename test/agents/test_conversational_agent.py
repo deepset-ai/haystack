@@ -71,9 +71,9 @@ def test_init(prompt_node):
     # Test normal case
     assert isinstance(agent.memory, ConversationMemory)
     assert callable(agent.prompt_parameters_resolver)
-    assert agent.prompt_template == "conversational-agent-with-tools"
     assert agent.max_steps == 5
     assert agent.final_answer_pattern == r"Final Answer\s*:\s*(.*)"
+    assert agent.prompt_template.name == "conversational-agent"
 
 
 @pytest.mark.unit

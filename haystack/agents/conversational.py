@@ -1,10 +1,9 @@
 from typing import Optional, Callable, Union
 
-from haystack.agents.base import ToolsManager
+from haystack.agents.base import ToolsManager, react_parameter_resolver
 from haystack.agents import Agent
 from haystack.agents.memory import Memory, ConversationMemory
 from haystack.nodes import PromptNode, PromptTemplate
-from haystack.agents.utils import react_parameter_resolver
 
 
 class ConversationalAgent(Agent):
@@ -54,7 +53,7 @@ class ConversationalAgent(Agent):
 
         :param prompt_node: A PromptNode used to communicate with LLM.
         :param prompt_template: A string or PromptTemplate instance to use as the prompt template. If no prompt_template
-        is provided, the agent will use the "conversational-agent-with-tools" template.
+        is provided, the agent will use the "conversational-agent" template.
         :param tools_manager: A ToolsManager instance to manage tools for the agent. If no tools_manager is provided,
         the agent will install an empty ToolsManager instance.
         :param max_steps: The maximum number of steps for the agent to take, defaults to 5.
@@ -72,7 +71,7 @@ class ConversationalAgent(Agent):
             prompt_node=prompt_node,
             prompt_template=prompt_template
             if prompt_template
-            else prompt_node.default_prompt_template or "conversational-agent-with-tools",
+            else prompt_node.default_prompt_template or "conversational-agent",
             tools_manager=tools_manager,
             memory=memory,
             prompt_parameters_resolver=prompt_parameters_resolver,
