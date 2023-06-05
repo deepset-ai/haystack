@@ -48,7 +48,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         create_index: bool = True,
         refresh_type: str = "wait_for",
         similarity: str = "dot_product",
-        timeout: int = 30,
+        timeout: int = 300,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         scroll: str = "1d",
@@ -56,6 +56,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
+        batch_size: int = 10_000,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -127,6 +128,8 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
         :param use_system_proxy: Whether to use system proxy.
+        :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
+                           memory issues, decrease the batch_size.
 
         """
         # Base constructor might need the client to be ready, create it first
@@ -167,6 +170,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
+            batch_size=batch_size,
         )
 
         # Let the base class trap the right exception from the elasticpy client
@@ -373,7 +377,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         )
 
         try:
-            result = self.client.search(index=index, **body, request_timeout=300, headers=headers)["hits"]["hits"]
+            result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
             if len(result) == 0:
                 count_documents = self.get_document_count(index=index, headers=headers)
                 if count_documents == 0:
