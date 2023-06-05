@@ -92,7 +92,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         )
         # we check in supports class method if task_name is supported but here we check again as
         # we could have gotten the task_name from kwargs
-        if self.task_name is None or self.task_name not in ["text2text-generation", "text-generation"]:
+        if self.task_name not in ["text2text-generation", "text-generation"]:
             raise ValueError(
                 f"Task name {self.task_name} is not supported. "
                 f"We only support text2text-generation and text-generation tasks."
