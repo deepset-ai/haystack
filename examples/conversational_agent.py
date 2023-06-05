@@ -7,7 +7,11 @@ from haystack.pipelines import WebQAPipeline
 from haystack.agents.types import Color
 
 search_api_key = os.environ.get("SEARCH_API_KEY")
+if not search_api_key:
+    raise ValueError("Please set the SEARCH_API_KEY environment variable")
 model_api_key = os.environ.get("OPENAI_API_KEY")
+if not model_api_key:
+    raise ValueError("Please set the OPENAI_API_KEY environment variable")
 
 web_prompt = """
 Synthesize a comprehensive answer from the following most relevant paragraphs and the given question.
@@ -33,7 +37,7 @@ agent_prompt_node = PromptNode(
 
 conversation_history = Tool(
     name="conversation_history",
-    pipeline_or_node=lambda tool_input, **kwargs: agent.memory.load(),
+    pipeline_or_node=lambda tool_input, **kwargs: agent.memory.load(),  # type: ignore
     description="useful for when you need to remember what you've already discussed.",
     logging_color=Color.MAGENTA,
 )
@@ -58,5 +62,4 @@ else:
         user_input = input("\nHuman (type 'exit' or 'quit' to quit): ")
         if user_input.lower() == "exit" or user_input.lower() == "quit":
             break
-        else:
-            assistant_response = agent.run(user_input)
+        assistant_response = agent.run(user_input)
