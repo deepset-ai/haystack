@@ -1271,7 +1271,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         # run each query against Weaviate separately and combine the returned documents
-        for query, cur_filters in tqdm(zip(queries, filters)):
+        for query, cur_filters in zip(queries, filters):
             cur_docs = self.query(
                 query=query,
                 filters=cur_filters,
