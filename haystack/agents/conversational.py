@@ -59,7 +59,7 @@ class ConversationalAgent(Agent):
         the agent will install an empty ToolsManager instance.
         :param max_steps: The maximum number of steps for the agent to take, defaults to 5.
         :param memory: A memory object for storing conversation history and other relevant data, defaults to
-        ConversationSummaryMemory if no memory is provided.
+        ConversationMemory if no memory is provided.
         :param prompt_parameters_resolver: An optional callable for resolving prompt template parameters,
         defaults to keys: query, tool_names, tool_names_with_descriptions, transcript. Their values are set appropriately.
         :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
