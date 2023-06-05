@@ -186,7 +186,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         headers: Optional[Dict[str, str]] = None,
-        request_timeout: int = 300,
         refresh: str = "wait_for",
         _timeout: int = 1,
         _remaining_tries: int = 10,
@@ -202,14 +201,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         :param documents: List of documents to index
         :param headers: Optional headers to pass to the bulk request
-        :param request_timeout: Timeout for the bulk request
         :param refresh: Refresh policy for the bulk request
         :param _timeout: Timeout for the exponential backoff
         :param _remaining_tries: Number of remaining retries
         """
 
         try:
-            self._do_bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._do_bulk(self.client, documents, refresh=self.refresh_type, headers=headers)
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
@@ -233,7 +231,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     self._bulk(
                         documents=split_docs,
                         headers=headers,
-                        request_timeout=request_timeout,
                         refresh=refresh,
                         _timeout=_timeout * 2,
                         _remaining_tries=_remaining_tries,
@@ -453,11 +450,11 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
-                self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents_to_index, refresh=self.refresh_type, headers=headers)
                 documents_to_index = []
 
         if documents_to_index:
-            self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(documents_to_index, refresh=self.refresh_type, headers=headers)
 
     def write_labels(
         self,
@@ -512,11 +509,11 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(labels_to_index, refresh=self.refresh_type, headers=headers)
                 labels_to_index = []
 
         if labels_to_index:
-            self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(labels_to_index, refresh=self.refresh_type, headers=headers)
 
     def update_document_meta(
         self, id: str, meta: Dict[str, str], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
@@ -1439,7 +1436,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     }
                     doc_updates.append(update)
 
-                self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents=doc_updates, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
     def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
