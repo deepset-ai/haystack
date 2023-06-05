@@ -84,6 +84,7 @@ def test_constructor_with_model_name_and_device_map(mock_pipeline, mock_get_task
 
     assert layer.pipe == mock_pipeline.return_value
     mock_pipeline.assert_called_once()
+    mock_get_task.assert_called_once()
 
     args, kwargs = mock_pipeline.call_args
 
@@ -113,6 +114,8 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     )
 
     mock_pipeline.assert_called_once()
+    # mock_get_task is not called as we provided task_name parameter
+    assert not mock_get_task.called
 
     args, kwargs = mock_pipeline.call_args
 
@@ -130,6 +133,7 @@ def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     HFLocalInvocationLayer("google/flan-t5-base", some_invalid_kwarg="invalid")
 
     mock_pipeline.assert_called_once()
+    mock_get_task.assert_called_once()
 
     args, kwargs = mock_pipeline.call_args
 
@@ -160,6 +164,8 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     )
 
     mock_pipeline.assert_called_once()
+    # mock_get_task is not called as we provided task_name parameter
+    assert not mock_get_task.called
 
     args, kwargs = mock_pipeline.call_args
 
