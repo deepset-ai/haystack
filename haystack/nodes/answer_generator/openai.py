@@ -45,6 +45,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         progress_bar: bool = True,
         prompt_template: Optional[PromptTemplate] = None,
         context_join_str: str = " ",
+        api_base: str = "https://api.openai.com/v1",
     ):
         """
         :param api_key: Your API key from OpenAI. It is required for this node to work.
@@ -98,6 +99,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
+        :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
         """
         super().__init__(progress_bar=progress_bar)
         if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
@@ -144,6 +146,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
         self.api_version = api_version
+        self.api_base = api_base
         self.model = model
         self.max_tokens = max_tokens
         self.top_k = top_k
@@ -217,7 +220,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if self.using_azure:
             url = f"{self.azure_base_url}/openai/deployments/{self.azure_deployment_name}/completions?api-version={self.api_version}"
         else:
-            url = "https://api.openai.com/v1/completions"
+            url = f"{self.api_base}/completions"
 
         headers = {"Content-Type": "application/json"}
         if self.using_azure:

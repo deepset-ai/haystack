@@ -29,6 +29,7 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
         transcriber = RemoteWhisperTranscriber(api_key="just a test")
         assert transcriber.model_name == "whisper-1"
         assert transcriber.api_key == "just a test"
+        assert transcriber.api_base == "https://api.openai.com/v1"
 
     @pytest.mark.unit
     def test_init_no_key(self):
@@ -155,3 +156,31 @@ class TestRemoteWhisperTranscriber(BaseTestComponent):
                 "headers": {"Authorization": f"Bearer whatever"},
                 "timeout": OPENAI_TIMEOUT,
             }
+
+    @pytest.mark.unit
+    @patch("haystack.preview.components.audio.whisper_remote.request_with_retry")
+    def test_default_api_base(self, mock_request, preview_samples_path):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        mock_request.return_value = mock_response
+
+        transcriber = RemoteWhisperTranscriber(api_key="just a test")
+        assert transcriber.api_base == "https://api.openai.com/v1"
+
+        transcriber.transcribe(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
+        assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/audio/transcriptions"
+
+    @pytest.mark.unit
+    @patch("haystack.preview.components.audio.whisper_remote.request_with_retry")
+    def test_custom_api_base(self, mock_request, preview_samples_path):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = '{"text": "test transcription", "other_metadata": ["other", "meta", "data"]}'
+        mock_request.return_value = mock_response
+
+        transcriber = RemoteWhisperTranscriber(api_key="just a test", api_base="https://fake_api_base.com")
+        assert transcriber.api_base == "https://fake_api_base.com"
+
+        transcriber.transcribe(audio_files=[preview_samples_path / "audio" / "this is the content of the document.wav"])
+        assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/audio/transcriptions"
