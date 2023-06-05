@@ -1,4 +1,6 @@
 from unittest.mock import MagicMock
+
+import numpy as np
 import pytest
 from haystack.document_stores.search_engine import SearchEngineDocumentStore, prepare_hosts
 
@@ -166,6 +168,18 @@ class SearchEngineDocumentStoreTestAbstract:
         ]
         labels = mocked_document_store.get_all_labels()
         assert labels[0].answer.document_ids == ["fc18c987a8312e72a47fb1524f230bb0"]
+
+    @pytest.mark.unit
+    def test_query_batch_req_for_each_batch(self, mocked_document_store):
+        mocked_document_store.batch_size = 2
+        mocked_document_store.query_batch([self.query] * 3)
+        assert mocked_document_store.client.msearch.call_count == 2
+
+    @pytest.mark.unit
+    def test_query_by_embedding_batch_req_for_each_batch(self, mocked_document_store):
+        mocked_document_store.batch_size = 2
+        mocked_document_store.query_by_embedding_batch([np.array([1, 2, 3])] * 3)
+        assert mocked_document_store.client.msearch.call_count == 2
 
 
 @pytest.mark.document_store
