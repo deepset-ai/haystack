@@ -17,26 +17,29 @@ def mock_pipeline():
         yield mocked_pipeline
 
 
+@pytest.fixture
+def mock_get_task():
+    # mock get_task function
+    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task") as mock_get_task:
+        mock_get_task.return_value = "text2text-generation"
+        yield mock_get_task
+
+
 @pytest.mark.unit
-def test_constructor_with_invalid_task_name(mock_pipeline):
+def test_constructor_with_invalid_task_name(mock_pipeline, mock_get_task):
     """
     Test HFLocalInvocationLayer init with invalid task_name
     """
-    mock_get_task = Mock(return_value="text2text-generation")
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        with pytest.raises(ValueError, match="Task name custom-text2text-generation is not supported"):
-            layer = HFLocalInvocationLayer("google/flan-t5-base", task_name="custom-text2text-generation")
+    with pytest.raises(ValueError, match="Task name custom-text2text-generation is not supported"):
+        HFLocalInvocationLayer("google/flan-t5-base", task_name="custom-text2text-generation")
 
 
 @pytest.mark.unit
-def test_constructor_with_model_name_only(mock_pipeline):
+def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
     """
     Test HFLocalInvocationLayer init with model_name_or_path only
     """
-    mock_get_task = Mock(return_value="text2text-generation")
-
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        HFLocalInvocationLayer("google/flan-t5-base")
+    HFLocalInvocationLayer("google/flan-t5-base")
 
     mock_pipeline.assert_called_once()
 
@@ -72,14 +75,12 @@ def test_constructor_with_model_name_only(mock_pipeline):
 
 
 @pytest.mark.unit
-def test_constructor_with_model_name_and_device_map(mock_pipeline):
+def test_constructor_with_model_name_and_device_map(mock_pipeline, mock_get_task):
     """
     Test HFLocalInvocationLayer init with model_name_or_path and device_map
     """
-    mock_get_task = Mock(return_value="text2text-generation")
 
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        layer = HFLocalInvocationLayer("google/flan-t5-base", device="cpu", device_map="auto")
+    layer = HFLocalInvocationLayer("google/flan-t5-base", device="cpu", device_map="auto")
 
     assert layer.pipe == mock_pipeline.return_value
     mock_pipeline.assert_called_once()
@@ -96,7 +97,7 @@ def test_constructor_with_model_name_and_device_map(mock_pipeline):
 
 
 @pytest.mark.unit
-def test_constructor_with_custom_pretrained_model(mock_pipeline):
+def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     """
     Test that the constructor sets the pipeline with the pretrained model (if provided)
     """
@@ -104,15 +105,12 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline):
     model = AutoModelForSeq2SeqLM.from_pretrained("hf-internal-testing/tiny-random-t5")
     tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-t5")
 
-    mock_get_task = Mock(return_value="text2text-generation")
-
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        HFLocalInvocationLayer(
-            model_name_or_path="irrelevant_when_model_is_provided",
-            model=model,
-            tokenizer=tokenizer,
-            task_name="text2text-generation",
-        )
+    HFLocalInvocationLayer(
+        model_name_or_path="irrelevant_when_model_is_provided",
+        model=model,
+        tokenizer=tokenizer,
+        task_name="text2text-generation",
+    )
 
     mock_pipeline.assert_called_once()
 
@@ -124,14 +122,12 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline):
 
 
 @pytest.mark.unit
-def test_constructor_with_invalid_kwargs(mock_pipeline):
+def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     """
     Test HFLocalInvocationLayer init with invalid kwargs
     """
-    mock_get_task = Mock(return_value="text2text-generation")
 
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        HFLocalInvocationLayer("google/flan-t5-base", some_invalid_kwarg="invalid")
+    HFLocalInvocationLayer("google/flan-t5-base", some_invalid_kwarg="invalid")
 
     mock_pipeline.assert_called_once()
 
@@ -145,25 +141,23 @@ def test_constructor_with_invalid_kwargs(mock_pipeline):
 
 
 @pytest.mark.unit
-def test_constructor_with_various_kwargs(mock_pipeline):
+def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     """
     Test HFLocalInvocationLayer init with various kwargs, make sure all of them are passed to the pipeline
     except for the invalid ones
     """
-    mock_get_task = Mock(return_value="text2text-generation")
 
-    with patch("haystack.nodes.prompt.invocation_layer.hugging_face.get_task", mock_get_task):
-        layer = HFLocalInvocationLayer(
-            "google/flan-t5-base",
-            task_name="text2text-generation",
-            tokenizer=AutoTokenizer.from_pretrained("google/flan-t5-base"),
-            config=Mock(),
-            revision="1.1",
-            device="cpu",
-            device_map="auto",
-            first_invalid_kwarg="invalid",
-            second_invalid_kwarg="invalid",
-        )
+    HFLocalInvocationLayer(
+        "google/flan-t5-base",
+        task_name="text2text-generation",
+        tokenizer=AutoTokenizer.from_pretrained("google/flan-t5-base"),
+        config=Mock(),
+        revision="1.1",
+        device="cpu",
+        device_map="auto",
+        first_invalid_kwarg="invalid",
+        second_invalid_kwarg="invalid",
+    )
 
     mock_pipeline.assert_called_once()
 
