@@ -38,12 +38,15 @@ class RemoteWhisperTranscriber:
     class Output(ComponentOutput):
         documents: List[Document]
 
-    def __init__(self, api_key: str, model_name: WhisperRemoteModel = "whisper-1"):
+    def __init__(
+        self, api_key: str, model_name: WhisperRemoteModel = "whisper-1", api_base: str = "https://api.openai.com/v1"
+    ):
         """
         Transcribes a list of audio files into a list of Documents.
 
         :param api_key: OpenAI API key.
-        :param model_name_or_path: Name of the model to use. It now accepts only `whisper-1`.
+        :param model_name: Name of the model to use. It now accepts only `whisper-1`.
+        :param api_base: OpenAI base URL, defaults to `"https://api.openai.com/v1"`.
         """
         if model_name not in get_args(WhisperRemoteModel):
             raise ValueError(
@@ -53,6 +56,7 @@ class RemoteWhisperTranscriber:
             raise ValueError("API key is None.")
 
         self.api_key = api_key
+        self.api_base = api_base
 
         self.model_name = model_name
 
@@ -109,7 +113,7 @@ class RemoteWhisperTranscriber:
         :returns: a list of transcriptions as they are produced by the Whisper API (JSON).
         """
         translate = kwargs.pop("translate", False)
-        url = f"https://api.openai.com/v1/audio/{'translations' if translate else 'transcriptions'}"
+        url = f"{self.api_base}/audio/{'translations' if translate else 'transcriptions'}"
         data = {"model": self.model_name, **kwargs}
         headers = {"Authorization": f"Bearer {self.api_key}"}
 

@@ -1453,6 +1453,7 @@ class EmbeddingRetriever(DenseRetriever):
         azure_api_version: str = "2022-12-01",
         azure_base_url: Optional[str] = None,
         azure_deployment_name: Optional[str] = None,
+        api_base: str = "https://api.openai.com/v1",
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1512,6 +1513,7 @@ class EmbeddingRetriever(DenseRetriever):
                                This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
+        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`
         """
         if embed_meta_fields is None:
             embed_meta_fields = []
@@ -1535,6 +1537,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.api_key = api_key
+        self.api_base = api_base
         self.api_version = azure_api_version
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
