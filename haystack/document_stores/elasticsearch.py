@@ -48,7 +48,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         create_index: bool = True,
         refresh_type: str = "wait_for",
         similarity: str = "dot_product",
-        timeout: int = 30,
+        timeout: int = 300,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         scroll: str = "1d",
@@ -377,7 +377,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         )
 
         try:
-            result = self.client.search(index=index, **body, request_timeout=300, headers=headers)["hits"]["hits"]
+            result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
             if len(result) == 0:
                 count_documents = self.get_document_count(index=index, headers=headers)
                 if count_documents == 0:
