@@ -20,9 +20,24 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "gpt-3.5-turbo", max_length: Optional[int] = 500, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "gpt-3.5-turbo",
+        max_length: Optional[int] = 500,
+        api_base: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
-        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+        """
+         Creates an instance of ChatGPTInvocationLayer for OpenAI's GPT-3.5 GPT-4 models.
+
+        :param model_name_or_path: The name or path of the underlying model.
+        :param max_length: The maximum number of tokens the output text can have.
+        :param api_key: The OpenAI API key.
+        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param kwargs: Additional keyword arguments passed to the underlying model.
+        [See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+        """
+        super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
 
     def invoke(self, *args, **kwargs):
         """
@@ -125,7 +140,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/chat/completions"
+        return f"{self.api_base}/chat/completions"
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
