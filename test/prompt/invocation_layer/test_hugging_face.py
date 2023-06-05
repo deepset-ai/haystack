@@ -115,7 +115,7 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
 
     mock_pipeline.assert_called_once()
     # mock_get_task is not called as we provided task_name parameter
-    assert not mock_get_task.called
+    mock_get_task.assert_not_called()
 
     args, kwargs = mock_pipeline.call_args
 
@@ -165,7 +165,7 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
 
     mock_pipeline.assert_called_once()
     # mock_get_task is not called as we provided task_name parameter
-    assert not mock_get_task.called
+    mock_get_task.assert_not_called()
 
     args, kwargs = mock_pipeline.call_args
 
