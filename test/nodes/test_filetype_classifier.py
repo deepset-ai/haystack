@@ -2,6 +2,7 @@ import logging
 import os
 import platform
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -137,7 +138,7 @@ def test_filetype_classifier_estimate_media_extensions(tmp_path):
 
     output, edge = node.run(new_file_path)
     assert edge == f"output_5"
-    assert output == {"file_paths": [new_file_path]}
+    assert output == {"file_paths": [Path(new_file_path)]}
 
 
 @pytest.mark.unit
