@@ -449,3 +449,9 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         )
         retrieved_docs = mocked_ds.get_all_documents()
         assert retrieved_docs[0].meta["list_dict_field"] == [{"key": "value"}, {"key": "value"}]
+
+    @pytest.mark.unit
+    def test_write_documents_req_for_each_batch(self, mocked_ds, documents):
+        mocked_ds.batch_size = 2
+        mocked_ds.write_documents(documents)
+        assert mocked_ds.weaviate_client.batch.create_objects.call_count == 5
