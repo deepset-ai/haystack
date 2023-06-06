@@ -150,6 +150,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        # ensure the required dependencies were actually imported
         sqlalchemy_import.check()
 
         super().__init__()
