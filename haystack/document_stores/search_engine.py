@@ -1310,7 +1310,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         body = []
         all_documents = []
-        for query_emb, cur_filters in tqdm(zip(query_embs, filters)):
+        for query_emb, cur_filters in zip(query_embs, filters):
             cur_query_body = self._construct_dense_query_body(
                 query_emb=query_emb, filters=cur_filters, top_k=top_k, return_embedding=return_embedding
             )
