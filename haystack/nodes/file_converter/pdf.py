@@ -8,15 +8,13 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 from more_itertools import divide
 
-try:
-    import fitz
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "pdf", ie)
-
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
+with LazyImport() as fitz_import:
+    import fitz
+
 
 logger = logging.getLogger(__name__)
 

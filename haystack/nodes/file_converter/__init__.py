@@ -12,14 +12,15 @@ from haystack.nodes.file_converter.azure import AzureConverter
 from haystack.nodes.file_converter.parsr import ParsrConverter
 
 # Try to use PyMuPDF, if not available fall back to xpdf
-PDFToTextConverter = None
-with LazyImport() as fitz_import:
-    from haystack.nodes.file_converter.pdf import PDFToTextConverter
+from haystack.nodes.file_converter.pdf import PDFToTextConverter  # type: ignore
 
-    try:
-        fitz_import.check()
-    except ImportError:
-        from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable=reimported
+with LazyImport() as fitz_import:
+    import fitz
+
+try:
+    fitz_import.check()
+except ImportError:
+    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable=reimported
 
 MarkdownConverter = safe_import(
     "haystack.nodes.file_converter.markdown", "MarkdownConverter", "preprocessing"
