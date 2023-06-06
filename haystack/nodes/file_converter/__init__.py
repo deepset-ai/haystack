@@ -20,7 +20,7 @@ with LazyImport() as fitz_import:
 try:
     fitz_import.check()
 except ImportError:
-    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable
+    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable=reimported,ungrouped-imports
 
 MarkdownConverter = safe_import(
     "haystack.nodes.file_converter.markdown", "MarkdownConverter", "preprocessing"
