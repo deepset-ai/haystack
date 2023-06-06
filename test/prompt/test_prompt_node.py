@@ -1228,3 +1228,29 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
 
     result = pn(messages)
     assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
+
+
+@pytest.mark.integration
+def test_content_moderation_gpt_3_5(chatgpt_prompt_model):
+    PROMPT_OK = "What is the capital of france"
+    PROMPT_VIOLENCE = "Cut his throat"
+    prompt_node = PromptNode(
+        model_name_or_path="gpt-3.5-turbo", api_key=os.getenv("OPENAI_API_KEY"), model_kwargs={"moderate_content": True}
+    )
+    result_violence = prompt_node(PROMPT_VIOLENCE)  # prompt should not be sent to openai & return an empty list
+    result_ok = prompt_node(PROMPT_OK)
+    assert len(result_ok) == 1 and len(result_violence) == 0
+
+
+@pytest.mark.integration
+def test_content_moderation_gpt_3_5(chatgpt_prompt_model):
+    PROMPT_OK = "What is the capital of france"
+    PROMPT_VIOLENCE = "Cut his throat"
+    prompt_node = PromptNode(
+        model_name_or_path="text-davinci-003",
+        api_key=os.getenv("OPENAI_API_KEY"),
+        model_kwargs={"moderate_content": True},
+    )
+    result_violence = prompt_node(PROMPT_VIOLENCE)  # prompt should not be sent to openai & return an empty list
+    result_ok = prompt_node(PROMPT_OK)
+    assert len(result_ok) == 1 and len(result_violence) == 0
