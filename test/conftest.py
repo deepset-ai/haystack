@@ -847,5 +847,10 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
     marker = request.node.get_closest_marker("unit")
     if marker is None:
         return
-    monkeypatch.delattr("requests.sessions.Session")
-    monkeypatch.delattr("requests_cache.session.CachedSession")
+    # monkeypatch.delattr("requests.sessions.Session")
+    # monkeypatch.delattr("requests_cache.session.CachedSession")
+
+    def urlopen_mock(self, method, url, *args, **kwargs):
+        raise RuntimeError(f"The test was about to {method} {self.scheme}://{self.host}{url}")
+
+    monkeypatch.setattr("urllib3.connectionpool.HTTPConnectionPool.urlopen", urlopen_mock)
