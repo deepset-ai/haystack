@@ -156,9 +156,10 @@ def test_filetype_classifier_batched_various_media_extensions(tmp_path):
 def test_filetype_classifier_batched_same_media_extensions(tmp_path):
     test_files = []
     batch_size = 5
+    file_index = 0
     node = FileTypeClassifier(supported_types=DEFAULT_MEDIA_TYPES)
     for idx in range(batch_size):
-        test_file = tmp_path / f"test.{DEFAULT_MEDIA_TYPES[0]}"
+        test_file = tmp_path / f"test-{idx}.{DEFAULT_MEDIA_TYPES[file_index]}"
         test_files.append(test_file)
 
     # we should be able to pass a list of files with the same extension
