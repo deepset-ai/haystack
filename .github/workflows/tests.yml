@@ -128,7 +128,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,dev]
+        run: |
+          pip install .[all,dev]
+          pip uninstall -y requests
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
