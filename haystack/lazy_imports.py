@@ -34,17 +34,11 @@ class LazyImport(_DeferredImportExceptionContextManager):
             :obj:`True` will suppress any exceptions avoiding them from propagating.
 
         """
-        if isinstance(exc_value, (ImportError, SyntaxError)):
-            if isinstance(exc_value, ImportError):
-                message = (
-                    f"Failed to import '{exc_value.name}'. {self.import_error_msg.format(exc_value.name)}. "
-                    f"Original error: {exc_value}"
-                )
-            elif isinstance(exc_value, SyntaxError):
-                message = f"Failed to import '{exc_value.name}' due to a syntax error. Actual error: {exc_value}."
-            else:
-                assert False
-
+        if isinstance(exc_value, ImportError):
+            message = (
+                f"Failed to import '{exc_value.name}'. {self.import_error_msg.format(exc_value.name)}. "
+                f"Original error: {exc_value}"
+            )
             self._deferred = (exc_value, message)
             return True
         return None
