@@ -14,9 +14,7 @@ from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
-with LazyImport(
-    import_error_msg="Failed to import 'sqlalchemy'. Run 'pip install farm-haystack[sql]'. Original error: {exception}"
-) as sqlalchemy_import:
+with LazyImport(message="Run 'pip install farm-haystack[sql]'") as sqlalchemy_import:
     from sqlalchemy import (
         and_,
         func,

@@ -3,13 +3,7 @@ from types import TracebackType
 from lazy_imports.try_import import _DeferredImportExceptionContextManager
 
 
-DEFAULT_IMPORT_ERROR_MSG = (
-    "Tried to import '{module}' but failed. Make sure that the package is installed correctly to use this feature. "
-    "Actual error: {exception}."
-)
-DEFAULT_SYNTAX_ERROR_MSG = (
-    "Tried to import a package but failed due to a syntax error in {module}. Actual error: {exception}."
-)
+DEFAULT_IMPORT_ERROR_MSG = "Try 'pip install {}'"
 
 
 class LazyImport(_DeferredImportExceptionContextManager):
@@ -18,12 +12,9 @@ class LazyImport(_DeferredImportExceptionContextManager):
     error messages.
     """
 
-    def __init__(
-        self, import_error_msg: str = DEFAULT_IMPORT_ERROR_MSG, syntax_error_msg: str = DEFAULT_SYNTAX_ERROR_MSG
-    ) -> None:
+    def __init__(self, message: str = DEFAULT_IMPORT_ERROR_MSG) -> None:
         super().__init__()
-        self.import_error_msg = import_error_msg
-        self.syntax_error_msg = syntax_error_msg
+        self.import_error_msg = message
 
     def __exit__(
         self, exc_type: Optional[Type[Exception]], exc_value: Optional[Exception], traceback: Optional[TracebackType]
@@ -45,9 +36,12 @@ class LazyImport(_DeferredImportExceptionContextManager):
         """
         if isinstance(exc_value, (ImportError, SyntaxError)):
             if isinstance(exc_value, ImportError):
-                message = self.import_error_msg.format(module=exc_value.name, exception=exc_value)
+                message = (
+                    f"Failed to import '{exc_value.name}'. {self.import_error_msg.format(exc_value.name)}. "
+                    f"Original error: {exc_value}"
+                )
             elif isinstance(exc_value, SyntaxError):
-                message = self.syntax_error_msg.format(module=exc_value.filename, exception=exc_value)
+                message = f"Failed to import '{exc_value.name}' due to a syntax error. Actual error: {exc_value}."
             else:
                 assert False
 

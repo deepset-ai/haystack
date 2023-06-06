@@ -12,9 +12,7 @@ from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
 from haystack.lazy_imports import LazyImport
 
-with LazyImport(
-    import_error_msg="Failed to import 'fitz'. Install it with 'pip install farm-haystack[pdf]' or 'pip install pymupdf'."
-) as fitz_import:
+with LazyImport(message="Run 'pip install farm-haystack[pdf]' or 'pip install pymupdf'.") as fitz_import:
     import fitz
 
 
