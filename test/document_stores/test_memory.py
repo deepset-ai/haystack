@@ -134,9 +134,7 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         retriever = BM25Retriever(ds, scale_score=False)
         queries = ["What is a Foo Document?", "What is a Bar Document?", "Tell me about a document without embeddings"]
         results_direct = []
-        for query in queries:
-            documents_with_scores = retriever.retrieve(query)
-            results_direct.append(documents_with_scores)
+        results_direct = [retriever.retrieve(query) for query in queries]
         results_copied = [deepcopy(retriever.retrieve(query)) for query in queries]
         scores_direct = [rd.score for rds in results_direct for rd in rds]
         scores_copied = [rc.score for rcs in results_copied for rc in rcs]
