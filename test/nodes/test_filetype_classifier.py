@@ -154,6 +154,7 @@ def test_filetype_classifier_batched_various_media_extensions(tmp_path):
         node.run_batch(test_files)
 
 
+@pytest.mark.unit
 def test_filetype_classifier_batched_same_media_extensions(tmp_path):
     test_files = []
     batch_size = 5
