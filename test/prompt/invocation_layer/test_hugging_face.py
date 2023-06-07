@@ -159,7 +159,7 @@ def test_constructor_with_invalid_torch_dtype(mock_pipeline, mock_get_task):
 
 
 @pytest.mark.unit
-def test_constructor_with_invalid_object(mock_pipeline, mock_get_task):
+def test_constructor_with_invalid_torch_dtype_object(mock_pipeline, mock_get_task):
     """
     Test HFLocalInvocationLayer init with invalid parameter
     """
@@ -168,6 +168,31 @@ def test_constructor_with_invalid_object(mock_pipeline, mock_get_task):
     # this should raise an error
     with pytest.raises(ValueError, match="Invalid torch_dtype value {'invalid': 'object'}"):
         HFLocalInvocationLayer("google/flan-t5-base", torch_dtype={"invalid": "object"})
+
+
+@pytest.mark.integration
+def test_ensure_token_limit_positive():
+    """
+    Test that ensure_token_limit works as expected
+    """
+    prompt_text = "this is a short prompt"
+    layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=10, model_max_length=20)
+
+    processed_prompt_text = layer._ensure_token_limit(prompt_text)
+    assert prompt_text == processed_prompt_text
+
+
+@pytest.mark.integration
+def test_ensure_token_limit_negative():
+    """
+    Test that ensure_token_limit chops the prompt text if it's longer than the max length allowed by the model
+    """
+    prompt_text = "this is a prompt test that is longer than the max length allowed by the model"
+    layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=10, model_max_length=20)
+
+    processed_prompt_text = layer._ensure_token_limit(prompt_text)
+    assert prompt_text != processed_prompt_text
+    assert len(processed_prompt_text.split()) <= len(prompt_text.split())
 
 
 @pytest.mark.unit
