@@ -146,7 +146,7 @@ def test_invoke_with_stream():
         res = layer.invoke(prompt="Some prompt", stream=True)
 
     assert len(res) == 1
-    assert res[0] == "The sky appears blue to us due to how"
+    assert res[0] == " The sky appears blue to us due to how"
 
 
 @pytest.mark.unit
@@ -177,15 +177,11 @@ def test_invoke_with_custom_stream_handler():
 
     assert len(res) == 1
     # This is not the real result but the values returned by the mock handler
-    assert res[0] == "token"
+    assert res[0] == " The sky appears blue to us due to how"
 
     # Verifies the handler has been called the expected times with the expected args
     assert mock_stream_handler.call_count == 3
-    expected_call_list = [
-        call(" The sky appears"),
-        call(" The sky appears blue to"),
-        call(" The sky appears blue to us due to how"),
-    ]
+    expected_call_list = [call(" The sky appears"), call(" blue to"), call(" us due to how")]
     assert mock_stream_handler.call_args_list == expected_call_list
 
 
