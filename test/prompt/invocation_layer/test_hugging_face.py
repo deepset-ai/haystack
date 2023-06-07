@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch, Mock
 
 import pytest
+import torch
 from torch import device
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
 
@@ -95,6 +96,78 @@ def test_constructor_with_model_name_and_device_map(mock_pipeline, mock_get_task
     # correct task and model are set as well
     assert kwargs["task"] == "text2text-generation"
     assert kwargs["model"] == "google/flan-t5-base"
+
+
+@pytest.mark.unit
+def test_constructor_with_torch_dtype(mock_pipeline, mock_get_task):
+    """
+    Test HFLocalInvocationLayer init with torch_dtype parameter using the actual torch object
+    """
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", torch_dtype=torch.float16)
+
+    assert layer.pipe == mock_pipeline.return_value
+    mock_pipeline.assert_called_once()
+    mock_get_task.assert_called_once()
+
+    args, kwargs = mock_pipeline.call_args
+    assert kwargs["torch_dtype"] == torch.float16
+
+
+@pytest.mark.unit
+def test_constructor_with_torch_dtype_as_str(mock_pipeline, mock_get_task):
+    """
+    Test HFLocalInvocationLayer init with torch_dtype parameter using the string definition
+    """
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", torch_dtype="torch.float16")
+
+    assert layer.pipe == mock_pipeline.return_value
+    mock_pipeline.assert_called_once()
+    mock_get_task.assert_called_once()
+
+    args, kwargs = mock_pipeline.call_args
+    assert kwargs["torch_dtype"] == torch.float16
+
+
+@pytest.mark.unit
+def test_constructor_with_torch_dtype_auto(mock_pipeline, mock_get_task):
+    """
+    Test HFLocalInvocationLayer init with torch_dtype parameter using the auto string definition
+    """
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", torch_dtype="auto")
+
+    assert layer.pipe == mock_pipeline.return_value
+    mock_pipeline.assert_called_once()
+    mock_get_task.assert_called_once()
+
+    args, kwargs = mock_pipeline.call_args
+    assert kwargs["torch_dtype"] == "auto"
+
+
+@pytest.mark.unit
+def test_constructor_with_invalid_torch_dtype(mock_pipeline, mock_get_task):
+    """
+    Test HFLocalInvocationLayer init with invalid torch_dtype parameter
+    """
+
+    # we need to provide torch_dtype as a string but with torch. prefix
+    # this should raise an error
+    with pytest.raises(ValueError, match="torch_dtype should be a torch.dtype, a string with 'torch.' prefix"):
+        HFLocalInvocationLayer("google/flan-t5-base", torch_dtype="float16")
+
+
+@pytest.mark.unit
+def test_constructor_with_invalid_object(mock_pipeline, mock_get_task):
+    """
+    Test HFLocalInvocationLayer init with invalid parameter
+    """
+
+    # we need to provide torch_dtype as a string but with torch. prefix
+    # this should raise an error
+    with pytest.raises(ValueError, match="Invalid torch_dtype value {'invalid': 'object'}"):
+        HFLocalInvocationLayer("google/flan-t5-base", torch_dtype={"invalid": "object"})
 
 
 @pytest.mark.unit
