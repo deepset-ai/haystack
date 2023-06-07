@@ -11,15 +11,14 @@ from haystack.nodes.file_converter.txt import TextConverter
 from haystack.nodes.file_converter.azure import AzureConverter
 from haystack.nodes.file_converter.parsr import ParsrConverter
 
-# Try to use PyMuPDF, if not available fall back to xpdf
-from haystack.nodes.file_converter.pdf import PDFToTextConverter  # type: ignore
-
-with LazyImport() as fitz_import:
-    import fitz
 
 try:
+    with LazyImport() as fitz_import:
+        # Try to use PyMuPDF, if not available fall back to xpdf
+        from haystack.nodes.file_converter.pdf import PDFToTextConverter  # type: ignore
+
     fitz_import.check()
-except ImportError:
+except (ModuleNotFoundError, ImportError):
     from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable=reimported,ungrouped-imports
 
 MarkdownConverter = safe_import(

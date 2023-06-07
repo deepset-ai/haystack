@@ -6,14 +6,11 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
+import fitz
 from more_itertools import divide
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
-from haystack.lazy_imports import LazyImport
-
-with LazyImport(message="Run 'pip install farm-haystack[pdf]' or 'pip install pymupdf'.") as fitz_import:
-    import fitz
 
 
 logger = logging.getLogger(__name__)
@@ -61,6 +58,7 @@ class PDFToTextConverter(BaseConverter):
         :param multiprocessing: We use multiprocessing to speed up PyMuPDF conversion, you can disable it by setting it to False.
                                 If set to True (the default value), the total number of cores is used. To specify the number of cores to use, set it to an integer.
         """
+        # fitz_import.check()
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
         )
