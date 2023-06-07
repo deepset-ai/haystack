@@ -1,10 +1,33 @@
-from typing import Optional, Callable, Union
+from typing import Optional, Dict, Any, List
 import warnings
 
-from haystack.agents.base import ToolsManager, react_parameter_resolver
-from haystack.agents import Agent
+from haystack.agents.base import Tool, ToolsManager
+from haystack.agents import Agent, AgentStep
 from haystack.agents.memory import Memory, ConversationMemory
-from haystack.nodes import PromptNode, PromptTemplate
+from haystack.nodes import PromptNode
+
+
+def agent_without_tools_parameter_resolver(query: str, agent: Agent, **kwargs) -> Dict[str, Any]:
+    """
+    A parameter resolver for ReAct based agents without tools that returns the query, the history.
+    """
+    return {"query": query, "history": agent.memory.load()}
+
+
+def conversational_agent_parameter_resolver(
+    query: str, agent: Agent, agent_step: AgentStep, **kwargs
+) -> Dict[str, Any]:
+    """
+    A parameter resolver for ReAct based agents that returns the query, the tool names, the tool names
+    with descriptions, the history of the conversation, and the transcript (internal monologue).
+    """
+    return {
+        "query": query,
+        "tool_names": agent.tm.get_tool_names(),
+        "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
+        "transcript": agent_step.transcript,
+        "history": agent.memory.load(),
+    }
 
 
 class ConversationalAgent(Agent):
@@ -12,7 +35,9 @@ class ConversationalAgent(Agent):
     A ConversationalAgent is an extension of the Agent class that supports the use of tools in
     conversational chat applications. This agent can make use of the ToolsManager to manage a set of tools and seamlessly integrate them into the conversation.
 
-    Here is an example of how you can create a simple chat application:
+    If no tools are provided, the Agent will be initialized with necessary arguments to have a basic chat application.
+
+    Here is an example of how you can create a chat application with tools:
     ```
     import os
 
@@ -36,52 +61,50 @@ class ConversationalAgent(Agent):
             assistant_response = agent.run(user_input)
             print("\nAssistant:", assistant_response)
     ```
+
+    If you want to have any tools, you can create a ConversationalAgent only with a PromptNode:
+    ```
+    import os
+
+    from haystack.agents.conversational import ConversationalAgent
+    from haystack.nodes import PromptNode
+
+    # Initialize a PromptNode
+    prompt_node = PromptNode("gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
+
+    # Create the ConversationalAgent instance
+    agent = ConversationalAgent(prompt_node)
+    ```
     """
 
-    def __init__(
-        self,
-        prompt_node: PromptNode,
-        prompt_template: Optional[Union[str, PromptTemplate]] = None,
-        tools_manager: Optional[ToolsManager] = None,
-        memory: Optional[Memory] = ConversationMemory(),
-        prompt_parameters_resolver: Optional[Callable] = react_parameter_resolver,
-        max_steps: int = 5,
-        final_answer_pattern: str = r"Final Answer\s*:\s*(.*)",
-        streaming: bool = True,
-    ):
+    def __init__(self, prompt_node: PromptNode, tools: Optional[List[Tool]] = None, memory: Optional[Memory] = None):
         """
         Creates a new ConversationalAgent instance
 
-        :param prompt_node: A PromptNode used to communicate with LLM.
-        :param prompt_template: A string or PromptTemplate instance to use as the prompt template. If no prompt_template
-        is provided, the agent will use the "conversational-agent" template.
-        :param tools_manager: A ToolsManager instance to manage tools for the agent. If no tools_manager is provided,
-        the agent will install an empty ToolsManager instance.
-        :param max_steps: The maximum number of steps for the agent to take, defaults to 5.
+        :param prompt_node: A PromptNode that the Agent uses to decide which tool to use and what input to provide to
+        it in each iteration. If no tools are provided, model provided with PromptNode will be used to chat with.
+        :param tools: A list of tools to use in the Agent. Each tool must have a unique name.
         :param memory: A memory object for storing conversation history and other relevant data, defaults to
         ConversationMemory if no memory is provided.
-        :param prompt_parameters_resolver: An optional callable for resolving prompt template parameters,
-        defaults to keys: query, tool_names, tool_names_with_descriptions, transcript. Their values are set appropriately.
-        :param final_answer_pattern: A regular expression to extract the final answer from the text the Agent generated.
-        :param streaming: Whether to use streaming or not. If True, the Agent will stream response tokens from the LLM.
-        If False, the Agent will wait for the LLM to finish generating the response and then process it. The default is
-        True.
         """
 
-        if tools_manager is None:
-            warnings.warn(
-                "ConversationalAgent is created without Tools. This might create unexpected answers from the Agent. You can add Tools to your ConversationalAgent with `add_tool()` method"
+        if tools:
+            super().__init__(
+                prompt_node=prompt_node,
+                memory=memory if memory else ConversationMemory(),
+                tools_manager=ToolsManager(tools=tools),
+                max_steps=5,
+                prompt_template="conversational-agent",
+                prompt_parameters_resolver=conversational_agent_parameter_resolver,
             )
+        else:
+            warnings.warn("ConversationalAgent is created without tools")
 
-        super().__init__(
-            prompt_node=prompt_node,
-            prompt_template=prompt_template
-            if prompt_template
-            else prompt_node.default_prompt_template or "conversational-agent",
-            tools_manager=tools_manager,
-            memory=memory,
-            prompt_parameters_resolver=prompt_parameters_resolver,
-            max_steps=max_steps,
-            final_answer_pattern=final_answer_pattern,
-            streaming=streaming,
-        )
+            super().__init__(
+                prompt_node=prompt_node,
+                memory=memory if memory else ConversationMemory(),
+                max_steps=2,
+                prompt_template="conversational-agent-without-tools",
+                final_answer_pattern=r"^([\s\S]+)$",
+                prompt_parameters_resolver=agent_without_tools_parameter_resolver,
+            )

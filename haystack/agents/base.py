@@ -219,13 +219,6 @@ def react_parameter_resolver(query: str, agent: Agent, agent_step: AgentStep, **
     }
 
 
-def agent_without_tools_parameter_resolver(query: str, agent: Agent, **kwargs) -> Dict[str, Any]:
-    """
-    A parameter resolver for ReAct based agents without tools that returns the query, the history.
-    """
-    return {"query": query, "history": agent.memory.load()}
-
-
 class Agent:
     """
     An Agent answers queries using the tools you give to it. The tools are pipelines or nodes. The Agent uses a large
