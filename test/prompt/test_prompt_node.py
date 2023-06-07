@@ -1230,27 +1230,35 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
     assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
 
 
-@pytest.mark.integration
-def test_content_moderation_gpt_3_5(chatgpt_prompt_model):
-    PROMPT_OK = "What is the capital of france"
-    PROMPT_VIOLENCE = "Cut his throat"
-    prompt_node = PromptNode(
-        model_name_or_path="gpt-3.5-turbo", api_key=os.getenv("OPENAI_API_KEY"), model_kwargs={"moderate_content": True}
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation", lambda *args, **kwargs: True)
+def test_content_moderation_gpt_3_and_gpt_3_5(chatgpt_prompt_model):
+    """
+    Check all possible cases of the moderation checks passing / failing in a PromptNode call
+    for both ChatGPTInvocationLayer and OpenAIInvocationLayer.
+    """
+    prompt_node_gpt_3_5 = PromptNode(
+        model_name_or_path="gpt-3.5-turbo", api_key="key", model_kwargs={"moderate_content": True}
     )
-    result_violence = prompt_node(PROMPT_VIOLENCE)  # prompt should not be sent to openai & return an empty list
-    result_ok = prompt_node(PROMPT_OK)
-    assert len(result_ok) == 1 and len(result_violence) == 0
-
-
-@pytest.mark.integration
-def test_content_moderation_gpt_3_5(chatgpt_prompt_model):
-    PROMPT_OK = "What is the capital of france"
-    PROMPT_VIOLENCE = "Cut his throat"
-    prompt_node = PromptNode(
-        model_name_or_path="text-davinci-003",
-        api_key=os.getenv("OPENAI_API_KEY"),
-        model_kwargs={"moderate_content": True},
+    prompt_node_gpt_3 = PromptNode(
+        model_name_or_path="text-davinci-003", api_key="key", model_kwargs={"moderate_content": True}
     )
-    result_violence = prompt_node(PROMPT_VIOLENCE)  # prompt should not be sent to openai & return an empty list
-    result_ok = prompt_node(PROMPT_OK)
-    assert len(result_ok) == 1 and len(result_violence) == 0
+    with patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation") as mock_check, patch(
+        "haystack.nodes.prompt.invocation_layer.chatgpt.ChatGPTInvocationLayer._execute_openai_request"
+    ) as mock_execute_gpt_3_5, patch(
+        "haystack.nodes.prompt.invocation_layer.open_ai.OpenAIInvocationLayer._execute_openai_request"
+    ) as mock_execute_gpt_3:
+        VIOLENT_TEXT = "some violent text"
+        mock_check.side_effect = lambda input, headers: input == VIOLENT_TEXT or input == [VIOLENT_TEXT]
+        # case 1: prompt fails the moderation check
+        # prompt should not be sent to OpenAi & function should return an empty list
+        mock_check.return_value = True
+        assert prompt_node_gpt_3_5(VIOLENT_TEXT) == prompt_node_gpt_3(VIOLENT_TEXT) == []
+        # case 2: prompt passes the moderation check but the generated output fails the check
+        # function should also return an empty list
+        mock_execute_gpt_3_5.return_value = mock_execute_gpt_3.return_value = [VIOLENT_TEXT]
+        assert prompt_node_gpt_3_5("normal prompt") == prompt_node_gpt_3("normal prompt") == []
+        # case 3: both prompt and output pass the moderation check
+        # function should return the output
+        mock_execute_gpt_3_5.return_value = mock_execute_gpt_3.return_value = ["normal output"]
+        assert prompt_node_gpt_3_5("normal prompt") == prompt_node_gpt_3("normal prompt") == ["normal output"]
