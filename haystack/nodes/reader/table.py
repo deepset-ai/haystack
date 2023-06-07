@@ -3,28 +3,35 @@ from typing import List, Optional, Tuple, Dict, Union, Literal
 import logging
 import itertools
 from statistics import mean
-import torch
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
-from transformers import (
-    TapasTokenizer,
-    TapasForQuestionAnswering,
-    AutoTokenizer,
-    AutoModelForSequenceClassification,
-    BatchEncoding,
-    TapasModel,
-    TapasConfig,
-    TableQuestionAnsweringPipeline,
-)
-from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, TableCell, Span
 from haystack.nodes.reader.base import BaseReader
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+TableQuestionAnsweringPipeline = object
+TapasPreTrainedModel = object
+with LazyImport() as torch_and_transformers_import:
+    import torch
+    from transformers import (
+        TapasTokenizer,
+        TapasForQuestionAnswering,
+        AutoTokenizer,
+        AutoModelForSequenceClassification,
+        BatchEncoding,
+        TapasModel,
+        TapasConfig,
+        TableQuestionAnsweringPipeline,
+    )
+    from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
+    from haystack.modeling.utils import initialize_device_settings
 
 
 class TableReader(BaseReader):
@@ -65,7 +72,7 @@ class TableReader(BaseReader):
         return_no_answer: bool = False,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         return_table_cell: bool = False,
     ):
         """
@@ -114,6 +121,7 @@ class TableReader(BaseReader):
                                   are returned as Span objects which are start and end indices when counting through the
                                   table in a linear fashion, which means the first cell is top left and the last cell is bottom right.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         if not return_table_cell:
@@ -244,7 +252,7 @@ class TableReader(BaseReader):
 class _TapasEncoder:
     def __init__(
         self,
-        device: torch.device,
+        device: "torch.device",
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
@@ -319,7 +327,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         self.return_table_cell = return_table_cell
 
     def _calculate_answer_score(
-        self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
+        self, logits: "torch.Tensor", inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
     ) -> List[Optional[np.ndarray]]:
         """Calculate the answer scores given the `logits`, `input`, and `answer_coordinates`."""
         token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
@@ -458,7 +466,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
 class _TapasScoredEncoder:
     def __init__(
         self,
-        device: torch.device,
+        device: "torch.device",
         model_name_or_path: str = "deepset/tapas-large-nq-hn-reader",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
@@ -481,7 +489,7 @@ class _TapasScoredEncoder:
         self.return_no_answer = return_no_answer
         self.return_table_cell = return_table_cell
 
-    def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
+    def _predict_tapas_scored(self, inputs: "BatchEncoding", document: Document) -> Tuple[List[Answer], float]:
         orig_table: pd.DataFrame = document.content
         string_table = orig_table.astype(str)
 
@@ -717,6 +725,7 @@ class RCIReader(BaseReader):
                                   are returned as Span objects which are start and end indices when counting through the
                                   table in a linear fashion, which means the first cell is top left and the last cell is bottom right.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         if not return_table_cell:

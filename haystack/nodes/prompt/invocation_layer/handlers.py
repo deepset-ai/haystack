@@ -1,7 +1,11 @@
 from abc import abstractmethod, ABC
 from typing import Union, Dict
 
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer
+from haystack.lazy_imports import LazyImport
+
+TextStreamer = object
+with LazyImport() as transformers_import:
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer
 
 
 class TokenStreamingHandler(ABC):
@@ -80,8 +84,11 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
 
 class HFTokenStreamingHandler(TextStreamer):
     def __init__(
-        self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stream_handler: TokenStreamingHandler
+        self,
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
+        stream_handler: "TokenStreamingHandler",
     ):
+        transformers_import.check()
         super().__init__(tokenizer=tokenizer)
         self.token_handler = stream_handler
 

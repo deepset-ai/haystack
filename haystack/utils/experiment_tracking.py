@@ -7,8 +7,6 @@ import os
 import platform
 import sys
 
-import torch
-import transformers
 from requests.exceptions import ConnectionError
 
 from haystack import __version__
@@ -232,6 +230,9 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
     """
     Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
     """
+    import torch
+    import transformers
+
     from haystack.telemetry import HAYSTACK_EXECUTION_CONTEXT
 
     global env_meta_data  # pylint: disable=global-statement
