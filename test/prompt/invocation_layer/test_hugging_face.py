@@ -173,7 +173,7 @@ def test_constructor_with_invalid_torch_dtype_object(mock_pipeline, mock_get_tas
 @pytest.mark.integration
 def test_ensure_token_limit_positive():
     """
-    Test that ensure_token_limit works as expected
+    Test that ensure_token_limit works as expected, short prompt text is not changed
     """
     prompt_text = "this is a short prompt"
     layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=10, model_max_length=20)
@@ -183,7 +183,7 @@ def test_ensure_token_limit_positive():
 
 
 @pytest.mark.integration
-def test_ensure_token_limit_negative():
+def test_ensure_token_limit_negative(caplog):
     """
     Test that ensure_token_limit chops the prompt text if it's longer than the max length allowed by the model
     """
@@ -193,6 +193,12 @@ def test_ensure_token_limit_negative():
     processed_prompt_text = layer._ensure_token_limit(prompt_text)
     assert prompt_text != processed_prompt_text
     assert len(processed_prompt_text.split()) <= len(prompt_text.split())
+    expected_message = (
+        "The prompt has been truncated from 17 tokens to 10 tokens so that the prompt length and "
+        "answer length (10 tokens) fit within the max token limit (20 tokens). Shorten the prompt "
+        "to prevent it from being cut off"
+    )
+    assert caplog.records[0].message == expected_message
 
 
 @pytest.mark.unit

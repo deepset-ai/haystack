@@ -242,7 +242,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         :param prompt: Prompt text to be sent to the generative model.
         """
         model_max_length = self.pipe.tokenizer.model_max_length
-        n_prompt_tokens = len(self.pipe.tokenizer.tokenize(prompt))
+        tokenized_prompt = self.pipe.tokenizer.tokenize(prompt)
+        n_prompt_tokens = len(tokenized_prompt)
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= model_max_length:
             return prompt
@@ -257,9 +258,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             model_max_length,
         )
 
-        tokenized_payload = self.pipe.tokenizer.tokenize(prompt)
         decoded_string = self.pipe.tokenizer.convert_tokens_to_string(
-            tokenized_payload[: model_max_length - n_answer_tokens]
+            tokenized_prompt[: model_max_length - n_answer_tokens]
         )
         return decoded_string
 
