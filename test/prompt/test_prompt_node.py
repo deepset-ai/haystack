@@ -1231,7 +1231,6 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
 
 
 @pytest.mark.unit
-@patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation", lambda *args, **kwargs: True)
 def test_content_moderation_gpt_3_and_gpt_3_5(chatgpt_prompt_model):
     """
     Check all possible cases of the moderation checks passing / failing in a PromptNode call
