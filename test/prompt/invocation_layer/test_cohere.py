@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
@@ -7,8 +7,14 @@ from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamin
 from haystack.nodes.prompt.invocation_layer import CohereInvocationLayer
 
 
+@pytest.fixture
+def mock_auto_tokenizer():
+    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
+        yield mock_from_pretrained
+
+
 @pytest.mark.unit
-def test_default_constructor():
+def test_default_constructor(mock_auto_tokenizer):
     """
     Test that the default constructor sets the correct values
     """
@@ -28,7 +34,7 @@ def test_default_constructor():
 
 
 @pytest.mark.unit
-def test_constructor_with_model_kwargs():
+def test_constructor_with_model_kwargs(mock_auto_tokenizer):
     """
     Test that model_kwargs are correctly set in the constructor
     and that model_kwargs_rejected are correctly filtered out
@@ -43,7 +49,7 @@ def test_constructor_with_model_kwargs():
 
 
 @pytest.mark.unit
-def test_invoke_with_no_kwargs():
+def test_invoke_with_no_kwargs(mock_auto_tokenizer):
     """
     Test that invoke raises an error if no prompt is provided
     """
@@ -54,7 +60,7 @@ def test_invoke_with_no_kwargs():
 
 
 @pytest.mark.unit
-def test_invoke_with_stop_words():
+def test_invoke_with_stop_words(mock_auto_tokenizer):
     """
     Test stop words are correctly passed from PromptNode to wire in CohereInvocationLayer
     """
@@ -77,7 +83,7 @@ def test_invoke_with_stop_words():
 @pytest.mark.unit
 @pytest.mark.parametrize("using_constructor", [True, False])
 @pytest.mark.parametrize("stream", [True, False])
-def test_streaming_stream_param(using_constructor, stream):
+def test_streaming_stream_param(using_constructor, stream, mock_auto_tokenizer):
     """
     Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer
     """
@@ -114,7 +120,7 @@ def test_streaming_stream_param(using_constructor, stream):
 @pytest.mark.unit
 @pytest.mark.parametrize("using_constructor", [True, False])
 @pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
-def test_streaming_stream_handler_param(using_constructor, stream_handler):
+def test_streaming_stream_handler_param(using_constructor, stream_handler, mock_auto_tokenizer):
     """
     Test stream_handler parameter is correctly from PromptNode passed to wire in CohereInvocationLayer
     """
@@ -181,13 +187,13 @@ def test_supports():
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_fails_if_called_with_list():
+def test_ensure_token_limit_fails_if_called_with_list(mock_auto_tokenizer):
     layer = CohereInvocationLayer(model_name_or_path="command", api_key="some_fake_key")
     with pytest.raises(ValueError):
         layer._ensure_token_limit(prompt=[])
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_ensure_token_limit_with_small_max_length(caplog):
     layer = CohereInvocationLayer(model_name_or_path="command", api_key="some_fake_key", max_length=10)
     res = layer._ensure_token_limit(prompt="Short prompt")
@@ -200,7 +206,7 @@ def test_ensure_token_limit_with_small_max_length(caplog):
     assert not caplog.records
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_ensure_token_limit_with_huge_max_length(caplog):
     layer = CohereInvocationLayer(model_name_or_path="command", api_key="some_fake_key", max_length=4090)
     res = layer._ensure_token_limit(prompt="Short prompt")
