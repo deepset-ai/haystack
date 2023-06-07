@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from typing import Tuple
+from unittest.mock import patch
 
 from test.conftest import MockRetriever, MockPromptNode
 from unittest import mock
@@ -300,8 +301,11 @@ def test_invalid_agent_template():
     assert a.prompt_template.name == "zero-shot-react"
 
 
-def test_default_template_order():
-    pn = PromptNode()
+@pytest.mark.unit
+@patch.object(PromptNode, "prompt")
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_default_template_order(mock_model, mock_prompt):
+    pn = PromptNode("abc")
     a = Agent(prompt_node=pn)
     assert a.prompt_template.name == "zero-shot-react"
 
