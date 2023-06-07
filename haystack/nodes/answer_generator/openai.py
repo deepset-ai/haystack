@@ -102,7 +102,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
         :param moderate_content: Whether to filter input and generated answers for potentially sensitive content
-            using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+            using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation). If the input or
+            answers are flagged, an empty list is returned in place of the answers.
         :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
         """
         super().__init__(progress_bar=progress_bar)
@@ -242,7 +243,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
         _check_openai_finish_reason(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
         if self.moderate_content and check_openai_policy_violation(input=generated_answers, headers=headers):
-            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            logger.info(
+                "Generated answers '%s' will not be returned due to potential policy violation.", generated_answers
+            )
             return {"query": query, "answers": []}
         answers = self._create_answers(generated_answers, input_docs, prompt=prompt)
         result = {"query": query, "answers": answers}

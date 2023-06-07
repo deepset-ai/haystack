@@ -36,10 +36,15 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param kwargs: Additional keyword arguments passed to the underlying model.
         [See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+        Note: additional model argument moderate_content will filter input and generated answers for potentially
+        sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+        if set. If the input or answers are flagged, an empty list is returned in place of the answers.
         """
         super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
 
-    def _invoke(self, prompt: Union[str, List[Dict]], base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
+    def _execute_openai_request(
+        self, prompt: Union[str, List[Dict]], base_payload: Dict, kwargs_with_defaults: Dict, stream: bool
+    ):
         """
         For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat).
         """

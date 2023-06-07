@@ -48,6 +48,9 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/completions/create).
+        Note: additional model argument moderate_content will filter input and generated answers for potentially
+        sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+        if set. If the input or answers are flagged, an empty list is returned in place of the answers.
         """
         super().__init__(model_name_or_path)
         if not isinstance(api_key, str) or len(api_key) == 0:
@@ -142,7 +145,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         if moderation and check_openai_policy_violation(input=prompt, headers=self.headers):
             logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
             return []
-        responses = self._invoke(
+        responses = self._execute_openai_request(
             prompt=prompt, base_payload=base_payload, kwargs_with_defaults=kwargs_with_defaults, stream=stream
         )
         if moderation and check_openai_policy_violation(input=responses, headers=self.headers):
@@ -150,7 +153,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             return []
         return responses
 
-    def _invoke(self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
+    def _execute_openai_request(self, prompt: str, base_payload: Dict, kwargs_with_defaults: Dict, stream: bool):
         if not prompt:
             raise ValueError(
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
