@@ -258,7 +258,7 @@ class Agent:
         self.memory = memory or NoMemory()
         self.callback_manager = Events(("on_agent_start", "on_agent_step", "on_agent_finish", "on_new_token"))
         self.prompt_node = prompt_node
-        prompt_template = prompt_template or "zero-shot-react"
+        prompt_template = prompt_template or prompt_node.default_prompt_template or "zero-shot-react"
         resolved_prompt_template = prompt_node.get_prompt_template(prompt_template)
         if not resolved_prompt_template:
             raise ValueError(

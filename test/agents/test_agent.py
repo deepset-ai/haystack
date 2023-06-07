@@ -298,3 +298,16 @@ def test_invalid_agent_template():
     a = Agent(prompt_node=pn, prompt_template=None)
     assert isinstance(a.prompt_template, PromptTemplate)
     assert a.prompt_template.name == "zero-shot-react"
+
+
+def test_default_template_order():
+    pn = PromptNode()
+    a = Agent(prompt_node=pn)
+    assert a.prompt_template.name == "zero-shot-react"
+
+    pn.default_prompt_template = "language-detection"
+    a = Agent(prompt_node=pn)
+    assert a.prompt_template.name == "language-detection"
+
+    a = Agent(prompt_node=pn, prompt_template="translation")
+    assert a.prompt_template.name == "translation"
