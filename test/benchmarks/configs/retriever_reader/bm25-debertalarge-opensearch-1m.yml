@@ -9,6 +9,7 @@ components:
     type: BM25Retriever
     params:
       document_store: DocumentStore
+      top_k: 10
   - name: Reader
     type: FARMReader
     params:
