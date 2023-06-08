@@ -1,10 +1,14 @@
 from typing import Optional, Dict, Any, List
 import warnings
+import logging
 
+from haystack.errors import AgentError
 from haystack.agents.base import Tool, ToolsManager
 from haystack.agents import Agent, AgentStep
 from haystack.agents.memory import Memory, ConversationMemory
 from haystack.nodes import PromptNode
+
+logger = logging.getLogger(__name__)
 
 
 def agent_without_tools_parameter_resolver(query: str, agent: Agent, **kwargs) -> Dict[str, Any]:
@@ -95,10 +99,11 @@ class ConversationalAgent(Agent):
                 tools_manager=ToolsManager(tools=tools),
                 max_steps=5,
                 prompt_template="conversational-agent",
+                final_answer_pattern=r"Final Answer\s*:\s*(.*)",
                 prompt_parameters_resolver=conversational_agent_parameter_resolver,
             )
         else:
-            warnings.warn("ConversationalAgent is created without tools")
+            logger.warning("ConversationalAgent is created without tools")
 
             super().__init__(
                 prompt_node=prompt_node,
@@ -108,3 +113,11 @@ class ConversationalAgent(Agent):
                 final_answer_pattern=r"^([\s\S]+)$",
                 prompt_parameters_resolver=agent_without_tools_parameter_resolver,
             )
+
+    def add_tool(self, tool: Tool):
+        if len(self.tm.tools) == 0:
+            raise AgentError(
+                "You cannot add tools after initializing the ConversationalAgent without any tools. If you want to add tools, reinitailize the ConversationalAgent and provide `tools`."
+            )
+        else:
+            return super().add_tool(tool)
