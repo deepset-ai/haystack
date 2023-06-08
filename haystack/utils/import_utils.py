@@ -7,6 +7,8 @@ import importlib
 import importlib.util
 from pathlib import Path
 from typing import Optional, Dict, Union, Tuple, List
+from urllib.parse import urlparse, unquote
+from os.path import splitext, basename
 
 import requests
 
@@ -122,7 +124,9 @@ def fetch_archive_from_http(
     else:
         logger.info("Fetching from %s to '%s'", url, output_dir)
 
-        _, _, archive_extension = url.rpartition(".")
+        parsed = urlparse(url)
+        root, extension = splitext(parsed.path)
+        archive_extension = extension[1:]        
         request_data = requests.get(url, proxies=proxies, timeout=timeout)
 
         if archive_extension == "zip":
@@ -131,7 +135,7 @@ def fetch_archive_from_http(
         elif archive_extension == "gz" and not "tar.gz" in url:
             gzip_archive = gzip.GzipFile(fileobj=io.BytesIO(request_data.content))
             file_content = gzip_archive.read()
-            file_name = url.split("/")[-1][: -(len(archive_extension) + 1)]
+            file_name = unquote(basename(root[1:]))
             with open(f"{output_dir}/{file_name}", "wb") as file:
                 file.write(file_content)
         elif archive_extension in ["gz", "bz2", "xz"]:
