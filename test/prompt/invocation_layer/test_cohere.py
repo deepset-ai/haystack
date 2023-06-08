@@ -1,9 +1,9 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import Mock
 
 import pytest
 
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer import CohereInvocationLayer
 
 
@@ -62,98 +62,115 @@ def test_invoke_with_stop_words(mock_auto_tokenizer):
     layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
         # Mock the response, need to return a list of dicts
-        mock_post.return_value = MagicMock(text='{"generations":[{"text": "Hello"}]}')
+        mock_post.return_value = Mock(text='{"generations":[{"text": "Hello"}]}')
 
         layer.invoke(prompt="Tell me hello", stop_words=stop_words)
 
-        assert mock_post.called
+    assert mock_post.called
 
-        # Check if stop_words are passed to _post as stop parameter
-        called_args, _ = mock_post.call_args
-        assert "end_sequences" in called_args[0]
-        assert called_args[0]["end_sequences"] == stop_words
+    # Check if stop_words are passed to _post as stop parameter
+    called_args, _ = mock_post.call_args
+    assert "end_sequences" in called_args[0]
+    assert called_args[0]["end_sequences"] == stop_words
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("using_constructor", [True, False])
 @pytest.mark.parametrize("stream", [True, False])
-def test_streaming_stream_param(using_constructor, stream, mock_auto_tokenizer):
+def test_streaming_stream_param_from_init(stream, mock_auto_tokenizer):
     """
-    Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer
+    Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer from init
     """
-    if using_constructor:
-        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream=stream)
-    else:
-        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
+
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream=stream)
 
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
-        # Mock the response, need to return a list of dicts
-        mock_post.return_value = MagicMock(text='{"generations":[{"text": "Hello"}]}')
-
-        if using_constructor:
-            layer.invoke(prompt="Tell me hello")
-        else:
-            layer.invoke(prompt="Tell me hello", stream=stream)
-
-        assert mock_post.called
-
-        # Check if stop_words are passed to _post as stop parameter
-        _, called_kwargs = mock_post.call_args
-
-        # stream is always passed to _post
-        assert "stream" in called_kwargs
-
-        # Check if stream is True, then stream is passed as True to _post
+        # Mock the response
         if stream:
-            assert called_kwargs["stream"]
-        # Check if stream is False, then stream is passed as False to _post
+            mock_post.return_value = Mock(iter_lines=Mock(return_value=['{"text": "Hello"}', '{"text": " there"}']))
         else:
-            assert not called_kwargs["stream"]
+            mock_post.return_value = Mock(text='{"generations":[{"text": "Hello there"}]}')
+        layer.invoke(prompt="Tell me hello")
+
+    assert mock_post.called
+
+    # Check if stop_words are passed to _post as stop parameter
+    _, called_kwargs = mock_post.call_args
+
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
+    assert called_kwargs["stream"] == bool(called_kwargs["stream"])
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("using_constructor", [True, False])
+@pytest.mark.parametrize("stream", [True, False])
+def test_streaming_stream_param_from_invoke(stream, mock_auto_tokenizer):
+    """
+    Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer from invoke
+    """
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
+
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
+        # Mock the response
+        if stream:
+            mock_post.return_value = Mock(iter_lines=Mock(return_value=['{"text": "Hello"}', '{"text": " there"}']))
+        else:
+            mock_post.return_value = Mock(text='{"generations":[{"text": "Hello there"}]}')
+        layer.invoke(prompt="Tell me hello", stream=stream)
+
+    assert mock_post.called
+
+    # Check if stop_words are passed to _post as stop parameter
+    _, called_kwargs = mock_post.call_args
+
+    # stream is always passed to _post
+    assert "stream" in called_kwargs
+    assert called_kwargs["stream"] == bool(called_kwargs["stream"])
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
-def test_streaming_stream_handler_param(using_constructor, stream_handler, mock_auto_tokenizer):
+def test_streaming_stream_handler_param_from_init(stream_handler, mock_auto_tokenizer):
     """
     Test stream_handler parameter is correctly from PromptNode passed to wire in CohereInvocationLayer
     """
-    if using_constructor:
-        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream_handler=stream_handler)
-    else:
-        layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream_handler=stream_handler)
 
-    with unittest.mock.patch(
-        "haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post"
-    ) as mock_post, unittest.mock.patch(
-        "haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._process_streaming_response"
-    ) as mock_post_stream:
-        # Mock the response, need to return a list of dicts
-        mock_post.return_value = MagicMock(text='{"generations":[{"text": "Hello"}]}')
-
-        if using_constructor:
-            layer.invoke(prompt="Tell me hello")
-        else:
-            layer.invoke(prompt="Tell me hello", stream_handler=stream_handler)
-
-        assert mock_post.called
-
-        # Check if stop_words are passed to _post as stop parameter
-        _, called_kwargs = mock_post.call_args
-
-        # stream is always passed to _post
-        assert "stream" in called_kwargs
-
-        # if stream_handler is used then stream is always True
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
+        # Mock the response
         if stream_handler:
-            assert called_kwargs["stream"]
-            # and stream_handler is passed as an instance of TokenStreamingHandler
-            _, called_kwargs = mock_post_stream.call_args
-            assert "stream_handler" in called_kwargs
-            assert isinstance(called_kwargs["stream_handler"], TokenStreamingHandler)
-        # if stream_handler is not used then stream is always False
+            mock_post.return_value = Mock(iter_lines=Mock(return_value=['{"text": "Hello"}', '{"text": " there"}']))
         else:
-            assert not called_kwargs["stream"]
+            mock_post.return_value = Mock(text='{"generations":[{"text": "Hello there"}]}')
+        responses = layer.invoke(prompt="Tell me hello")
+
+    assert mock_post.called
+    _, called_kwargs = mock_post.call_args
+    assert "stream" in called_kwargs
+    assert called_kwargs["stream"] == bool(stream_handler)
+    assert responses == ["Hello there"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("stream_handler", [DefaultTokenStreamingHandler(), None])
+def test_streaming_stream_handler_param_from_invoke(stream_handler, mock_auto_tokenizer):
+    """
+    Test stream_handler parameter is correctly from PromptNode passed to wire in CohereInvocationLayer
+    """
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
+
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
+        # Mock the response
+        if stream_handler:
+            mock_post.return_value = Mock(iter_lines=Mock(return_value=['{"text": "Hello"}', '{"text": " there"}']))
+        else:
+            mock_post.return_value = Mock(text='{"generations":[{"text": "Hello there"}]}')
+        responses = layer.invoke(prompt="Tell me hello", stream_handler=stream_handler)
+
+    assert mock_post.called
+    _, called_kwargs = mock_post.call_args
+    assert "stream" in called_kwargs
+    assert called_kwargs["stream"] == bool(stream_handler)
+    assert responses == ["Hello there"]
 
 
 @pytest.mark.unit
