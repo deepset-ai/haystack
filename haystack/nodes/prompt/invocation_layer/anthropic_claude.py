@@ -10,7 +10,11 @@ from tokenizers import Tokenizer, Encoding
 
 from haystack.errors import AnthropicError, AnthropicRateLimitError, AnthropicUnauthorizedError
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
-from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import (
+    TokenStreamingHandler,
+    AnthropicTokenStreamingHandler,
+    DefaultTokenStreamingHandler,
+)
 from haystack.utils.requests import request_with_retry
 from haystack.environment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
 
@@ -126,21 +130,22 @@ class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
             return [res.json()["completion"].strip()]
 
         res = self._post(data=data, stream=True)
+        # Anthropic streamed response always includes the whole string that has been
+        # streamed until that point, so we use a stream handler built ad hoc for this
+        # invocation layer.
         handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+        handler = AnthropicTokenStreamingHandler(handler)
         client = sseclient.SSEClient(res)
-        tokens = ""
+        tokens = []
         try:
             for event in client.events():
                 if event.data == TokenStreamingHandler.DONE_MARKER:
                     continue
                 ed = json.loads(event.data)
-                # Anthropic streamed response always includes the whole
-                # string that has been streamed until that point, so
-                # we can just store the last received event
-                tokens = handler(ed["completion"])
+                tokens.append(handler(ed["completion"]))
         finally:
             client.close()
-        return [tokens.strip()]  # return a list of strings just like non-streaming
+        return ["".join(tokens)]  # return a list of strings just like non-streaming
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Make sure the length of the prompt and answer is within the max tokens limit of the model.

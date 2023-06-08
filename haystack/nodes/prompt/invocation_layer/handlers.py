@@ -36,6 +36,48 @@ class DefaultTokenStreamingHandler(TokenStreamingHandler):
         return token_received
 
 
+class AnthropicTokenStreamingHandler(TokenStreamingHandler):
+    """
+    Anthropic has an unusual way of handling streaming responses
+    as it returns all the tokens generated up to that point for each
+    response.
+    This makes it hard to use DefaultTokenStreamingHandler as the user
+    would see the generated text printed multiple times.
+
+    This streaming handler tackles the repeating text and prints
+    only the newly generated part.
+    """
+
+    def __init__(self, token_handler: TokenStreamingHandler):
+        self.token_handler = token_handler
+        self.previous_text = ""
+
+    def __call__(self, token_received: str, **kwargs) -> str:
+        """
+        When the handler is called directly with a response string from Anthropic,
+        we split it, comparing it with the previously received text by this handler,
+        and return only the new part.
+
+        If the text is completely different from the previously received one, we
+        replace it and return it in full.
+
+        :param token_received: Text response received by Anthropic backend.
+        :type token_received: str
+        :return: The part of text that has not been received previously.
+        :rtype: str
+        """
+        if self.previous_text not in token_received:
+            # The handler is being reused, we want to handle this case gracefully
+            # so we just cleanup the previously received text and keep going
+            self.previous_text = ""
+
+        previous_text_length = len(self.previous_text)
+        chopped_text = token_received[previous_text_length:]
+        self.token_handler(chopped_text)
+        self.previous_text = token_received
+        return chopped_text
+
+
 class HFTokenStreamingHandler(TextStreamer):
     def __init__(
         self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stream_handler: TokenStreamingHandler
