@@ -82,5 +82,11 @@ class TextConverter(BaseConverter):
                 )
 
         text = "".join(cleaned_pages)
+
+        if meta is None:
+            meta = {"filename": file_path.name}
+        else:
+            meta["filename"] = file_path.name
+            
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]

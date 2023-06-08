@@ -87,9 +87,11 @@ class JsonConverter(BaseConverter):
                     doc_dict["id_hash_keys"] = id_hash_keys
 
                 if meta is not None:
+                    meta["filename"] = file_path.name
                     existing_meta = doc_dict.get("meta", {})
                     # In case of duplicate keys, the newly specified vals (in `meta`) take precedence
                     doc_dict["meta"] = {**existing_meta, **meta}
+                    
 
                 docs.append(Document.from_dict(doc_dict))
 
