@@ -58,7 +58,6 @@ class PDFToTextConverter(BaseConverter):
         :param multiprocessing: We use multiprocessing to speed up PyMuPDF conversion, you can disable it by setting it to False.
                                 If set to True (the default value), the total number of cores is used. To specify the number of cores to use, set it to an integer.
         """
-        # fitz_import.check()
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
         )
