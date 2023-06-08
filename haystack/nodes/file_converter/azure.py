@@ -22,6 +22,9 @@ except ImportError as exc:
         "azure.ai.formrecognizer or azure.core.credentials could not be imported. "
         "Run 'pip install farm-haystack[file-conversion]' or 'pip install azure-ai-formrecognizer>=3.2.0b2' to fix this issue."
     )
+    DocumentAnalysisClient = None
+    AnalyzeResult = None
+    AzureKeyCredential = None
 
 
 class AzureConverter(BaseConverter):
