@@ -10,7 +10,6 @@ import time
 from string import Template
 
 import numpy as np
-from scipy.special import expit
 from tqdm.auto import tqdm
 from pydantic.error_wrappers import ValidationError
 
@@ -20,6 +19,7 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.utils.scipy_utils import expit
 
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
+        batch_size: int = 10_000,
     ):
         super().__init__()
 
@@ -98,6 +99,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.skip_missing_embeddings: bool = skip_missing_embeddings
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
+        self.batch_size = batch_size
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity: str = similarity
         else:
@@ -166,7 +168,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if self.client.indices.exists_alias(name=index_name):
                 logger.debug("Index name %s is an alias.", index_name)
 
-        return self.client.indices.exists(index_name, headers=headers)
+        return self.client.indices.exists(index=index_name, headers=headers)
 
     @abstractmethod
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
@@ -184,7 +186,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         headers: Optional[Dict[str, str]] = None,
-        request_timeout: int = 300,
         refresh: str = "wait_for",
         _timeout: int = 1,
         _remaining_tries: int = 10,
@@ -200,14 +201,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         :param documents: List of documents to index
         :param headers: Optional headers to pass to the bulk request
-        :param request_timeout: Timeout for the bulk request
         :param refresh: Refresh policy for the bulk request
         :param _timeout: Timeout for the exponential backoff
         :param _remaining_tries: Number of remaining retries
         """
 
         try:
-            self._do_bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._do_bulk(self.client, documents, refresh=self.refresh_type, headers=headers)
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
@@ -231,7 +231,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     self._bulk(
                         documents=split_docs,
                         headers=headers,
-                        request_timeout=request_timeout,
                         refresh=refresh,
                         _timeout=_timeout * 2,
                         _remaining_tries=_remaining_tries,
@@ -281,7 +280,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
             if not self.return_embedding and self.embedding_field:
                 query["_source"] = {"excludes": [self.embedding_field]}
-            result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
+            result = self.client.search(index=index, **query, headers=headers)["hits"]["hits"]
             documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
@@ -344,7 +343,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
-        result = self.client.search(body=body, index=index, headers=headers)
+        result = self.client.search(**body, index=index, headers=headers)
 
         values = []
         current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
@@ -355,7 +354,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         # Only 10 results get returned at a time, so apply pagination
         while after_key:
             body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
-            result = self.client.search(body=body, index=index, headers=headers)
+            result = self.client.search(**body, index=index, headers=headers)
             current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
             after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
             for bucket in current_buckets:
@@ -367,7 +366,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -390,6 +389,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                           to what you have set for self.content_field and self.name_field.
         :param index: search index where the documents should be indexed. If you don't specify it, self.index is used.
         :param batch_size: Number of documents that are passed to the bulk function at each round.
+                           If not specified, self.batch_size is used.
         :param duplicate_documents: Handle duplicate documents based on parameter options.
                                     Parameter options: ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicate documents
@@ -407,6 +407,9 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         if index is None:
             index = self.index
+
+        batch_size = batch_size or self.batch_size
+
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert (
             duplicate_documents in self.duplicate_documents_options
@@ -447,11 +450,11 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
-                self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents_to_index, refresh=self.refresh_type, headers=headers)
                 documents_to_index = []
 
         if documents_to_index:
-            self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(documents_to_index, refresh=self.refresh_type, headers=headers)
 
     def write_labels(
         self,
@@ -506,11 +509,11 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(labels_to_index, refresh=self.refresh_type, headers=headers)
                 labels_to_index = []
 
         if labels_to_index:
-            self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(labels_to_index, refresh=self.refresh_type, headers=headers)
 
     def update_document_meta(
         self, id: str, meta: Dict[str, str], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
@@ -521,7 +524,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not index:
             index = self.index
         body = {"doc": meta}
-        self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
+        self.client.update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(
         self,
@@ -908,7 +911,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
+        result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
@@ -923,9 +926,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
         scale_score: bool = True,
+        batch_size: Optional[int] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
 
         This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
@@ -1005,17 +1009,19 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
-                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Otherwise, at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+                            Otherwise, raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param batch_size: Number of queries that are processed at once. If not specified, self.batch_size is used.
         """
 
         if index is None:
             index = self.index
         if headers is None:
             headers = {}
+        batch_size = batch_size or self.batch_size
 
         if isinstance(filters, list):
             if len(filters) != len(queries):
@@ -1027,6 +1033,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             filters = [filters] * len(queries)
 
         body = []
+        all_documents = []
         for query, cur_filters in zip(queries, filters):
             cur_query_body = self._construct_query_body(
                 query=query,
@@ -1038,16 +1045,26 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        responses = self.client.msearch(index=index, body=body)
+            if len(body) == 2 * batch_size:
+                cur_documents = self._execute_msearch(index=index, body=body, scale_score=scale_score)
+                all_documents.extend(cur_documents)
+                body = []
 
-        all_documents = []
-        cur_documents = []
-        for response in responses["responses"]:
-            cur_result = response["hits"]["hits"]
-            cur_documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in cur_result]
-            all_documents.append(cur_documents)
+        if len(body) > 0:
+            cur_documents = self._execute_msearch(index=index, body=body, scale_score=scale_score)
+            all_documents.extend(cur_documents)
 
         return all_documents
+
+    def _execute_msearch(self, index: str, body: List[Dict[str, Any]], scale_score: bool) -> List[List[Document]]:
+        responses = self.client.msearch(index=index, body=body)
+        documents = []
+        for response in responses["responses"]:
+            result = response["hits"]["hits"]
+            cur_documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
+            documents.append(cur_documents)
+
+        return documents
 
     def _construct_query_body(
         self,
@@ -1188,6 +1205,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
+        batch_size: Optional[int] = None,
     ) -> List[List[Document]]:
         """
         Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
@@ -1264,8 +1282,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-        :return:
+                            Otherwise, raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param batch_size: Number of query embeddings to process at once. If not specified, self.batch_size is used.
         """
         if index is None:
             index = self.index
@@ -1275,6 +1293,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         if headers is None:
             headers = {}
+
+        batch_size = batch_size or self.batch_size
 
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
@@ -1289,6 +1309,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             filters = [filters] * len(query_embs) if filters is not None else [{}] * len(query_embs)
 
         body = []
+        all_documents = []
         for query_emb, cur_filters in zip(query_embs, filters):
             cur_query_body = self._construct_dense_query_body(
                 query_emb=query_emb, filters=cur_filters, top_k=top_k, return_embedding=return_embedding
@@ -1296,18 +1317,16 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        logger.debug("Retriever query: %s", body)
-        responses = self.client.msearch(index=index, body=body)
+            if len(body) >= batch_size * 2:
+                logger.debug("Retriever query: %s", body)
+                cur_documents = self._execute_msearch(index=index, body=body, scale_score=scale_score)
+                all_documents.extend(cur_documents)
+                body = []
 
-        all_documents = []
-        cur_documents = []
-        for response in responses["responses"]:
-            cur_result = response["hits"]["hits"]
-            cur_documents = [
-                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
-                for hit in cur_result
-            ]
-            all_documents.append(cur_documents)
+        if len(body) > 0:
+            logger.debug("Retriever query: %s", body)
+            cur_documents = self._execute_msearch(index=index, body=body, scale_score=scale_score)
+            all_documents.extend(cur_documents)
 
         return all_documents
 
@@ -1323,7 +1342,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1370,6 +1389,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
+        batch_size = batch_size or self.batch_size
+
         if self.refresh_type == "false":
             self.client.indices.refresh(index=index, headers=headers)
 
@@ -1415,7 +1436,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     }
                     doc_updates.append(update)
 
-                self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents=doc_updates, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
     def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
@@ -1542,7 +1563,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            time.sleep(2)
+            self.client.indices.refresh(index=index)
 
     def delete_labels(
         self,

@@ -2,7 +2,6 @@ from typing import Dict, Optional, List
 
 import logging
 from pathlib import Path
-import docx
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
@@ -11,7 +10,36 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 
+try:
+    import docx
+except ImportError as exc:
+    logger.debug(
+        "docx could not be imported. "
+        "Run 'pip install farm-haystack[file-conversion]' or 'pip install python-docx' to fix this issue."
+    )
+    docx = None
+
+
 class DocxToTextConverter(BaseConverter):
+    def __init__(
+        self,
+        remove_numeric_tables: bool = False,
+        valid_languages: Optional[List[str]] = None,
+        id_hash_keys: Optional[List[str]] = None,
+        progress_bar: bool = True,
+    ):
+        if not docx:
+            raise ImportError(
+                "docx could not be imported. "
+                "Run 'pip install farm-haystack[file-conversion]' or 'pip install python-docx' to fix this issue."
+            )
+        super().__init__(
+            remove_numeric_tables=remove_numeric_tables,
+            valid_languages=valid_languages,
+            id_hash_keys=id_hash_keys,
+            progress_bar=progress_bar,
+        )
+
     def convert(
         self,
         file_path: Path,

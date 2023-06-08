@@ -310,14 +310,10 @@ def test_farm_reader_load_hf_local(tmp_path):
 
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     local_model_path = "locally_saved_hf"
-    cwd_path = os.getcwd()
-    local_model_path = _joinpath(cwd_path, local_model_path)
 
-    # TODO: change the /tmp to proper tmp_path and get rid of rmtree
-    # local_model_path = str(Path.joinpath(tmp_path, local_model_path))
+    local_model_path = str(Path.joinpath(tmp_path, local_model_path))
     model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
     _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
-    rmtree(local_model_path)
 
 
 @pytest.mark.integration
@@ -435,6 +431,36 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
 
 
+@pytest.mark.integration
+def test_reader_training_returns_eval(tmp_path, samples_path):
+    max_seq_len = 16
+    max_query_length = 8
+    reader = FARMReader(
+        model_name_or_path="deepset/tinyroberta-squad2",
+        use_gpu=False,
+        num_processes=0,
+        max_seq_len=max_seq_len,
+        doc_stride=2,
+        max_query_length=max_query_length,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    reader.train(
+        data_dir=str(samples_path / "squad"),
+        train_filename="tiny.json",
+        dev_filename="tiny.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        evaluate_every=0,
+        save_dir=save_dir,
+        max_seq_len=max_seq_len,
+        max_query_length=max_query_length,
+    )
+    assert reader.inferencer.model.training is False
+
+
+@pytest.mark.integration
 def test_reader_training(tmp_path, samples_path):
     max_seq_len = 16
     max_query_length = 8

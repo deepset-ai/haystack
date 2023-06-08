@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Optional, cast
+from typing import List, Union, Dict, Optional, cast, Any
 import json
 import logging
 
@@ -6,12 +6,10 @@ import sseclient
 
 from haystack.errors import OpenAIError
 from haystack.utils.openai_utils import (
-    USE_TIKTOKEN,
     openai_request,
     _openai_text_completion_tokenization_details,
     load_openai_tokenizer,
     _check_openai_finish_reason,
-    count_openai_tokens,
 )
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler, DefaultTokenStreamingHandler
@@ -29,14 +27,20 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "text-davinci-003", max_length: Optional[int] = 100, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "text-davinci-003",
+        max_length: Optional[int] = 100,
+        api_base: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
         """
          Creates an instance of OpenAIInvocationLayer for OpenAI's GPT-3 InstructGPT models.
 
         :param model_name_or_path: The name or path of the underlying model.
-        :param max_length: The maximum length of the output text.
+        :param max_length: The maximum number of tokens the output text can have.
         :param api_key: The OpenAI API key.
+        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
@@ -50,6 +54,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"api_key {api_key} must be a valid OpenAI key. Visit https://openai.com/api/ to get one."
             )
         self.api_key = api_key
+        self.api_base = api_base
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.
@@ -88,7 +93,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/completions"
+        return f"{self.api_base}/completions"
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -151,19 +156,25 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             response = openai_request(
                 url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
             )
-
             handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
-            client = sseclient.SSEClient(response)
-            tokens: List[str] = []
-            try:
-                for event in client.events():
-                    if event.data != TokenStreamingHandler.DONE_MARKER:
-                        ed = json.loads(event.data)
-                        token: str = ed["choices"][0]["text"]
-                        tokens.append(handler(token, event_data=ed["choices"]))
-            finally:
-                client.close()
-            return ["".join(tokens)]  # return a list of strings just like non-streaming
+            return self._process_streaming_response(response=response, stream_handler=handler)
+
+    def _process_streaming_response(self, response, stream_handler: TokenStreamingHandler):
+        client = sseclient.SSEClient(response)
+        tokens: List[str] = []
+        try:
+            for event in client.events():
+                if event.data != TokenStreamingHandler.DONE_MARKER:
+                    event_data = json.loads(event.data)
+                    token: str = self._extract_token(event_data)
+                    if token:
+                        tokens.append(stream_handler(token, event_data=event_data["choices"]))
+        finally:
+            client.close()
+        return ["".join(tokens)]  # return a list of strings just like non-streaming
+
+    def _extract_token(self, event_data: Dict[str, Any]):
+        return event_data["choices"][0]["text"]
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Ensure that the length of the prompt and answer is within the max tokens limit of the model.
@@ -171,7 +182,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :param prompt: Prompt text to be sent to the generative model.
         """
-        n_prompt_tokens = count_openai_tokens(cast(str, prompt), self._tokenizer)
+        n_prompt_tokens = len(self._tokenizer.encode(cast(str, prompt)))
         n_answer_tokens = self.max_length
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
@@ -186,14 +197,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             self.max_tokens_limit,
         )
 
-        if USE_TIKTOKEN:
-            tokenized_payload = self._tokenizer.encode(prompt)
-            decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
-        else:
-            tokenized_payload = self._tokenizer.tokenize(prompt)
-            decoded_string = self._tokenizer.convert_tokens_to_string(
-                tokenized_payload[: self.max_tokens_limit - n_answer_tokens]
-            )
+        tokenized_payload = self._tokenizer.encode(prompt)
+        decoded_string = self._tokenizer.decode(tokenized_payload[: self.max_tokens_limit - n_answer_tokens])
         return decoded_string
 
     @classmethod

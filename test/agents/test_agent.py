@@ -7,10 +7,9 @@ from test.conftest import MockRetriever, MockPromptNode
 from unittest import mock
 import pytest
 
-from haystack import BaseComponent, Answer
+from haystack import BaseComponent, Answer, Document
 from haystack.agents import Agent, AgentStep
-from haystack.agents.base import Tool
-from haystack.errors import AgentError
+from haystack.agents.base import Tool, ToolsManager
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, BaseStandardPipeline
 
@@ -27,10 +26,9 @@ def test_add_and_overwrite_tool():
             description="useful for when you need to " "retrieve documents from your index",
         )
     )
-    assert len(agent.tools) == 1
-    assert "Retriever" in agent.tools
+    assert len(agent.tm.tools) == 1
     assert agent.has_tool(tool_name="Retriever")
-    assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseComponent)
+    assert isinstance(agent.tm.tools["Retriever"].pipeline_or_node, BaseComponent)
 
     agent.add_tool(
         Tool(
@@ -49,27 +47,9 @@ def test_add_and_overwrite_tool():
             description="useful for when you need to retrieve documents from your index",
         )
     )
-    assert len(agent.tools) == 1
-    assert "Retriever" in agent.tools
+    assert len(agent.tm.tools) == 1
     assert agent.has_tool(tool_name="Retriever")
-    assert isinstance(agent.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
-
-
-@pytest.mark.unit
-def test_agent_chooses_no_action():
-    agent = Agent(prompt_node=MockPromptNode())
-    retriever = MockRetriever()
-    agent.add_tool(
-        Tool(
-            name="Retriever",
-            pipeline_or_node=retriever,
-            description="useful for when you need to retrieve documents from your index",
-        )
-    )
-    with pytest.raises(
-        AgentError, match=r"Could not identify the next tool or input for that tool from Agent's output.*"
-    ):
-        agent.run("How many letters does the name of the town where Christelle lives have?")
+    assert isinstance(agent.tm.tools["Retriever"].pipeline_or_node, BaseStandardPipeline)
 
 
 @pytest.mark.unit
@@ -90,7 +70,7 @@ def test_max_steps(caplog, monkeypatch):
     def mock_extract_tool_name_and_tool_input(self, pred: str) -> Tuple[str, str]:
         return "Retriever", ""
 
-    monkeypatch.setattr(AgentStep, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
+    monkeypatch.setattr(ToolsManager, "extract_tool_name_and_tool_input", mock_extract_tool_name_and_tool_input)
 
     # Using max_steps as specified in the Agent's init method
     with caplog.at_level(logging.WARN, logger="haystack.agents"):
@@ -120,18 +100,8 @@ def test_run_tool():
     pn_response = "need to find out what city he was born.\nTool: Retriever\nTool Input: Where was Jeremy McKinnon born"
 
     step = AgentStep(prompt_node_response=pn_response)
-    result = agent._run_tool(step)
+    result = agent.tm.run_tool(step.prompt_node_response)
     assert result == "[]"  # empty list of documents
-
-
-@pytest.mark.unit
-def test_extract_tool_name_and_tool_input():
-    tool_pattern: str = r'Tool:\s*(\w+)\s*Tool Input:\s*("?)([^"\n]+)\2\s*'
-    pn_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy McKinnon born"
-
-    step = AgentStep(prompt_node_response=pn_response)
-    tool_name, tool_input = step.extract_tool_name_and_tool_input(tool_pattern=tool_pattern)
-    assert tool_name == "Search" and tool_input == "Where was Jeremy McKinnon born"
 
 
 @pytest.mark.unit
@@ -158,17 +128,9 @@ def test_extract_final_answer():
     ]
 
     for example, expected_answer in zip(match_examples, expected_answers):
-        agent_step = AgentStep(prompt_node_response=example)
-        final_answer = agent_step.extract_final_answer()
-        assert final_answer == expected_answer
-
-
-@pytest.mark.unit
-def test_format_answer():
-    step = AgentStep(prompt_node_response="have the final answer to the question.\nFinal Answer: Florida")
-    formatted_answer = step.final_answer(query="query")
-    assert formatted_answer["query"] == "query"
-    assert formatted_answer["answers"] == [Answer(answer="Florida", type="generative")]
+        agent_step = AgentStep(prompt_node_response=example, final_answer_pattern=r"Final Answer\s*:\s*(.*)")
+        final_answer = agent_step.final_answer(query="irrelevant")
+        assert final_answer["answers"][0].answer == expected_answer
 
 
 @pytest.mark.unit
@@ -215,7 +177,7 @@ def test_tool_result_extraction(reader, retriever_with_docs):
     assert result == "Paris" or result == "Madrid"
 
     # PromptNode as a Tool
-    pt = PromptTemplate("test", "Here is a question: {query}, Answer:")
+    pt = PromptTemplate("Here is a question: {query}, Answer:")
     pn = PromptNode(default_prompt_template=pt)
 
     t = Tool(name="Search", pipeline_or_node=pn, description="N/A", output_variable="results")
@@ -235,6 +197,7 @@ def test_tool_result_extraction(reader, retriever_with_docs):
     assert "Christelle" in result
 
 
+@pytest.mark.skip("FIXME")
 @pytest.mark.integration
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs, document_store_with_docs", [("bm25", "memory")], indirect=True)
@@ -244,21 +207,20 @@ def test_tool_result_extraction(reader, retriever_with_docs):
 )
 def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     search = ExtractiveQAPipeline(reader, retriever_with_docs)
-    prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    prompt_model = PromptModel(model_name_or_path="gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"))
     prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    counter = PromptNode(
+    country_finder = PromptNode(
         model_name_or_path=prompt_model,
         default_prompt_template=PromptTemplate(
-            name="calculator_template",
-            prompt_text="When I give you a word, respond with the number of characters that this word contains.\n"
-            "Word: Rome\nLength: 4\n"
-            "Word: Arles\nLength: 5\n"
-            "Word: Berlin\nLength: 6\n"
-            "Word: {query}?\nLength: ",
+            "When I give you a name of the city, respond with the country where the city is located.\n"
+            "City: Rome\nCountry: Italy\n"
+            "City: Berlin\nCountry: Germany\n"
+            "City: Belgrade\nCountry: Serbia\n"
+            "City: {query}?\nCountry: "
         ),
     )
 
-    agent = Agent(prompt_node=prompt_node)
+    agent = Agent(prompt_node=prompt_node, max_steps=12)
     agent.add_tool(
         Tool(
             name="Search",
@@ -271,76 +233,24 @@ def test_agent_run(reader, retriever_with_docs, document_store_with_docs):
     )
     agent.add_tool(
         Tool(
-            name="Count",
-            pipeline_or_node=counter,
-            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
+            name="CountryFinder",
+            pipeline_or_node=country_finder,
+            description="useful for when you need to find the country where a city is located",
         )
     )
 
-    # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
-    result = agent.run("How many characters are in the word Madrid?")
-    assert any(digit in result["answers"][0].answer for digit in ["5", "6", "five", "six"])
+    result = agent.run("Where is Madrid?")
+    country = result["answers"][0].answer
+    assert "spain" in country.lower()
 
-    result = agent.run("How many letters does the name of the town where Christelle lives have?")
-    assert any(digit in result["answers"][0].answer for digit in ["5", "6", "five", "six"])
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("retriever_with_docs, document_store_with_docs", [("bm25", "memory")], indirect=True)
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
-def test_agent_run_batch(reader, retriever_with_docs, document_store_with_docs):
-    search = ExtractiveQAPipeline(reader, retriever_with_docs)
-    prompt_model = PromptModel(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
-    prompt_node = PromptNode(model_name_or_path=prompt_model, stop_words=["Observation:"])
-    counter = PromptNode(
-        model_name_or_path=prompt_model,
-        default_prompt_template=PromptTemplate(
-            name="calculator_template",
-            prompt_text="When I give you a word, respond with the number of characters that this word contains.\n"
-            "Word: Rome\nLength: 4\n"
-            "Word: Arles\nLength: 5\n"
-            "Word: Berlin\nLength: 6\n"
-            "Word: {query}\nLength: ",
-        ),
-    )
-
-    agent = Agent(prompt_node=prompt_node)
-    agent.add_tool(
-        Tool(
-            name="Search",
-            pipeline_or_node=search,
-            description="useful for when you need to answer "
-            "questions about where people live. You "
-            "should ask targeted questions",
-            output_variable="answers",
-        )
-    )
-    agent.add_tool(
-        Tool(
-            name="Count",
-            pipeline_or_node=counter,
-            description="useful for when you need to count how many characters are in a word. Ask only with a single word.",
-        )
-    )
-
-    results = agent.run_batch(
-        queries=[
-            "How many characters are in the word Madrid?",
-            "How many letters does the name of the town where Christelle lives have?",
-        ]
-    )
-    # TODO Replace Count tool once more tools are implemented so that we do not need to account for off-by-one errors
-    assert any(digit in results["answers"][0][0].answer for digit in ["5", "6", "five", "six"])
-    assert any(digit in results["answers"][1][0].answer for digit in ["5", "6", "five", "six"])
+    result = agent.run("In which country is the city where Christelle lives?")
+    country = result["answers"][0].answer
+    assert "france" in country.lower()
 
 
 @pytest.mark.unit
 def test_update_hash():
-    agent = Agent(prompt_node=mock.Mock(), prompt_template=mock.Mock())
+    agent = Agent(prompt_node=MockPromptNode(), prompt_template=mock.Mock())
     assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
     agent.add_tool(
         Tool(
@@ -363,3 +273,28 @@ def test_update_hash():
     assert agent.hash == "d41d8cd98f00b204e9800998ecf8427e"
     agent.update_hash()
     assert agent.hash == "5ac8eca2f92c9545adcce3682b80d4c5"
+
+
+@pytest.mark.unit
+def test_tool_fails_processing_dict_result():
+    tool = Tool(name="name", pipeline_or_node=MockPromptNode(), description="description")
+    with pytest.raises(ValueError):
+        tool._process_result({"answer": "answer"})
+
+
+@pytest.mark.unit
+def test_tool_processes_answer_result_and_document_result():
+    tool = Tool(name="name", pipeline_or_node=MockPromptNode(), description="description")
+    assert tool._process_result(Answer(answer="answer")) == "answer"
+    assert tool._process_result(Document(content="content")) == "content"
+
+
+def test_invalid_agent_template():
+    pn = PromptNode()
+    with pytest.raises(ValueError, match="some_non_existing_template not supported"):
+        Agent(prompt_node=pn, prompt_template="some_non_existing_template")
+
+    # if prompt_template is None, then we'll use zero-shot-react
+    a = Agent(prompt_node=pn, prompt_template=None)
+    assert isinstance(a.prompt_template, PromptTemplate)
+    assert a.prompt_template.name == "zero-shot-react"

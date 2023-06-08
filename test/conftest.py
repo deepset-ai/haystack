@@ -11,7 +11,6 @@ from functools import wraps
 
 import requests_cache
 import responses
-from sqlalchemy import create_engine, text
 import posthog
 
 import numpy as np
@@ -23,7 +22,6 @@ from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
-    MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
     FAISSDocumentStore,
@@ -79,6 +77,9 @@ META_FIELDS = [
 
 # Disable telemetry reports when running tests
 posthog.disabled = True
+
+# Disable caching from prompthub to avoid polluting the local environment.
+os.environ["PROMPTHUB_CACHE_ENABLED"] = "false"
 
 # Cache requests (e.g. huggingface model) to circumvent load protection
 # See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
@@ -139,11 +140,8 @@ def pytest_collection_modifyitems(config, items):
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
-        "milvus": [pytest.mark.milvus],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
-        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
-        "graphdb": [pytest.mark.integration],
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -179,7 +177,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate", "pinecone"}
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -297,8 +295,40 @@ class MockRetriever(BaseRetriever):
         return [[]]
 
 
+class MockBaseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
+    ):
+        return [self.mock_document]
+
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ):
+        return [[self.mock_document] for _ in range(len(queries))]
+
+    def embed_documents(self, documents: List[Document]):
+        return np.full((len(documents), 768), 0.5)
+
+
 class MockSeq2SegGenerator(BaseGenerator):
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int], max_tokens: Optional[int]) -> Dict:
         pass
 
 
@@ -364,15 +394,15 @@ class MockReader(BaseReader):
 class MockPromptNode(PromptNode):
     def __init__(self):
         self.default_prompt_template = None
+        self.model_name_or_path = ""
 
     def prompt(self, prompt_template: Optional[Union[str, PromptTemplate]], *args, **kwargs) -> List[str]:
         return [""]
 
     def get_prompt_template(self, prompt_template: Union[str, PromptTemplate, None]) -> Optional[PromptTemplate]:
         if prompt_template == "think-step-by-step":
-            return PromptTemplate(
-                name="think-step-by-step",
-                prompt_text="You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
+            p = PromptTemplate(
+                "You are a helpful and knowledgeable agent. To achieve your goal of answering complex questions "
                 "correctly, you have access to the following tools:\n\n"
                 "{tool_names_with_descriptions}\n\n"
                 "To answer questions, you'll need to go through multiple steps involving step-by-step thinking and "
@@ -389,10 +419,11 @@ class MockPromptNode(PromptNode):
                 "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
                 "---\n\n"
                 "Question: {query}\n"
-                "Thought: Let's think step-by-step, I first need to {generated_text}",
+                "Thought: Let's think step-by-step, I first need to {generated_text}"
             )
+            p.name = "think-step-by-step"
         else:
-            return PromptTemplate(name="", prompt_text="")
+            return PromptTemplate("test prompt")
 
 
 @pytest.fixture
@@ -511,16 +542,17 @@ def reader(request):
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq", return_table_cell=True), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", return_table_cell=True), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader", return_table_cell=True), request.param
     elif request.param == "rci":
         return (
             RCIReader(
                 row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
                 column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+                return_table_cell=True,
             ),
             request.param,
         )
@@ -629,7 +661,7 @@ def mock_pinecone(monkeypatch):
         monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "weaviate", "pinecone"])
 def document_store_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -670,6 +702,8 @@ def setup_postgres():
     #     logging.warning("Tried to start PostgreSQL through Docker but this failed. It is likely that there is already an existing instance running.")
     # else:
     #     sleep(5)
+    from sqlalchemy import create_engine, text
+
     engine = create_engine("postgresql://postgres:postgres@127.0.0.1/postgres", isolation_level="AUTOCOMMIT")
 
     with engine.connect() as connection:
@@ -683,6 +717,8 @@ def setup_postgres():
 
 # TODO: Verify this is still necessary as it's called by no one
 def teardown_postgres():
+    from sqlalchemy import create_engine, text
+
     engine = create_engine("postgresql://postgres:postgres@127.0.0.1/postgres", isolation_level="AUTOCOMMIT")
     with engine.connect() as connection:
         connection.execute(text("DROP SCHEMA public CASCADE"))
@@ -730,18 +766,6 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
-        )
-
-    elif document_store_type == "milvus":
-        document_store = MilvusDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=get_sql_url(tmp_path),
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-            recreate_index=recreate_index,
         )
 
     elif document_store_type == "weaviate":
@@ -806,3 +830,22 @@ def haystack_openai_config(request, haystack_azure_conf):
 @pytest.fixture
 def samples_path():
     return Path(__file__).parent / "samples"
+
+
+@pytest.fixture
+def preview_samples_path():
+    return Path(__file__).parent / "preview" / "test_files"
+
+
+@pytest.fixture(autouse=True)
+def request_blocker(request: pytest.FixtureRequest, monkeypatch):
+    """
+    This fixture is applied automatically to all tests.
+    Those that are marked as unit will have the requests module
+    monkeypatched to avoid making HTTP requests by mistake.
+    """
+    marker = request.node.get_closest_marker("unit")
+    if marker is None:
+        return
+    monkeypatch.delattr("requests.sessions.Session")
+    monkeypatch.delattr("requests_cache.session.CachedSession")

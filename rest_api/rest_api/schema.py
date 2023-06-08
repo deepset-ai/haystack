@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Literal
 import numpy as np
 import pandas as pd
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
 
 from pydantic import BaseModel, Field, Extra
 from pydantic import BaseConfig

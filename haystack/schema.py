@@ -3,12 +3,7 @@ import csv
 import hashlib
 import inspect
 
-from typing import Any, Optional, Dict, List, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Any, Optional, Dict, List, Union, Literal
 
 from pathlib import Path
 from uuid import uuid4
@@ -18,9 +13,10 @@ import json
 import ast
 from dataclasses import asdict
 
-import mmh3
 import numpy as np
+from numpy import ndarray
 import pandas as pd
+from pandas import DataFrame
 
 from pydantic import BaseConfig, Field
 from pydantic.json import pydantic_encoder
@@ -29,11 +25,19 @@ from pydantic.json import pydantic_encoder
 # See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
+from haystack import is_imported
+from haystack.mmh3 import hash128
+
 
 logger = logging.getLogger(__name__)
 
 
+if not is_imported("pandas"):
+    DataFrame = object
+
+
 BaseConfig.arbitrary_types_allowed = True
+
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
@@ -43,12 +47,12 @@ FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 @dataclass
 class Document:
     id: str
-    content: Union[str, pd.DataFrame]
+    content: Union[str, DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     id_hash_keys: List[str] = Field(default=["content"])
     score: Optional[float] = None
-    embedding: Optional[np.ndarray] = None
+    embedding: Optional[ndarray] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -56,12 +60,12 @@ class Document:
     # don't need to passed by the user in init and are rather initialized automatically in the init
     def __init__(
         self,
-        content: Union[str, pd.DataFrame],
+        content: Union[str, DataFrame],
         content_type: ContentTypes = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
-        embedding: Optional[np.ndarray] = None,
+        embedding: Optional[ndarray] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
         """
@@ -138,7 +142,7 @@ class Document:
         """
 
         if id_hash_keys is None:
-            return "{:02x}".format(mmh3.hash128(str(self.content), signed=False))
+            return "{:02x}".format(hash128(str(self.content)))
 
         final_hash_key = ""
         for attr in id_hash_keys:
@@ -154,7 +158,7 @@ class Document:
                 "Can't create 'Document': 'id_hash_keys' must contain at least one of ['content', 'meta'] or be set to None."
             )
 
-        return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
+        return "{:02x}".format(hash128(final_hash_key))
 
     def to_dict(self, field_map: Optional[Dict[str, Any]] = None) -> Dict:
         """
@@ -184,8 +188,8 @@ class Document:
                 continue
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
-                if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
-                    v = [self.content.columns.tolist()] + self.content.values.tolist()
+                if self.content_type == "table" and isinstance(self.content, DataFrame):
+                    v = dataframe_to_list(self.content)
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc
@@ -230,9 +234,9 @@ class Document:
                 k = field_map[k]
                 _new_doc[k] = v
 
-        # Convert list of rows to pd.DataFrame
+        # Convert list of rows to DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
-            _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
+            _new_doc["content"] = dataframe_from_list(_new_doc["content"])
 
         return cls(**_new_doc)
 
@@ -243,16 +247,24 @@ class Document:
         return json.dumps(dictionary, cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data: str, field_map: Optional[Dict[str, Any]] = None) -> Document:
+    def from_json(cls, data: Union[str, Dict[str, Any]], field_map: Optional[Dict[str, Any]] = None) -> Document:
         if not field_map:
             field_map = {}
-        dictionary = json.loads(data)
-        return cls.from_dict(dictionary, field_map=field_map)
+        if isinstance(data, str):
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data, field_map=field_map)
 
     def __eq__(self, other):
+        content = getattr(other, "content", None)
+        if isinstance(content, pd.DataFrame):
+            is_content_equal = content.equals(self.content)
+        else:
+            is_content_equal = content == self.content
         return (
             isinstance(other, self.__class__)
-            and getattr(other, "content", None) == self.content
+            and is_content_equal
             and getattr(other, "content_type", None) == self.content_type
             and getattr(other, "id", None) == self.id
             and getattr(other, "id_hash_keys", None) == self.id_hash_keys
@@ -286,10 +298,9 @@ class Span:
     """
     Defining a sequence of characters (Text span) or cells (Table span) via start and end index.
     For extractive QA: Character where answer starts/ends
-    For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
 
     :param start: Position where the span starts
-    :param end:  Position where the spand ends
+    :param end:  Position where the span ends
     """
 
     def __contains__(self, value):
@@ -335,13 +346,25 @@ class Span:
 
 
 @dataclass
+class TableCell:
+    row: int
+    col: int
+    """
+    Defining a table cell via the row and column index.
+
+    :param row: Row index of the cell
+    :param col: Column index of the cell
+    """
+
+
+@dataclass
 class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
-    context: Optional[Union[str, pd.DataFrame]] = None
-    offsets_in_document: Optional[List[Span]] = None
-    offsets_in_context: Optional[List[Span]] = None
+    context: Optional[Union[str, DataFrame]] = None
+    offsets_in_document: Optional[Union[List[Span], List[TableCell]]] = None
+    offsets_in_context: Optional[Union[List[Span], List[TableCell]]] = None
     document_ids: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
@@ -374,15 +397,20 @@ class Answer:
     """
 
     def __post_init__(self):
-        # In case offsets are passed as dicts rather than Span objects we convert them here
+        # In case offsets are passed as dicts rather than Span or TableCell objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
-            self.offsets_in_document = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_document]
+            self.offsets_in_document = self._from_dict_offsets(self.offsets_in_document)
+
         if self.offsets_in_context is not None:
-            self.offsets_in_context = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_context]
+            self.offsets_in_context = self._from_dict_offsets(self.offsets_in_context)
 
         if self.meta is None:
             self.meta = {}
+
+        # In case the context is a list of lists for a table document that is instantiated by from_json() or from_dict()
+        if isinstance(self.context, list):
+            self.context = dataframe_from_list(self.context)
 
     def __lt__(self, other):
         """Enable sorting of Answers by score"""
@@ -395,29 +423,61 @@ class Answer:
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
     def __repr__(self):
-        return f"<Answer {asdict(self)}>"
+        return f"<Answer {self.to_dict()}>"
 
-    def to_dict(self):
-        return asdict(self)
+    def to_dict(self) -> Dict:
+        return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: Dict) -> Answer:
         # backwards compatibility: `document_id: Optional[str]` was changed to `document_ids: Optional[List[str]]`
         if "document_id" in dict:
             dict = dict.copy()
             document_id = dict.pop("document_id")
             dict["document_ids"] = [document_id] if document_id is not None else None
-
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data):
-        if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
+        if isinstance(data, str):
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data)
+
+    @staticmethod
+    def _from_dict_offsets(offsets):
+        converted_offsets = []
+        for e in offsets:
+            if isinstance(e, dict):
+                if "row" in e:  # is a TableCell
+                    converted_offsets.append(TableCell(**e))
+                else:
+                    converted_offsets.append(Span(**e))
+            else:
+                converted_offsets.append(e)
+        return converted_offsets
+
+    def __eq__(self, other):
+        context = getattr(other, "context", None)
+        if isinstance(context, pd.DataFrame):
+            is_content_equal = context.equals(self.context)
+        else:
+            is_content_equal = context == self.context
+        return (
+            isinstance(other, self.__class__)
+            and is_content_equal
+            and getattr(other, "answer", None) == self.answer
+            and getattr(other, "type", None) == self.type
+            and getattr(other, "score", None) == self.score
+            and getattr(other, "offsets_in_document", None) == self.offsets_in_document
+            and getattr(other, "offsets_in_context", None) == self.offsets_in_context
+            and getattr(other, "document_ids", None) == self.document_ids
+            and getattr(other, "meta", None) == self.meta
+        )
 
 
 @dataclass
@@ -491,11 +551,7 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        if isinstance(answer, dict):
-            answer = Answer.from_dict(answer)
         self.answer = answer
-        if isinstance(document, dict):
-            document = Document.from_dict(document)
         self.document = document
 
         self.is_correct_answer = is_correct_answer
@@ -519,25 +575,28 @@ class Label:
         return no_answer
 
     def to_dict(self):
-        return asdict(self)
+        return asdict(self, dict_factory=_dict_factory)
 
     @classmethod
-    def from_dict(cls, dict: dict):
-        # backward compatibility for old labels using answers with document_id instead of document_ids
+    def from_dict(cls, dict: Dict):
         answer = dict.get("answer")
-        if answer and "document_id" in answer:
-            dict = dict.copy()
+        if answer and isinstance(answer, Dict):
             dict["answer"] = Answer.from_dict(dict["answer"])
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        doc = dict.get("document")
+        if isinstance(doc, Dict):
+            dict["document"] = Document.from_dict(dict["document"])
+        return cls(**dict)
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), cls=NumpyEncoder)
 
     @classmethod
-    def from_json(cls, data):
-        if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
+        if isinstance(data, str):
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        return cls.from_dict(dict_data)
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
@@ -623,10 +682,10 @@ class MultiLabel:
             for answer in answered:
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self._offsets_in_documents.append({"start": span.start, "end": span.end})
+                        self._offsets_in_documents.append(self._to_dict_offsets(span))
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self._offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        self._offsets_in_contexts.append(self._to_dict_offsets(span))
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -638,6 +697,13 @@ class MultiLabel:
         # Hence, we exclude them here as well.
         self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
         self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
+
+    @staticmethod
+    def _to_dict_offsets(offset: Union[Span, TableCell]) -> Dict:
+        if isinstance(offset, TableCell):
+            return {"row": offset.row, "col": offset.col}
+        else:
+            return {"start": offset.start, "end": offset.end}
 
     @property
     def labels(self):
@@ -695,7 +761,7 @@ class MultiLabel:
         return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
-    def from_dict(cls, dict: dict):
+    def from_dict(cls, dict: Dict):
         # exclude extra arguments
         return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
@@ -704,7 +770,7 @@ class MultiLabel:
 
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
-        if type(data) == str:
+        if isinstance(data, str):
             dict_data = json.loads(data)
         else:
             dict_data = data
@@ -721,7 +787,7 @@ class MultiLabel:
         return f"<MultiLabel: {self.to_dict()}>"
 
 
-def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
+def _pydantic_dataclass_from_dict(dict: Dict, pydantic_dataclass_type) -> Any:
     """
     Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
     This allows simple de-serialization of pydantic dataclasses from json.
@@ -740,6 +806,21 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     return dataclass_object
 
 
+def _dict_factory(data):
+    """Meant to be as the dict_factory for `asdict`. This function is called within `asdict` to convert a list of tuples
+    into a dictionary object. This handles the conversion of pandas Dataframes into a list of lists.
+
+    :param data: list of (key, value) pairs
+    """
+
+    def convert_value(v):
+        if isinstance(v, pd.DataFrame):
+            return dataframe_to_list(v)
+        return v
+
+    return {k: convert_value(v) for k, v in data}
+
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -747,8 +828,16 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
+def dataframe_to_list(df: pd.DataFrame) -> List[List]:
+    return [df.columns.tolist()] + df.values.tolist()
+
+
+def dataframe_from_list(list_df: List[List]) -> pd.DataFrame:
+    return pd.DataFrame(columns=list_df[0], data=list_df[1:])
+
+
 class EvaluationResult:
-    def __init__(self, node_results: Optional[Dict[str, pd.DataFrame]] = None) -> None:
+    def __init__(self, node_results: Optional[Dict[str, DataFrame]] = None) -> None:
         """
         A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
@@ -818,7 +907,7 @@ class EvaluationResult:
 
         :param node_results: The evaluation Dataframes per pipeline node.
         """
-        self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
+        self.node_results: Dict[str, DataFrame] = {} if node_results is None else node_results
 
     def __getitem__(self, key: str):
         return self.node_results.__getitem__(key)
@@ -826,7 +915,7 @@ class EvaluationResult:
     def __delitem__(self, key: str):
         self.node_results.__delitem__(key)
 
-    def __setitem__(self, key: str, value: pd.DataFrame):
+    def __setitem__(self, key: str, value: DataFrame):
         self.node_results.__setitem__(key, value)
 
     def __contains__(self, key: str):
@@ -835,10 +924,10 @@ class EvaluationResult:
     def __len__(self):
         return self.node_results.__len__()
 
-    def append(self, key: str, value: pd.DataFrame):
+    def append(self, key: str, value: DataFrame):
         if value is not None and len(value) > 0:
             if key in self.node_results:
-                self.node_results[key] = pd.concat([self.node_results[key], value])
+                self.node_results[key] = pd.concat([self.node_results[key], value]).reset_index(drop=True)
             else:
                 self.node_results[key] = value
 
@@ -1126,7 +1215,7 @@ class EvaluationResult:
 
     def _calculate_node_metrics(
         self,
-        df: pd.DataFrame,
+        df: DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
@@ -1160,7 +1249,7 @@ class EvaluationResult:
 
         return {**answer_metrics, **document_metrics}
 
-    def _filter_eval_mode(self, df: pd.DataFrame, eval_mode: str) -> pd.DataFrame:
+    def _filter_eval_mode(self, df: DataFrame, eval_mode: str) -> DataFrame:
         if "eval_mode" in df.columns:
             df = df[df["eval_mode"] == eval_mode]
         else:
@@ -1169,7 +1258,7 @@ class EvaluationResult:
 
     def _calculate_answer_metrics(
         self,
-        df: pd.DataFrame,
+        df: DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
@@ -1191,11 +1280,11 @@ class EvaluationResult:
 
     def _build_answer_metrics_df(
         self,
-        answers: pd.DataFrame,
+        answers: DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """
         Builds a dataframe containing answer metrics (columns) per multilabel (index).
         Answer metrics are:
@@ -1251,7 +1340,7 @@ class EvaluationResult:
             }
             df_records.append(query_metrics)
 
-        metrics_df = pd.DataFrame.from_records(df_records, index=multilabel_ids)
+        metrics_df = DataFrame.from_records(df_records, index=multilabel_ids)
         return metrics_df
 
     def _get_documents_df(self):
@@ -1266,7 +1355,7 @@ class EvaluationResult:
 
     def _calculate_document_metrics(
         self,
-        df: pd.DataFrame,
+        df: DataFrame,
         simulated_top_k_retriever: int = -1,
         document_relevance_criterion: Literal[
             "document_id",
@@ -1294,7 +1383,7 @@ class EvaluationResult:
 
     def _build_document_metrics_df(
         self,
-        documents: pd.DataFrame,
+        documents: DataFrame,
         simulated_top_k_retriever: int = -1,
         document_relevance_criterion: Literal[
             "document_id",
@@ -1307,7 +1396,7 @@ class EvaluationResult:
             "document_id_and_context_and_answer",
             "document_id_or_answer",
         ] = "document_id_or_answer",
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """
         Builds a dataframe containing document metrics (columns) per pair of query and gold document ids (index).
         Document metrics are:
@@ -1455,7 +1544,7 @@ class EvaluationResult:
                 }
             )
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
+        metrics_df = DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
         return metrics_df
 
     def save(self, out_dir: Union[str, Path], **to_csv_kwargs):
@@ -1464,8 +1553,8 @@ class EvaluationResult:
         The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
 
         :param out_dir: Path to the target folder the csvs will be saved.
-        :param to_csv_kwargs: kwargs to be passed to pd.DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
-                        This method uses different default values than pd.DataFrame.to_csv() for the following parameters:
+        :param to_csv_kwargs: kwargs to be passed to DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
+                        This method uses different default values than DataFrame.to_csv() for the following parameters:
                         index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
@@ -1526,6 +1615,7 @@ class EvaluationResult:
         node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}
         # backward compatibility mappings
         for df in node_results.values():
+            df.replace(to_replace=np.nan, value=None, inplace=True)
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
             # convert single document_id to list
             if "answer" in df.columns and "document_id" in df.columns and not "document_ids" in df.columns:

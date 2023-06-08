@@ -1,0 +1,295 @@
+name: License Compliance
+
+on:
+  pull_request:
+    paths:
+      - "**/pyproject.toml"
+  # Since we test PRs, there is no need to run the workflow at each
+  # merge on `main`. Let's use a cron job instead.
+  schedule:
+    - cron: "0 0 * * *" # every day at midnight
+
+jobs:
+  license_check_direct:
+    name: Direct dependencies only
+    env:
+      REQUIREMENTS_FILE: requirements_direct.txt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Get direct dependencies, all extras
+      run: |
+        pip install toml
+        python .github/utils/pyproject_to_requirements.py pyproject.toml --extra all > ${{ env.REQUIREMENTS_FILE }}
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        requirements: ${{ env.REQUIREMENTS_FILE }}
+        fail: 'Copyleft,Other,Error'
+        # Exclusions in the vanilla distribution must be explicitly motivated
+        #
+        # - tqdm is MLP but there are no better alternatives
+        # - PyMuPDF is optional
+        # - pinecone-client is optional
+        # - psycopg2 is optional
+        exclude: '(?i)^(PyMuPDF|tqdm|pinecone-client|psycopg2).*'
+
+    # We keep the license inventory on FOSSA
+    - name: Send license report to Fossa
+      uses: fossas/fossa-action@v1.3.1
+      continue-on-error: true  # not critical
+      with:
+        api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
+
+    - name: Calculate alert data
+      id: calculator
+      shell: bash
+      if: (success() || failure())
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "alert_type=success" >> "$GITHUB_OUTPUT";
+        else
+          echo "alert_type=error" >> "$GITHUB_OUTPUT";
+        fi
+
+    - name: Send event to Datadog
+      if: (success() || failure())
+      uses: masci/datadog@v1
+      with:
+        api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+        api-url: https://api.datadoghq.eu
+        events: |
+          - title: "${{ github.job }} in ${{ github.workflow }} workflow"
+            text: "License compliance check: direct dependencies only."
+            alert_type: "${{ steps.calculator.outputs.alert_type }}"
+            source_type_name: "Github"
+            host: ${{ github.repository_owner }}
+            tags:
+              - "project:${{ github.repository }}"
+              - "job:${{ github.job }}"
+              - "run_id:${{ github.run_id }}"
+              - "workflow:${{ github.workflow }}"
+              - "branch:${{ github.ref_name }}"
+              - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  license_check_vanilla:
+    name: Core dependencies, no extras
+    env:
+      REQUIREMENTS_FILE: requirements_vanilla.txt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Get explicit and transitive dependencies
+      run: |
+        pip install .
+        pip freeze > ${{ env.REQUIREMENTS_FILE }}
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        requirements: ${{ env.REQUIREMENTS_FILE }}
+        fail: 'Copyleft,Other,Error'
+        # Exclusions in the vanilla distribution must be explicitly motivated
+        #
+        # - certifi is pulled in by requests
+        # - num2words is pulled in by quantulum3
+        # - tqdm is MLP but there are no better alternatives
+        # - nvidia libraries are brought in by torch on Linux,
+        #   FIXME: to be removed once we stop depending on torch with the vanilla install
+        exclude: '(?i)^(certifi|num2words|tqdm|nvidia-).*'
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
+
+    - name: Calculate alert data
+      id: calculator
+      shell: bash
+      if: (success() || failure())
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "alert_type=success" >> "$GITHUB_OUTPUT";
+        else
+          echo "alert_type=error" >> "$GITHUB_OUTPUT";
+        fi
+
+    - name: Send event to Datadog
+      if: (success() || failure())
+      uses: masci/datadog@v1
+      with:
+        api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+        api-url: https://api.datadoghq.eu
+        events: |
+          - title: "${{ github.job }} in ${{ github.workflow }} workflow"
+            text: "License compliance check: core dependencies, no extras."
+            alert_type: "${{ steps.calculator.outputs.alert_type }}"
+            source_type_name: "Github"
+            host: ${{ github.repository_owner }}
+            tags:
+              - "project:${{ github.repository }}"
+              - "job:${{ github.job }}"
+              - "run_id:${{ github.run_id }}"
+              - "workflow:${{ github.workflow }}"
+              - "branch:${{ github.ref_name }}"
+              - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  license_check_all:
+    name: All extras
+    env:
+      REQUIREMENTS_FILE: requirements_all.txt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Get explicit and transitive dependencies
+      run: |
+        pip install -U pip
+        pip install .[all]
+        pip freeze > ${{ env.REQUIREMENTS_FILE }}
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        requirements: ${{ env.REQUIREMENTS_FILE }}
+        fail: 'Copyleft,Other,Error'
+        # We allow incompatible licenses when they come from optional dependencies.
+        #
+        # Special cases:
+        # - pyzmq is flagged because dual-licensed, but we assume using BSD
+        # - tqdm is MLP but there are no better alternatives
+        exclude: '(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*'
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
+
+    - name: Calculate alert data
+      id: calculator
+      shell: bash
+      if: (success() || failure())
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "alert_type=success" >> "$GITHUB_OUTPUT";
+        else
+          echo "alert_type=error" >> "$GITHUB_OUTPUT";
+        fi
+
+    - name: Send event to Datadog
+      if: (success() || failure())
+      uses: masci/datadog@v1
+      with:
+        api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+        api-url: https://api.datadoghq.eu
+        events: |
+          - title: "${{ github.job }} in ${{ github.workflow }} workflow"
+            text: "License compliance check: all available extras."
+            alert_type: "${{ steps.calculator.outputs.alert_type }}"
+            source_type_name: "Github"
+            host: ${{ github.repository_owner }}
+            tags:
+              - "project:${{ github.repository }}"
+              - "job:${{ github.job }}"
+              - "run_id:${{ github.run_id }}"
+              - "workflow:${{ github.workflow }}"
+              - "branch:${{ github.ref_name }}"
+              - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  license_check_all_GPU:
+    name: All extras, GPU version
+    env:
+      REQUIREMENTS_FILE: requirements_all_gpu.txt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Get explicit and transitive dependencies
+      run: |
+        pip install -U pip
+        pip install .[all-gpu]
+        pip freeze > ${{ env.REQUIREMENTS_FILE }}
+
+    - name: Check Licenses
+      id: license_check_report
+      uses: pilosus/action-pip-license-checker@v2
+      with:
+        github-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        requirements: ${{ env.REQUIREMENTS_FILE }}
+        fail: 'Copyleft,Other,Error'
+        # We allow incompatible licenses when they come from optional dependencies.
+        #
+        # Special cases:
+        # - pyzmq is flagged because dual-licensed, but we assume using BSD
+        # - tqdm is MLP but there are no better alternatives
+        exclude: '(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*'
+
+    - name: Print report
+      if: ${{ always() }}
+      run: echo "${{ steps.license_check_report.outputs.report }}"
+
+    - name: Calculate alert data
+      id: calculator
+      shell: bash
+      if: (success() || failure())
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "alert_type=success" >> "$GITHUB_OUTPUT";
+        else
+          echo "alert_type=error" >> "$GITHUB_OUTPUT";
+        fi
+
+    - name: Send event to Datadog
+      if: (success() || failure())
+      uses: masci/datadog@v1
+      with:
+        api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+        api-url: https://api.datadoghq.eu
+        events: |
+          - title: "${{ github.job }} in ${{ github.workflow }} workflow"
+            text: "License compliance check: all available extras, GPU version."
+            alert_type: "${{ steps.calculator.outputs.alert_type }}"
+            source_type_name: "Github"
+            host: ${{ github.repository_owner }}
+            tags:
+              - "project:${{ github.repository }}"
+              - "job:${{ github.job }}"
+              - "run_id:${{ github.run_id }}"
+              - "workflow:${{ github.workflow }}"
+              - "branch:${{ github.ref_name }}"
+              - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

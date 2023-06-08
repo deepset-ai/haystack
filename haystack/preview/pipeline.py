@@ -1,13 +1,15 @@
-from typing import List, Dict, Union, Any, Tuple, Optional, Callable
+from typing import List, Dict, Any, Optional, Callable
 
 from pathlib import Path
 
-from canals import (
+from canals.component import ComponentInput
+from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
     load_pipelines as load_canals_pipelines,
     save_pipelines as save_canals_pipelines,
 )
+from canals.pipeline.sockets import find_input_sockets
 
 
 class NoSuchStoreError(PipelineError):
@@ -21,7 +23,7 @@ class Pipeline(CanalsPipeline):
 
     def __init__(self):
         super().__init__()
-        self.stores: Dict[str, object] = {}
+        self.stores = {}
 
     def add_store(self, name: str, store: object) -> None:
         """
@@ -53,25 +55,24 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(
-        self,
-        data: Union[Dict[str, Any], List[Tuple[str, Any]]],
-        parameters: Optional[Dict[str, Dict[str, Any]]] = None,
-        debug: bool = False,
-    ):
+    def run(self, data: Dict[str, ComponentInput], debug: bool = False):
         """
         Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
         """
-        if not parameters:
-            parameters = {}
+        # Get all nodes in this pipelines instance
+        for node_name in self.graph.nodes:
+            # Get node inputs
+            node = self.graph.nodes[node_name]["instance"]
+            input_params = find_input_sockets(node)
 
-        for node in self.graph.nodes:
-            if not node in parameters.keys():
-                parameters[node] = {"stores": self.stores}
-            else:
-                parameters[node] = {"stores": self.stores, **parameters[node]}
+            # If the node needs a store, adds the list of stores to its default inputs
+            if "stores" in input_params:
+                if not hasattr(node, "defaults"):
+                    setattr(node, "defaults", {})
+                node.defaults["stores"] = self.stores
 
-        super().run(data=data, parameters=parameters, debug=debug)
+        # Run the pipeline
+        super().run(data=data, debug=debug)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):

@@ -1,8 +1,9 @@
-from typing import Optional, List, Dict, Union
 import logging
+from typing import Optional, List, Dict, Union, Any
 
-from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
+from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +20,24 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
     """
 
     def __init__(
-        self, api_key: str, model_name_or_path: str = "gpt-3.5-turbo", max_length: Optional[int] = 500, **kwargs
+        self,
+        api_key: str,
+        model_name_or_path: str = "gpt-3.5-turbo",
+        max_length: Optional[int] = 500,
+        api_base: str = "https://api.openai.com/v1",
+        **kwargs,
     ):
-        super().__init__(api_key, model_name_or_path, max_length, **kwargs)
+        """
+         Creates an instance of ChatGPTInvocationLayer for OpenAI's GPT-3.5 GPT-4 models.
+
+        :param model_name_or_path: The name or path of the underlying model.
+        :param max_length: The maximum number of tokens the output text can have.
+        :param api_key: The OpenAI API key.
+        :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param kwargs: Additional keyword arguments passed to the underlying model.
+        [See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+        """
+        super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
 
     def invoke(self, *args, **kwargs):
         """
@@ -55,6 +71,10 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
                 kwargs["n"] = top_k
                 kwargs["best_of"] = top_k
             kwargs_with_defaults.update(kwargs)
+
+        stream = (
+            kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
+        )
         payload = {
             "model": self.model_name_or_path,
             "messages": messages,
@@ -62,15 +82,22 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 1),
             "n": kwargs_with_defaults.get("n", 1),
-            "stream": False,  # no support for streaming
+            "stream": stream,
             "stop": kwargs_with_defaults.get("stop", None),
             "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
-        response = openai_request(url=self.url, headers=self.headers, payload=payload)
-        _check_openai_finish_reason(result=response, payload=payload)
-        assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
+        if not stream:
+            response = openai_request(url=self.url, headers=self.headers, payload=payload)
+            _check_openai_finish_reason(result=response, payload=payload)
+            assistant_response = [choice["message"]["content"].strip() for choice in response["choices"]]
+        else:
+            response = openai_request(
+                url=self.url, headers=self.headers, payload=payload, read_response=False, stream=True
+            )
+            handler: TokenStreamingHandler = kwargs_with_defaults.pop("stream_handler", DefaultTokenStreamingHandler())
+            assistant_response = self._process_streaming_response(response=response, stream_handler=handler)
 
         # Although ChatGPT generates text until stop words are encountered, unfortunately it includes the stop word
         # We want to exclude it to be consistent with other invocation layers
@@ -81,6 +108,12 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
                     assistant_response[idx] = assistant_response[idx].replace(stop_word, "").strip()
 
         return assistant_response
+
+    def _extract_token(self, event_data: Dict[str, Any]):
+        delta = event_data["choices"][0]["delta"]
+        if "content" in delta:
+            return delta["content"]
+        return None
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         """Make sure the length of the prompt and answer is within the max tokens limit of the model.
@@ -107,7 +140,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @property
     def url(self) -> str:
-        return "https://api.openai.com/v1/chat/completions"
+        return f"{self.api_base}/chat/completions"
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:

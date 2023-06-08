@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict, List, Optional, Union
 
 import logging
@@ -15,7 +16,6 @@ from transformers import (
 
 from haystack.schema import Document
 from haystack.nodes.answer_generator.base import BaseGenerator
-from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.modeling.utils import initialize_device_settings
 
 
@@ -69,7 +69,7 @@ class RAGenerator(BaseGenerator):
         self,
         model_name_or_path: str = "facebook/rag-token-nq",
         model_version: Optional[str] = None,
-        retriever: Optional[DensePassageRetriever] = None,
+        retriever=None,
         generator_type: str = "token",
         top_k: int = 2,
         max_length: int = 200,
@@ -83,6 +83,8 @@ class RAGenerator(BaseGenerator):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
+        This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `RAGenerator`.
+
         Load a RAG model from Transformers along with passage_embedding_model.
         See https://huggingface.co/transformers/model_doc/rag.html for more details
 
@@ -111,6 +113,12 @@ class RAGenerator(BaseGenerator):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        warnings.warn(
+            "`RAGenerator` component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `RAGenerator`.",
+            category=DeprecationWarning,
+        )
+
         super().__init__(progress_bar=progress_bar)
 
         self.model_name_or_path = model_name_or_path
@@ -206,7 +214,9 @@ class RAGenerator(BaseGenerator):
 
         return embeddings_in_tensor.to(self.devices[0])
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def predict(
+        self, query: str, documents: List[Document], top_k: Optional[int] = None, max_tokens: Optional[int] = None
+    ) -> Dict:
         """
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These documents can for example be retrieved via the Retriever.
@@ -214,6 +224,7 @@ class RAGenerator(BaseGenerator):
         :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param top_k: Number of returned answers
+        :param max_tokens: Maximum number of tokens to generate
         :return: Generated answers plus additional infos in a dict like this:
 
         ```python
@@ -271,7 +282,7 @@ class RAGenerator(BaseGenerator):
             doc_scores=doc_scores,
             num_return_sequences=top_k,
             num_beams=self.num_beams,
-            max_length=self.max_length,
+            max_length=max_tokens or self.max_length,
             min_length=self.min_length,
             n_docs=len(flat_docs_dict["content"]),
         )
@@ -346,6 +357,8 @@ class Seq2SeqGenerator(BaseGenerator):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
+        This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `Seq2SeqGenerator`.
+
         :param model_name_or_path: A Hugging Face model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5, and so on.
         :param input_converter: An optional callable to prepare model input for the underlying language model
                                 specified in the `model_name_or_path` parameter. The required `__call__` method signature for
@@ -368,6 +381,11 @@ class Seq2SeqGenerator(BaseGenerator):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        warnings.warn(
+            "`Seq2SeqGenerator` component is deprecated and will be removed in future versions. Use `PromptNode` "
+            "instead of `Seq2SeqGenerator`.",
+            category=DeprecationWarning,
+        )
         super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
@@ -415,7 +433,9 @@ class Seq2SeqGenerator(BaseGenerator):
             model_name_or_path = "yjernite/bart_eli5"
         return cls._model_input_converters.get(model_name_or_path)
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def predict(
+        self, query: str, documents: List[Document], top_k: Optional[int] = None, max_tokens: Optional[int] = None
+    ) -> Dict:
         """
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These document can be retrieved via the Retriever or supplied directly via predict method.
@@ -423,6 +443,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param top_k: Number of returned answers
+        :param max_tokens: Maximum number of tokens in the generated answer
         :return: Generated answers
 
         """
@@ -459,7 +480,7 @@ class Seq2SeqGenerator(BaseGenerator):
             input_ids=query_and_docs_encoded["input_ids"],
             attention_mask=query_and_docs_encoded["attention_mask"],
             min_length=self.min_length,
-            max_length=self.max_length,
+            max_length=max_tokens or self.max_length,
             do_sample=True if self.num_beams == 1 else False,
             early_stopping=True,
             num_beams=self.num_beams,
