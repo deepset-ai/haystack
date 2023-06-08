@@ -47,7 +47,7 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
 
     mock_pipeline.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # device is set to cpu by default and device_map is empty
     assert kwargs["device"] == device("cpu")
@@ -90,7 +90,7 @@ def test_constructor_with_model_name_and_device_map(mock_pipeline, mock_get_task
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # device is NOT set; device_map is auto because device_map takes precedence over device
     assert not kwargs["device"]
@@ -113,7 +113,7 @@ def test_constructor_with_torch_dtype(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
     assert kwargs["torch_dtype"] == torch.float16
 
 
@@ -129,7 +129,7 @@ def test_constructor_with_torch_dtype_as_str(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
     assert kwargs["torch_dtype"] == torch.float16
 
 
@@ -145,7 +145,7 @@ def test_constructor_with_torch_dtype_auto(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
     assert kwargs["torch_dtype"] == "auto"
 
 
@@ -223,7 +223,7 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     # mock_get_task is not called as we provided task_name parameter
     mock_get_task.assert_not_called()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # correct tokenizer and model are set as well
     assert kwargs["tokenizer"] == tokenizer
@@ -241,7 +241,7 @@ def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # invalid kwargs are ignored and not passed to the pipeline
     assert "some_invalid_kwarg" not in kwargs
@@ -273,7 +273,7 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     # mock_get_task is not called as we provided task_name parameter
     mock_get_task.assert_not_called()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # invalid kwargs are ignored and not passed to the pipeline
     assert "first_invalid_kwarg" not in kwargs
@@ -330,7 +330,7 @@ def test_streaming_stream_param_in_constructor(mock_pipeline, mock_get_task):
 
     layer.invoke(prompt="Tell me hello")
 
-    args, kwargs = layer.pipe.call_args
+    _, kwargs = layer.pipe.call_args
     assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
 
 
@@ -344,7 +344,7 @@ def test_streaming_stream_handler_param_in_constructor(mock_pipeline, mock_get_t
 
     layer.invoke(prompt="Tell me hello")
 
-    args, kwargs = layer.pipe.call_args
+    _, kwargs = layer.pipe.call_args
     assert "streamer" in kwargs
     hf_streamer = kwargs["streamer"]
 
@@ -404,7 +404,7 @@ def test_stop_words_criteria_set(mock_pipeline, mock_get_task):
 
     layer.invoke(prompt="Tell me hello", stop_words=["hello", "world"])
 
-    args, kwargs = layer.pipe.call_args
+    _, kwargs = layer.pipe.call_args
     assert "stopping_criteria" in kwargs
     assert isinstance(kwargs["stopping_criteria"], StoppingCriteriaList)
     assert len(kwargs["stopping_criteria"]) == 1

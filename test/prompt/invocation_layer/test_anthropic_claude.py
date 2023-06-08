@@ -83,8 +83,8 @@ def test_invoke_with_kwargs(mock_tokenizer, mock_request):
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=["stop", "here"])
     assert len(res) == 1
     assert res[0] == "some_result"
@@ -99,8 +99,8 @@ def test_invoke_with_kwargs(mock_tokenizer, mock_request):
         "stream": False,
         "stop_sequences": ["stop", "here", "\n\nHuman: "],
     }
-    mock_request.assert_called_once()
-    assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)
+    mock_invocation_request.assert_called_once()
+    assert mock_invocation_request.call_args.kwargs["data"] == json.dumps(expected_data)
 
 
 @pytest.mark.unit
@@ -109,8 +109,8 @@ def test_invoke_with_none_stop_words(mock_tokenizer, mock_request):
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt", max_length=300, stop_words=None)
     assert len(res) == 1
     assert res[0] == "some_result"
@@ -125,8 +125,8 @@ def test_invoke_with_none_stop_words(mock_tokenizer, mock_request):
         "stream": False,
         "stop_sequences": ["\n\nHuman: "],
     }
-    mock_request.assert_called_once()
-    assert mock_request.call_args.kwargs["data"] == json.dumps(expected_data)
+    mock_invocation_request.assert_called_once()
+    assert mock_invocation_request.call_args.kwargs["data"] == json.dumps(expected_data)
 
 
 @pytest.mark.unit
@@ -146,8 +146,8 @@ def test_invoke_with_stream(mock_tokenizer, mock_request):
     mock_response = Mock(**{"__iter__": mock_iter})
 
     # Verifies expected result is returned
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt", stream=True)
 
     assert len(res) == 1
@@ -175,8 +175,8 @@ def test_invoke_with_custom_stream_handler(mock_tokenizer, mock_request):
 
     mock_response = Mock(**{"__iter__": mock_iter})
 
-    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
-        mock_request.return_value = mock_response
+    with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_invocation_request:
+        mock_invocation_request.return_value = mock_response
         res = layer.invoke(prompt="Some prompt")
 
     assert len(res) == 1

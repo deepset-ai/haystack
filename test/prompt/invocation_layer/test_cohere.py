@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -98,7 +98,7 @@ def test_streaming_stream_param(using_constructor, stream, mock_auto_tokenizer):
         assert mock_post.called
 
         # Check if stop_words are passed to _post as stop parameter
-        called_args, called_kwargs = mock_post.call_args
+        _, called_kwargs = mock_post.call_args
 
         # stream is always passed to _post
         assert "stream" in called_kwargs
@@ -139,7 +139,7 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler, mock_
         assert mock_post.called
 
         # Check if stop_words are passed to _post as stop parameter
-        called_args, called_kwargs = mock_post.call_args
+        _, called_kwargs = mock_post.call_args
 
         # stream is always passed to _post
         assert "stream" in called_kwargs
@@ -148,7 +148,7 @@ def test_streaming_stream_handler_param(using_constructor, stream_handler, mock_
         if stream_handler:
             assert called_kwargs["stream"]
             # and stream_handler is passed as an instance of TokenStreamingHandler
-            called_args, called_kwargs = mock_post_stream.call_args
+            _, called_kwargs = mock_post_stream.call_args
             assert "stream_handler" in called_kwargs
             assert isinstance(called_kwargs["stream_handler"], TokenStreamingHandler)
         # if stream_handler is not used then stream is always False

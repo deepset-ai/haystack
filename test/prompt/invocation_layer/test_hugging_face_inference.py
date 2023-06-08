@@ -110,7 +110,7 @@ def test_invoke_with_stop_words(mock_auto_tokenizer):
     assert mock_post.called
 
     # Check if stop_words are passed to _post as stop parameter
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
     assert "stop" in called_kwargs["data"]["parameters"]
     assert called_kwargs["data"]["parameters"]["stop"] == stop_words
 
@@ -132,7 +132,7 @@ def test_streaming_stream_param_in_constructor(mock_auto_tokenizer, stream):
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -155,13 +155,7 @@ def test_streaming_stream_param_in_method(mock_auto_tokenizer, stream):
         layer.invoke(prompt="Tell me hello", stream=stream)
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
-
-    # stream is always passed to _post
-    assert "stream" in called_kwargs
-
-    # Check if stop_words are passed to _post as stop parameter
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -190,7 +184,7 @@ def test_streaming_stream_handler_param_in_constructor(mock_auto_tokenizer):
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -198,7 +192,7 @@ def test_streaming_stream_handler_param_in_constructor(mock_auto_tokenizer):
     assert called_kwargs["stream"]
 
     # stream_handler is passed as an instance of TokenStreamingHandler
-    called_args, called_kwargs = mock_post_stream.call_args
+    called_args, _ = mock_post_stream.call_args
     assert isinstance(called_args[1], TokenStreamingHandler)
 
 
@@ -217,7 +211,7 @@ def test_streaming_no_stream_handler_param_in_constructor(mock_auto_tokenizer):
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
     assert "stream" in called_kwargs
@@ -272,7 +266,7 @@ def test_streaming_no_stream_handler_param_in_method(mock_auto_tokenizer):
 
     assert mock_post.called
 
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
 
     # stream is always correctly passed to _post
     assert "stream" in called_kwargs
@@ -333,7 +327,7 @@ def test_oasst_prompt_preprocessing(mock_auto_tokenizer):
     assert result == ["Hello"]
     assert mock_post.called
 
-    called_args, called_kwargs = mock_post.call_args
+    _, called_kwargs = mock_post.call_args
     # OpenAssistant/oasst-sft-1-pythia-12b prompts are preprocessed and wrapped in tokens below
     assert called_kwargs["data"]["inputs"] == "<|prompter|>Tell me hello<|endoftext|><|assistant|>"
 
@@ -341,13 +335,13 @@ def test_oasst_prompt_preprocessing(mock_auto_tokenizer):
 @pytest.mark.unit
 def test_invalid_key():
     with pytest.raises(ValueError, match="must be a valid Hugging Face token"):
-        layer = HFInferenceEndpointInvocationLayer("", "irrelevant_model_name")
+        HFInferenceEndpointInvocationLayer("", "irrelevant_model_name")
 
 
 @pytest.mark.unit
 def test_invalid_model():
     with pytest.raises(ValueError, match="cannot be None or empty string"):
-        layer = HFInferenceEndpointInvocationLayer("fake_api", "")
+        HFInferenceEndpointInvocationLayer("fake_api", "")
 
 
 @pytest.mark.unit
