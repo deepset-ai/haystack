@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Tuple
 
 
@@ -5,8 +6,8 @@ import pytest
 import requests
 from boilerpy3.extractors import ArticleExtractor
 
-from haystack import Document
-from haystack.nodes import WebSearch, WebRetriever
+from haystack import Document, Pipeline
+from haystack.nodes import WebSearch, WebRetriever, PromptNode
 
 
 @pytest.mark.unit
@@ -166,3 +167,32 @@ def test_top_k_parameter(mock_web_search, top_k):
     result = web_retriever.retrieve(query="Who is the boyfriend of Olivia Wilde?", top_k=top_k)
     assert len(result) == top_k
     assert all(isinstance(doc, Document) for doc in result)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("SERPERDEV_API_KEY", None),
+    reason="Please export an env var called SERPERDEV_API_KEY containing the serper.dev API key to run this test.",
+)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+@pytest.mark.parametrize("top_k", [2, 4])
+def test_top_k_parameter_in_pipeline(top_k):
+    # test that WebRetriever top_k param is NOT ignored in a pipeline
+    prompt_node = PromptNode(
+        "gpt-3.5-turbo",
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        max_length=256,
+        default_prompt_template="question-answering-with-document-scores",
+    )
+
+    retriever = WebRetriever(api_key=os.environ.get("SERPERDEV_API_KEY"))
+
+    pipe = Pipeline()
+
+    pipe.add_node(component=retriever, name="WebRetriever", inputs=["Query"])
+    pipe.add_node(component=prompt_node, name="QAwithScoresPrompt", inputs=["WebRetriever"])
+    result = pipe.run(query="What year was Obama president", params={"WebRetriever": {"top_k": top_k}})
+    assert len(result["results"]) == top_k
