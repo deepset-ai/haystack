@@ -2,7 +2,6 @@ import logging
 import os
 import re
 from typing import Tuple
-from unittest.mock import patch
 from unittest.mock import Mock, patch
 
 
