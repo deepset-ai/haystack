@@ -6,7 +6,6 @@ import random
 import pandas as pd
 from tqdm.auto import tqdm
 
-from haystack import is_imported
 from haystack.mmh3 import hash128
 from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
@@ -14,8 +13,7 @@ from haystack.modeling.data_handler.processor import _read_squad_file
 logger = logging.getLogger(__name__)
 
 
-if is_imported("pandas") and is_imported("tqdm"):
-    tqdm.pandas()
+tqdm.pandas()
 
 
 COLUMN_NAMES = ["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"]

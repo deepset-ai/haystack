@@ -52,7 +52,7 @@ dependencies = [
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
-  "generalimport==0.3.1", # Optional imports
+  "lazy-imports==0.3.1", # Optional imports
   "prompthub-py==4.0.0",
   "platformdirs",
 
