@@ -160,6 +160,9 @@ def test_web_retriever_mode_snippets(monkeypatch):
 
 
 @pytest.mark.unit
-def test_top_k_parameter():
-    web_retriever = WebRetriever(api_key="", top_search_results=10)
-    assert web_retriever.top_search_results == 10
+@pytest.mark.parametrize("top_k", [1, 3, 6])
+def test_top_k_parameter(mock_web_search, top_k):
+    web_retriever = WebRetriever(api_key="some_invalid_key", mode="snippets")
+    result = web_retriever.retrieve(query="Who is the boyfriend of Olivia Wilde?", top_k=top_k)
+    assert len(result) == top_k
+    assert all(isinstance(doc, Document) for doc in result)
