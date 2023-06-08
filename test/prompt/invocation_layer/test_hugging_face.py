@@ -507,3 +507,35 @@ def test_generation_kwargs_from_invoke():
         layer.invoke(prompt=the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
 
     mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
+
+
+@pytest.mark.unit
+def test_prompt_handler_positive(mock_pipeline, mock_get_task, mock_auto_tokenizer):
+    # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
+    mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
+    mock_prompt = "I am a tokenized prompt"
+
+    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
+    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=mock_prompt)
+    mock_pipeline.return_value.tokenizer = mock_auto_tokenizer
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=3, model_max_length=10)
+    result = layer._ensure_token_limit(mock_prompt)
+
+    assert result == mock_prompt
+
+
+@pytest.mark.unit
+def test_prompt_handler_negative(mock_pipeline, mock_get_task, mock_auto_tokenizer):
+    # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
+    mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
+    correct_result = "I am a tokenized prompt of length"
+
+    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
+    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=correct_result)
+    mock_pipeline.return_value.tokenizer = mock_auto_tokenizer
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=3, model_max_length=10)
+    result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
+
+    assert result == correct_result
