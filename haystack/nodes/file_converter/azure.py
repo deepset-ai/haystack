@@ -5,8 +5,6 @@ from collections import defaultdict
 import json
 import copy
 
-from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
-from azure.core.credentials import AzureKeyCredential
 import pandas as pd
 
 from haystack.nodes.file_converter.base import BaseConverter
@@ -15,6 +13,15 @@ from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
+
+try:
+    from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
+    from azure.core.credentials import AzureKeyCredential
+except ImportError as exc:
+    logger.debug(
+        "azure.ai.formrecognizer or azure.core.credentials could not be imported. "
+        "Run 'pip install farm-haystack[file-conversion]' or 'pip install azure-ai-formrecognizer>=3.2.0b2' to fix this issue."
+    )
 
 
 class AzureConverter(BaseConverter):
