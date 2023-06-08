@@ -119,5 +119,4 @@ class ConversationalAgent(Agent):
             raise AgentError(
                 "You cannot add tools after initializing the ConversationalAgent without any tools. If you want to add tools, reinitailize the ConversationalAgent and provide `tools`."
             )
-        else:
-            return super().add_tool(tool)
+        return super().add_tool(tool)
