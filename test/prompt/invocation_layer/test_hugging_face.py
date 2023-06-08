@@ -510,7 +510,7 @@ def test_generation_kwargs_from_invoke():
 
 
 @pytest.mark.unit
-def test_prompt_handler_positive(mock_pipeline, mock_get_task, mock_auto_tokenizer):
+def test_ensure_token_limit_positive_mock(mock_pipeline, mock_get_task, mock_auto_tokenizer):
     # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
     mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
     mock_prompt = "I am a tokenized prompt"
@@ -526,7 +526,7 @@ def test_prompt_handler_positive(mock_pipeline, mock_get_task, mock_auto_tokeniz
 
 
 @pytest.mark.unit
-def test_prompt_handler_negative(mock_pipeline, mock_get_task, mock_auto_tokenizer):
+def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_auto_tokenizer):
     # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
     mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
     correct_result = "I am a tokenized prompt of length"

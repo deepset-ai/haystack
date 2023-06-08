@@ -9,19 +9,19 @@ from haystack.nodes.prompt.invocation_layer import AnthropicClaudeInvocationLaye
 
 
 @pytest.fixture
-def mock_tokenizer():
+def mock_claude_tokenizer():
     with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.Tokenizer", autospec=True) as mock_tokenizer:
         yield mock_tokenizer
 
 
 @pytest.fixture
-def mock_request():
+def mock_claude_request():
     with patch("haystack.nodes.prompt.invocation_layer.anthropic_claude.request_with_retry") as mock_request:
         yield mock_request
 
 
 @pytest.mark.unit
-def test_default_constructor(mock_tokenizer, mock_request):
+def test_default_constructor(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     assert layer.api_key == "some_fake_key"
@@ -31,7 +31,7 @@ def test_default_constructor(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_ignored_kwargs_are_filtered_in_init(mock_tokenizer, mock_request):
+def test_ignored_kwargs_are_filtered_in_init(mock_claude_tokenizer, mock_claude_request):
     kwargs = {
         "temperature": 1,
         "top_p": 5,
@@ -56,7 +56,7 @@ def test_ignored_kwargs_are_filtered_in_init(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_no_kwargs(mock_tokenizer, mock_request):
+def test_invoke_with_no_kwargs(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     with pytest.raises(ValueError) as e:
@@ -65,12 +65,12 @@ def test_invoke_with_no_kwargs(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_prompt_only(mock_tokenizer, mock_request):
+def test_invoke_with_prompt_only(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
     mock_response = Mock(**{"status_code": 200, "ok": True, "json.return_value": {"completion": "some_result "}})
-    mock_request.return_value = mock_response
+    mock_claude_request.return_value = mock_response
 
     res = layer.invoke(prompt="Some prompt")
     assert len(res) == 1
@@ -78,7 +78,7 @@ def test_invoke_with_prompt_only(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_kwargs(mock_tokenizer, mock_request):
+def test_invoke_with_kwargs(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
@@ -104,7 +104,7 @@ def test_invoke_with_kwargs(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_none_stop_words(mock_tokenizer, mock_request):
+def test_invoke_with_none_stop_words(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake response
@@ -130,7 +130,7 @@ def test_invoke_with_none_stop_words(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_stream(mock_tokenizer, mock_request):
+def test_invoke_with_stream(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     # Create a fake streamed response
@@ -155,7 +155,7 @@ def test_invoke_with_stream(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_invoke_with_custom_stream_handler(mock_tokenizer, mock_request):
+def test_invoke_with_custom_stream_handler(mock_claude_tokenizer, mock_claude_request):
     # Create a mock stream handler that always return the same token when called
     mock_stream_handler = Mock()
     mock_stream_handler.return_value = "token"
@@ -190,7 +190,7 @@ def test_invoke_with_custom_stream_handler(mock_tokenizer, mock_request):
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_fails_if_called_with_list(mock_tokenizer, mock_request):
+def test_ensure_token_limit_fails_if_called_with_list(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
     with pytest.raises(ValueError):
         layer._ensure_token_limit(prompt=[])
@@ -229,7 +229,7 @@ def test_ensure_token_limit_with_huge_max_length(caplog):
 
 
 @pytest.mark.unit
-def test_supports(mock_tokenizer, mock_request):
+def test_supports(mock_claude_tokenizer, mock_claude_request):
     layer = AnthropicClaudeInvocationLayer(api_key="some_fake_key")
 
     assert not layer.supports("claude")
