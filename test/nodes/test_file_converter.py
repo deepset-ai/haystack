@@ -244,6 +244,34 @@ def test_markdown_converter(samples_path):
 
 
 @pytest.mark.unit
+def test_docx_converter_metadata_has_filename(samples_path):
+    converter = DocxToTextConverter()
+    document = converter.convert(file_path=samples_path / "docx" / "sample_docx.docx")[0]
+    assert document.meta["filename"] == "sample_docx.docx"
+
+
+@pytest.mark.unit
+def test_markdown_converter_metadata_has_filename(samples_path):
+    converter = MarkdownConverter()
+    document = converter.convert(file_path=samples_path / "markdown" / "sample.md")[0]
+    assert document.meta["filename"] == "sample.md"
+
+
+@pytest.mark.unit
+def test_txt_converter_metadata_has_filename(samples_path):
+    converter = TextConverter()
+    document = converter.convert(file_path=samples_path / "docs" / "doc_1.txt")[0]
+    assert document.meta["filename"] == "doc_1.txt"
+
+
+@pytest.mark.unit
+def test_pdf_converter_metadata_has_filename(samples_path):
+    converter = PDFToTextConverter()
+    document = converter.convert(file_path=samples_path / "pdf" / "sample_pdf_1.pdf")[0]
+    assert document.meta["filename"] == "sample_pdf_1.pdf"
+
+
+@pytest.mark.unit
 def test_markdown_converter_headline_extraction(samples_path):
     expected_headlines = [
         ("What to build with Haystack", 1),
