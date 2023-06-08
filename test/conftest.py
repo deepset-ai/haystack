@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import re
 from functools import wraps
+from unittest.mock import patch
 
 import requests_cache
 import responses
@@ -854,3 +855,9 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
         raise RuntimeError(f"The test was about to {method} {self.scheme}://{self.host}{url}")
 
     monkeypatch.setattr("urllib3.connectionpool.HTTPConnectionPool.urlopen", urlopen_mock)
+
+
+@pytest.fixture
+def mock_auto_tokenizer():
+    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
+        yield mock_from_pretrained

@@ -1,16 +1,10 @@
 import unittest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 import pytest
 
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer import CohereInvocationLayer
-
-
-@pytest.fixture
-def mock_auto_tokenizer():
-    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
-        yield mock_from_pretrained
 
 
 @pytest.mark.unit

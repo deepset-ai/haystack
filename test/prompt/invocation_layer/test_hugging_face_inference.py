@@ -9,12 +9,6 @@ from haystack.nodes.prompt.invocation_layer import HFInferenceEndpointInvocation
 
 
 @pytest.fixture
-def mock_auto_tokenizer():
-    with patch("transformers.AutoTokenizer.from_pretrained", autospec=True) as mock_from_pretrained:
-        yield mock_from_pretrained
-
-
-@pytest.fixture
 def mock_get_task():
     # mock get_task function
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face_inference.get_task") as mock_get_task:
