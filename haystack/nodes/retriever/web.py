@@ -198,7 +198,7 @@ class WebRetriever(BaseRetriever):
             search_results, _ = self.web_search.run(query=query)
             search_results = search_results["documents"]
             if self.mode == "snippets":
-                return search_results  # type: ignore
+                return search_results[:top_k]  # type: ignore
 
             links: List[SearchResult] = [
                 SearchResult(r.meta["link"], r.meta.get("score", None), r.meta.get("position", None))
