@@ -21,12 +21,15 @@ def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
     """
     Prepare the environment for running a benchmark.
     """
+    logger.info("preparing environment")
+
     # Download data if specified in benchmark config
     if "data_url" in benchmark_config:
+        logger.info("download data")
         download_from_url(url=benchmark_config["data_url"], target_dir="data/")
-
     n_docs = 0
     if "documents_directory" in benchmark_config:
+        logger.info("get files")
         documents_dir = Path(benchmark_config["documents_directory"])
         n_docs = len(
             [
@@ -38,6 +41,7 @@ def prepare_environment(pipeline_config: Dict, benchmark_config: Dict):
 
     # Launch DocumentStore Docker container if needed
     for comp in pipeline_config["components"]:
+        logger.info("launch doc store")
         if comp["type"].endswith("DocumentStore"):
             launch_document_store(comp["type"], n_docs=n_docs)
             break
@@ -74,7 +78,9 @@ def download_from_url(url: str, target_dir: Union[str, Path]):
         temp_file.flush()
         temp_file.seek(0)
         if tarfile.is_tarfile(temp_file.name):
+            logger.info("extract files")
             with tarfile.open(temp_file.name) as tar:
+                logger.info("extracting files")
                 tar.extractall(target_dir)
         else:
             with open(Path(target_dir) / url_path.name, "wb") as file:
