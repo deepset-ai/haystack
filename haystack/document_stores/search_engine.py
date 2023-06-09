@@ -511,6 +511,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if _source.get("id") is not None:
                 index_message["_id"] = str(_source.pop("id"))
 
+            # use _source explicitly to avoid conflicts with automatic field detection by ES/OS clients (e.g. "version")
+            index_message["_source"] = _source
             labels_to_index.append(index_message)
 
             # Pass batch_size number of labels to bulk
