@@ -471,6 +471,35 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1
 
+    @pytest.mark.integration
+    def test_get_document_count(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
+        embeddings.
+        """
+        # 9 documents without embeddings are already in doc_store_with_docs, so we expect 9 documents without embeddings
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == 9
+
+        # document with embedding is written to doc_store_with_docs
+        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc])
+
+        # 9 documents without embeddings are already in doc_store_with_docs, so we expect 10 documents in total
+        assert doc_store_with_docs.get_document_count() == 10
+
+        # but we expect 9 documents without embeddings to be unchanged
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == 9
+
+        # another document with embedding is written to doc_store_with_docs
+        doc_2 = Document(content=f"Doc_2 with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc_2])
+
+        # we now expect 11 documents in total
+        assert doc_store_with_docs.get_document_count() == 11
+
+        # but we expect documents without embeddings to remain at 9
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == 9
+
     @pytest.mark.unit
     def test_get_all_labels_legacy_document_id(self, ds, monkeypatch):
         monkeypatch.setattr(
