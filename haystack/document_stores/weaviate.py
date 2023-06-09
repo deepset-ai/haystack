@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 
 try:
     import weaviate
-    from weaviate import client, AuthClientPassword, gql
+    from weaviate import client, AuthClientPassword, gql, AuthClientCredentials, AuthBearerToken
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -28,6 +28,20 @@ from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
+SUPPORTED_PROPERTY_TYPES = {
+    "string",
+    "string[]",
+    "int",
+    "int[]",
+    "boolean",
+    "boolean[]",
+    "number",
+    "number[]",
+    "date",
+    "date[]",
+    "text",
+    "text[]",
+}
 
 
 class WeaviateDocumentStoreError(DocumentStoreError):
@@ -40,7 +54,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
     (See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
-    Some of the key differences in contrast to FAISS & Milvus:
+    Some of the key differences in contrast to FAISS:
     1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
     3. Has less variety of ANN algorithms, as of now only HNSW.
@@ -64,6 +78,11 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         timeout_config: tuple = (5, 15),
         username: Optional[str] = None,
         password: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        scope: Optional[str] = "offline_access",
+        access_token: Optional[str] = None,
+        expires_in: Optional[int] = 60,
+        refresh_token: Optional[str] = None,
         additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
@@ -78,61 +97,66 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
         replication_factor: int = 1,
+        batch_size: int = 10_000,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
-                             For more details, refer "https://weaviate.io/developers/weaviate/current/getting-started/installation.html"
-        :param port: port of Weaviate instance
-        :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
-        :param username: username (standard authentication via http_auth)
-        :param password: password (standard authentication via http_auth)
-        :param additional_headers: additional headers to be included in the requests sent to Weaviate e.g. bearer token
-        :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
+                             For more details, see [Weaviate installation](https://weaviate.io/developers/weaviate/current/getting-started/installation.html).
+        :param port: The port of the Weaviate instance.
+        :param timeout_config: The Weaviate timeout config as a tuple of (retries, time out seconds).
+        :param username: The Weaviate username (standard authentication using http_auth).
+        :param password: Weaviate password (standard authentication using http_auth).
+        :param client_secret: The client secret to use when using the OIDC Client Credentials authentication flow.
+        :param scope: The scope of the credentials when using the OIDC Resource Owner Password or Client Credentials authentication flow.
+        :param access_token: Access token to use when using OIDC and bearer tokens to authenticate.
+        :param expires_in: The time in seconds after which the access token expires.
+        :param refresh_token: The refresh token to use when using OIDC and bearer tokens to authenticate.
+        :param additional_headers: Additional headers to be included in the requests sent to Weaviate, for example the bearer token.
+        :param index: Index name for document text, embedding, and metadata (in Weaviate terminology, this is a "Class" in the Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
-        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
-                           If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-        :param name_field: Name of field that contains the title of the doc
-        :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
+        :param content_field: Name of the field that might contain the answer and is passed to the Reader model (for example, "full_text").
+                           If no Reader is used (for example, in FAQ-Style QA), the plain content of this field is returned.
+        :param name_field: Name of the field that contains the title of the doc.
+        :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product', and 'l2'.
                            'cosine' is recommended for Sentence Transformers.
-        :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
-                           Currently, HSNW is only supported.
-                           See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
-        :param custom_schema: Allows to create custom schema in Weaviate, for more details
-                           See https://weaviate.io/developers/weaviate/current/schema/schema-configuration.html
+        :param index_type: Index type of any vector object defined in the Weaviate schema. The vector index type is pluggable.
+                           Currently, only HSNW is supported.
+                           See also [Weaviate documentation](https://weaviate.io/developers/weaviate/current/more-resources/performance.html).
+        :param custom_schema: Allows to create a custom schema in Weaviate. For more details,
+                           see [Weaviate documentation](https://weaviate.io/developers/weaviate/current/schema/schema-configuration.html).
         :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
-                            For more details, See https://weaviate.io/developers/weaviate/current/modules/
-        :param return_embedding: To return document embedding.
-        :param embedding_field: Name of field containing an embedding vector.
+                            For more details, see [Weaviate documentation](https://weaviate.io/developers/weaviate/current/modules/).
+        :param return_embedding: Returns document embedding.
+        :param embedding_field: Name of the field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_documents:Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
+                                    Parameter options: 'skip','overwrite','fail'
                                     skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already exists.
-        :param recreate_index: If set to True, an existing Weaviate index will be deleted and a new one will be
-            created using the config you are using for initialization. Be aware that all data in the old index will be
+                                    fail: Raises an error if the document ID of the document being added already exists.
+        :param recreate_index: If set to True, deletes an existing Weaviate index and creates a new one using the config you are using for initialization. Note that all data in the old index is
             lost if you choose to recreate the index.
-        :param replication_factor: It sets the Weaviate Class's replication factor in Weaviate at the time of Class creation.
-                                   See: https://weaviate.io/developers/weaviate/current/configuration/replication.html
+        :param replication_factor: Sets the Weaviate Class's replication factor in Weaviate at the time of Class creation.
+                                   See also [Weaviate documentation](https://weaviate.io/developers/weaviate/current/configuration/replication.html).
+        :param batch_size: The number of documents to index at once.
         """
         super().__init__()
 
         # Connect to Weaviate server using python binding
         weaviate_url = f"{host}:{port}"
-        if username and password:
-            secret = AuthClientPassword(username, password)
-            self.weaviate_client = client.Client(
-                url=weaviate_url,
-                auth_client_secret=secret,
-                timeout_config=timeout_config,
-                additional_headers=additional_headers,
-            )
-        else:
-            self.weaviate_client = client.Client(
-                url=weaviate_url, timeout_config=timeout_config, additional_headers=additional_headers
-            )
-
+        secret = self._get_auth_secret(
+            username, password, client_secret, access_token, expires_in, refresh_token, scope
+        )
+        # Timeout config can only be defined as a list in YAML, but Weaviate expects a tuple
+        if isinstance(timeout_config, list):
+            timeout_config = tuple(timeout_config)
+        self.weaviate_client = client.Client(
+            url=weaviate_url,
+            auth_client_secret=secret,
+            timeout_config=timeout_config,
+            additional_headers=additional_headers,
+        )
         # Test Weaviate connection
         try:
             status = self.weaviate_client.is_ready()
@@ -167,9 +191,29 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
         self.replication_factor = replication_factor
+        self.batch_size = batch_size
 
         self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
+
+    @staticmethod
+    def _get_auth_secret(
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        access_token: Optional[str] = None,
+        expires_in: Optional[int] = 60,
+        refresh_token: Optional[str] = None,
+        scope: Optional[str] = "offline_access",
+    ) -> Optional[Union["AuthClientPassword", "AuthClientCredentials", "AuthBearerToken"]]:
+        if username and password:
+            return AuthClientPassword(username, password, scope=scope)
+        elif client_secret:
+            return AuthClientCredentials(client_secret, scope=scope)
+        elif access_token:
+            return AuthBearerToken(access_token, expires_in=expires_in, refresh_token=refresh_token)
+
+        return None
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
@@ -229,13 +273,19 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 )
 
     def _convert_weaviate_result_to_document(
-        self, result: dict, return_embedding: bool, scale_score: bool = True
+        self,
+        result: dict,
+        return_embedding: bool,
+        scale_score: bool = True,
+        json_properties: Optional[List[str]] = None,
     ) -> Document:
         """
         Convert weaviate result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
         Weaviate get methods return the data items in properties key, whereas the query doesn't.
         """
+        json_properties = json_properties or []
+
         score = None
         content = ""
 
@@ -301,6 +351,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                 continue
             if v is None:
                 continue
+            # Weaviate doesn't support dict as a property type. We store them as JSON strings and convert them back here.
+            if k in json_properties:
+                if isinstance(v, list):
+                    v = [json.loads(str(item)) for item in v]
+                else:
+                    v = json.loads(str(v))
             meta_data[k] = v
 
         document = Document.from_dict(
@@ -339,14 +395,18 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
             logger.debug("Weaviate could not get the document requested: %s", usce)
         if result:
-            document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+            json_properties = self._get_json_properties(index=index)
+            document = self._convert_weaviate_result_to_document(
+                result, return_embedding=True, json_properties=json_properties
+            )
         return document
 
     def get_documents_by_id(
         self,
         ids: List[str],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
@@ -356,6 +416,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
+        batch_size = batch_size or self.batch_size
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         documents = []
         # TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
@@ -366,7 +429,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
                 logger.debug("Weaviate could not get the document requested: %s", usce)
             if result:
-                document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+                document = self._convert_weaviate_result_to_document(
+                    result, return_embedding=True, json_properties=json_properties
+                )
                 documents.append(document)
         return documents
 
@@ -391,13 +456,21 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
     def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
         """
-        Get all the existing properties in the schema.
+        Get all the existing properties in the schema, excluding those with complex types
+        like cross-reference
         """
         index = self._sanitize_index_name(index) or self.index
         cur_properties = []
         for class_item in self.weaviate_client.schema.get()["classes"]:
             if class_item["class"] == index:
-                cur_properties = [item["name"] for item in class_item["properties"]]
+                cur_properties = [
+                    item["name"]
+                    for item in class_item.get("properties", [])
+                    # dataType should be always there and contain only one item unless
+                    # it's a cross-reference but here we try to be defensive against
+                    # unexpected schemas
+                    if set(item.get("dataType", [])).issubset(SUPPORTED_PROPERTY_TYPES)
+                ]
 
         return cur_properties
 
@@ -413,6 +486,22 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         return cur_properties
 
+    def _get_json_properties(self, index: Optional[str] = None) -> List[str]:
+        """
+        Get all existing properties that store JSON strings in the indexes' schema.
+        """
+        index = self._sanitize_index_name(index) or self.index
+        cur_properties = []
+        for class_item in self.weaviate_client.schema.get()["classes"]:
+            if class_item["class"] == index:
+                cur_properties = [
+                    item["name"]
+                    for item in class_item["properties"]
+                    if item["description"].startswith("JSON dynamic property")
+                ]
+
+        return cur_properties
+
     def _update_schema(
         self, new_prop: str, property_value: Union[List, str, int, float, bool], index: Optional[str] = None
     ):
@@ -422,7 +511,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         index = self._sanitize_index_name(index) or self.index
         data_type = self._get_weaviate_type_of_value(property_value)
 
-        property_dict = {"dataType": [data_type], "description": f"dynamic property {new_prop}", "name": new_prop}
+        description = f"dynamic property {new_prop}"
+        if data_type.startswith("dict"):
+            # Weaviate does not support dict type, so we use string or list of string instead
+            data_type = "string" + data_type[4:]
+            description = f"JSON dynamic property {new_prop}"
+
+        property_dict = {"dataType": [data_type], "description": description, "name": new_prop}
         self.weaviate_client.schema.property.create(index, property_dict)
 
     @staticmethod
@@ -450,6 +545,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             data_type = "number"
         elif isinstance(value, bool):
             data_type = "boolean"
+        # Weaviate doesn't support dictionaries as property types, we'll convert them to JSON strings.
+        elif isinstance(value, dict):
+            data_type = "dict"
 
         if list_of_values:
             data_type += "[]"
@@ -466,7 +564,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         self,
         documents: Union[List[dict], List[Document]],
         index: Optional[str] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -476,6 +574,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param documents: List of `Dicts` or List of `Documents`. A dummy embedding vector for each document is automatically generated if it is not provided. The document id needs to be in uuid format. Otherwise a correctly formatted uuid will be automatically generated based on the provided id.
         :param index: index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+                           If no batch_size is provided, self.batch_size is used.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
@@ -489,6 +588,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
+        batch_size = batch_size or self.batch_size
         self._create_schema_and_index(index, recreate_index=False)
         field_map = self._create_document_field_map()
 
@@ -535,6 +635,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
+                json_fields = []
                 for doc in document_batch:
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
@@ -547,6 +648,14 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                 raise ValueError(
                                     f'"meta" info contains duplicate key "{k}" with the top-level document structure'
                                 )
+                            # Weaviate doesn't support dictionaries as property types, so we convert them to JSON strings
+                            if isinstance(v, dict):
+                                json_fields.append(k)
+                                v = json.dumps(v)
+                            elif isinstance(v, list):
+                                if len(v) > 0 and isinstance(v[0], dict):
+                                    json_fields.append(k)
+                                    v = [json.dumps(item) for item in v]
                             _doc[k] = v
                         _doc.pop("meta")
 
@@ -564,7 +673,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                     missing_props = self._check_document(current_properties, _doc)
                     if missing_props:
                         for property in missing_props:
-                            self._update_schema(property, _doc[property], index)
+                            property_value = _doc[property]
+                            if property in json_fields:
+                                property_value = doc.meta[property]
+                            self._update_schema(property, property_value, index)
                             current_properties.append(property)
 
                     # Weaviate requires dates to be in RFC3339 format
@@ -612,8 +724,9 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         # Weaviate requires dates to be in RFC3339 format
         date_fields = self._get_date_properties(index)
         for date_field in date_fields:
-            if isinstance(meta[date_field], str):
-                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
+            if date_field in meta:
+                if isinstance(meta[date_field], str):
+                    meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
@@ -660,7 +773,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
@@ -713,11 +826,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+                           If no batch_size is provided, self.batch_size is used.
         """
         if headers:
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
+        batch_size = batch_size or self.batch_size
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
@@ -728,13 +843,14 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str],
         filters: Optional[FilterType] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
         """
         index = self._sanitize_index_name(index) or self.index
+        batch_size = batch_size or self.batch_size
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
@@ -803,7 +919,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
@@ -858,18 +974,24 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+                           If no batch_size is provided, self.batch_size is used.
         """
         if headers:
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
+        batch_size = batch_size or self.batch_size
 
         if return_embedding is None:
             return_embedding = self.return_embedding
 
         results = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         for result in results:
-            document = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
+            document = self._convert_weaviate_result_to_document(
+                result, return_embedding=return_embedding, json_properties=json_properties
+            )
             yield document
 
     def query(
@@ -999,35 +1121,22 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
         # Default Retrieval via BM25 using the user's query on `self.content_field`
         else:
-            logger.warning(
-                "As of v1.14.1 Weaviate's BM25 retrieval is still in experimental phase, "
-                "so use it with care! To turn on the BM25 experimental feature in Weaviate "
-                "you need to start it with the `ENABLE_EXPERIMENTAL_BM25='true'` "
-                "environmental variable."
-            )
-
             # Retrieval with BM25 AND filtering
-            if filters:  # pylint: disable=no-else-raise
-                raise NotImplementedError(
-                    "Weaviate currently does not support filters WITH inverted index text query (eg BM25)!"
+            if filters:
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                gql_query = (
+                    gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
+                    .with_limit(top_k)
+                    .with_bm25(query=query, properties=[self.content_field])
+                    .with_where(filter_dict)
+                    .build()
                 )
-                # # Once Weaviate starts supporting filters with BM25:
-                # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-                # gql_query = (
-                #     weaviate.gql.get.GetBuilder(
-                #         class_name=index, properties=properties, connection=self.weaviate_client
-                #     )
-                #     .with_near_vector({"vector": [0, 0]})
-                #     .with_where(filter_dict)
-                #     .with_limit(top_k)
-                #     .build()
-                # )
             else:
                 # BM25 retrieval without filtering
                 gql_query = (
                     gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
                     .with_limit(top_k)
-                    .with_bm25({"query": query, "properties": self.content_field})
+                    .with_bm25(query=query, properties=[self.content_field])
                     .build()
                 )
 
@@ -1038,9 +1147,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             if query_output.get("data").get("Get").get(index):
                 results = query_output.get("data").get("Get").get(index)
 
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=True, scale_score=scale_score)
+            doc = self._convert_weaviate_result_to_document(
+                result, return_embedding=True, scale_score=scale_score, json_properties=json_properties
+            )
             documents.append(doc)
 
         return documents
@@ -1302,10 +1415,12 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             if query_output.get("data").get("Get").get(index):
                 results = query_output.get("data").get("Get").get(index)
 
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
         documents = []
         for result in results:
             doc = self._convert_weaviate_result_to_document(
-                result, return_embedding=return_embedding, scale_score=scale_score
+                result, return_embedding=return_embedding, scale_score=scale_score, json_properties=json_properties
             )
             documents.append(doc)
 
@@ -1317,11 +1432,11 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
-        batch_size: int = 10_000,
+        batch_size: Optional[int] = None,
     ):
         """
-        Updates the embeddings in the the document store using the encoding model specified in the retriever.
-        This can be useful if want to change the embeddings for your documents (e.g. after changing the retriever config).
+        Updates the embeddings in the document store using the encoding model specified in the retriever.
+        This can be useful if you want to change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever to use to update the embeddings.
         :param index: Index name to update
@@ -1355,9 +1470,11 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+                           If no batch_size is specified, self.batch_size is used.
         :return: None
         """
         index = self._sanitize_index_name(index) or self.index
+        batch_size = batch_size or self.batch_size
 
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
@@ -1373,10 +1490,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
             )
 
         result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
+        # We retrieve the JSON properties from the schema and convert them back to the Python dicts
+        json_properties = self._get_json_properties(index=index)
 
         for result_batch in get_batches_from_generator(result, batch_size):
             document_batch = [
-                self._convert_weaviate_result_to_document(hit, return_embedding=False) for hit in result_batch
+                self._convert_weaviate_result_to_document(hit, return_embedding=False, json_properties=json_properties)
+                for hit in result_batch
             ]
             embeddings = retriever.embed_documents(document_batch)
             self._validate_embeddings_shape(

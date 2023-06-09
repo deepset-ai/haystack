@@ -6,7 +6,7 @@ import pytest
 from haystack.pipelines import Pipeline, RootNode, DocumentSearchPipeline
 from haystack.nodes import FARMReader, BM25Retriever, JoinDocuments
 
-from ..conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockReader
+from ..conftest import MockRetriever as BaseMockRetriever, MockReader
 
 
 class MockRetriever(BaseMockRetriever):

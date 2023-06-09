@@ -1,33 +1,33 @@
 import os
 import uuid
 from contextlib import contextmanager
-import random
 from pathlib import Path
-
-import torch
-import numpy as np
 
 import pytest
 
 from haystack.schema import Document
+from haystack.modeling.utils import set_all_seeds
 from haystack.document_stores import (
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
-    MilvusDocumentStore,
     PineconeDocumentStore,
     OpenSearchDocumentStore,
     FAISSDocumentStore,
 )
 
 
-SAMPLES_PATH = Path(__file__).parent / "samples"
+set_all_seeds(0)
 
 
-# Fix all random seeds that come to mind
-torch.manual_seed(0)
-np.random.seed(0)
-random.seed(0)
+@pytest.fixture
+def samples_path():
+    return Path(__file__).parent / "samples"
+
+
+@pytest.fixture
+def preview_samples_path():
+    return Path(__file__).parent / "preview" / "test_files"
 
 
 @pytest.fixture
@@ -108,18 +108,6 @@ def document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
-        )
-
-    elif name == "milvus":
-        document_store = MilvusDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=f"sqlite:///{tmp_path}/haystack_test.db",
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-            recreate_index=recreate_index,
         )
 
     elif name == "weaviate":

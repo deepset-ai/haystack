@@ -1,14 +1,15 @@
+import copy
 import logging
+from pathlib import Path
 
+import pytest
 from transformers import AutoTokenizer
 
-from haystack.modeling.data_handler.processor import SquadProcessor
-
-from ..conftest import SAMPLES_PATH
+from haystack.modeling.data_handler.processor import SquadProcessor, _is_json
 
 
 # during inference (parameter return_baskets = False) we do not convert labels
-def test_dataset_from_dicts_qa_inference(caplog=None):
+def test_dataset_from_dicts_qa_inference(samples_path, caplog=None):
     if caplog:
         caplog.set_level(logging.CRITICAL)
 
@@ -26,7 +27,7 @@ def test_dataset_from_dicts_qa_inference(caplog=None):
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:
-            dicts = processor.file_to_dicts(SAMPLES_PATH / "qa" / f"{sample_type}.json")
+            dicts = processor.file_to_dicts(samples_path / "qa" / f"{sample_type}.json")
             dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(
                 dicts, indices=[1], return_baskets=True
             )
@@ -235,7 +236,7 @@ def test_batch_encoding_flatten_rename():
         pass
 
 
-def test_dataset_from_dicts_qa_labelconversion(caplog=None):
+def test_dataset_from_dicts_qa_label_conversion(samples_path, caplog=None):
     if caplog:
         caplog.set_level(logging.CRITICAL)
 
@@ -250,10 +251,10 @@ def test_dataset_from_dicts_qa_labelconversion(caplog=None):
 
     for model in models:
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
-        processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
+        processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None, max_answers=6)
 
         for sample_type in sample_types:
-            dicts = processor.file_to_dicts(SAMPLES_PATH / "qa" / f"{sample_type}.json")
+            dicts = processor.file_to_dicts(samples_path / "qa" / f"{sample_type}.json")
             dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(
                 dicts, indices=[1], return_baskets=False
             )
@@ -300,5 +301,45 @@ def test_dataset_from_dicts_qa_labelconversion(caplog=None):
                     ], f"Processing labels for {model} has changed."
 
 
-if __name__ == "__main__":
-    test_dataset_from_dicts_qa_labelconversion()
+@pytest.mark.unit
+def test_is_json_identifies_json_objects():
+    """Test that _is_json correctly identifies json objects"""
+    # Paths to json files should be considered json
+    assert _is_json(Path("processor_config.json"))
+    # dicts should be considered json
+    assert _is_json({"a": 1})
+    # non-serializable objects should not be considered json
+    assert not _is_json(AutoTokenizer)
+
+
+@pytest.mark.integration
+def test_dataset_from_dicts_auto_determine_max_answers(samples_path, caplog=None):
+    """
+    SquadProcessor should determine the number of answers for the pytorch dataset based on
+    the maximum number of answers for each question. Vanilla.json has one question with two answers,
+    so the number of answers should be two.
+    """
+    model = "deepset/roberta-base-squad2"
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
+    processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
+    dicts = processor.file_to_dicts(samples_path / "qa" / "vanilla.json")
+    dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts, indices=[1])
+    assert len(dataset[0][tensor_names.index("labels")]) == 2
+    # check that a max_answers will be adjusted when processing a different dataset with the same SquadProcessor
+    dicts_more_answers = copy.deepcopy(dicts)
+    dicts_more_answers[0]["qas"][0]["answers"] = dicts_more_answers[0]["qas"][0]["answers"] * 3
+    dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts_more_answers, indices=[1])
+    assert len(dataset[0][tensor_names.index("labels")]) == 6
+
+
+@pytest.mark.integration
+def test_dataset_from_dicts_truncate_max_answers(samples_path, caplog=None):
+    """
+    Test that it is possible to manually set the number of answers, truncating the answers in the data.
+    """
+    model = "deepset/roberta-base-squad2"
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
+    processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None, max_answers=1)
+    dicts = processor.file_to_dicts(samples_path / "qa" / "vanilla.json")
+    dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts, indices=[1])
+    assert len(dataset[0][tensor_names.index("labels")]) == 1

@@ -1,3 +1,4 @@
+from haystack.lazy_imports import LazyImport
 from haystack.nodes.file_converter.base import BaseConverter
 
 from haystack.utils.import_utils import safe_import
@@ -11,15 +12,18 @@ from haystack.nodes.file_converter.azure import AzureConverter
 from haystack.nodes.file_converter.parsr import ParsrConverter
 
 
+try:
+    with LazyImport() as fitz_import:
+        # Try to use PyMuPDF, if not available fall back to xpdf
+        from haystack.nodes.file_converter.pdf import PDFToTextConverter  # type: ignore
+
+    fitz_import.check()
+except (ModuleNotFoundError, ImportError):
+    from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter  # type: ignore  # pylint: disable=reimported,ungrouped-imports
+
 MarkdownConverter = safe_import(
     "haystack.nodes.file_converter.markdown", "MarkdownConverter", "preprocessing"
 )  # Has optional dependencies
 ImageToTextConverter = safe_import(
     "haystack.nodes.file_converter.image", "ImageToTextConverter", "ocr"
-)  # Has optional dependencies
-PDFToTextOCRConverter = safe_import(
-    "haystack.nodes.file_converter.pdf_ocr", "PDFToTextOCRConverter", "ocr"
-)  # Has optional dependencies
-PDFToTextConverter = safe_import(
-    "haystack.nodes.file_converter.pdf", "PDFToTextConverter", "pdf"
 )  # Has optional dependencies

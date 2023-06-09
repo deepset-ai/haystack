@@ -1,0 +1,22 @@
+{
+  "answer": "an answer",
+  "type": "extractive",
+  "score": 0.1,
+  "context": "abc",
+  "offsets_in_document": [
+    {
+      "start": 1,
+      "end": 10
+    }
+  ],
+  "offsets_in_context": [
+    {
+      "start": 3,
+      "end": 5
+    }
+  ],
+  "document_ids": [
+    "123"
+  ],
+  "meta": {}
+}

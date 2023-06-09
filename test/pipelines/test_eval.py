@@ -25,35 +25,7 @@ from haystack.pipelines.standard_pipelines import (
     TranslationWrapperPipeline,
 )
 from haystack.nodes.translator.transformers import TransformersTranslator
-from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
-
-from ..conftest import SAMPLES_PATH
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
-def test_generativeqa_calculate_metrics(
-    document_store_with_docs: InMemoryDocumentStore, rag_generator, retriever_with_docs
-):
-    document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
-    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
-
-    metrics = eval_result.calculate_metrics(document_scope="document_id")
-
-    assert "Retriever" in eval_result
-    assert "Generator" in eval_result
-    assert len(eval_result) == 2
-
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 0.1
-    assert metrics["Retriever"]["ndcg"] == 0.5
-    assert metrics["Generator"]["exact_match"] == 0.0
-    assert metrics["Generator"]["f1"] == 1.0 / 3
+from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span, TableCell
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
@@ -89,12 +61,12 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Summarizer"]["ndcg"] == 1.0
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
-def test_add_eval_data(document_store, batch_size):
+def test_add_eval_data(document_store, batch_size, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "small.json",
+        filename=samples_path / "squad" / "small.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         batch_size=batch_size,
@@ -136,13 +108,13 @@ def test_add_eval_data(document_store, batch_size):
     assert doc.content[start:end] == "France"
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
-def test_eval_reader(reader, document_store, use_confidence_scores):
+def test_eval_reader(reader, document_store, use_confidence_scores, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -173,10 +145,10 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_eval_elastic_retriever(document_store, open_domain, retriever):
+def test_eval_elastic_retriever(document_store, open_domain, retriever, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -195,10 +167,10 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever):
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_eval_pipeline(document_store, reader, retriever):
+def test_eval_pipeline(document_store, reader, retriever, samples_path):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
     )
@@ -228,8 +200,8 @@ def test_eval_pipeline(document_store, reader, retriever):
     assert metrics_sas_cross_encoder["Reader"]["sas"] == pytest.approx(0.71063, 1e-4)
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
-def test_eval_data_split_word(document_store):
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+def test_eval_data_split_word(document_store, samples_path):
     # splitting by word
     preprocessor = PreProcessor(
         clean_empty_lines=False,
@@ -242,7 +214,7 @@ def test_eval_data_split_word(document_store):
     )
 
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny.json",
+        filename=samples_path / "squad" / "tiny.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         preprocessor=preprocessor,
@@ -253,8 +225,8 @@ def test_eval_data_split_word(document_store):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
-def test_eval_data_split_passage(document_store):
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+def test_eval_data_split_passage(document_store, samples_path):
     # splitting by passage
     preprocessor = PreProcessor(
         clean_empty_lines=False,
@@ -267,7 +239,7 @@ def test_eval_data_split_passage(document_store):
     )
 
     document_store.add_eval_data(
-        filename=SAMPLES_PATH / "squad" / "tiny_passages.json",
+        filename=samples_path / "squad" / "tiny_passages.json",
         doc_index=document_store.index,
         label_index=document_store.label_index,
         preprocessor=preprocessor,
@@ -417,7 +389,7 @@ EVAL_TABLE_LABELS = [
         labels=[
             Label(
                 query="How old is Brad Pitt?",
-                answer=Answer(answer="56", offsets_in_context=[Span(1, 2)]),
+                answer=Answer(answer="56", offsets_in_context=[TableCell(1, 2)]),
                 document=Document(
                     id="a044cf3fb8aade03a12399c7a2fe9a6b",
                     content_type="table",
@@ -436,7 +408,7 @@ EVAL_TABLE_LABELS = [
             ),
             Label(  # Label with different doc but same answer and query
                 query="How old is Brad Pitt?",
-                answer=Answer(answer="56", offsets_in_context=[Span(4, 5)]),
+                answer=Answer(answer="56", offsets_in_context=[TableCell(4, 5)]),
                 document=Document(
                     id="a044cf3fb8aade03a12399c7a2fe9a6b",
                     content_type="table",
@@ -455,7 +427,7 @@ EVAL_TABLE_LABELS = [
         labels=[
             Label(
                 query="To which state does Spikeroog belong?",
-                answer=Answer(answer="Lower Saxony", offsets_in_context=[Span(7, 8)]),
+                answer=Answer(answer="Lower Saxony", offsets_in_context=[TableCell(7, 8)]),
                 document=Document(
                     id="b044cf3fb8aade03a12399c7a2fe9a6c",
                     content_type="table",
@@ -626,6 +598,10 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -746,6 +722,10 @@ def test_generative_qa_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -843,6 +823,10 @@ def test_generative_qa_w_promptnode_eval(retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     loaded_metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
     assert metrics == loaded_metrics
 
@@ -892,6 +876,10 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+
+    for key, df in eval_result.node_results.items():
+        pd.testing.assert_frame_equal(df, saved_eval_result[key])
+
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     assert (
@@ -2112,7 +2100,7 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
-def test_load_evaluation_result_w_empty_document_ids(tmp_path):
+def test_load_evaluation_result_w_none_values(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
@@ -2186,3 +2174,6 @@ def test_load_evaluation_result_w_empty_document_ids(tmp_path):
     eval_result = EvaluationResult.load(tmp_path)
     assert "Reader" in eval_result
     assert len(eval_result) == 1
+    assert eval_result["Reader"].iloc[0].answer is None
+    assert eval_result["Reader"].iloc[0].context is None
+    assert eval_result["Reader"].iloc[0].document_ids is None

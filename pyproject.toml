@@ -12,7 +12,7 @@ dynamic = [
 description = "Neural Question Answering & Semantic Search at Scale. Use modern transformer based models like BERT to find answers in large document collections"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 authors = [
   { name = "deepset.ai", email = "malte.pietsch@deepset.ai" },
 ]
@@ -40,27 +40,25 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "importlib-metadata; python_version < '3.8'",
   "requests",
   "pydantic",
-  "transformers[torch]==4.25.1",
-  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
-  "nltk",
+  "transformers[torch,sentencepiece]==4.29.1",
   "pandas",
   "rank_bm25",
+  "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
+  "lazy-imports==0.3.1", # Optional imports
+  "prompthub-py==4.0.0",
+  "platformdirs",
 
   # Utils
-  "dill",  # pickle extension for (de-)serialization
   "tqdm",  # progress bars in model download and training scripts
   "networkx",  # graphs library
-  "mmh3",  # fast hashing function (murmurhash3)
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
   "azure-ai-formrecognizer>=3.2.0b2",  # forms reader
@@ -68,47 +66,33 @@ dependencies = [
   "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
+  "more_itertools",  # utilities
 
   # Web Retriever
   "boilerpy3",
 
-  # Preprocessing
-  "more_itertools",  # for windowing
-  "python-docx",
-  "langdetect",  # for PDF conversions
-  "tika",  # Apache Tika (text & metadata extractor)
-
   # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "sentence-transformers>=2.2.0",
 
-  # for stats in run_classifier
-  "scipy>=1.3.2",
-  "scikit-learn>=1.0.0",
-
-  # Metrics and logging
-  "seqeval",
-  "mlflow",
-
-  # Elasticsearch
-  "elasticsearch>=7.7,<8",
-
   # OpenAI tokenizer
-  "tiktoken>=0.3.0; python_version >= '3.8' and (platform_machine == 'AMD64' or platform_machine == 'amd64' or platform_machine == 'x86_64' or (platform_machine == 'arm64' and platform_system == 'Darwin'))",
-
-  # context matching
-  "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
+  "tiktoken>=0.3.2",
 
   # Schema validation
   "jsonschema",
 
   # Preview
-  "canals",
+  "canals==0.2.2",
 
   # Agent events
-  "events"
+  "events",
+
+  "requests-cache<1.0.0",
 ]
 
 [project.optional-dependencies]
+elasticsearch = [
+  "elasticsearch>=7.17,<8",
+]
 sql = [
   "sqlalchemy>=1.4.2,<2",
   "sqlalchemy_utils",
@@ -126,14 +110,8 @@ only-faiss-gpu = [
 faiss-gpu = [
   "farm-haystack[sql,only-faiss-gpu]",
 ]
-only-milvus = [
-  "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-]
-milvus = [
-  "farm-haystack[sql,only-milvus]",
-]
 weaviate = [
-  "weaviate-client==3.10.0",
+  "weaviate-client<3.19.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -141,22 +119,14 @@ only-pinecone = [
 pinecone = [
   "farm-haystack[sql,only-pinecone]",
 ]
-graphdb = [
-  "SPARQLWrapper",
-  "rdflib!=6.3.2", # GPL-2.0-only license issue
-]
-inmemorygraph = [
-  "SPARQLWrapper",
-  "rdflib!=6.3.2", # GPL-2.0-only license issue
-]
 opensearch = [
   "opensearch-py>=2",
 ]
 docstores = [
-  "farm-haystack[faiss,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss,weaviate,pinecone,opensearch]",
 ]
 docstores-gpu = [
-  "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
+  "farm-haystack[elasticsearch,faiss-gpu,weaviate,pinecone,opensearch]",
 ]
 audio = [
   "openai-whisper"
@@ -169,6 +139,12 @@ crawler = [
   "webdriver-manager",
 ]
 preprocessing = [
+  "nltk",
+  "langdetect",  # for language classification
+]
+file-conversion = [
+  "python-docx",
+  "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
   "python-frontmatter",
@@ -190,6 +166,12 @@ onnx-gpu = [
   "onnxruntime-gpu",
   "onnxruntime_tools",
 ]
+metrics = [  # for metrics
+  "scipy>=1.3.2",
+  "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
+  "seqeval",
+  "mlflow<2.4.0",
+]
 ray = [
   "ray[serve]>=1.9.1,<2; platform_system != 'Windows'",
   "ray[serve]>=1.9.1,<2,!=1.12.0; platform_system == 'Windows'",  # Avoid 1.12.0 due to https://github.com/ray-project/ray/issues/24169 (fails on windows)
@@ -202,9 +184,9 @@ dev = [
   "pre-commit",
   # Type check
   "mypy",
-  "typing_extensions; python_version < '3.8'",
   # Test
   "pytest",
+  "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
   "responses",
@@ -220,7 +202,7 @@ dev = [
   "mkdocs",
   "jupytercontrib",
   "watchdog",
-  "requests-cache<1.0.0",
+  "toml",
 ]
 
 formatting = [
@@ -230,12 +212,15 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx,beir]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,pdf,ocr,ray,dev,onnx-gpu]",
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics]",
 ]
+
+[project.scripts]
+haystack = "haystack.cli.entry_point:main"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -269,7 +254,7 @@ skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if 
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
-load-plugins = "haystack.utils.linting"
+load-plugins = "haystack_linter"
 disable = [
 
   # To keep
@@ -346,11 +331,9 @@ markers = [
   "ocr: requires Tesseract",
 
   "elasticsearch: requires Elasticsearch container",
-  "graphdb: requires GraphDB container",
   "weaviate: requires Weaviate container",
   "pinecone: requires Pinecone credentials",
   "faiss: uses FAISS",
-  "milvus: requires a Milvus 2 setup",
   "opensearch",
   "document_store",
 ]

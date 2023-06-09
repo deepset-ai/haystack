@@ -229,7 +229,7 @@ class FARMReader(BaseReader):
         devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)  # type: ignore [arg-type]
 
         if not save_dir:
-            save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+            save_dir = f"./saved_models/{self.inferencer.model.language_model.name}"
             if tinybert:
                 save_dir += "_tinybert_stage_1"
 
@@ -887,7 +887,7 @@ class FARMReader(BaseReader):
                          'answer': 'Eddard,',
                          'context': "She travels with her father, Eddard, to King's Landing when he is",
                          'score': 0.9787139466668613,
-                         'offsets_in_context': [Span(start=29, end=35],
+                         'offsets_in_document': [Span(start=29, end=35],
                          'offsets_in_context': [Span(start=347, end=353],
                          'document_id': '88d1ed769d003939d3a0d28034464ab2'
                          ),...
@@ -1058,6 +1058,12 @@ class FARMReader(BaseReader):
             if not label.document.id:
                 logger.error("Label does not contain a document id")
                 continue
+            if label.document.content_type == "table":
+                logger.warning(
+                    "Label with a table document is not compatible with the FARMReader. Skipping label with id %s.",
+                    label.id,
+                )
+                continue
             aggregated_per_doc[label.document.id].append(label)
 
         # Create squad style dicts
@@ -1101,7 +1107,7 @@ class FARMReader(BaseReader):
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(
-                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}
+                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}  # type: ignore [union-attr]
                         )
                         aggregated_per_question[aggregation_key]["is_impossible"] = False
                     # create new one
@@ -1121,7 +1127,7 @@ class FARMReader(BaseReader):
                                 "answers": [
                                     {
                                         "text": label.answer.answer,
-                                        "answer_start": label.answer.offsets_in_document[0].start,
+                                        "answer_start": label.answer.offsets_in_document[0].start,  # type: ignore [union-attr]
                                     }
                                 ],
                                 "is_impossible": False,

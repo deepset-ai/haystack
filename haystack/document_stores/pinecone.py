@@ -1,3 +1,4 @@
+import json
 from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
@@ -57,7 +58,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         api_key: str,
         environment: str = "us-west1-gcp",
-        pinecone_index: Optional[pinecone.Index] = None,
+        pinecone_index: Optional["pinecone.Index"] = None,
         embedding_dim: int = 768,
         return_embedding: bool = False,
         index: str = "document",
@@ -1006,6 +1007,8 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
+        if index not in self.all_ids:
+            self.all_ids[index] = set()
         if ids is None and pinecone_syntax_filter is None:
             # If no filters or IDs we delete everything
             self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
@@ -1224,6 +1227,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         for _id, meta in zip(ids, metadata):
             content = meta.pop("content")
             content_type = meta.pop("content_type")
+            if "_split_overlap" in meta:
+                meta["_split_overlap"] = json.loads(meta["_split_overlap"])
             doc = Document(id=_id, content=content, content_type=content_type, meta=meta)
             documents.append(doc)
         if return_embedding:
@@ -1373,6 +1378,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Replace any None values with empty strings
                 if value is None:
                     value = ""
+                if key == "_split_overlap":
+                    value = json.dumps(value)
                 # format key
                 new_key = f"{parent_key}.{key}" if parent_key else key
                 # if value is dict, expand

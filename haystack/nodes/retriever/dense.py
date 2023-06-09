@@ -1,10 +1,5 @@
 from abc import abstractmethod
-from typing import List, Dict, Union, Optional, Any
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import List, Dict, Union, Optional, Any, Literal
 
 import logging
 from pathlib import Path
@@ -19,13 +14,7 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import (
-    AutoConfig,
-    DPRContextEncoderTokenizerFast,
-    DPRQuestionEncoderTokenizerFast,
-    DPRContextEncoderTokenizer,
-    DPRQuestionEncoderTokenizer,
-)
+from transformers import AutoConfig, AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
@@ -191,7 +180,7 @@ class DensePassageRetriever(DenseRetriever):
             )
 
         # Init & Load Encoders
-        self.query_tokenizer = DPRQuestionEncoderTokenizerFast.from_pretrained(
+        self.query_tokenizer = AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -203,7 +192,7 @@ class DensePassageRetriever(DenseRetriever):
             model_type="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
+        self.passage_tokenizer = AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -873,12 +862,8 @@ class TableTextRetriever(DenseRetriever):
         self.embed_meta_fields = embed_meta_fields
         self.scale_score = scale_score
 
-        query_tokenizer_class = DPRQuestionEncoderTokenizerFast if use_fast else DPRQuestionEncoderTokenizer
-        passage_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
-        table_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
-
         # Init & Load Encoders
-        self.query_tokenizer = query_tokenizer_class.from_pretrained(
+        self.query_tokenizer = AutoTokenizer.from_pretrained(
             query_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -888,7 +873,7 @@ class TableTextRetriever(DenseRetriever):
         self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model, revision=model_version, use_auth_token=use_auth_token
         )
-        self.passage_tokenizer = passage_tokenizer_class.from_pretrained(
+        self.passage_tokenizer = AutoTokenizer.from_pretrained(
             passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -898,7 +883,7 @@ class TableTextRetriever(DenseRetriever):
         self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model, revision=model_version, use_auth_token=use_auth_token
         )
-        self.table_tokenizer = table_tokenizer_class.from_pretrained(
+        self.table_tokenizer = AutoTokenizer.from_pretrained(
             table_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -1468,6 +1453,7 @@ class EmbeddingRetriever(DenseRetriever):
         azure_api_version: str = "2022-12-01",
         azure_base_url: Optional[str] = None,
         azure_deployment_name: Optional[str] = None,
+        api_base: str = "https://api.openai.com/v1",
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1527,6 +1513,7 @@ class EmbeddingRetriever(DenseRetriever):
                                This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
+        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`
         """
         if embed_meta_fields is None:
             embed_meta_fields = []
@@ -1550,6 +1537,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.api_key = api_key
+        self.api_base = api_base
         self.api_version = azure_api_version
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name

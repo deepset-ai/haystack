@@ -1,17 +1,59 @@
-import os
 import sys
 from typing import List
+from unittest.mock import patch, create_autospec
 
 import pytest
-
+from haystack import Pipeline
 from haystack.schema import Document
-from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator
+from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator, RAGenerator
 from haystack.pipelines import GenerativeQAPipeline
 from haystack.nodes import PromptTemplate
 
 import logging
+from ..conftest import fail_at_version
 
 
+@pytest.mark.unit
+@fail_at_version(1, 18)
+def test_seq2seq_deprecation():
+    with pytest.warns(DeprecationWarning):
+        try:
+            Seq2SeqGenerator("non_existing_model/model")
+        except OSError:
+            pass
+
+
+@pytest.mark.unit
+@fail_at_version(1, 18)
+def test_rag_deprecation():
+    with pytest.warns(DeprecationWarning):
+        try:
+            RAGenerator("non_existing_model/model")
+        except OSError:
+            pass
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_openai_answer_generator_default_api_base(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key")
+    assert generator.api_base == "https://api.openai.com/v1"
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://api.openai.com/v1/completions"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_openai_answer_generator_custom_api_base(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key", api_base="https://fake_api_base.com")
+    assert generator.api_base == "https://fake_api_base.com"
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/completions"
+
+
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 def test_rag_token_generator(rag_generator, docs_with_true_emb):
@@ -22,6 +64,7 @@ def test_rag_token_generator(rag_generator, docs_with_true_emb):
     assert "berlin" in answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
@@ -61,6 +104,7 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true
     assert "Germany" in answers[0].answer, answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
@@ -137,10 +181,8 @@ def test_openai_answer_generator_custom_template(haystack_openai_config, docs):
         pytest.skip("No API key found, skipping test")
 
     lfqa_prompt = PromptTemplate(
-        name="lfqa",
-        prompt_text="""
-        Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and the given question.
-        \n===\Paragraphs: {context}\n===\n{query}""",
+        """Synthesize a comprehensive answer from your knowledge and the following topk most relevant paragraphs and
+        the given question.\n===\Paragraphs: {context}\n===\n{query}"""
     )
     node = OpenAIAnswerGenerator(
         api_key=haystack_openai_config["api_key"],
@@ -173,3 +215,50 @@ def test_openai_answer_generator_max_token(haystack_openai_config, docs, caplog)
         assert "Skipping all of the provided Documents" in caplog.text
         assert len(prediction["answers"]) == 1
         # Can't easily check content of answer since it is generative and can change between runs
+
+
+# mock tokenizer that splits the string
+class MockTokenizer:
+    def encode(self, *args, **kwargs):
+        return str.split(*args, **kwargs)
+
+    def tokenize(self, *args, **kwargs):
+        return str.split(*args, **kwargs)
+
+
+@pytest.mark.unit
+def test_build_prompt_within_max_length():
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer") as mock_load_tokenizer:
+        mock_load_tokenizer.return_value = MockTokenizer()
+
+        generator = OpenAIAnswerGenerator(api_key="fake_key", max_tokens=50)
+        generator.MAX_TOKENS_LIMIT = 92
+        query = "query"
+        documents = [Document("most relevant document"), Document("less relevant document")]
+        prompt_str, prompt_docs = generator._build_prompt_within_max_length(query=query, documents=documents)
+
+        assert len(prompt_docs) == 1
+        assert prompt_docs[0] == documents[0]
+
+
+@pytest.mark.unit
+def test_openai_answer_generator_pipeline_max_tokens():
+    """
+    tests that the max_tokens parameter is passed to the generator component in the pipeline
+    """
+    question = "What is New York City like?"
+    mocked_response = "Forget NYC, I was generated by the mock method."
+    nyc_docs = [Document(content="New York is a cool and amazing city to live in the United States of America.")]
+    pipeline = Pipeline()
+
+    # mock load_openai_tokenizer to avoid accessing the internet to init tiktoken
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+
+        pipeline.add_node(component=openai_generator, name="generator", inputs=["Query"])
+        openai_generator.run = create_autospec(openai_generator.run)
+        openai_generator.run.return_value = ({"answers": mocked_response}, "output_1")
+
+        result = pipeline.run(query=question, documents=nyc_docs, params={"generator": {"max_tokens": 3}})
+        assert result["answers"] == mocked_response
+        openai_generator.run.assert_called_with(query=question, documents=nyc_docs, max_tokens=3)
