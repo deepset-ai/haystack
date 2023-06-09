@@ -56,11 +56,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         self.api_key = api_key
         self.api_base = api_base
 
-        # 16 is the default length for answers from OpenAI shown in the docs
-        # here, https://platform.openai.com/docs/api-reference/completions/create.
-        # max_length must be set otherwise OpenAIInvocationLayer._ensure_token_limit will fail.
-        self.max_length = max_length or 16
-
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
         # For more details refer to OpenAI documentation
@@ -134,7 +129,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "model": self.model_name_or_path,
             "prompt": prompt,
             "suffix": kwargs_with_defaults.get("suffix", None),
-            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
+            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length or 16),
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 1),
             "n": kwargs_with_defaults.get("n", 1),
@@ -183,7 +178,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :param prompt: Prompt text to be sent to the generative model.
         """
         n_prompt_tokens = len(self._tokenizer.encode(cast(str, prompt)))
-        n_answer_tokens = self.max_length
+        n_answer_tokens = self.max_length or 16
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
