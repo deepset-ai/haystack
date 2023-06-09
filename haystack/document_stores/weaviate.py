@@ -1,30 +1,28 @@
-from typing import Any, Dict, Generator, List, Optional, Union
-
+import hashlib
+import json
+import logging
 import re
 import uuid
-import json
-import hashlib
-import logging
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
 
 try:
     import weaviate
-    from weaviate import client, AuthClientPassword, gql, AuthClientCredentials, AuthBearerToken
+    from weaviate import AuthApiKey, AuthBearerToken, AuthClientCredentials, AuthClientPassword, client, gql
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document, FilterType, Label
 from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
-
+from haystack.schema import Document, FilterType, Label
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
@@ -78,11 +76,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         timeout_config: tuple = (5, 15),
         username: Optional[str] = None,
         password: Optional[str] = None,
-        client_secret: Optional[str] = None,
         scope: Optional[str] = "offline_access",
-        access_token: Optional[str] = None,
-        expires_in: Optional[int] = 60,
-        refresh_token: Optional[str] = None,
+        api_key: Optional[str] = None,
+        use_embedded: bool = False,
+        embedded_options: Optional[dict] = None,
         additional_headers: Optional[Dict[str, Any]] = None,
         index: str = "Document",
         embedding_dim: int = 768,
@@ -106,11 +103,10 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param timeout_config: The Weaviate timeout config as a tuple of (retries, time out seconds).
         :param username: The Weaviate username (standard authentication using http_auth).
         :param password: Weaviate password (standard authentication using http_auth).
-        :param client_secret: The client secret to use when using the OIDC Client Credentials authentication flow.
         :param scope: The scope of the credentials when using the OIDC Resource Owner Password or Client Credentials authentication flow.
-        :param access_token: Access token to use when using OIDC and bearer tokens to authenticate.
-        :param expires_in: The time in seconds after which the access token expires.
-        :param refresh_token: The refresh token to use when using OIDC and bearer tokens to authenticate.
+        :param api_key: The Weaviate Cloud Services (WCS) API key (for WCS authentication).
+        :param use_embedded: Whether to use an embedded Weaviate instance. Default: False.
+        :param embedded_options: Custom options for the embedded Weaviate instance. Default: None.
         :param additional_headers: Additional headers to be included in the requests sent to Weaviate, for example the bearer token.
         :param index: Index name for document text, embedding, and metadata (in Weaviate terminology, this is a "Class" in the Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
@@ -144,16 +140,22 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         super().__init__()
 
         # Connect to Weaviate server using python binding
-        weaviate_url = f"{host}:{port}"
-        secret = self._get_auth_secret(
-            username, password, client_secret, access_token, expires_in, refresh_token, scope
-        )
+        if not use_embedded:
+            weaviate_url = f"{host}:{port}"
+            auth_client_secret = self._get_auth_secret(username, password, api_key, scope)
+            embedded_options = None
+        else:
+            weaviate_url = None
+            auth_client_secret = None
+            embedded_options = self._get_embedded_options(embedded_options)
+
         # Timeout config can only be defined as a list in YAML, but Weaviate expects a tuple
         if isinstance(timeout_config, list):
             timeout_config = tuple(timeout_config)
         self.weaviate_client = client.Client(
             url=weaviate_url,
-            auth_client_secret=secret,
+            embedded_options=embedded_options,
+            auth_client_secret=auth_client_secret,
             timeout_config=timeout_config,
             additional_headers=additional_headers,
         )
@@ -200,20 +202,21 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     def _get_auth_secret(
         username: Optional[str] = None,
         password: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        access_token: Optional[str] = None,
-        expires_in: Optional[int] = 60,
-        refresh_token: Optional[str] = None,
+        api_key: Optional[str] = None,
         scope: Optional[str] = "offline_access",
     ) -> Optional[Union["AuthClientPassword", "AuthClientCredentials", "AuthBearerToken"]]:
-        if username and password:
+        if api_key:
+            return AuthApiKey(api_key=api_key)
+        elif username and password:
             return AuthClientPassword(username, password, scope=scope)
-        elif client_secret:
-            return AuthClientCredentials(client_secret, scope=scope)
-        elif access_token:
-            return AuthBearerToken(access_token, expires_in=expires_in, refresh_token=refresh_token)
-
         return None
+
+    @staticmethod
+    def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> weaviate.EmbeddedOptions:
+        if embedded_options is None:
+            return weaviate.EmbeddedOptions()
+        else:
+            return weaviate.EmbeddedOptions(**embedded_options)
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
