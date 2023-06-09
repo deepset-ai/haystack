@@ -293,18 +293,14 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         stats = self.pinecone_indexes[index].describe_index_stats(filter=pinecone_syntax_filter)
 
+        namespaces = stats["namespaces"]
+
         if only_documents_without_embedding:
-            count = 0
-            for namespace in stats["namespaces"].keys():
-                if "no-vectors" in namespace:
-                    count += stats["namespaces"][namespace]["vector_count"]
-            return count
-        # Document count is total number of vectors across all namespaces (no-vectors + vectors)
-        count = 0
-        for namespace in stats["namespaces"].keys():
-            if not (only_documents_without_embedding and "no-vectors" not in namespace):
-                count += stats["namespaces"][namespace]["vector_count"]
-        return count
+            vector_counts = (value["vector_count"] for key, value in namespaces.items() if "no-vectors" in key)
+        else:
+            vector_counts = (value["vector_count"] for value in namespaces.values())
+
+        return sum(vector_counts)
 
     def _validate_index_sync(self, index: Optional[str] = None):
         """
