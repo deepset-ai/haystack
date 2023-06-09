@@ -198,6 +198,7 @@ class SearchEngineDocumentStoreTestAbstract:
                     "is_correct_document": True,
                     "origin": "gold-label",
                     "meta": {"version": "2023.1"},
+                    "answer": None,
                 }
             ]
         )
