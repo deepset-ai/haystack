@@ -190,7 +190,7 @@ def test_node_as_tool():
 
 @pytest.mark.unit
 def test_tools_manager_exception():
-    # test that a component can be used as a tool
+    # tests exception raising in tools manager
     class ToolComponent(BaseComponent):
         outgoing_edges = 1
 
@@ -210,7 +210,7 @@ def test_tools_manager_exception():
             raise Exception("mocked_exception")
 
     fake_llm_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy born"
-    tool = Tool(name="ToolA", pipeline_or_node=ToolComponent(), description="Tool A Description")
+    tool = Tool(name="Search", pipeline_or_node=ToolComponent(), description="Search")
     tools_manager = ToolsManager(tools=[tool])
 
     with pytest.raises(Exception):

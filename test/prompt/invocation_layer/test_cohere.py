@@ -67,8 +67,6 @@ def test_invoke_with_stop_words(mock_auto_tokenizer):
         layer.invoke(prompt="Tell me hello", stop_words=stop_words)
 
     assert mock_post.called
-
-    # Check if stop_words are passed to _post as stop parameter
     called_args, _ = mock_post.call_args
     assert "end_sequences" in called_args[0]
     assert called_args[0]["end_sequences"] == stop_words
@@ -88,8 +86,6 @@ def test_streaming_stream_param_from_init(mock_auto_tokenizer):
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-
-    # Check if stop_words are passed to _post as stop parameter
     _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
@@ -110,8 +106,6 @@ def test_streaming_stream_param_from_init_no_stream(mock_auto_tokenizer):
         layer.invoke(prompt="Tell me hello")
 
     assert mock_post.called
-
-    # Check if stop_words are passed to _post as stop parameter
     _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
@@ -132,8 +126,6 @@ def test_streaming_stream_param_from_invoke(mock_auto_tokenizer):
         layer.invoke(prompt="Tell me hello", stream=True)
 
     assert mock_post.called
-
-    # Check if stop_words are passed to _post as stop parameter
     _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
@@ -146,16 +138,14 @@ def test_streaming_stream_param_from_invoke_no_stream(mock_auto_tokenizer):
     """
     Test stream parameter is correctly passed from PromptNode to wire in CohereInvocationLayer from invoke
     """
-    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key")
+    layer = CohereInvocationLayer(model_name_or_path="command", api_key="fake_key", stream=True)
 
     with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.CohereInvocationLayer._post") as mock_post:
         # Mock the response
         mock_post.return_value = Mock(text='{"generations":[{"text": "Hello there"}]}')
-        layer.invoke(prompt="Tell me hello")
+        layer.invoke(prompt="Tell me hello", stream=False)
 
     assert mock_post.called
-
-    # Check if stop_words are passed to _post as stop parameter
     _, called_kwargs = mock_post.call_args
 
     # stream is always passed to _post
