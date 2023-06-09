@@ -422,31 +422,36 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         )
         documents_to_index = []
         for doc in document_objects:
-            _doc = {
+            index_message: Dict[str, Any] = {
                 "_op_type": "index" if duplicate_documents == "overwrite" else "create",
                 "_index": index,
-                **doc.to_dict(field_map=self._create_document_field_map()),
-            }  # type: Dict[str, Any]
+                "_id": str(doc.id),
+            }
+
+            _source: Dict[str, Any] = doc.to_dict(field_map=self._create_document_field_map())
 
             # cast embedding type as ES cannot deal with np.array
-            if _doc[self.embedding_field] is not None:
-                if type(_doc[self.embedding_field]) == np.ndarray:
-                    _doc[self.embedding_field] = _doc[self.embedding_field].tolist()
+            if _source[self.embedding_field] is not None:
+                if type(_source[self.embedding_field]) == np.ndarray:
+                    _source[self.embedding_field] = _source[self.embedding_field].tolist()
 
-            # rename id for elastic
-            _doc["_id"] = str(_doc.pop("id"))
+            # we already have the id in the index message
+            _source.pop("id")
 
             # don't index query score and empty fields
-            _ = _doc.pop("score", None)
-            _doc = {k: v for k, v in _doc.items() if v is not None}
+            _source.pop("score", None)
+            _source = {k: v for k, v in _source.items() if v is not None}
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
             # we "unnest" all value within "meta"
-            if "meta" in _doc.keys():
-                for k, v in _doc["meta"].items():
-                    _doc[k] = v
-                _doc.pop("meta")
-            documents_to_index.append(_doc)
+            if "meta" in _source.keys():
+                for k, v in _source["meta"].items():
+                    _source[k] = v
+                _source.pop("meta")
+
+            # use _source explicitly to avoid conflicts with automatic field detection by ES/OS clients (e.g. "version")
+            index_message["_source"] = _source
+            documents_to_index.append(index_message)
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
@@ -488,24 +493,25 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         labels_to_index = []
         for label in label_list:
             # create timestamps if not available yet
-            if not label.created_at:  # type: ignore
-                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")  # type: ignore
-            if not label.updated_at:  # type: ignore
-                label.updated_at = label.created_at  # type: ignore
+            if not label.created_at:
+                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            if not label.updated_at:
+                label.updated_at = label.created_at
 
-            _label = {
+            index_message: Dict[str, Any] = {
                 "_op_type": "index"
                 if self.duplicate_documents == "overwrite" or label.id in duplicate_ids
-                else "create",  # type: ignore
+                else "create",
                 "_index": index,
-                **label.to_dict(),  # type: ignore
-            }  # type: Dict[str, Any]
+            }
 
-            # rename id for elastic
-            if label.id is not None:  # type: ignore
-                _label["_id"] = str(_label.pop("id"))  # type: ignore
+            _source = label.to_dict()
 
-            labels_to_index.append(_label)
+            # set id for elastic
+            if _source.get("id") is not None:
+                index_message["_id"] = str(_source.pop("id"))
+
+            labels_to_index.append(index_message)
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
