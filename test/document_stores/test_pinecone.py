@@ -474,8 +474,9 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_get_document_count(self, doc_store_with_docs: PineconeDocumentStore):
         """
-        We expect 1 doc with an embeddings because all documents in already written in doc_store_with_docs contain no
-        embeddings.
+        Tests that get_document_count() returns the correct number of documents in the document store.
+        We use get_document_count(only_documents_without_embedding=True) to check that the number of documents without
+        embeddings is correct and get_document_count() to check that the total number of documents is correct.
         """
         # 9 documents without embeddings are already in doc_store_with_docs, so we expect 9 documents without embeddings
         assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == 9
