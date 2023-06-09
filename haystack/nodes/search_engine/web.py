@@ -66,13 +66,14 @@ class WebSearch(BaseComponent):
         top_k: Optional[int] = None,
     ) -> Tuple[Dict, str]:
         """
-        Search the search engine for the given query and return the results. Only the query parameter is used.
+        Search the search engine for the given query and return the results. Only the query parameter and the top_k
+        parameter are used.
         :param query: The query to search for.
         :param file_paths: Not used.
         :param labels: Not used.
         :param documents: Not used.
         :param meta: Not used.
-        :param top_k: return only the top_k results.
+        :param top_k: return only the top_k results. If None, the top_k value passed to the constructor is used.
 
 
         :return: List of search results as documents.
