@@ -7,6 +7,7 @@ components:
       timeout_config: [5, 300]
       similarity: dot_product
       embedding_dim: 768
+      batch_size: 5000
   - name: TextConverter
     type: TextConverter
   - name: Retriever
