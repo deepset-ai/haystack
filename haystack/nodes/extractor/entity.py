@@ -37,8 +37,8 @@ with LazyImport() as torch_and_transformers_import:
     import torch
     from torch.utils.data import Dataset, DataLoader
     from transformers import AutoTokenizer, AutoModelForTokenClassification
-    from haystack.utils.torch_utils import ensure_tensor_on_device
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.utils.torch_utils import ensure_tensor_on_device  # pylint: disable=ungrouped-imports
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
     class TokenClassificationDataset(Dataset):
         """Token Classification Dataset

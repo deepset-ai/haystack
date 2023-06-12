@@ -16,7 +16,7 @@ with LazyImport() as torch_and_transformers_import:
     import torch
     from transformers import pipeline
     from transformers.data.processors.squad import SquadExample
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TransformersReader(BaseReader):

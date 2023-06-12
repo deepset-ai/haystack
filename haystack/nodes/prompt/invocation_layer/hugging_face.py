@@ -22,7 +22,7 @@ with LazyImport() as torch_and_transformers_import:
         Pipeline,
     )
     from transformers.pipelines import get_task
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
 
     class StopWordsCriteria(StoppingCriteria):

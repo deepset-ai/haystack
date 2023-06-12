@@ -18,7 +18,7 @@ with LazyImport() as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSeq2SeqLM
     from transformers import AutoTokenizer
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class QuestionGenerator(BaseComponent):

@@ -31,7 +31,7 @@ with LazyImport() as torch_and_transformers_import:
         TableQuestionAnsweringPipeline,
     )
     from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel  # type: ignore
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TableReader(BaseReader):
@@ -319,7 +319,7 @@ class _TapasEncoder:
         return results
 
 
-class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
+class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):  # pylint: disable=useless-object-inheritance
     """Modified from transformers TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects."""
 
     def __init__(self, *args, return_table_cell: bool = False, **kwargs):
@@ -639,7 +639,7 @@ class _TapasScoredEncoder:
             results["answers"].append(preds["answers"])
         return results
 
-    class _TapasForScoredQA(TapasPreTrainedModel):
+    class _TapasForScoredQA(TapasPreTrainedModel):  # pylint: disable=useless-object-inheritance
         def __init__(self, config):
             super().__init__(config)
 

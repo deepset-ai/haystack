@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport() as torch_import:
     import torch
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class InMemoryDocumentStore(KeywordDocumentStore):

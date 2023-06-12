@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 with LazyImport() as torch_and_transformers_import:
     import torch
-    from haystack.utils.torch_utils import get_devices
-    from haystack.modeling.model.multimodal import get_model
-    from haystack.modeling.model.multimodal.base import HaystackModel
+    from haystack.utils.torch_utils import get_devices  # pylint: disable=ungrouped-imports
+    from haystack.modeling.model.multimodal import get_model  # pylint: disable=ungrouped-imports
+    from haystack.modeling.model.multimodal.base import HaystackModel  # pylint: disable=ungrouped-imports
 
 
 class MultiModalRetrieverError(NodeError):

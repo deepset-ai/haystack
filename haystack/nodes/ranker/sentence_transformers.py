@@ -17,7 +17,7 @@ with LazyImport() as torch_and_transformers_import:
     import torch
     from torch.nn import DataParallel
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class SentenceTransformersRanker(BaseRanker):

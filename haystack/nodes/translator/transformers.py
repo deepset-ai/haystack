@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 with LazyImport() as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TransformersTranslator(BaseTranslator):

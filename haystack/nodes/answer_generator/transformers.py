@@ -23,7 +23,7 @@ with LazyImport() as torch_and_transformers_import:
         PreTrainedTokenizer,
         BatchEncoding,
     )
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
     class _BartEli5Converter:
         """

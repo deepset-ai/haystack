@@ -82,7 +82,7 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
         return chopped_text
 
 
-class HFTokenStreamingHandler(TextStreamer):
+class HFTokenStreamingHandler(TextStreamer):  # pylint: disable=useless-object-inheritance
     def __init__(
         self,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],

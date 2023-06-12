@@ -1,3 +1,4 @@
+# pylint: disable=ungrouped-imports
 from abc import abstractmethod
 from typing import List, Dict, Union, Optional, Any, Literal
 
@@ -39,7 +40,7 @@ with LazyImport() as torch_and_transformers_import:
     from haystack.modeling.data_handler.dataloader import NamedDataLoader
     from haystack.modeling.model.optimization import initialize_optimizer
     from haystack.modeling.training.base import Trainer
-    from haystack.modeling.utils import initialize_device_settings
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class DenseRetriever(BaseRetriever):
