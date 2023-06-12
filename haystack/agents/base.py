@@ -208,7 +208,7 @@ class ToolsManager:
 
 def react_parameter_resolver(query: str, agent: Agent, agent_step: AgentStep, **kwargs) -> Dict[str, Any]:
     """
-    A parameter resolver for ReAct based agents that returns the query, the tool names, the tool names
+    A parameter resolver for ReAct-based agents that returns the query, the tool names, the tool names
     with descriptions, and the transcript (internal monologue).
     """
     return {

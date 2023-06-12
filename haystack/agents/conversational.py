@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def agent_without_tools_parameter_resolver(query: str, agent: Agent, **kwargs) -> Dict[str, Any]:
     """
-    A parameter resolver for ReAct based agents without tools that returns the query, the history.
+    A parameter resolver for ReAct-based agents without tools that returns the query and the history.
     """
     return {"query": query, "history": agent.memory.load()}
 
@@ -21,7 +21,7 @@ def conversational_agent_parameter_resolver(
     query: str, agent: Agent, agent_step: AgentStep, **kwargs
 ) -> Dict[str, Any]:
     """
-    A parameter resolver for ReAct based agents that returns the query, the tool names, the tool names
+    A parameter resolver for ReAct-based agents that returns the query, the tool names, the tool names
     with descriptions, the history of the conversation, and the transcript (internal monologue).
     """
     return {
@@ -35,11 +35,11 @@ def conversational_agent_parameter_resolver(
 
 class ConversationalAgent(Agent):
     """
-    A ConversationalAgent is an extension of the Agent class with some default parameters that enables the use of tools in
+    A ConversationalAgent is an extension of the Agent class with several default parameters that enable the use of tools in
     conversational chat applications. ConversationalAgent can manage a set of tools and seamlessly integrate them into the conversation.
     If no tools are provided, the agent will be initialized to have a basic chat application.
 
-    Here is an example of how you can create a chat application with tools:
+    Here is an example how you can create a chat application with tools:
     ```python
     import os
 
@@ -83,10 +83,10 @@ class ConversationalAgent(Agent):
 
     def __init__(self, prompt_node: PromptNode, tools: Optional[List[Tool]] = None, memory: Optional[Memory] = None):
         """
-        Creates a new ConversationalAgent instance
+        Creates a new ConversationalAgent instance.
 
-        :param prompt_node: A PromptNode that the Agent uses to decide which tool to use and what input to provide to
-        it in each iteration. If no tools are provided, model provided with PromptNode will be used to chat with.
+        :param prompt_node: A PromptNode used by Agent to decide which tool to use and what input to provide to it
+        in each iteration. If there are no tools added, the model specified with PromptNode will be used for chatting.
         :param tools: A list of tools to use in the Agent. Each tool must have a unique name.
         :param memory: A memory object for storing conversation history and other relevant data, defaults to
         ConversationMemory if no memory is provided.
