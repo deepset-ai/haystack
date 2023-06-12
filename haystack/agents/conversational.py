@@ -2,8 +2,8 @@ from typing import Optional, Dict, Any, List
 import logging
 
 from haystack.errors import AgentError
-from haystack.agents.base import Tool, ToolsManager
-from haystack.agents import Agent, AgentStep
+from haystack.agents.base import Tool, ToolsManager, Agent
+from haystack.agents.agent_step import AgentStep
 from haystack.agents.memory import Memory, ConversationMemory
 from haystack.nodes import PromptNode
 
@@ -45,7 +45,7 @@ class ConversationalAgent(Agent):
 
     from haystack.agents.conversational import ConversationalAgent
     from haystack.nodes import PromptNode
-    from haystack.tools import ToolsManager, Tool
+    from haystack.agents.base import ToolsManager, Tool
 
     # Initialize a PromptNode and a ToolsManager with the desired tools
     prompt_node = PromptNode("gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
