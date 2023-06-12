@@ -186,7 +186,7 @@ class AzureConverter(BaseConverter):
 
     def _convert_tables_and_text(
         self,
-        result: AnalyzeResult,
+        result: "AnalyzeResult",
         meta: Optional[Dict[str, Any]],
         valid_languages: Optional[List[str]],
         file_path: Path,
@@ -216,7 +216,7 @@ class AzureConverter(BaseConverter):
         return docs
 
     def _convert_tables(
-        self, result: AnalyzeResult, meta: Optional[Dict[str, Any]], id_hash_keys: Optional[List[str]] = None
+        self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]], id_hash_keys: Optional[List[str]] = None
     ) -> List[Document]:
         converted_tables: List[Document] = []
 
@@ -317,7 +317,7 @@ class AzureConverter(BaseConverter):
         return converted_tables
 
     def _convert_text(
-        self, result: AnalyzeResult, meta: Optional[Dict[str, str]], id_hash_keys: Optional[List[str]] = None
+        self, result: "AnalyzeResult", meta: Optional[Dict[str, str]], id_hash_keys: Optional[List[str]] = None
     ) -> Document:
         text = ""
         table_spans_by_page = defaultdict(list)
