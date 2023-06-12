@@ -45,8 +45,10 @@ folder in which the prompts will be saved in. You can find the default cache pat
 haystack prompt fetch deepset/conversational-agent-with-tools deepset/summarization
 ```
 
-### Options
+**Options:**
 
 `--help`  Show options and exit.
 
-`--version`  Show your current Haystack version and exit.
+### `--version`
+
+  Show your current Haystack version and exit.
