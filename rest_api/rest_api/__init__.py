@@ -12,11 +12,8 @@ from structlog.types import EventDict, WrappedLogger
 from rest_api.config import LOG_FORMAT, LOG_LEVEL, LOGGING_LOCALS_MAX_STRING, LogFormatEnum
 
 
-
 _FAST_API_MIDDLEWARE_REGEX = re.compile(r"(\/(starlette(_context)?|fastapi|anyio)\/|/rest_api/application_utils.py$)")
 _ANYIO_EXC_NEGATIVE_LIST = ["EndOfStream", "WouldBlock"]
-
-
 
 
 def _clean_fastapi_excs(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
@@ -108,9 +105,7 @@ def _build_stdlib_processors(renderers: List[Any]) -> List[Any]:
     """
     Build python logging processors with the given renderers.
     """
-    stdlib_only_preprocessors: List[Any] = [
-        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-    ]
+    stdlib_only_preprocessors: List[Any] = [structlog.stdlib.ProcessorFormatter.remove_processors_meta]
     return _shared_preprocessors + stdlib_only_preprocessors + renderers
 
 
@@ -125,9 +120,7 @@ def _configure_stdlib_logging(renderers: List[Any], log_level: int) -> None:
     required here.
     """
     stdlib_processors = _build_stdlib_processors(renderers=renderers)
-    formatter = structlog.stdlib.ProcessorFormatter(
-        processors=stdlib_processors,
-    )
+    formatter = structlog.stdlib.ProcessorFormatter(processors=stdlib_processors)
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
 

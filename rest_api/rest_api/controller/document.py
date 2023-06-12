@@ -5,7 +5,7 @@ import logging
 from fastapi import FastAPI, APIRouter
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document
-import structlog 
+import structlog
 
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL

@@ -46,6 +46,7 @@ def configure_logging_for_prod_with_log_capture(log_capture: PluginLogCapture) -
     finally:
         configure_logging()
 
+
 @pytest.fixture
 def raw_logs() -> Generator[List[EventDict], None, None]:
     with capture_logs() as logs:
@@ -157,4 +158,3 @@ class TestUnhandledExceptionLogging:
 
         locals_message = log_capture.entries[0].get("exception")[0].get("frames")[0].get("locals").get("message")  # type: ignore
         assert not locals_message.endswith("+1")
-

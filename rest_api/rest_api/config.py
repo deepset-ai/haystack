@@ -4,10 +4,10 @@ from pathlib import Path
 
 from enum import Enum
 
+
 class LogFormatEnum(str, Enum):
     RAW = "RAW"
     JSON = "JSON"
-
 
 
 PIPELINE_YAML_PATH = os.getenv(
@@ -18,11 +18,11 @@ INDEXING_PIPELINE_NAME = os.getenv("INDEXING_PIPELINE_NAME", "indexing")
 
 FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", str((Path(__file__).parent / "file-upload").absolute()))
 
-LOG_LEVEL:int = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper())
+LOG_LEVEL: int = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper())
 LOGGING_LOCALS_MAX_STRING = int(os.getenv("LOGGING_LOCALS_MAX_STRING", "1000"))
 
 LOG_FORMAT: LogFormatEnum
-try: 
+try:
     LOG_FORMAT = LogFormatEnum(os.getenv("LOG_FORMAT", "JSON"))
 except ValueError:
     LOG_FORMAT = LogFormatEnum.RAW
