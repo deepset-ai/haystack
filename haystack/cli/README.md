@@ -29,10 +29,15 @@ for easier use in environments with no network.
 - PROMPT_NAME can be specified multiple times.
 
 - PROMPTHUB_CACHE_PATH environment variable can be set to change the default
-folder in which the prompts will be saved in. The default cache folder is `prompthub_cache`.
+folder in which the prompts will be saved in. You can find the default cache path on your machine by running the following code:
 
-  - If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for
-Haystack invocations.
+  ``` python
+  from platformdirs import user_data_dir
+  from pathlib import Path
+  Path(user_data_dir("haystack", "deepset")) / "prompthub_cache"
+  ```
+
+  - If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for Haystack invocations.
 
 **Example:**
 

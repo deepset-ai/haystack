@@ -13,7 +13,6 @@ from haystack.nodes.prompt.prompt_template import PromptNotFoundError, fetch_fro
 
     PROMPTHUB_CACHE_PATH environment variable can be set to change the default
     folder in which the prompts will be saved in.
-    The default cache folder is `prompthub_cache`.
 
     If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for
     Haystack invocations.
