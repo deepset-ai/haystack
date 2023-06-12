@@ -2,15 +2,12 @@ import logging
 import random
 import sys
 from typing import Generator, List
-from unittest.mock import Mock
+
 
 from structlog.testing import capture_logs
-import ddtrace
-import freezegun
+
 import pytest
 import structlog
-from _pytest.monkeypatch import MonkeyPatch
-from ddtrace.settings import Config
 from structlog.types import EventDict, WrappedLogger
 
 from consumer_indexing.src import _log_unhandled_exception, configure_logging
