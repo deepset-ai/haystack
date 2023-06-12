@@ -7,12 +7,13 @@ from haystack.nodes.prompt.prompt_template import PromptNotFoundError, fetch_fro
     short_help="Downloads and saves prompts from Haystack PromptHub",
     help="""
     Downloads a prompt from the official Haystack PromptHub and saves it locally
-    to ease use in environments with no network.
+    to allow use in environments with no network.
 
     PROMPT_NAME can be specified multiple times.
 
     PROMPTHUB_CACHE_PATH environment variable can be set to change the default
     folder in which the prompts will be saved in.
+    The default cache folder is `prompthub_cache`.
 
     If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for
     Haystack invocations.
