@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import ContentTypes, Document, FilterType
 from haystack.lazy_imports import LazyImport

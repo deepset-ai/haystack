@@ -5,7 +5,7 @@ from haystack.lazy_imports import LazyImport
 
 TextStreamer = object
 with LazyImport() as transformers_import:
-    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer  # type: ignore
 
 
 class TokenStreamingHandler(ABC):
@@ -89,7 +89,7 @@ class HFTokenStreamingHandler(TextStreamer):
         stream_handler: "TokenStreamingHandler",
     ):
         transformers_import.check()
-        super().__init__(tokenizer=tokenizer)
+        super().__init__(tokenizer=tokenizer)  # type: ignore
         self.token_handler = stream_handler
 
     def on_finalized_text(self, token: str, stream_end: bool = False):

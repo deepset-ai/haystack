@@ -20,7 +20,7 @@ TableQuestionAnsweringPipeline = object
 TapasPreTrainedModel = object
 with LazyImport() as torch_and_transformers_import:
     import torch
-    from transformers import (
+    from transformers import (  # type: ignore
         TapasTokenizer,
         TapasForQuestionAnswering,
         AutoTokenizer,
@@ -30,7 +30,7 @@ with LazyImport() as torch_and_transformers_import:
         TapasConfig,
         TableQuestionAnsweringPipeline,
     )
-    from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
+    from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel  # type: ignore
     from haystack.modeling.utils import initialize_device_settings
 
 
@@ -295,7 +295,7 @@ class _TapasEncoder:
             pipeline_inputs.append({"query": query, "table": table.astype(str)})
 
         # Run the pipeline
-        answers = self.pipeline(pipeline_inputs, sequential=False, padding=True, truncation=True)
+        answers = self.pipeline(pipeline_inputs, sequential=False, padding=True, truncation=True)  # type: ignore
 
         # Unpack batched answers
         if isinstance(answers[0], list):
@@ -353,7 +353,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
             if len(answer_coordinates[i]) == 0:
                 answer_scores.append(None)
             else:
-                cell_coords_to_prob = self.tokenizer._get_mean_cell_probs(
+                cell_coords_to_prob = self.tokenizer._get_mean_cell_probs(  # type: ignore
                     token_probabilities[i].tolist(),
                     segment_ids[i].tolist(),
                     row_ids[i].tolist(),
@@ -476,7 +476,7 @@ class _TapasScoredEncoder:
         use_auth_token: Optional[Union[str, bool]] = None,
         return_table_cell: bool = False,
     ):
-        self.model = self._TapasForScoredQA.from_pretrained(
+        self.model = self._TapasForScoredQA.from_pretrained(  # type: ignore
             model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         if tokenizer is None:
