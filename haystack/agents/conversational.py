@@ -35,8 +35,8 @@ def conversational_agent_parameter_resolver(
 
 class ConversationalAgent(Agent):
     """
-    A ConversationalAgent is an extension of the Agent class with several default parameters that enable the use of tools in
-    conversational chat applications. ConversationalAgent can manage a set of tools and seamlessly integrate them into the conversation.
+    A ConversationalAgent is an extension of the Agent class that enables the use of tools with several default parameters.
+    ConversationalAgent can manage a set of tools and seamlessly integrate them into the conversation.
     If no tools are provided, the agent will be initialized to have a basic chat application.
 
     Here is an example how you can create a chat application with tools:
