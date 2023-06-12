@@ -30,7 +30,8 @@ dependencies = [
     "uvicorn<1",
     "python-multipart<1",  # optional FastAPI dependency for form data
     "pynvml",
-    "psutil"
+    "psutil", 
+    "structlog==23.1.0"
 ]
 dynamic = ["version"]
 
