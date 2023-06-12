@@ -1,8 +1,10 @@
 from typing import Any, Dict
 
 import os
-import logging
+
 from pathlib import Path
+
+import structlog
 
 from haystack.pipelines.base import Pipeline
 from haystack.document_stores import FAISSDocumentStore, InMemoryDocumentStore
@@ -11,7 +13,7 @@ from haystack.errors import PipelineConfigError
 from rest_api.controller.utils import RequestLimiter
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Each instance of FAISSDocumentStore creates an in-memory FAISS index,
 # the Indexing & Query Pipelines will end up with different indices for each worker.

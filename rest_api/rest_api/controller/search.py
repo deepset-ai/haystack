@@ -6,6 +6,7 @@ import json
 
 from pydantic import BaseConfig
 from fastapi import FastAPI, APIRouter
+import structlog
 import haystack
 from haystack import Pipeline
 
@@ -15,7 +16,7 @@ from rest_api.schema import QueryRequest, QueryResponse
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
-logger = logging.getLogger("haystack")
+logger = structlog.get_logger("haystack")
 
 
 BaseConfig.arbitrary_types_allowed = True

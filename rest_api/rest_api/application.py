@@ -2,13 +2,11 @@ import logging
 
 import uvicorn
 from rest_api.utils import get_app, get_pipelines
+import structlog
 
-
-logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
-
 
 app = get_app()
 pipelines = get_pipelines()  # Unused here, called to init the pipelines early

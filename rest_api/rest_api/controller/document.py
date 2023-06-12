@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI, APIRouter
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document
+import structlog 
 
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
@@ -12,7 +13,7 @@ from rest_api.schema import FilterRequest
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
-logger = logging.getLogger("haystack")
+logger = structlog.get_logger("haystack")
 
 
 router = APIRouter()
