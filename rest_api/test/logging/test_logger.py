@@ -3,7 +3,6 @@ import random
 import sys
 from typing import Generator, List
 
-
 from structlog.testing import capture_logs
 
 import pytest
