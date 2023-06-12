@@ -71,6 +71,7 @@ class FARMReader(BaseReader):
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
         max_query_length: int = 64,
+        preprocessing_batch_size: Optional[int] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
@@ -131,6 +132,9 @@ class FARMReader(BaseReader):
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param max_query_length: Maximum length of the question in number of tokens.
+        :param preprocessing_batch_size: Number of query-document pairs to be preprocessed (= tokenized, put into
+                                         tensors, etc.) at once. If `None` (default), all query-document pairs are
+                                         preprocessed at once.
         """
         super().__init__()
 
@@ -169,6 +173,7 @@ class FARMReader(BaseReader):
         self.use_confidence_scores = use_confidence_scores
         self.confidence_threshold = confidence_threshold
         self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
+        self.preprocessing_batch_size = preprocessing_batch_size
 
     def _training_procedure(
         self,
@@ -846,10 +851,11 @@ class FARMReader(BaseReader):
             self.inferencer.batch_size = batch_size
         # Make predictions on all document-query pairs
         predictions = []
-        for input_batch in get_batches_from_generator(inputs, self.inferencer.batch_size):
-            predictions = self.inferencer.inference_from_objects(
+        for input_batch in get_batches_from_generator(inputs, self.preprocessing_batch_size):
+            cur_predictions = self.inferencer.inference_from_objects(
                 objects=input_batch, return_json=False, multiprocessing_chunksize=10
             )
+            predictions.extend(cur_predictions)
 
         # Group predictions together
         grouped_predictions = []
@@ -913,9 +919,12 @@ class FARMReader(BaseReader):
 
         # get answers from QA model
         # TODO: Need fix in FARM's `to_dict` function of `QAInput` class
-        predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=1
-        )
+        predictions = []
+        for input_batch in get_batches_from_generator(inputs, self.preprocessing_batch_size):
+            cur_predictions = self.inferencer.inference_from_objects(
+                objects=input_batch, return_json=False, multiprocessing_chunksize=1
+            )
+            predictions.extend(cur_predictions)
         # Deduplicate same answers resulting from Document split overlap
         predictions = self._deduplicate_predictions(predictions, documents)
         # assemble answers from all the different documents & format them.
