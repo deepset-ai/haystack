@@ -152,7 +152,7 @@ def _log_unhandled_exception(
 
 def configure_logging(log_format: LogFormatEnum, log_capture: Optional[Any] = None, log_level: int = LOG_LEVEL) -> None:
     """
-    Configures logging for all dC apps.
+    Configures logging for the rest_api apps.
 
     :param log_capture: In order to capture and inspect logs as your final renderer receives them (e.g. for testing),
         you can pass a custom processor here.
