@@ -27,6 +27,7 @@ from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
+from haystack.utils import get_batches_from_generator
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.telemetry import send_event
 
@@ -844,9 +845,11 @@ class FARMReader(BaseReader):
         if batch_size is not None:
             self.inferencer.batch_size = batch_size
         # Make predictions on all document-query pairs
-        predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=10
-        )
+        predictions = []
+        for input_batch in get_batches_from_generator(inputs, self.inferencer.batch_size):
+            predictions = self.inferencer.inference_from_objects(
+                objects=input_batch, return_json=False, multiprocessing_chunksize=10
+            )
 
         # Group predictions together
         grouped_predictions = []
