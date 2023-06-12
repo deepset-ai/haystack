@@ -18,7 +18,7 @@ from haystack.nodes.prompt.invocation_layer import (
     DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.utils.requests_utils import request_with_retry
+from haystack.utils import request_with_retry
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
