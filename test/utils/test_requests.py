@@ -3,11 +3,11 @@ from unittest.mock import patch, Mock
 import pytest
 import requests
 
-from haystack.utils.requests import request_with_retry
+from haystack.utils.requests_utils import request_with_retry
 
 
 @pytest.mark.unit
-@patch("haystack.utils.requests.requests.request")
+@patch("haystack.utils.requests_utils.requests.request")
 def test_request_with_retry_defaults_successfully(mock_request):
     # Make requests with default retry configuration
     request_with_retry(method="GET", url="https://example.com")
@@ -17,7 +17,7 @@ def test_request_with_retry_defaults_successfully(mock_request):
 
 
 @pytest.mark.unit
-@patch("haystack.utils.requests.requests.request")
+@patch("haystack.utils.requests_utils.requests.request")
 def test_request_with_retry_custom_timeout(mock_request):
     # Make requests with default retry configuration
     request_with_retry(method="GET", url="https://example.com", timeout=5)
@@ -27,7 +27,7 @@ def test_request_with_retry_custom_timeout(mock_request):
 
 
 @pytest.mark.unit
-@patch("haystack.utils.requests.requests.request")
+@patch("haystack.utils.requests_utils.requests.request")
 def test_request_with_retry_failing_request_and_expected_status_code(mock_request):
     # Create fake failed response with status code that triggers retry
     fake_response = requests.Response()
@@ -43,7 +43,7 @@ def test_request_with_retry_failing_request_and_expected_status_code(mock_reques
 
 
 @pytest.mark.unit
-@patch("haystack.utils.requests.requests.request")
+@patch("haystack.utils.requests_utils.requests.request")
 def test_request_with_retry_failing_request_and_ignored_status_code(mock_request):
     # Create fake failed response with status code that doesn't trigger retry
     fake_response = requests.Response()
@@ -59,7 +59,7 @@ def test_request_with_retry_failing_request_and_ignored_status_code(mock_request
 
 
 @pytest.mark.unit
-@patch("haystack.utils.requests.requests.request")
+@patch("haystack.utils.requests_utils.requests.request")
 def test_request_with_retry_timed_out_request(mock_request: Mock):
     # Make request fail cause of a timeout
     mock_request.side_effect = TimeoutError()
