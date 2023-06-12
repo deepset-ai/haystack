@@ -7,24 +7,18 @@ import copy
 
 import pandas as pd
 
+from haystack.lazy_imports import LazyImport
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.errors import HaystackError
 from haystack.schema import Document
 
-
 logger = logging.getLogger(__name__)
 
-try:
+with LazyImport(
+    message="Run 'pip install farm-haystack[file-conversion]' or 'pip install " "azure-ai-formrecognizer>=3.2.0b2'"
+) as azure_import:
     from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
     from azure.core.credentials import AzureKeyCredential
-except ImportError as exc:
-    logger.debug(
-        "azure.ai.formrecognizer or azure.core.credentials could not be imported. "
-        "Run 'pip install farm-haystack[file-conversion]' or 'pip install azure-ai-formrecognizer>=3.2.0b2' to fix this issue."
-    )
-    DocumentAnalysisClient = None
-    AnalyzeResult = None
-    AzureKeyCredential = None
 
 
 class AzureConverter(BaseConverter):
@@ -80,6 +74,9 @@ class AzureConverter(BaseConverter):
         :param add_page_number: Adds the number of the page a table occurs in to the Document's meta field
                                 `"page"`.
         """
+        # ensure the required dependencies were actually imported
+        azure_import.check()
+
         super().__init__(valid_languages=valid_languages, id_hash_keys=id_hash_keys)
 
         self.document_analysis_client = DocumentAnalysisClient(
