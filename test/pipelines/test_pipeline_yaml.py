@@ -142,7 +142,6 @@ def test_load_yaml(tmp_path):
     assert isinstance(pipeline.get_node("reader"), MockReader)
 
 
-@pytest.mark.unit
 def test_load_yaml_elasticsearch_not_responding(tmp_path):
     # Test if DocumentStoreError is raised if elasticsearch instance is not responding (due to wrong port)
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
