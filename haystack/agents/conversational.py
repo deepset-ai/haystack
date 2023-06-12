@@ -35,13 +35,12 @@ def conversational_agent_parameter_resolver(
 
 class ConversationalAgent(Agent):
     """
-    A ConversationalAgent is an extension of the Agent class that supports the use of tools in
-    conversational chat applications. This agent can make use of the ToolsManager to manage a set of tools and seamlessly integrate them into the conversation.
-
-    If no tools are provided, the Agent will be initialized with necessary arguments to have a basic chat application.
+    A ConversationalAgent is an extension of the Agent class with some default parameters that enables the use of tools in
+    conversational chat applications. ConversationalAgent can manage a set of tools and seamlessly integrate them into the conversation.
+    If no tools are provided, the agent will be initialized to have a basic chat application.
 
     Here is an example of how you can create a chat application with tools:
-    ```
+    ```python
     import os
 
     from haystack.agents.conversational import ConversationalAgent
@@ -50,10 +49,10 @@ class ConversationalAgent(Agent):
 
     # Initialize a PromptNode and a ToolsManager with the desired tools
     prompt_node = PromptNode("gpt-3.5-turbo", api_key=os.environ.get("OPENAI_API_KEY"), max_length=256)
-    tools_manager = ToolsManager([Tool(name="ExampleTool", pipeline_or_node=example_tool_node)])
+    tools = [Tool(name="ExampleTool", pipeline_or_node=example_tool_node)]
 
     # Create the ConversationalAgent instance
-    agent = ConversationalAgent(prompt_node, tools_manager=tools_manager)
+    agent = ConversationalAgent(prompt_node, tools=tools)
 
     # Use the agent in a chat application
     while True:
@@ -65,8 +64,8 @@ class ConversationalAgent(Agent):
             print("\nAssistant:", assistant_response)
     ```
 
-    If you want to have any tools, you can create a ConversationalAgent only with a PromptNode:
-    ```
+    If you don't want to have any tools in your chat app, you can create a ConversationalAgent only with a PromptNode:
+    ```python
     import os
 
     from haystack.agents.conversational import ConversationalAgent
@@ -78,6 +77,8 @@ class ConversationalAgent(Agent):
     # Create the ConversationalAgent instance
     agent = ConversationalAgent(prompt_node)
     ```
+
+    If you're looking for more customization, check out [Agent](https://docs.haystack.deepset.ai/reference/agent-api).
     """
 
     def __init__(self, prompt_node: PromptNode, tools: Optional[List[Tool]] = None, memory: Optional[Memory] = None):

@@ -17,7 +17,7 @@ def tools_manager():
 
 
 @pytest.mark.unit
-def test_callable_tool():
+def test_using_callable_as_tool():
     # test that we can also pass a callable as a tool
     tool_input = "Haystack"
     tool = Tool(name="ToolA", pipeline_or_node=lambda x: x + x, description="Tool A Description")
