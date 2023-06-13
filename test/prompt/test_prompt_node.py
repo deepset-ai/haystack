@@ -1010,3 +1010,23 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
 
     result = pn(messages)
     assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_node_warns_about_missing_documents(mock_model, caplog):
+    lfqa_prompt = PromptTemplate(
+        prompt="""Synthesize a comprehensive answer from the following text for the given question.
+        Provide a clear and concise response that summarizes the key points and information presented in the text.
+        Your answer should be in your own words and be no longer than 50 words.
+        If answer is not in .text. say i dont know.
+        \n\n Related text: {join(documents)} \n\n Question: {query} \n\n Answer:"""
+    )
+    prompt_node = PromptNode(default_prompt_template=lfqa_prompt)
+
+    with caplog.at_level(logging.WARNING):
+        results, _ = prompt_node.run(query="non-matching query")
+        assert (
+            "Expected prompt parameter 'documents' to be provided but it is missing. "
+            "Continuing with an empty list of documents." in caplog.text
+        )
