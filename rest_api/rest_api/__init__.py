@@ -86,17 +86,24 @@ def build_structlog_processors(renderers: List[Any]) -> List[Any]:
     return processors
 
 
-def _configure_structlog(renderers: List[Any], log_level: int) -> None:
+def _configure_structlog(log_format: LogFormatEnum, renderers: List[Any]) -> None:
     """
     Configure structlog to use the processors and renderers defined in this module
     and to process logs on its own without using stdlib's logging.
     """
     structlog_processors = build_structlog_processors(renderers=renderers)
+    if log_format == LogFormatEnum.JSON:
+        # converts the processed event dictionary into something that ProcessorFormatter understands
+        # (we neeed this because we output the logs via stdlib)
+        structlog_processors.append(structlog.stdlib.ProcessorFormatter.wrap_for_formatter)
+
     structlog.configure(
         processors=structlog_processors,
-        wrapper_class=structlog.make_filtering_bound_logger(min_level=log_level),
+        wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        # We need to use the stdlib logger factory to output the messages via stdlib.
+        # This enables pytest to correctly capture our logs.
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=False,
     )
 
@@ -109,7 +116,7 @@ def _build_stdlib_processors(renderers: List[Any]) -> List[Any]:
     return _shared_preprocessors + stdlib_only_preprocessors + renderers
 
 
-def _configure_stdlib_logging(renderers: List[Any], log_level: int) -> None:
+def _configure_stdlib_logging(log_format: LogFormatEnum, renderers: List[Any], log_level: int) -> None:
     """
     Configure python logging to use structlog's processors with the given renderers.
 
@@ -120,6 +127,9 @@ def _configure_stdlib_logging(renderers: List[Any], log_level: int) -> None:
     required here.
     """
     stdlib_processors = _build_stdlib_processors(renderers=renderers)
+    if log_format == LogFormatEnum.JSON:
+        stdlib_processors.append(JSONRenderer())
+
     formatter = structlog.stdlib.ProcessorFormatter(processors=stdlib_processors)
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -161,8 +171,8 @@ def configure_logging(log_format: LogFormatEnum, log_capture: Optional[Any] = No
         renderer.
     """
     renderers = _build_renderers(log_format=log_format, log_capture=log_capture)
-    _configure_structlog(renderers=renderers, log_level=log_level)
-    _configure_stdlib_logging(renderers=renderers, log_level=log_level)
+    _configure_structlog(log_format=log_format, renderers=renderers)
+    _configure_stdlib_logging(log_format=log_format, renderers=renderers, log_level=log_level)
     sys.excepthook = _log_unhandled_exception
 
 

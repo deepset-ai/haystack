@@ -9,8 +9,8 @@ import pytest
 import structlog
 from structlog.types import EventDict, WrappedLogger
 
-from consumer_indexing.src import _log_unhandled_exception, configure_logging
-from consumer_indexing.src.config import LOGGING_LOCALS_MAX_STRING
+from rest_api import _log_unhandled_exception, configure_logging
+from rest_api.config import LOGGING_LOCALS_MAX_STRING, LogFormatEnum
 
 
 class PluginLogCapture:
@@ -41,7 +41,7 @@ def log_capture() -> PluginLogCapture:
 @pytest.fixture
 def configure_logging_for_prod_with_log_capture(log_capture: PluginLogCapture) -> Generator[None, None, None]:
     try:
-        configure_logging(dev_logs=False, log_capture=log_capture)
+        configure_logging(log_format=LogFormatEnum.JSON, log_capture=log_capture)
         yield
     finally:
         configure_logging()
@@ -158,3 +158,17 @@ class TestUnhandledExceptionLogging:
 
         locals_message = log_capture.entries[0].get("exception")[0].get("frames")[0].get("locals").get("message")  # type: ignore
         assert not locals_message.endswith("+1")
+
+
+class TestBasicLogging:
+    def test_structlog_logger_is_parsed_as_json(self, raw_logs: List[EventDict]) -> None:
+        structlog.get_logger().info("Test info log")
+        assert raw_logs[0].get("event") == "Test info log"
+        assert raw_logs[0].get("log_level") == "info"
+        #assert raw_logs[0].get("timestamp") is not None
+    
+    def test_stdblib_logger_is_parsed_as_jsons(self, raw_logs: List[EventDict]) -> None:
+        logging.getLogger().info("Test info log")
+        assert raw_logs[0].get("event") == "Test info log"
+        assert raw_logs[0].get("log_level") == "info"
+       
