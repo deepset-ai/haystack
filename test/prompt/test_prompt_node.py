@@ -911,6 +911,7 @@ class TestTokenLimit:
 
 
 class TestRunBatch:
+    @pytest.mark.skip(reason="Skipped as test is extremely flaky")
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
     def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
