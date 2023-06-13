@@ -270,7 +270,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         verify_certs: bool,
         timeout: int,
         use_system_proxy: bool,
-    ) -> OpenSearch:
+    ) -> "OpenSearch":
         """
         Create an instance of the Opensearch client
         """

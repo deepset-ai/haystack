@@ -117,7 +117,7 @@ class MarkdownConverter(BaseConverter):
         return [document]
 
     @staticmethod
-    def _extract_text_and_headlines(soup: BeautifulSoup) -> Tuple[str, List[Dict]]:
+    def _extract_text_and_headlines(soup: "BeautifulSoup") -> Tuple[str, List[Dict]]:
         """
         Extracts text and headings from a soup object.
         """
