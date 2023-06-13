@@ -7,7 +7,7 @@ from haystack.nodes.prompt.prompt_template import PromptNotFoundError, fetch_fro
     short_help="Downloads and saves prompts from Haystack PromptHub",
     help="""
     Downloads a prompt from the official Haystack PromptHub and saves it locally
-    to allow use in environments with no network.
+    for easier use in environments with no network.
 
     PROMPT_NAME can be specified multiple times.
 

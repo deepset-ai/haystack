@@ -26,15 +26,14 @@ haystack prompt fetch [OPTIONS] [PROMPT_NAME]
 Download a prompt from the official [Haystack PromptHub](https://prompthub.deepset.ai/) and save it locally
 for easier use in environments with no network.
 
-- PROMPT_NAME can be specified multiple times.
+You can specify multiple prompts to fetch at the same time.
 
-- PROMPTHUB_CACHE_PATH environment variable can be set to change the default
+PROMPTHUB_CACHE_PATH environment variable can be set to change the default
 folder in which the prompts will be saved in. You can find the default cache path on your machine by running the following code:
 
   ``` python
-  from platformdirs import user_data_dir
-  from pathlib import Path
-  Path(user_data_dir("haystack", "deepset")) / "prompthub_cache"
+  from haystack.nodes.prompt.prompt_template import PROMPTHUB_CACHE_PATH
+  print(PROMPTHUB_CACHE_PATH)
   ```
 
   - If a custom PROMPTHUB_CACHE_PATH is used, remember to also use it for Haystack invocations.
@@ -49,6 +48,6 @@ haystack prompt fetch deepset/conversational-agent-with-tools deepset/summarizat
 
 `--help`  Show options and exit.
 
-### `--version`
+### `haystack --version`
 
   Show your current Haystack version and exit.
