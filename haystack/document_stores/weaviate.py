@@ -9,14 +9,6 @@ import logging
 import numpy as np
 from tqdm.auto import tqdm
 
-try:
-    import weaviate
-    from weaviate import client, AuthClientPassword, gql, AuthClientCredentials, AuthBearerToken
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "weaviate", ie)
-
 from haystack.schema import Document, FilterType, Label
 from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
@@ -24,6 +16,11 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[weaviate]'") as weaviate_import:
+    import weaviate
+    from weaviate import client, AuthClientPassword, gql, AuthClientCredentials, AuthBearerToken
 
 
 logger = logging.getLogger(__name__)
@@ -141,6 +138,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                    See also [Weaviate documentation](https://weaviate.io/developers/weaviate/current/configuration/replication.html).
         :param batch_size: The number of documents to index at once.
         """
+        weaviate_import.check()
         super().__init__()
 
         # Connect to Weaviate server using python binding

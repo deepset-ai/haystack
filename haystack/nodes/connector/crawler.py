@@ -9,21 +9,19 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Set
 from urllib.parse import urlparse
 
-try:
+from haystack.errors import NodeError
+from haystack.nodes.base import BaseComponent
+from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[crawler]'") as selenium_import:
     from selenium import webdriver
     from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
     from webdriver_manager.chrome import ChromeDriverManager
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
 
-    _optional_component_not_installed(__name__, "crawler", ie)
-
-from haystack.errors import NodeError
-from haystack.nodes.base import BaseComponent
-from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +98,7 @@ class Crawler(BaseComponent):
             See [Chromium Command Line Switches](https://peter.sh/experiments/chromium-command-line-switches/) for more details on the available options.
             If your crawler fails, rasing a `selenium.WebDriverException`, this [Stack Overflow thread](https://stackoverflow.com/questions/50642308/webdriverexception-unknown-error-devtoolsactiveport-file-doesnt-exist-while-t) can be helpful. Contains useful suggestions for webdriver_options.
         """
+        selenium_import.check()
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules

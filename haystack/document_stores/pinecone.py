@@ -6,7 +6,6 @@ from itertools import islice
 from functools import reduce
 import operator
 
-import pinecone
 import numpy as np
 from tqdm.auto import tqdm
 
@@ -16,6 +15,10 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[pinecone]'") as pinecone_import:
+    import pinecone
 
 
 logger = logging.getLogger(__name__)
@@ -107,6 +110,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
             no fields are indexed.
         """
+        pinecone_import.check()
         if metadata_config is None:
             metadata_config = {"indexed": []}
         # Connect to Pinecone server using python client binding
