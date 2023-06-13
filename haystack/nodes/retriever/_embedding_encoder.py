@@ -27,8 +27,11 @@ from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 from haystack.schema import Document
 from haystack.telemetry import send_event
-
 from ._base_embedding_encoder import _BaseEmbeddingEncoder
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install sentence-transformers'") as sentencetransformers_import:
+    from sentence_transformers import SentenceTransformer
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -113,13 +116,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        try:
-            from sentence_transformers import SentenceTransformer
-        except (ImportError, ModuleNotFoundError) as ie:
-            from haystack.utils.import_utils import _optional_component_not_installed
-
-            _optional_component_not_installed(__name__, "sentence", ie)
-
+        sentencetransformers_import.check()
         self.embedding_model = SentenceTransformer(
             retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
         )

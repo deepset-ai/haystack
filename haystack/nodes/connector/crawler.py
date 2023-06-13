@@ -382,7 +382,7 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            document = self._create_document(url=link, text=text, base_url=base_url, id_hash_keys=id_hash_keys)
+            document = self._create_document(url=link, text=text or "", base_url=base_url, id_hash_keys=id_hash_keys)
 
             if output_dir:
                 file_path = self._write_file(
@@ -523,7 +523,7 @@ class Crawler(BaseComponent):
                 )
                 continue
 
-            if not (already_found_links and sub_link in already_found_links):
+            if sublink and not (already_found_links and sub_link in already_found_links):
                 if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
