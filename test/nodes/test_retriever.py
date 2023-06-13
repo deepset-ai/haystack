@@ -651,7 +651,7 @@ def test_table_text_retriever_training(tmp_path, document_store, samples_path):
 
 
 def test_sentence_transformers_retriever_training_with_gradient_checkpointing():
-    with patch("sentence_transformers.SentenceTransformer.fit") as mock_fit:
+    with patch("haystack.nodes.retriever._embedding_encoder.SentenceTransformer") as mock_sentencetransformers:
         retriever = EmbeddingRetriever(
             embedding_model="sentence-transformers/all-MiniLM-L6-v2",
             model_format="sentence_transformers",
@@ -676,7 +676,7 @@ def test_sentence_transformers_retriever_training_with_gradient_checkpointing():
             num_warmup_steps=0,
             gradient_checkpointing=True,
         )
-        mock_fit.assert_called_once_with(
+        mock_sentencetransformers.fit.assert_called_once_with(
             train_objectives=ANY, epochs=1, optimizer_params={"lr": 2e-5}, warmup_steps=0, use_amp=False
         )
 
