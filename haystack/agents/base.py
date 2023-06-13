@@ -270,7 +270,6 @@ class Agent:
             "query": query,
             "tool_names": agent.tm.get_tool_names(),
             "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-            "transcript": agent_step.transcript,
         }
         self.prompt_parameters_resolver = (
             prompt_parameters_resolver if prompt_parameters_resolver else react_parameter_resolver
@@ -402,6 +401,7 @@ class Agent:
         # if prompt node has no default prompt template, use agent's prompt template
         if self.prompt_node.default_prompt_template is None:
             prepared_prompt = next(self.prompt_template.fill(**template_params))
+            prepared_prompt += getattr(current_step, "transcript", "")
             prompt_node_response = self.prompt_node(
                 prepared_prompt, stream_handler=AgentTokenStreamingHandler(self.callback_manager)
             )

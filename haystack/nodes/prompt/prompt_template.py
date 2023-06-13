@@ -146,7 +146,7 @@ LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict] = {
         "Thought, Tool, Tool Input, and Observation steps can be repeated multiple times, but sometimes we can find an answer in the first pass\n"
         "---\n\n"
         "Question: {query}\n"
-        "Thought: Let's think step-by-step, I first need to {transcript}"
+        "Thought: Let's think step-by-step, I first need to "
     },
     "conversational-agent": {
         "prompt": "The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:"
