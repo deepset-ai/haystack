@@ -82,7 +82,6 @@ Final Answer: Gainsville, Florida
 ##
 Question: {query}
 Thought:
-{transcript}
 """
 few_shot_agent_template = PromptTemplate(few_shot_prompt)
 prompt_node = PromptNode(
