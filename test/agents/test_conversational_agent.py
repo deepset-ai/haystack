@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from haystack.errors import AgentError
 from haystack.agents.base import Tool
@@ -9,7 +9,8 @@ from haystack.nodes import PromptNode
 
 
 @pytest.fixture
-def prompt_node():
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def prompt_node(mock_model):
     prompt_node = PromptNode()
     return prompt_node
 
