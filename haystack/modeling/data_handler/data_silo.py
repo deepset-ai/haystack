@@ -14,7 +14,7 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.processor import Processor
+from haystack.modeling.data_handler.processor import Processor, SquadProcessor
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.visual import TRACTOR_SMALL
 
@@ -412,7 +412,8 @@ class DataSilo:
         logger.info("Total examples   : %s", self.counts["train"] + self.counts["dev"] + self.counts["test"])
         logger.info("")
         if self.data["train"]:
-            if "input_ids" in self.tensor_names:
+            # SquadProcessor does not clip sequences, but splits them into multiple samples
+            if "input_ids" in self.tensor_names and not isinstance(self.processor, SquadProcessor):
                 logger.info("Longest sequence length observed after clipping:     %s", max(seq_lens))
                 logger.info("Average sequence length after clipping: %s", ave_len)
                 logger.info("Proportion clipped:      %s", clipped)

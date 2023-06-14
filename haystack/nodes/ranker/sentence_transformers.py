@@ -2,17 +2,22 @@ from typing import List, Optional, Union, Tuple, Iterator, Any
 import logging
 from pathlib import Path
 
-import torch
-from torch.nn import DataParallel
 from tqdm.auto import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as torch_and_transformers_import:
+    import torch
+    from torch.nn import DataParallel
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class SentenceTransformersRanker(BaseRanker):
@@ -45,7 +50,7 @@ class SentenceTransformersRanker(BaseRanker):
         model_version: Optional[str] = None,
         top_k: int = 10,
         use_gpu: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         batch_size: int = 16,
         scale_score: bool = True,
         progress_bar: bool = True,
@@ -73,6 +78,7 @@ class SentenceTransformersRanker(BaseRanker):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.top_k = top_k

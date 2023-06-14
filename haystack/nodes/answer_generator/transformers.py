@@ -4,22 +4,48 @@ from typing import Dict, List, Optional, Union
 import logging
 from collections.abc import Callable
 import numpy
-import torch
-from transformers import (
-    RagTokenizer,
-    RagTokenForGeneration,
-    AutoTokenizer,
-    AutoModelForSeq2SeqLM,
-    PreTrainedTokenizer,
-    BatchEncoding,
-)
 
 from haystack.schema import Document
 from haystack.nodes.answer_generator.base import BaseGenerator
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as torch_and_transformers_import:
+    import torch
+    from transformers import (
+        RagTokenizer,
+        RagTokenForGeneration,
+        AutoTokenizer,
+        AutoModelForSeq2SeqLM,
+        PreTrainedTokenizer,
+        BatchEncoding,
+    )
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+
+    class _BartEli5Converter:
+        """
+        A sequence-to-sequence model input converter (https://huggingface.co/yjernite/bart_eli5) based on the
+        BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190).
+
+        The converter takes documents and a query as input and formats them into a single sequence
+        that a seq2seq model can use it as input for its generation step.
+        This includes model-specific prefixes, separation tokens and the actual conversion into tensors.
+
+        For more details refer to Yacine Jernite's excellent LFQA contributions at https://yjernite.github.io/lfqa.html
+        """
+
+        def __call__(
+            self, tokenizer: PreTrainedTokenizer, query: str, documents: List[Document], top_k: Optional[int] = None
+        ) -> BatchEncoding:
+            conditioned_doc = "<P> " + " <P> ".join([d.content for d in documents])
+
+            # concatenate question and support document into BART input
+            query_and_docs = "question: {} context: {}".format(query, conditioned_doc)
+
+            return tokenizer([(query_and_docs, "A")], truncation=True, padding=True, return_tensors="pt")
 
 
 class RAGenerator(BaseGenerator):
@@ -80,7 +106,7 @@ class RAGenerator(BaseGenerator):
         use_gpu: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `RAGenerator`.
@@ -118,6 +144,7 @@ class RAGenerator(BaseGenerator):
             "instead of `RAGenerator`.",
             category=DeprecationWarning,
         )
+        torch_and_transformers_import.check()
 
         super().__init__(progress_bar=progress_bar)
 
@@ -196,7 +223,7 @@ class RAGenerator(BaseGenerator):
             self.devices[0]
         )
 
-    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> torch.Tensor:
+    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> "torch.Tensor":
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
 
@@ -354,7 +381,7 @@ class Seq2SeqGenerator(BaseGenerator):
         use_gpu: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         This component is now deprecated and will be removed in future versions. Use `PromptNode` instead of `Seq2SeqGenerator`.
@@ -498,26 +525,3 @@ class Seq2SeqGenerator(BaseGenerator):
         result = {"query": query, "answers": answers}
 
         return result
-
-
-class _BartEli5Converter:
-    """
-    A sequence-to-sequence model input converter (https://huggingface.co/yjernite/bart_eli5) based on the
-    BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190).
-
-    The converter takes documents and a query as input and formats them into a single sequence
-    that a seq2seq model can use it as input for its generation step.
-    This includes model-specific prefixes, separation tokens and the actual conversion into tensors.
-
-    For more details refer to Yacine Jernite's excellent LFQA contributions at https://yjernite.github.io/lfqa.html
-    """
-
-    def __call__(
-        self, tokenizer: PreTrainedTokenizer, query: str, documents: List[Document], top_k: Optional[int] = None
-    ) -> BatchEncoding:
-        conditioned_doc = "<P> " + " <P> ".join([d.content for d in documents])
-
-        # concatenate question and support document into BART input
-        query_and_docs = "question: {} context: {}".format(query, conditioned_doc)
-
-        return tokenizer([(query_and_docs, "A")], truncation=True, padding=True, return_tensors="pt")
