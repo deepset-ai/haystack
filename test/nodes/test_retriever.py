@@ -650,6 +650,7 @@ def test_table_text_retriever_training(tmp_path, document_store, samples_path):
     )
 
 
+@pytest.mark.unit
 def test_sentence_transformers_retriever_training_with_gradient_checkpointing():
     with patch("haystack.nodes.retriever._embedding_encoder.SentenceTransformer") as mock_sentencetransformers:
         retriever = EmbeddingRetriever(
