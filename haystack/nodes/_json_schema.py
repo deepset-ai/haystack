@@ -160,7 +160,9 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
         else:
             anyof_list = param_dict.pop("anyOf", None)
             if anyof_list is not None:
-                anyof_list = list(sorted(anyof_list, key=lambda x: x["type"]))
+                anyof_list = sorted(
+                    [item for item in anyof_list if item and "type" in item.keys()], key=lambda x: x["type"]
+                )
                 anyof_list.append({"type": "null"})
                 param_dict["anyOf"] = anyof_list
     return params_schema

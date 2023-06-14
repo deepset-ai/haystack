@@ -1,3 +1,4 @@
+# pylint: disable=ungrouped-imports
 from abc import abstractmethod
 from typing import List, Dict, Union, Optional, Any, Literal
 
@@ -9,12 +10,8 @@ from requests.exceptions import HTTPError
 import numpy as np
 from tqdm.auto import tqdm
 
-import torch
-from torch.nn import DataParallel
-from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import AutoConfig, AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, FilterType
@@ -22,20 +19,28 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
 from haystack.utils.early_stopping import EarlyStopping
-from haystack.modeling.model.language_model import get_language_model, DPREncoder
-from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
-from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
-from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.data_handler.processor import TextSimilarityProcessor, TableTextSimilarityProcessor
-from haystack.modeling.data_handler.data_silo import DataSilo
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.model.optimization import initialize_optimizer
-from haystack.modeling.training.base import Trainer
-from haystack.modeling.utils import initialize_device_settings
 from haystack.telemetry import send_event
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as torch_and_transformers_import:
+    import torch
+    from torch.nn import DataParallel
+    from torch.utils.data.sampler import SequentialSampler
+    from transformers import AutoConfig, AutoTokenizer
+    from haystack.modeling.model.language_model import get_language_model, DPREncoder
+    from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
+    from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
+    from haystack.modeling.model.prediction_head import TextSimilarityHead
+    from haystack.modeling.data_handler.processor import TextSimilarityProcessor, TableTextSimilarityProcessor
+    from haystack.modeling.data_handler.data_silo import DataSilo
+    from haystack.modeling.data_handler.dataloader import NamedDataLoader
+    from haystack.modeling.model.optimization import initialize_optimizer
+    from haystack.modeling.training.base import Trainer
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class DenseRetriever(BaseRetriever):
@@ -95,7 +100,7 @@ class DensePassageRetriever(DenseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
     ):
@@ -157,6 +162,7 @@ class DensePassageRetriever(DenseRetriever):
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
@@ -795,7 +801,7 @@ class TableTextRetriever(DenseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         use_fast: bool = True,
@@ -846,6 +852,8 @@ class TableTextRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = ["name", "section_title", "caption"]
         super().__init__()
@@ -1445,7 +1453,7 @@ class EmbeddingRetriever(DenseRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: Optional[List[str]] = None,
@@ -1515,6 +1523,8 @@ class EmbeddingRetriever(DenseRetriever):
                                      will not be used.
         :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = []
         super().__init__()
@@ -1957,7 +1967,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: Optional[List[str]] = None,
@@ -2010,6 +2020,8 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   (topic, entities etc.).
                                   If no value is provided, a default empty list will be created.
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = []
         super().__init__(
