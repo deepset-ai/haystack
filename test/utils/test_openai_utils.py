@@ -108,7 +108,6 @@ def test_openai_request_does_not_retry_on_success(mock_requests):
 
 @pytest.mark.unit
 def test_check_openai_policy_violation():
-    input = "some violent input"
     moderation_endpoint_mock_response_flagged = {
         "id": "modr-7Ok9zndoeSn5ij654vuNCgFVomU4U",
         "model": "text-moderation-004",
@@ -141,29 +140,10 @@ def test_check_openai_policy_violation():
     moderation_endpoint_mock_response_not_flagged["results"][0]["categories"].update(
         {"violence": False, "self-harm": False}
     )
-    expected_output_categories_flagged = (
-        True,
-        {
-            input: {
-                "sexual": False,
-                "hate": False,
-                "violence": True,
-                "self-harm": True,
-                "sexual/minors": False,
-                "hate/threatening": False,
-                "violence/graphic": False,
-            }
-        },
-    )
     with patch("haystack.utils.openai_utils.openai_request") as mock_openai_request:
         # check that the function returns True if the input is flagged
         mock_openai_request.return_value = moderation_endpoint_mock_response_flagged
-        assert check_openai_policy_violation(input=input, headers={}, return_categories=False) == True
-        # check that the categories are returned in the expected format when return_categories is set
-        assert (
-            check_openai_policy_violation(input=input, headers={}, return_categories=True)
-            == expected_output_categories_flagged
-        )
+        assert check_openai_policy_violation(input="violent input", headers={}) == True
         # check that the function returns False if the input is not flagged
         mock_openai_request.return_value = moderation_endpoint_mock_response_not_flagged
-        assert check_openai_policy_violation(input=input, headers={}, return_categories=False) == False
+        assert check_openai_policy_violation(input="ok input", headers={}) == False
