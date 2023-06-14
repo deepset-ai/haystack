@@ -1,15 +1,19 @@
 import json
-
 from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal
 
 import requests
-import torch
 from requests import PreparedRequest
 
 from haystack import MultiLabel, Document
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.base import BaseComponent
 from haystack.utils.import_utils import is_whisper_available
+from haystack.lazy_imports import LazyImport
+
+
+with LazyImport() as torch_import:
+    import torch
+
 
 WhisperModel = Literal["tiny", "small", "medium", "large", "large-v2"]
 
@@ -40,7 +44,7 @@ class WhisperTranscriber(BaseComponent):
         self,
         api_key: Optional[str] = None,
         model_name_or_path: WhisperModel = "medium",
-        device: Optional[Union[str, torch.device]] = None,
+        device: Optional[Union[str, "torch.device"]] = None,
         api_base: str = "https://api.openai.com/v1",
     ) -> None:
         """
@@ -140,6 +144,8 @@ class WhisperTranscriber(BaseComponent):
     def _invoke_local(
         self, audio_file: Union[str, BinaryIO], translate: Optional[bool] = False, **kwargs
     ) -> Dict[str, Any]:
+        torch_import.check()
+
         if isinstance(audio_file, str):
             with open(audio_file, "rb") as f:
                 return self._invoke_local(f, translate, **kwargs)

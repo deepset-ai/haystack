@@ -63,17 +63,25 @@ class WebSearch(BaseComponent):
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
+        top_k: Optional[int] = None,
     ) -> Tuple[Dict, str]:
         """
-        Search the search engine for the given query and return the results. Only the query parameter is used.
+        Search the search engine for the given query and return the results. Only the query parameter and the top_k
+        parameter are used.
         :param query: The query to search for.
+        :param file_paths: Not used.
+        :param labels: Not used.
+        :param documents: Not used.
+        :param meta: Not used.
+        :param top_k: return only the top_k results. If None, the top_k value passed to the constructor is used.
+
 
         :return: List of search results as documents.
         """
         # query is a required parameter for search, we need to keep the signature of run() the same as in other nodes
         if not query:
             raise ValueError("WebSearch run requires the `query` parameter")
-        return {"documents": self.search_engine.search(query)}, "output_1"
+        return {"documents": self.search_engine.search(query, top_k=top_k)}, "output_1"
 
     def run_batch(
         self,
