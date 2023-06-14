@@ -65,6 +65,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
     1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
     2. Init a WeaviateDocumentStore in Haystack
 
+    Connection Parameters Precedence:
+    The selection and priority of connection parameters are as follows:
+    1. If `use_embedded` is set to True, an embedded Weaviate instance will be used, and all other connection parameters will be ignored.
+    2. If `use_embedded` is False or not provided and an `api_key` is provided, the `api_key` will be used to authenticate through AuthApiKey, assuming a connection to a Weaviate Cloud Service (WCS) instance.
+    3. If neither `use_embedded` nor `api_key` is provided, but a `username` and `password` are provided, they will be used to authenticate through AuthClientPassword, assuming an OIDC Resource Owner Password flow.
+    4. If none of the above conditions are met, no authentication method will be used and a connection will be attempted with the provided `host` and `port` values without any authentication.
+
     Limitations:
     The current implementation is not supporting the storage of labels, so you cannot run any evaluation workflows.
     """
