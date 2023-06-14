@@ -482,6 +482,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 if param in kwargs:
                     params_dict[param] = kwargs[param]
 
+        if "documents" in self.prompt_params and "documents" not in params_dict:
+            params_dict["documents"] = []
+            logger.warning(
+                "Expected prompt parameter 'documents' to be provided but it is missing. "
+                "Continuing with an empty list of documents."
+            )
+
         if not set(self.prompt_params).issubset(params_dict.keys()):
             available_params = {*params_dict.keys(), *kwargs.keys()}
             provided = set(self.prompt_params).intersection(available_params)

@@ -211,6 +211,19 @@ def test_prompt_template_deserialization(mock_prompt_model):
     assert isinstance(loaded_generator.default_prompt_template.output_parser, AnswerParser)
 
 
+@pytest.mark.unit
+def test_prompt_template_fills_in_missing_documents():
+    lfqa_prompt = PromptTemplate(
+        prompt="""Synthesize a comprehensive answer from the following text for the given question.
+        Provide a clear and concise response that summarizes the key points and information presented in the text.
+        Your answer should be in your own words and be no longer than 50 words.
+        If answer is not in .text. say i dont know.
+        \n\n Related text: {join(documents)} \n\n Question: {query} \n\n Answer:"""
+    )
+    prepared_prompt = next(lfqa_prompt.fill(query="What is the meaning of life?"))  # no documents provided but expected
+    assert "Related text:  \n\n Question: What is the meaning of life?" in prepared_prompt
+
+
 class TestPromptTemplateSyntax:
     @pytest.mark.unit
     @pytest.mark.parametrize(
