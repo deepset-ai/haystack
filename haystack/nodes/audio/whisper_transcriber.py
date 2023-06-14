@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import List, Optional, Dict, Any, Union, BinaryIO, Literal
 
 import requests
@@ -10,9 +9,6 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.nodes.base import BaseComponent
 from haystack.utils.import_utils import is_whisper_available
 from haystack.lazy_imports import LazyImport
-
-
-logger = logging.getLogger(__name__)
 
 
 with LazyImport() as torch_import:
