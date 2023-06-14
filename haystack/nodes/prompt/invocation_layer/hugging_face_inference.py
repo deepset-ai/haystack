@@ -5,7 +5,6 @@ import logging
 
 import requests
 import sseclient
-from transformers.pipelines import get_task
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
 from haystack.errors import (
@@ -19,11 +18,15 @@ from haystack.nodes.prompt.invocation_layer import (
     DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.utils.requests_utils import request_with_retry
+from haystack.utils import request_with_retry
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 HF_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
+with LazyImport() as transformers_import:
+    from transformers.pipelines import get_task
 
 
 class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
@@ -49,6 +52,8 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
         :param api_key: The Hugging Face API token. You’ll need to provide your user token which can
         be found in your Hugging Face account [settings](https://huggingface.co/settings/tokens)
         """
+        transformers_import.check()
+
         super().__init__(model_name_or_path)
         self.prompt_preprocessors: Dict[str, Callable] = {}
         valid_api_key = isinstance(api_key, str) and api_key

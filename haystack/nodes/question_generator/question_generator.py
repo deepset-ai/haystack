@@ -1,19 +1,24 @@
 import logging
 from typing import List, Union, Optional, Iterator
 import itertools
-import torch
 
 from tqdm.auto import tqdm
-from transformers import AutoModelForSeq2SeqLM
-from transformers import AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.preprocessor import PreProcessor
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as torch_and_transformers_import:
+    import torch
+    from transformers import AutoModelForSeq2SeqLM
+    from transformers import AutoTokenizer
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class QuestionGenerator(BaseComponent):
@@ -48,7 +53,7 @@ class QuestionGenerator(BaseComponent):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is implemented as a Seq2SeqLM in Hugging Face Transformers.

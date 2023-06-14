@@ -1,7 +1,11 @@
 from abc import abstractmethod, ABC
 from typing import Union, Dict
 
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer
+from haystack.lazy_imports import LazyImport
+
+TextStreamer = object
+with LazyImport() as transformers_import:
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer, AutoTokenizer  # type: ignore
 
 
 class TokenStreamingHandler(ABC):
@@ -78,11 +82,14 @@ class AnthropicTokenStreamingHandler(TokenStreamingHandler):
         return chopped_text
 
 
-class HFTokenStreamingHandler(TextStreamer):
+class HFTokenStreamingHandler(TextStreamer):  # pylint: disable=useless-object-inheritance
     def __init__(
-        self, tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast], stream_handler: TokenStreamingHandler
+        self,
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
+        stream_handler: "TokenStreamingHandler",
     ):
-        super().__init__(tokenizer=tokenizer)
+        transformers_import.check()
+        super().__init__(tokenizer=tokenizer)  # type: ignore
         self.token_handler = stream_handler
 
     def on_finalized_text(self, token: str, stream_end: bool = False):
