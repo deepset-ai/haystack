@@ -58,7 +58,13 @@ class ConversationalAgent(Agent):
     If you're looking for more customization, check out [Agent](https://docs.haystack.deepset.ai/reference/agent-api).
     """
 
-    def __init__(self, prompt_node: PromptNode, tools: Optional[List[Tool]] = None, memory: Optional[Memory] = None):
+    def __init__(
+        self,
+        prompt_node: PromptNode,
+        tools: Optional[List[Tool]] = None,
+        memory: Optional[Memory] = None,
+        max_steps: Optional[int] = None,
+    ):
         """
         Creates a new ConversationalAgent instance.
 
@@ -67,6 +73,7 @@ class ConversationalAgent(Agent):
         :param tools: A list of tools to use in the Agent. Each tool must have a unique name.
         :param memory: A memory object for storing conversation history and other relevant data, defaults to
         ConversationMemory if no memory is provided.
+        :param max_steps: The number of times the Agent can run a tool +1 to let it infer it knows the final answer. It defaults to 5 if there is at least one tool provided and 2 otherwise.
         """
 
         if tools:
@@ -74,7 +81,7 @@ class ConversationalAgent(Agent):
                 prompt_node=prompt_node,
                 memory=memory if memory else ConversationMemory(),
                 tools_manager=ToolsManager(tools=tools),
-                max_steps=5,
+                max_steps=max_steps if max_steps else 5,
                 prompt_template="conversational-agent",
                 final_answer_pattern=r"Final Answer\s*:\s*(.*)",
                 prompt_parameters_resolver=conversational_agent_parameter_resolver,
@@ -85,7 +92,7 @@ class ConversationalAgent(Agent):
             super().__init__(
                 prompt_node=prompt_node,
                 memory=memory if memory else ConversationMemory(),
-                max_steps=2,
+                max_steps=max_steps if max_steps else 2,
                 prompt_template="conversational-agent-without-tools",
                 final_answer_pattern=r"^([\s\S]+)$",
                 prompt_parameters_resolver=agent_without_tools_parameter_resolver,

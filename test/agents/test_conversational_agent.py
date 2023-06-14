@@ -58,6 +58,13 @@ def test_init_with_no_memory(prompt_node):
 
 
 @pytest.mark.unit
+def test_init_with_custom_max_steps(prompt_node):
+    # Test with no memory
+    agent = ConversationalAgent(prompt_node, max_steps=8)
+    assert agent.max_steps == 8
+
+
+@pytest.mark.unit
 def test_run(prompt_node):
     agent = ConversationalAgent(prompt_node)
 
