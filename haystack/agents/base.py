@@ -13,7 +13,7 @@ from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color, AgentTokenStreamingHandler
-from haystack.agents.utils import print_text
+from haystack.agents.utils import print_text, react_parameter_resolver
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -204,19 +204,6 @@ class ToolsManager:
             tool_input = tool_match.group(2) or tool_match.group(3)
             return tool_name.strip('" []\n').strip(), tool_input.strip('" \n')
         return None, None
-
-
-def react_parameter_resolver(query: str, agent: Agent, agent_step: AgentStep, **kwargs) -> Dict[str, Any]:
-    """
-    A parameter resolver for ReAct-based agents that returns the query, the tool names, the tool names
-    with descriptions, and the transcript (internal monologue).
-    """
-    return {
-        "query": query,
-        "tool_names": agent.tm.get_tool_names(),
-        "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-        "transcript": agent_step.transcript,
-    }
 
 
 class Agent:

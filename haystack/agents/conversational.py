@@ -1,36 +1,13 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
 import logging
 
 from haystack.errors import AgentError
 from haystack.agents.base import Tool, ToolsManager, Agent
-from haystack.agents.agent_step import AgentStep
 from haystack.agents.memory import Memory, ConversationMemory
 from haystack.nodes import PromptNode
+from haystack.agents.utils import conversational_agent_parameter_resolver, agent_without_tools_parameter_resolver
 
 logger = logging.getLogger(__name__)
-
-
-def agent_without_tools_parameter_resolver(query: str, agent: Agent, **kwargs) -> Dict[str, Any]:
-    """
-    A parameter resolver for ReAct-based agents without tools that returns the query and the history.
-    """
-    return {"query": query, "history": agent.memory.load()}
-
-
-def conversational_agent_parameter_resolver(
-    query: str, agent: Agent, agent_step: AgentStep, **kwargs
-) -> Dict[str, Any]:
-    """
-    A parameter resolver for ReAct-based agents that returns the query, the tool names, the tool names
-    with descriptions, the history of the conversation, and the transcript (internal monologue).
-    """
-    return {
-        "query": query,
-        "tool_names": agent.tm.get_tool_names(),
-        "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-        "transcript": agent_step.transcript,
-        "history": agent.memory.load(),
-    }
 
 
 class ConversationalAgent(Agent):
