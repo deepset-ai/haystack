@@ -2,17 +2,22 @@ from typing import List, Optional, Union
 
 import logging
 
-import torch
 from tqdm.auto import tqdm
-from transformers import pipeline
 
 from haystack.schema import Document
 from haystack.nodes.image_to_text.base import BaseImageToText
-from haystack.modeling.utils import initialize_device_settings
-from haystack.utils.torch_utils import ListDataset
 from haystack.errors import ImageToTextError
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+    from haystack.utils.torch_utils import ListDataset
 
 
 # supported models classes should be extended when HF image-to-text pipeline willl support more classes
@@ -73,7 +78,7 @@ class TransformersImageToText(BaseImageToText):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Load an Image-to-Text model from transformers.
@@ -99,6 +104,7 @@ class TransformersImageToText(BaseImageToText):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). If you set `use_gpu=False`, the devices
                         parameter is not used and a single CPU device is used for inference.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
