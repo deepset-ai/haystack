@@ -25,9 +25,7 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import __version__
-from haystack.modeling.evaluation.metrics import semantic_answer_similarity
-from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
-from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
+
 from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
@@ -38,7 +36,7 @@ from haystack.pipelines.config import (
     VALID_ROOT_NODES,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
-from haystack.utils import DeepsetCloud, calculate_context_similarity
+from haystack.utils.deepsetcloud import DeepsetCloud
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
 from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
@@ -47,9 +45,17 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 from haystack.telemetry import send_event, send_pipeline_event
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as modeling_import:
+    from haystack.modeling.evaluation.metrics import semantic_answer_similarity
+    from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
+    from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
+    from haystack.utils.context_matching import calculate_context_similarity
 
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
@@ -1436,6 +1442,8 @@ class Pipeline:
         eval_result: EvaluationResult,
         use_auth_token: Optional[Union[str, bool]] = None,
     ) -> EvaluationResult:
+        modeling_import.check()
+
         # add sas values in batch mode for whole Dataframe
         # this is way faster than if we calculate it for each query separately
         if sas_model_name_or_path is not None:
@@ -1572,6 +1580,8 @@ class Pipeline:
         Additional answer or document specific evaluation infos like gold labels
         and metrics depicting whether the row matches the gold labels are included, too.
         """
+        modeling_import.check()
+
         # Disable all the cell-var-from-loop violations in this function
         # pylint: disable=cell-var-from-loop
 
