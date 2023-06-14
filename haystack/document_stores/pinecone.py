@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import Set, Union, List, Optional, Dict, Generator, Any
 
@@ -1181,13 +1182,16 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
+        return_documents = []
         for doc in documents:
             score = scores_for_vector_ids[doc.id]
             if scale_score:
                 score = self.scale_to_unit_interval(score, self.similarity)
             doc.score = score
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
 
-        return documents
+        return return_documents
 
     def _get_documents_by_meta(
         self,
