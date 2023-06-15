@@ -14,7 +14,6 @@ from collections import OrderedDict
 import networkx
 
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
-from canals.component.input_output import ComponentInput
 from canals.draw import draw, convert_for_debug, RenderingEngines
 from canals.pipeline.sockets import InputSocket, OutputSocket, find_input_sockets, find_output_sockets
 from canals.pipeline.validation import validate_pipeline_input
@@ -278,7 +277,7 @@ class Pipeline:
                 logger.info("Warming up component %s...", node)
                 self.graph.nodes[node]["instance"].warm_up()
 
-    def run(self, data: Dict[str, ComponentInput], debug: bool = False) -> Dict[str, Any]:
+    def run(self, data: Dict[str, type], debug: bool = False) -> Dict[str, Any]:
         """
         Runs the pipeline.
 
@@ -447,7 +446,6 @@ class Pipeline:
 
         # Some node upstream didn't run yet, so we should wait for them.
         if not self._all_nodes_to_wait_for_run(nodes_to_wait_for=nodes_to_wait_for):
-
             if not inputs_buffer:
                 # What if there are no components to wait for?
                 raise PipelineRuntimeError(
@@ -497,7 +495,6 @@ class Pipeline:
         # Variadic nodes expect a single list regardless of how many incoming connections they have,
         # but the length of the list should match the length of incoming connections.
         if self.graph.nodes[name]["variadic_input"]:
-
             # Variadic nodes need at least two values
             if not inputs or len(inputs) < 2:
                 return False
@@ -570,7 +567,7 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
-            input_class = instance.Input if hasattr(instance, "Input") else instance.input_type
+            input_class = instance.input
 
             # If the node is variadic, unpack the input
             if self.graph.nodes[name]["variadic_input"]:
