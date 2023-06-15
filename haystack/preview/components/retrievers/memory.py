@@ -20,6 +20,8 @@ class MemoryRetriever:
 
     def __init__(self, document_store_name: str, top_k: int = 10, scale_score: bool = True):
         self.document_store_name = document_store_name
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score}
 
     def run(self, data: Input) -> Output:
