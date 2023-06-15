@@ -56,6 +56,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         self.api_key = api_key
         self.api_base = api_base
 
+        self.max_length = max_length
+
         # Due to reflective construction of all invocation layers we might receive some
         # unknown kwargs, so we need to take only the relevant.
         # For more details refer to OpenAI documentation

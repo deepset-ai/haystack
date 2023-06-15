@@ -78,7 +78,7 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         payload = {
             "model": self.model_name_or_path,
             "messages": messages,
-            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
+            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length or 16),
             "temperature": kwargs_with_defaults.get("temperature", 0.7),
             "top_p": kwargs_with_defaults.get("top_p", 1),
             "n": kwargs_with_defaults.get("n", 1),
