@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from canals.component import component, ComponentInput, ComponentOutput, VariadicComponentInput, ComponentError
+from canals.component import component
 from canals.pipeline.sockets import (
     find_input_sockets,
     InputSocket,
@@ -15,16 +15,22 @@ from canals.pipeline.sockets import (
 def test_find_input_sockets_one_regular_builtin_type_input():
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: int
+        @component.input
+        def input(self):
+            class Input:
+                input_value: int
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=data.input_value)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=data.input_value)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -35,18 +41,24 @@ def test_find_input_sockets_one_regular_builtin_type_input():
 def test_find_input_sockets_many_regular_builtin_type_inputs():
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            int_value: int
-            str_value: str
-            bool_value: bool
+        @component.input
+        def input(self):
+            class Input:
+                int_value: int
+                str_value: str
+                bool_value: bool
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=data.int_value)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=data.int_value)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -64,16 +76,22 @@ def test_find_input_sockets_one_regular_object_type_input():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: MyObject
+        @component.input
+        def input(self):
+            class Input:
+                input_value: MyObject
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -84,16 +102,22 @@ def test_find_input_sockets_one_regular_object_type_input():
 def test_find_input_sockets_one_union_type_input():
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: Union[str, int]
+        @component.input
+        def input(self):
+            class Input:
+                input_value: Union[str, int]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     with pytest.raises(ValueError, match="Components do not support Union types for connections"):
@@ -103,16 +127,22 @@ def test_find_input_sockets_one_union_type_input():
 def test_find_input_sockets_one_optional_builtin_type_input():
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: Optional[int] = None
+        @component.input
+        def input(self):
+            class Input:
+                input_value: Optional[int] = None
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -126,16 +156,22 @@ def test_find_input_sockets_one_optional_object_type_input():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: Optional[MyObject] = None
+        @component.input
+        def input(self):
+            class Input:
+                input_value: Optional[MyObject] = None
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -146,19 +182,25 @@ def test_find_input_sockets_one_optional_object_type_input():
 def test_find_input_sockets_sequences_of_builtin_type_input_non_variadic():
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            list_value: List[int]
-            set_value: Set[int]
-            sequence_value: Sequence[int]
-            iterable_value: Iterable[int]
+        @component.input
+        def input(self):
+            class Input:
+                list_value: List[int]
+                set_value: Set[int]
+                sequence_value: Sequence[int]
+                iterable_value: Iterable[int]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -177,19 +219,25 @@ def test_find_input_sockets_sequences_of_object_type_input_non_variadic():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            list_value: List[MyObject]
-            set_value: Set[MyObject]
-            sequence_value: Sequence[MyObject]
-            iterable_value: Iterable[MyObject]
+        @component.input
+        def input(self):
+            class Input:
+                list_value: List[MyObject]
+                set_value: Set[MyObject]
+                sequence_value: Sequence[MyObject]
+                iterable_value: Iterable[MyObject]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -205,17 +253,23 @@ def test_find_input_sockets_sequences_of_object_type_input_non_variadic():
 def test_find_input_sockets_mappings_of_builtin_type_input():
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            dict_value: Dict[str, int]
-            mapping_value: Mapping[str, int]
+        @component.input
+        def input(self):
+            class Input:
+                dict_value: Dict[str, int]
+                mapping_value: Mapping[str, int]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -232,17 +286,23 @@ def test_find_input_sockets_mappings_of_object_type_input():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            dict_value: Dict[str, MyObject]
-            mapping_value: Mapping[str, MyObject]
+        @component.input
+        def input(self):
+            class Input:
+                dict_value: Dict[str, MyObject]
+                mapping_value: Mapping[str, MyObject]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -259,16 +319,22 @@ def test_find_input_sockets_tuple_type_input():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(ComponentInput):
-            tuple_value: Tuple[str, MyObject]
+        @component.input
+        def input(self):
+            class Input:
+                tuple_value: Tuple[str, MyObject]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -281,16 +347,22 @@ def test_find_input_sockets_tuple_type_input():
 def test_find_input_sockets_one_variadic_builtin_input():
     @component
     class MockComponent:
-        @dataclass
-        class Input(VariadicComponentInput):
-            values: List[int]
+        @component.input(variadic=True)
+        def input(self):
+            class Input:
+                values: List[int]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
@@ -306,16 +378,22 @@ def test_find_input_sockets_variadic_object_input():
 
     @component
     class MockComponent:
-        @dataclass
-        class Input(VariadicComponentInput):
-            values: List[MyObject]
+        @component.input(variadic=True)
+        def input(self):
+            class Input:
+                values: List[MyObject]
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return MockComponent.Output(output_value=1)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=1)
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)

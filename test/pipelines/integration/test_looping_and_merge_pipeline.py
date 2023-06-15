@@ -35,12 +35,12 @@ def test_pipeline(tmp_path):
     pipeline.draw(tmp_path / "looping_and_merge_pipeline.png")
 
     results = pipeline.run(
-        {"merge": merge_loop.input_type(8), "sum": Sum.Input(2)},
+        {"merge": merge_loop.input(8), "sum": Sum().input(2)},
     )
     pprint(results)
     print("accumulate: ", accumulator.state)
 
-    assert results == {"sum": Sum.Output(total=23)}
+    assert results == {"sum": Sum().output(total=23)}
     assert accumulator.state == 19
 
 

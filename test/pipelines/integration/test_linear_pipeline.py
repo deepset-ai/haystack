@@ -22,10 +22,10 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "linear_pipeline.png")
 
-    results = pipeline.run({"first_addition": AddFixedValue.Input(value=1)})
+    results = pipeline.run({"first_addition": AddFixedValue().input(value=1)})
     pprint(results)
 
-    assert results == {"second_addition": AddFixedValue.Output(value=7)}
+    assert results == {"second_addition": AddFixedValue().output(value=7)}
 
 
 if __name__ == "__main__":
