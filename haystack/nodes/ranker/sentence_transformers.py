@@ -23,7 +23,8 @@ with LazyImport() as torch_and_transformers_import:
 class SentenceTransformersRanker(BaseRanker):
     """
     Sentence Transformer based pre-trained Cross-Encoder model for Document Re-ranking (https://huggingface.co/cross-encoder).
-    Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
+    Re-Ranking can be used on top of a retriever to boost the performance for document search.
+    This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
 
     SentenceTransformerRanker handles Cross-Encoder models
         - use a single logit as similarity score e.g.  cross-encoder/ms-marco-MiniLM-L-12-v2
@@ -55,6 +56,7 @@ class SentenceTransformersRanker(BaseRanker):
         scale_score: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        max_seq_len: int = 512,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -124,7 +126,7 @@ class SentenceTransformersRanker(BaseRanker):
             top_k = self.top_k
 
         features = self.transformer_tokenizer(
-            [query for doc in documents],
+            [query for _ in documents],
             [doc.content for doc in documents],
             padding=True,
             truncation=True,
@@ -247,7 +249,6 @@ class SentenceTransformersRanker(BaseRanker):
             # Group predictions together
             grouped_predictions = []
             left_idx = 0
-            right_idx = 0
             for number in number_of_docs:
                 right_idx = left_idx + number
                 grouped_predictions.append(preds[left_idx:right_idx])
