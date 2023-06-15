@@ -195,6 +195,10 @@ class MemoryDocumentStore:
             self.bm25_tokenization_regex(doc)
             for doc in tqdm(lower_case_documents, unit=" docs", desc="Updating BM25 representation...")
         ]
+        if len(tokenized_corpus) == 0:
+            logger.warning("No documents found for BM25 retrieval. Returning empty list.")
+            return []
+
         self.bm25 = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
 
         tokenized_query = self.bm25_tokenization_regex(query.lower())
