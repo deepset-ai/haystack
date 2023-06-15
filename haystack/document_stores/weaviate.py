@@ -220,10 +220,8 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
     @staticmethod
     def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> weaviate.EmbeddedOptions:
-        if embedded_options is None:
-            return weaviate.EmbeddedOptions()
-        else:
-            return weaviate.EmbeddedOptions(**embedded_options)
+        embedded_options = embedded_options or {}
+        return weaviate.EmbeddedOptions(**embedded_options)
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
