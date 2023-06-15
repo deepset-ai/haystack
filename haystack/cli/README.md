@@ -36,7 +36,7 @@ folder in which the prompts will be saved in. You can find the default cache pat
   print(PROMPTHUB_CACHE_PATH)
   ```
 
-If you set a custom PROMPTHUB_CACHE_PATH environment variable, remember to set it to the same value in your operating system console as well.
+If you set a custom PROMPTHUB_CACHE_PATH environment variable, remember to set it to the same value in your console before running Haystack.
 
 **Example:**
 
