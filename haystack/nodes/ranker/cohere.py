@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Dict, Union, List, Any, Tuple
+from typing import Optional, Dict, Union, List, Any
 import logging
 
 import requests
@@ -9,7 +9,6 @@ from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOT
 from haystack.errors import CohereInferenceLimitError, CohereUnauthorizedError, CohereError
 from haystack.utils import request_with_retry
 
-from tqdm.auto import tqdm
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
@@ -35,7 +34,6 @@ class CohereRanker(BaseRanker):
         top_k: int = 10,
         return_documents: bool = False,
         max_chunks_per_doc: Optional[int] = None,
-        progress_bar: bool = False,
     ):
         """
          Creates an instance of CohereInvocationLayer for the specified Cohere model
@@ -50,7 +48,6 @@ class CohereRanker(BaseRanker):
         :param max_chunks_per_doc: If your document exceeds 512 tokens, this will determine the maximum number of
             chunks a document can be split into. For example, if your document is 6000 tokens, with the default of 10,
             the document will be split into 10 chunks each of 512 tokens and the last 880 tokens will be disregarded.
-        :param progress_bar: Whether to show a progress bar while processing the documents.
         """
         super().__init__()
         valid_api_key = isinstance(api_key, str) and api_key
@@ -69,7 +66,6 @@ class CohereRanker(BaseRanker):
         self.top_k = top_k
         self.return_documents = return_documents
         self.max_chunks_per_doc = max_chunks_per_doc
-        self.progress_bar = progress_bar
 
     @property
     def url(self) -> str:
@@ -198,92 +194,20 @@ class CohereRanker(BaseRanker):
         if top_k is None:
             top_k = self.top_k
 
-        number_of_docs, all_queries, all_docs, single_list_of_docs = self._preprocess_batch_queries_and_docs(
-            queries=queries, documents=documents
-        )
-        batches = (all_queries, all_docs)
-
-        pb = tqdm(total=len(all_docs), disable=not self.progress_bar, desc="Ranking")
-        preds = []
-        for cur_queries, cur_docs in batches:
-            preds.append(self.predict(query=cur_queries, documents=cur_docs, top_k=len(cur_docs)))
-            pb.update(len(cur_docs))
-        pb.close()
-
-        logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
-        if single_list_of_docs:
-            sorted_scores_and_documents = sorted(
-                zip(preds, documents),
-                key=lambda similarity_document_tuple:
-                # assume the last element in logits represents the `has_answer` label
-                similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
-                reverse=True,
-            )
-
-            # is this step needed?
-            sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
-            sorted_documents_with_scores = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
-
-            return sorted_documents_with_scores
-        else:
-            # Group predictions together
-            grouped_predictions = []
-            left_idx = 0
-            for number in number_of_docs:
-                right_idx = left_idx + number
-                grouped_predictions.append(preds[left_idx:right_idx])
-                left_idx = right_idx
-
-            result = []
-            for pred_group, doc_group in zip(grouped_predictions, documents):
-                sorted_scores_and_documents = sorted(
-                    zip(pred_group, doc_group),  # type: ignore
-                    key=lambda similarity_document_tuple:
-                    # assume the last element in logits represents the `has_answer` label
-                    similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
-                    reverse=True,
-                )
-
-                # rank documents according to scores
-                sorted_documents = [
-                    (score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)
-                ]
-                sorted_documents_with_scores = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
-
-                result.append(sorted_documents_with_scores)
-
-            return result
-
-    def _preprocess_batch_queries_and_docs(
-        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
-    ) -> Tuple[List[int], List[str], List[Document], bool]:
-        number_of_docs = []
-        query_per_list_of_docs = []
-        all_docs: List[Document] = []
-        single_list_of_docs = False
-
-        # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
         if len(documents) > 0 and isinstance(documents[0], Document):
+            # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
             if len(queries) != 1:
                 raise HaystackError("Number of queries must be 1 if a single list of Documents is provided.")
-            query = queries[0]
-            number_of_docs = [len(documents)]
-            query_per_list_of_docs = [query]
-            all_docs = documents  # type: ignore
-            single_list_of_docs = True
-
-        # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
-        # If queries contains a single query, apply it to each list of Documents
-        if len(documents) > 0 and isinstance(documents[0], list):
+            return self.predict(query=queries[0], documents=documents, top_k=top_k)
+        else:
+            # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
+            # If queries contains a single query, apply it to each list of Documents
             if len(queries) == 1:
                 queries = queries * len(documents)
             if len(queries) != len(documents):
                 raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-            for query, cur_docs in zip(queries, documents):
-                if not isinstance(cur_docs, list):
-                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                number_of_docs.append(len(cur_docs))
-                query_per_list_of_docs.extend([query])
-                all_docs.extend(cur_docs)
 
-        return number_of_docs, query_per_list_of_docs, all_docs, single_list_of_docs
+            results = []
+            for query, cur_docs in zip(queries, documents):
+                results.append(self.predict(query=query, documents=cur_docs, top_k=top_k))  # type: ignore
+            return results
