@@ -909,6 +909,27 @@ class TestTokenLimit:
             assert "The prompt has been truncated from" in caplog.text
             assert "and answer length (2000 tokens) fit within the max token limit (2049 tokens)." in caplog.text
 
+    @pytest.mark.unit
+    def test_chatgpt_token_limit_warning_single_prompt(self, caplog):
+        tt = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
+        prompt_node = PromptNode("gpt-3.5-turbo", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
+        with caplog.at_level(logging.WARNING):
+            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+            assert "The prompt has been truncated from" in caplog.text
+            assert "and answer length (2000 tokens) fit within the max token limit (4097 tokens)." in caplog.text
+
+    @pytest.mark.unit
+    def test_chatgpt_token_limit_warning_with_messages(self, caplog):
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Who won the world series in 2020?"},
+            {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+            {"role": "user", "content": "Where was it played?"},
+        ]
+        prompt_node = PromptNode("gpt-3.5-turbo", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
+        with pytest.raises(ValueError):
+            _ = prompt_node(messages)
+
 
 class TestRunBatch:
     @pytest.mark.skip(reason="Skipped as test is extremely flaky")
