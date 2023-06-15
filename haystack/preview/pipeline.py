@@ -72,7 +72,7 @@ class Pipeline(CanalsPipeline):
                 node.defaults["stores"] = self.stores
 
         # Run the pipeline
-        super().run(data=data, debug=debug)
+        return super().run(data=data, debug=debug)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
