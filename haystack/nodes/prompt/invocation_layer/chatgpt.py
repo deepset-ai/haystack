@@ -144,4 +144,4 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        return model_name_or_path in ["gpt-3.5-turbo", "gpt-4", "gpt-4-32k"]
+        return any(m for m in ["gpt-3.5-turbo", "gpt-4"] if m in model_name_or_path)

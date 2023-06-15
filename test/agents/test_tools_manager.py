@@ -1,9 +1,10 @@
 import unittest
+from typing import Optional, Union, List, Dict, Any
 from unittest import mock
 
 import pytest
 
-from haystack import Pipeline, Answer, Document
+from haystack import Pipeline, Answer, Document, BaseComponent, MultiLabel
 from haystack.agents.base import ToolsManager, Tool
 
 
@@ -160,3 +161,57 @@ def test_extract_tool_name_and_empty_tool_input(tools_manager):
     for example in examples:
         tool_name, tool_input = tools_manager.extract_tool_name_and_tool_input(example)
         assert tool_name == "Search" and tool_input == ""
+
+
+@pytest.mark.unit
+def test_node_as_tool():
+    # test that a component can be used as a tool
+    class ToolComponent(BaseComponent):
+        outgoing_edges = 1
+
+        def run_batch(
+            self,
+            queries: Optional[Union[str, List[str]]] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+        ):
+            pass
+
+        def run(self, **kwargs):
+            return "mocked_output"
+
+    tool = Tool(name="ToolA", pipeline_or_node=ToolComponent(), description="Tool A Description")
+    assert tool.run("input") == "mocked_output"
+
+
+@pytest.mark.unit
+def test_tools_manager_exception():
+    # tests exception raising in tools manager
+    class ToolComponent(BaseComponent):
+        outgoing_edges = 1
+
+        def run_batch(
+            self,
+            queries: Optional[Union[str, List[str]]] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+        ):
+            pass
+
+        def run(self, **kwargs):
+            raise Exception("mocked_exception")
+
+    fake_llm_response = "need to find out what city he was born.\nTool: Search\nTool Input: Where was Jeremy born"
+    tool = Tool(name="Search", pipeline_or_node=ToolComponent(), description="Search")
+    tools_manager = ToolsManager(tools=[tool])
+
+    with pytest.raises(Exception):
+        tools_manager.run_tool(llm_response=fake_llm_response)
