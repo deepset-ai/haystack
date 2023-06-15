@@ -1013,7 +1013,9 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
 
 
 @pytest.mark.unit
-def test_content_moderation_gpt_3_and_gpt_3_5(chatgpt_prompt_model):
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
+@patch("haystack.nodes.prompt.prompt_model.PromptModel._ensure_token_limit", lambda self, prompt: prompt)
+def test_content_moderation_gpt_3_and_gpt_3_5():
     """
     Check all possible cases of the moderation checks passing / failing in a PromptNode call
     for both ChatGPTInvocationLayer and OpenAIInvocationLayer.

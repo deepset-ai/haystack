@@ -3,7 +3,7 @@ import os
 import logging
 import platform
 import json
-from typing import Dict, Union, Tuple, Optional, List, Any
+from typing import Dict, Union, Tuple, Optional, List
 import requests
 import tenacity
 import tiktoken
