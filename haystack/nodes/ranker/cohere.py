@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Dict, Union, List, Any
+from typing import Optional, Dict, Union, List, Any, Tuple
 import logging
 
 import requests
@@ -9,25 +9,15 @@ from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOT
 from haystack.errors import CohereInferenceLimitError, CohereUnauthorizedError, CohereError
 from haystack.utils import request_with_retry
 
-from pathlib import Path
-
 from tqdm.auto import tqdm
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
-from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
-    import torch
-    from torch.nn import DataParallel
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer
-    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
-
-logger = logging.getLogger(__name__)
 TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
@@ -45,6 +35,7 @@ class CohereRanker(BaseRanker):
         top_k: int = 10,
         return_documents: bool = False,
         max_chunks_per_doc: Optional[int] = None,
+        progress_bar: bool = False,
     ):
         """
          Creates an instance of CohereInvocationLayer for the specified Cohere model
@@ -59,6 +50,7 @@ class CohereRanker(BaseRanker):
         :param max_chunks_per_doc: If your document exceeds 512 tokens, this will determine the maximum number of
             chunks a document can be split into. For example, if your document is 6000 tokens, with the default of 10,
             the document will be split into 10 chunks each of 512 tokens and the last 880 tokens will be disregarded.
+        :param progress_bar: Whether to show a progress bar while processing the documents.
         """
         super().__init__()
         valid_api_key = isinstance(api_key, str) and api_key
@@ -77,6 +69,7 @@ class CohereRanker(BaseRanker):
         self.top_k = top_k
         self.return_documents = return_documents
         self.max_chunks_per_doc = max_chunks_per_doc
+        self.progress_bar = progress_bar
 
     @property
     def url(self) -> str:
@@ -89,36 +82,6 @@ class CohereRanker(BaseRanker):
             "Content-Type": "application/json",
             "Request-Source": "python-sdk",
         }
-
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
-        """
-        Use the Cohere Reranker to re-rank the supplied list of documents
-        """
-        if top_k is None:
-            top_k = self.top_k
-
-        # See https://docs.cohere.com/reference/rerank-1
-        cohere_docs = [{"text": d.content} for d in documents]
-        params = {
-            "model": self.model_name_or_path,
-            "query": query,
-            "documents": cohere_docs,
-            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
-            "return_documents": self.return_documents,
-            "max_chunks_per_doc": self.max_chunks_per_doc,
-        }
-        response = self._post(params)
-        output = json.loads(response.text)
-
-        indices = [o["index"] for o in output["results"]]
-        scores = [o["relevance_score"] for o in output["results"]]
-        sorted_docs = []
-        for idx, score in zip(indices, scores):
-            doc = documents[idx]
-            doc.score = score
-            sorted_docs.append(documents[idx])
-
-        return sorted_docs[:top_k]
 
     def _post(
         self,
@@ -164,3 +127,163 @@ class CohereRanker(BaseRanker):
                 status_code=res.status_code,
             )
         return response
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
+        """
+        Use the Cohere Reranker to re-rank the supplied list of documents
+        """
+        if top_k is None:
+            top_k = self.top_k
+
+        # See https://docs.cohere.com/reference/rerank-1
+        cohere_docs = [{"text": d.content} for d in documents]
+        # TODO Instead of truncating, loop over in batches of 1000
+        if len(cohere_docs) > 1000:
+            logger.warning(
+                "The Cohere reranking endpoint only supports 1000 documents. "
+                "The the number of documents has been truncated to 1000."
+            )
+            cohere_docs = cohere_docs[:1000]
+
+        params = {
+            "model": self.model_name_or_path,
+            "query": query,
+            "documents": cohere_docs,
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": self.return_documents,
+            "max_chunks_per_doc": self.max_chunks_per_doc,
+        }
+        response = self._post(params)
+        output = json.loads(response.text)
+
+        indices = [o["index"] for o in output["results"]]
+        scores = [o["relevance_score"] for o in output["results"]]
+        sorted_docs = []
+        for idx, score in zip(indices, scores):
+            doc = documents[idx]
+            doc.score = score
+            sorted_docs.append(documents[idx])
+
+        return sorted_docs[:top_k]
+
+    def predict_batch(
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Use Cohere Reranking endpoint to re-rank the supplied lists of Documents.
+
+        Returns a lists of Documents sorted by (desc.) similarity with the corresponding queries.
+
+        - If you provide a list containing a single query...
+
+            - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
+              supplied query.
+            - ... and a list of lists of Documents, each list of Documents will be re-ranked individually based on the
+              supplied query.
+
+        - If you provide a list of multiple queries...
+
+            - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
+              its corresponding query.
+
+        :param queries: Single query string or list of queries
+        :param documents: Single list of Documents or list of lists of Documents to be reranked.
+        :param top_k: The maximum number of documents to return per Document list.
+        :param batch_size: Not relevant.
+        """
+        if top_k is None:
+            top_k = self.top_k
+
+        number_of_docs, all_queries, all_docs, single_list_of_docs = self._preprocess_batch_queries_and_docs(
+            queries=queries, documents=documents
+        )
+        batches = (all_queries, all_docs)
+
+        pb = tqdm(total=len(all_docs), disable=not self.progress_bar, desc="Ranking")
+        preds = []
+        for cur_queries, cur_docs in batches:
+            preds.append(self.predict(query=cur_queries, documents=cur_docs, top_k=len(cur_docs)))
+            pb.update(len(cur_docs))
+        pb.close()
+
+        logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
+        if single_list_of_docs:
+            sorted_scores_and_documents = sorted(
+                zip(preds, documents),
+                key=lambda similarity_document_tuple:
+                # assume the last element in logits represents the `has_answer` label
+                similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
+                reverse=True,
+            )
+
+            # is this step needed?
+            sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
+            sorted_documents_with_scores = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
+
+            return sorted_documents_with_scores
+        else:
+            # Group predictions together
+            grouped_predictions = []
+            left_idx = 0
+            for number in number_of_docs:
+                right_idx = left_idx + number
+                grouped_predictions.append(preds[left_idx:right_idx])
+                left_idx = right_idx
+
+            result = []
+            for pred_group, doc_group in zip(grouped_predictions, documents):
+                sorted_scores_and_documents = sorted(
+                    zip(pred_group, doc_group),  # type: ignore
+                    key=lambda similarity_document_tuple:
+                    # assume the last element in logits represents the `has_answer` label
+                    similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
+                    reverse=True,
+                )
+
+                # rank documents according to scores
+                sorted_documents = [
+                    (score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)
+                ]
+                sorted_documents_with_scores = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
+
+                result.append(sorted_documents_with_scores)
+
+            return result
+
+    def _preprocess_batch_queries_and_docs(
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
+    ) -> Tuple[List[int], List[str], List[Document], bool]:
+        number_of_docs = []
+        query_per_list_of_docs = []
+        all_docs: List[Document] = []
+        single_list_of_docs = False
+
+        # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            if len(queries) != 1:
+                raise HaystackError("Number of queries must be 1 if a single list of Documents is provided.")
+            query = queries[0]
+            number_of_docs = [len(documents)]
+            query_per_list_of_docs = [query]
+            all_docs = documents  # type: ignore
+            single_list_of_docs = True
+
+        # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
+        # If queries contains a single query, apply it to each list of Documents
+        if len(documents) > 0 and isinstance(documents[0], list):
+            if len(queries) == 1:
+                queries = queries * len(documents)
+            if len(queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                number_of_docs.append(len(cur_docs))
+                query_per_list_of_docs.extend([query])
+                all_docs.extend(cur_docs)
+
+        return number_of_docs, query_per_list_of_docs, all_docs, single_list_of_docs
