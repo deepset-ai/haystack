@@ -56,7 +56,6 @@ class SentenceTransformersRanker(BaseRanker):
         scale_score: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        max_seq_len: int = 512,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
