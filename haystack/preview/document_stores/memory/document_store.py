@@ -1,11 +1,18 @@
+import copy
+import re
 from typing import Literal, Any, Dict, List, Optional, Iterable
 
 import logging
 
+import numpy as np
+import pandas as pd
+import rank_bm25
+from tqdm.auto import tqdm
+
 from haystack.preview.dataclasses import Document
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
-
+from haystack.utils.scipy_utils import expit
 
 logger = logging.getLogger(__name__)
 DuplicatePolicy = Literal["skip", "overwrite", "fail"]
@@ -16,11 +23,19 @@ class MemoryDocumentStore:
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
+        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
+        bm25_parameters: Optional[Dict] = None,
+    ):
         """
         Initializes the store.
         """
-        self.storage = {}
+        self.storage: Dict[str, Document] = {}
+        self.bm25_tokenization_regex = bm25_tokenization_regex
+        self.bm25_algorithm = bm25_algorithm
+        self.bm25_parameters = bm25_parameters or {}
 
     def count_documents(self) -> int:
         """
@@ -142,3 +157,59 @@ class MemoryDocumentStore:
             if not doc_id in self.storage.keys():
                 raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
             del self.storage[doc_id]
+
+    @property
+    def bm25_tokenization_regex(self):
+        return self._tokenizer
+
+    @bm25_tokenization_regex.setter
+    def bm25_tokenization_regex(self, regex_string: str):
+        self._tokenizer = re.compile(regex_string).findall
+
+    @property
+    def bm25_algorithm(self):
+        return self._bm25_class
+
+    @bm25_algorithm.setter
+    def bm25_algorithm(self, algorithm: str):
+        algorithm_class = getattr(rank_bm25, algorithm)
+        if algorithm_class is None:
+            raise ValueError(f"BM25 algorithm '{algorithm}' not found.")
+        self._bm25_class = algorithm_class
+
+    def bm25_retrieval(self, query: str, top_k: int = 10, scale_score: bool = True) -> List[Document]:
+        """
+        Retrieves documents that are most relevant to the query using BM25 algorithm.
+        """
+
+        all_documents = self.filter_documents(filters={"content_type": ["text", "table"]})
+        lower_case_documents = []
+        for doc in all_documents:
+            if doc.content_type == "text":
+                lower_case_documents.append(doc.content.lower())
+            elif doc.content_type == "table":
+                if isinstance(doc.content, pd.DataFrame):
+                    lower_case_documents.append(doc.content.astype(str).to_csv(index=False).lower())
+
+        tokenized_corpus = [
+            self.bm25_tokenization_regex(doc)
+            for doc in tqdm(lower_case_documents, unit=" docs", desc="Updating BM25 representation...")
+        ]
+        self.bm25 = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
+
+        tokenized_query = self.bm25_tokenization_regex(query.lower())
+        docs_scores = self.bm25.get_scores(tokenized_query)
+        if scale_score is True:
+            # scaling probability from BM25
+            docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
+        top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
+
+        return_documents = []
+        for i in top_docs_positions:
+            doc = all_documents[i]
+            doc_as_dict = doc.to_dict()
+            doc_as_dict["score"] = docs_scores[i]
+            doc = Document(**doc_as_dict)
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
+        return return_documents
