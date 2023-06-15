@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch, Mock
 import pytest
 import torch
 from torch import device
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
+from transformers import AutoTokenizer, BloomForCausalLM, StoppingCriteriaList, GenerationConfig
 
 from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler, DefaultTokenStreamingHandler
@@ -13,8 +13,11 @@ from haystack.nodes.prompt.invocation_layer.hugging_face import StopWordsCriteri
 @pytest.fixture
 def mock_pipeline():
     # mock transformers pipeline
+    # model returning some mocked text for pipeline invocation
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face.pipeline") as mocked_pipeline:
-        mocked_pipeline.return_value = Mock(**{"model_name_or_path": None, "tokenizer.model_max_length": 100})
+        pipeline_mock = Mock(**{"model_name_or_path": None, "tokenizer.model_max_length": 100})
+        pipeline_mock.side_effect = lambda *args, **kwargs: [{"generated_text": "some mocked text"}]
+        mocked_pipeline.return_value = pipeline_mock
         yield mocked_pipeline
 
 
@@ -44,7 +47,7 @@ def test_constructor_with_model_name_only(mock_pipeline, mock_get_task):
 
     mock_pipeline.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # device is set to cpu by default and device_map is empty
     assert kwargs["device"] == device("cpu")
@@ -87,7 +90,7 @@ def test_constructor_with_model_name_and_device_map(mock_pipeline, mock_get_task
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # device is NOT set; device_map is auto because device_map takes precedence over device
     assert not kwargs["device"]
@@ -110,7 +113,7 @@ def test_constructor_with_torch_dtype(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
     assert kwargs["torch_dtype"] == torch.float16
 
 
@@ -126,7 +129,7 @@ def test_constructor_with_torch_dtype_as_str(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
     assert kwargs["torch_dtype"] == torch.float16
 
 
@@ -142,7 +145,7 @@ def test_constructor_with_torch_dtype_auto(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
     assert kwargs["torch_dtype"] == "auto"
 
 
@@ -206,9 +209,8 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     """
     Test that the constructor sets the pipeline with the pretrained model (if provided)
     """
-    # actual model and tokenizer passed to the pipeline
-    model = AutoModelForSeq2SeqLM.from_pretrained("hf-internal-testing/tiny-random-t5")
-    tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-t5")
+    model = Mock()
+    tokenizer = Mock()
 
     HFLocalInvocationLayer(
         model_name_or_path="irrelevant_when_model_is_provided",
@@ -221,7 +223,7 @@ def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     # mock_get_task is not called as we provided task_name parameter
     mock_get_task.assert_not_called()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # correct tokenizer and model are set as well
     assert kwargs["tokenizer"] == tokenizer
@@ -239,7 +241,7 @@ def test_constructor_with_invalid_kwargs(mock_pipeline, mock_get_task):
     mock_pipeline.assert_called_once()
     mock_get_task.assert_called_once()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # invalid kwargs are ignored and not passed to the pipeline
     assert "some_invalid_kwarg" not in kwargs
@@ -258,7 +260,7 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     HFLocalInvocationLayer(
         "google/flan-t5-base",
         task_name="text2text-generation",
-        tokenizer=AutoTokenizer.from_pretrained("google/flan-t5-base"),
+        tokenizer=Mock(),
         config=Mock(),
         revision="1.1",
         device="cpu",
@@ -271,7 +273,7 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     # mock_get_task is not called as we provided task_name parameter
     mock_get_task.assert_not_called()
 
-    args, kwargs = mock_pipeline.call_args
+    _, kwargs = mock_pipeline.call_args
 
     # invalid kwargs are ignored and not passed to the pipeline
     assert "first_invalid_kwarg" not in kwargs
@@ -287,7 +289,7 @@ def test_constructor_with_various_kwargs(mock_pipeline, mock_get_task):
     assert len(kwargs) == 13
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_text_generation_model():
     # test simple prompting with text generation model
     # by default, we force the model not return prompt text
@@ -303,7 +305,7 @@ def test_text_generation_model():
     assert len(r[0]) > 0 and r[0].startswith("Hello big science!")
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_text_generation_model_via_custom_pretrained_model():
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bigscience-small-testing")
     model = BloomForCausalLM.from_pretrained("bigscience/bigscience-small-testing")
@@ -320,31 +322,29 @@ def test_text_generation_model_via_custom_pretrained_model():
 
 
 @pytest.mark.unit
-def test_streaming_stream_param_in_constructor():
+def test_streaming_stream_param_in_constructor(mock_pipeline, mock_get_task):
     """
     Test stream parameter is correctly passed to pipeline invocation via HF streamer parameter
     """
     layer = HFLocalInvocationLayer(stream=True)
-    layer.pipe = MagicMock()
 
     layer.invoke(prompt="Tell me hello")
 
-    args, kwargs = layer.pipe.call_args
+    _, kwargs = layer.pipe.call_args
     assert "streamer" in kwargs and isinstance(kwargs["streamer"], HFTokenStreamingHandler)
 
 
 @pytest.mark.unit
-def test_streaming_stream_handler_param_in_constructor():
+def test_streaming_stream_handler_param_in_constructor(mock_pipeline, mock_get_task):
     """
     Test stream parameter is correctly passed to pipeline invocation
     """
     dtsh = DefaultTokenStreamingHandler()
     layer = HFLocalInvocationLayer(stream_handler=dtsh)
-    layer.pipe = MagicMock()
 
     layer.invoke(prompt="Tell me hello")
 
-    args, kwargs = layer.pipe.call_args
+    _, kwargs = layer.pipe.call_args
     assert "streamer" in kwargs
     hf_streamer = kwargs["streamer"]
 
@@ -394,18 +394,17 @@ def test_supports(tmp_path):
 
 
 @pytest.mark.unit
-def test_stop_words_criteria_set():
+def test_stop_words_criteria_set(mock_pipeline, mock_get_task):
     """
     Test that stop words criteria is correctly set in pipeline invocation
     """
     layer = HFLocalInvocationLayer(
         model_name_or_path="hf-internal-testing/tiny-random-t5", task_name="text2text-generation"
     )
-    layer.pipe = MagicMock()
 
     layer.invoke(prompt="Tell me hello", stop_words=["hello", "world"])
 
-    args, kwargs = layer.pipe.call_args
+    _, kwargs = layer.pipe.call_args
     assert "stopping_criteria" in kwargs
     assert isinstance(kwargs["stopping_criteria"], StoppingCriteriaList)
     assert len(kwargs["stopping_criteria"]) == 1
@@ -468,7 +467,7 @@ def test_stop_words_not_being_found():
         assert word in result[0]
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_generation_kwargs_from_constructor():
     """
     Test that generation_kwargs are correctly passed to pipeline invocation from constructor
@@ -489,7 +488,7 @@ def test_generation_kwargs_from_constructor():
     mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_generation_kwargs_from_invoke():
     """
     Test that generation_kwargs passed to invoke are passed to the underlying HF model
@@ -508,3 +507,35 @@ def test_generation_kwargs_from_invoke():
         layer.invoke(prompt=the_question, generation_kwargs=GenerationConfig(do_sample=True, top_p=0.9))
 
     mock_call.assert_called_with(the_question, {}, {"do_sample": True, "top_p": 0.9, "max_length": 100}, {})
+
+
+@pytest.mark.unit
+def test_ensure_token_limit_positive_mock(mock_pipeline, mock_get_task, mock_auto_tokenizer):
+    # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
+    mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
+    mock_prompt = "I am a tokenized prompt"
+
+    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
+    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=mock_prompt)
+    mock_pipeline.return_value.tokenizer = mock_auto_tokenizer
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=3, model_max_length=10)
+    result = layer._ensure_token_limit(mock_prompt)
+
+    assert result == mock_prompt
+
+
+@pytest.mark.unit
+def test_ensure_token_limit_negative_mock(mock_pipeline, mock_get_task, mock_auto_tokenizer):
+    # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
+    mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
+    correct_result = "I am a tokenized prompt of length"
+
+    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
+    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=correct_result)
+    mock_pipeline.return_value.tokenizer = mock_auto_tokenizer
+
+    layer = HFLocalInvocationLayer("google/flan-t5-base", max_length=3, model_max_length=10)
+    result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
+
+    assert result == correct_result

@@ -7,7 +7,6 @@ from collections import defaultdict
 import re
 
 import numpy as np
-import torch
 from tqdm.auto import tqdm
 import rank_bm25
 import pandas as pd
@@ -16,13 +15,18 @@ from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever.dense import DenseRetriever
 from haystack.utils.scipy_utils import expit
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport() as torch_import:
+    import torch
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class InMemoryDocumentStore(KeywordDocumentStore):
@@ -43,7 +47,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_bm25: bool = False,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
@@ -305,6 +309,8 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param documents_to_search: List of documents to compare `query_emb` against.
         """
+        torch_import.check()
+
         query_emb_tensor = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
         if query_emb_tensor.ndim == 1:
             query_emb_tensor = query_emb_tensor.unsqueeze(dim=0)
