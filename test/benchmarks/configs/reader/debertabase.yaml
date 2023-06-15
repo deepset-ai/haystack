@@ -1,0 +1,19 @@
+version: ignore
+
+components:
+  - name: Reader
+    type: FARMReader
+    params:
+      model_name_or_path: deepset/deberta-v3-base-squad2
+      top_k: 10
+      return_no_answer: True
+
+pipelines:
+  - name: querying
+    nodes:
+      - name: Reader
+        inputs: [Query]
+
+benchmark_config:
+  data_url: https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-downstream/squad20.tar.gz
+  labels_file: data/squad20/dev-v2.0.json

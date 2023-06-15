@@ -13,7 +13,7 @@ from haystack.nodes.prompt.invocation_layer import (
     DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.utils.requests_utils import request_with_retry
+from haystack.utils import request_with_retry
 
 logger = logging.getLogger(__name__)
 TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))

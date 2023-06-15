@@ -1,11 +1,14 @@
 from typing import Dict, List, Optional, Tuple, Union, Any, Type, overload
 import logging
 
-import torch
-
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.schema import Document, MultiLabel
+from haystack.lazy_imports import LazyImport
+
+with LazyImport() as torch_import:
+    import torch
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +37,7 @@ class PromptModel(BaseComponent):
         api_key: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         invocation_layer_class: Optional[Type[PromptModelInvocationLayer]] = None,
         model_kwargs: Optional[Dict] = None,
     ):

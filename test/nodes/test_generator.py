@@ -15,7 +15,7 @@ from ..conftest import fail_at_version
 
 @pytest.mark.unit
 @fail_at_version(1, 18)
-def test_seq2seq_deprecation():
+def test_seq2seq_deprecation(mock_auto_tokenizer):
     with pytest.warns(DeprecationWarning):
         try:
             Seq2SeqGenerator("non_existing_model/model")
