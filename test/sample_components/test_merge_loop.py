@@ -4,9 +4,8 @@
 from typing import List, Union
 import builtins
 
-from dataclasses import dataclass
 
-from canals.component import component, VariadicComponentInput, ComponentOutput
+from canals.component import component
 from canals.testing import BaseTestComponent
 
 
@@ -26,18 +25,16 @@ class MergeLoop:
         self.expected_type = type_
         self.init_parameters = {"expected_type": type_.__name__}
 
-    @property
-    def input_type(self):
-        @dataclass
-        class Input(VariadicComponentInput):
+    @component.input(variadic=True)
+    def input(self):
+        class Input:
             values: List[self.expected_type]  # type: ignore
 
         return Input
 
-    @property
-    def output_type(self):
-        @dataclass
-        class Output(ComponentOutput):
+    @component.output
+    def output(self):
+        class Output:
             value: self.expected_type  # type: ignore
 
         return Output
@@ -50,8 +47,8 @@ class MergeLoop:
         """
         for v in data.values:
             if v is not None:
-                return self.output_type(value=v)
-        return self.output_type(value=None)
+                return self.output(value=v)
+        return self.output(value=None)
 
 
 class TestMergeLoop(BaseTestComponent):
@@ -68,25 +65,25 @@ class TestMergeLoop(BaseTestComponent):
 
     def test_merge_first(self):
         component = MergeLoop(expected_type=int)
-        results = component.run(component.input_type(5, None))
-        assert results.__dict__ == component.output_type(value=5).__dict__
+        results = component.run(component.input(5, None))
+        assert results == component.output(value=5)
 
     def test_merge_second(self):
         component = MergeLoop(expected_type=int)
-        results = component.run(component.input_type(None, 5))
-        assert results.__dict__ == component.output_type(value=5).__dict__
+        results = component.run(component.input(None, 5))
+        assert results == component.output(value=5)
 
     def test_merge_nones(self):
         component = MergeLoop(expected_type=int)
-        results = component.run(component.input_type(None, None, None))
-        assert results.__dict__ == component.output_type(value=None).__dict__
+        results = component.run(component.input(None, None, None))
+        assert results == component.output(value=None)
 
     def test_merge_one(self):
         component = MergeLoop(expected_type=int)
-        results = component.run(component.input_type(1))
-        assert results.__dict__ == component.output_type(value=1).__dict__
+        results = component.run(component.input(1))
+        assert results == component.output(value=1)
 
     def test_merge_one_none(self):
         component = MergeLoop(expected_type=int)
-        results = component.run(component.input_type())
-        assert results.__dict__ == component.output_type(value=None).__dict__
+        results = component.run(component.input())
+        assert results == component.output(value=None)

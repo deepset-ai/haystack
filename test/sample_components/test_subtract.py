@@ -1,12 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from dataclasses import dataclass
-
-import pytest
-
 from canals.testing import BaseTestComponent
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 
 
 @component
@@ -15,21 +11,27 @@ class Subtract:
     Compute the difference between two values.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        first_value: int
-        second_value: int
+    @component.input
+    def input(self):
+        class Input:
+            first_value: int
+            second_value: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        difference: int
+        return Input
 
-    def run(self, data: Input) -> Output:
+    @component.output
+    def output(self):
+        class Output:
+            difference: int
+
+        return Output
+
+    def run(self, data):
         """
         :param first_value: name of the connection carrying the value to subtract from.
         :param second_value: name of the connection carrying the value to subtract.
         """
-        return Subtract.Output(difference=data.first_value - data.second_value)
+        return self.output(difference=data.first_value - data.second_value)
 
 
 class TestSubtract(BaseTestComponent):
@@ -38,6 +40,6 @@ class TestSubtract(BaseTestComponent):
 
     def test_subtract(self):
         component = Subtract()
-        results = component.run(Subtract.Input(first_value=10, second_value=7))
-        assert results == Subtract.Output(difference=3)
+        results = component.run(component.input(first_value=10, second_value=7))
+        assert results == component.output(difference=3)
         assert component.init_parameters == {}
