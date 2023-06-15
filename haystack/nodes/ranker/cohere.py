@@ -198,7 +198,7 @@ class CohereRanker(BaseRanker):
             # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
             if len(queries) != 1:
                 raise HaystackError("Number of queries must be 1 if a single list of Documents is provided.")
-            return self.predict(query=queries[0], documents=documents, top_k=top_k)
+            return self.predict(query=queries[0], documents=documents, top_k=top_k)  # type: ignore
         else:
             # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
             # If queries contains a single query, apply it to each list of Documents
