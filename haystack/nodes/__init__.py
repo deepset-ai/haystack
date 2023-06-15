@@ -28,7 +28,7 @@ from haystack.nodes.prompt import PromptNode, PromptTemplate, PromptModel, BaseO
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
+from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker, CohereRanker
 from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
 from haystack.nodes.retriever import (
     BaseRetriever,
