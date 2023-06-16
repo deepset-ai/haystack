@@ -137,9 +137,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             "watermark": kwargs_with_defaults.get("watermark", False),
         }
         generated_texts = self._post(prompt=prompt, params=params)
-        if params["stop"]:
-            # cut the text after the first occurrence of a stop token
-            generated_texts = [re.split("|".join(params["stop"]), t)[0] for t in generated_texts]
         return generated_texts
 
     def _post(self, prompt: str, params: Optional[Dict[str, Any]] = None) -> List[str]:
