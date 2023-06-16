@@ -55,7 +55,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
 
     # assert layer. == "some_fake_key"
     assert layer.max_length == 99
-    assert layer.model_name_or_path == "flan-t5-xxl"
+    assert layer.model_name_or_path == "some_fake_model"
 
     # assert mocked boto3 client called exactly once
     mock_boto3_session.assert_called_once()
