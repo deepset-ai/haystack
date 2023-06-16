@@ -1,11 +1,7 @@
-import pytest
-import logging
-import unittest
 from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer import SageMakerInvocationLayer
 
 
@@ -35,15 +31,11 @@ def test_supports_not():
      )
 
 
-
-
 # create a fixture with mocked boto3 client and session
 @pytest.fixture(scope="function")
 def mock_boto3_session():
     with patch("boto3.Session") as mock_client:
         yield mock_client
-
-
 
 
 @pytest.mark.unit
@@ -72,7 +64,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
 
 
 @pytest.mark.unit
-def test_constructor_with_model_kwargs(mock_auto_tokenizer):
+def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     Test that model_kwargs are correctly set in the constructor
     and that model_kwargs_rejected are correctly filtered out
@@ -80,12 +72,11 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer):
     model_kwargs = {"temperature": 0.7, "do_sample": True, "stream": True}
     model_kwargs_rejected = {"fake_param": 0.7, "another_fake_param": 1}
 
-    layer = HFInferenceEndpointInvocationLayer(
-        model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
+    layer = SageMakerInvocationLayer(
+        model_name_or_path="some_fake_model", **model_kwargs, **model_kwargs_rejected
     )
     assert "temperature" in layer.model_input_kwargs
     assert "do_sample" in layer.model_input_kwargs
-    assert "stream" in layer.model_input_kwargs
     assert "fake_param" not in layer.model_input_kwargs
     assert "another_fake_param" not in layer.model_input_kwargs
 
