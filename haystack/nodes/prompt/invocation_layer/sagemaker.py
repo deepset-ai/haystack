@@ -151,7 +151,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         """
 
         try:
-            body = {"inputs": prompt, **params}
+            body = {"inputs": prompt, "parameters": params}
             response = self.client.invoke_endpoint(
                 EndpointName=self.model_name_or_path,
                 Body=json.dumps(body),
