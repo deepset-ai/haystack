@@ -2,7 +2,7 @@ import json
 import os
 from typing import Optional, Dict, Union, List, Any, Callable
 import logging
-
+import re
 
 import requests
 import sseclient
@@ -119,7 +119,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 f"Make sure to provide prompt in kwargs."
             )
 
-        # TODO: Verify that stop words are respected by SageMaker. If not, cut response off at first stop word occurence.
+        # stop_words to stop the model while generating the answer are currently not supported in SageMaker,
+        # but we will truncate the response later on to at least achieve the same behaviour on the answer
         stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
 
@@ -158,6 +159,9 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         response_json = response.get("Body").read().decode("utf-8")
         output = json.loads(response_json)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        if params["stop"]:
+            # cut the text after the first occurrence of a stop token
+            generated_texts = [re.split("|".join(params["stop"]), t)[0] for t in generated_texts]
         return generated_texts
 
     # def _post(
