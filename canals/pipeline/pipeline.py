@@ -204,7 +204,7 @@ class Pipeline:
         """
         # Check that the types match. We need type equality: subclass relationships are not accepted, just like
         # Optionals, Unions, and similar "aggregate" types. See https://github.com/python/typing/issues/570
-        if not from_socket.type == to_socket.type:
+        if to_socket.type is not Any and not from_socket.type == to_socket.type:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
                 f"their declared input and output types do not match.\n"
@@ -447,7 +447,6 @@ class Pipeline:
 
         # Some node upstream didn't run yet, so we should wait for them.
         if not self._all_nodes_to_wait_for_run(nodes_to_wait_for=nodes_to_wait_for):
-
             if not inputs_buffer:
                 # What if there are no components to wait for?
                 raise PipelineRuntimeError(
@@ -497,7 +496,6 @@ class Pipeline:
         # Variadic nodes expect a single list regardless of how many incoming connections they have,
         # but the length of the list should match the length of incoming connections.
         if self.graph.nodes[name]["variadic_input"]:
-
             # Variadic nodes need at least two values
             if not inputs or len(inputs) < 2:
                 return False
