@@ -386,9 +386,8 @@ class Pipeline:
 
             # Save to json
             os.makedirs(self.debug_path, exist_ok=True)
-            with open(self.debug_path / "data.js", "w", encoding="utf-8") as datafile:
-                data = json.dumps(self.debug, indent=4, default=str)
-                datafile.write("const data = " + data)
+            with open(self.debug_path / "data.json", "w", encoding="utf-8") as datafile:
+                json.dump(self.debug, datafile, indent=4, default=str)
 
             # Store in the output
             pipeline_output["_debug"] = self.debug  # type: ignore
@@ -400,11 +399,11 @@ class Pipeline:
         """
         Stores a snapshot of this step into the self.debug dictionary of the pipeline.
         """
-        mermaid_graph = convert_for_debug(deepcopy(self.graph), components_queue=list(inputs_buffer.keys()))
+        mermaid_graph = convert_for_debug(deepcopy(self.graph))
         self.debug[step] = {
             "time": datetime.datetime.now(),
-            "inputs_buffer": deepcopy(list(inputs_buffer.items())),
-            "pipeline_output": deepcopy(pipeline_output),
+            "inputs_buffer": list(inputs_buffer.items()),
+            "pipeline_output": pipeline_output,
             "diagram": mermaid_graph,
         }
 
