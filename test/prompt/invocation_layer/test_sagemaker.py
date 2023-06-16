@@ -149,82 +149,8 @@ def test_ensure_token_limit_negative_mock(mock_auto_tokenizer):
     assert result == correct_result
 
 
-
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize(
-    "model_name_or_path", ["google/flan-t5-xxl", "OpenAssistant/oasst-sft-1-pythia-12b", "bigscience/bloomz"]
-)
-def test_ensure_token_limit_resize(caplog, model_name_or_path):
-    # In this test case we assume prompt resizing is needed for all models
-    handler = HFInferenceEndpointInvocationLayer("fake_api_key", model_name_or_path, max_length=5, model_max_length=10)
-
-    # Define prompt and expected results
-    prompt = "This is a test prompt that will be resized because model_max_length is 10 and max_length is 5."
-    with caplog.at_level(logging.WARN):
-        resized_prompt = handler._ensure_token_limit(prompt)
-        assert "The prompt has been truncated" in caplog.text
-
-    # Verify the results
-    assert resized_prompt != prompt
-    assert (
-        "This is a test" in resized_prompt
-        and "because model_max_length is 10 and max_length is 5" not in resized_prompt
-    )
-
-
 @pytest.mark.unit
-def test_oasst_prompt_preprocessing(mock_auto_tokenizer):
-    model_name = "OpenAssistant/oasst-sft-1-pythia-12b"
-
-    layer = HFInferenceEndpointInvocationLayer("fake_api_key", model_name)
-    with unittest.mock.patch(
-        "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
-    ) as mock_post:
-        # Mock the response, need to return a list of dicts
-        mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
-        result = layer.invoke(prompt="Tell me hello")
-
-    assert result == ["Hello"]
-    assert mock_post.called
-
-    _, called_kwargs = mock_post.call_args
-    # OpenAssistant/oasst-sft-1-pythia-12b prompts are preprocessed and wrapped in tokens below
-    assert called_kwargs["data"]["inputs"] == "<|prompter|>Tell me hello<|endoftext|><|assistant|>"
-
-
-@pytest.mark.unit
-def test_invalid_key():
-    with pytest.raises(ValueError, match="must be a valid Hugging Face token"):
-        HFInferenceEndpointInvocationLayer("", "irrelevant_model_name")
-
-
-@pytest.mark.unit
-def test_invalid_model():
+def test_empty_model_name():
     with pytest.raises(ValueError, match="cannot be None or empty string"):
-        HFInferenceEndpointInvocationLayer("fake_api", "")
-
-
-@pytest.mark.unit
-def test_supports(mock_get_task):
-    """
-    Test that supports returns True correctly for HFInferenceEndpointInvocationLayer
-    """
-
-    # supports google/flan-t5-xxl with api_key
-    assert HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")
-
-    # doesn't support google/flan-t5-xxl without api_key
-    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl")
-
-    # supports HF Inference Endpoint with api_key
-    assert HFInferenceEndpointInvocationLayer.supports(
-        "https://<your-unique-deployment-id>.us-east-1.aws.endpoints.huggingface.cloud", api_key="fake_key"
-    )
-
-
-@pytest.mark.unit
-def test_supports_not(mock_get_task_invalid):
-    assert not HFInferenceEndpointInvocationLayer.supports("fake_model", api_key="fake_key")
+        SageMakerInvocationLayer(model_name_or_path="")
 
