@@ -33,7 +33,7 @@ def test_supports_not():
     )
     assert not SageMakerInvocationLayer.supports(
         model_name_or_path="invalid-model-name", profile_name="invalid-profile"
-#     )
+     )
 
 
 
@@ -89,32 +89,6 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer):
     assert "stream" in layer.model_input_kwargs
     assert "fake_param" not in layer.model_input_kwargs
     assert "another_fake_param" not in layer.model_input_kwargs
-
-
-@pytest.mark.unit
-def test_set_model_max_length(mock_auto_tokenizer):
-    """
-    Test that model max length is set correctly
-    """
-    layer = HFInferenceEndpointInvocationLayer(
-        model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key", model_max_length=2048
-    )
-    assert layer.prompt_handler.model_max_length == 2048
-
-
-@pytest.mark.unit
-def test_url(mock_auto_tokenizer):
-    """
-    Test that the url is correctly set in the constructor
-    """
-    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key")
-    assert layer.url == "https://api-inference.huggingface.co/models/google/flan-t5-xxl"
-
-    layer = HFInferenceEndpointInvocationLayer(
-        model_name_or_path="https://23445.us-east-1.aws.endpoints.huggingface.cloud", api_key="some_fake_key"
-    )
-
-    assert layer.url == "https://23445.us-east-1.aws.endpoints.huggingface.cloud"
 
 
 @pytest.mark.unit
