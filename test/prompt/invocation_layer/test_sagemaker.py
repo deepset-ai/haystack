@@ -37,6 +37,12 @@ def mock_boto3_session():
         yield mock_client
 
 
+@pytest.fixture
+def mock_prompt_handler():
+    with patch("haystack.nodes.prompt.invocation_layer.handlers.DefaultPromptHandler") as mock_prompt_handler:
+        yield mock_prompt_handler
+
+
 @pytest.mark.unit
 def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     """
@@ -114,31 +120,34 @@ def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_positive_mock(mock_auto_tokenizer):
+def test_ensure_token_limit_positive_mock(mock_boto3_session):
     # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
     mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
     mock_prompt = "I am a tokenized prompt"
 
-    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
-    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=mock_prompt)
+    mock_tokenizer = Mock()
+    mock_tokenizer.tokenize.return_value = mock_tokens
 
-    layer = SageMakerInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
-    result = layer._ensure_token_limit(mock_prompt)
+    with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
+        layer = SageMakerInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
+        result = layer._ensure_token_limit(mock_prompt)
 
     assert result == mock_prompt
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_negative_mock(mock_auto_tokenizer):
+def test_ensure_token_limit_negative_mock(mock_boto3_session):
     # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
     mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
     correct_result = "I am a tokenized prompt of length"
 
-    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
-    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=correct_result)
+    mock_tokenizer = Mock()
+    mock_tokenizer.tokenize.return_value = mock_tokens
+    mock_tokenizer.convert_tokens_to_string.return_value = correct_result
 
-    layer = SageMakerInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
-    result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
+    with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
+        layer = SageMakerInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
+        result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
 
     assert result == correct_result
 
