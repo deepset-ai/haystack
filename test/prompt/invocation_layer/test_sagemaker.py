@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch, MagicMock, Mock
 
 import pytest
@@ -5,29 +6,35 @@ import pytest
 from haystack.nodes.prompt.invocation_layer import SageMakerInvocationLayer
 
 
+@pytest.mark.skipif(
+        not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None),
+        reason="Skipping because SageMaker not configured",
+    )
 @pytest.mark.integration
 def test_supports():
     """
     Test that supports returns True for valid SageMakerInvocationLayer
     """
-
+    model_name_or_path = os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT")
     assert SageMakerInvocationLayer.supports(
-        model_name_or_path="jumpstart-example-tiiuae-falcon-40b-ins-2023-06-16-09-15-35-027",
-        profile_name="Haystack-OSS-test",
+        model_name_or_path=model_name_or_path,
     )
 
 
+@pytest.mark.skipif(
+        not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None),
+        reason="Skipping because SageMaker not configured",
+    )
 @pytest.mark.integration
 def test_supports_not():
     """
     Test that supports returns False for invalid SageMakerInvocationLayer
     """
-    assert not SageMakerInvocationLayer.supports("google/flan-t5-xxl", profile_name="Haystack-OSS-test")
     assert not SageMakerInvocationLayer.supports(
-        model_name_or_path="jumpstart-example-tiiuae-falcon-40b-ins-2023-06-16-09-15-35-027"
+        model_name_or_path="fake_endpoint"
     )
     assert not SageMakerInvocationLayer.supports(
-        model_name_or_path="invalid-model-name", profile_name="invalid-profile"
+        model_name_or_path="fake_endpoint", profile_name="invalid-profile"
      )
 
 
@@ -44,7 +51,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     Test that the default constructor sets the correct values
     """
 
-    layer = SageMakerInvocationLayer(model_name_or_path="flan-t5-xxl", max_length=99, aws_access_key_id="some_fake_id", aws_secret_access_key="some_fake_key", aws_session_token="some_fake_token", profile_name="some_fake_profile", region_name="fake_region")
+    layer = SageMakerInvocationLayer(model_name_or_path="some_fake_model", max_length=99, aws_access_key_id="some_fake_id", aws_secret_access_key="some_fake_key", aws_session_token="some_fake_token", profile_name="some_fake_profile", region_name="fake_region")
 
     # assert layer. == "some_fake_key"
     assert layer.max_length == 99
