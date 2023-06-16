@@ -74,8 +74,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 "repetition_penalty",
                 "return_full_text",
                 "seed",
-                "stream",
-                "stream_handler",
                 "temperature",
                 "top_k",
                 "top_p",
