@@ -115,8 +115,9 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 f"Make sure to provide prompt in kwargs."
             )
 
-        stop_words = kwargs.pop("stop_words", None) or []
+        stop_words = kwargs.pop("stop_words", [])
         kwargs_with_defaults = self.model_input_kwargs
+        kwargs_with_defaults.update(kwargs)
 
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         params = {
