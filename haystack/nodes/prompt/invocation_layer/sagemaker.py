@@ -3,7 +3,7 @@ import os
 from typing import Optional, Dict, Union, List, Any, Callable
 import logging
 
-import boto3
+
 import requests
 import sseclient
 
@@ -26,32 +26,40 @@ logger = logging.getLogger(__name__)
 HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 HF_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
-with LazyImport() as transformers_import:
-    from transformers.pipelines import get_task
+with LazyImport() as boto3_import:
+    import boto3
+
 
 
 class SageMakerInvocationLayer(PromptModelInvocationLayer):
     """
-    TODO
-
+    # TODO: add docs
     """
 
-    def __init__(self, model_name_or_path: str, max_length: int = 100, **kwargs):
-        """
-        TODO
-        """
+    def __init__(self, model_name_or_path: str, max_length: int = 100,
+                 aws_access_key_id: Optional[str]=None,
+                 aws_secret_access_key: Optional[str]=None,
+                 aws_session_token: Optional[str]=None,
+                region_name: Optional[str]=None,
+                profile_name:Optional[str]=None,
 
+                 **kwargs):
+        """
+        :param model_name_or_path: The name for SageMaker Model Endpoint.
+        :param max_length: The maximum length of the output text.
+        :param aws_access_key_id: AWS access key ID.
+        :param aws_secret_access_key: AWS secret access key.
+        :param aws_session_token: AWS session token.
+        :param region_name: AWS region name.
+        :param profile_name: AWS profile name.
+        """
+        boto3_import.check()
         super().__init__(model_name_or_path)
-        # TODO add authentication check + error msg
-        session = boto3.Session(profile_name="Haystack-OSS-test", region_name="us-east-1")
-        self.client = session.client('sagemaker-runtime')
-        # self.model_name_or_path = model_name_or_path
-
-        # if not valid_api_key:
-        #     raise ValueError(
-        #         f"api_key {api_key} must be a valid Hugging Face token. "
-        #         f"Your token is available in your Hugging Face settings page."
-        #     )
+        try:
+            session = boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, aws_session_token=aws_session_token, region_name=region_name, profile_name=profile_name)
+            self.client = session.client('sagemaker-runtime')
+        except Exception as e:
+            logger.error(f"Failed to initialize SageMaker client. Please check if you have aws cli configured or set the aws_kwargs for the boto3 session. {e}")
         self.max_length = max_length
 
         # for a list of supported parameters (TODO: verify if all of them are supported in sagemaker)
