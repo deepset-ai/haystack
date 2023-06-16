@@ -25,6 +25,16 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
     Lets you use an LLM hosted via a SageMaker Inference Endpoint PromptNode.
     It's expecting a Huggingface Model running at the SageMaker Inference Endpoint (e.g. Falcon, Flan-T5).
     See https://www.philschmid.de/sagemaker-falcon-llm for instructions on how to deploy such a model to SageMaker.
+
+    **Example**
+
+     ```python
+    from haystack.nodes import PromptNode
+
+    # Pass sagemaker endpoint name and authentication details
+    pn = PromptNode(model_name_or_path="falcon-40b-my-sagemaker-inference-endpoint, model_kwargs={"profile_name": "my_aws_profile_name", "region_name": "eu-central-1"})
+    res = pn("what is the meaning of life?")
+    print(res)
     """
 
     def __init__(
