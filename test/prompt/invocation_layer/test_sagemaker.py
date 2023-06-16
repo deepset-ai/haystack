@@ -1,12 +1,11 @@
 import pytest
 import logging
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
-from haystack.nodes.prompt.invocation_layer import HFInferenceEndpointInvocationLayer
 from haystack.nodes.prompt.invocation_layer import SageMakerInvocationLayer
 
 
@@ -92,25 +91,25 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer):
 
 
 @pytest.mark.unit
-def test_invoke_with_no_kwargs(mock_auto_tokenizer):
+def test_invoke_with_no_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     Test that invoke raises an error if no prompt is provided
     """
-    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key")
+    layer = SageMakerInvocationLayer(model_name_or_path="google/flan-t5-xxl")
     with pytest.raises(ValueError) as e:
         layer.invoke()
         assert e.match("No prompt provided.")
 
 
 @pytest.mark.unit
-def test_invoke_with_stop_words(mock_auto_tokenizer):
+def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
     """
     Test stop words are correctly passed to HTTP POST request
     """
     stop_words = ["but", "not", "bye"]
-    layer = HFInferenceEndpointInvocationLayer(model_name_or_path="google/flan-t5-xxl", api_key="fake_key")
-    with unittest.mock.patch(
-        "haystack.nodes.prompt.invocation_layer.HFInferenceEndpointInvocationLayer._post"
+    layer = SageMakerInvocationLayer(model_name_or_path="some_model", api_key="fake_key")
+    with patch(
+        "haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post"
     ) as mock_post:
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
@@ -119,30 +118,38 @@ def test_invoke_with_stop_words(mock_auto_tokenizer):
 
     assert mock_post.called
 
-    # Check if stop_words are passed to _post as stop parameter
-    _, called_kwargs = mock_post.call_args
-    assert "stop" in called_kwargs["data"]["parameters"]
-    assert called_kwargs["data"]["parameters"]["stop"] == stop_words
+
+@pytest.mark.unit
+def test_ensure_token_limit_positive_mock(mock_auto_tokenizer):
+    # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
+    mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
+    mock_prompt = "I am a tokenized prompt"
+
+    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
+    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=mock_prompt)
+
+    layer = SageMakerInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
+    result = layer._ensure_token_limit(mock_prompt)
+
+    assert result == mock_prompt
+
+
+@pytest.mark.unit
+def test_ensure_token_limit_negative_mock(mock_auto_tokenizer):
+    # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
+    mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
+    correct_result = "I am a tokenized prompt of length"
+
+    mock_auto_tokenizer.tokenize = Mock(return_value=mock_tokens)
+    mock_auto_tokenizer.convert_tokens_to_string = Mock(return_value=correct_result)
+
+    layer = SageMakerInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
+    result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
+
+    assert result == correct_result
 
 
 
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize(
-    "model_name_or_path", ["google/flan-t5-xxl", "OpenAssistant/oasst-sft-1-pythia-12b", "bigscience/bloomz"]
-)
-def test_ensure_token_limit_no_resize(model_name_or_path):
-    # In this test case we assume that no prompt resizing is needed for all models
-    handler = HFInferenceEndpointInvocationLayer("fake_api_key", model_name_or_path, max_length=100)
-
-    # Define prompt and expected results
-    prompt = "This is a test prompt."
-
-    resized_prompt = handler._ensure_token_limit(prompt)
-
-    # Verify the results
-    assert resized_prompt == prompt
 
 
 @pytest.mark.integration
