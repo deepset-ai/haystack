@@ -1,0 +1,87 @@
+{
+  "indexing": {
+    "retriever": "BM25Retriever",
+    "doc_store": "ElasticsearchDocumentStore",
+    "n_docs": 99893,
+    "indexing_time": 306.55409117997624,
+    "docs_per_second": 325.8576638644609,
+    "date_time": "2023-06-15 15:34:01",
+    "error": null
+  },
+  "querying": {
+    "retriever": "BM25Retriever",
+    "doc_store": "ElasticsearchDocumentStore",
+    "n_docs": 99893,
+    "n_queries": 58581,
+    "querying_time": 131.3623584540328,
+    "queries_per_second": 445.94966693216804,
+    "seconds_per_query": 0.0022424055317258633,
+    "recall": 0.8027966425723285,
+    "map": 0.6219209568961722,
+    "top_k": 10,
+    "date_time": "2023-06-15 16:33:37",
+    "error": null
+  },
+  "config": {
+    "version": "ignore",
+    "components": [
+      {
+        "name": "DocumentStore",
+        "type": "ElasticsearchDocumentStore"
+      },
+      {
+        "name": "TextConverter",
+        "type": "TextConverter"
+      },
+      {
+        "name": "Retriever",
+        "type": "BM25Retriever",
+        "params": {
+          "document_store": "DocumentStore",
+          "top_k": 10
+        }
+      }
+    ],
+    "pipelines": [
+      {
+        "name": "indexing",
+        "nodes": [
+          {
+            "name": "TextConverter",
+            "inputs": [
+              "File"
+            ]
+          },
+          {
+            "name": "Retriever",
+            "inputs": [
+              "TextConverter"
+            ]
+          },
+          {
+            "name": "DocumentStore",
+            "inputs": [
+              "Retriever"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "querying",
+        "nodes": [
+          {
+            "name": "Retriever",
+            "inputs": [
+              "Query"
+            ]
+          }
+        ]
+      }
+    ],
+    "benchmark_config": {
+      "data_url": "https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/msmarco.100_000.tar.bz2",
+      "documents_directory": "data/msmarco.100_000/txt",
+      "labels_file": "data/msmarco.100_000/evalsets/evalset_full.csv"
+    }
+  }
+}

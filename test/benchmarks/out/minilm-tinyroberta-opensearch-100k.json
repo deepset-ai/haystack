@@ -1,0 +1,109 @@
+{
+  "indexing": {
+    "retriever": "EmbeddingRetriever",
+    "doc_store": "OpenSearchDocumentStore",
+    "n_docs": 100001,
+    "indexing_time": 807.8076612100704,
+    "docs_per_second": 123.79308194502842,
+    "date_time": "2023-06-15 01:58:27",
+    "error": null
+  },
+  "querying": {
+    "exact_match": 0.33091461356733043,
+    "f1": 0.4347990336759361,
+    "querying_time": 2694.0813036769396,
+    "seconds_per_query": 0.13270029079287457,
+    "n_docs": 99999,
+    "n_queries": 20302,
+    "retriever": "EmbeddingRetriever",
+    "retriever_top_k": 10,
+    "doc_store": "OpenSearchDocumentStore",
+    "reader": "FARMReader",
+    "reader_model": "deepset/tinyroberta-squad2",
+    "reader_top_k": 10,
+    "date_time": "2023-06-15 03:07:50",
+    "error": null
+  },
+  "config": {
+    "version": "ignore",
+    "components": [
+      {
+        "name": "DocumentStore",
+        "type": "OpenSearchDocumentStore",
+        "params": {
+          "batch_size": 5000,
+          "similarity": "cosine",
+          "embedding_dim": 384
+        }
+      },
+      {
+        "name": "TextConverter",
+        "type": "TextConverter"
+      },
+      {
+        "name": "Retriever",
+        "type": "EmbeddingRetriever",
+        "params": {
+          "document_store": "DocumentStore",
+          "embedding_model": "sentence-transformers/multi-qa-MiniLM-L6-cos-v1",
+          "top_k": 10
+        }
+      },
+      {
+        "name": "Reader",
+        "type": "FARMReader",
+        "params": {
+          "model_name_or_path": "deepset/tinyroberta-squad2",
+          "top_k": 10
+        }
+      }
+    ],
+    "pipelines": [
+      {
+        "name": "indexing",
+        "nodes": [
+          {
+            "name": "TextConverter",
+            "inputs": [
+              "File"
+            ]
+          },
+          {
+            "name": "Retriever",
+            "inputs": [
+              "TextConverter"
+            ]
+          },
+          {
+            "name": "DocumentStore",
+            "inputs": [
+              "Retriever"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "querying",
+        "nodes": [
+          {
+            "name": "Retriever",
+            "inputs": [
+              "Query"
+            ]
+          },
+          {
+            "name": "Reader",
+            "inputs": [
+              "Retriever"
+            ]
+          }
+        ]
+      }
+    ],
+    "benchmark_config": {
+      "data_url": "https://deepset-test-datasets.s3.eu-central-1.amazonaws.com/squadv2.100_000.tar.bz2",
+      "documents_directory": "data/squadv2.100_000/txt",
+      "labels_file": "data/squadv2.100_000/evalsets/squad_evalset_all.csv"
+    }
+  }
+}
