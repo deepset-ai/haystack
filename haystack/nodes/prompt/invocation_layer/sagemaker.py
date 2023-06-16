@@ -30,20 +30,22 @@ with LazyImport() as boto3_import:
     import boto3
 
 
-
 class SageMakerInvocationLayer(PromptModelInvocationLayer):
     """
     # TODO: add docs
     """
 
-    def __init__(self, model_name_or_path: str, max_length: int = 100,
-                 aws_access_key_id: Optional[str]=None,
-                 aws_secret_access_key: Optional[str]=None,
-                 aws_session_token: Optional[str]=None,
-                region_name: Optional[str]=None,
-                profile_name:Optional[str]=None,
-
-                 **kwargs):
+    def __init__(
+        self,
+        model_name_or_path: str,
+        max_length: int = 100,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_session_token: Optional[str] = None,
+        region_name: Optional[str] = None,
+        profile_name: Optional[str] = None,
+        **kwargs,
+    ):
         """
         :param model_name_or_path: The name for SageMaker Model Endpoint.
         :param max_length: The maximum length of the output text.
@@ -56,10 +58,18 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         boto3_import.check()
         super().__init__(model_name_or_path)
         try:
-            session = boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, aws_session_token=aws_session_token, region_name=region_name, profile_name=profile_name)
-            self.client = session.client('sagemaker-runtime')
+            session = boto3.Session(
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                aws_session_token=aws_session_token,
+                region_name=region_name,
+                profile_name=profile_name,
+            )
+            self.client = session.client("sagemaker-runtime")
         except Exception as e:
-            logger.error(f"Failed to initialize SageMaker client. Please check if you have aws cli configured or set the aws_kwargs for the boto3 session. {e}")
+            logger.error(
+                f"Failed to initialize SageMaker client. Please check if you have aws cli configured or set the aws_kwargs for the boto3 session. {e}"
+            )
         self.max_length = max_length
 
         # for a list of supported parameters (TODO: verify if all of them are supported in sagemaker)
@@ -118,12 +128,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             kwargs_with_defaults["max_new_tokens"] = self.max_length
         kwargs_with_defaults.update(kwargs)
 
-        # TODO
-        # either stream is True (will use default handler) or stream_handler is provided
-        # stream = (
-        #     kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
-        # )
-
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         params = {
             "best_of": kwargs_with_defaults.get("best_of", None),
@@ -144,7 +148,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             "watermark": kwargs_with_defaults.get("watermark", False),
         }
         # TODO: Change to boto request "invoke_endpoint"
-        body = {"inputs": prompt, ** params}
+        body = {"inputs": prompt, **params}
         response = self.client.invoke_endpoint(
             EndpointName=self.model_name_or_path,
             Body=json.dumps(body),
@@ -155,38 +159,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         output = json.loads(response_json)
         generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
         return generated_texts
-
-    # def _process_streaming_response(
-    #     self, response: requests.Response, stream_handler: TokenStreamingHandler, stop_words: List[str]
-    # ) -> List[str]:
-    #     """
-    #     Stream the response and invoke the stream_handler on each token.
-    #
-    #     :param response: The response object from the server.
-    #     :param stream_handler: The handler to invoke on each token.
-    #     :param stop_words: The stop words to ignore.
-    #     """
-    #     client = sseclient.SSEClient(response)
-    #     tokens: List[str] = []
-    #     try:
-    #         for event in client.events():
-    #             if event.data != TokenStreamingHandler.DONE_MARKER:
-    #                 event_data = json.loads(event.data)
-    #                 token: Optional[str] = self._extract_token(event_data)
-    #                 # if valid token and not a stop words (we don't want to return stop words)
-    #                 if token and token.strip() not in stop_words:
-    #                     tokens.append(stream_handler(token, event_data=event_data))
-    #     finally:
-    #         client.close()
-    #     return ["".join(tokens)]  # return a list of strings just like non-streaming
-
-    # def _extract_token(self, event_data: Dict[str, Any]) -> Optional[str]:
-    #     """
-    #     Extract the token from the event data. If the token is a special token, return None.
-    #     param event_data: Event data from the streaming response.
-    #     """
-    #     # extract token from event data and only consider non-special tokens
-    #     return event_data["token"]["text"] if not event_data["token"]["special"] else None
 
     # def _post(
     #     self,
