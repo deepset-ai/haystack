@@ -204,7 +204,7 @@ class Pipeline:
         """
         # Check that the types match. We need type equality: subclass relationships are not accepted, just like
         # Optionals, Unions, and similar "aggregate" types. See https://github.com/python/typing/issues/570
-        if not from_socket.type == to_socket.type:
+        if not from_socket.type == to_socket.type and to_socket.type != Any:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
                 f"their declared input and output types do not match.\n"
@@ -386,8 +386,9 @@ class Pipeline:
 
             # Save to json
             os.makedirs(self.debug_path, exist_ok=True)
-            with open(self.debug_path / "data.json", "w", encoding="utf-8") as datafile:
-                json.dump(self.debug, datafile, indent=4, default=str)
+            with open(self.debug_path / "data.js", "w", encoding="utf-8") as datafile:
+                data = json.dumps(self.debug, indent=4, default=str)
+                datafile.write("const data = " + data)
 
             # Store in the output
             pipeline_output["_debug"] = self.debug  # type: ignore
@@ -399,11 +400,11 @@ class Pipeline:
         """
         Stores a snapshot of this step into the self.debug dictionary of the pipeline.
         """
-        mermaid_graph = convert_for_debug(deepcopy(self.graph))
+        mermaid_graph = convert_for_debug(deepcopy(self.graph), components_queue=list(inputs_buffer.keys()))
         self.debug[step] = {
             "time": datetime.datetime.now(),
-            "inputs_buffer": list(inputs_buffer.items()),
-            "pipeline_output": pipeline_output,
+            "inputs_buffer": deepcopy(list(inputs_buffer.items())),
+            "pipeline_output": deepcopy(pipeline_output),
             "diagram": mermaid_graph,
         }
 
@@ -447,7 +448,6 @@ class Pipeline:
 
         # Some node upstream didn't run yet, so we should wait for them.
         if not self._all_nodes_to_wait_for_run(nodes_to_wait_for=nodes_to_wait_for):
-
             if not inputs_buffer:
                 # What if there are no components to wait for?
                 raise PipelineRuntimeError(
@@ -497,7 +497,6 @@ class Pipeline:
         # Variadic nodes expect a single list regardless of how many incoming connections they have,
         # but the length of the list should match the length of incoming connections.
         if self.graph.nodes[name]["variadic_input"]:
-
             # Variadic nodes need at least two values
             if not inputs or len(inputs) < 2:
                 return False
