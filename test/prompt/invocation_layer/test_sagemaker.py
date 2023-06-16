@@ -32,9 +32,7 @@ def test_supports_not():
     )
     assert not SageMakerInvocationLayer.supports(
         model_name_or_path="invalid-model-name", profile_name="invalid-profile"
-     )
-
-
+    )
 
 
 # create a fixture with mocked boto3 client and session
@@ -44,15 +42,21 @@ def mock_boto3_session():
         yield mock_client
 
 
-
-
 @pytest.mark.unit
 def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     """
     Test that the default constructor sets the correct values
     """
 
-    layer = SageMakerInvocationLayer(model_name_or_path="flan-t5-xxl", max_length=99, aws_access_key_id="some_fake_id", aws_secret_access_key="some_fake_key", aws_session_token="some_fake_token", profile_name="some_fake_profile", region_name="fake_region")
+    layer = SageMakerInvocationLayer(
+        model_name_or_path="flan-t5-xxl",
+        max_length=99,
+        aws_access_key_id="some_fake_id",
+        aws_secret_access_key="some_fake_key",
+        aws_session_token="some_fake_token",
+        profile_name="some_fake_profile",
+        region_name="fake_region",
+    )
 
     # assert layer. == "some_fake_key"
     assert layer.max_length == 99
@@ -64,10 +68,10 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     # assert mocked boto3 client was called with the correct parameters
     mock_boto3_session.assert_called_with(
         aws_access_key_id="some_fake_id",
-        aws_secret_access_key = "some_fake_key",
+        aws_secret_access_key="some_fake_key",
         aws_session_token="some_fake_token",
         profile_name="some_fake_profile",
-        region_name="fake_region"
+        region_name="fake_region",
     )
 
 
@@ -108,9 +112,7 @@ def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
     """
     stop_words = ["but", "not", "bye"]
     layer = SageMakerInvocationLayer(model_name_or_path="some_model", api_key="fake_key")
-    with patch(
-        "haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post"
-    ) as mock_post:
+    with patch("haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post") as mock_post:
         # Mock the response, need to return a list of dicts
         mock_post.return_value = MagicMock(text='[{"generated_text": "Hello"}]')
 
@@ -153,4 +155,3 @@ def test_ensure_token_limit_negative_mock(mock_auto_tokenizer):
 def test_empty_model_name():
     with pytest.raises(ValueError, match="cannot be None or empty string"):
         SageMakerInvocationLayer(model_name_or_path="")
-

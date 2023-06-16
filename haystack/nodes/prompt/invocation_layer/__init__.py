@@ -1,4 +1,3 @@
-
 from haystack.nodes.prompt.invocation_layer.azure_open_ai import AzureOpenAIInvocationLayer
 from haystack.nodes.prompt.invocation_layer.base import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.chatgpt import ChatGPTInvocationLayer
