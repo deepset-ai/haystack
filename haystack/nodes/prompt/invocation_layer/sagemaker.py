@@ -20,7 +20,11 @@ with LazyImport() as boto3_import:
 
 class SageMakerInvocationLayer(PromptModelInvocationLayer):
     """
-    # TODO: add docs
+    SageMaker Invocation Layer
+
+    Let's you use an LLM hosted via a SageMaker Inference Endpoint PromptNode.
+    It's expecting a Huggingface Model running at the SageMaker Inference Endpoint (e.g. Falcon, Flan-T5).
+    See https://www.philschmid.de/sagemaker-falcon-llm for instructions on how to deploy such a model to SageMaker.
     """
 
     def __init__(
@@ -35,6 +39,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         **kwargs,
     ):
         """
+        Instantiates the session with SageMaker using IAM based authentication via boto3.
+
         :param model_name_or_path: The name for SageMaker Model Endpoint.
         :param max_length: The maximum length of the output text.
         :param aws_access_key_id: AWS access key ID.
@@ -84,7 +90,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
-        # we pop the model_max_length from the model_input_kwargs as it is not sent to the model
+        # We pop the model_max_length from the model_input_kwargs as it is not sent to the model
         # but used to truncate the prompt if needed
         model_max_length = self.model_input_kwargs.pop("model_max_length", 1024)
 
@@ -93,10 +99,14 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
         )
 
-    def invoke(self, *args, **kwargs):
+    def invoke(self, *args, **kwargs) -> List[str]:
         """
-        Invokes a prompt on the model. It takes in a prompt and returns a list of responses using a REST invocation.
-        :return: The responses are being returned.
+        Sends the prompt to the remote model and returns the generated response(s).
+        You can pass all parameters supported by the Huggingface Transformers `generate` method
+        here via **kwargs (e.g. "temperature", "stop" ...).
+        For a full list see: https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
+
+        :return: The generated responses from the model as a list of strings.
         """
         prompt = kwargs.get("prompt")
         if not prompt:
@@ -105,15 +115,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 f"Make sure to provide prompt in kwargs."
             )
 
-        # stop_words to stop the model while generating the answer are currently not supported in SageMaker,
-        # but we will truncate the response later on to at least achieve the same behaviour on the answer
         stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
-
-        # TODO: Check if still relevant / needed
-        if "max_new_tokens" not in kwargs_with_defaults:
-            kwargs_with_defaults["max_new_tokens"] = self.max_length
-        kwargs_with_defaults.update(kwargs)
 
         # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
         params = {
@@ -140,9 +143,9 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
     def _post(self, prompt: str, params: Optional[Dict[str, Any]] = None) -> List[str]:
         """
         Post data to the SageMaker inference model. It takes in a prompt and returns a list of responses using model invocation.
-        :param prompt: The prompt to be sent to the model.
-        :param params: The parameters to be sent to the model.
-        :return: The responses are being returned.
+        :param prompt: The prompt text to be sent to the model.
+        :param params: The parameters to be sent to the Hugging Face model (see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
+        :return: The generated responses as a list of strings.
         """
 
         try:
@@ -183,6 +186,11 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+        """
+        Checks whether a model_name_or_path passed down (e.g. via PromptNode) is supported by this class.
+
+        :param model_name_or_path: The model_name_or_path to check.
+        """
         client = None
         try:
             session = boto3.Session(
@@ -199,5 +207,4 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         finally:
             if client:
                 client.close()
-
         return True
