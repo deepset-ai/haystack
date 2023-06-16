@@ -1,30 +1,20 @@
 import json
-import os
-from typing import Optional, Dict, Union, List, Any, Callable
 import logging
-
+from typing import Optional, Dict, Union, List, Any
 
 import requests
-import sseclient
 
-from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC, HAYSTACK_REMOTE_API_MAX_RETRIES
 from haystack.errors import (
-    HuggingFaceInferenceLimitError,
-    HuggingFaceInferenceUnauthorizedError,
-    HuggingFaceInferenceError,
+    SageMakerModelNotReadyError, SageMakerInferenceError,
 )
+from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer import (
     PromptModelInvocationLayer,
-    TokenStreamingHandler,
-    DefaultTokenStreamingHandler,
 )
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
-from haystack.utils import request_with_retry
-from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
-HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-HF_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
 
 with LazyImport() as boto3_import:
     import boto3
@@ -147,64 +137,50 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             "typical_p": kwargs_with_defaults.get("typical_p", None),
             "watermark": kwargs_with_defaults.get("watermark", False),
         }
-        # TODO: Change to boto request "invoke_endpoint"
-        body = {"inputs": prompt, **params}
-        response = self.client.invoke_endpoint(
-            EndpointName=self.model_name_or_path,
-            Body=json.dumps(body),
-            ContentType="application/json",
-            Accept="application/json",
-        )
-        response_json = response.get("Body").read().decode("utf-8")
-        output = json.loads(response_json)
-        generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+        generated_texts = self._post(prompt=prompt, params=params)
         return generated_texts
 
-    # def _post(
-    #     self,
-    #     data: Dict[str, Any],
-    #     stream: bool = False,
-    #     attempts: int = HF_RETRIES,
-    #     status_codes_to_retry: Optional[List[int]] = None,
-    #     timeout: float = HF_TIMEOUT,
-    # ) -> requests.Response:
+
+    # def _extract_token(self, event_data: Dict[str, Any]) -> Optional[str]:
     #     """
-    #     Post data to the HF inference model. It takes in a prompt and returns a list of responses using a REST invocation.
-    #     :param data: The data to be sent to the model.
-    #     :param stream: Whether to stream the response.
-    #     :param attempts: The number of attempts to make.
-    #     :param status_codes_to_retry: The status codes to retry on.
-    #     :param timeout: The timeout for the request.
-    #     :return: The responses are being returned.
+    #     Extract the token from the event data. If the token is a special token, return None.
+    #     param event_data: Event data from the streaming response.
     #     """
-    #     response: requests.Response
-    #     if status_codes_to_retry is None:
-    #         status_codes_to_retry = [429]
-    #     try:
-    #         # TODO CHANGE TO BOTO REQUEST
-    #         pass
-    #         # response = request_with_retry(
-    #         #     method="POST",
-    #         #     status_codes_to_retry=status_codes_to_retry,
-    #         #     attempts=attempts,
-    #         #     url=self.url,
-    #         #     headers=self.headers,
-    #         #     json=data,
-    #         #     timeout=timeout,
-    #         #     stream=stream,
-    #         # )
-    #     except requests.HTTPError as err:
-    #         res = err.response
-    #         if res.status_code == 429:
-    #             raise HuggingFaceInferenceLimitError(f"API rate limit exceeded: {res.text}")
-    #         if res.status_code == 401:
-    #             raise HuggingFaceInferenceUnauthorizedError(f"API key is invalid: {res.text}")
-    #
-    #         raise HuggingFaceInferenceError(
-    #             f"HuggingFace Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
-    #             status_code=res.status_code,
-    #         )
-    #     return response
+    #     # extract token from event data and only consider non-special tokens
+    #     return event_data["token"]["text"] if not event_data["token"]["special"] else None
+
+    def _post(
+        self,
+        prompt: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[str]:
+        """
+        Post data to the HF inference model. It takes in a prompt and returns a list of responses using model invocation.
+        :param prompt: The prompt to be sent to the model.
+        :param params: The parameters to be sent to the model.
+        :return: The responses are being returned.
+        """
+
+        try:
+            body = {"inputs": prompt, **params}
+            response = self.client.invoke_endpoint(
+                EndpointName=self.model_name_or_path,
+                Body=json.dumps(body),
+                ContentType="application/json",
+                Accept="application/json",
+            )
+            response_json = response.get("Body").read().decode("utf-8")
+            output = json.loads(response_json)
+            generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
+            return generated_texts
+        except requests.HTTPError as err:
+            res = err.response
+            if res.status_code == 429:
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
+            raise SageMakerInferenceError(
+                f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
+                status_code=res.status_code,
+            )
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         # the prompt for this model will be of the type str
