@@ -81,6 +81,7 @@ dependencies = [
 
   # Preview
   "canals==0.2.2",
+  "banks==0.1.1",
 
   # Agent events
   "events",
