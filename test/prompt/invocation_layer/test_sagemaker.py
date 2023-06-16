@@ -1,38 +1,33 @@
-import pytest
-import logging
-import unittest
+import os
 from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer import SageMakerInvocationLayer
 
 
+@pytest.mark.skipif(
+    not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None), reason="Skipping because SageMaker not configured"
+)
 @pytest.mark.integration
 def test_supports():
     """
     Test that supports returns True for valid SageMakerInvocationLayer
     """
-
-    assert SageMakerInvocationLayer.supports(
-        model_name_or_path="jumpstart-example-tiiuae-falcon-40b-ins-2023-06-16-09-15-35-027",
-        profile_name="Haystack-OSS-test",
-    )
+    model_name_or_path = os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT")
+    assert SageMakerInvocationLayer.supports(model_name_or_path=model_name_or_path)
 
 
+@pytest.mark.skipif(
+    not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None), reason="Skipping because SageMaker not configured"
+)
 @pytest.mark.integration
 def test_supports_not():
     """
     Test that supports returns False for invalid SageMakerInvocationLayer
     """
-    assert not SageMakerInvocationLayer.supports("google/flan-t5-xxl", profile_name="Haystack-OSS-test")
-    assert not SageMakerInvocationLayer.supports(
-        model_name_or_path="jumpstart-example-tiiuae-falcon-40b-ins-2023-06-16-09-15-35-027"
-    )
-    assert not SageMakerInvocationLayer.supports(
-        model_name_or_path="invalid-model-name", profile_name="invalid-profile"
-    )
+    assert not SageMakerInvocationLayer.supports(model_name_or_path="fake_endpoint")
+    assert not SageMakerInvocationLayer.supports(model_name_or_path="fake_endpoint", profile_name="invalid-profile")
 
 
 # create a fixture with mocked boto3 client and session
@@ -49,7 +44,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
     """
 
     layer = SageMakerInvocationLayer(
-        model_name_or_path="flan-t5-xxl",
+        model_name_or_path="some_fake_model",
         max_length=99,
         aws_access_key_id="some_fake_id",
         aws_secret_access_key="some_fake_key",
@@ -60,7 +55,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
 
     # assert layer. == "some_fake_key"
     assert layer.max_length == 99
-    assert layer.model_name_or_path == "flan-t5-xxl"
+    assert layer.model_name_or_path == "some_fake_model"
 
     # assert mocked boto3 client called exactly once
     mock_boto3_session.assert_called_once()
@@ -76,7 +71,7 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
 
 
 @pytest.mark.unit
-def test_constructor_with_model_kwargs(mock_auto_tokenizer):
+def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     Test that model_kwargs are correctly set in the constructor
     and that model_kwargs_rejected are correctly filtered out
@@ -84,12 +79,9 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer):
     model_kwargs = {"temperature": 0.7, "do_sample": True, "stream": True}
     model_kwargs_rejected = {"fake_param": 0.7, "another_fake_param": 1}
 
-    layer = HFInferenceEndpointInvocationLayer(
-        model_name_or_path="google/flan-t5-xxl", api_key="some_fake_key", **model_kwargs, **model_kwargs_rejected
-    )
+    layer = SageMakerInvocationLayer(model_name_or_path="some_fake_model", **model_kwargs, **model_kwargs_rejected)
     assert "temperature" in layer.model_input_kwargs
     assert "do_sample" in layer.model_input_kwargs
-    assert "stream" in layer.model_input_kwargs
     assert "fake_param" not in layer.model_input_kwargs
     assert "another_fake_param" not in layer.model_input_kwargs
 
