@@ -144,7 +144,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
     def _post(self, prompt: str, params: Optional[Dict[str, Any]] = None) -> List[str]:
         """
-        Post data to the HF inference model. It takes in a prompt and returns a list of responses using model invocation.
+        Post data to the SageMaker inference model. It takes in a prompt and returns a list of responses using model invocation.
         :param prompt: The prompt to be sent to the model.
         :param params: The parameters to be sent to the model.
         :return: The responses are being returned.
@@ -191,7 +191,11 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         client = None
         try:
             session = boto3.Session(
-                profile_name=kwargs.get("profile_name", "default"), region_name=kwargs.get("region_name", None)
+                aws_access_key_id=kwargs.get("aws_access_key_id"),
+                aws_secret_access_key=kwargs.get("aws_secret_access_key"),
+                aws_session_token=kwargs.get("aws_session_token"),
+                region_name=kwargs.get("region_name"),
+                profile_name=kwargs.get("profile_name"),
             )
             client = session.client("sagemaker")
             client.describe_endpoint(EndpointName=model_name_or_path)
