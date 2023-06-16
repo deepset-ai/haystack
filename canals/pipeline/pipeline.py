@@ -204,7 +204,7 @@ class Pipeline:
         """
         # Check that the types match. We need type equality: subclass relationships are not accepted, just like
         # Optionals, Unions, and similar "aggregate" types. See https://github.com/python/typing/issues/570
-        if not from_socket.type == to_socket.type and to_socket.type != Any:
+        if to_socket.type is not Any and not from_socket.type == to_socket.type:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
                 f"their declared input and output types do not match.\n"
