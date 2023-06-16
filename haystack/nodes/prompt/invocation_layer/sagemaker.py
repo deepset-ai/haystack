@@ -22,7 +22,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
     """
     SageMaker Invocation Layer
 
-    Let's you use an LLM hosted via a SageMaker Inference Endpoint PromptNode.
+    Lets you use an LLM hosted via a SageMaker Inference Endpoint PromptNode.
     It's expecting a Huggingface Model running at the SageMaker Inference Endpoint (e.g. Falcon, Flan-T5).
     See https://www.philschmid.de/sagemaker-falcon-llm for instructions on how to deploy such a model to SageMaker.
     """
