@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from typing import Optional, Dict, Union, List, Any
 
 import requests
@@ -71,8 +70,9 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             )
             self.client = session.client("sagemaker-runtime")
         except Exception as e:
-            logger.error(
-                f"Failed to initialize SageMaker client. Please check if you have aws cli configured or set the aws_kwargs for the boto3 session. {e}"
+            raise SageMakerInferenceError(
+                f"Could not connect to SageMaker Inference Endpoint {model_name_or_path}."
+                f"Make sure the Endpoint exists and AWS environment is configured. {e}"
             )
         self.max_length = max_length
 
@@ -213,7 +213,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             )
             client = session.client("sagemaker")
             client.describe_endpoint(EndpointName=model_name_or_path)
-        except (ClientError, BotoCoreError) as e:
+        except (ClientError, BotoCoreError):
             return False
         finally:
             if client:
