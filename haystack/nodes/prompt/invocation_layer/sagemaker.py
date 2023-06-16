@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport() as boto3_import:
     import boto3
+    from botocore.exceptions import ClientError, BotoCoreError
 
 
 class SageMakerInvocationLayer(PromptModelInvocationLayer):
@@ -187,5 +188,17 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        # TODO check via boto3 if sagemaker endpoint exists (maybe also addition kwargs give us a hint, e.g. region)
+        client = None
+        try:
+            session = boto3.Session(
+                profile_name=kwargs.get("profile_name", "default"), region_name=kwargs.get("region_name", None)
+            )
+            client = session.client("sagemaker")
+            client.describe_endpoint(EndpointName=model_name_or_path)
+        except (ClientError, BotoCoreError) as e:
+            return False
+        finally:
+            if client:
+                client.close()
+
         return True
