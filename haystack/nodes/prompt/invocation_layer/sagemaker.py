@@ -125,7 +125,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 f"Make sure to provide prompt in kwargs."
             )
 
-        stop_words = kwargs.pop("stop_words", [])
+        stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
         kwargs_with_defaults.update(kwargs)
 
