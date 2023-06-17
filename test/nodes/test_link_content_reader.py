@@ -5,7 +5,7 @@ import requests
 from requests.models import Response
 
 from haystack import Document
-from haystack.nodes.retriever.link_content_reader import LinkContentReader
+from haystack.nodes import LinkContentReader
 
 
 @pytest.fixture
