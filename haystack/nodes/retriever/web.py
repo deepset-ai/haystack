@@ -94,7 +94,6 @@ class WebRetriever(BaseRetriever):
         cache_headers: Optional[Dict[str, str]] = None,
         cache_time: Optional[int] = None,
     ) -> List[Document]:
-        cache_document_store = self.cache_document_store
         """
         Private method to check if the documents for a given query are already cached. The documents are fetched from
         the specified DocumentStore. It retrieves documents that are newer than the cache_time limit.
@@ -109,7 +108,7 @@ class WebRetriever(BaseRetriever):
         :returns: A list of Document instances fetched from the cache. If no documents are found in the cache, an empty
         list is returned.
         """
-
+        cache_document_store = self.cache_document_store
         documents = []
 
         if cache_document_store is not None:
