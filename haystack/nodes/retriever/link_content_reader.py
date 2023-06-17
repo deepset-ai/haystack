@@ -35,7 +35,7 @@ class LinkContentReader:
         """
         Fetches content from a URL and converts it into a list of Document objects.
         """
-        url = self.url or kwargs.get("url")
+        url = kwargs.get("url") or self.url
         if not url:
             raise ValueError("LinkContentReader requires a url parameter to be set either during init or at runtime.")
 
@@ -64,16 +64,17 @@ class LinkContentReader:
         type is HTML or could not be determined.
         """
         extracted_doc = {"url": url}
-        extractor = extractors.ArticleExtractor(raise_on_failure=False)
 
         if not self.is_valid_url(url):
-            logger.debug("Invalid URL: %s", url)
+            logger.warning("Invalid URL: %s", url)
             return extracted_doc
 
+        extractor = extractors.ArticleExtractor(raise_on_failure=False)
         try:
             response = requests.get(url, headers=self.request_headers(), timeout=timeout)
         except requests.RequestException as e:
             # these http errors during content fetching are not so rare, we can continue with empty content
+            # don't change the log level to error or warning as it would be too noisy
             logger.debug("Error retrieving URL %s: %s", url, e)
             return extracted_doc
 
@@ -84,7 +85,8 @@ class LinkContentReader:
                     extracted_doc = {**extracted_doc, "text": extracted_content}
             except Exception as e:
                 # these parsing errors occur as well, we can continue with empty content
-                logger.debug("Error extracting content from URL %s: %s", url, e)
+                # don't change the log level to error or warning as it would be too noisy
+                logger.debug("Couldn't extract content from URL %s: %s", url, e)
 
         return extracted_doc
 
