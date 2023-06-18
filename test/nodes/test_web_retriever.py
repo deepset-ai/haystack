@@ -12,7 +12,7 @@ from haystack.nodes.retriever.web import SearchResult
 
 @pytest.fixture
 def mocked_requests():
-    with patch("haystack.nodes.retriever.link_content_reader.requests") as mock_requests:
+    with patch("haystack.nodes.retriever.link_content.requests") as mock_requests:
         mock_response = Mock()
         mock_requests.get.return_value = mock_response
         mock_response.status_code = 200

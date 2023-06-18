@@ -10,7 +10,7 @@ from haystack import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever.link_content_reader import LinkContentReader
+from haystack.nodes.retriever.link_content import LinkContentRetriever
 from haystack.nodes.search_engine.web import SearchEngine
 from haystack.nodes.search_engine.web import WebSearch
 from haystack.schema import FilterType
@@ -291,9 +291,9 @@ class WebRetriever(BaseRetriever):
 
         def scrape_direct(link: SearchResult) -> List[Document]:
             reader = (
-                LinkContentReader(pre_processor=preprocessor)
+                LinkContentRetriever(pre_processor=preprocessor)
                 if self.mode == "preprocessed_documents" and preprocessor
-                else LinkContentReader()
+                else LinkContentRetriever()
             )
             return reader(
                 url=link.url,

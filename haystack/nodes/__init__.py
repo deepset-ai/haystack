@@ -41,7 +41,7 @@ from haystack.nodes.retriever import (
     TfidfRetriever,
     TableTextRetriever,
     MultiModalRetriever,
-    LinkContentReader,
+    LinkContentRetriever,
     WebRetriever,
 )
 

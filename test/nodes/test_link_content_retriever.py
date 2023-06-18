@@ -5,12 +5,12 @@ import requests
 from requests.models import Response
 
 from haystack import Document
-from haystack.nodes import LinkContentReader
+from haystack.nodes import LinkContentRetriever
 
 
 @pytest.fixture
 def mocked_requests():
-    with patch("haystack.nodes.retriever.link_content_reader.requests") as mock_requests:
+    with patch("haystack.nodes.retriever.link_content.requests") as mock_requests:
         mock_response = Mock()
         mock_requests.get.return_value = mock_response
         mock_response.status_code = 200
@@ -50,7 +50,7 @@ def mock_head_response_factory():
 def test_init():
     url = "https://www.example.com"
     pre_processor_mock = Mock()
-    reader = LinkContentReader(url, pre_processor_mock)
+    reader = LinkContentRetriever(url, pre_processor_mock)
 
     assert reader.url == url
     assert reader.pre_processor == pre_processor_mock
@@ -62,7 +62,7 @@ def test_init():
 def test_init_with_preprocessor():
     # Initialize without a URL
     pre_processor_mock = Mock()
-    reader_no_url = LinkContentReader(pre_processor=pre_processor_mock)
+    reader_no_url = LinkContentRetriever(pre_processor=pre_processor_mock)
     assert reader_no_url.url is None
     assert reader_no_url.pre_processor == pre_processor_mock
     assert isinstance(reader_no_url.handlers, dict)
@@ -73,7 +73,7 @@ def test_init_with_preprocessor():
 def test_init_with_url():
     # Initialize without a preprocessor
     url = "https://haystack.deepset.ai/"
-    reader_no_preprocessor = LinkContentReader(url)
+    reader_no_preprocessor = LinkContentRetriever(url)
     assert reader_no_preprocessor.url == url
     assert reader_no_preprocessor.pre_processor is None
     assert isinstance(reader_no_preprocessor.handlers, dict)
@@ -87,7 +87,7 @@ def test_call(mocked_requests, mocked_article_extractor):
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
     url = "https://www.example.com"
-    reader = LinkContentReader(url, pre_processor_mock)
+    reader = LinkContentRetriever(url, pre_processor_mock)
     result = reader(doc_kwargs={"text": "Sample content from webpage"})
 
     assert len(result) == 1
@@ -102,7 +102,7 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
     # Test without a URL
-    reader_no_url = LinkContentReader(pre_processor=pre_processor_mock)
+    reader_no_url = LinkContentRetriever(pre_processor=pre_processor_mock)
     with pytest.raises(ValueError):
         reader_no_url()
 
@@ -111,7 +111,7 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
 def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
     # Test without a pre_processor
     url = "https://www.example.com"
-    reader_no_preprocessor = LinkContentReader(url)
+    reader_no_preprocessor = LinkContentRetriever(url)
 
     result_no_preprocessor = reader_no_preprocessor()
 
@@ -124,14 +124,14 @@ def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
 def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
     url = "https://www.example.com"
 
-    reader = LinkContentReader(url)
+    reader = LinkContentRetriever(url)
     reader()
 
     # Check the arguments that requests.get was called with
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 3
-    assert kwargs["headers"] == reader.request_headers()
+    assert kwargs["headers"] == reader._request_headers()
 
     # another variant
     url = "https://deepset.ai"
@@ -140,7 +140,7 @@ def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 10
-    assert kwargs["headers"] == reader.request_headers()
+    assert kwargs["headers"] == reader._request_headers()
 
 
 @pytest.mark.unit
@@ -148,8 +148,8 @@ def test_fetch_default_valid_url(mocked_requests, mocked_article_extractor):
     url = "https://www.example.com"
     timeout = 10
 
-    reader = LinkContentReader(url=url)
-    result = reader.fetch_default(url, timeout)
+    reader = LinkContentRetriever(url=url)
+    result = reader._fetch_default(url, timeout)
 
     assert result["text"] == "Sample content from webpage"
     assert result["url"] == url
@@ -159,8 +159,8 @@ def test_fetch_default_valid_url(mocked_requests, mocked_article_extractor):
 def test_fetch_default_invalid_url(caplog, mocked_requests, mocked_article_extractor):
     url = "invalid-url"
 
-    reader = LinkContentReader(url=url)
-    result = reader.fetch_default(url)
+    reader = LinkContentRetriever(url=url)
+    result = reader._fetch_default(url)
 
     assert result == {"url": url}
     assert "Invalid URL" in caplog.text
@@ -173,8 +173,8 @@ def test_fetch_default_empty_content(mocked_requests):
     content_text = ""
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", return_value=content_text):
-        reader = LinkContentReader(url=url)
-        result = reader.fetch_default(url, timeout)
+        reader = LinkContentRetriever(url=url)
+        result = reader._fetch_default(url, timeout)
 
     assert "text" not in result
     assert result.get("url") == url
@@ -186,8 +186,8 @@ def test_fetch_exception_during_content_extraction(caplog, mocked_requests):
     url = "https://www.example.com"
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
-        reader = LinkContentReader(url=url)
-        result = reader.fetch_default(url)
+        reader = LinkContentRetriever(url=url)
+        result = reader._fetch_default(url)
 
     assert "text" not in result
     assert result.get("url") == url
@@ -199,9 +199,9 @@ def test_fetch_exception_during_request_get(caplog):
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
 
-    with patch("haystack.nodes.retriever.link_content_reader.requests.get", side_effect=requests.RequestException()):
-        reader = LinkContentReader(url=url)
-        result = reader.fetch_default(url)
+    with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
+        reader = LinkContentRetriever(url=url)
+        result = reader._fetch_default(url)
 
     assert "text" not in result
     assert result.get("url") == url
@@ -214,9 +214,9 @@ def test_get_handler_pdf_content_type(mock_head_response_factory):
     # default handler should be used until we add support for other types
     url = "http://example.com/some.pdf"
     handler_expected = "pdf"
-    reader = LinkContentReader()
+    reader = LinkContentRetriever()
     with mock_head_response_factory("application/pdf"):
-        handler = reader.get_handler(url)
+        handler = reader._get_handler(url)
     assert handler == handler_expected
 
 
@@ -226,9 +226,9 @@ def test_get_handler_html_content_type(mock_head_response_factory):
     # default handler should be used until we add support for other types
     url = "http://example.com/some.html"
     handler_expected = "default"
-    reader = LinkContentReader()
+    reader = LinkContentRetriever()
     with mock_head_response_factory("text/html"):
-        handler = reader.get_handler(url)
+        handler = reader._get_handler(url)
     assert handler == handler_expected
 
 
@@ -238,15 +238,15 @@ def test_get_handler_no_content_type(mock_head_response_factory):
     url = "http://example.com/no_content_type"
     handler_expected = "default"
 
-    reader = LinkContentReader()
+    reader = LinkContentRetriever()
     with mock_head_response_factory(""):
-        handler = reader.get_handler(url)
+        handler = reader._get_handler(url)
     assert handler == handler_expected
 
 
 @pytest.mark.unit
 def test_is_valid_url():
-    reader = LinkContentReader()
+    reader = LinkContentRetriever()
 
     valid_urls = [
         "http://www.google.com",
@@ -266,12 +266,12 @@ def test_is_valid_url():
     ]
 
     for url in valid_urls:
-        assert reader.is_valid_url(url), f"Expected {url} to be valid"
+        assert reader._is_valid_url(url), f"Expected {url} to be valid"
 
 
 @pytest.mark.unit
 def test_is_invalid_url():
-    reader = LinkContentReader()
+    reader = LinkContentRetriever()
 
     invalid_urls = [
         "http://",
@@ -292,7 +292,7 @@ def test_is_invalid_url():
     ]
 
     for url in invalid_urls:
-        assert not reader.is_valid_url(url), f"Expected {url} to be invalid"
+        assert not reader._is_valid_url(url), f"Expected {url} to be invalid"
 
 
 @pytest.mark.integration
@@ -301,7 +301,7 @@ def test_call_with_valid_url():
     Test that LinkContentReader can fetch content from a valid URL
     """
 
-    reader = LinkContentReader(url="https://docs.haystack.deepset.ai/")
+    reader = LinkContentRetriever(url="https://docs.haystack.deepset.ai/")
     docs = reader(timeout=2)
 
     assert len(docs) >= 1
