@@ -93,6 +93,7 @@ class QuestionGenerator(BaseComponent):
                         parameter is not used and a single CPU device is used for inference.
 
         """
+        torch_and_transformers_import.check()
         super().__init__()
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
