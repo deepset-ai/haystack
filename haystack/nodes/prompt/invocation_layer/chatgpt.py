@@ -132,17 +132,19 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             return prompt
 
         if isinstance(prompt, str):
+            tokenized_payload = self._tokenizer.encode(prompt)
+            n_other_tokens = n_message_tokens - len(tokenized_payload)
+
             logger.warning(
                 "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
                 "answer length (%s tokens) fit within the max token limit (%s tokens). "
                 "Reduce the length of the prompt to prevent it from being cut off.",
                 n_message_tokens,
-                self.max_tokens_limit - n_answer_tokens,
+                self.max_tokens_limit - n_answer_tokens - n_other_tokens,
                 n_answer_tokens,
                 self.max_tokens_limit,
             )
-            tokenized_payload = self._tokenizer.encode(prompt)
-            n_other_tokens = n_message_tokens - len(tokenized_payload)
+
             truncated_prompt_length = self.max_tokens_limit - n_answer_tokens - n_other_tokens
             truncated_prompt = self._tokenizer.decode(tokenized_payload[:truncated_prompt_length])
             return truncated_prompt
