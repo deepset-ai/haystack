@@ -14,12 +14,28 @@ def test_ranker_preprocess_batch_queries_and_docs_raises():
     docs = [Document(content="dummy doc 1")]
     with pytest.raises(HaystackError):
         _, _, _, _ = SentenceTransformersRanker._preprocess_batch_queries_and_docs(
-            queries=[query_1, query_2], documents=[docs]
+            queries=[query_1, query_2], documents=docs
         )
 
 
 @pytest.mark.unit
-def test_ranker_preprocess_batch_queries_and_docs():
+def test_ranker_preprocess_batch_queries_and_docs_single_query_single_doc_list():
+    query1 = "query 1"
+    docs1 = [Document(content="dummy doc 1"), Document(content="dummy doc 2")]
+    (
+        num_of_docs,
+        all_queries,
+        all_docs,
+        single_list_of_docs,
+    ) = SentenceTransformersRanker._preprocess_batch_queries_and_docs(queries=[query1], documents=docs1)
+    assert single_list_of_docs is True
+    assert num_of_docs == [2]
+    assert len(all_queries) == 2
+    assert len(all_docs) == 2
+
+
+@pytest.mark.unit
+def test_ranker_preprocess_batch_queries_and_docs_multiple_queries_multiple_doc_lists():
     query_1 = "query 1"
     query_2 = "query 2"
     docs1 = [Document(content="dummy doc 1"), Document(content="dummy doc 2")]
@@ -36,6 +52,17 @@ def test_ranker_preprocess_batch_queries_and_docs():
     assert num_of_docs == [2, 1]
     assert len(all_queries) == 3
     assert len(all_docs) == 3
+
+
+@pytest.mark.unit
+def test_ranker_get_batches():
+    all_queries = ["query 1", "query 1"]
+    all_docs = [Document(content="dummy doc 1"), Document(content="dummy doc 2")]
+    batches = SentenceTransformersRanker._get_batches(all_queries=all_queries, all_docs=all_docs, batch_size=None)
+    assert next(batches) == (all_queries, all_docs)
+
+    batches = SentenceTransformersRanker._get_batches(all_queries=all_queries, all_docs=all_docs, batch_size=1)
+    assert next(batches) == (all_queries[0:1], all_docs[0:1])
 
 
 def test_ranker(ranker):
