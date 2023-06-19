@@ -25,14 +25,14 @@ class MergeLoop:
         self.expected_type = type_
         self.init_parameters = {"expected_type": type_.__name__}
 
-    @component.input(variadic=True)
+    @component.input(variadic=True)  # type: ignore
     def input(self):
         class Input:
             values: List[self.expected_type]  # type: ignore
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             value: self.expected_type  # type: ignore

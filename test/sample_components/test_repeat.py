@@ -16,7 +16,7 @@ class Repeat:
     Repeats the input value on all outputs.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             value: int
@@ -27,7 +27,7 @@ class Repeat:
         self.outputs = outputs
         self._output_type = make_dataclass("Output", fields=[(val, int, None) for val in outputs])
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         return self._output_type
 

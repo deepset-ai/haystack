@@ -19,7 +19,7 @@ class Threshold:
     :param threshold: the number to compare the input value against. This is also a parameter.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             value: int
@@ -27,7 +27,7 @@ class Threshold:
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             above: int

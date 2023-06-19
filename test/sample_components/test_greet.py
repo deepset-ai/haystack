@@ -18,7 +18,7 @@ class Greet:
     Logs a greeting message without affecting the value passing on the connection.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             value: int
@@ -27,7 +27,7 @@ class Greet:
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             value: int

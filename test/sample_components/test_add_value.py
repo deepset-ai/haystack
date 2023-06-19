@@ -14,7 +14,7 @@ class AddFixedValue:
     Adds the value of `add` to `value`. If not given, `add` defaults to 1.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             value: int
@@ -22,7 +22,7 @@ class AddFixedValue:
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             value: int

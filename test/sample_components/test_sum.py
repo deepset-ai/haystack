@@ -14,14 +14,14 @@ class Sum:
     Sums the values of all the input connections together.
     """
 
-    @component.input(variadic=True)
+    @component.input(variadic=True)  # type: ignore
     def input(self):
         class Input:
             values: List[int]
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             total: int

@@ -14,14 +14,14 @@ class Parity:
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             value: int
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             even: Optional[int] = None

@@ -17,7 +17,7 @@ class Remainder:
     the second output connection.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             value: int
@@ -33,7 +33,7 @@ class Remainder:
             "Output", fields=[(f"remainder_is_{val}", int, None) for val in range(divisor)]
         )
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         return self._output_type
 

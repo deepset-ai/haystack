@@ -11,7 +11,7 @@ class Subtract:
     Compute the difference between two values.
     """
 
-    @component.input
+    @component.input  # type: ignore
     def input(self):
         class Input:
             first_value: int
@@ -19,7 +19,7 @@ class Subtract:
 
         return Input
 
-    @component.output
+    @component.output  # type: ignore
     def output(self):
         class Output:
             difference: int
