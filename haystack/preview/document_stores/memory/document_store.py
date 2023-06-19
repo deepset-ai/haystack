@@ -160,18 +160,42 @@ class MemoryDocumentStore:
 
     @property
     def bm25_tokenization_regex(self):
+        """
+        The regular expression used for tokenization in the BM25 algorithm.
+
+        :getter: Returns the regex used for BM25 tokenization.
+        """
         return self._tokenizer
 
     @bm25_tokenization_regex.setter
     def bm25_tokenization_regex(self, regex_string: str):
+        """
+        Setter for the regular expression used for tokenization in the BM25 algorithm.
+
+        :param regex_string: The regex string to be used for tokenization.
+        """
         self._tokenizer = re.compile(regex_string).findall
 
     @property
     def bm25_algorithm(self):
+        """
+        The BM25 algorithm used for retrieval.
+
+        :getter: Returns the BM25 algorithm class used for retrieval.
+        """
         return self._bm25_class
 
     @bm25_algorithm.setter
     def bm25_algorithm(self, algorithm: str):
+        """
+        Setter for the BM25 algorithm used for retrieval.
+
+        :param algorithm: The name of the BM25 algorithm to be used for retrieval.
+        The following algorithms are available:
+         - BM25Okapi (default)
+         - BM25L
+         - BM25Plus
+        """
         algorithm_class = getattr(rank_bm25, algorithm)
         if algorithm_class is None:
             raise ValueError(f"BM25 algorithm '{algorithm}' not found.")
@@ -180,6 +204,11 @@ class MemoryDocumentStore:
     def bm25_retrieval(self, query: str, top_k: int = 10, scale_score: bool = True) -> List[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
+
+        :param query: The query string.
+        :param top_k: The number of top documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
+        :return: A list of the top 'k' documents most relevant to the query.
         """
 
         all_documents = self.filter_documents(filters={"content_type": ["text", "table"]})
