@@ -39,7 +39,7 @@ class CohereRanker(BaseRanker):
          Creates an instance of CohereInvocationLayer for the specified Cohere model
 
         :param api_key: Cohere API key
-        :param model_name_or_path: Cohere model name
+        :param model_name_or_path: Cohere model name. See supported models at https://docs.cohere.com/docs/models.
         :param top_k: The maximum number of documents to return.
         :param return_documents: If false, returns results without the doc text - the api will return a list of
             {index, relevance score} where index is inferred from the list passed into the request.
@@ -137,7 +137,8 @@ class CohereRanker(BaseRanker):
         if len(cohere_docs) > 1000:
             logger.warning(
                 "The Cohere reranking endpoint only supports 1000 documents. "
-                "The the number of documents has been truncated to 1000."
+                "The the number of documents has been truncated to 1000 from %s",
+                len(cohere_docs),
             )
             cohere_docs = cohere_docs[:1000]
 
