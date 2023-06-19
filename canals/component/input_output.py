@@ -55,8 +55,9 @@ def _make_comparable(class_: type):
         if not fields_ == other_fields:
             return False
 
+        self_dict, other_dict = asdict(self), asdict(other)
         for field in fields_:
-            if not asdict(self)[field] == asdict(other)[field]:
+            if not self_dict[field] == other_dict[field]:
                 return False
 
         return True
