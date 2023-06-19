@@ -92,6 +92,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
                                 By default, no parameters are set.
         """
+        torch_import.check()
         if bm25_parameters is None:
             bm25_parameters = {}
         super().__init__()
@@ -112,8 +113,6 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.bm25_algorithm = bm25_algorithm
         self.bm25_parameters = bm25_parameters
         self.bm25: Dict[str, rank_bm25.BM25] = {}
-
-        torch_import.check()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:

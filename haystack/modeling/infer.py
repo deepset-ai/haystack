@@ -3,21 +3,17 @@ from typing import List, Optional, Dict, Union, Set, Any
 import os
 import logging
 from tqdm.auto import tqdm
-
+import torch
+from torch.utils.data.sampler import SequentialSampler
+from torch.utils.data import Dataset
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
+from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
-from haystack.lazy_imports import LazyImport
-
-with LazyImport() as torch_import:
-    import torch
-    from torch.utils.data.sampler import SequentialSampler
-    from torch.utils.data import Dataset
-    from haystack.modeling.utils import initialize_device_settings, set_all_seeds  # pylint: disable=ungrouped-imports
 
 
 logger = logging.getLogger(__name__)
@@ -77,7 +73,6 @@ class Inferencer:
         :return: An instance of the Inferencer.
 
         """
-        torch_import.check()
         # Init device and distributed settings
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(self.devices) > 1:
