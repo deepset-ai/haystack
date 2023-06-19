@@ -907,7 +907,7 @@ class TestTokenLimit:
             assert "and answer length (2000 tokens) fit within the max token limit (2049 tokens)." in caplog.text
 
     # NOTE: This first time calling this test causes an url request to be made to get the tokenizer
-    @pytest.mark.unit
+    @pytest.mark.integration
     def test_chatgpt_token_limit_warning_single_prompt(self, caplog):
         prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
         prompt_node = PromptNode("gpt-3.5-turbo", max_length=4000, api_key="fake_key")
