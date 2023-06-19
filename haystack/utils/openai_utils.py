@@ -18,13 +18,14 @@ from haystack.environment import (
 
 logger = logging.getLogger(__name__)
 
-
 machine = platform.machine().lower()
 system = platform.system()
 
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 OPENAI_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
+OPENAI_MODERATION_URL = "https://api.openai.com/v1/moderations"
 
 
 def load_openai_tokenizer(tokenizer_name: str):
@@ -148,6 +149,26 @@ def openai_request(
         return json_response
     else:
         return response
+
+
+def check_openai_policy_violation(input: Union[List[str], str], headers: Dict) -> bool:
+    """
+    Calls the moderation endpoint to check if the text(s) violate the policy.
+    See [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation) for more details.
+    Returns true if any of the input is flagged as any of ['sexual', 'hate', 'violence', 'self-harm', 'sexual/minors', 'hate/threatening', 'violence/graphic'].
+    """
+    response = openai_request(url=OPENAI_MODERATION_URL, headers=headers, payload={"input": input})
+    results = response["results"]
+    flagged = any(res["flagged"] for res in results)
+    if flagged:
+        for result in results:
+            if result["flagged"]:
+                logger.debug(
+                    "OpenAI Moderation API flagged the text '%s' as a potential policy violation of the following categories: %s",
+                    input,
+                    result["categories"],
+                )
+    return flagged
 
 
 def _check_openai_finish_reason(result: Dict, payload: Dict) -> None:

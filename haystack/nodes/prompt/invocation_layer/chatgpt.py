@@ -36,20 +36,18 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
         :param kwargs: Additional keyword arguments passed to the underlying model.
         [See OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+        Note: additional model argument moderate_content will filter input and generated answers for potentially
+        sensitive content using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+        if set. If the input or answers are flagged, an empty list is returned in place of the answers.
         """
         super().__init__(api_key, model_name_or_path, max_length, api_base=api_base, **kwargs)
 
-    def invoke(self, *args, **kwargs):
+    def _execute_openai_request(
+        self, prompt: Union[str, List[Dict]], base_payload: Dict, kwargs_with_defaults: Dict, stream: bool
+    ):
         """
-        It takes in either a prompt or a list of messages and returns a list of responses, using a REST invocation.
-
-        :return: A list of generated responses.
-
-        Note: Only kwargs relevant to OpenAI are passed to OpenAI rest API. Others kwargs are ignored.
         For more details, see [OpenAI ChatGPT API reference](https://platform.openai.com/docs/api-reference/chat).
         """
-        prompt = kwargs.get("prompt", None)
-
         if isinstance(prompt, str):
             messages = [{"role": "user", "content": prompt}]
         elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
@@ -60,34 +58,8 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
                 f"The model {self.model_name_or_path} requires either a string or messages in the ChatML format. "
                 f"For more details, see this [GitHub discussion](https://github.com/openai/openai-python/blob/main/chatml.md)."
             )
-
-        kwargs_with_defaults = self.model_input_kwargs
-        if kwargs:
-            # we use keyword stop_words but OpenAI uses stop
-            if "stop_words" in kwargs:
-                kwargs["stop"] = kwargs.pop("stop_words")
-            if "top_k" in kwargs:
-                top_k = kwargs.pop("top_k")
-                kwargs["n"] = top_k
-                kwargs["best_of"] = top_k
-            kwargs_with_defaults.update(kwargs)
-
-        stream = (
-            kwargs_with_defaults.get("stream", False) or kwargs_with_defaults.get("stream_handler", None) is not None
-        )
-        payload = {
-            "model": self.model_name_or_path,
-            "messages": messages,
-            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
-            "temperature": kwargs_with_defaults.get("temperature", 0.7),
-            "top_p": kwargs_with_defaults.get("top_p", 1),
-            "n": kwargs_with_defaults.get("n", 1),
-            "stream": stream,
-            "stop": kwargs_with_defaults.get("stop", None),
-            "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
-            "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
-            "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
-        }
+        extra_payload = {"messages": messages}
+        payload = {**base_payload, **extra_payload}
         if not stream:
             response = openai_request(url=self.url, headers=self.headers, payload=payload)
             _check_openai_finish_reason(result=response, payload=payload)
