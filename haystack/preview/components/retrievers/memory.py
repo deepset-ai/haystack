@@ -26,9 +26,12 @@ class MemoryRetriever:
 
     def run(self, data: Input) -> Output:
         if self.document_store_name not in data.stores:
-            raise ValueError(f"Document store '{self.document_store_name}' not found in stores.")
+            raise ValueError(
+                f"MemoryRetriever's document store '{self.document_store_name}' not found "
+                f"in input stores {list(data.stores.keys())}"
+            )
         document_store = data.stores[self.document_store_name]
         if not isinstance(document_store, MemoryDocumentStore):
-            raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore.")
+            raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
         docs = document_store.bm25_retrieval(query=data.query, top_k=data.top_k, scale_score=data.scale_score)
         return MemoryRetriever.Output(documents=docs)
