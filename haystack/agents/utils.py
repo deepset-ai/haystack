@@ -35,7 +35,7 @@ def react_parameter_resolver(query: str, agent: "Agent", agent_step: AgentStep, 
 
 def agent_without_tools_parameter_resolver(query: str, agent: "Agent", **kwargs) -> Dict[str, Any]:
     """
-    A parameter resolver for ReAct-based agents without tools that returns the query and the history.
+    A parameter resolver for simple chat agents without tools that returns the query and the history.
     """
     return {"query": query, "history": agent.memory.load()}
 
@@ -44,7 +44,7 @@ def conversational_agent_parameter_resolver(
     query: str, agent: "Agent", agent_step: AgentStep, **kwargs
 ) -> Dict[str, Any]:
     """
-    A parameter resolver for ReAct-based agents that returns the query, the tool names, the tool names
+    A parameter resolver for ReAct-based conversational agent that returns the query, the tool names, the tool names
     with descriptions, the history of the conversation, and the transcript (internal monologue).
     """
     return {
