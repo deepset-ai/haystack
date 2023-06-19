@@ -25,6 +25,18 @@ class CohereRanker(BaseRanker):
     """
     Re-Ranking can be used on top of a retriever to boost the performance for document search.
     This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
+
+    Cohere models are trained with a context length of 510 tokens - the model takes into account both the input
+    from the query and document. If your query is larger than 256 tokens, it will be truncated to the first 256 tokens.
+
+    Cohere breaks documents into 510 token chunks. For example, if your query is 50 tokens and your document is
+    1024 tokens, your document will be broken into the following chunks:
+    ```bash
+    relevance_score_1 = <query[0,50], document[0,460]>
+    relevance_score_2 = <query[0,50], document[460,920]>
+    relevance_score_3 = <query[0,50],document[920,1024]>
+    relevance_score = max(relevance_score_1, relevance_score_2, relevance_score_3)
+    ```
     """
 
     def __init__(
@@ -36,7 +48,7 @@ class CohereRanker(BaseRanker):
         max_chunks_per_doc: Optional[int] = None,
     ):
         """
-         Creates an instance of CohereInvocationLayer for the specified Cohere model
+         Creates an instance of CohereInvocationLayer for the specified Cohere model.
 
         :param api_key: Cohere API key
         :param model_name_or_path: Cohere model name. See supported models at https://docs.cohere.com/docs/models.
@@ -133,7 +145,6 @@ class CohereRanker(BaseRanker):
 
         # See https://docs.cohere.com/reference/rerank-1
         cohere_docs = [{"text": d.content} for d in documents]
-        # TODO Instead of truncating, loop over in batches of 1000
         if len(cohere_docs) > 1000:
             logger.warning(
                 "The Cohere reranking endpoint only supports 1000 documents. "
