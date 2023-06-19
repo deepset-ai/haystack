@@ -889,36 +889,35 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
 class TestTokenLimit:
     @pytest.mark.integration
     def test_hf_token_limit_warning(self, caplog):
-        prompt_template = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
+        prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
         with caplog.at_level(logging.WARNING):
             node = PromptNode("google/flan-t5-small", devices=["cpu"])
-            node.prompt(prompt_template, documents=["Berlin is an amazing city."])
+            _ = node.prompt_model._ensure_token_limit(prompt=prompt)
             assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
             assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
 
+    # NOTE: This first time calling this test causes an url request to be made to get the tokenizer
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
     def test_openai_token_limit_warning(self, caplog):
-        tt = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
-        prompt_node = PromptNode("text-ada-001", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
+        prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
+        prompt_node = PromptNode("text-ada-001", max_length=2000, api_key="fake_key")
         with caplog.at_level(logging.WARNING):
-            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+            _ = prompt_node.prompt_model._ensure_token_limit(prompt=prompt)
             assert "The prompt has been truncated from" in caplog.text
             assert "and answer length (2000 tokens) fit within the max token limit (2049 tokens)." in caplog.text
 
+    # NOTE: This first time calling this test causes an url request to be made to get the tokenizer
     @pytest.mark.unit
     def test_chatgpt_token_limit_warning_single_prompt(self, caplog):
-        tt = PromptTemplate("Repeating text" * 200 + "Docs: {documents}; Answer:")
-        prompt_node = PromptNode("gpt-3.5-turbo", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
+        prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
+        prompt_node = PromptNode("gpt-3.5-turbo", max_length=4000, api_key="fake_key")
         with caplog.at_level(logging.WARNING):
-            _ = prompt_node.prompt(tt, documents=["Berlin is an amazing city."])
+            _ = prompt_node.prompt_model._ensure_token_limit(prompt=prompt)
             assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2000 tokens) fit within the max token limit (4097 tokens)." in caplog.text
+            assert "and answer length (4000 tokens) fit within the max token limit (4096 tokens)." in caplog.text
 
-    @pytest.mark.unit
+    # NOTE: This first time calling this test causes a url request to be made to get the tokenizer
+    @pytest.mark.integration
     def test_chatgpt_token_limit_warning_with_messages(self, caplog):
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
@@ -926,9 +925,9 @@ class TestTokenLimit:
             {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
             {"role": "user", "content": "Where was it played?"},
         ]
-        prompt_node = PromptNode("gpt-3.5-turbo", max_length=2000, api_key=os.environ.get("OPENAI_API_KEY", ""))
+        prompt_node = PromptNode("gpt-3.5-turbo", max_length=4060, api_key="fake_key")
         with pytest.raises(ValueError):
-            _ = prompt_node(messages)
+            _ = prompt_node.prompt_model._ensure_token_limit(prompt=messages)
 
 
 class TestRunBatch:
