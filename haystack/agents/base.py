@@ -183,6 +183,8 @@ class ToolsManager:
                         observation_prefix="Observation: ",
                         llm_prefix="Thought: ",
                         color=tool.logging_color,
+                        tool_name=tool.name,
+                        tool_input=tool_input,
                     )
                 except Exception as e:
                     self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])

@@ -2,8 +2,11 @@ import logging
 import os
 import re
 from typing import Tuple
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+from events import Events
+
+from haystack.agents.types import AgentTokenStreamingHandler, AgentToolLogger
 from test.conftest import MockRetriever, MockPromptNode
 from unittest import mock
 import pytest
@@ -103,6 +106,33 @@ def test_run_tool():
     step = AgentStep(prompt_node_response=pn_response)
     result = agent.tm.run_tool(step.prompt_node_response)
     assert result == "[]"  # empty list of documents
+
+
+@pytest.mark.unit
+def test_agent_tool_logger():
+    agent = Agent(prompt_node=MockPromptNode())
+    atl = AgentToolLogger(agent_events=agent.callback_manager, tool_events=agent.tm.callback_manager)
+
+    retriever = MockRetriever()
+    agent.add_tool(
+        Tool(
+            name="Retriever",
+            pipeline_or_node=retriever,
+            description="useful for when you need to retrieve documents from your index",
+            output_variable="documents",
+        )
+    )
+    pn_response = "need to find out what city he was born.\nTool: Retriever\nTool Input: Where was Jeremy McKinnon born"
+
+    step = AgentStep(prompt_node_response=pn_response)
+    agent.tm.run_tool(step.prompt_node_response)
+
+    # Check that the AgentToolLogger collected the tool's output
+    assert len(atl.logs) == 1
+    tool_logging_event = atl.logs[0]
+    assert tool_logging_event["tool_name"] == "Retriever"
+    assert tool_logging_event["tool_input"] == "Where was Jeremy McKinnon born"
+    assert tool_logging_event["tool_output"] == "[]"
 
 
 @pytest.mark.unit
@@ -290,17 +320,6 @@ def test_tool_processes_answer_result_and_document_result():
     assert tool._process_result(Document(content="content")) == "content"
 
 
-def test_invalid_agent_template():
-    pn = PromptNode()
-    with pytest.raises(ValueError, match="some_non_existing_template not supported"):
-        Agent(prompt_node=pn, prompt_template="some_non_existing_template")
-
-    # if prompt_template is None, then we'll use zero-shot-react
-    a = Agent(prompt_node=pn, prompt_template=None)
-    assert isinstance(a.prompt_template, PromptTemplate)
-    assert a.prompt_template.name == "zero-shot-react"
-
-
 @pytest.mark.unit
 @patch.object(PromptNode, "prompt")
 @patch("haystack.nodes.prompt.prompt_node.PromptModel")
@@ -315,3 +334,25 @@ def test_default_template_order(mock_model, mock_prompt):
 
     a = Agent(prompt_node=pn, prompt_template="translation")
     assert a.prompt_template.name == "translation"
+
+
+@pytest.mark.unit
+def test_agent_with_unknown_prompt_template():
+    prompt_node = Mock()
+    prompt_node.get_prompt_template.return_value = None
+    with pytest.raises(ValueError, match="Prompt template 'invalid' not found"):
+        Agent(prompt_node=prompt_node, prompt_template="invalid")
+
+
+@pytest.mark.unit
+def test_agent_token_streaming_handler():
+    e = Events("on_new_token")
+
+    mock_callback = Mock()
+    e.on_new_token += mock_callback  # register the mock callback to the event
+
+    handler = AgentTokenStreamingHandler(events=e)
+    result = handler("test")
+
+    assert result == "test"
+    mock_callback.assert_called_once_with("test")  # assert that the mock callback was called with "test"

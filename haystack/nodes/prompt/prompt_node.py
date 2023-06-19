@@ -3,13 +3,16 @@ import copy
 import logging
 from typing import Dict, List, Optional, Tuple, Union, Any
 
-import torch
-
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document, MultiLabel
 from haystack.telemetry import send_event
 from haystack.nodes.prompt.prompt_model import PromptModel
 from haystack.nodes.prompt.prompt_template import PromptTemplate
+from haystack.lazy_imports import LazyImport
+
+with LazyImport() as torch_import:
+    import torch
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +59,7 @@ class PromptNode(BaseComponent):
         api_key: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         stop_words: Optional[List[str]] = None,
         top_k: int = 1,
         debug: Optional[bool] = False,
