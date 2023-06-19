@@ -61,7 +61,7 @@ def _make_comparable(class_: type):
 
         return True
 
-    setattr(class_, ".__eq__", comparator)
+    setattr(class_, "__eq__", comparator)
 
 
 class Connection(Enum):
