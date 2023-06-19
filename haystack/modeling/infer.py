@@ -11,6 +11,7 @@ from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
+from haystack.lazy_imports import LazyImport
 
 with LazyImport() as torch_import:
     import torch
