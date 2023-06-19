@@ -289,5 +289,4 @@ def test_predict_batch_returns_correct_number_of_docs(ranker):
     docs = [Document(content=f"test {number}") for number in range(5)]
 
     assert len(ranker.predict("where is test 3?", docs, top_k=4)) == 4
-
     assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=2, top_k=4)) == 4
