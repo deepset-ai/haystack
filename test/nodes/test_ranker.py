@@ -7,6 +7,37 @@ from haystack.nodes.ranker.base import BaseRanker
 from haystack.nodes.ranker.sentence_transformers import SentenceTransformersRanker
 
 
+@pytest.mark.unit
+def test_ranker_preprocess_batch_queries_and_docs_raises():
+    query_1 = "query 1"
+    query_2 = "query 2"
+    docs = [Document(content="dummy doc 1")]
+    with pytest.raises(HaystackError):
+        _, _, _, _ = SentenceTransformersRanker._preprocess_batch_queries_and_docs(
+            queries=[query_1, query_2], documents=[docs]
+        )
+
+
+@pytest.mark.unit
+def test_ranker_preprocess_batch_queries_and_docs():
+    query_1 = "query 1"
+    query_2 = "query 2"
+    docs1 = [Document(content="dummy doc 1"), Document(content="dummy doc 2")]
+    docs2 = [Document(content="dummy doc 3")]
+    (
+        num_of_docs,
+        all_queries,
+        all_docs,
+        single_list_of_docs,
+    ) = SentenceTransformersRanker._preprocess_batch_queries_and_docs(
+        queries=[query_1, query_2], documents=[docs1, docs2]
+    )
+    assert single_list_of_docs is False
+    assert num_of_docs == [2, 1]
+    assert len(all_queries) == 3
+    assert len(all_docs) == 3
+
+
 def test_ranker(ranker):
     query = "What is the most important building in King's Landing that has a religious background?"
     docs = [
