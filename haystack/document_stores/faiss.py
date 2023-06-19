@@ -1,3 +1,4 @@
+import copy
 from typing import Union, List, Optional, Dict, Generator
 
 import json
@@ -634,16 +635,18 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {
             str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
         }
+        return_documents = []
         for doc in documents:
             score = scores_for_vector_ids[doc.meta["vector_id"]]
             if scale_score:
                 score = self.scale_to_unit_interval(score, self.similarity)
             doc.score = score
-
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
 
-        return documents
+        return return_documents
 
     def save(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
