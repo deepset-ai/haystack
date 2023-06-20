@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from haystack import __version__
 from haystack.lazy_imports import LazyImport
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
 
 with LazyImport() as transformers_import:

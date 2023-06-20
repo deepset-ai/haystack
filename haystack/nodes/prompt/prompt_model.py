@@ -7,7 +7,7 @@ from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.schema import Document, MultiLabel
 from haystack.lazy_imports import LazyImport
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
 
 
