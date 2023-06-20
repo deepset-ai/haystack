@@ -925,7 +925,7 @@ class TestTokenLimit:
             assert "and answer length (4090 tokens) fit within the max token limit (4096 tokens)." in caplog.text
 
     @pytest.mark.unit
-    def test_chatgpt_token_limit_warning_with_messages(self, caplog):
+    def test_chatgpt_token_limit_warning_with_messages(self, mock_openai_tokenizer, caplog):
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Who won the world series in 2020?"},
