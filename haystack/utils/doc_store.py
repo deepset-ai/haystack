@@ -10,9 +10,22 @@ OPENSEARCH_CONTAINER_NAME = "opensearch"
 WEAVIATE_CONTAINER_NAME = "weaviate"
 
 
-def launch_es(sleep=15, delete_existing=False, java_opts: Optional[str] = None):
+def launch_es(
+    sleep=15,
+    delete_existing=False,
+    version_tag: str = "7.17.6",
+    password: Optional[str] = None,
+    java_opts: Optional[str] = None,
+):
     """
     Start an Elasticsearch server via Docker.
+
+    :param sleep: Time to wait for Elasticsearch to start up.
+    :param delete_existing: If True, delete an existing Elasticsearch instance before starting a new one.
+    :param version_tag: Tag of the Elasticsearch version to use.
+    :param password: Password for the Elasticsearch user 'elastic'. If set, 'xpack.security.enabled' will be set to
+                     True. Otherwise, 'xpack.security.enabled' will be set to False.
+    :param java_opts: Java options to pass to Elasticsearch.
     """
 
     logger.debug("Starting Elasticsearch ...")
@@ -20,12 +33,17 @@ def launch_es(sleep=15, delete_existing=False, java_opts: Optional[str] = None):
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
 
     java_opts_str = f"-e ES_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
+    password_str = (
+        f"-e 'ELASTIC_PASSWORD={password}' -e 'xpack.security.enabled=true' "
+        if password is not None
+        else "-e 'xpack.security.enabled=false' "
+    )
 
     command = (
         f"docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d "
         f'-p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" '
-        f"{java_opts_str}"
-        f"--name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.17.6"
+        f"{java_opts_str} {password_str}"
+        f"--name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:{version_tag}"
     )
 
     status = subprocess.run([command], shell=True)

@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Optional, List, Union
 
 from tqdm.auto import tqdm
@@ -13,6 +14,9 @@ from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
+
+
+logger = logging.getLogger(__name__)
 
 
 def open_search_index_to_document_store(
@@ -186,23 +190,43 @@ def elasticsearch_index_to_document_store(
     :param use_system_proxy: Whether to use system proxy.
     """
     # This import cannot be at the beginning of the file, as this would result in a circular import
-    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+    from haystack.document_stores import ElasticsearchDocumentStore
 
     # Initialize Elasticsearch client
-    es_client = ElasticsearchDocumentStore._init_elastic_client(
-        host=host,
-        port=port,
-        username=username,
-        password=password,
-        api_key=api_key,
-        api_key_id=api_key_id,
-        aws4auth=aws4auth,
-        scheme=scheme,
-        ca_certs=ca_certs,
-        verify_certs=verify_certs,
-        timeout=timeout,
-        use_system_proxy=use_system_proxy,
-    )
+    if ElasticsearchDocumentStore.__module__ == "haystack.document_stores.elasticsearch7":
+        es_client = ElasticsearchDocumentStore._init_elastic_client(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            api_key=api_key,
+            api_key_id=api_key_id,
+            aws4auth=aws4auth,
+            scheme=scheme,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            timeout=timeout,
+            use_system_proxy=use_system_proxy,
+        )
+    # Elasticsearch 8 does not support aws4auth
+    else:
+        if aws4auth:
+            logger.warning(
+                "AWS4Auth is not supported in Elasticsearch 8. " "Please use Elasticsearch 7 for AWS authentication."
+            )
+        es_client = ElasticsearchDocumentStore._init_elastic_client(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            api_key=api_key,
+            api_key_id=api_key_id,
+            scheme=scheme,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            timeout=timeout,
+            use_system_proxy=use_system_proxy,
+        )
 
     # Get existing original ES IDs inside DocumentStore in order to not reindex the corresponding records
     existing_ids = [

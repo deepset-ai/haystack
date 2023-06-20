@@ -90,7 +90,13 @@ dependencies = [
 
 [project.optional-dependencies]
 elasticsearch = [
+  "farm-haystack[elasticsearch7]",
+]
+elasticsearch7 = [
   "elasticsearch>=7.17,<8",
+]
+elasticsearch8 = [
+  "elasticsearch>=8.0.0,<9",
 ]
 sql = [
   "sqlalchemy>=1.4.2,<2",

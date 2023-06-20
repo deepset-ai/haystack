@@ -14,7 +14,7 @@ import yaml
 
 from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent

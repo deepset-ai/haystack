@@ -74,7 +74,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
+from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore  # keep it here !
 from haystack.document_stores.faiss import FAISSDocumentStore  # keep it here !
 from haystack.nodes.retriever.sparse import BM25Retriever  # keep it here !  # pylint: disable=unused-import
 from haystack.nodes.retriever.dense import DensePassageRetriever  # keep it here !  # pylint: disable=unused-import

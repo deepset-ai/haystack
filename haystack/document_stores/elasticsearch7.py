@@ -59,7 +59,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         batch_size: int = 10_000,
     ):
         """
-        A DocumentStore using Elasticsearch to store and query the documents for our search.
+        A DocumentStore using Elasticsearch 7 to store and query the documents for our search.
 
             * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
             * You can either use an existing Elasticsearch index or create a new one via haystack
@@ -69,15 +69,15 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         :param port: port(s) of elasticsearch nodes
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param api_key_id: ID of the API key (alternative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (alternative authentication mode to the above http_auth)
         :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
         :param search_fields: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-        :param name_field: Name of field that contains the title of the the doc
+        :param name_field: Name of field that contains the title of the doc
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
@@ -98,7 +98,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             ..deprecated:: 2.0
                 This param is deprecated. In the next major version we will always try to create an index if there is no
                 existing index (the current behaviour when create_index=True). If you are looking to recreate an
-                existing index by deleting it first if it already exist use param recreate_index.
+                existing index by deleting it first if it already exists use param recreate_index.
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              If set to 'wait_for', continue only after changes are visible (slow, but safe).
                              If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -360,7 +360,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+                            Otherwise, raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if index is None:

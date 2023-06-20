@@ -8,7 +8,7 @@ from copy import deepcopy
 
 import responses
 from haystack.document_stores.memory import InMemoryDocumentStore
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.prompt.prompt_node import PromptNode

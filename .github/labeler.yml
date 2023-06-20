@@ -75,8 +75,10 @@ topic:weaviate:
 - test/document_stores/test_weaviate.py
 topic:elasticsearch:
 - haystack/document_stores/search_engine.py
-- haystack/document_stores/elasticsearch.py
-- test/document_stores/test_elasticsearch.py
+- haystack/document_stores/elasticsearch7.py
+- test/document_stores/test_elasticsearch7.py
+- haystack/document_stores/elasticsearch8.py
+- test/document_stores/test_elasticsearch8.py
 topic:opensearch:
 - haystack/document_stores/search_engine.py
 - haystack/document_stores/opensearch.py

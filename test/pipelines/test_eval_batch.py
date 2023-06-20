@@ -3,7 +3,7 @@ import pytest
 import sys
 from copy import deepcopy
 from haystack.document_stores.memory import InMemoryDocumentStore
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever

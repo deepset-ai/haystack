@@ -29,7 +29,7 @@ from haystack.nodes.retriever.web import WebRetriever
 from haystack.nodes.search_engine import WebSearch
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
