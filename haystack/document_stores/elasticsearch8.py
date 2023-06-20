@@ -12,7 +12,6 @@ from tqdm.auto import tqdm
 try:
     from elasticsearch import Elasticsearch, RequestError
     from elasticsearch.helpers import bulk, scan
-    from elastic_transport.client_utils import DEFAULT
     from elastic_transport import BaseNode, RequestsHttpNode, Urllib3HttpNode
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed

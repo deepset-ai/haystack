@@ -218,7 +218,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch7.py
 
       - name: Calculate alert data
         id: calculator
@@ -277,7 +277,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[elasticsearch8,dev,preprocessing]
+        run: pip install .[elasticsearch8,dev,preprocessing,inference]
 
       - name: Run tests
         run: |
