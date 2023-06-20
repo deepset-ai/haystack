@@ -212,7 +212,7 @@ def elasticsearch_index_to_document_store(
     else:
         if aws4auth:
             logger.warning(
-                "AWS4Auth is not supported in Elasticsearch 8. " "Please use Elasticsearch 7 for AWS authentication."
+                "AWS4Auth is not supported in Elasticsearch 8. Please use Elasticsearch 7 for AWS authentication."
             )
         es_client = ElasticsearchDocumentStore._init_elastic_client(
             host=host,
