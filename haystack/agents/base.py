@@ -442,7 +442,7 @@ class Agent:
         unused_params = set(template_params.keys()) - set(self.prompt_template.prompt_params)
 
         if "transcript" in unused_params:
-            logger.error(
+            logger.warning(
                 "The 'transcript' parameter is missing from the Agent's prompt template. All ReAct agents "
                 "that go through multiple steps to reach a goal require this parameter. Please append {transcript} "
                 "to the end of the Agent's prompt template to ensure its proper functioning."
