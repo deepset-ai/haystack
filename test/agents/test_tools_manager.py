@@ -18,6 +18,14 @@ def tools_manager():
 
 
 @pytest.mark.unit
+def test_using_callable_as_tool():
+    # test that we can also pass a callable as a tool
+    tool_input = "Haystack"
+    tool = Tool(name="ToolA", pipeline_or_node=lambda x: x + x, description="Tool A Description")
+    assert tool.run(tool_input) == tool_input + tool_input
+
+
+@pytest.mark.unit
 def test_add_tool(tools_manager):
     new_tool = Tool(name="ToolC", pipeline_or_node=mock.Mock(), description="Tool C Description")
     tools_manager.add_tool(new_tool)
