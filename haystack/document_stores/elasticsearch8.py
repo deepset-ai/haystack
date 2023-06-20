@@ -2,7 +2,7 @@ import json
 import logging
 from copy import deepcopy
 from string import Template
-from typing import Dict, List, Optional, Type, Union, Any, Generator
+from typing import Dict, List, Optional, Type, Union, Any, Generator, Sequence
 import time
 
 import numpy as np
@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 try:
     from elasticsearch import Elasticsearch, RequestError
     from elasticsearch.helpers import bulk, scan
+    from elastic_transport.client_utils import DEFAULT
     from elastic_transport import BaseNode, RequestsHttpNode, Urllib3HttpNode
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -217,35 +218,62 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if use_system_proxy:
             node_class = RequestsHttpNode
 
-        if api_key:
+        if api_key_id and api_key:
             # api key authentication
-            client = Elasticsearch(
-                hosts=hosts,
-                api_key=(api_key_id, api_key),
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                request_timeout=timeout,
-                node_class=node_class,
-            )
+            if ca_certs is not None:
+                client = Elasticsearch(
+                    hosts=hosts,
+                    api_key=(api_key_id, api_key),
+                    ca_certs=ca_certs,
+                    verify_certs=verify_certs,
+                    request_timeout=timeout,
+                    node_class=node_class,
+                )
+            else:
+                client = Elasticsearch(
+                    hosts=hosts,
+                    api_key=(api_key_id, api_key),
+                    verify_certs=verify_certs,
+                    request_timeout=timeout,
+                    node_class=node_class,
+                )
         elif username:
             # standard http_auth
-            client = Elasticsearch(
-                hosts=hosts,
-                basic_auth=(username, password),
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                request_timeout=timeout,
-                node_class=node_class,
-            )
+            if ca_certs is not None:
+                client = Elasticsearch(
+                    hosts=hosts,
+                    basic_auth=(username, password),
+                    ca_certs=ca_certs,
+                    verify_certs=verify_certs,
+                    request_timeout=timeout,
+                    node_class=node_class,
+                )
+            else:
+                client = Elasticsearch(
+                    hosts=hosts,
+                    basic_auth=(username, password),
+                    verify_certs=verify_certs,
+                    request_timeout=timeout,
+                    node_class=node_class,
+                )
         else:
             # there is no authentication for this elasticsearch instance
-            client = Elasticsearch(
-                hosts=hosts,
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                request_timeout=timeout,
-                node_class=node_class,
-            )
+            if ca_certs is not None:
+                client = Elasticsearch(
+                    hosts=hosts,
+                    ca_certs=ca_certs,
+                    verify_certs=verify_certs,
+                    request_timeout=timeout,
+                    node_class=node_class,
+                )
+            else:
+                client = Elasticsearch(
+                    hosts=hosts,
+                    basic_auth=(username, password),
+                    verify_certs=verify_certs,
+                    request_timeout=timeout,
+                    node_class=node_class,
+                )
 
         # Test connection
         try:
@@ -301,11 +329,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return hosts
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        headers = headers or {}
         if logger.isEnabledFor(logging.DEBUG):
             if self.client.options(headers=headers).indices.exists_alias(name=index_name):
                 logger.debug("Index name %s is an alias.", index_name)
 
-        return self.client.options(headers=headers).indices.exists(index=index_name)
+        return self.client.options(headers=headers).indices.exists(index=index_name).body
 
     def _create_document_field_map(self) -> Dict:
         return {self.content_field: "content", self.embedding_field: "embedding"}
@@ -334,6 +363,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param _remaining_tries: Number of remaining retries.
         """
 
+        headers = headers or {}
         try:
             bulk(client=self.client.options(headers=headers), actions=documents, refresh=self.refresh_type)
         except Exception as e:
@@ -400,6 +430,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         for more information.
         """
         index = index or self.index
+        headers = headers or {}
         documents = []
         for i in range(0, len(ids), batch_size):
             ids_for_batch = ids[i : i + batch_size]
@@ -460,6 +491,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html)
                         for more information.
         """
+        headers = headers or {}
         aggs = {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}}
         es_query = None
         if query:
@@ -655,6 +687,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html)
                         for more information.
         """
+        headers = headers or {}
         if not index:
             index = self.index
         self.client.options(headers=headers).update(index=index, id=id, doc=meta, refresh=self.refresh_type)
@@ -677,6 +710,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         for more information.
         """
         index = index or self.index
+        headers = headers or {}
 
         es_query: dict = {"bool": {}}
         if only_documents_without_embedding:
@@ -717,6 +751,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
 
         index = index or self.index
+        headers = headers or {}
 
         es_query = {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}
         if filters:
@@ -1058,6 +1093,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         if index is None:
             index = self.index
+        headers = headers or {}
 
         es_query = self._construct_query_body(
             query=query, filters=filters, custom_query=custom_query, all_terms_must_match=all_terms_must_match
@@ -1280,8 +1316,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         return es_query
 
-    def _execute_msearch(self, index: str, searches: List[Dict[str, Any]], scale_score: bool) -> List[List[Document]]:
-        responses = self.client.msearch(index=index, searches=searches)
+    def _execute_msearch(
+        self, index: str, searches: Sequence[Dict[str, Any]], scale_score: bool
+    ) -> List[List[Document]]:
+        responses = self.client.msearch(index=index, searches=list(searches))
         documents = []
         for response in responses["responses"]:
             result = response["hits"]["hits"]
@@ -1383,6 +1421,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         if index is None:
             index = self.index
+        headers = headers or {}
 
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -1613,11 +1652,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         if index is None:
             index = self.index
+        headers = headers or {}
 
         batch_size = batch_size or self.batch_size
 
         if self.refresh_type == "false":
-            self.client.indices.refresh(index=index, headers=headers)
+            self.client.options(headers=headers).indices.refresh(index=index)
 
         if not self.embedding_field:
             raise RuntimeError("Please specify the arg `embedding_field` when initializing the Document Store")
@@ -1726,6 +1766,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         for more information.
         """
         index = index or self.index
+        headers = headers or {}
         es_query: Dict[str, Any] = {}
         if filters:
             es_query["bool"] = {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
@@ -1877,6 +1918,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         Create a new index for storing documents.
         """
+        headers = headers or {}
         if self.custom_mapping:
             mapping = self.custom_mapping
         else:
@@ -1924,26 +1966,25 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 raise e
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        mapping = {
-            "mappings": {
-                "properties": {
-                    "query": {"type": "text"},
-                    "answer": {"type": "nested"},
-                    "document": {"type": "nested"},
-                    "is_correct_answer": {"type": "boolean"},
-                    "is_correct_document": {"type": "boolean"},
-                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
-                    "document_id": {"type": "keyword"},
-                    "no_answer": {"type": "boolean"},
-                    "pipeline_id": {"type": "keyword"},
-                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
-                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
-                    # TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
-                }
+        headers = headers or {}
+        mappings = {
+            "properties": {
+                "query": {"type": "text"},
+                "answer": {"type": "nested"},
+                "document": {"type": "nested"},
+                "is_correct_answer": {"type": "boolean"},
+                "is_correct_document": {"type": "boolean"},
+                "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
+                "document_id": {"type": "keyword"},
+                "no_answer": {"type": "boolean"},
+                "pipeline_id": {"type": "keyword"},
+                "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+                "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                # TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
             }
         }
         try:
-            self.client.options(headers=headers).indices.create(index=index_name, **mapping)
+            self.client.options(headers=headers).indices.create(index=index_name, mappings=mappings)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -1956,6 +1997,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         Validates an existing document index. If there's no embedding field, we'll add it.
         """
+        headers = headers or {}
         indices = self.client.options(headers=headers).indices.get(index=index_name)
 
         if not any(indices):
