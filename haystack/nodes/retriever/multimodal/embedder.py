@@ -15,7 +15,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from haystack.utils.torch_utils import get_devices  # pylint: disable=ungrouped-imports
     from haystack.modeling.model.multimodal import get_model  # pylint: disable=ungrouped-imports

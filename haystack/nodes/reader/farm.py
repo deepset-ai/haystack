@@ -24,7 +24,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
     from haystack.modeling.data_handler.processor import SquadProcessor, Processor
