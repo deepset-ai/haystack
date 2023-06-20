@@ -30,6 +30,7 @@ jobs:
           files_ignore: |
             test/**
             rest_api/test/**
+            haystack/document_stores/elasticsearch8.py
 
       - uses: actions/setup-python@v4
         with:
@@ -42,14 +43,21 @@ jobs:
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache/
-          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/ --exclude=haystack/document_stores/elasticsearch8.py
+          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+
+      - name: Get changed elasticsearch8.py
+        id: changed_elasticsearch8
+        uses: tj-actions/changed-files@v34
+        with:
+          files: |
+            haystack/document_stores/elasticsearch8.py
 
       - name: Install Elasticsearch 8 client
-        if: contains(steps.files.outputs.all_changed_files, 'elasticsearch8.py')
+        if: contains(steps.changed_elasticsearch8.outputs.all_changed_files, 'elasticsearch8.py')
         run: pip install -U ".[elasticsearch8]"
 
       - name: Mypy elasticsearch8.py
-        if: contains(steps.files.outputs.all_changed_files, 'elasticsearch8.py')
+        if: contains(steps.changed_elasticsearch8.outputs.all_changed_files, 'elasticsearch8.py')
         run: |
           mypy --install-types --non-interactive haystack/document_stores/elasticsearch8.py
 
