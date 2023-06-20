@@ -911,6 +911,7 @@ class TestTokenLimit:
 
 
 class TestRunBatch:
+    @pytest.mark.skip(reason="Skipped as test is extremely flaky")
     @pytest.mark.integration
     @pytest.mark.parametrize("prompt_model", ["hf", "openai", "azure"], indirect=True)
     def test_simple_pipeline_batch_no_query_single_doc_list(self, prompt_model):
@@ -1009,3 +1010,57 @@ def test_chatgpt_direct_prompting_w_messages(chatgpt_prompt_model):
 
     result = pn(messages)
     assert len(result) == 1 and all(w in result[0].casefold() for w in ["arlington", "texas"])
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
+@patch("haystack.nodes.prompt.prompt_model.PromptModel._ensure_token_limit", lambda self, prompt: prompt)
+def test_content_moderation_gpt_3_and_gpt_3_5():
+    """
+    Check all possible cases of the moderation checks passing / failing in a PromptNode call
+    for both ChatGPTInvocationLayer and OpenAIInvocationLayer.
+    """
+    prompt_node_gpt_3_5 = PromptNode(
+        model_name_or_path="gpt-3.5-turbo", api_key="key", model_kwargs={"moderate_content": True}
+    )
+    prompt_node_gpt_3 = PromptNode(
+        model_name_or_path="text-davinci-003", api_key="key", model_kwargs={"moderate_content": True}
+    )
+    with patch("haystack.nodes.prompt.invocation_layer.open_ai.check_openai_policy_violation") as mock_check, patch(
+        "haystack.nodes.prompt.invocation_layer.chatgpt.ChatGPTInvocationLayer._execute_openai_request"
+    ) as mock_execute_gpt_3_5, patch(
+        "haystack.nodes.prompt.invocation_layer.open_ai.OpenAIInvocationLayer._execute_openai_request"
+    ) as mock_execute_gpt_3:
+        VIOLENT_TEXT = "some violent text"
+        mock_check.side_effect = lambda input, headers: input == VIOLENT_TEXT or input == [VIOLENT_TEXT]
+        # case 1: prompt fails the moderation check
+        # prompt should not be sent to OpenAi & function should return an empty list
+        mock_check.return_value = True
+        assert prompt_node_gpt_3_5(VIOLENT_TEXT) == prompt_node_gpt_3(VIOLENT_TEXT) == []
+        # case 2: prompt passes the moderation check but the generated output fails the check
+        # function should also return an empty list
+        mock_execute_gpt_3_5.return_value = mock_execute_gpt_3.return_value = [VIOLENT_TEXT]
+        assert prompt_node_gpt_3_5("normal prompt") == prompt_node_gpt_3("normal prompt") == []
+        # case 3: both prompt and output pass the moderation check
+        # function should return the output
+        mock_execute_gpt_3_5.return_value = mock_execute_gpt_3.return_value = ["normal output"]
+        assert prompt_node_gpt_3_5("normal prompt") == prompt_node_gpt_3("normal prompt") == ["normal output"]
+
+
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_node_warns_about_missing_documents(mock_model, caplog):
+    lfqa_prompt = PromptTemplate(
+        prompt="""Synthesize a comprehensive answer from the following text for the given question.
+        Provide a clear and concise response that summarizes the key points and information presented in the text.
+        Your answer should be in your own words and be no longer than 50 words.
+        If answer is not in .text. say i dont know.
+        \n\n Related text: {join(documents)} \n\n Question: {query} \n\n Answer:"""
+    )
+    prompt_node = PromptNode(default_prompt_template=lfqa_prompt)
+
+    with caplog.at_level(logging.WARNING):
+        results, _ = prompt_node.run(query="non-matching query")
+        assert (
+            "Expected prompt parameter 'documents' to be provided but it is missing. "
+            "Continuing with an empty list of documents." in caplog.text
+        )

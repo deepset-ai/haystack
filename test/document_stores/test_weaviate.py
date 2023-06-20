@@ -1,9 +1,9 @@
-import uuid
 import json
+import uuid
 from unittest import mock
 
-import pytest
 import numpy as np
+import pytest
 import weaviate
 
 from haystack.document_stores.weaviate import WeaviateDocumentStore
@@ -273,19 +273,28 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         secret = WeaviateDocumentStore._get_auth_secret("user", "pass", scope="some_scope")
         assert isinstance(secret, weaviate.AuthClientPassword)
 
-        # Test with client_secret
-        secret = WeaviateDocumentStore._get_auth_secret(client_secret="client_secret_value", scope="some_scope")
-        assert isinstance(secret, weaviate.AuthClientCredentials)
-
-        # Test with access_token
-        secret = WeaviateDocumentStore._get_auth_secret(
-            access_token="access_token_value", expires_in=3600, refresh_token="refresh_token_value"
-        )
-        assert isinstance(secret, weaviate.AuthBearerToken)
+        # Test with api key
+        secret = WeaviateDocumentStore._get_auth_secret(api_key="wcs_api_key")
+        assert isinstance(secret, weaviate.AuthApiKey)
 
         # Test with no authentication method
         secret = WeaviateDocumentStore._get_auth_secret()
         assert secret is None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "embedded_options, expected_options",
+        [
+            (None, weaviate.EmbeddedOptions()),
+            (
+                {"hostname": "http://localhost", "port": "8080"},
+                weaviate.EmbeddedOptions(hostname="http://localhost", port="8080"),
+            ),
+        ],
+    )
+    def test__get_embedded_options(self, embedded_options, expected_options):
+        options = WeaviateDocumentStore._get_embedded_options(embedded_options)
+        assert options == expected_options
 
     @pytest.mark.unit
     def test__get_current_properties(self, mocked_ds):
