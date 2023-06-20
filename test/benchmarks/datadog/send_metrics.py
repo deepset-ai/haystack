@@ -34,7 +34,7 @@ def get_model_tag(querying_metrics):
     if model == "deepset/deberta-v3-large-squad2":
         return ReaderModelTags.debertalarge
 
-    return None
+    return NoneTag.none
 
 def get_retriever_tag(name):
     name_lower = name.lower()
@@ -47,7 +47,7 @@ def get_retriever_tag(name):
     if "mpnetbase" in name_lower:
         return RetrieverModelTags.mpnetbase
 
-    return None
+    return NoneTag.none
 
 def get_documentstore_tag(querying_metrics):
     doc_store = querying_metrics.get('doc_store')
@@ -61,7 +61,18 @@ def get_documentstore_tag(querying_metrics):
     if doc_store == "elasticsearchdocumentstore":
         return DocumentStoreModelTags.elasticsearch
 
-    return None
+    return NoneTag.none
+
+def get_benchmark_type_tag(model_tag, retriever_tag, document_store_tag):
+    if model_tag != NoneTag.none and retriever_tag != NoneTag.none and document_store_tag != NoneTag.none:
+        return BenchmarkType.retriever_reader
+    elif retriever_tag != NoneTag.none and document_store_tag != NoneTag.none:
+        return BenchmarkType.retriever
+    elif model_tag != NoneTag.none and retriever_tag == NoneTag.none:
+        return BenchmarkType.reader
+
+    LOGGER.warn(f"Did not find benchmark_type for the combination of tags, retriever={retriever_tag}, reader={model_tag}, document_store={document_store_tag}")
+    return NoneTag.none
 
 metrics_to_send_to_dd = []
 
@@ -69,9 +80,9 @@ for benchmark_name, metrics in benchmark_metrics.items():
     indexing_metrics = metrics['indexing']
     querying_metrics = metrics['querying']
     
-    indexing_time = indexing_metrics.get('indexing_time')
+    docs_per_second = indexing_metrics.get('docs_per_second')
 
-    exact_match = indexing_metrics.get('exact_match')
+    exact_match = querying_metrics.get('exact_match')
     f1_score = querying_metrics.get('f1')
     recall = querying_metrics.get('recall')
     seconds_per_query = querying_metrics.get('seconds_per_query')
@@ -81,22 +92,26 @@ for benchmark_name, metrics in benchmark_metrics.items():
     model_tag = get_model_tag(querying_metrics)
     retriever_tag = get_retriever_tag(benchmark_name)
     document_store_tag = get_documentstore_tag(querying_metrics)
+    benchmark_type_tag = get_benchmark_type_tag(model_tag, retriever_tag, document_store_tag)
 
-    tags = [size_tag, model_tag, retriever_tag, document_store_tag]
+    tags = [size_tag, model_tag, retriever_tag, document_store_tag, benchmark_type_tag]
 
-    if exact_match:
+    if docs_per_second:
+        metrics_to_send_to_dd.append(IndexingDocsPerSecond(docs_per_second, tags))
+
+    if exact_match or exact_match == 0:
         metrics_to_send_to_dd.append(QueryingExactMatchMetric(exact_match, tags))
 
-    if f1_score:
+    if f1_score or f1_score == 0:
         metrics_to_send_to_dd.append(QueryingF1Metric(f1_score, tags))
 
-    if recall:
+    if recall or recall == 0:
         metrics_to_send_to_dd.append(QueryingRecallMetric(recall, tags))
 
     if seconds_per_query:
         metrics_to_send_to_dd.append(QueryingSecondsPerQueryMetric(seconds_per_query, tags))
 
-    if map_query:
+    if map_query or map_query == 0:
         metrics_to_send_to_dd.append(QueryingMapMetric(map_query, tags))
 
 api = MetricsAPI()

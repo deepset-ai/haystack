@@ -10,7 +10,12 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 class Tag(Enum):
-    pass
+    @classmethod
+    def values(cls):
+        return [e.value for e in cls]
+
+class NoneTag(Tag):
+    none = "none_none_none_none-1234" # should not match any other tag
 
 
 class DatasetSizeTags(Tag):
@@ -19,7 +24,7 @@ class DatasetSizeTags(Tag):
 
 class ReaderModelTags(Tag):
     debertabase = "reader:debertabase"
-    debertalarge = "reader:debertalatge"
+    debertalarge = "reader:debertalarge"
     tinyroberta = "reader:tinyroberta"
 
 class RetrieverModelTags(Tag):
@@ -32,6 +37,10 @@ class DocumentStoreModelTags(Tag):
     elasticsearch = "documentstore:elasticsearch"
     weaviate = "documentstore:weaviate"
 
+class BenchmarkType(Tag):
+    retriever = "benchmark_type:retriever"
+    retriever_reader = "benchmark_type:retriever_reader"
+    reader = "benchmark_type:reader"
 
 class CustomDatadogMetric:
     name: str
@@ -51,12 +60,16 @@ class CustomDatadogMetric:
         valid_tags = []
         if tags is not None:
             for tag in tags:
-                is_dataset_size_tag = tag in DatasetSizeTags
-                is_reader_model_tag = tag in ReaderModelTags
-                is_retriever_model_tag = tag in RetrieverModelTags
-                is_document_store_tag = tag in DocumentStoreModelTags
-                if is_dataset_size_tag or is_reader_model_tag or is_retriever_model_tag or is_document_store_tag:
+                is_dataset_size_tag = tag.value in DatasetSizeTags.values()
+                is_reader_model_tag = tag.value in ReaderModelTags.values()
+                is_retriever_model_tag = tag.value in RetrieverModelTags.values()
+                is_document_store_tag = tag.value in DocumentStoreModelTags.values()
+                is_benchmark_type_tag = tag.value in BenchmarkType.values()
+
+                if is_dataset_size_tag or is_reader_model_tag or is_retriever_model_tag or is_document_store_tag or is_benchmark_type_tag:
                     valid_tags.append(tag)
+                elif tag == NoneTag.none:
+                    pass
                 else:
                     # Log invalid tags as errors
                     LOGGER.error(
@@ -66,9 +79,9 @@ class CustomDatadogMetric:
         return valid_tags
 
 
-class IndexingDurationMetric(CustomDatadogMetric):
+class IndexingDocsPerSecond(CustomDatadogMetric):
     def __init__(self, value: float, tags: Optional[List[Tag]] = None) -> None:
-        name = "haystack.benchmarks.indexing.duration"
+        name = "haystack.benchmarks.indexing.docs_per_second"
         super().__init__(name=name, value=value, tags=tags)
 
 
@@ -100,14 +113,6 @@ class QueryingSecondsPerQueryMetric(CustomDatadogMetric):
 
 
 class MetricsAPI:
-    def __init__(self) -> None:
-        self.options = {
-            "api_key": os.getenv('DD_API_KEY'),
-            "app_key": os.getenv('DD_APP_KEY'),
-            "api_host": os.getenv('DD_API_HOST'),
-        }
-
-        initialize(**self.options)
 
     @retry(
         retry=retry_if_exception(AssertionError),  # type: ignore
@@ -116,8 +121,14 @@ class MetricsAPI:
         reraise=True,
     )
     def send_custom_dd_metric(self, metric: CustomDatadogMetric) -> dict:
-        initialize(**self.options)
 
+        options = {
+            "api_key": os.getenv("DD_API_KEY"),
+            "app_key": os.getenv("DD_APP_KEY"),
+            "api_host": os.getenv("DD_HOST"),
+        }
+
+        initialize(**options)
         tags: List[str] = list(map(lambda t: str(t.value), metric.tags))
 
         post_metric_response: Dict = api.Metric.send(
@@ -128,7 +139,11 @@ class MetricsAPI:
 
         if post_metric_response.get("status") != "ok":
             LOGGER.error(
-                "Could not send custom metric. metric_name={metric.name}, metric_value={metric.value}"
+                f"Could not send custom metric. metric_name={metric.name}, metric_value={metric.value}, status={post_metric_response.get('status')}, error={post_metric_response.get('errors')}, {post_metric_response}"
+            )
+        else:
+            LOGGER.info(
+                f"Sent custom metric. metric_name={metric.name}, metric_value={metric.value}, status={post_metric_response.get('status')}"
             )
 
         assert (
