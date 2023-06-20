@@ -42,7 +42,16 @@ jobs:
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache/
-          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/
+          mypy --install-types --non-interactive ${{ steps.files.outputs.all_changed_files }} --exclude=rest_api/build/ --exclude=rest_api/test/ --exclude=haystack/document_stores/elasticsearch8.py
+
+      - name: Install Elasticsearch 8 client
+        if: contains(steps.files.outputs.all_changed_files, 'elasticsearch8.py')
+        run: pip install -U ".[elasticsearch8]"
+
+      - name: Mypy elasticsearch8.py
+        if: contains(steps.files.outputs.all_changed_files, 'elasticsearch8.py')
+        run: |
+          mypy --install-types --non-interactive haystack/document_stores/elasticsearch8.py
 
   pylint:
     runs-on: ubuntu-latest
@@ -76,4 +85,13 @@ jobs:
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}
+          pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }} --ignore=elasticsearch8.py
+
+      - name: Install Elasticsearch 8 client
+        if: contains(steps.files.outputs.all_changed_files, 'elasticsearch8.py')
+        run: pip install -U ".[elasticsearch8]"
+
+      - name: Pylint elasticsearch8.py
+        if: contains(steps.files.outputs.all_changed_files, 'elasticsearch8.py')
+        run: |
+          pylint -ry -j 0 haystack/document_stores/elasticsearch8.py
