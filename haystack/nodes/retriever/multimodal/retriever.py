@@ -3,16 +3,20 @@ from typing import Union, Optional, Dict, List, Any
 import logging
 from pathlib import Path
 
-import torch
 import numpy as np
 
 from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import ContentTypes, Document, FilterType
-from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
 
 
 class MultiModalRetriever(DenseRetriever):
@@ -29,7 +33,7 @@ class MultiModalRetriever(DenseRetriever):
         embed_meta_fields: Optional[List[str]] = None,
         similarity_function: str = "dot_product",
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
     ):
@@ -72,6 +76,8 @@ class MultiModalRetriever(DenseRetriever):
             range are scaled to a range of [0,1], where 1 means extremely relevant.
             Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
+        torch_and_transformers_import.check()
+
         if query_feature_extractor_params is None:
             query_feature_extractor_params = {"max_length": 64}
         if document_feature_extractors_params is None:

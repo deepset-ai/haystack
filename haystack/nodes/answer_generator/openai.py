@@ -11,6 +11,7 @@ from haystack.utils.openai_utils import (
     openai_request,
     _openai_text_completion_tokenization_details,
     _check_openai_finish_reason,
+    check_openai_policy_violation,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         progress_bar: bool = True,
         prompt_template: Optional[PromptTemplate] = None,
         context_join_str: str = " ",
+        moderate_content: bool = False,
         api_base: str = "https://api.openai.com/v1",
     ):
         """
@@ -99,6 +101,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
             [PromptTemplate](https://docs.haystack.deepset.ai/docs/prompt_node#template-structure).
         :param context_join_str: The separation string used to join the input documents to create the context
             used by the PromptTemplate.
+        :param moderate_content: Whether to filter input and generated answers for potentially sensitive content
+            using the [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation). If the input or
+            answers are flagged, an empty list is returned in place of the answers.
         :param api_base: The base URL for the OpenAI API, defaults to `"https://api.openai.com/v1"`.
         """
         super().__init__(progress_bar=progress_bar)
@@ -159,6 +164,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.prompt_template = prompt_template
         self.context_join_str = context_join_str
         self.using_azure = self.azure_deployment_name is not None and self.azure_base_url is not None
+        self.moderate_content = moderate_content
 
         tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name=self.model)
 
@@ -228,9 +234,19 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
+        if self.moderate_content and check_openai_policy_violation(input=prompt, headers=headers):
+            logger.info("Prompt '%s' will not be sent to OpenAI due to potential policy violation.", prompt)
+            return {"query": query, "answers": []}
+
+        logger.debug("Prompt being sent to OpenAI API with prompt %s.", prompt)
         res = openai_request(url=url, headers=headers, payload=payload, timeout=timeout)
         _check_openai_finish_reason(result=res, payload=payload)
         generated_answers = [ans["text"] for ans in res["choices"]]
+        if self.moderate_content and check_openai_policy_violation(input=generated_answers, headers=headers):
+            logger.info(
+                "Generated answers '%s' will not be returned due to potential policy violation.", generated_answers
+            )
+            return {"query": query, "answers": []}
         answers = self._create_answers(generated_answers, input_docs, prompt=prompt)
         result = {"query": query, "answers": answers}
         return result

@@ -13,7 +13,7 @@ from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color, AgentTokenStreamingHandler
-from haystack.agents.utils import print_text
+from haystack.agents.utils import print_text, react_parameter_resolver
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -63,6 +63,7 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
+            Callable[[Any], str],
         ],
         description: str,
         output_variable: str = "results",
@@ -85,6 +86,8 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        elif callable(self.pipeline_or_node):
+            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
@@ -183,6 +186,8 @@ class ToolsManager:
                         observation_prefix="Observation: ",
                         llm_prefix="Thought: ",
                         color=tool.logging_color,
+                        tool_name=tool.name,
+                        tool_input=tool_input,
                     )
                 except Exception as e:
                     self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
@@ -264,14 +269,6 @@ class Agent:
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        react_parameter_resolver: Callable[
-            [str, Agent, AgentStep, Dict[str, Any]], Dict[str, Any]
-        ] = lambda query, agent, agent_step, **kwargs: {
-            "query": query,
-            "tool_names": agent.tm.get_tool_names(),
-            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-            "transcript": agent_step.transcript,
-        }
         self.prompt_parameters_resolver = (
             prompt_parameters_resolver if prompt_parameters_resolver else react_parameter_resolver
         )

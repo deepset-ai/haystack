@@ -208,7 +208,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[elasticsearch,dev,preprocessing]
+        run: pip install .[elasticsearch,dev,preprocessing,inference]
 
       - name: Run tests
         run: |
@@ -669,7 +669,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preprocessing]
+        run: pip install .[dev,preprocessing,inference]
 
       - name: Run tests
         run: |
@@ -723,7 +723,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preprocessing]
+        run: pip install .[dev,preprocessing,inference]
 
       - name: Run tests
         run: |
@@ -777,7 +777,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[dev,preprocessing]
+        run: pip install .[dev,preprocessing,inference]
 
       - name: Run tests
         run: |

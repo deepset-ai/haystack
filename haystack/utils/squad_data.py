@@ -8,7 +8,10 @@ from tqdm.auto import tqdm
 
 from haystack.mmh3 import hash128
 from haystack.schema import Document, Label, Answer
-from haystack.modeling.data_handler.processor import _read_squad_file
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("{}") as haystack_modeling:
+    from haystack.modeling.data_handler.processor import _read_squad_file
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +272,8 @@ class SquadData:
 
 
 if __name__ == "__main__":
+    haystack_modeling.check()
+
     # Download the SQuAD dataset if it isn't at target directory
     _read_squad_file("../data/squad20/train-v2.0.json")
 
