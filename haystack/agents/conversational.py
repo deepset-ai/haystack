@@ -72,7 +72,7 @@ class ConversationalAgent(Agent):
         :param prompt_node: A PromptNode used by Agent to decide which tool to use and what input to provide to it
         in each iteration. If there are no tools added, the model specified with PromptNode will be used for chatting.
         :param prompt_template: A new PromptTemplate or the name of an existing PromptTemplate for the PromptNode. It's
-        used for keeping the chat history, generating thoughts and choosing tools to answer queries step-by-step. It defaults to
+        used for keeping the chat history, generating thoughts and choosing tools (if provided) to answer queries. It defaults to
         to "conversational-agent" if there is at least one tool provided and "conversational-agent-without-tools" otherwise.
         :param tools: A list of tools to use in the Agent. Each tool must have a unique name.
         :param memory: A memory object for storing conversation history and other relevant data, defaults to
