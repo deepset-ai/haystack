@@ -4,7 +4,8 @@ loaders:
     modules:
       [
         "base",
-        "elasticsearch",
+        "elasticsearch7",
+        "elasticsearch8",
         "opensearch",
         "memory",
         "sql",
