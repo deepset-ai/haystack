@@ -1,10 +1,10 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 import logging
 
 from haystack.errors import AgentError
 from haystack.agents.base import Tool, ToolsManager, Agent
 from haystack.agents.memory import Memory, ConversationMemory
-from haystack.nodes import PromptNode
+from haystack.nodes import PromptNode, PromptTemplate
 from haystack.agents.utils import conversational_agent_parameter_resolver, agent_without_tools_parameter_resolver
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,7 @@ class ConversationalAgent(Agent):
     def __init__(
         self,
         prompt_node: PromptNode,
+        prompt_template: Optional[Union[str, PromptTemplate]] = None,
         tools: Optional[List[Tool]] = None,
         memory: Optional[Memory] = None,
         max_steps: Optional[int] = None,
@@ -70,6 +71,9 @@ class ConversationalAgent(Agent):
 
         :param prompt_node: A PromptNode used by Agent to decide which tool to use and what input to provide to it
         in each iteration. If there are no tools added, the model specified with PromptNode will be used for chatting.
+        :param prompt_template: A new PromptTemplate or the name of an existing PromptTemplate for the PromptNode. It's
+        used for keeping the chat history, generating thoughts and choosing tools to answer queries step-by-step. It defaults to
+        to "conversational-agent" if there is at least one tool provided and "conversational-agent-without-tools" otherwise.
         :param tools: A list of tools to use in the Agent. Each tool must have a unique name.
         :param memory: A memory object for storing conversation history and other relevant data, defaults to
         ConversationMemory if no memory is provided.
@@ -82,7 +86,7 @@ class ConversationalAgent(Agent):
                 memory=memory if memory else ConversationMemory(),
                 tools_manager=ToolsManager(tools=tools),
                 max_steps=max_steps if max_steps else 5,
-                prompt_template="conversational-agent",
+                prompt_template=prompt_template if prompt_template else "conversational-agent",
                 final_answer_pattern=r"Final Answer\s*:\s*(.*)",
                 prompt_parameters_resolver=conversational_agent_parameter_resolver,
             )
@@ -93,7 +97,7 @@ class ConversationalAgent(Agent):
                 prompt_node=prompt_node,
                 memory=memory if memory else ConversationMemory(),
                 max_steps=max_steps if max_steps else 2,
-                prompt_template="conversational-agent-without-tools",
+                prompt_template=prompt_template if prompt_template else "conversational-agent-without-tools",
                 final_answer_pattern=r"^([\s\S]+)$",
                 prompt_parameters_resolver=agent_without_tools_parameter_resolver,
             )
