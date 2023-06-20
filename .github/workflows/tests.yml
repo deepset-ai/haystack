@@ -134,7 +134,10 @@ jobs:
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" --ignore=test/document_stores/test_elasticsearch7.py test/${{ matrix.topic }}
 
       - name: Run Elasticsearch 8 unit tests
-        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/document_stores/test_elasticsearch8.py
+        if: matrix.topic == 'document_stores'
+        run: |
+          pip install -U .[elasticsearch8]
+          pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/document_stores/test_elasticsearch8.py
 
       - name: Coveralls Parallel
         # We upload only coverage for ubuntu as handling both os
