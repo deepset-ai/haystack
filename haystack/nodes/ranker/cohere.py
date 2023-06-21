@@ -57,7 +57,7 @@ class CohereRanker(BaseRanker):
         :param top_k: The maximum number of documents to return.
         :param return_documents: If False, returns results without the doc text - the api will return a list of
             {index, relevance score} where index is inferred from the list passed into the request.
-            If true, returns results with the doc text passed in - the api will return an ordered list of
+            If True, returns results with the doc text passed in - the api will return an ordered list of
             {index, text, relevance score} where index + text refers to the list passed into the request.
         :param max_chunks_per_doc: If your document exceeds 512 tokens, this will determine the maximum number of
             chunks a document can be split into. For example, if your document is 6000 tokens, with the default of 10,
