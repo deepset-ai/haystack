@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional, Callable
 
 from pathlib import Path
 
-from canals.component import ComponentInput
+from canals.component import ComponentInput, ComponentOutput
 from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
@@ -55,9 +55,14 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(self, data: Dict[str, ComponentInput], debug: bool = False):
+    def run(self, data: Dict[str, ComponentInput], debug: bool = False) -> Dict[str, ComponentOutput]:
         """
         Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
+
+        :params data: the inputs to give to the input components of the Pipeline.
+        :params parameters: a dictionary with all the parameters of all the components, namespaced by component.
+        :params debug: whether to collect and return debug information.
+        :returns A dictionary with the outputs of the output components of the Pipeline.
         """
         # Get all nodes in this pipelines instance
         for node_name in self.graph.nodes:
@@ -72,7 +77,7 @@ class Pipeline(CanalsPipeline):
                 node.defaults["stores"] = self.stores
 
         # Run the pipeline
-        super().run(data=data, debug=debug)
+        return super().run(data=data, debug=debug)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):

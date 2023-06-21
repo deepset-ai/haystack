@@ -48,7 +48,7 @@ classifiers = [
 dependencies = [
   "requests",
   "pydantic",
-  "transformers[torch,sentencepiece]==4.29.1",
+  "transformers==4.30.1",
   "pandas",
   "rank_bm25",
   "scikit-learn>=1.0.0", # TF-IDF, SklearnQueryClassifier and metrics
@@ -61,18 +61,16 @@ dependencies = [
   "networkx",  # graphs library
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
-  "azure-ai-formrecognizer>=3.2.0b2",  # forms reader
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
-  "huggingface-hub>=0.5.0",
   "tenacity",  # retry decorator
   "sseclient-py",  # server side events for OpenAI streaming
   "more_itertools",  # utilities
 
   # Web Retriever
   "boilerpy3",
-
-  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
-  "sentence-transformers>=2.2.0",
+  
+  # Multimodal Embedder haystack/nodes/retriever/multimodal/embedder.py
+  "Pillow",
 
   # OpenAI tokenizer
   "tiktoken>=0.3.2",
@@ -90,6 +88,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+inference = [
+  "transformers[torch,sentencepiece]==4.30.1",
+  "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
+  "huggingface-hub>=0.5.0",
+]
 elasticsearch = [
   "elasticsearch>=7.17,<8",
 ]
@@ -143,6 +146,7 @@ preprocessing = [
   "langdetect",  # for language classification
 ]
 file-conversion = [
+  "azure-ai-formrecognizer>=3.2.0b2",  # Microsoft Azure's Form Recognizer service (text and table exctrator)
   "python-docx",
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
@@ -217,11 +221,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics]",
+  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics]",
+  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics]",
 ]
 
 [project.scripts]

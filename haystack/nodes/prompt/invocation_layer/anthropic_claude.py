@@ -15,7 +15,7 @@ from haystack.nodes.prompt.invocation_layer.handlers import (
     AnthropicTokenStreamingHandler,
     DefaultTokenStreamingHandler,
 )
-from haystack.utils.requests import request_with_retry
+from haystack.utils import request_with_retry
 from haystack.environment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
 
 ANTHROPIC_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
