@@ -99,9 +99,20 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
             messages = prompt
 
         n_prompt_tokens = count_openai_tokens_messages(messages, self._tokenizer)
-        n_answer_tokens = self.max_length
-        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
-            return prompt
+
+        # Where max_length is not set, use the maximum number of tokens for the response allowed by the model
+        if self.max_length is None:
+            # We have to adjust the response token length by 1, or OpenAI will complain:
+            # "This model's maximum context length is 4097 tokens. However, you requested 4097 tokens
+            # (1956 in the messages, 2141 in the completion)."
+            n_answer_tokens = self.max_tokens_limit - (1 + n_prompt_tokens)
+            if n_answer_tokens > 0:
+                self.max_length = n_answer_tokens
+                return prompt
+        else:
+            n_answer_tokens = self.max_length
+            if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+                return prompt
 
         # TODO: support truncation as in _ensure_token_limit methods for other invocation layers
         raise ValueError(
