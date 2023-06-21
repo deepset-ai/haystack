@@ -445,8 +445,11 @@ class Agent:
             logger.warning(
                 "The 'transcript' parameter is missing from the Agent's prompt template. All ReAct agents "
                 "that go through multiple steps to reach a goal require this parameter. Please append {transcript} "
-                "to the end of the Agent's prompt template to ensure its proper functioning."
+                "to the end of the Agent's prompt template to ensure its proper functioning. A temporary prompt "
+                "template with {transcript} appended will be used for this run."
             )
+            new_prompt_text = self.prompt_template.prompt_text + "\n {transcript}"
+            self.prompt_template = PromptTemplate(prompt=new_prompt_text)
 
         elif unused_params:
             logger.debug(
