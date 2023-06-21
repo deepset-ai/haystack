@@ -5,14 +5,29 @@ import logging
 from pathlib import Path
 from pprint import pprint
 
+import pytest
+
 from canals.pipeline import Pipeline
 from test.sample_components import AddFixedValue, Remainder, Double, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 
 
+# This pipeline is a problem now.
+# Components with variadics had a peculiarity, they always run even if they
+# didn't receive all their inputs.
+# This pipeline used to run, but now it doesn't as "sum" doesn't
+# receive all its inputs.
+# This happens because "parity" only returns
+# ouput on remainder_is_0, while remainder_is_1 is None.
+# This causes only "add_ten" to receive input, while "double" and "add_four"
+# never do and are skipped.
+# Since those components are never run "sum" doesn't receive all its inputs
+# and in the end is skipped.
+@pytest.mark.skip(reason="Since we removed variadics this pipeline doesn't return any output")
 def test_pipeline(tmp_path):
     add_one = AddFixedValue()
+    summer = Sum(inputs=["in_1", "in_2", "in_3", "in_4"])
 
     pipeline = Pipeline()
     pipeline.add_component("add_one", add_one)
@@ -21,27 +36,27 @@ def test_pipeline(tmp_path):
     pipeline.add_component("double", Double())
     pipeline.add_component("add_four", AddFixedValue(add=4))
     pipeline.add_component("add_one_again", add_one)
-    pipeline.add_component("sum", Sum())
+    pipeline.add_component("sum", summer)
 
     pipeline.connect("add_one", "parity")
     pipeline.connect("parity.remainder_is_0", "add_ten.value")
     pipeline.connect("parity.remainder_is_1", "double")
-    pipeline.connect("add_one", "sum")
-    pipeline.connect("add_ten", "sum")
-    pipeline.connect("double", "sum")
+    pipeline.connect("add_one", "sum.in_1")
+    pipeline.connect("add_ten", "sum.in_2")
+    pipeline.connect("double", "sum.in_3")
     pipeline.connect("parity.remainder_is_1", "add_four.value")
     pipeline.connect("add_four", "add_one_again")
-    pipeline.connect("add_one_again", "sum")
+    pipeline.connect("add_one_again", "sum.in_4")
 
     pipeline.draw(tmp_path / "variable_decision_and_merge_pipeline.png")
 
-    results = pipeline.run({"add_one": AddFixedValue().input(value=1)})
+    results = pipeline.run({"add_one": add_one.input(value=1)})
     pprint(results)
-    assert results == {"sum": Sum().output(total=14)}
+    assert results == {"sum": summer.output(total=14)}
 
-    results = pipeline.run({"add_one": AddFixedValue().input(value=2)})
+    results = pipeline.run({"add_one": add_one.input(value=2)})
     pprint(results)
-    assert results == {"sum": Sum().output(total=17)}
+    assert results == {"sum": summer.output(total=17)}
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ def test_find_pipeline_input_one_input():
     pipe.connect("comp1", "comp2")
 
     assert find_pipeline_inputs(pipe.graph) == {
-        "comp1": [InputSocket(name="value", type=int, variadic=False)],
+        "comp1": [InputSocket(name="value", type=int)],
         "comp2": [],
     }
 
@@ -37,8 +37,8 @@ def test_find_pipeline_input_two_inputs_same_component():
 
     assert find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int, variadic=False),
-            InputSocket(name="add", type=int, variadic=False),
+            InputSocket(name="value", type=int),
+            InputSocket(name="add", type=int),
         ],
         "comp2": [],
     }
@@ -54,29 +54,27 @@ def test_find_pipeline_input_some_inputs_different_components():
 
     assert find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int, variadic=False),
-            InputSocket(name="add", type=int, variadic=False),
+            InputSocket(name="value", type=int),
+            InputSocket(name="add", type=int),
         ],
-        "comp2": [InputSocket(name="value", type=int, variadic=False)],
+        "comp2": [InputSocket(name="value", type=int)],
         "comp3": [],
     }
 
 
-def test_find_pipeline_input_variadic_nodes_in_the_pipeline():
+def test_find_pipeline_variable_input_nodes_in_the_pipeline():
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue())
     pipe.add_component("comp2", Double())
-    pipe.add_component("comp3", Sum())
-    pipe.connect("comp1", "comp3")
-    pipe.connect("comp2", "comp3")
+    pipe.add_component("comp3", Sum(inputs=["in_1", "in_2"]))
 
     assert find_pipeline_inputs(pipe.graph) == {
         "comp1": [
-            InputSocket(name="value", type=int, variadic=False),
-            InputSocket(name="add", type=int, variadic=False),
+            InputSocket(name="value", type=int),
+            InputSocket(name="add", type=int),
         ],
-        "comp2": [InputSocket(name="value", type=int, variadic=False)],
-        "comp3": [InputSocket(name="values", type=int, variadic=True)],
+        "comp2": [InputSocket(name="value", type=int)],
+        "comp3": [InputSocket(name="in_1", type=int), InputSocket(name="in_2", type=int)],
     }
 
 
@@ -134,15 +132,6 @@ def test_validate_pipeline_input_pipeline_with_no_inputs():
     pipe.connect("comp2", "comp1")
     with pytest.raises(PipelineValidationError, match="This pipeline has no inputs."):
         pipe.run({})
-
-
-def test_validate_pipeline_input_pipeline_with_no_inputs_and_variadic_node():
-    pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Sum())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
-    pipe.run({})
 
 
 def test_validate_pipeline_input_unknown_component():
