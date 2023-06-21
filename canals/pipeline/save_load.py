@@ -195,7 +195,7 @@ def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__ca
         if not module in sys.modules:
             raise ValueError(f"{module} is not imported.")
 
-        for name, entity in getmembers(sys.modules.get(module, None), ismodule):
+        for name, _ in getmembers(sys.modules.get(module, None), ismodule):
             if f"{module}.{name}" in sys.modules:
                 modules_to_search.append(f"{module}.{name}")
 
