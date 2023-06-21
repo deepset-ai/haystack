@@ -1,5 +1,7 @@
 import logging
 import os
+import builtins
+import sys
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -350,3 +352,28 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         with patch("haystack.document_stores.elasticsearch7.bulk") as mocked_bulk:
             mocked_document_store.write_documents(documents)
             assert mocked_bulk.call_count == 5
+
+    @pytest.mark.unit
+    def test_import_from_haystack_document_stores(self):
+        from haystack.document_stores import ElasticsearchDocumentStore
+
+        assert ElasticsearchDocumentStore.__module__ == "haystack.document_stores.elasticsearch7"
+
+    @pytest.mark.unit
+    def test_import_from_haystack_document_stores_es_client_not_installed(self):
+        with pytest.raises(ImportError, match=r"Run 'pip install 'farm-haystack\[elasticsearch\]''"):
+            original_import = builtins.__import__
+
+            def side_effect(name, *args):
+                if name == "elasticsearch":
+                    raise ModuleNotFoundError("No module named 'elasticsearch'")
+                return original_import(name, *args)
+
+            with patch("builtins.__import__", side_effect=side_effect) as mock_import:
+                if "haystack.document_stores" in sys.modules:
+                    del sys.modules["haystack.document_stores"]
+                if "haystack.document_stores.elasticsearch7" in sys.modules:
+                    del sys.modules["haystack.document_stores.elasticsearch7"]
+                from haystack.document_stores import ElasticsearchDocumentStore
+
+                doc_store = ElasticsearchDocumentStore()

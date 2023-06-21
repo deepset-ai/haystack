@@ -32,11 +32,11 @@ def launch_es(
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
 
-    java_opts_str = f"-e ES_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
+    java_opts_str = f'-e ES_JAVA_OPTS="{java_opts}" ' if java_opts is not None else ""
     password_str = (
-        f"-e 'ELASTIC_PASSWORD={password}' -e 'xpack.security.enabled=true' "
+        f'-e "ELASTIC_PASSWORD={password}" -e "xpack.security.enabled=true" '
         if password is not None
-        else "-e 'xpack.security.enabled=false' "
+        else '-e "xpack.security.enabled=false" '
     )
 
     command = (
@@ -66,7 +66,7 @@ def launch_opensearch(sleep=15, delete_existing=False, local_port=9200, java_opt
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
 
-    java_opts_str = f"-e OPENSEARCH_JAVA_OPTS='{java_opts}' " if java_opts is not None else ""
+    java_opts_str = f'-e OPENSEARCH_JAVA_OPTS="{java_opts}" ' if java_opts is not None else ""
 
     command = (
         f"docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d "

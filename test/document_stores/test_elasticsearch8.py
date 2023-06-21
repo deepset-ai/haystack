@@ -454,3 +454,9 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract):
         mocked_document_store.batch_size = 2
         mocked_document_store.query_by_embedding_batch([np.array([1, 2, 3])] * 3)
         assert mocked_document_store.client.msearch.call_count == 2
+
+    @pytest.mark.unit
+    def test_import_from_haystack_document_stores(self):
+        from haystack.document_stores import ElasticsearchDocumentStore
+
+        assert ElasticsearchDocumentStore.__module__ == "haystack.document_stores.elasticsearch8"
