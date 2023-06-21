@@ -33,7 +33,7 @@ def find_unambiguous_connection(
     possible_connections = [
         (out_sock, in_sock)
         for out_sock, in_sock in itertools.product(from_sockets, to_sockets)
-        if not in_sock.taken_by and out_sock.type == in_sock.type
+        if not in_sock.sender and out_sock.type == in_sock.type
     ]
 
     # No connections seem to be possible
@@ -75,7 +75,7 @@ def _connections_status(from_node: str, to_node: str, from_sockets: List[OutputS
     from_sockets_list = "\n".join([f" - {socket.name} ({socket.type.__name__})" for socket in from_sockets])
     to_sockets_list = "\n".join(
         [
-            f" - {socket.name} ({socket.type.__name__}, {'taken by '+socket.taken_by if socket.taken_by else 'available'})"
+            f" - {socket.name} ({socket.type.__name__}, {'sent by '+socket.sender if socket.sender else 'available'})"
             for socket in to_sockets
         ]
     )

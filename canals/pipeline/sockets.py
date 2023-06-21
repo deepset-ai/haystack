@@ -23,7 +23,7 @@ class InputSocket:
     name: str
     type: type
     variadic: bool
-    taken_by: Optional[str] = None
+    sender: Optional[str] = None
 
 
 def find_input_sockets(component) -> Dict[str, InputSocket]:
