@@ -27,18 +27,6 @@ def mock_prompthub():
         yield mock_prompthub
 
 
-@pytest.fixture
-def mock_openai_tokenizer():
-    with patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer") as mock_tokenizer_func:
-        mock_tokenizer = MagicMock()  # this will be our mock tokenizer
-        # "This is a test for a mock openai tokenizer."
-        mock_tokenizer.encode.return_value = [2028, 374, 264, 1296, 369, 264, 8018, 1825, 2192, 47058, 13]
-        # Returning truncated prompt: [2028, 374, 264, 1296, 369, 264, 8018, 1825, 2192]
-        mock_tokenizer.decode.return_value = "This is a test for a mock openai"
-        mock_tokenizer_func.return_value = mock_tokenizer
-        yield mock_tokenizer_func
-
-
 def skip_test_for_invalid_key(prompt_model):
     if prompt_model.api_key is not None and prompt_model.api_key == "KEY_NOT_FOUND":
         pytest.skip("No API key found, skipping test")
@@ -898,45 +886,14 @@ def test_complex_pipeline_with_multiple_same_prompt_node_components_yaml(tmp_pat
     assert pipeline is not None
 
 
-class TestTokenLimit:
-    @pytest.mark.integration
-    def test_hf_token_limit_warning(self, caplog):
-        prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
-        with caplog.at_level(logging.WARNING):
-            node = PromptNode("google/flan-t5-small", devices=["cpu"])
-            _ = node.prompt_model._ensure_token_limit(prompt=prompt)
-            assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
-            assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
-
-    @pytest.mark.unit
-    def test_openai_token_limit_warning(self, mock_openai_tokenizer, caplog):
-        prompt_node = PromptNode("text-ada-001", max_length=2045, api_key="fake_key")
-        with caplog.at_level(logging.WARNING):
-            _ = prompt_node.prompt_model._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
-            assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (2045 tokens) fit within the max token limit (2049 tokens)." in caplog.text
-
-    @pytest.mark.unit
-    def test_chatgpt_token_limit_warning_single_prompt(self, mock_openai_tokenizer, caplog):
-        prompt_node = PromptNode("gpt-3.5-turbo", max_length=4090, api_key="fake_key")
-        with caplog.at_level(logging.WARNING):
-            _ = prompt_node.prompt_model._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
-            assert "The prompt has been truncated from" in caplog.text
-            assert "and answer length (4090 tokens) fit within the max token limit (4096 tokens)." in caplog.text
-
-    @pytest.mark.unit
-    def test_chatgpt_token_limit_warning_with_messages(self, mock_openai_tokenizer, caplog):
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Who won the world series in 2020?"},
-            {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
-            {"role": "user", "content": "Where was it played?"},
-        ]
-        with patch("haystack.utils.openai_utils.count_openai_tokens_messages") as mock_count_tokens:
-            mock_count_tokens.return_value = 40
-            prompt_node = PromptNode("gpt-3.5-turbo", max_length=4060, api_key="fake_key")
-            with pytest.raises(ValueError):
-                _ = prompt_node.prompt_model._ensure_token_limit(prompt=messages)
+@pytest.mark.integration
+def test_hf_token_limit_warning(caplog):
+    prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
+    with caplog.at_level(logging.WARNING):
+        node = PromptNode("google/flan-t5-small", devices=["cpu"])
+        _ = node.prompt_model._ensure_token_limit(prompt=prompt)
+        assert "The prompt has been truncated from 812 tokens to 412 tokens" in caplog.text
+        assert "and answer length (100 tokens) fit within the max token limit (512 tokens)." in caplog.text
 
 
 class TestRunBatch:

@@ -1,8 +1,21 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
+import logging
 import pytest
 
 from haystack.nodes.prompt.invocation_layer import ChatGPTInvocationLayer
+
+
+@pytest.fixture
+def mock_openai_tokenizer():
+    with patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer") as mock_tokenizer_func:
+        mock_tokenizer = MagicMock()  # this will be our mock tokenizer
+        # "This is a test for a mock openai tokenizer."
+        mock_tokenizer.encode.return_value = [2028, 374, 264, 1296, 369, 264, 8018, 1825, 2192, 47058, 13]
+        # Returning truncated prompt: [2028, 374, 264, 1296, 369, 264, 8018, 1825, 2192]
+        mock_tokenizer.decode.return_value = "This is a test for a mock openai"
+        mock_tokenizer_func.return_value = mock_tokenizer
+        yield mock_tokenizer_func
 
 
 @pytest.mark.unit
@@ -39,3 +52,37 @@ def test_supports_correct_model_names():
 def test_does_not_support_wrong_model_names():
     for model_name in ["got-3.5-turbo", "wrong_model_name"]:
         assert not ChatGPTInvocationLayer.supports(model_name)
+
+
+@pytest.mark.unit
+def test_chatgpt_token_limit_warning_single_prompt(mock_openai_tokenizer, caplog):
+    invocation_layer = ChatGPTInvocationLayer(
+        model_name_or_path="gpt-3.5-turbo",
+        api_key="fake_api_key",
+        api_base="https://fake_api_base.com",
+        max_length=4090,
+    )
+    with caplog.at_level(logging.WARNING):
+        _ = invocation_layer._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
+        assert "The prompt has been truncated from" in caplog.text
+        assert "and answer length (4090 tokens) fit within the max token limit (4096 tokens)." in caplog.text
+
+
+@pytest.mark.unit
+def test_chatgpt_token_limit_warning_with_messages(mock_openai_tokenizer, caplog):
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Who won the world series in 2020?"},
+        {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+        {"role": "user", "content": "Where was it played?"},
+    ]
+    with patch("haystack.utils.openai_utils.count_openai_tokens_messages") as mock_count_tokens:
+        mock_count_tokens.return_value = 40
+        invocation_layer = ChatGPTInvocationLayer(
+            model_name_or_path="gpt-3.5-turbo",
+            api_key="fake_api_key",
+            api_base="https://fake_api_base.com",
+            max_length=4060,
+        )
+        with pytest.raises(ValueError):
+            _ = invocation_layer._ensure_token_limit(prompt=messages)
