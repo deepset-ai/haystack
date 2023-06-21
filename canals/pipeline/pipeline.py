@@ -128,7 +128,6 @@ class Pipeline:
             name,
             instance=instance,
             input_sockets=input_sockets,
-            variadic_input=any(e.variadic for e in input_sockets.values()),
             output_sockets=output_sockets,
             visits=0,
         )
@@ -224,9 +223,8 @@ class Pipeline:
         edge_key = f"{from_socket.name}/{to_socket.name}"
         self.graph.add_edge(from_node, to_node, key=edge_key, from_socket=from_socket, to_socket=to_socket)
 
-        # Set the sender of the receivering socket (unless is variadic - variadic sockets are never "taken")
-        if not to_socket.variadic:
-            to_socket.sender = from_node
+        # Set the sender of the receiving socket
+        to_socket.sender = from_node
 
     def get_component(self, name: str) -> object:
         """
@@ -461,19 +459,6 @@ class Pipeline:
             )
             return "wait"
 
-        # All upstream nodes run, so it **must** be our turn.
-        # However we're missing data, so this branch probably is being skipped.
-        if inputs and self.graph.nodes[name]["variadic_input"]:
-            logger.debug(
-                "Running '%s', even though some upstream component did not produced output. "
-                "(upstream components: %s, expected inputs: %s, n. of inputs received %s)",
-                name,
-                list(nodes_to_wait_for),
-                [f"{node}.{socket}" for node, socket in expected_inputs],
-                len(list(inputs.values())[0]) if inputs else 0,
-            )
-            return "run"
-
         logger.debug(
             "Skipping '%s', upstream component didn't produce output "
             "(upstream components: %s, expected inputs: %s, inputs received: %s)",
@@ -492,33 +477,16 @@ class Pipeline:
 
         Returns True if all the necessary inputs are received, False otherwise, and a message with the decision.
         """
-        # Variadic nodes expect a single list regardless of how many incoming connections they have,
-        # but the length of the list should match the length of incoming connections.
-        if self.graph.nodes[name]["variadic_input"]:
-            # Variadic nodes need at least two values
-            if not inputs or len(inputs) < 2:
-                return False
+        # No input sockets are connected: this is an input node and should be always ready to run.
+        if not expected_inputs:
+            logger.debug("Component '%s' is ready to run: it's a starting node.", name)
+            return True
 
-            if len(list(inputs.values())[0]) == len(expected_inputs):
-                logger.debug(
-                    "Component '%s' is ready to run: all connected inputs were received "
-                    "(expecting %s, received %s values).",
-                    name,
-                    len(expected_inputs),
-                    len(list(inputs.values())[0]),
-                )
-                return True
-        else:
-            # No input sockets are connected: this is an input node and should be always ready to run.
-            if not expected_inputs:
-                logger.debug("Component '%s' is ready to run: it's a starting node.", name)
-                return True
-
-            # Otherwise, just make sure there is one input key for each expected input key
-            _, expected_input_names = zip(*expected_inputs)
-            if set(expected_input_names).issubset(set(inputs.keys())):
-                logger.debug("Component '%s' is ready to run: all expected inputs were received.", name)
-                return True
+        # Otherwise, just make sure there is one input key for each expected input key
+        _, expected_input_names = zip(*expected_inputs)
+        if set(expected_input_names).issubset(set(inputs.keys())):
+            logger.debug("Component '%s' is ready to run: all expected inputs were received.", name)
+            return True
 
         return False
 
@@ -534,7 +502,7 @@ class Pipeline:
             for from_node, _, data in self.graph.in_edges(name, data=True)
             # ... if there's a path in the graph leading back from the current node to the
             # input node, # and only in case this node accepts multiple inputs.
-            if not (networkx.has_path(self.graph, name, from_node) and self.graph.nodes[name]["variadic_input"])
+            if not networkx.has_path(self.graph, name, from_node)
         ]
         return data_to_wait_for
 
@@ -549,7 +517,7 @@ class Pipeline:
     def _skip_downstream_nodes(self, component: str, inputs_buffer: OrderedDict) -> OrderedDict:
         """
         When a component is skipped, put all downstream nodes in the inputs buffer too: the might be skipped too,
-        unless they are merge/variadic nodes. They will be evaluated later by the pipeline execution loop.
+        unless they are merge nodes. They will be evaluated later by the pipeline execution loop.
         """
         downstream_nodes = [e[1] for e in self.graph.out_edges(component)]
         for downstream_node in downstream_nodes:
@@ -569,15 +537,9 @@ class Pipeline:
 
             input_class = instance.input
 
-            # If the node is variadic, unpack the input
-            if self.graph.nodes[name]["variadic_input"]:
-                inputs = list(inputs.values())[0]
-                input_dataclass = input_class(*inputs)
-
-            # Otherwise pass the inputs as kwargs after adding the component's own defaults to them
-            else:
-                inputs = {**instance.defaults, **inputs}
-                input_dataclass = input_class(**inputs)
+            # Pass the inputs as kwargs after adding the component's own defaults to them
+            inputs = {**instance.defaults, **inputs}
+            input_dataclass = input_class(**inputs)
 
             output_dataclass = instance.run(input_dataclass)
 
@@ -636,11 +598,6 @@ class Pipeline:
 
                 value_to_route = getattr(node_results, from_socket.name, None)
                 if value_to_route:
-                    if to_socket.variadic:
-                        if not to_socket.name in inputs_buffer[target_node].keys():
-                            inputs_buffer[target_node][to_socket.name] = []
-                        inputs_buffer[target_node][to_socket.name].append(value_to_route)
-                    else:
-                        inputs_buffer[target_node][to_socket.name] = value_to_route
+                    inputs_buffer[target_node][to_socket.name] = value_to_route
 
         return inputs_buffer

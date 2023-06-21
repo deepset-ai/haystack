@@ -230,7 +230,7 @@ def _find_input_output(class_):
             continue
 
         # Field __canals_connection__ is set by _input and _output decorators
-        if prop.fget.__canals_connection__ in [Connection.INPUT, Connection.INPUT_VARIADIC]:
+        if prop.fget.__canals_connection__ == Connection.INPUT:
             inputs_found.append(prop)
         elif prop.fget.__canals_connection__ == Connection.OUTPUT:
             outputs_found.append(prop)

@@ -5,8 +5,6 @@ import logging
 from enum import Enum
 from dataclasses import fields, is_dataclass, dataclass, asdict, MISSING
 
-from canals.errors import ComponentError
-
 logger = logging.getLogger(__name__)
 
 
@@ -66,17 +64,13 @@ def _make_comparable(class_: type):
 class Connection(Enum):
     INPUT = 1
     OUTPUT = 2
-    INPUT_VARIADIC = 3
 
 
-def _input(input_function=None, variadic: bool = False):
+def _input(input_function=None):
     """
     Decorator to mark a method that returns a dataclass defining a Component's input.
 
     The decorated function becomes a property.
-
-    :param variadic: Set it to true to mark the dataclass returned by input_function as variadic,
-        additional checks are done in this case, defaults to False
     """
 
     def decorator(function):
@@ -90,19 +84,11 @@ def _input(input_function=None, variadic: bool = False):
             _make_comparable(class_)
             _make_fields_optional(class_)
 
-            if variadic and len(fields(class_)) > 1:
-                raise ComponentError(f"Variadic input dataclass {class_.__name__} must have only one field")
-
-            if variadic:
-                # Ugly hack to make variadic input work
-                init = class_.__init__
-                class_.__init__ = lambda self, *args: init(self, list(args))
-
             return class_
 
         # Magic field to ease some further checks, we set it in the wrapper
         # function so we access it like this <class>.<function>.fget.__canals_connection__
-        wrapper.__canals_connection__ = Connection.INPUT_VARIADIC if variadic else Connection.INPUT
+        wrapper.__canals_connection__ = Connection.INPUT
 
         # If we don't set the documentation explicitly the user wouldn't be able to access
         # since we make wrapper a property and not the original function.

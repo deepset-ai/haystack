@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Iterable, Dict, Any
+from typing import List, Dict, Any
 import logging
 from dataclasses import fields
 
@@ -41,7 +41,6 @@ def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str
     Make sure the pipeline is properly built and that the input received makes sense.
     Returns the input values, validated and updated at need.
     """
-    input_components = find_pipeline_inputs(graph)
     if not any(sockets for sockets in find_pipeline_inputs(graph).values()):
         raise PipelineValidationError("This pipeline has no inputs.")
 
@@ -55,13 +54,6 @@ def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str
 
     # Make sure that the pipeline input is only sent to nodes that won't receive data from other nodes
     _validate_nodes_receive_only_expected_input(graph, input_values)
-
-    # Make sure variadic input components are receiving lists
-    for component in input_components.keys():
-        if graph.nodes[component]["variadic_input"] and component in input_values.keys():
-            for key, value in input_values[component].__dict__.items():  # should be just one
-                if not isinstance(value, Iterable):
-                    setattr(input_values[component], key, [value])
 
     return input_values
 
@@ -82,7 +74,7 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
                 or not socket.name in [f.name for f in fields(inputs_for_node)]
                 or not getattr(inputs_for_node, socket.name)
             )
-            if missing_input_value and not input_in_node_defaults and not socket.variadic:
+            if missing_input_value and not input_in_node_defaults:
                 raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
