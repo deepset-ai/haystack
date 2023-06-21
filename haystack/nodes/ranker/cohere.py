@@ -150,7 +150,7 @@ class CohereRanker(BaseRanker):
         if len(cohere_docs) > 1000:
             logger.warning(
                 "The Cohere reranking endpoint only supports 1000 documents. "
-                "The the number of documents has been truncated to 1000 from %s",
+                "The number of documents has been truncated to 1000 from %s.",
                 len(cohere_docs),
             )
             cohere_docs = cohere_docs[:1000]
