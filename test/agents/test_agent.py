@@ -391,6 +391,7 @@ def test_agent_prompt_template_has_no_transcript(caplog):
 
 @pytest.mark.unit
 def test_agent_prompt_template_unused_parameters(caplog):
+    caplog.set_level(logging.DEBUG)
     mock_prompt_node = Mock(spec=PromptNode)
     prompt = PromptTemplate(prompt="I now have {query} and {transcript} as template parameters")
     mock_prompt_node.get_prompt_template.return_value = prompt
@@ -404,14 +405,16 @@ def test_agent_prompt_template_unused_parameters(caplog):
 
 @pytest.mark.unit
 def test_agent_prompt_template_multiple_unused_parameters(caplog):
+    caplog.set_level(logging.DEBUG)
     mock_prompt_node = Mock(spec=PromptNode)
     prompt = PromptTemplate(prompt="I now have strange {param_1} and {param_2} as template parameters")
     mock_prompt_node.get_prompt_template.return_value = prompt
     agent = Agent(prompt_node=mock_prompt_node)
     agent.check_prompt_template({"query": "test", "unused": "test"})
+    # order of parameters in the list not guaranteed, so we check for preamble of the message
     assert (
         "The Agent's prompt template does not utilize the following parameters provided by the "
-        "prompt parameter resolver: ['unused', 'query']" in caplog.text
+        "prompt parameter resolver" in caplog.text
     )
 
 
