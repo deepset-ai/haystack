@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Iterable, Dict
+from typing import List, Iterable, Dict, Any
 import logging
 from dataclasses import fields
 
@@ -36,7 +36,7 @@ def find_pipeline_outputs(graph) -> Dict[str, List[OutputSocket]]:
     }
 
 
-def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str, type]) -> Dict[str, type]:
+def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]) -> Dict[str, Any]:
     """
     Make sure the pipeline is properly built and that the input received makes sense.
     Returns the input values, validated and updated at need.
@@ -66,7 +66,7 @@ def validate_pipeline_input(graph: networkx.MultiDiGraph, input_values: Dict[str
     return input_values
 
 
-def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_values: Dict[str, type]):
+def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]):
     """
     Make sure all the inputs nodes are receiving all the values they need, either from the Pipeline's input or from
     other nodes.
@@ -86,7 +86,7 @@ def _validate_input_sockets_are_connected(graph: networkx.MultiDiGraph, input_va
                 raise ValueError(f"Missing input: {node}.{socket.name}")
 
 
-def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, input_values: Dict[str, type]):
+def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, input_values: Dict[str, Any]):
     """
     Make sure that every input node is only receiving input values from EITHER the pipeline's input or another node,
     but never from both.

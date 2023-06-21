@@ -81,7 +81,6 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
         # Collect components
         pipeline_repr["components"] = {}
         for component_name in pipeline.graph.nodes:
-
             # Check if we saved the same instance twice (or more times) and replace duplicates with references.
             component_instance = pipeline.graph.nodes[component_name]["instance"]
             for existing_component_pipeline, existing_component_name, existing_components in components:
@@ -136,7 +135,6 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
     pipelines = {}
     component_instances: Dict[str, object] = {}
     for pipeline_name, pipeline_schema in schema["pipelines"].items():
-
         # Create the Pipeline object
         pipe_args = {"metadata": pipeline_schema.get("metadata", None)}
         if "max_loops_allowed" in pipeline_schema.keys():
@@ -183,18 +181,17 @@ def _discover_dependencies(components: List[object]) -> List[str]:
     return list({module.__name__.split(".")[0] for module in module_names if module is not None}) + ["canals"]
 
 
-def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__canals_component__") -> Dict[str, type]:
+def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__canals_component__") -> Dict[str, Any]:
     """
     Finds all classes decorated with `@components` in all the modules listed in `modules_to_search`.
     Returns a dictionary with the component class name and the component classes.
 
     Note: can be used for other decorators as well by setting the `decorator` parameter.
     """
-    component_classes: Dict[str, type] = {}
+    component_classes: Dict[str, Any] = {}
 
     # Collect all modules
     for module in modules_to_search:
-
         if not module in sys.modules:
             raise ValueError(f"{module} is not imported.")
 
