@@ -48,11 +48,9 @@ def _make_comparable(class_: type):
         if not is_dataclass(other):
             return False
 
-        # We don't care about the order, if they're the same class
-        # the fields will have the same order
         fields_ = [f.name for f in fields(self) if f.compare]
         other_fields = [f.name for f in fields(other) if f.compare]
-        if not fields_ == other_fields:
+        if not len(fields_) == len(other_fields):
             return False
 
         self_dict, other_dict = asdict(self), asdict(other)
