@@ -273,9 +273,8 @@ class SentenceTransformersRanker(BaseRanker):
 
             return result
 
-    @staticmethod
     def _preprocess_batch_queries_and_docs(
-        queries: List[str], documents: Union[List[Document], List[List[Document]]]
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[int], List[str], List[Document], bool]:
         number_of_docs = []
         all_queries = []
