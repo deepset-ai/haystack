@@ -25,6 +25,9 @@ def test_correct_declaration():
         def run(self, data):
             return self.output(output_value=1)
 
+    # Verifies also instantiation works with no issues
+    assert MockComponent()
+
 
 def test_input_required():
     with pytest.raises(
@@ -66,6 +69,72 @@ def test_output_required():
 
             def run(self, data):
                 return 1
+
+
+def test_only_single_input_defined():
+    with pytest.raises(
+        ComponentError,
+        match="Multiple input definitions found for Component MockComponent",
+    ):
+
+        @component
+        class MockComponent:
+            @component.input
+            def input(self):
+                class Input:
+                    input_value: int
+
+                return Input
+
+            @component.input
+            def another_input(self):
+                class Input:
+                    input_value: int
+
+                return Input
+
+            @component.output
+            def output(self):
+                class Output:
+                    output_value: int
+
+                return Output
+
+            def run(self, data):
+                return self.output(output_value=1)
+
+
+def test_only_single_output_defined():
+    with pytest.raises(
+        ComponentError,
+        match="Multiple output definitions found for Component MockComponent",
+    ):
+
+        @component
+        class MockComponent:
+            @component.input
+            def input(self):
+                class Input:
+                    input_value: int
+
+                return Input
+
+            @component.output
+            def output(self):
+                class Output:
+                    output_value: int
+
+                return Output
+
+            @component.output
+            def another_output(self):
+                class Output:
+                    output_value: int
+
+                return Output
+
+            def run(self, data):
+                return self.output(output_value=1)
 
 
 def test_variadic_input():
