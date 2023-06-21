@@ -361,19 +361,23 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
     @pytest.mark.unit
     def test_import_from_haystack_document_stores_es_client_not_installed(self):
+        orig_doc_stores_module = sys.modules["haystack.document_stores"]
+        orig_haystack_es7_module = sys.modules["haystack.document_stores.elasticsearch7"]
+        del sys.modules["haystack.document_stores"]
+        del sys.modules["haystack.document_stores.elasticsearch7"]
+
+        original_import = builtins.__import__
+
+        def side_effect(name, *args):
+            if name == "elasticsearch":
+                raise ModuleNotFoundError("No module named 'elasticsearch'")
+            return original_import(name, *args)
+
         with pytest.raises(ImportError, match=r"Run 'pip install 'farm-haystack\[elasticsearch\]''"):
-            original_import = builtins.__import__
-
-            def side_effect(name, *args):
-                if name == "elasticsearch":
-                    raise ModuleNotFoundError("No module named 'elasticsearch'")
-                return original_import(name, *args)
-
-            with patch("builtins.__import__", side_effect=side_effect) as mock_import:
-                if "haystack.document_stores" in sys.modules:
-                    del sys.modules["haystack.document_stores"]
-                if "haystack.document_stores.elasticsearch7" in sys.modules:
-                    del sys.modules["haystack.document_stores.elasticsearch7"]
+            with patch("builtins.__import__", side_effect=side_effect):
                 from haystack.document_stores import ElasticsearchDocumentStore
 
                 doc_store = ElasticsearchDocumentStore()
+
+        sys.modules["haystack.document_stores"] = orig_doc_stores_module
+        sys.modules["haystack.document_stores.elasticsearch7"] = orig_haystack_es7_module
