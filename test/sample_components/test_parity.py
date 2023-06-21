@@ -3,11 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Optional
 
-from dataclasses import dataclass
-import pytest
 
 from canals.testing import BaseTestComponent
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 
 
 @component
@@ -16,23 +14,29 @@ class Parity:
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
+    @component.input  # type: ignore
+    def input(self):
+        class Input:
+            value: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        even: Optional[int] = None
-        odd: Optional[int] = None
+        return Input
 
-    def run(self, data: Input) -> Output:
+    @component.output  # type: ignore
+    def output(self):
+        class Output:
+            even: Optional[int] = None
+            odd: Optional[int] = None
+
+        return Output
+
+    def run(self, data):
         """
         :param value: The value to check for parity
         """
         remainder = data.value % 2
         if remainder:
-            return Parity.Output(odd=data.value)
-        return Parity.Output(even=data.value)
+            return self.output(odd=data.value)
+        return self.output(even=data.value)
 
 
 class TestParity(BaseTestComponent):
@@ -41,7 +45,7 @@ class TestParity(BaseTestComponent):
 
     def test_parity(self):
         component = Parity()
-        results = component.run(Parity.Input(value=1))
-        assert results == Parity.Output(odd=1)
-        results = component.run(Parity.Input(value=2))
-        assert results == Parity.Output(even=2)
+        results = component.run(component.input(value=1))
+        assert results == component.output(odd=1)
+        results = component.run(component.input(value=2))
+        assert results == component.output(even=2)

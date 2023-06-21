@@ -3,12 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List
 
-from dataclasses import dataclass
-
-import pytest
 
 from canals.testing import BaseTestComponent
-from canals.component import component, VariadicComponentInput, ComponentOutput
+from canals.component import component
 
 
 @component
@@ -17,16 +14,22 @@ class Sum:
     Sums the values of all the input connections together.
     """
 
-    @dataclass
-    class Input(VariadicComponentInput):
-        values: List[int]
+    @component.input(variadic=True)  # type: ignore
+    def input(self):
+        class Input:
+            values: List[int]
 
-    @dataclass
-    class Output(ComponentOutput):
-        total: int
+        return Input
 
-    def run(self, data: Input) -> Output:
-        return Sum.Output(total=sum(data.values))
+    @component.output  # type: ignore
+    def output(self):
+        class Output:
+            total: int
+
+        return Output
+
+    def run(self, data):
+        return self.output(total=sum(data.values))
 
 
 class TestSum(BaseTestComponent):
@@ -35,18 +38,18 @@ class TestSum(BaseTestComponent):
 
     def test_sum_no_values(self):
         component = Sum()
-        results = component.run(Sum.Input())
-        assert results == Sum.Output(total=0)
+        results = component.run(component.input())
+        assert results == component.output(total=0)
         assert component.init_parameters == {}
 
     def test_sum_one_value(self):
         component = Sum()
-        results = component.run(Sum.Input(10))
-        assert results == Sum.Output(total=10)
+        results = component.run(component.input(10))
+        assert results == component.output(total=10)
         assert component.init_parameters == {}
 
     def test_sum_few_values(self):
         component = Sum()
-        results = component.run(Sum.Input(10, 11, 12))
-        assert results == Sum.Output(total=33)
+        results = component.run(component.input(10, 11, 12))
+        assert results == component.output(total=33)
         assert component.init_parameters == {}

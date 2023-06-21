@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pytest
 
 from canals.errors import PipelineConnectError
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 from canals.pipeline.sockets import find_input_sockets, find_output_sockets
 from canals.pipeline.connections import find_unambiguous_connection
 
@@ -12,29 +12,41 @@ from canals.pipeline.connections import find_unambiguous_connection
 def test_find_unambiguous_connection_no_connection_possible():
     @component
     class Component1:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: int
+        @component.input
+        def input(self):
+            class Input:
+                input_value: int
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: int
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return Component1.Output(output_value=data.input_value)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: int
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=data.input_value)
 
     @component
     class Component2:
-        @dataclass
-        class Input(ComponentInput):
-            input_value: str
+        @component.input
+        def input(self):
+            class Input:
+                input_value: str
 
-        @dataclass
-        class Output(ComponentOutput):
-            output_value: str
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return Component2.Output(output_value=data.input_value)
+        @component.output
+        def output(self):
+            class Output:
+                output_value: str
+
+            return Output
+
+        def run(self, data):
+            return self.output(output_value=data.input_value)
 
     expected_message = """Cannot connect 'comp1' with 'comp2': no matching connections available.
 'comp1':
@@ -54,31 +66,43 @@ def test_find_unambiguous_connection_no_connection_possible():
 def test_find_unambiguous_connection_many_connections_possible_name_matches():
     @component
     class Component1:
-        @dataclass
-        class Input(ComponentInput):
-            value: str
+        @component.input
+        def input(self):
+            class Input:
+                value: str
 
-        @dataclass
-        class Output(ComponentOutput):
-            value: str
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return Component1.Output(value=data.value)
+        @component.output
+        def output(self):
+            class Output:
+                value: str
+
+            return Output
+
+        def run(self, data):
+            return self.output(value=data.value)
 
     @component
     class Component2:
-        @dataclass
-        class Input(ComponentInput):
-            value: str
-            othervalue: str
-            yetanothervalue: str
+        @component.input
+        def input(self):
+            class Input:
+                value: str
+                othervalue: str
+                yetanothervalue: str
 
-        @dataclass
-        class Output(ComponentOutput):
-            value: str
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return Component2.Output(value=data.value)
+        @component.output
+        def output(self):
+            class Output:
+                value: str
+
+            return Output
+
+        def run(self, data):
+            return self.output(value=data.value)
 
     comp1 = Component1()
     comp2 = Component2()
@@ -94,31 +118,43 @@ def test_find_unambiguous_connection_many_connections_possible_name_matches():
 def test_find_unambiguous_connection_many_connections_possible_no_name_matches():
     @component
     class Component1:
-        @dataclass
-        class Input(ComponentInput):
-            value: str
+        @component.input
+        def input(self):
+            class Input:
+                value: str
 
-        @dataclass
-        class Output(ComponentOutput):
-            value: str
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return Component1.Output(value=data.value)
+        @component.output
+        def output(self):
+            class Output:
+                value: str
+
+            return Output
+
+        def run(self, data):
+            return self.output(value=data.value)
 
     @component
     class Component2:
-        @dataclass
-        class Input(ComponentInput):
-            value1: str
-            value2: str
-            value3: str
+        @component.input
+        def input(self):
+            class Input:
+                value1: str
+                value2: str
+                value3: str
 
-        @dataclass
-        class Output(ComponentOutput):
-            value: str
+            return Input
 
-        def run(self, data: Input) -> Output:
-            return Component2.Output(value=data.value1)
+        @component.output
+        def output(self):
+            class Output:
+                value: str
+
+            return Output
+
+        def run(self, data):
+            return self.output(value=data.value1)
 
     expected_message = """Cannot connect 'comp1' with 'comp2': more than one connection is possible between these components. Please specify the connection name, like: pipeline.connect\('comp1.value', 'comp2.value1'\).
 'comp1':

@@ -4,10 +4,9 @@
 from typing import Union, Optional, Dict, get_args
 
 import logging
-import inspect
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
-from canals.component.input_output import fields
+from canals.component.input_output import Connection
 
 
 logger = logging.getLogger(__name__)
@@ -31,15 +30,10 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
     """
     Find a component's input sockets.
     """
-    run_signature = inspect.signature(component.__class__.run)
-
-    input_annotation = run_signature.parameters["data"].annotation
-    if not input_annotation or input_annotation == inspect.Parameter.empty:
-        input_annotation = component.input_type
-    variadic = hasattr(input_annotation, "_variadic_component_input")
+    is_variadic = type(component).__canals_input__.fget.__canals_connection__ is Connection.INPUT_VARIADIC
 
     input_sockets = {}
-    for field in fields(input_annotation):
+    for field in fields(component.__canals_input__):
         type_ = field.type
         #   Note: we're forced to use type() == type() due to an explicit limitation of the typing library,
         #   that disables `issubclass` on typing classes.
@@ -50,10 +44,10 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
             else:
                 raise ValueError("Components do not support Union types for connections yet.")
         # Unwrap List types to get the internal type if the argument is variadic
-        if variadic:
+        if is_variadic:
             type_ = get_args(type_)[0]
 
-        input_sockets[field.name] = InputSocket(name=field.name, type=type_, variadic=variadic)
+        input_sockets[field.name] = InputSocket(name=field.name, type=type_, variadic=is_variadic)
 
     return input_sockets
 
@@ -62,14 +56,8 @@ def find_output_sockets(component) -> Dict[str, OutputSocket]:
     """
     Find a component's output sockets.
     """
-    run_signature = inspect.signature(component.run)
-
-    return_annotation = run_signature.return_annotation
-    if return_annotation == inspect.Parameter.empty:
-        return_annotation = component.output_type
-
     output_sockets = {}
-    for field in fields(return_annotation):
+    for field in fields(component.__canals_output__):
         type_ = field.type
         #   Note: we're forced to use type() == type() due to an explicit limitation of the typing library,
         #   that disables `issubclass` on typing classes.

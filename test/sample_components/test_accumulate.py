@@ -5,10 +5,8 @@ from typing import Union, Callable, Optional
 import sys
 import builtins
 from importlib import import_module
-from dataclasses import dataclass
 
-import pytest
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 from canals.testing import BaseTestComponent
 
 
@@ -22,13 +20,19 @@ class Accumulate:
     are not directly serializable.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
+    @component.input  # type: ignore
+    def input(self):
+        class Input:
+            value: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        value: int
+        return Input
+
+    @component.output  # type: ignore
+    def output(self):
+        class Output:
+            value: int
+
+        return Output
 
     def __init__(self, function: Optional[Union[Callable, str]] = None):
         """
@@ -47,9 +51,9 @@ class Accumulate:
             # 'function' is not serializable by default, so we serialize it manually.
             self.init_parameters = {"function": self._save_function(function)}
 
-    def run(self, data: Input) -> Output:
+    def run(self, data):
         self.state = self.function(self.state, data.value)
-        return Accumulate.Output(value=self.state)
+        return self.output(value=self.state)
 
     def _load_function(self, function: Union[Callable, str]):
         """
@@ -98,12 +102,12 @@ class TestAccumulate(BaseTestComponent):
 
     def test_accumulate_default(self):
         component = Accumulate()
-        results = component.run(Accumulate.Input(value=10))
-        assert results == Accumulate.Output(value=10)
+        results = component.run(component.input(value=10))
+        assert results == component.output(value=10)
         assert component.state == 10
 
-        results = component.run(Accumulate.Input(value=1))
-        assert results == Accumulate.Output(value=11)
+        results = component.run(component.input(value=1))
+        assert results == component.output(value=11)
         assert component.state == 11
 
         assert component.init_parameters == {}
@@ -111,12 +115,12 @@ class TestAccumulate(BaseTestComponent):
     def test_accumulate_callable(self):
         component = Accumulate(function=my_subtract)
 
-        results = component.run(Accumulate.Input(value=10))
-        assert results == Accumulate.Output(value=-10)
+        results = component.run(component.input(value=10))
+        assert results == component.output(value=-10)
         assert component.state == -10
 
-        results = component.run(Accumulate.Input(value=1))
-        assert results == Accumulate.Output(value=-11)
+        results = component.run(component.input(value=1))
+        assert results == component.output(value=-11)
         assert component.state == -11
 
         assert component.init_parameters == {
@@ -126,12 +130,12 @@ class TestAccumulate(BaseTestComponent):
     def test_accumulate_string(self):
         component = Accumulate(function="test.sample_components.test_accumulate.my_subtract")
 
-        results = component.run(Accumulate.Input(value=10))
-        assert results == Accumulate.Output(value=-10)
+        results = component.run(component.input(value=10))
+        assert results == component.output(value=-10)
         assert component.state == -10
 
-        results = component.run(Accumulate.Input(value=1))
-        assert results == Accumulate.Output(value=-11)
+        results = component.run(component.input(value=1))
+        assert results == component.output(value=-11)
         assert component.state == -11
 
         assert component.init_parameters == {

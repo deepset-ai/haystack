@@ -35,21 +35,23 @@ def test_pipeline(tmp_path):
 
     results = pipeline.run(
         {
-            "add_one": AddFixedValue.Input(value=1),
-            "add_two": AddFixedValue.Input(add=2),
+            "add_one": AddFixedValue().input(value=1),
+            "add_two": AddFixedValue().input(add=2),
         }
     )
     pprint(results)
-    assert results == {"add_two": AddFixedValue.Output(value=8)}
+    assert len(results) == 1
+    assert results["add_two"].value == 8
 
     results = pipeline.run(
         {
-            "add_one": AddFixedValue.Input(value=2),
-            "add_two": AddFixedValue.Input(add=2),
+            "add_one": AddFixedValue().input(value=2),
+            "add_two": AddFixedValue().input(add=2),
         }
     )
     pprint(results)
-    assert results == {"diff": Subtract.Output(difference=7)}
+    assert len(results) == 1
+    assert results["diff"].difference == 7
 
 
 if __name__ == "__main__":

@@ -1,11 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from dataclasses import dataclass
 
-import pytest
-
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 from canals.testing import BaseTestComponent
 
 
@@ -15,23 +12,25 @@ class Double:
     Doubles the input value.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
+    @component.input  # type: ignore
+    def input(self):
+        class Input:
+            value: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        value: int
+        return Input
 
-    def run(self, data: Input) -> Output:
+    @component.output  # type: ignore
+    def output(self):
+        class Output:
+            value: int
+
+        return Output
+
+    def run(self, data):
         """
         Doubles the input value
         """
-        return Double.Output(value=data.value * 2)
-
-
-import pytest
-from canals.testing import BaseTestComponent
+        return self.output(value=data.value * 2)
 
 
 class TestDouble(BaseTestComponent):
@@ -40,6 +39,6 @@ class TestDouble(BaseTestComponent):
 
     def test_double_default(self):
         component = Double()
-        results = component.run(Double.Input(value=10))
-        assert results == Double.Output(value=20)
+        results = component.run(component.input(value=10))
+        assert results == component.output(value=20)
         assert component.init_parameters == {}

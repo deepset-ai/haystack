@@ -2,78 +2,150 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-import inspect
-from dataclasses import fields
+from enum import Enum
+from dataclasses import fields, is_dataclass, dataclass, asdict, MISSING
+
+from canals.errors import ComponentError
 
 logger = logging.getLogger(__name__)
 
 
-class BaseIODataclass:  # pylint: disable=too-few-public-methods
+def _make_fields_optional(class_: type):
     """
-    Base class for input and output classes of components.
+    Takes a dataclass definition and modifies its __init__ so that all fields have
+    a default value set.
+    If a field has a default factory use it to set the default value.
+    If a field has neither a default factory or value default to None.
     """
+    defaults = []
+    for field in fields(class_):
+        default = field.default
+        if field.default is MISSING and field.default_factory is MISSING:
+            default = None
+        elif field.default is MISSING and field.default_factory is not MISSING:
+            default = field.default_factory()
+        defaults.append(default)
+    # mypy complains we're accessing __init__ on an instance but it's not in reality.
+    # class_ is a class definition and not an instance of it, so we're good.
+    # Also only I/O dataclasses are meant to be passed to this function making it a bit safer.
+    class_.__init__.__defaults__ = tuple(defaults)  # type: ignore
 
-    def names(self):
-        """
-        Returns the name of all the fields of this dataclass.
-        """
-        return [field.name for field in fields(self)]
 
-
-class Optionalize(type):
+def _make_comparable(class_: type):
     """
-    Makes all the fields of the dataclass optional by setting None as their default value.
-    """
+    Overwrites the existing __eq__ method of class_ with a custom one.
+    This is meant to be used only in I/O dataclasses, it takes into account
+    whether the fields are marked as comparable or not.
 
-    def __call__(cls, *args, **kwargs):
-        obj = cls.__new__(cls, *args, **kwargs)
-        obj.__init__.__func__.__defaults__ = tuple(None for _ in inspect.signature(obj.__init__).parameters)
-        obj.__init__(*args, **kwargs)
-        return obj
+    This is necessary since the automatically created __eq__ method in dataclasses
+    also verifies the type of the class. That causes it to fail if the I/O dataclass
+    is returned by a function.
 
-
-class Variadic(type):
-    """
-    Adds the proper checks to a variadic input dataclass and packs the args into a list for the `__init__` call.
-    """
-
-    def __call__(cls, *args, **kwargs):
-        if kwargs:
-            raise ValueError(f"{cls.__name__} accepts only an unnamed list of positional parameters.")
-
-        obj = cls.__new__(cls, *args)
-
-        if len(inspect.signature(obj.__init__).parameters) != 1:
-            raise ValueError(f"{cls.__name__} accepts only one variadic positional parameter.")
-
-        obj.__init__(list(args))
-        return obj
-
-
-class ComponentInput(BaseIODataclass, metaclass=Optionalize):  # pylint: disable=too-few-public-methods
-    """
-    Represents the input of a component.
+    In here we don't compare the types of self and other but only their fields.
     """
 
-    # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
-    _component_input = True
+    def comparator(self, other) -> bool:
+        if not is_dataclass(other):
+            return False
+
+        fields_ = [f.name for f in fields(self) if f.compare]
+        other_fields = [f.name for f in fields(other) if f.compare]
+        if not len(fields_) == len(other_fields):
+            return False
+
+        self_dict, other_dict = asdict(self), asdict(other)
+        for field in fields_:
+            if not self_dict[field] == other_dict[field]:
+                return False
+
+        return True
+
+    setattr(class_, "__eq__", comparator)
 
 
-class VariadicComponentInput(BaseIODataclass, metaclass=Variadic):  # pylint: disable=too-few-public-methods
+class Connection(Enum):
+    INPUT = 1
+    OUTPUT = 2
+    INPUT_VARIADIC = 3
+
+
+def _input(input_function=None, variadic: bool = False):
     """
-    Represents the input of a variadic component.
+    Decorator to mark a method that returns a dataclass defining a Component's input.
+
+    The decorated function becomes a property.
+
+    :param variadic: Set it to true to mark the dataclass returned by input_function as variadic,
+        additional checks are done in this case, defaults to False
     """
 
-    # VariadicComponentInput can't inherit from ComponentInput due to metaclasses clashes
-    # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
-    _component_input = True
-    _variadic_component_input = True
+    def decorator(function):
+        def wrapper(self):
+            class_ = function(self)
+            # If the user didn't explicitly declare the returned class
+            # as dataclass we do it out of convenience
+            if not is_dataclass(class_):
+                class_ = dataclass(class_)
+
+            _make_comparable(class_)
+            _make_fields_optional(class_)
+
+            if variadic and len(fields(class_)) > 1:
+                raise ComponentError(f"Variadic input dataclass {class_.__name__} must have only one field")
+
+            if variadic:
+                # Ugly hack to make variadic input work
+                init = class_.__init__
+                class_.__init__ = lambda self, *args: init(self, list(args))
+
+            return class_
+
+        # Magic field to ease some further checks, we set it in the wrapper
+        # function so we access it like this <class>.<function>.fget.__canals_connection__
+        wrapper.__canals_connection__ = Connection.INPUT_VARIADIC if variadic else Connection.INPUT
+
+        # If we don't set the documentation explicitly the user wouldn't be able to access
+        # since we make wrapper a property and not the original function.
+        # This is not essential but a really nice to have.
+        return property(fget=wrapper, doc=function.__doc__)
+
+    # Check if we're called as @_input or @_input()
+    if input_function:
+        # Called with parens
+        return decorator(input_function)
+
+    # Called without parens
+    return decorator
 
 
-class ComponentOutput(BaseIODataclass, metaclass=Optionalize):  # pylint: disable=too-few-public-methods
+def _output(output_function=None):
     """
-    Represents the output of a component.
+    Decorator to mark a method that returns a dataclass defining a Component's output.
+
+    The decorated function becomes a property.
     """
 
-    # dataclasses are uncooperative (don't call `super()`), so we need this flag to check for inheritance
-    _component_output = True
+    def decorator(function):
+        def wrapper(self):
+            class_ = function(self)
+            if not is_dataclass(class_):
+                class_ = dataclass(class_)
+            _make_comparable(class_)
+            return class_
+
+        # Magic field to ease some further checks, we set it in the wrapper
+        # function so we access it like this <class>.<function>.fget.__canals_connection__
+        wrapper.__canals_connection__ = Connection.OUTPUT
+
+        # If we don't set the documentation explicitly the user wouldn't be able to access
+        # since we make wrapper a property and not the original function.
+        # This is not essential but a really nice to have.
+        return property(fget=wrapper, doc=function.__doc__)
+
+    # Check if we're called as @_output or @_output()
+    if output_function:
+        # Called with parens
+        return decorator(output_function)
+
+    # Called without parens
+    return decorator

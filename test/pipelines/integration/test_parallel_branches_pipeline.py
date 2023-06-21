@@ -31,13 +31,13 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "parallel_branches_pipeline.png")
 
-    results = pipeline.run({"add_one": AddFixedValue.Input(value=1)})
+    results = pipeline.run({"add_one": AddFixedValue().input(value=1)})
     pprint(results)
 
     assert results == {
-        "add_one_again": AddFixedValue.Output(value=6),
-        "add_ten": AddFixedValue.Output(value=12),
-        "double": Double.Output(value=4),
+        "add_one_again": AddFixedValue().output(value=6),
+        "add_ten": AddFixedValue().output(value=12),
+        "double": Double().output(value=4),
     }
 
 

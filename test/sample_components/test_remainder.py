@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from dataclasses import dataclass, make_dataclass
+from dataclasses import make_dataclass
 
 import pytest
 
 from canals.testing import BaseTestComponent
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 
 
 @component
@@ -17,9 +17,12 @@ class Remainder:
     the second output connection.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
+    @component.input  # type: ignore
+    def input(self):
+        class Input:
+            value: int
+
+        return Input
 
     def __init__(self, divisor: int = 2):
         if divisor == 0:
@@ -27,19 +30,19 @@ class Remainder:
         self.divisor = divisor
 
         self._output_type = make_dataclass(
-            "Output", fields=[(f"remainder_is_{val}", int, None) for val in range(divisor)], bases=(ComponentOutput,)
+            "Output", fields=[(f"remainder_is_{val}", int, None) for val in range(divisor)]
         )
 
-    @property
-    def output_type(self):
+    @component.output  # type: ignore
+    def output(self):
         return self._output_type
 
-    def run(self, data: Input):
+    def run(self, data):
         """
         :param value: the value to check the remainder of.
         """
         remainder = data.value % self.divisor
-        output = self.output_type()
+        output = self.output()
         setattr(output, f"remainder_is_{remainder}", data.value)
         return output
 
@@ -53,13 +56,13 @@ class TestRemainder(BaseTestComponent):
 
     def test_remainder_default(self):
         component = Remainder()
-        results = component.run(Remainder.Input(value=3))
-        assert results == component.output_type(remainder_is_1=3)
+        results = component.run(component.input(value=3))
+        assert results == component.output(remainder_is_1=3)
 
     def test_remainder_with_divisor(self):
         component = Remainder(divisor=4)
-        results = component.run(Remainder.Input(value=3))
-        assert results == component.output_type(remainder_is_3=3)
+        results = component.run(component.input(value=3))
+        assert results == component.output(remainder_is_3=3)
 
     def test_remainder_zero(self):
         with pytest.raises(ValueError):

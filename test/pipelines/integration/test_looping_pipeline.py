@@ -30,11 +30,11 @@ def test_pipeline(tmp_path):
 
     pipeline.draw(tmp_path / "looping_pipeline.png")
 
-    results = pipeline.run({"merge": merge_loop.input_type(4)})
+    results = pipeline.run({"merge": merge_loop.input(4)})
     pprint(results)
     print("accumulator: ", accumulator.state)
 
-    assert results == {"add_two": AddFixedValue.Output(value=18)}
+    assert results == {"add_two": AddFixedValue().output(value=18)}
     assert accumulator.state == 16
 
 

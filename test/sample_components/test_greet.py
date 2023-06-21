@@ -4,12 +4,9 @@
 from typing import Optional
 import logging
 
-from dataclasses import dataclass
-
-import pytest
 
 from canals.testing import BaseTestComponent
-from canals.component import component, ComponentInput, ComponentOutput
+from canals.component import component
 
 
 logger = logging.getLogger(__name__)
@@ -21,15 +18,21 @@ class Greet:
     Logs a greeting message without affecting the value passing on the connection.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
-        message: str
-        log_level: str
+    @component.input  # type: ignore
+    def input(self):
+        class Input:
+            value: int
+            message: str
+            log_level: str
 
-    @dataclass
-    class Output(ComponentOutput):
-        value: int
+        return Input
+
+    @component.output  # type: ignore
+    def output(self):
+        class Output:
+            value: int
+
+        return Output
 
     def __init__(
         self,
@@ -44,7 +47,7 @@ class Greet:
             raise ValueError(f"This log level does not exist: {log_level}")
         self.defaults = {"message": message, "log_level": log_level}
 
-    def run(self, data: Input) -> Output:
+    def run(self, data):
         """
         Logs a greeting message without affecting the value passing on the connection.
         """
@@ -54,7 +57,7 @@ class Greet:
             raise ValueError(f"This log level does not exist: {data.log_level}")
 
         logger.log(level=level, msg=data.message.format(value=data.value))
-        return Greet.Output(value=data.value)
+        return self.output(value=data.value)
 
 
 class TestGreet(BaseTestComponent):
@@ -75,6 +78,6 @@ class TestGreet(BaseTestComponent):
     def test_greet_message(self, caplog):
         caplog.set_level(logging.WARNING)
         component = Greet()
-        results = component.run(Greet.Input(value=10, message="Hello, that's {value}", log_level="WARNING"))
-        assert results == Greet.Output(value=10)
+        results = component.run(component.input(value=10, message="Hello, that's {value}", log_level="WARNING"))
+        assert results == component.output(value=10)
         assert "Hello, that's 10" in caplog.text

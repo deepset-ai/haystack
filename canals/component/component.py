@@ -4,10 +4,9 @@
 import logging
 import inspect
 
-from dataclasses import is_dataclass
-
 from canals.errors import ComponentError
 from canals.component.decorators import save_init_params, init_defaults
+from canals.component.input_output import Connection, _input, _output
 
 
 logger = logging.getLogger(__name__)
@@ -187,11 +186,13 @@ def component(class_):
     # Its value is set to the desired component name: normally it is the class name, but it can technically be customized.
     class_.__canals_component__ = class_.__name__
 
-    # Check that inputs respects all constraints
-    _check_input(class_)
+    # Find input and output properties
+    (input_, output) = _find_input_output(class_)
 
-    # Check that outputs respects all constraints
-    _check_output(class_)
+    # Save the input and output properties so it's easier to find them when running the Component since we won't
+    # need to search the exact property name each time
+    class_.__canals_input__ = input_
+    class_.__canals_output__ = output
 
     # Check that the run method respects all constraints
     _check_run_signature(class_)
@@ -206,39 +207,55 @@ def component(class_):
     return class_
 
 
-def _check_input(class_):
-    """
-    Check that the component's input respects all constraints
-    """
-    if not hasattr(class_, "Input") and not hasattr(class_, "input_type"):
-        raise ComponentError(
-            "Components must either have an Input dataclass or a 'input_type' property that returns such dataclass"
-        )
-    if hasattr(class_, "Input"):
-        if not is_dataclass(class_.Input):
-            raise ComponentError(f"{class_.__name__}.Input must be a dataclass")
-        if not hasattr(class_.Input, "_component_input"):
-            raise ComponentError(f"{class_.__name__}.Input must inherit from ComponentInput")
-        if (
-            hasattr(class_.Input, "_variadic_component_input")
-            and len(inspect.signature(class_.Input.__init__).parameters) != 2
-        ):
-            raise ComponentError("Variadic inputs can contain only one variadic positional parameter.")
+# We do this to have some namespacing and also to make it clear that the methods decorated with
+# @component.input and @component.output must have their class decorated as @component.
+setattr(component, "input", _input)
+setattr(component, "output", _output)
 
 
-def _check_output(class_):
+def _find_input_output(class_):
     """
-    Check that the component's output respects all constraints
+    Finds the input and the output definitions for class_ and returns them.
+
+    There must be only a single definition of input and output for class_, if either
+    none or more than one are found raise ConnectionError.
     """
-    if not hasattr(class_, "Output") and not hasattr(class_, "output_type"):
-        raise ComponentError(
-            "Components must either have an Output dataclass or a 'output_type' property that returns such dataclass"
-        )
-    if hasattr(class_, "Output"):
-        if not is_dataclass(class_.Output):
-            raise ComponentError(f"{class_.__name__}.Output must be a dataclass")
-        if not hasattr(class_.Output, "_component_output"):
-            raise ComponentError(f"{class_.__name__}.Output must inherit from ComponentOutput")
+    inputs_found = []
+    outputs_found = []
+
+    # Get all properties of class_
+    properties = inspect.getmembers(class_, predicate=lambda m: isinstance(m, property))
+    for _, prop in properties:
+        if not hasattr(prop, "fget") and not hasattr(prop.fget, "__canals_connection__"):
+            continue
+
+        # Field __canals_connection__ is set by _input and _output decorators
+        if prop.fget.__canals_connection__ in [Connection.INPUT, Connection.INPUT_VARIADIC]:
+            inputs_found.append(prop)
+        elif prop.fget.__canals_connection__ == Connection.OUTPUT:
+            outputs_found.append(prop)
+
+    if (in_len := len(inputs_found)) != 1:
+        # Raise if we don't find only a single input definition
+        if in_len == 0:
+            raise ComponentError(
+                f"No input definition found in Component {class_.__name__}. "
+                "Create a method that returns a dataclass defining the input and "
+                "decorate it with @component.input() to fix the error."
+            )
+        raise ComponentError(f"Multiple input definitions found for Component {class_.__name__}.")
+
+    if (in_len := len(outputs_found)) != 1:
+        # Raise if we don't find only a single output definition
+        if in_len == 0:
+            raise ComponentError(
+                f"No output definition found in Component {class_.__name__}. "
+                "Create a method that returns a dataclass defining the output and "
+                "decorate it with @component.output() to fix the error."
+            )
+        raise ComponentError(f"Multiple output definitions found for Component {class_.__name__}.")
+
+    return (inputs_found[0], outputs_found[0])
 
 
 def _check_run_signature(class_):
@@ -257,11 +274,3 @@ def _check_run_signature(class_):
     # The input param must be called data
     if not "data" in run_signature.parameters:
         raise ComponentError("run() must accept a parameter called 'data'.")
-
-    # Either give a self.input_type function or type 'data' with the Input dataclass
-    if not hasattr(class_, "input_type") and run_signature.parameters["data"].annotation != class_.Input:
-        raise ComponentError(f"'data' must be typed and the type must be {class_.__name__}.Input.")
-
-    # Check for the return types
-    if not hasattr(class_, "output_type") and run_signature.return_annotation == inspect.Parameter.empty:
-        raise ComponentError(f"{class_.__name__}.run() must declare the type of its return value.")
