@@ -53,7 +53,7 @@ class CohereRanker(BaseRanker):
          Creates an instance of CohereInvocationLayer for the specified Cohere model.
 
         :param api_key: Cohere API key
-        :param model_name_or_path: Cohere model name. See supported models at https://docs.cohere.com/docs/models.
+        :param model_name_or_path: Cohere model name. Check the list of supported models in the [Cohere documentation](https://docs.cohere.com/docs/models).
         :param top_k: The maximum number of documents to return.
         :param return_documents: If false, returns results without the doc text - the api will return a list of
             {index, relevance score} where index is inferred from the list passed into the request.
