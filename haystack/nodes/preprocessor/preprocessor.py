@@ -60,7 +60,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Optional[Literal["word", "sentence", "passage"]] = "word",
+        split_by: Optional[Literal["word","token", "sentence", "passage"]] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
@@ -142,7 +142,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Optional[Literal["word", "sentence", "passage"]] = None,
+        split_by: Optional[Literal["word","token", "sentence", "passage"]] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -208,7 +208,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Optional[Literal["word", "sentence", "passage"]] = None,
+        split_by: Optional[Literal["word", "token","sentence", "passage"]] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -321,7 +321,7 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: Optional[Literal["word", "sentence", "passage"]],
+        split_by: Optional[Literal["word","token", "sentence", "passage"]],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
@@ -525,6 +525,11 @@ class PreProcessor(BasePreProcessor):
                 text_splits.append(txt)
 
         return text_splits, splits_pages, splits_start_idxs
+
+    def _split_by_token_respecting_sent_boundary(
+        self, text: str, split_length: int, split_overlap: int
+    ) -> Tuple[List[str], List[int], List[int]]:
+
 
     @staticmethod
     def _get_overlap_from_slice(
