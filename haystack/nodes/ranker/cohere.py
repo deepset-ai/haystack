@@ -38,7 +38,7 @@ class CohereRanker(BaseRanker):
     relevance_score = max(relevance_score_1, relevance_score_2, relevance_score_3)
     ```
 
-    Find more Cohere reranking best practices at https://docs.cohere.com/docs/reranking-best-practices.
+    Find more best practices for reranking in the [Cohere documentation](https://docs.cohere.com/docs/reranking-best-practices).
     """
 
     def __init__(
