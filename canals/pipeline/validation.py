@@ -20,7 +20,7 @@ def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSo
     input sockets, including all such sockets with default values.
     """
     return {
-        node: [socket for socket in data.get("input_sockets", {}).values() if not socket.taken_by]
+        node: [socket for socket in data.get("input_sockets", {}).values() if not socket.sender]
         for node, data in graph.nodes(data=True)
     }
 
@@ -101,6 +101,6 @@ def _validate_nodes_receive_only_expected_input(graph: networkx.MultiDiGraph, in
                     "Are you using the correct Input class?"
                 )
 
-            taken_by = graph.nodes[node]["input_sockets"][socket_name].taken_by
-            if taken_by:
-                raise ValueError(f"The input {socket_name} of {node} is already taken by node {taken_by}")
+            sender = graph.nodes[node]["input_sockets"][socket_name].sender
+            if sender:
+                raise ValueError(f"The input {socket_name} of {node} is already sent by node {sender}")

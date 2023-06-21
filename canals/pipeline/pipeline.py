@@ -211,12 +211,12 @@ class Pipeline:
                 f" - {to_node}.{to_socket.name}: {to_socket.type.__name__}\n"
             )
 
-        # Make sure the receiving socket is not taken - sending sockets can be connected as many times as needed,
+        # Make sure the receiving socket isn't already connected - sending sockets can be connected as many times as needed,
         # so they don't need this check
-        if to_socket.taken_by:
+        if to_socket.sender:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
-                f"{to_node}.{to_socket.name} is already connected to {to_socket.taken_by}.\n"
+                f"{to_node}.{to_socket.name} is already connected to {to_socket.sender}.\n"
             )
 
         # Create the connection
@@ -224,9 +224,9 @@ class Pipeline:
         edge_key = f"{from_socket.name}/{to_socket.name}"
         self.graph.add_edge(from_node, to_node, key=edge_key, from_socket=from_socket, to_socket=to_socket)
 
-        # Mark the receiving socket as taken (unless is variadic - variadic sockets are never "taken")
+        # Set the sender of the receivering socket (unless is variadic - variadic sockets are never "taken")
         if not to_socket.variadic:
-            to_socket.taken_by = from_node
+            to_socket.sender = from_node
 
     def get_component(self, name: str) -> object:
         """
