@@ -55,7 +55,7 @@ class CohereRanker(BaseRanker):
         :param api_key: Cohere API key
         :param model_name_or_path: Cohere model name. Check the list of supported models in the [Cohere documentation](https://docs.cohere.com/docs/models).
         :param top_k: The maximum number of documents to return.
-        :param return_documents: If false, returns results without the doc text - the api will return a list of
+        :param return_documents: If False, returns results without the doc text - the api will return a list of
             {index, relevance score} where index is inferred from the list passed into the request.
             If true, returns results with the doc text passed in - the api will return an ordered list of
             {index, text, relevance score} where index + text refers to the list passed into the request.
