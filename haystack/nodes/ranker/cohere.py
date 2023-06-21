@@ -34,7 +34,7 @@ class CohereRanker(BaseRanker):
     ```bash
     relevance_score_1 = <query[0,50], document[0,460]>
     relevance_score_2 = <query[0,50], document[460,920]>
-    relevance_score_3 = <query[0,50],document[920,1024]>
+    relevance_score_3 = <query[0,50], document[920,1024]>
     relevance_score = max(relevance_score_1, relevance_score_2, relevance_score_3)
     ```
 
