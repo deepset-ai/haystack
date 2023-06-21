@@ -292,15 +292,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
         stats = self.pinecone_indexes[index].describe_index_stats(filter=pinecone_syntax_filter)
-
-        namespaces = stats["namespaces"]
-
         if only_documents_without_embedding:
-            vector_counts = (value["vector_count"] for key, value in namespaces.items() if "no-vectors" in key)
-        else:
-            vector_counts = (value["vector_count"] for value in namespaces.values())
-
-        return sum(vector_counts)
+            return sum(value["vector_count"] for key, value in stats["namespaces"].items() if "no-vectors" in key)
+        return sum(value["vector_count"] for value in stats["namespaces"].values())
 
     def _validate_index_sync(self, index: Optional[str] = None):
         """
