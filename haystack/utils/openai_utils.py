@@ -45,7 +45,7 @@ def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> i
     :param messages: The messages to be tokenized.
     :param tokenizer: An OpenAI tokenizer.
     """
-    # adapted from https://platform.openai.com/docs/guides/chat/introduction
+    # adapted from https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     # should be kept up to date
     num_tokens = 0
     for message in messages:
@@ -54,7 +54,7 @@ def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> i
             num_tokens += len(tokenizer.encode(value))
             if key == "name":  # if there's a name, the role is omitted
                 num_tokens += -1  # role is always required and always 1 token
-    num_tokens += 2  # every reply is primed with <im_start>assistant
+    num_tokens += 3  # every reply is primed with <im_start>assistant<|message|>
     return num_tokens
 
 
