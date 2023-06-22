@@ -29,8 +29,8 @@ class CohereRanker(BaseRanker):
     Cohere models are trained with a context length of 510 tokens - the model takes into account both the input
     from the query and document. If your query is larger than 256 tokens, it will be truncated to the first 256 tokens.
 
-    Cohere breaks documents into 510 token chunks. For example, if your query is 50 tokens and your document is
-    1024 tokens, your document will be broken into the following chunks:
+    Cohere breaks down a query-document pair into 510 token chunks. For example, if your query is 50 tokens and your
+    document is 1024 tokens, your document will be broken into the following chunks:
     ```bash
     relevance_score_1 = <query[0,50], document[0,460]>
     relevance_score_2 = <query[0,50], document[460,920]>
@@ -42,12 +42,7 @@ class CohereRanker(BaseRanker):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        model_name_or_path: str,
-        top_k: int = 10,
-        return_documents: bool = False,
-        max_chunks_per_doc: Optional[int] = None,
+        self, api_key: str, model_name_or_path: str, top_k: int = 10, max_chunks_per_doc: Optional[int] = None
     ):
         """
          Creates an instance of CohereInvocationLayer for the specified Cohere model.
@@ -55,13 +50,10 @@ class CohereRanker(BaseRanker):
         :param api_key: Cohere API key
         :param model_name_or_path: Cohere model name. Check the list of supported models in the [Cohere documentation](https://docs.cohere.com/docs/models).
         :param top_k: The maximum number of documents to return.
-        :param return_documents: If False, returns results without the doc text - the api will return a list of
-            {index, relevance score} where index is inferred from the list passed into the request.
-            If True, returns results with the doc text passed in - the api will return an ordered list of
-            {index, text, relevance score} where index + text refers to the list passed into the request.
         :param max_chunks_per_doc: If your document exceeds 512 tokens, this will determine the maximum number of
-            chunks a document can be split into. For example, if your document is 6000 tokens, with the default of 10,
-            the document will be split into 10 chunks each of 512 tokens and the last 880 tokens will be disregarded.
+            chunks a document can be split into. If None, the default of 10 is used.
+            For example, if your document is 6000 tokens, with the default of 10, the document will be split into 10
+            chunks each of 512 tokens and the last 880 tokens will be disregarded.
         """
         super().__init__()
         valid_api_key = isinstance(api_key, str) and api_key
@@ -78,7 +70,6 @@ class CohereRanker(BaseRanker):
         self.model_name_or_path = model_name_or_path
         self.api_key = api_key
         self.top_k = top_k
-        self.return_documents = return_documents
         self.max_chunks_per_doc = max_chunks_per_doc
 
     @property
@@ -96,16 +87,15 @@ class CohereRanker(BaseRanker):
     def _post(
         self,
         data: Dict[str, Any],
-        stream: bool = False,
         attempts: int = RETRIES,
         status_codes_to_retry: Optional[List[int]] = None,
         timeout: float = TIMEOUT,
     ) -> requests.Response:
         """
-        Post data to the Cohere inference model. It takes in a prompt and returns a list of responses using a REST
-        invocation.
+        Post data to the Cohere re-ranker model. It takes in a query and a list of documents and returns a response
+        using a REST invocation.
+
         :param data: The data to be sent to the model.
-        :param stream: Whether to stream the response.
         :param attempts: The number of attempts to make.
         :param status_codes_to_retry: The status codes to retry on.
         :param timeout: The timeout for the request.
@@ -123,7 +113,6 @@ class CohereRanker(BaseRanker):
                 headers=self.headers,
                 json=data,
                 timeout=timeout,
-                stream=stream,
             )
         except requests.HTTPError as err:
             res = err.response
@@ -140,7 +129,11 @@ class CohereRanker(BaseRanker):
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
-        Use the Cohere Reranker to re-rank the supplied list of documents
+        Use the Cohere Reranker to re-rank the supplied list of documents based on the query.
+
+        :param query: The query string.
+        :param documents: List of Document to be re-ranked.
+        :param top_k: The maximum number of documents to return.
         """
         if top_k is None:
             top_k = self.top_k
@@ -160,7 +153,7 @@ class CohereRanker(BaseRanker):
             "query": query,
             "documents": cohere_docs,
             "top_n": None,  # By passing None we return all documents and use top_k to truncate later
-            "return_documents": self.return_documents,
+            "return_documents": False,
             "max_chunks_per_doc": self.max_chunks_per_doc,
         }
         response = self._post(params)
@@ -200,7 +193,7 @@ class CohereRanker(BaseRanker):
             - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
               its corresponding query.
 
-        :param queries: Single query string or list of queries
+        :param queries: List of queries.
         :param documents: Single list of Documents or list of lists of Documents to be reranked.
         :param top_k: The maximum number of documents to return per Document list.
         :param batch_size: Not relevant.
