@@ -3,6 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import inspect
+from typing import Union, List, get_origin, get_args
+
+from dataclasses import fields, Field
 
 from canals.errors import ComponentError
 from canals.component.decorators import save_init_params, init_defaults
@@ -194,6 +197,12 @@ def component(class_):
     class_.__canals_input__ = input_
     class_.__canals_output__ = output
 
+    # Save optional inputs, optionals inputs are those fields for the __canals_input__ dataclass
+    # that have an Optional type.
+    # Those are necessary to implement Components that can run with partial input, this gives us
+    # the possibility to have cycles in Pipelines.
+    class_.__canals_optional_inputs__ = property(_optional_inputs)
+
     # Check that the run method respects all constraints
     _check_run_signature(class_)
 
@@ -274,3 +283,19 @@ def _check_run_signature(class_):
     # The input param must be called data
     if not "data" in run_signature.parameters:
         raise ComponentError("run() must accept a parameter called 'data'.")
+
+
+def _is_optional(field: Field) -> bool:
+    """
+    Utility method that returns whether a field has an Optional type or not.
+    """
+    return get_origin(field.type) is Union and type(None) in get_args(field.type)
+
+
+# TODO: Remember to set the self type to Component when we create its Protocol
+def _optional_inputs(self) -> List[str]:
+    """
+    Return all field names of self that have an Optional type.
+    This is meant to be set as a property in a Component.
+    """
+    return [f.name for f in fields(self.__canals_input__) if _is_optional(f)]
