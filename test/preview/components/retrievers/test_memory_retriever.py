@@ -36,13 +36,13 @@ class Test_MemoryRetriever(BaseTestComponent):
     def test_init_default(self):
         retriever = MemoryRetriever(document_store_name="memory")
         assert retriever.document_store_name == "memory"
-        assert retriever.defaults == {"top_k": 10, "scale_score": True}
+        assert retriever.defaults == {"filters": {}, "top_k": 10, "scale_score": True}
 
     @pytest.mark.unit
     def test_init_with_parameters(self):
         retriever = MemoryRetriever(document_store_name="memory-test", top_k=5, scale_score=False)
         assert retriever.document_store_name == "memory-test"
-        assert retriever.defaults == {"top_k": 5, "scale_score": False}
+        assert retriever.defaults == {"filters": {}, "top_k": 5, "scale_score": False}
 
     @pytest.mark.unit
     def test_init_with_invalid_top_k_parameter(self):

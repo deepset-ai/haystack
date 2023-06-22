@@ -25,7 +25,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
             Document.from_dict({"content": "Haystack supports multiple languages"}),
         ]
         docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="What languages?", top_k=1)
+        results = docstore.bm25_retrieval(query="What languages?", top_k=1, filters={})
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 

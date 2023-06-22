@@ -161,11 +161,14 @@ class MemoryDocumentStore:
                 raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
             del self.storage[doc_id]
 
-    def bm25_retrieval(self, query: str, top_k: int = 10, scale_score: bool = True) -> List[Document]:
+    def bm25_retrieval(
+        self, query: str, filters: Dict[str, Any] = None, top_k: int = 10, scale_score: bool = True
+    ) -> List[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
 
         :param query: The query string.
+        :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
         :return: A list of the top 'k' documents most relevant to the query.
@@ -173,7 +176,10 @@ class MemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        all_documents = self.filter_documents(filters={"content_type": ["text", "table"]})
+        filters = filters or {}
+        default_filters = {"content_type": ["text", "table"]}
+        final_filters = {**filters, **default_filters}
+        all_documents = self.filter_documents(filters=final_filters)
         lower_case_documents = []
         for doc in all_documents:
             if doc.content_type == "text":
@@ -198,6 +204,7 @@ class MemoryDocumentStore:
         if scale_score:
             # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
+        # reverse order, get top k
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
         return_documents = []

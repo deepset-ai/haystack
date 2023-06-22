@@ -17,12 +17,14 @@ class MemoryRetriever:
         Input data for the MemoryRetriever component.
 
         :param query: The query string for the retriever.
+        :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
         :param scale_score: Whether to scale the BM25 scores or not
         :param stores: A dictionary mapping document store names to instances.
         """
 
         query: str
+        filters: Dict[str, Any]
         top_k: int
         scale_score: bool
         stores: Dict[str, Any]
@@ -37,11 +39,14 @@ class MemoryRetriever:
 
         documents: List[Document]
 
-    def __init__(self, document_store_name: str, top_k: int = 10, scale_score: bool = True):
+    def __init__(
+        self, document_store_name: str, filters: Dict[str, Any] = None, top_k: int = 10, scale_score: bool = True
+    ):
         """
         Create a MemoryRetriever component.
 
         :param document_store_name: The name of the MemoryDocumentStore to retrieve documents from.
+        :param filters: A dictionary with filters to narrow down the search space (default is None).
         :param top_k: The maximum number of documents to retrieve (default is 10).
         :param scale_score: Whether to scale the BM25 score or not (default is True).
 
@@ -50,7 +55,7 @@ class MemoryRetriever:
         self.document_store_name = document_store_name
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
-        self.defaults = {"top_k": top_k, "scale_score": scale_score}
+        self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
 
     def run(self, data: Input) -> Output:
         """
@@ -69,5 +74,7 @@ class MemoryRetriever:
         document_store = data.stores[self.document_store_name]
         if not isinstance(document_store, MemoryDocumentStore):
             raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
-        docs = document_store.bm25_retrieval(query=data.query, top_k=data.top_k, scale_score=data.scale_score)
+        docs = document_store.bm25_retrieval(
+            query=data.query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
+        )
         return MemoryRetriever.Output(documents=docs)
