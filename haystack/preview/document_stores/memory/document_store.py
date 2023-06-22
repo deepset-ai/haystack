@@ -1,11 +1,9 @@
-import copy
 import re
 from typing import Literal, Any, Dict, List, Optional, Iterable
 
 import logging
 
 import numpy as np
-import pandas as pd
 import rank_bm25
 from tqdm.auto import tqdm
 
