@@ -17,6 +17,9 @@ from haystack.utils.scipy_utils import expit
 logger = logging.getLogger(__name__)
 DuplicatePolicy = Literal["skip", "overwrite", "fail"]
 
+# TODO: document
+SCALING_FACTOR = 8
+
 
 class MemoryDocumentStore:
     """
@@ -217,7 +220,7 @@ class MemoryDocumentStore:
         docs_scores = bm25_scorer.get_scores(tokenized_query)
         if scale_score:
             # scaling probability from BM25
-            docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
+            docs_scores = [float(expit(np.asarray(score / SCALING_FACTOR))) for score in docs_scores]
         # reverse order, get top k
         top_docs_positions = np.argsort(docs_scores)[-top_k:]
 
