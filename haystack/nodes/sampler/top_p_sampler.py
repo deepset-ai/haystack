@@ -3,14 +3,18 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import numpy as np
-import torch
-from sentence_transformers import CrossEncoder
-
-from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.sampler.base import BaseSampler
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from sentence_transformers import CrossEncoder
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TopPSampler(BaseSampler):
@@ -51,7 +55,7 @@ class TopPSampler(BaseSampler):
         strict: Optional[bool] = False,
         score_field: Optional[str] = "score",
         use_gpu: Optional[bool] = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Initialize a TopPSampler.
@@ -64,6 +68,7 @@ class TopPSampler(BaseSampler):
         :param use_gpu: Whether to use GPU (if available). If no GPUs are available, it falls back on a CPU.
         :param devices: List of torch devices (for example, cuda:0, cpu, mps) to limit inference to specific devices.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.top_p = top_p

@@ -34,7 +34,6 @@ from haystack.nodes import (
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
-    RAGenerator,
     FilterRetriever,
     BM25Retriever,
     TfidfRetriever,
@@ -511,11 +510,6 @@ def deepset_cloud_fixture():
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
-
-
-@pytest.fixture
-def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
 
 @pytest.fixture
