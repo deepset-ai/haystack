@@ -78,10 +78,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         ]
         docstore.write_documents(docs)
 
-        results1 = docstore.bm25_retrieval(query="Java", top_k=1)
-        results2 = docstore.bm25_retrieval(query="Python", top_k=1)
-        assert results1[0].content == "Java is a popular programming language"
-        assert results2[0].content == "Python is a popular programming language"
+        results = docstore.bm25_retrieval(query="Java", top_k=1)
+        assert results[0].content == "Java is a popular programming language"
+        
+        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        assert results[0].content == "Python is a popular programming language"
 
     # Test a query, add a new document and make sure results are appropriately updated
     @pytest.mark.unit
