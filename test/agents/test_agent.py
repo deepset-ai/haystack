@@ -2,18 +2,17 @@ import logging
 import os
 import re
 from typing import Tuple
-from unittest.mock import Mock, patch
-
-from events import Events
-
-from haystack.agents.types import AgentTokenStreamingHandler, AgentToolLogger
-from test.conftest import MockRetriever, MockPromptNode
 from unittest import mock
+from unittest.mock import Mock, patch
+from test.conftest import MockRetriever, MockPromptNode
+
 import pytest
+from events import Events
 
 from haystack import BaseComponent, Answer, Document
 from haystack.agents import Agent, AgentStep
 from haystack.agents.base import Tool, ToolsManager
+from haystack.agents.types import AgentTokenStreamingHandler, AgentToolLogger
 from haystack.nodes import PromptModel, PromptNode, PromptTemplate
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, BaseStandardPipeline
 
@@ -356,3 +355,77 @@ def test_agent_token_streaming_handler():
 
     assert result == "test"
     mock_callback.assert_called_once_with("test")  # assert that the mock callback was called with "test"
+
+
+@pytest.mark.unit
+def test_agent_prompt_template_parameter_has_transcript(caplog):
+    mock_prompt_node = Mock(spec=PromptNode)
+    prompt = PromptTemplate(prompt="I now have {query} as a template parameter but also {transcript}")
+    mock_prompt_node.get_prompt_template.return_value = prompt
+
+    agent = Agent(prompt_node=mock_prompt_node)
+    agent.check_prompt_template({"query": "test", "transcript": "some fake transcript"})
+    assert "The 'transcript' parameter is missing from the Agent's prompt template" not in caplog.text
+
+
+@pytest.mark.unit
+def test_agent_prompt_template_has_no_transcript(caplog):
+    mock_prompt_node = Mock(spec=PromptNode)
+    prompt = PromptTemplate(prompt="I only have {query} as a template parameter but I am missing transcript variable")
+    mock_prompt_node.get_prompt_template.return_value = prompt
+    agent = Agent(prompt_node=mock_prompt_node)
+
+    # We start with no transcript in the prompt template
+    assert "transcript" not in prompt.prompt_params
+    assert "transcript" not in agent.prompt_template.prompt_params
+
+    agent.check_prompt_template({"query": "test", "transcript": "some fake transcript"})
+    assert "The 'transcript' parameter is missing from the Agent's prompt template" in caplog.text
+
+    # now let's check again after adding the transcript
+    # query was there to begin with
+    assert "query" in agent.prompt_template.prompt_params
+    # transcript was added automatically for this prompt template and run
+    assert "transcript" in agent.prompt_template.prompt_params
+
+
+@pytest.mark.unit
+def test_agent_prompt_template_unused_parameters(caplog):
+    caplog.set_level(logging.DEBUG)
+    mock_prompt_node = Mock(spec=PromptNode)
+    prompt = PromptTemplate(prompt="I now have {query} and {transcript} as template parameters")
+    mock_prompt_node.get_prompt_template.return_value = prompt
+    agent = Agent(prompt_node=mock_prompt_node)
+    agent.check_prompt_template({"query": "test", "transcript": "some fake transcript", "unused": "test"})
+    assert (
+        "The Agent's prompt template does not utilize the following parameters provided by the "
+        "prompt parameter resolver: ['unused']" in caplog.text
+    )
+
+
+@pytest.mark.unit
+def test_agent_prompt_template_multiple_unused_parameters(caplog):
+    caplog.set_level(logging.DEBUG)
+    mock_prompt_node = Mock(spec=PromptNode)
+    prompt = PromptTemplate(prompt="I now have strange {param_1} and {param_2} as template parameters")
+    mock_prompt_node.get_prompt_template.return_value = prompt
+    agent = Agent(prompt_node=mock_prompt_node)
+    agent.check_prompt_template({"query": "test", "unused": "test"})
+    # order of parameters in the list not guaranteed, so we check for preamble of the message
+    assert (
+        "The Agent's prompt template does not utilize the following parameters provided by the "
+        "prompt parameter resolver" in caplog.text
+    )
+
+
+@pytest.mark.unit
+def test_agent_prompt_template_missing_parameters(caplog):
+    # in check_prompt_template we don't check that all prompt template parameters are filled
+    # prompt template resolution will do that and flag the missing parameters
+    # in check_prompt_template we check if some template parameters are not used
+    mock_prompt_node = Mock(spec=PromptNode)
+    prompt = PromptTemplate(prompt="I now have {query} and {transcript} as template parameters")
+    mock_prompt_node.get_prompt_template.return_value = prompt
+    agent = Agent(prompt_node=mock_prompt_node)
+    agent.check_prompt_template({"transcript": "test"})
+    assert not caplog.text

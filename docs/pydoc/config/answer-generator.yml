@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../haystack/nodes/answer_generator]
-    modules: ["base", "transformers", "openai"]
+    modules: ["base", "openai"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

@@ -76,11 +76,16 @@ This command installs everything needed for basic Pipelines that use an in-memor
 
 **Full Installation**
 
-To use more advanced features, like certain DocumentStores, FileConverters, OCR, or Ray,
+To use more advanced features, like certain DocumentStores, FileConverters, OCR, local inference with pytorch, or Ray,
 you need to install further dependencies. The following command installs the [latest release](https://github.com/deepset-ai/haystack/releases) of Haystack and all its dependencies:
 
 ```sh
 pip install 'farm-haystack[all]' ## or 'all-gpu' for the GPU-enabled dependencies
+```
+
+If you want to install only the dependencies needed for model inference on your local hardware (not remote API endpoints), such as torch and sentence-transformers, you can use the following command:
+```sh
+pip install 'farm-haystack[inference]' ## installs torch, sentence-transformers, sentencepiece, and huggingface-hub
 ```
 
 If you want to try out the newest features that are not in an official release yet, you can install the unstable version from the main branch with the following command:
