@@ -47,7 +47,7 @@ class CohereRanker(BaseRanker):
         """
          Creates an instance of CohereInvocationLayer for the specified Cohere model.
 
-        :param api_key: Cohere API key
+        :param api_key: Cohere API key.
         :param model_name_or_path: Cohere model name. Check the list of supported models in the [Cohere documentation](https://docs.cohere.com/docs/models).
         :param top_k: The maximum number of documents to return.
         :param max_chunks_per_doc: If your document exceeds 512 tokens, this will determine the maximum number of
