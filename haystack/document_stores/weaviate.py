@@ -217,7 +217,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         return None
 
     @staticmethod
-    def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> weaviate.EmbeddedOptions:
+    def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> "weaviate.EmbeddedOptions":
         embedded_options = embedded_options or {}
         return weaviate.EmbeddedOptions(**embedded_options)
 
