@@ -195,11 +195,20 @@ class PreProcessor(BasePreProcessor):
             if len(document.content) > max_chars_check:
                 logger.warning(
                     "Document %s is %s characters long after preprocessing, where the maximum length should be %s. "
-                    "Something might be wrong with the splitting, check the document affected to prevent issues at query time.",
+                    "Something might be wrong with the splitting, check the document affected to prevent issues at "
+                    "query time. This document will be now hard-split at %s chars recursively.",
                     document.id,
                     len(document.content),
                     max_chars_check,
+                    max_chars_check,
                 )
+                tail_document = deepcopy(document)
+                document.content = document.content[:max_chars_check]
+                tail_document.content = tail_document.content[max_chars_check:]
+                # recursively check if tail_document is still too long
+                tail_documents = self._long_documents(documents=[tail_document], max_chars_check=max_chars_check)
+                documents += tail_documents
+        return documents
 
     def _process_single(
         self,
