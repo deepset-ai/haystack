@@ -106,7 +106,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         # but used to truncate the prompt if needed
         model_max_length = self.model_input_kwargs.pop("model_max_length", 1024)
 
-        # Truncate prompt if prompt tokens > model_max_length-max_length (max_lengt is the length of the generated text)
+        # Truncate prompt if prompt tokens > model_max_length-max_length (max_length is the length of the generated text)
         self.prompt_handler = DefaultPromptHandler(
             model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
         )
