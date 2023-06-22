@@ -16,8 +16,8 @@ def test_ranker_preprocess_batch_queries_and_docs_raises():
     with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
         mock_ranker_init.return_value = None
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
-        with pytest.raises(HaystackError):
-            _, _, _, _ = ranker._preprocess_batch_queries_and_docs(queries=[query_1, query_2], documents=docs)
+    with pytest.raises(HaystackError, match="Number of queries must be 1 if a single list of Documents is provided."):
+        _, _, _, _ = ranker._preprocess_batch_queries_and_docs(queries=[query_1, query_2], documents=docs)
 
 
 @pytest.mark.unit
@@ -27,13 +27,13 @@ def test_ranker_preprocess_batch_queries_and_docs_single_query_single_doc_list()
     with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
         mock_ranker_init.return_value = None
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
-        (num_of_docs, all_queries, all_docs, single_list_of_docs) = ranker._preprocess_batch_queries_and_docs(
-            queries=[query1], documents=docs1
-        )
-        assert single_list_of_docs is True
-        assert num_of_docs == [2]
-        assert len(all_queries) == 2
-        assert len(all_docs) == 2
+    (num_of_docs, all_queries, all_docs, single_list_of_docs) = ranker._preprocess_batch_queries_and_docs(
+        queries=[query1], documents=docs1
+    )
+    assert single_list_of_docs is True
+    assert num_of_docs == [2]
+    assert len(all_queries) == 2
+    assert len(all_docs) == 2
 
 
 @pytest.mark.unit
@@ -45,13 +45,13 @@ def test_ranker_preprocess_batch_queries_and_docs_multiple_queries_multiple_doc_
     with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
         mock_ranker_init.return_value = None
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
-        (num_of_docs, all_queries, all_docs, single_list_of_docs) = ranker._preprocess_batch_queries_and_docs(
-            queries=[query_1, query_2], documents=[docs1, docs2]
-        )
-        assert single_list_of_docs is False
-        assert num_of_docs == [2, 1]
-        assert len(all_queries) == 3
-        assert len(all_docs) == 3
+    (num_of_docs, all_queries, all_docs, single_list_of_docs) = ranker._preprocess_batch_queries_and_docs(
+        queries=[query_1, query_2], documents=[docs1, docs2]
+    )
+    assert single_list_of_docs is False
+    assert num_of_docs == [2, 1]
+    assert len(all_queries) == 3
+    assert len(all_docs) == 3
 
 
 @pytest.mark.unit
