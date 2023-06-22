@@ -97,8 +97,7 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
         for in_socket in in_sockets:
             node_instance = graph.nodes[node]["instance"]
             socket_has_default = in_socket.name in node_instance.defaults
-            socket_has_init_param = in_socket.name in node_instance.init_parameters
-            if not socket_has_default and not socket_has_init_param and in_socket.sender is None:
+            if not socket_has_default and in_socket.sender is None:
                 # If this socket has no defaults and no other component sends anything to it
                 # it must be a socket that receives input directly when running the Pipeline
                 graph.add_edge("input", node, label=in_socket.name)
