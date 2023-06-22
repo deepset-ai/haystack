@@ -27,7 +27,7 @@ def test_ranker_preprocess_batch_queries_and_docs_single_query_single_doc_list()
     with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
         mock_ranker_init.return_value = None
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
-    (num_of_docs, all_queries, all_docs, single_list_of_docs) = ranker._preprocess_batch_queries_and_docs(
+    num_of_docs, all_queries, all_docs, single_list_of_docs = ranker._preprocess_batch_queries_and_docs(
         queries=[query1], documents=docs1
     )
     assert single_list_of_docs is True
@@ -45,7 +45,7 @@ def test_ranker_preprocess_batch_queries_and_docs_multiple_queries_multiple_doc_
     with patch("haystack.nodes.ranker.sentence_transformers.SentenceTransformersRanker.__init__") as mock_ranker_init:
         mock_ranker_init.return_value = None
         ranker = SentenceTransformersRanker(model_name_or_path="fake_model")
-    (num_of_docs, all_queries, all_docs, single_list_of_docs) = ranker._preprocess_batch_queries_and_docs(
+    num_of_docs, all_queries, all_docs, single_list_of_docs = ranker._preprocess_batch_queries_and_docs(
         queries=[query_1, query_2], documents=[docs1, docs2]
     )
     assert single_list_of_docs is False
