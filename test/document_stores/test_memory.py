@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 
 import pandas as pd
 import pytest
@@ -6,6 +7,7 @@ from rank_bm25 import BM25
 import numpy as np
 
 from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.nodes import BM25Retriever
 from haystack.schema import Document
 from haystack.testing import DocumentStoreBaseTestAbstract
 
@@ -124,3 +126,17 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
             docs = ds.query_by_embedding(query_emb=query_embedding, top_k=1)
             assert "Skipping some of your documents that don't have embeddings" in caplog.text
         assert len(docs) == 0
+
+    @pytest.mark.integration
+    def test_bm25_scores_not_changing_across_queries(self, ds, documents):
+        """Test that computed scores which are returned to the user should not change when running multiple queries."""
+        ds.write_documents(documents)
+        retriever = BM25Retriever(ds, scale_score=False)
+        queries = ["What is a Foo Document?", "What is a Bar Document?", "Tell me about a document without embeddings"]
+        results_direct = []
+        results_direct = [retriever.retrieve(query) for query in queries]
+        results_copied = [deepcopy(retriever.retrieve(query)) for query in queries]
+        scores_direct = [rd.score for rds in results_direct for rd in rds]
+        scores_copied = [rc.score for rcs in results_copied for rc in rcs]
+
+        assert scores_direct == scores_copied

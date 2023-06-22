@@ -2,7 +2,7 @@ from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.base import BaseComponent
 
-from haystack.nodes.answer_generator import BaseGenerator, RAGenerator, Seq2SeqGenerator, OpenAIAnswerGenerator
+from haystack.nodes.answer_generator import BaseGenerator, OpenAIAnswerGenerator
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier
 from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
 from haystack.nodes.file_classifier import FileTypeClassifier

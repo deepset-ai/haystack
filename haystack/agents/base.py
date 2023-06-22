@@ -13,7 +13,7 @@ from haystack.agents.memory import Memory, NoMemory
 from haystack.telemetry import send_event
 from haystack.agents.agent_step import AgentStep
 from haystack.agents.types import Color, AgentTokenStreamingHandler
-from haystack.agents.utils import print_text
+from haystack.agents.utils import print_text, react_parameter_resolver
 from haystack.nodes import PromptNode, BaseRetriever, PromptTemplate
 from haystack.pipelines import (
     BaseStandardPipeline,
@@ -63,6 +63,7 @@ class Tool:
             TranslationWrapperPipeline,
             RetrieverQuestionGenerationPipeline,
             WebQAPipeline,
+            Callable[[Any], str],
         ],
         description: str,
         output_variable: str = "results",
@@ -85,6 +86,8 @@ class Tool:
             result = self.pipeline_or_node.run(query=tool_input, params=params)
         elif isinstance(self.pipeline_or_node, BaseRetriever):
             result = self.pipeline_or_node.run(query=tool_input, root_node="Query")
+        elif callable(self.pipeline_or_node):
+            result = self.pipeline_or_node(tool_input)
         else:
             result = self.pipeline_or_node.run(query=tool_input)
         return self._process_result(result)
@@ -183,6 +186,8 @@ class ToolsManager:
                         observation_prefix="Observation: ",
                         llm_prefix="Thought: ",
                         color=tool.logging_color,
+                        tool_name=tool.name,
+                        tool_input=tool_input,
                     )
                 except Exception as e:
                     self.callback_manager.on_tool_error(e, tool=self.tools[tool_name])
@@ -264,14 +269,6 @@ class Agent:
                 f"Prompt template '{prompt_template}' not found. Please check the spelling of the template name."
             )
         self.prompt_template = resolved_prompt_template
-        react_parameter_resolver: Callable[
-            [str, Agent, AgentStep, Dict[str, Any]], Dict[str, Any]
-        ] = lambda query, agent, agent_step, **kwargs: {
-            "query": query,
-            "tool_names": agent.tm.get_tool_names(),
-            "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
-            "transcript": agent_step.transcript,
-        }
         self.prompt_parameters_resolver = (
             prompt_parameters_resolver if prompt_parameters_resolver else react_parameter_resolver
         )
@@ -399,17 +396,15 @@ class Agent:
         # first resolve prompt template params
         template_params = self.prompt_parameters_resolver(query=query, agent=self, agent_step=current_step)
 
-        # if prompt node has no default prompt template, use agent's prompt template
-        if self.prompt_node.default_prompt_template is None:
-            prepared_prompt = next(self.prompt_template.fill(**template_params))
-            prompt_node_response = self.prompt_node(
-                prepared_prompt, stream_handler=AgentTokenStreamingHandler(self.callback_manager)
-            )
-        # otherwise, if prompt node has default prompt template, use it
-        else:
-            prompt_node_response = self.prompt_node(
-                stream_handler=AgentTokenStreamingHandler(self.callback_manager), **template_params
-            )
+        # check for template parameters mismatch
+        self.check_prompt_template(template_params)
+
+        # invoke via prompt node
+        prompt_node_response = self.prompt_node.prompt(
+            prompt_template=self.prompt_template,
+            stream_handler=AgentTokenStreamingHandler(self.callback_manager),
+            **template_params,
+        )
         return prompt_node_response
 
     def create_agent_step(self, max_steps: Optional[int] = None) -> AgentStep:
@@ -425,3 +420,35 @@ class Agent:
         return {
             k: v if isinstance(v, str) else next(iter(v)) for k, v in kwargs.items() if isinstance(v, (str, Iterable))
         }
+
+    def check_prompt_template(self, template_params: Dict[str, Any]) -> None:
+        """
+        Verifies that the Agent's prompt template is adequately populated with the correct parameters
+        provided by the prompt parameter resolver.
+
+        If template_params contains a parameter that is not specified in the prompt template, a warning is logged
+        at DEBUG level. Sometimes the prompt parameter resolver may provide additional parameters that are not
+        used by the prompt template. However, if the prompt parameter resolver provides a 'transcript'
+        parameter that is not used in the prompt template, an error is logged.
+
+        :param template_params: The parameters provided by the prompt parameter resolver.
+
+        """
+        unused_params = set(template_params.keys()) - set(self.prompt_template.prompt_params)
+
+        if "transcript" in unused_params:
+            logger.warning(
+                "The 'transcript' parameter is missing from the Agent's prompt template. All ReAct agents "
+                "that go through multiple steps to reach a goal require this parameter. Please append {transcript} "
+                "to the end of the Agent's prompt template to ensure its proper functioning. A temporary prompt "
+                "template with {transcript} appended will be used for this run."
+            )
+            new_prompt_text = self.prompt_template.prompt_text + "\n {transcript}"
+            self.prompt_template = PromptTemplate(prompt=new_prompt_text)
+
+        elif unused_params:
+            logger.debug(
+                "The Agent's prompt template does not utilize the following parameters provided by the "
+                "prompt parameter resolver: %s. Note that these parameters are available for use if needed.",
+                list(unused_params),
+            )

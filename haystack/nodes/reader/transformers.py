@@ -3,17 +3,20 @@ from typing import List, Optional, Union, Dict, Any, Tuple
 import logging
 import itertools
 
-import torch
-from transformers import pipeline
-from transformers.data.processors.squad import SquadExample
-
 from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from transformers.data.processors.squad import SquadExample
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TransformersReader(BaseReader):
@@ -38,7 +41,7 @@ class TransformersReader(BaseReader):
         doc_stride: int = 128,
         batch_size: int = 16,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Load a QA model from Transformers.
@@ -80,6 +83,7 @@ class TransformersReader(BaseReader):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
@@ -333,7 +337,7 @@ class TransformersReader(BaseReader):
 
     def _preprocess_batch_queries_and_docs(
         self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
-    ) -> Tuple[List[SquadExample], List[int], Dict[str, Document], bool]:
+    ) -> Tuple[List["SquadExample"], List[int], Dict[str, Document], bool]:
         # Convert input to transformers format
         inputs = []
         number_of_docs = []
