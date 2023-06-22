@@ -212,8 +212,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             "region_name",
             "profile_name",
         ]
-        aws_config_attempt = any(key in kwargs for key in aws_configuration_keys)
-        if aws_config_attempt:
+        aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
+        if aws_config_provided:
             try:
                 session = boto3.Session(
                     aws_access_key_id=kwargs.get("aws_access_key_id"),
@@ -224,12 +224,13 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 )
                 client = session.client("sagemaker")
                 client.describe_endpoint(EndpointName=model_name_or_path)
-            except (ClientError, BotoCoreError):
-                aws_config_dict = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
+            except (ClientError, BotoCoreError) as e:
+                provided_aws_config = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
                 raise ValueError(
-                    f"Could not connect to {model_name_or_path} Sagemaker endpoint."
+                    f"Could not connect to {model_name_or_path} Sagemaker endpoint. "
                     f"Please make sure that the endpoint exists and is accessible, "
-                    f"and that the provided AWS credentials are correct {aws_config_dict}"
+                    f"and that the provided AWS credentials {provided_aws_config} are correct."
+                    f"The root cause is: {e}"
                 )
             finally:
                 if client:
