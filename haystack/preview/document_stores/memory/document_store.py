@@ -210,6 +210,8 @@ class MemoryDocumentStore:
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is True.
         :return: A list of the top 'k' documents most relevant to the query.
         """
+        if not query:
+            raise ValueError("Query should be a non-empty string")
 
         all_documents = self.filter_documents(filters={"content_type": ["text", "table"]})
         lower_case_documents = []

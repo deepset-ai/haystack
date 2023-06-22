@@ -92,15 +92,33 @@ class Test_MemoryRetriever(BaseTestComponent):
         ],
     )
     def test_run_with_pipeline(self, mock_docs, query: str, query_result: str):
-        self.pipeline_run(mock_docs, query=query, query_result=query_result, top_k=1)
+        ds = MemoryDocumentStore()
+        ds.write_documents(mock_docs)
+        mr = MemoryRetriever(document_store_name="memory")
+
+        pipeline = Pipeline()
+        pipeline.add_component("retriever", mr)
+        pipeline.add_store("memory", ds)
+        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query)})
+
+        assert result
+        assert "retriever" in result
+        results_docs = result["retriever"].documents
+        assert results_docs
+        assert results_docs[0].content == query_result
 
     @pytest.mark.integration
-    def test_run_with_pipeline_and_top_k(self, mock_docs):
-        self.pipeline_run(mock_docs, query="Python", query_result="Python is a popular programming language", top_k=3)
-
-    def pipeline_run(self, test_memory_retriever_docs: List[Document], query: str, query_result: str, top_k: int):
+    @pytest.mark.parametrize(
+        "query, query_result, top_k",
+        [
+            ("Javascript", "Javascript is a popular programming language", 1),
+            ("Java", "Java is a popular programming language", 2),
+            ("Ruby", "Ruby is a popular programming language", 3),
+        ],
+    )
+    def test_run_with_pipeline_and_top_k(self, mock_docs, query: str, query_result: str, top_k: int):
         ds = MemoryDocumentStore()
-        ds.write_documents(test_memory_retriever_docs)
+        ds.write_documents(mock_docs)
         mr = MemoryRetriever(document_store_name="memory")
 
         pipeline = Pipeline()

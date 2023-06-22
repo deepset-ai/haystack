@@ -18,6 +18,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_bm25_retrieval(self, docstore):
+        docstore = MemoryDocumentStore()
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [
             Document.from_dict({"content": "Hello world"}),
@@ -29,10 +30,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         assert results[0].content == "Haystack supports multiple languages"
 
     @pytest.mark.unit
-    def test_bm25_retrieval_with_empty_document_store(self, docstore):
+    def test_bm25_retrieval_with_empty_document_store(self, docstore, caplog):
         # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the store.
         results = docstore.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
+        assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
 
     @pytest.mark.unit
     def test_bm25_retrieval_empty_query(self, docstore):
@@ -42,10 +44,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
             Document.from_dict({"content": "Haystack supports multiple languages"}),
         ]
         docstore.write_documents(docs)
-        results = docstore.bm25_retrieval(query="", top_k=1)
-        assert len(results) == 1
+        with pytest.raises(ValueError, match=r"Query should be a non-empty string"):
+            docstore.bm25_retrieval(query="", top_k=1)
 
-    # Test top_k variants
     @pytest.mark.unit
     def test_bm25_retrieval_with_different_top_k(self, docstore):
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
@@ -80,7 +81,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
         results = docstore.bm25_retrieval(query="Java", top_k=1)
         assert results[0].content == "Java is a popular programming language"
-        
+
         results = docstore.bm25_retrieval(query="Python", top_k=1)
         assert results[0].content == "Python is a popular programming language"
 
@@ -92,18 +93,18 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         docs = [Document.from_dict({"content": "Hello world"})]
         docstore.write_documents(docs)
 
-        results1 = docstore.bm25_retrieval(query="Python", top_k=1)
-        assert len(results1) == 1
+        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        assert len(results) == 1
 
         docstore.write_documents([Document.from_dict({"content": "Python is a popular programming language"})])
-        results2 = docstore.bm25_retrieval(query="Python", top_k=1)
-        assert len(results2) == 1
-        assert results2[0].content == "Python is a popular programming language"
+        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "Python is a popular programming language"
 
         docstore.write_documents([Document.from_dict({"content": "Java is a popular programming language"})])
-        results3 = docstore.bm25_retrieval(query="Python", top_k=1)
-        assert len(results3) == 1
-        assert results3[0].content == "Python is a popular programming language"
+        results = docstore.bm25_retrieval(query="Python", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "Python is a popular programming language"
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_scale_score(self, docstore):
@@ -118,8 +119,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         assert 0 <= results1[0].score <= 1
 
         # Same query, different scale, scores differ when not scaled
-        results2 = docstore.bm25_retrieval(query="Python", top_k=1, scale_score=False)
-        assert results2[0].score != results1[0].score
+        results = docstore.bm25_retrieval(query="Python", top_k=1, scale_score=False)
+        assert results[0].score != results1[0].score
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_table_content(self, docstore):
