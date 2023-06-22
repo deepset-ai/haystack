@@ -223,7 +223,7 @@ class Pipeline:
         edge_key = f"{from_socket.name}/{to_socket.name}"
         self.graph.add_edge(from_node, to_node, key=edge_key, from_socket=from_socket, to_socket=to_socket)
 
-        # Set the sender of the receiving socket
+        # Stores the name of the node that will send its output to this socket
         to_socket.sender = from_node
 
     def get_component(self, name: str) -> object:
@@ -535,11 +535,9 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
-            input_class = instance.input
-
             # Pass the inputs as kwargs after adding the component's own defaults to them
             inputs = {**instance.defaults, **inputs}
-            input_dataclass = input_class(**inputs)
+            input_dataclass = instance.input(**inputs)
 
             output_dataclass = instance.run(input_dataclass)
 
