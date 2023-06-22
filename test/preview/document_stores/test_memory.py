@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 import pytest
 
@@ -28,6 +30,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_empty_document_store(self, docstore, caplog):
+        caplog.set_level(logging.INFO)
         # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the store.
         results = docstore.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
@@ -40,6 +43,80 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         docstore.write_documents(docs)
         with pytest.raises(ValueError, match=r"Query should be a non-empty string"):
             docstore.bm25_retrieval(query="", top_k=1)
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_filter_only_one_allowed_doc_type_as_string(self, docstore):
+        # Tests if the bm25_retrieval method returns a document when the query is an empty string.
+        docs = [
+            Document.from_dict({"content": pd.DataFrame({"language": ["Python", "Java"]}), "content_type": "table"}),
+            Document(content="Haystack supports multiple languages"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Python", top_k=3, filters={"content_type": "text"})
+        assert len(results) == 1
+        assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_filter_only_one_allowed_doc_type_as_list(self, docstore):
+        # Tests if the bm25_retrieval method returns a document when the query is an empty string.
+        docs = [
+            Document.from_dict({"content": pd.DataFrame({"language": ["Python", "Java"]}), "content_type": "table"}),
+            Document(content="Haystack supports multiple languages"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Python", top_k=3, filters={"content_type": ["text"]})
+        assert len(results) == 1
+        assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_filter_two_allowed_doc_type_as_list(self, docstore):
+        # Tests if the bm25_retrieval method returns a document when the query is an empty string.
+        docs = [
+            Document.from_dict({"content": pd.DataFrame({"language": ["Python", "Java"]}), "content_type": "table"}),
+            Document(content="Haystack supports multiple languages"),
+        ]
+        docstore.write_documents(docs)
+        results = docstore.bm25_retrieval(query="Python", top_k=3, filters={"content_type": ["text", "table"]})
+        assert len(results) == 2
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_filter_only_one_not_allowed_doc_type_as_string(self, docstore):
+        # Tests if the bm25_retrieval method returns a document when the query is an empty string.
+        docs = [
+            Document(content=pd.DataFrame({"language": ["Python", "Java"]}), content_type="table"),
+            Document(content="Haystack supports multiple languages"),
+        ]
+        docstore.write_documents(docs)
+        with pytest.raises(
+            ValueError, match="MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
+        ):
+            docstore.bm25_retrieval(query="Python", top_k=3, filters={"content_type": "audio"})
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_filter_only_one_not_allowed_doc_type_as_list(self, docstore):
+        # Tests if the bm25_retrieval method returns a document when the query is an empty string.
+        docs = [
+            Document(content=pd.DataFrame({"language": ["Python", "Java"]}), content_type="table"),
+            Document(content="Haystack supports multiple languages"),
+        ]
+        docstore.write_documents(docs)
+        with pytest.raises(
+            ValueError, match="MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
+        ):
+            docstore.bm25_retrieval(query="Python", top_k=3, filters={"content_type": ["audio"]})
+
+    @pytest.mark.unit
+    def test_bm25_retrieval_filter_two_not_all_allowed_doc_type_as_list(self, docstore):
+        # Tests if the bm25_retrieval method returns a document when the query is an empty string.
+        docs = [
+            Document.from_dict({"content": pd.DataFrame({"language": ["Python", "Java"]}), "content_type": "table"}),
+            Document(content="Haystack supports multiple languages"),
+        ]
+        docstore.write_documents(docs)
+        with pytest.raises(
+            ValueError, match="MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
+        ):
+            docstore.bm25_retrieval(query="Python", top_k=3, filters={"content_type": ["text", "audio"]})
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_different_top_k(self, docstore):
@@ -118,7 +195,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         docs = [
-            Document(content="table_content", content_type="table"),
+            Document(content=table_content, content_type="table"),
             Document(content="Gardening", content_type="text"),
             Document(content="Bird watching", content_type="text"),
         ]

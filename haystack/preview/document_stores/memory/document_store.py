@@ -176,19 +176,18 @@ class MemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        # Get all documents that match the user's filters AND are either table or text.
+        # Get all documents that match the user's filters AND are either 'table' or 'text'.
         # Raises an exception if the user was trying to include other content types.
         if filters and "content_type" in filters:
             content_types = filters["content_type"]
-            if isinstance(content_types, str) and content_types not in ["text", "table"]:
+            if isinstance(content_types, str):
+                content_types = [content_types]
+            if any(type_ not in ["text", "table"] for type_ in content_types):
                 raise ValueError(
-                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
-                )
-            elif isinstance(content_types, Iterable) and set(content_types).issubset({"text", "table"}):
-                raise ValueError(
-                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
+                    "MemoryDocumentStore can do BM25 retrieval on no other document type than 'text' or 'table'."
                 )
         else:
+            filters = filters or {}
             filters = {**filters, "content_type": ["text", "table"]}
         all_documents = self.filter_documents(filters=filters)
 
