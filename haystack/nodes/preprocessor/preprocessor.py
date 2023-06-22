@@ -207,7 +207,9 @@ class PreProcessor(BasePreProcessor):
                 fields.pop("id")
                 fields["content"] = fields["content"][max_chars_check:]
                 # recursively check if tail_document is still too long
-                tail_documents = self._long_documents(documents=[Document.from_dict(fields)], max_chars_check=max_chars_check)
+                tail_documents = self._long_documents(
+                    documents=[Document.from_dict(fields)], max_chars_check=max_chars_check
+                )
                 documents += tail_documents
         return documents
 
