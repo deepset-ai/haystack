@@ -10,9 +10,9 @@ from haystack.nodes.prompt.invocation_layer import SageMakerInvocationLayer
     not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None), reason="Skipping because SageMaker not configured"
 )
 @pytest.mark.integration
-def test_supports():
+def test_supports_triggered_for_valid_sagemaker_endpoint():
     """
-    Test that supports returns True for valid SageMakerInvocationLayer
+    Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
     """
     model_name_or_path = os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT")
     assert SageMakerInvocationLayer.supports(model_name_or_path=model_name_or_path)
@@ -22,9 +22,10 @@ def test_supports():
     not os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT", None), reason="Skipping because SageMaker not configured"
 )
 @pytest.mark.integration
-def test_supports_not():
+def test_supports_not_triggered_for_invalid_iam_profile():
     """
-    Test that supports returns False for invalid SageMakerInvocationLayer
+    Test that the SageMakerInvocationLayer identifies an invalid SageMaker Inference endpoint
+    (in this case because of an invalid IAM AWS Profile via the supports() method)
     """
     assert not SageMakerInvocationLayer.supports(model_name_or_path="fake_endpoint")
     assert not SageMakerInvocationLayer.supports(model_name_or_path="fake_endpoint", profile_name="invalid-profile")
@@ -59,7 +60,6 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
         region_name="fake_region",
     )
 
-    # assert layer. == "some_fake_key"
     assert layer.max_length == 99
     assert layer.model_name_or_path == "some_fake_model"
 
