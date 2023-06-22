@@ -202,11 +202,12 @@ class PreProcessor(BasePreProcessor):
                     max_chars_check,
                     max_chars_check,
                 )
-                tail_document = deepcopy(document)
+                fields = document.to_dict()
                 document.content = document.content[:max_chars_check]
-                tail_document.content = tail_document.content[max_chars_check:]
+                fields.pop("id")
+                fields["content"] = fields["content"][max_chars_check:]
                 # recursively check if tail_document is still too long
-                tail_documents = self._long_documents(documents=[tail_document], max_chars_check=max_chars_check)
+                tail_documents = self._long_documents(documents=[Document.from_dict(fields)], max_chars_check=max_chars_check)
                 documents += tail_documents
         return documents
 
@@ -259,7 +260,7 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys=id_hash_keys,
         )
 
-        self._long_documents(split_documents, max_chars_check=self.max_chars_check)
+        split_documents = self._long_documents(split_documents, max_chars_check=self.max_chars_check)
 
         return split_documents
 
