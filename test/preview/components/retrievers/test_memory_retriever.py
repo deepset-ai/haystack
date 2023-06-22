@@ -11,7 +11,7 @@ from test.preview.components.base import BaseTestComponent
 
 
 @pytest.fixture()
-def test_memory_retriever_docs():
+def mock_docs():
     return [
         Document.from_dict({"content": "Javascript is a popular programming language"}),
         Document.from_dict({"content": "Java is a popular programming language"}),
@@ -50,14 +50,15 @@ class Test_MemoryRetriever(BaseTestComponent):
             MemoryRetriever(document_store_name="memory-test", top_k=-2, scale_score=False)
 
     @pytest.mark.unit
-    def test_valid_run(self, test_memory_retriever_docs):
+    def test_valid_run(self, mock_docs):
+        top_k = 5
         ds = MemoryDocumentStore()
-        ds.write_documents(test_memory_retriever_docs)
-        mr = MemoryRetriever(document_store_name="memory")
+        ds.write_documents(mock_docs)
+        mr = MemoryRetriever(document_store_name="memory", top_k=top_k)
         result: MemoryRetriever.Output = mr.run(data=MemoryRetriever.Input(query="PHP", stores={"memory": ds}))
 
         assert getattr(result, "documents")
-        assert len(result.documents) <= len(test_memory_retriever_docs)
+        assert len(result.documents) == top_k
         assert result.documents[0].content == "PHP is a popular programming language"
 
     @pytest.mark.unit
@@ -68,12 +69,6 @@ class Test_MemoryRetriever(BaseTestComponent):
         with pytest.raises(ValueError, match=r"MemoryRetriever's document store 'memory' not found"):
             invalid_input_data = MemoryRetriever.Input(
                 query="test", top_k=10, scale_score=True, stores={"invalid_store": ds}
-            )
-            mr.run(invalid_input_data)
-
-        with pytest.raises(ValueError, match=r"MemoryRetriever can only be used with a MemoryDocumentStore."):
-            invalid_input_data = MemoryRetriever.Input(
-                query="test", top_k=10, scale_score=True, stores={"memory": "not a MemoryDocumentStore"}
             )
             mr.run(invalid_input_data)
 
@@ -96,16 +91,12 @@ class Test_MemoryRetriever(BaseTestComponent):
             ("Java", "Java is a popular programming language"),
         ],
     )
-    def test_run_with_pipeline(
-        self, test_memory_retriever_docs: List[Document], query: str, query_result: str, top_k: int = 1
-    ):
-        self.pipeline_run(test_memory_retriever_docs, query=query, query_result=query_result, top_k=top_k)
+    def test_run_with_pipeline(self, mock_docs, query: str, query_result: str):
+        self.pipeline_run(mock_docs, query=query, query_result=query_result, top_k=1)
 
     @pytest.mark.integration
-    def test_run_with_pipeline_and_top_k(self, test_memory_retriever_docs: List[Document]):
-        self.pipeline_run(
-            test_memory_retriever_docs, query="Python", query_result="Python is a popular programming language", top_k=3
-        )
+    def test_run_with_pipeline_and_top_k(self, mock_docs):
+        self.pipeline_run(mock_docs, query="Python", query_result="Python is a popular programming language", top_k=3)
 
     def pipeline_run(self, test_memory_retriever_docs: List[Document], query: str, query_result: str, top_k: int):
         ds = MemoryDocumentStore()

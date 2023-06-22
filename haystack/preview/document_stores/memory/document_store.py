@@ -235,7 +235,7 @@ class MemoryDocumentStore:
         if scale_score:
             # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
-        top_docs_positions = np.argsort(docs_scores)[-top_k:]
+        top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
         return_documents = []
         for i in top_docs_positions:
