@@ -20,10 +20,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_bm25_retrieval(self, docstore):
         docstore = MemoryDocumentStore()
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
-        docs = [
-            Document.from_dict({"content": "Hello world"}),
-            Document.from_dict({"content": "Haystack supports multiple languages"}),
-        ]
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="What languages?", top_k=1, filters={})
         assert len(results) == 1
@@ -39,10 +36,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     @pytest.mark.unit
     def test_bm25_retrieval_empty_query(self, docstore):
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
-        docs = [
-            Document.from_dict({"content": "Hello world"}),
-            Document.from_dict({"content": "Haystack supports multiple languages"}),
-        ]
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         docstore.write_documents(docs)
         with pytest.raises(ValueError, match=r"Query should be a non-empty string"):
             docstore.bm25_retrieval(query="", top_k=1)
@@ -52,9 +46,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
         # based on the top_k parameter.
         docs = [
-            Document.from_dict({"content": "Hello world"}),
-            Document.from_dict({"content": "Haystack supports multiple languages"}),
-            Document.from_dict({"content": "Python is a popular programming language"}),
+            Document(content="Hello world"),
+            Document(content="Haystack supports multiple languages"),
+            Document(content="Python is a popular programming language"),
         ]
         docstore.write_documents(docs)
 
@@ -71,11 +65,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_bm25_retrieval_with_two_queries(self, docstore):
         # Tests if the bm25_retrieval method returns different documents for different queries.
         docs = [
-            Document.from_dict({"content": "Javascript is a popular programming language"}),
-            Document.from_dict({"content": "Java is a popular programming language"}),
-            Document.from_dict({"content": "Python is a popular programming language"}),
-            Document.from_dict({"content": "Ruby is a popular programming language"}),
-            Document.from_dict({"content": "PHP is a popular programming language"}),
+            Document(content="Javascript is a popular programming language"),
+            Document(content="Java is a popular programming language"),
+            Document(content="Python is a popular programming language"),
+            Document(content="Ruby is a popular programming language"),
+            Document(content="PHP is a popular programming language"),
         ]
         docstore.write_documents(docs)
 
@@ -90,28 +84,25 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
     def test_bm25_retrieval_with_updated_docs(self, docstore):
         # Tests if the bm25_retrieval method correctly updates the retrieved documents when new
         # documents are added to the store.
-        docs = [Document.from_dict({"content": "Hello world"})]
+        docs = [Document(content="Hello world")]
         docstore.write_documents(docs)
 
         results = docstore.bm25_retrieval(query="Python", top_k=1)
         assert len(results) == 1
 
-        docstore.write_documents([Document.from_dict({"content": "Python is a popular programming language"})])
+        docstore.write_documents([Document(content="Python is a popular programming language")])
         results = docstore.bm25_retrieval(query="Python", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
-        docstore.write_documents([Document.from_dict({"content": "Java is a popular programming language"})])
+        docstore.write_documents([Document(content="Java is a popular programming language")])
         results = docstore.bm25_retrieval(query="Python", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
     @pytest.mark.unit
     def test_bm25_retrieval_with_scale_score(self, docstore):
-        docs = [
-            Document.from_dict({"content": "Python programming"}),
-            Document.from_dict({"content": "Java programming"}),
-        ]
+        docs = [Document(content="Python programming"), Document(content="Java programming")]
         docstore.write_documents(docs)
 
         results1 = docstore.bm25_retrieval(query="Python", top_k=1, scale_score=True)
@@ -127,9 +118,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         docs = [
-            Document.from_dict({"content": table_content, "content_type": "table"}),
-            Document.from_dict({"content": "Gardening", "content_type": "text"}),
-            Document.from_dict({"content": "Bird watching", "content_type": "text"}),
+            Document(content="table_content", content_type="table"),
+            Document(content="Gardening", content_type="text"),
+            Document(content="Bird watching", content_type="text"),
         ]
         docstore.write_documents(docs)
         results = docstore.bm25_retrieval(query="Java", top_k=1)

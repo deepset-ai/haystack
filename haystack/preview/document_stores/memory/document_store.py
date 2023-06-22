@@ -192,6 +192,7 @@ class MemoryDocumentStore:
             filters = {**filters, "content_type": ["text", "table"]}
         all_documents = self.filter_documents(filters=filters)
 
+        # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
             if doc.content_type == "text":
@@ -201,6 +202,7 @@ class MemoryDocumentStore:
                 csv_content = str_content.to_csv(index=False)
                 lower_case_documents.append(csv_content.lower())
 
+        # Tokenize the entire content of the document store
         tokenized_corpus = [
             self.tokenizer(doc) for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
         ]
@@ -220,12 +222,12 @@ class MemoryDocumentStore:
         # reverse order, get top k
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
+        # Create documents with the BM25 score to return them
         return_documents = []
         for i in top_docs_positions:
             doc = all_documents[i]
-            doc_as_dict = doc.to_dict()
-            doc_as_dict["score"] = docs_scores[i]
-            doc = Document(**doc_as_dict)
-            return_document = copy.copy(doc)
+            doc_fields = doc.to_dict()
+            doc_fields["score"] = docs_scores[i]
+            return_document = Document(**doc_fields)
             return_documents.append(return_document)
         return return_documents
