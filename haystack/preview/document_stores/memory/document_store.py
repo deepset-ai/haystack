@@ -192,7 +192,7 @@ class MemoryDocumentStore:
             self.tokenizer(doc) for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
         ]
         if len(tokenized_corpus) == 0:
-            logger.warning("No documents found for BM25 retrieval. Returning empty list.")
+            logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
         # initialize BM25
