@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Union
 import builtins
-
+from typing import List, Union
+from dataclasses import make_dataclass, is_dataclass, asdict
 
 from canals.component import component
 from canals.testing import BaseTestComponent
@@ -12,25 +12,20 @@ from canals.testing import BaseTestComponent
 @component
 class MergeLoop:
     """
-    Takes two input components and returns the first one that is not None.
-    In case both received a value, priority is given to 'first'.
+    Takes multiple inputs and returns the first one that is not None.
     """
 
-    def __init__(self, expected_type: Union[type, str]):
+    def __init__(self, expected_type: Union[type, str], inputs: List[str] = ["value_1", "value_2"]):
         if isinstance(expected_type, str):
-            type_ = getattr(builtins, expected_type)
+            self.expected_type = getattr(builtins, expected_type)
         else:
-            type_ = expected_type
+            self.expected_type = expected_type
+        self.init_parameters = {"expected_type": self.expected_type.__name__}
+        self._input = make_dataclass("Input", fields=[(f, self.expected_type, None) for f in inputs])
 
-        self.expected_type = type_
-        self.init_parameters = {"expected_type": type_.__name__}
-
-    @component.input(variadic=True)  # type: ignore
+    @component.input  # type: ignore
     def input(self):
-        class Input:
-            values: List[self.expected_type]  # type: ignore
-
-        return Input
+        return self._input
 
     @component.output  # type: ignore
     def output(self):
@@ -42,10 +37,11 @@ class MergeLoop:
     def run(self, data):
         """
         Takes some inputs and returns the first one that is not None.
-
-        In case it receives more than one value, priority is given to the first.
         """
-        for v in data.values:
+        values = []
+        if is_dataclass(data):
+            values = asdict(data).values()
+        for v in values:
             if v is not None:
                 return self.output(value=v)
         return self.output(value=None)
@@ -64,17 +60,17 @@ class TestMergeLoop(BaseTestComponent):
     #     self.assert_can_be_saved_and_loaded_in_pipeline(MergeLoop(expected_type=MyObject()), tmp_path)
 
     def test_merge_first(self):
-        component = MergeLoop(expected_type=int)
+        component = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
         results = component.run(component.input(5, None))
         assert results == component.output(value=5)
 
     def test_merge_second(self):
-        component = MergeLoop(expected_type=int)
+        component = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
         results = component.run(component.input(None, 5))
         assert results == component.output(value=5)
 
     def test_merge_nones(self):
-        component = MergeLoop(expected_type=int)
+        component = MergeLoop(expected_type=int, inputs=["in_1", "in_2", "in_3"])
         results = component.run(component.input(None, None, None))
         assert results == component.output(value=None)
 

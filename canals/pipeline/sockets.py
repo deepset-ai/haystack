@@ -6,8 +6,6 @@ from typing import Union, Optional, Dict, get_args
 import logging
 from dataclasses import dataclass, fields
 
-from canals.component.input_output import Connection
-
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +20,6 @@ class OutputSocket:
 class InputSocket:
     name: str
     type: type
-    variadic: bool
     sender: Optional[str] = None
 
 
@@ -30,7 +27,6 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
     """
     Find a component's input sockets.
     """
-    is_variadic = type(component).__canals_input__.fget.__canals_connection__ is Connection.INPUT_VARIADIC
 
     input_sockets = {}
     for field in fields(component.__canals_input__):
@@ -43,11 +39,8 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
                 type_ = get_args(field.type)[0]
             else:
                 raise ValueError("Components do not support Union types for connections yet.")
-        # Unwrap List types to get the internal type if the argument is variadic
-        if is_variadic:
-            type_ = get_args(type_)[0]
 
-        input_sockets[field.name] = InputSocket(name=field.name, type=type_, variadic=is_variadic)
+        input_sockets[field.name] = InputSocket(name=field.name, type=type_)
 
     return input_sockets
 

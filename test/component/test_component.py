@@ -137,56 +137,6 @@ def test_only_single_output_defined():
                 return self.output(output_value=1)
 
 
-def test_variadic_input():
-    @component
-    class MockComponent:
-        @component.input(variadic=True)
-        def input(self):
-            class Input:
-                values: List[int]
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                output_value: int
-
-            return Output
-
-        def run(self, data):
-            return self.output(output_value=1)
-
-    # Variadic input is verified when accessing the decorated property
-    assert MockComponent().input
-
-
-def test_variadic_input_with_more_than_one_param():
-    @component
-    class MockComponent:
-        @component.input(variadic=True)
-        def input(self):
-            class Input:
-                single_value: int
-                values: List[int]
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                output_value: int
-
-            return Output
-
-        def run(self, data):
-            return self.output(output_value=1)
-
-    # Variadic input is verified when accessing the decorated property
-    with pytest.raises(ComponentError, match="Variadic input dataclass Input must have only one field"):
-        assert MockComponent().input
-
-
 def test_check_for_run():
     with pytest.raises(ComponentError, match="must have a 'run\(\)' method"):
 

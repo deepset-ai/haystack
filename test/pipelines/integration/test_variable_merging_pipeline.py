@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_pipeline(tmp_path):
     add_two = AddFixedValue(add=2)
-    make_the_sum = Sum()
+    make_the_sum = Sum(inputs=["in_1", "in_2", "in_3"])
 
     pipeline = Pipeline()
     pipeline.add_component("first_addition", add_two)
@@ -24,9 +24,9 @@ def test_pipeline(tmp_path):
     pipeline.add_component("fourth_addition", AddFixedValue(add=1))
 
     pipeline.connect("first_addition", "second_addition")
-    pipeline.connect("first_addition", "sum")
-    pipeline.connect("second_addition", "sum")
-    pipeline.connect("third_addition", "sum")
+    pipeline.connect("first_addition", "sum.in_1")
+    pipeline.connect("second_addition", "sum.in_2")
+    pipeline.connect("third_addition", "sum.in_3")
     pipeline.connect("sum", "fourth_addition.value")
 
     pipeline.draw(tmp_path / "variable_merging_pipeline.png")

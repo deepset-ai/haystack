@@ -96,8 +96,10 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph, style_map: Dict[str, str]
     for node, in_sockets in find_pipeline_inputs(graph).items():
         for in_socket in in_sockets:
             node_instance = graph.nodes[node]["instance"]
-            input_node_defaults = hasattr(node_instance, "defaults") and in_socket.name in node_instance.defaults
-            if not input_node_defaults and not (graph.nodes[node]["variadic_input"] and not graph.in_edges(node)):
+            socket_has_default = in_socket.name in node_instance.defaults
+            if not socket_has_default and in_socket.sender is None:
+                # If this socket has no defaults and no other component sends anything to it
+                # it must be a socket that receives input directly when running the Pipeline
                 graph.add_edge("input", node, label=in_socket.name)
 
     # Draw the outputs

@@ -34,7 +34,7 @@ def test_find_input_sockets_one_regular_builtin_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", type=int, variadic=False)}
+    expected = {"input_value": InputSocket(name="input_value", type=int)}
     assert sockets == expected
 
 
@@ -63,9 +63,9 @@ def test_find_input_sockets_many_regular_builtin_type_inputs():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "int_value": InputSocket(name="int_value", type=int, variadic=False),
-        "str_value": InputSocket(name="str_value", type=str, variadic=False),
-        "bool_value": InputSocket(name="bool_value", type=bool, variadic=False),
+        "int_value": InputSocket(name="int_value", type=int),
+        "str_value": InputSocket(name="str_value", type=str),
+        "bool_value": InputSocket(name="bool_value", type=bool),
     }
     assert sockets == expected
 
@@ -95,7 +95,7 @@ def test_find_input_sockets_one_regular_object_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", type=MyObject, variadic=False)}
+    expected = {"input_value": InputSocket(name="input_value", type=MyObject)}
     assert sockets == expected
 
 
@@ -146,7 +146,7 @@ def test_find_input_sockets_one_optional_builtin_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", type=int, variadic=False)}
+    expected = {"input_value": InputSocket(name="input_value", type=int)}
     assert sockets == expected
 
 
@@ -175,11 +175,11 @@ def test_find_input_sockets_one_optional_object_type_input():
 
     comp = MockComponent()
     sockets = find_input_sockets(comp)
-    expected = {"input_value": InputSocket(name="input_value", type=MyObject, variadic=False)}
+    expected = {"input_value": InputSocket(name="input_value", type=MyObject)}
     assert sockets == expected
 
 
-def test_find_input_sockets_sequences_of_builtin_type_input_non_variadic():
+def test_find_input_sockets_sequences_of_builtin_type_input():
     @component
     class MockComponent:
         @component.input
@@ -205,15 +205,15 @@ def test_find_input_sockets_sequences_of_builtin_type_input_non_variadic():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "list_value": InputSocket(name="list_value", type=typing.List[int], variadic=False),
-        "set_value": InputSocket(name="set_value", type=typing.Set[int], variadic=False),
-        "sequence_value": InputSocket(name="sequence_value", type=typing.Sequence[int], variadic=False),
-        "iterable_value": InputSocket(name="iterable_value", type=typing.Iterable[int], variadic=False),
+        "list_value": InputSocket(name="list_value", type=typing.List[int]),
+        "set_value": InputSocket(name="set_value", type=typing.Set[int]),
+        "sequence_value": InputSocket(name="sequence_value", type=typing.Sequence[int]),
+        "iterable_value": InputSocket(name="iterable_value", type=typing.Iterable[int]),
     }
     assert sockets == expected
 
 
-def test_find_input_sockets_sequences_of_object_type_input_non_variadic():
+def test_find_input_sockets_sequences_of_object_type_input():
     class MyObject:
         ...
 
@@ -242,10 +242,10 @@ def test_find_input_sockets_sequences_of_object_type_input_non_variadic():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "list_value": InputSocket(name="list_value", type=typing.List[MyObject], variadic=False),
-        "set_value": InputSocket(name="set_value", type=typing.Set[MyObject], variadic=False),
-        "sequence_value": InputSocket(name="sequence_value", type=typing.Sequence[MyObject], variadic=False),
-        "iterable_value": InputSocket(name="iterable_value", type=typing.Iterable[MyObject], variadic=False),
+        "list_value": InputSocket(name="list_value", type=typing.List[MyObject]),
+        "set_value": InputSocket(name="set_value", type=typing.Set[MyObject]),
+        "sequence_value": InputSocket(name="sequence_value", type=typing.Sequence[MyObject]),
+        "iterable_value": InputSocket(name="iterable_value", type=typing.Iterable[MyObject]),
     }
     assert sockets == expected
 
@@ -274,8 +274,8 @@ def test_find_input_sockets_mappings_of_builtin_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "dict_value": InputSocket(name="dict_value", type=typing.Dict[str, int], variadic=False),
-        "mapping_value": InputSocket(name="mapping_value", type=typing.Mapping[str, int], variadic=False),
+        "dict_value": InputSocket(name="dict_value", type=typing.Dict[str, int]),
+        "mapping_value": InputSocket(name="mapping_value", type=typing.Mapping[str, int]),
     }
     assert sockets == expected
 
@@ -307,8 +307,8 @@ def test_find_input_sockets_mappings_of_object_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "dict_value": InputSocket(name="dict_value", type=typing.Dict[str, MyObject], variadic=False),
-        "mapping_value": InputSocket(name="mapping_value", type=typing.Mapping[str, MyObject], variadic=False),
+        "dict_value": InputSocket(name="dict_value", type=typing.Dict[str, MyObject]),
+        "mapping_value": InputSocket(name="mapping_value", type=typing.Mapping[str, MyObject]),
     }
     assert sockets == expected
 
@@ -339,65 +339,6 @@ def test_find_input_sockets_tuple_type_input():
     comp = MockComponent()
     sockets = find_input_sockets(comp)
     expected = {
-        "tuple_value": InputSocket(name="tuple_value", type=typing.Tuple[str, MyObject], variadic=False),
-    }
-    assert sockets == expected
-
-
-def test_find_input_sockets_one_variadic_builtin_input():
-    @component
-    class MockComponent:
-        @component.input(variadic=True)
-        def input(self):
-            class Input:
-                values: List[int]
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                output_value: int
-
-            return Output
-
-        def run(self, data):
-            return self.output(output_value=1)
-
-    comp = MockComponent()
-    sockets = find_input_sockets(comp)
-    expected = {
-        "values": InputSocket(name="values", type=int, variadic=True),
-    }
-    assert sockets == expected
-
-
-def test_find_input_sockets_variadic_object_input():
-    class MyObject:
-        ...
-
-    @component
-    class MockComponent:
-        @component.input(variadic=True)
-        def input(self):
-            class Input:
-                values: List[MyObject]
-
-            return Input
-
-        @component.output
-        def output(self):
-            class Output:
-                output_value: int
-
-            return Output
-
-        def run(self, data):
-            return self.output(output_value=1)
-
-    comp = MockComponent()
-    sockets = find_input_sockets(comp)
-    expected = {
-        "values": InputSocket(name="values", type=MyObject, variadic=True),
+        "tuple_value": InputSocket(name="tuple_value", type=typing.Tuple[str, MyObject]),
     }
     assert sockets == expected
