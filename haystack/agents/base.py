@@ -316,7 +316,7 @@ class Agent:
         """
         if tool.name in self.tm.tools:
             logger.warning(
-                f"The agent already has a tool named '{tool.name}'. The new tool will overwrite the existing one."
+                "The agent already has a tool named '%s'. The new tool will overwrite the existing one.", tool.name
             )
         self.tm.tools[tool.name] = tool
 
