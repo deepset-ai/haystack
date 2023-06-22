@@ -232,7 +232,7 @@ class MemoryDocumentStore:
 
         tokenized_query = self.bm25_tokenization_regex(query.lower())
         docs_scores = self.bm25.get_scores(tokenized_query)
-        if scale_score is True:
+        if scale_score:
             # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
         top_docs_positions = np.argsort(docs_scores)[-top_k:]
