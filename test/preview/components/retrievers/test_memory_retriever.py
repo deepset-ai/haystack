@@ -56,7 +56,7 @@ class Test_MemoryRetriever(BaseTestComponent):
         mr = MemoryRetriever(document_store_name="memory")
         result: MemoryRetriever.Output = mr.run(data=MemoryRetriever.Input(query="PHP", stores={"memory": ds}))
 
-        assert result.documents
+        assert getattr(result, "documents")
         assert len(result.documents) <= len(test_memory_retriever_docs)
         assert result.documents[0].content == "PHP is a popular programming language"
 
