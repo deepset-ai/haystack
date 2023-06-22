@@ -184,7 +184,7 @@ class MemoryDocumentStore:
                 content_types = [content_types]
             if any(type_ not in ["text", "table"] for type_ in content_types):
                 raise ValueError(
-                    "MemoryDocumentStore can do BM25 retrieval on no other document type than 'text' or 'table'."
+                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
                 )
         else:
             filters = filters or {}
@@ -219,7 +219,7 @@ class MemoryDocumentStore:
             # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
         # reverse order, get top k
-        top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
+        top_docs_positions = np.argsort(docs_scores)[-top_k:]
 
         # Create documents with the BM25 score to return them
         return_documents = []
