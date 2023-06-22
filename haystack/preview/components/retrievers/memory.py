@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document, ComponentInput, ComponentOutput
 from haystack.preview.document_stores import MemoryDocumentStore
@@ -40,7 +40,11 @@ class MemoryRetriever:
         documents: List[Document]
 
     def __init__(
-        self, document_store_name: str, filters: Dict[str, Any] = None, top_k: int = 10, scale_score: bool = True
+        self,
+        document_store_name: str,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        scale_score: bool = True,
     ):
         """
         Create a MemoryRetriever component.

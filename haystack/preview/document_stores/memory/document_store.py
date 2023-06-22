@@ -162,7 +162,7 @@ class MemoryDocumentStore:
             del self.storage[doc_id]
 
     def bm25_retrieval(
-        self, query: str, filters: Dict[str, Any] = None, top_k: int = 10, scale_score: bool = True
+        self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True
     ) -> List[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
