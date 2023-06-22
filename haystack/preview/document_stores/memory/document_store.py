@@ -176,17 +176,30 @@ class MemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        filters = filters or {}
-        default_filters = {"content_type": ["text", "table"]}
-        final_filters = {**filters, **default_filters}
-        all_documents = self.filter_documents(filters=final_filters)
+        # Get all documents that match the user's filters AND are either table or text.
+        # Raises an exception if the user was trying to include other content types.
+        if filters and "content_type" in filters:
+            content_types = filters["content_type"]
+            if isinstance(content_types, str) and content_types not in ["text", "table"]:
+                raise ValueError(
+                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
+                )
+            elif isinstance(content_types, Iterable) and set(content_types).issubset({"text", "table"}):
+                raise ValueError(
+                    "MemoryDocumentStore can do BM25 retrieval on no other document type than text or table."
+                )
+        else:
+            filters = {**filters, "content_type": ["text", "table"]}
+        all_documents = self.filter_documents(filters=filters)
+
         lower_case_documents = []
         for doc in all_documents:
             if doc.content_type == "text":
                 lower_case_documents.append(doc.content.lower())
             elif doc.content_type == "table":
-                if isinstance(doc.content, pd.DataFrame):
-                    lower_case_documents.append(doc.content.astype(str).to_csv(index=False).lower())
+                str_content = doc.content.astype(str)
+                csv_content = str_content.to_csv(index=False)
+                lower_case_documents.append(csv_content.lower())
 
         tokenized_corpus = [
             self.tokenizer(doc) for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
