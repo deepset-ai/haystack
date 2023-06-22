@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Any, Dict, List, Tuple, Literal, Union
+from typing import Optional, Any, Dict, List, Literal, Union, Set
 
 import os
 import json
@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from copy import deepcopy
 from collections import OrderedDict
+from dataclasses import fields
 
 import networkx
 
@@ -329,6 +330,7 @@ class Pipeline:
                 for node, input_data in data.items()
             }
         )
+        skipped_nodes: Set[str] = set()
         pipeline_output: Dict[str, Dict[str, Any]] = {}
 
         if debug:
@@ -351,7 +353,9 @@ class Pipeline:
 
             # **** IS IT MY TURN YET? ****
             # Check if the node should be run or not
-            ready_to_run = self._ready_to_run(name=component, inputs=inputs, inputs_buffer=inputs_buffer)
+            ready_to_run = self._ready_to_run(
+                name=component, inputs=inputs, inputs_buffer=inputs_buffer, skipped_nodes=skipped_nodes
+            )
 
             # This component is missing data: let's put it back in the queue and wait.
             if ready_to_run == "wait":
@@ -362,6 +366,7 @@ class Pipeline:
             if ready_to_run == "skip":
                 self.graph.nodes[component]["visits"] += 1
                 inputs_buffer = self._skip_downstream_nodes(component=component, inputs_buffer=inputs_buffer)
+                skipped_nodes.add(component)
                 continue
 
             # **** RUN THE NODE ****
@@ -421,7 +426,7 @@ class Pipeline:
             )
 
     def _ready_to_run(
-        self, name: str, inputs: Dict[str, Any], inputs_buffer: OrderedDict
+        self, name: str, inputs: Dict[str, Any], inputs_buffer: OrderedDict, skipped_nodes: Set[str]
     ) -> Literal["run", "wait", "skip"]:
         """
         Verify whether a component is ready to run.
@@ -433,14 +438,51 @@ class Pipeline:
         self._check_max_loops(name)
 
         # List all the component/socket pairs the current component should be waiting for.
-        expected_inputs = self._connections_to_wait_for(name=name)
+        # expected_inputs = self._connections_to_wait_for(name=name)
+
+        # List all the component/socket pairs the current component is connected to
+        expected_inputs = {
+            from_node: data["to_socket"].name for from_node, _, data in self.graph.in_edges(name, data=True)
+        }
+        component_inputs = {f.name for f in fields(self.graph.nodes[name]["instance"].__canals_input__)}
+        optional_inputs = set(self.graph.nodes[name]["instance"].__canals_optional_inputs__)
+        mandatory_inputs = {i for i in component_inputs if i not in optional_inputs}
+        skipped_optional_inputs = {
+            sockets["to_socket"].name
+            for from_node, _, sockets in self.graph.in_edges(name, data=True)
+            if from_node in skipped_nodes and sockets["to_socket"].name in optional_inputs
+        }
+
+        # The expected_inputs will also contain inputs that are optional, probably we can simplify
+        # it and let it return the in_sockets of the component
+
+        # Now that we know all the inputs we need to verify if there are skipped input components
+        if mandatory_inputs.issubset(set(inputs.keys())) and not optional_inputs:
+            # We received all the inputs we need and have no optional inputs
+            return "run"
+        elif mandatory_inputs.issubset(set(inputs.keys())) and skipped_optional_inputs == optional_inputs:
+            # We received all the inputs we need and all optional inputs are skipped
+            return "run"
+        elif (
+            mandatory_inputs.issubset(set(inputs.keys()))
+            and component_inputs == set(inputs.keys()) | mandatory_inputs | skipped_optional_inputs
+        ):
+            # We received all the inputs we need and some optionals, some other optionals instead are skipped
+            return "run"
+        elif mandatory_inputs.issubset(set(inputs.keys())) and skipped_optional_inputs.issubset(optional_inputs):
+            # We received all the inputs we need and some optional inputs have not been skipped
+            return "wait"
+        elif expected_inputs and set(expected_inputs.keys()).issubset(skipped_nodes):
+            # All mandatory inputs are skipped, skipping this too
+            return "skip"
 
         # Check if the expected inputs were all received
         if self._check_received_vs_expected_inputs(name=name, inputs=inputs, expected_inputs=expected_inputs):
             return "run"
 
         # This node is missing some inputs. Did all the upstream nodes run?
-        nodes_to_wait_for, _ = zip(*expected_inputs) if expected_inputs else ([], [])
+        # nodes_to_wait_for, _ = zip(*expected_inputs) if expected_inputs else ([], [])
+        nodes_to_wait_for = list(expected_inputs.keys())
 
         # Some node upstream didn't run yet, so we should wait for them.
         if not self._all_nodes_to_wait_for_run(nodes_to_wait_for=nodes_to_wait_for):
@@ -454,7 +496,7 @@ class Pipeline:
             logger.debug(
                 "Putting '%s' back in the queue, some inputs are missing (inputs to wait for: %s, inputs_received: %s)",
                 name,
-                [f"{node}.{socket}" for node, socket in expected_inputs],
+                [f"{node}.{socket}" for node, socket in expected_inputs.items()],
                 list(inputs.keys()),
             )
             return "wait"
@@ -463,14 +505,14 @@ class Pipeline:
             "Skipping '%s', upstream component didn't produce output "
             "(upstream components: %s, expected inputs: %s, inputs received: %s)",
             name,
-            list(nodes_to_wait_for),
-            [f"{node}.{socket}" for node, socket in expected_inputs],
+            nodes_to_wait_for,
+            [f"{node}.{socket}" for node, socket in expected_inputs.items()],
             list(inputs.keys()),
         )
         return "skip"
 
     def _check_received_vs_expected_inputs(
-        self, name: str, inputs: Dict[str, Any], expected_inputs: Tuple[str, str]
+        self, name: str, inputs: Dict[str, Any], expected_inputs: Dict[str, str]
     ) -> bool:
         """
         Check if all the inputs the component is expecting have been received.
@@ -483,8 +525,7 @@ class Pipeline:
             return True
 
         # Otherwise, just make sure there is one input key for each expected input key
-        _, expected_input_names = zip(*expected_inputs)
-        if set(expected_input_names).issubset(set(inputs.keys())):
+        if set(expected_inputs.values()).issubset(set(inputs.keys())):
             logger.debug("Component '%s' is ready to run: all expected inputs were received.", name)
             return True
 
@@ -502,7 +543,8 @@ class Pipeline:
             for from_node, _, data in self.graph.in_edges(name, data=True)
             # ... if there's a path in the graph leading back from the current node to the
             # input node, # and only in case this node accepts multiple inputs.
-            if not networkx.has_path(self.graph, name, from_node)
+            if networkx.has_path(self.graph, from_node, name)
+            # and data["to_socket"].name not in self.graph.nodes[name]["instance"].__canals_optional_inputs__
         ]
         return data_to_wait_for
 
@@ -535,8 +577,12 @@ class Pipeline:
             logger.info("* Running %s (visits: %s)", name, self.graph.nodes[name]["visits"])
             logger.debug("   '%s' inputs: %s", name, inputs)
 
+            # Optional fields are defaulted to None so creation of the input dataclass doesn't fail
+            # cause we're missing some argument
+            optionals = {field: None for field in instance.__canals_optional_inputs__}
+
             # Pass the inputs as kwargs after adding the component's own defaults to them
-            inputs = {**instance.defaults, **inputs}
+            inputs = {**optionals, **instance.defaults, **inputs}
             input_dataclass = instance.input(**inputs)
 
             output_dataclass = instance.run(input_dataclass)
