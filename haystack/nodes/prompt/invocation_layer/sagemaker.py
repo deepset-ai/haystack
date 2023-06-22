@@ -23,7 +23,9 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
     Lets you use an LLM hosted via a SageMaker Inference Endpoint PromptNode.
     It's expecting a Huggingface Model running at the SageMaker Inference Endpoint (e.g. Falcon, Flan-T5).
-    See https://www.philschmid.de/sagemaker-falcon-llm for instructions on how to deploy such a model to SageMaker.
+    See https://www.philschmid.de/sagemaker-falcon-llm for instructions on how to deploy such a model to SageMaker
+    and https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models-use.html for an even simpler
+    workflow via SageMaker JumpStart.
 
     **Example**
 
