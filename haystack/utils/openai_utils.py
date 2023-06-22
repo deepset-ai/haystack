@@ -65,6 +65,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
     """
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    model_tokenizer = None
 
     if model_name == "gpt-35-turbo":
         # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
