@@ -63,7 +63,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         boto3_import.check()
         super().__init__(model_name_or_path)
         try:
-            session = boto3.Session(
+            session = SageMakerInvocationLayer.create_session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
@@ -203,7 +203,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
         :param model_name_or_path: The model_name_or_path to check.
         """
-        client = None
         aws_configuration_keys = [
             "aws_access_key_id",
             "aws_secret_access_key",
@@ -214,21 +213,21 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
         if aws_config_provided:
             try:
-                session = boto3.Session(
-                    aws_access_key_id=kwargs.get("aws_access_key_id"),
-                    aws_secret_access_key=kwargs.get("aws_secret_access_key"),
-                    aws_session_token=kwargs.get("aws_session_token"),
-                    region_name=kwargs.get("region_name"),
-                    profile_name=kwargs.get("profile_name"),
-                )
+                session = cls.create_session(**kwargs)
                 client = session.client("sagemaker")
-                client.describe_endpoint(EndpointName=model_name_or_path)
-            except (ClientError, BotoCoreError) as e:
+            except BotoCoreError as e:
                 provided_aws_config = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
                 raise ValueError(
+                    f"Failed to initialize the session or client with provided AWS credentials {provided_aws_config}."
+                    f"The root cause is: {e}"
+                )
+
+            try:
+                client.describe_endpoint(EndpointName=model_name_or_path)
+            except ClientError as e:
+                raise ValueError(
                     f"Could not connect to {model_name_or_path} Sagemaker endpoint. "
-                    f"Please make sure that the endpoint exists and is accessible, "
-                    f"and that the provided AWS credentials {provided_aws_config} are correct."
+                    f"Please make sure that the endpoint exists and is accessible."
                     f"The root cause is: {e}"
                 )
             finally:
@@ -236,3 +235,32 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                     client.close()
             return True
         return False
+
+    @classmethod
+    def create_session(
+        cls,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_session_token: Optional[str] = None,
+        region_name: Optional[str] = None,
+        profile_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Creates an AWS Session with the given parameters.
+
+        :param aws_access_key_id: AWS access key ID.
+        :param aws_secret_access_key: AWS secret access key.
+        :param aws_session_token: AWS session token.
+        :param region_name: AWS region name.
+        :param profile_name: AWS profile name.
+        :raise NoCredentialsError: If the AWS credentials are not provided or invalid.
+        :return: The created AWS Session.
+        """
+        return boto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_session_token=aws_session_token,
+            region_name=region_name,
+            profile_name=profile_name,
+        )
