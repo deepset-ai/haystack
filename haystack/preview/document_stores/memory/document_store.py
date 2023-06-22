@@ -33,8 +33,11 @@ class MemoryDocumentStore:
         Initializes the store.
         """
         self.storage: Dict[str, Document] = {}
-        self.bm25_tokenization_regex = bm25_tokenization_regex
-        self.bm25_algorithm = bm25_algorithm
+        self.tokenizer = re.compile(bm25_tokenization_regex).findall
+        algorithm_class = getattr(rank_bm25, bm25_algorithm)
+        if algorithm_class is None:
+            raise ValueError(f"BM25 algorithm '{bm25_algorithm}' not found.")
+        self.bm25_algorithm = algorithm_class
         self.bm25_parameters = bm25_parameters or {}
 
     def count_documents(self) -> int:
@@ -158,49 +161,6 @@ class MemoryDocumentStore:
                 raise MissingDocumentError(f"ID '{doc_id}' not found, cannot delete it.")
             del self.storage[doc_id]
 
-    @property
-    def bm25_tokenization_regex(self):
-        """
-        The regular expression used for tokenization in the BM25 algorithm.
-
-        :getter: Returns the regex used for BM25 tokenization.
-        """
-        return self._tokenizer
-
-    @bm25_tokenization_regex.setter
-    def bm25_tokenization_regex(self, regex_string: str):
-        """
-        Setter for the regular expression used for tokenization in the BM25 algorithm.
-
-        :param regex_string: The regex string to be used for tokenization.
-        """
-        self._tokenizer = re.compile(regex_string).findall
-
-    @property
-    def bm25_algorithm(self):
-        """
-        The BM25 algorithm used for retrieval.
-
-        :getter: Returns the BM25 algorithm class used for retrieval.
-        """
-        return self._bm25_class
-
-    @bm25_algorithm.setter
-    def bm25_algorithm(self, algorithm: str):
-        """
-        Setter for the BM25 algorithm used for retrieval.
-
-        :param algorithm: The name of the BM25 algorithm to be used for retrieval.
-        The following algorithms are available:
-         - BM25Okapi (default)
-         - BM25L
-         - BM25Plus
-        """
-        algorithm_class = getattr(rank_bm25, algorithm)
-        if algorithm_class is None:
-            raise ValueError(f"BM25 algorithm '{algorithm}' not found.")
-        self._bm25_class = algorithm_class
-
     def bm25_retrieval(self, query: str, top_k: int = 10, scale_score: bool = True) -> List[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -223,17 +183,18 @@ class MemoryDocumentStore:
                     lower_case_documents.append(doc.content.astype(str).to_csv(index=False).lower())
 
         tokenized_corpus = [
-            self.bm25_tokenization_regex(doc)
-            for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
+            self.tokenizer(doc) for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
         ]
         if len(tokenized_corpus) == 0:
             logger.warning("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
-        self.bm25 = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
-
-        tokenized_query = self.bm25_tokenization_regex(query.lower())
-        docs_scores = self.bm25.get_scores(tokenized_query)
+        # initialize BM25
+        bm25_scorer = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
+        # tokenize query
+        tokenized_query = self.tokenizer(query.lower())
+        # get scores for the query against the corpus
+        docs_scores = bm25_scorer.get_scores(tokenized_query)
         if scale_score:
             # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / 8))) for score in docs_scores]
