@@ -97,7 +97,7 @@ def test_invoke_with_no_kwargs(mock_auto_tokenizer, mock_boto3_session):
     """
     Test that invoke raises an error if no prompt is provided
     """
-    layer = SageMakerInvocationLayer(model_name_or_path="google/flan-t5-xxl")
+    layer = SageMakerInvocationLayer(model_name_or_path="some_fake_model")
     with pytest.raises(ValueError) as e:
         layer.invoke()
         assert e.match("No prompt provided.")
