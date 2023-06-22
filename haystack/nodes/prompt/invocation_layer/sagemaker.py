@@ -86,9 +86,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 "details",
                 "do_sample",
                 "max_new_tokens",
-                "max_time",
-                "model_max_length",
-                "num_return_sequences",
+                "model_max_length",  # this is our parameter prompt truncation
                 "repetition_penalty",
                 "return_full_text",
                 "seed",
@@ -106,7 +104,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         # but used to truncate the prompt if needed
         model_max_length = self.model_input_kwargs.pop("model_max_length", 1024)
 
-        # Truncate prompt if prompt tokens > model_max_length-max_length (max_length is the length of the generated text)
+        # Truncate prompt if prompt tokens > model_max_length-max_length
+        # (max_length is the length of the generated text)
         self.prompt_handler = DefaultPromptHandler(
             model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
         )
@@ -131,19 +130,19 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         kwargs_with_defaults = self.model_input_kwargs
         kwargs_with_defaults.update(kwargs)
 
-        # see https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
+        # For the list of supported parameters and the docs
+        # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
+        # these parameters were valid in June 2023, make sure to check the docs for updates
         params = {
             "best_of": kwargs_with_defaults.get("best_of", None),
-            "details": kwargs_with_defaults.get("details", True),
+            "details": kwargs_with_defaults.get("details", False),
             "do_sample": kwargs_with_defaults.get("do_sample", False),
             "max_new_tokens": kwargs_with_defaults.get("max_new_tokens", self.max_length),
-            "max_time": kwargs_with_defaults.get("max_time", None),
-            "num_return_sequences": kwargs_with_defaults.get("num_return_sequences", None),
             "repetition_penalty": kwargs_with_defaults.get("repetition_penalty", None),
             "return_full_text": kwargs_with_defaults.get("return_full_text", False),
             "seed": kwargs_with_defaults.get("seed", None),
             "stop": kwargs_with_defaults.get("stop", stop_words),
-            "temperature": kwargs_with_defaults.get("temperature", None),
+            "temperature": kwargs_with_defaults.get("temperature", 1.0),
             "top_k": kwargs_with_defaults.get("top_k", None),
             "top_p": kwargs_with_defaults.get("top_p", None),
             "truncate": kwargs_with_defaults.get("truncate", None),
