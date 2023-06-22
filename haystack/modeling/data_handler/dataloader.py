@@ -50,9 +50,21 @@ class NamedDataLoader(DataLoader):
             lists_temp = [[] for _ in range(len(_tensor_names))]
             ret = dict(zip(_tensor_names, lists_temp))
 
+            max_num_labels = self._compute_max_number_of_labels(batch=batch, tensor_names=_tensor_names)
+
             for example in batch:
                 for name, tensor in zip(_tensor_names, example):
-                    ret[name].append(tensor)
+                    padded_tensor = tensor
+
+                    # each example may have a different number of answers/labels, so we need to pad the corresponding tensors to the max number of labels
+                    if name == "labels" and tensor.ndim > 0:
+                        num_labels = tensor.size(0)
+                        if num_labels < max_num_labels:
+                            padded_tensor = torch.nn.functional.pad(
+                                padded_tensor, (0, 0, 0, max_num_labels - num_labels)
+                            )
+
+                    ret[name].append(padded_tensor)
 
             for key in ret:
                 ret[key] = torch.stack(ret[key])
@@ -75,3 +87,15 @@ class NamedDataLoader(DataLoader):
             return num_batches
         else:
             return super().__len__()
+
+    def _compute_max_number_of_labels(self, batch, tensor_names) -> int:
+        """
+        Compute the maximum number of labels in a batch.
+        Each example may have a different number of labels, depending on the number of answers.
+        """
+        max_num_labels = 0
+        for example in batch:
+            for name, tensor in zip(tensor_names, example):
+                if name == "labels" and tensor.ndim > 0:
+                    max_num_labels = max(max_num_labels, tensor.size(0))
+        return max_num_labels
