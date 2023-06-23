@@ -12,7 +12,7 @@ from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as boto3_import:
+with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
     import boto3
     from botocore.exceptions import ClientError, BotoCoreError
 
@@ -227,6 +227,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         ]
         aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
         if aws_config_provided:
+            boto3_import.check()
             try:
                 session = cls.create_session(**kwargs)
                 client = session.client("sagemaker")
@@ -272,6 +273,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         :raise NoCredentialsError: If the AWS credentials are not provided or invalid.
         :return: The created AWS Session.
         """
+        boto3_import.check()
         return boto3.Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
