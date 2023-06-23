@@ -2,10 +2,54 @@ import pytest
 import math
 from unittest.mock import patch
 
-from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker.base import BaseRanker
-from haystack.nodes.ranker.sentence_transformers import SentenceTransformersRanker
+from haystack.nodes.ranker import SentenceTransformersRanker, CohereRanker
+from haystack.errors import HaystackError
+
+
+@pytest.fixture
+def docs():
+    docs = [
+        Document(
+            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
+            meta={"name": "0"},
+            id="1",
+        ),
+        Document(
+            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
+            id="2",
+        ),
+        Document(
+            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
+            meta={"name": "1"},
+            id="3",
+        ),
+        Document(
+            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
+            meta={"name": "2"},
+            id="4",
+        ),
+        Document(
+            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
+            meta={},
+            id="5",
+        ),
+    ]
+    return docs
+
+
+@pytest.fixture
+def mock_cohere_post():
+    class Response:
+        def __init__(self, text: str):
+            self.text = text
+
+    with patch("haystack.nodes.ranker.cohere.CohereRanker._post") as cohere_post:
+        cohere_post.return_value = Response(
+            text='{"id":"73701fd4-fe30-4007-9698-e960a51b19b4","results":[{"index":4,"relevance_score":0.9937345},{"index":3,"relevance_score":0.2232077},{"index":0,"relevance_score":0.006538825},{"index":2,"relevance_score":0.002278331},{"index":1,"relevance_score":0.000035633544}],"meta":{"api_version":{"version":"1"}}}'
+        )
+        yield cohere_post
 
 
 @pytest.mark.unit
@@ -65,98 +109,20 @@ def test_ranker_get_batches():
     assert next(batches) == (all_queries[0:1], all_docs[0:1])
 
 
-def test_ranker(ranker):
+def test_ranker(ranker, docs):
     query = "What is the most important building in King's Landing that has a religious background?"
-    docs = [
-        Document(
-            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-            meta={"name": "0"},
-            id="1",
-        ),
-        Document(
-            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-            id="2",
-        ),
-        Document(
-            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-            meta={"name": "1"},
-            id="3",
-        ),
-        Document(
-            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-            meta={"name": "2"},
-            id="4",
-        ),
-        Document(
-            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-            meta={},
-            id="5",
-        ),
-    ]
     results = ranker.predict(query=query, documents=docs)
     assert results[0] == docs[4]
 
 
-def test_ranker_batch_single_query_single_doc_list(ranker):
+def test_ranker_batch_single_query_single_doc_list(ranker, docs):
     query = "What is the most important building in King's Landing that has a religious background?"
-    docs = [
-        Document(
-            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-            meta={"name": "0"},
-            id="1",
-        ),
-        Document(
-            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-            id="2",
-        ),
-        Document(
-            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-            meta={"name": "1"},
-            id="3",
-        ),
-        Document(
-            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-            meta={"name": "2"},
-            id="4",
-        ),
-        Document(
-            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-            meta={},
-            id="5",
-        ),
-    ]
     results = ranker.predict_batch(queries=[query], documents=docs)
     assert results[0] == docs[4]
 
 
-def test_ranker_batch_single_query_multiple_doc_lists(ranker):
+def test_ranker_batch_single_query_multiple_doc_lists(ranker, docs):
     query = "What is the most important building in King's Landing that has a religious background?"
-    docs = [
-        Document(
-            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-            meta={"name": "0"},
-            id="1",
-        ),
-        Document(
-            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-            id="2",
-        ),
-        Document(
-            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-            meta={"name": "1"},
-            id="3",
-        ),
-        Document(
-            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-            meta={"name": "2"},
-            id="4",
-        ),
-        Document(
-            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-            meta={},
-            id="5",
-        ),
-    ]
     results = ranker.predict_batch(queries=[query], documents=[docs, docs])
     assert isinstance(results, list)
     assert isinstance(results[0], list)
@@ -164,35 +130,9 @@ def test_ranker_batch_single_query_multiple_doc_lists(ranker):
         assert reranked_docs[0] == docs[4]
 
 
-def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker):
+def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker, docs):
     query_1 = "What is the most important building in King's Landing that has a religious background?"
     query_2 = "How is Angola's climate characterized?"
-    docs = [
-        Document(
-            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-            meta={"name": "0"},
-            id="1",
-        ),
-        Document(
-            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-            id="2",
-        ),
-        Document(
-            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-            meta={"name": "1"},
-            id="3",
-        ),
-        Document(
-            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-            meta={"name": "2"},
-            id="4",
-        ),
-        Document(
-            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-            meta={},
-            id="5",
-        ),
-    ]
     results = ranker.predict_batch(queries=[query_1, query_2], documents=[docs, docs])
     assert isinstance(results, list)
     assert isinstance(results[0], list)
@@ -200,7 +140,7 @@ def test_ranker_batch_multiple_queries_multiple_doc_lists(ranker):
     assert results[1][0] == docs[1]
 
 
-def test_ranker_two_logits(ranker_two_logits):
+def test_ranker_two_logits(ranker_two_logits, docs):
     assert isinstance(ranker_two_logits, BaseRanker)
     assert isinstance(ranker_two_logits, SentenceTransformersRanker)
     query = "Welches ist das wichtigste Gebäude in Königsmund, das einen religiösen Hintergrund hat?"
@@ -291,3 +231,83 @@ def test_predict_batch_returns_correct_number_of_docs(ranker):
     assert len(ranker.predict("where is test 3?", docs, top_k=4)) == 4
 
     assert len(ranker.predict_batch(["where is test 3?"], docs, batch_size=2, top_k=4)) == 4
+
+
+@pytest.mark.unit
+def test_cohere_ranker(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0")
+    results = ranker.predict(query=query, documents=docs)
+    mock_cohere_post.assert_called_once_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": [{"text": d.content} for d in docs],
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert results[0] == docs[4]
+
+
+@pytest.mark.unit
+def test_cohere_ranker_batch_single_query_single_doc_list(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0")
+    results = ranker.predict_batch(queries=[query], documents=docs)
+    mock_cohere_post.assert_called_once_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": [{"text": d.content} for d in docs],
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert results[0] == docs[4]
+
+
+@pytest.mark.unit
+def test_cohere_ranker_batch_single_query_multiple_doc_lists(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0")
+    results = ranker.predict_batch(queries=[query], documents=[docs, docs])
+    assert mock_cohere_post.call_count == 2
+    mock_cohere_post.assert_called_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": [{"text": d.content} for d in docs],
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert isinstance(results, list)
+    assert isinstance(results[0], list)
+    for reranked_docs in results:
+        assert reranked_docs[0] == docs[4]
+
+
+@pytest.mark.unit
+def test_cohere_ranker_batch_multiple_queries_multiple_doc_lists(docs, mock_cohere_post):
+    query = "What is the most important building in King's Landing that has a religious background?"
+    ranker = CohereRanker(api_key="fake_key", model_name_or_path="rerank-english-v2.0")
+    results = ranker.predict_batch(queries=[query, query], documents=[docs, docs])
+    assert mock_cohere_post.call_count == 2
+    mock_cohere_post.assert_called_with(
+        {
+            "model": "rerank-english-v2.0",
+            "query": query,
+            "documents": [{"text": d.content} for d in docs],
+            "top_n": None,  # By passing None we return all documents and use top_k to truncate later
+            "return_documents": False,
+            "max_chunks_per_doc": None,
+        }
+    )
+    assert isinstance(results, list)
+    assert isinstance(results[0], list)
+    assert results[0][0] == docs[4]
+    assert results[1][0] == docs[4]
