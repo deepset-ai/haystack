@@ -22,6 +22,7 @@ from haystack.nodes.prompt.shapers import (  # pylint: disable=unused-import
     BaseOutputParser,
     AnswerParser,
     to_strings,
+    current_datetime,
     join,  # used as shaping function
     format_document,
     format_answer,
@@ -37,7 +38,10 @@ from haystack.environment import (
 logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = json.loads(
-    os.environ.get(HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "to_strings", "replace", "enumerate", "str"]')
+    os.environ.get(
+        HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS,
+        '["join", "to_strings", "replace", "enumerate", "str", "current_datetime"]',
+    )
 )
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
@@ -289,7 +293,8 @@ class _FstringParamsTransformer(ast.NodeTransformer):
     def visit_FormattedValue(self, node: ast.FormattedValue) -> Optional[ast.AST]:
         """
         Replaces the f-string expression with a unique ID and stores the corresponding expression in a dictionary.
-        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings` to ensure that the documents get rendered correctly.
+        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings`
+        to ensure that the documents get rendered correctly.
         """
         super().generic_visit(node)
 
