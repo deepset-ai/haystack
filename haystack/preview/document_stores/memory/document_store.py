@@ -219,8 +219,8 @@ class MemoryDocumentStore:
         if scale_score:
             # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / SCALING_FACTOR))) for score in docs_scores]
-        # reverse order, get top k
-        top_docs_positions = np.argsort(docs_scores)[-top_k:]
+        # get the last top_k indexes and reverse them
+        top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
 
         # Create documents with the BM25 score to return them
         return_documents = []
