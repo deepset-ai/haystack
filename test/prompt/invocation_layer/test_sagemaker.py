@@ -102,7 +102,7 @@ def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_positive_mock(mock_boto3_session):
+def test_short_prompt_is_not_truncated(mock_boto3_session):
     # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
     mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
     mock_prompt = "I am a tokenized prompt"
@@ -118,7 +118,7 @@ def test_ensure_token_limit_positive_mock(mock_boto3_session):
 
 
 @pytest.mark.unit
-def test_ensure_token_limit_negative_mock(mock_boto3_session):
+def test_long_prompt_is_truncated(mock_boto3_session):
     # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
     mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
     correct_result = "I am a tokenized prompt of length"
