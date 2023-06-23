@@ -102,8 +102,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         }
 
         # As of June 23, SageMaker does not support streaming responses.
-        # However, users are likely to want to use streaming responses
-        # Save stream settings and stream_handler for warning and future use
+        # However, even though it's not provided, users may attempt to use streaming responses.
+        # Use stream and stream_handler for warning and future use
         self.stream_handler = kwargs.get("stream_handler", None)
         self.stream = kwargs.get("stream", False)
 
@@ -113,6 +113,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
         # Truncate prompt if prompt tokens > model_max_length-max_length
         # (max_length is the length of the generated text)
+        # It is hard to determine which tokenizer to use for the SageMaker model
+        # so we use GPT2 tokenizer which will likely provide good token count approximation
         self.prompt_handler = DefaultPromptHandler(
             model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
         )
