@@ -101,6 +101,12 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
+        # As of June 23, SageMaker does not support streaming responses.
+        # However, users are likely to want to use streaming responses
+        # Save stream settings and stream_handler for warning and future use
+        self.stream_handler = kwargs.get("stream_handler", None)
+        self.stream = kwargs.get("stream", False)
+
         # We pop the model_max_length as it is not sent to the model
         # but used to truncate the prompt if needed
         model_max_length = kwargs.get("model_max_length", 1024)
@@ -126,6 +132,12 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 f"No prompt provided. Model {self.model_name_or_path} requires prompt."
                 f"Make sure to provide prompt in kwargs."
             )
+
+        stream = kwargs.get("stream", self.stream)
+        stream_handler = kwargs.get("stream_handler", self.stream_handler)
+        streaming_requested = stream or stream_handler is not None
+        if streaming_requested:
+            logger.warning("SageMaker does not support streaming responses.")
 
         stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
