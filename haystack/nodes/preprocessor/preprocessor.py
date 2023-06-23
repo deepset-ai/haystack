@@ -103,7 +103,10 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"` character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
-        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than max_chars_check in characters after pre-processing will raise a warning.
+        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than 
+            max_chars_check in characters after pre-processing will raise a warning and is going to be split at the 
+            `max_char_check`-th char, regardless of any other constraint. If the resulting documents are still too long, 
+            they'll be cut again until all fragments are below the maximum allowed length.
         """
         if remove_substrings is None:
             remove_substrings = []
@@ -186,7 +189,9 @@ class PreProcessor(BasePreProcessor):
 
     def _long_documents(self, documents: List[Document], max_chars_check=10_000):
         """
-        Function that tries to detect unusually long documents.
+        Function that tries to detect unusually long documents. When detected, such documents are going to be
+        split at the `max_char_check`-th char, regardless of any other constraint. If the resulting documents
+        are still too long, they'll be cut again until all fragments are below the maximum allowed length.
 
         NOTE: this function is a heuristic that is in place only because a proper fix that prevents such documents from forming
         would imply a complete revamp of this class, including better definitions of what the various units (word, sentence, passage) mean exactly.
