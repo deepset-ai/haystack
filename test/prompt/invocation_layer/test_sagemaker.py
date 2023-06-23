@@ -163,7 +163,7 @@ def test_streaming_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session):
 
 
 @pytest.mark.unit
-def test_streaming_handler_init_kwarg(mock_auto_tokenizer, mock_boto3_session, caplog):
+def test_streaming_handler_init_kwarg(mock_auto_tokenizer, mock_boto3_session):
     """
     Test stream_handler parameter passed as init kwarg is correctly logged as not supported
     """
@@ -174,7 +174,7 @@ def test_streaming_handler_init_kwarg(mock_auto_tokenizer, mock_boto3_session, c
 
 
 @pytest.mark.unit
-def test_streaming_handler_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session, caplog):
+def test_streaming_handler_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session):
     """
     Test stream_handler parameter passed as invoke kwarg is correctly logged as not supported
     """
