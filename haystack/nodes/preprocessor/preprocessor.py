@@ -103,9 +103,9 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"` character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
-        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than 
-            max_chars_check in characters after pre-processing will raise a warning and is going to be split at the 
-            `max_char_check`-th char, regardless of any other constraint. If the resulting documents are still too long, 
+        :param max_chars_check: the maximum length a document is expected to have. Each document that is longer than
+            max_chars_check in characters after pre-processing will raise a warning and is going to be split at the
+            `max_char_check`-th char, regardless of any other constraint. If the resulting documents are still too long,
             they'll be cut again until all fragments are below the maximum allowed length.
         """
         if remove_substrings is None:
