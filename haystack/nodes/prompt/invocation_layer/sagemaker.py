@@ -79,7 +79,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             )
         self.max_length = max_length
 
-        # for a list of supported parameters (TODO: verify if all of them are supported in sagemaker)
+        # for a list of supported parameters
+        # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
@@ -87,7 +88,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 "details",
                 "do_sample",
                 "max_new_tokens",
-                "model_max_length",  # this is our parameter prompt truncation
                 "repetition_penalty",
                 "return_full_text",
                 "seed",
@@ -101,9 +101,9 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             if key in kwargs
         }
 
-        # We pop the model_max_length from the model_input_kwargs as it is not sent to the model
+        # We pop the model_max_length as it is not sent to the model
         # but used to truncate the prompt if needed
-        model_max_length = self.model_input_kwargs.pop("model_max_length", 1024)
+        model_max_length = kwargs.get("model_max_length", 1024)
 
         # Truncate prompt if prompt tokens > model_max_length-max_length
         # (max_length is the length of the generated text)
@@ -133,7 +133,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
         # For the list of supported parameters and the docs
         # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
-        # these parameters were valid in June 2023, make sure to check the docs for updates
+        # these parameters were valid in June 23, make sure to check the docs for updates
         params = {
             "best_of": kwargs_with_defaults.get("best_of", None),
             "details": kwargs_with_defaults.get("details", False),
