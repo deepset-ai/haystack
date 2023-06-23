@@ -348,17 +348,25 @@ class Pipeline:
 
             component, inputs = inputs_buffer.popitem(last=False)  # FIFO
 
+            # Make sure it didn't run too many times already
+            self._check_max_loops(component)
+
             # if debug:
             #     draw(deepcopy(self.graph), engine="graphviz", path=f"debug/step_{current_step}.jpg", running=component, queued=inputs_buffer.keys())
 
             # **** IS IT MY TURN YET? ****
             # Check if the node should be run or not
-            ready_to_run = self._ready_to_run(
-                name=component, inputs=inputs, inputs_buffer=inputs_buffer, skipped_nodes=skipped_nodes
-            )
+            ready_to_run = self._ready_to_run(name=component, inputs=inputs, skipped_nodes=skipped_nodes)
 
             # This component is missing data: let's put it back in the queue and wait.
             if ready_to_run == "wait":
+                if not inputs_buffer:
+                    # What if there are no components to wait for?
+                    raise PipelineRuntimeError(
+                        f"'{component}' is stuck waiting for input, but there are no other components to run. "
+                        "This is likely a Canals bug. Open an issue at https://github.com/deepset-ai/canals."
+                    )
+
                 inputs_buffer[component] = inputs
                 continue
 
@@ -426,7 +434,7 @@ class Pipeline:
             )
 
     def _ready_to_run(
-        self, name: str, inputs: Dict[str, Any], inputs_buffer: OrderedDict, skipped_nodes: Set[str]
+        self, name: str, inputs: Dict[str, Any], skipped_nodes: Set[str]
     ) -> Literal["run", "wait", "skip"]:
         """
         Verify whether a component is ready to run.
@@ -434,79 +442,87 @@ class Pipeline:
         Returns 'run', 'wait' or 'skip' depending on how the node should be treated and the log message explaining
         the decision.
         """
-        # Make sure it didn't run too many times already
-        self._check_max_loops(name)
 
         # List all the component/socket pairs the current component should be waiting for.
-        # expected_inputs = self._connections_to_wait_for(name=name)
-
-        # List all the component/socket pairs the current component is connected to
-        expected_inputs = {
+        input_components = {
             from_node: data["to_socket"].name for from_node, _, data in self.graph.in_edges(name, data=True)
         }
-        component_inputs = {f.name for f in fields(self.graph.nodes[name]["instance"].__canals_input__)}
-        optional_inputs = set(self.graph.nodes[name]["instance"].__canals_optional_inputs__)
-        mandatory_inputs = {i for i in component_inputs if i not in optional_inputs}
-        skipped_optional_inputs = {
+        input_sockets = {f.name for f in fields(self.graph.nodes[name]["instance"].__canals_input__)}
+        optional_input_sockets = set(self.graph.nodes[name]["instance"].__canals_optional_inputs__)
+        mandatory_input_sockets = {i for i in input_sockets if i not in optional_input_sockets}
+        skipped_optional_input_sockets = {
             sockets["to_socket"].name
             for from_node, _, sockets in self.graph.in_edges(name, data=True)
-            if from_node in skipped_nodes and sockets["to_socket"].name in optional_inputs
+            if from_node in skipped_nodes and sockets["to_socket"].name in optional_input_sockets
         }
 
-        # The expected_inputs will also contain inputs that are optional, probably we can simplify
-        # it and let it return the in_sockets of the component
+        def _should_run():
+            if mandatory_input_sockets.issubset(set(inputs.keys())) and not optional_input_sockets:
+                # We received all the inputs we need and have no optional inputs
+                return True
+            if (
+                mandatory_input_sockets.issubset(set(inputs.keys()))
+                and skipped_optional_input_sockets == optional_input_sockets
+            ):
+                # We received all the inputs we need and all optional inputs are skipped
+                return True
+            if (
+                mandatory_input_sockets.issubset(set(inputs.keys()))
+                and input_sockets == set(inputs.keys()) | mandatory_input_sockets | skipped_optional_input_sockets
+            ):
+                # We received all the inputs we need and some optionals, some other optionals instead are skipped
+                return True
+            if not input_components:
+                # Nothing to wait for, this must be the first input component in the Pipeline
+                logger.debug("Component '%s' is ready to run: it's a starting node.", name)
+                return True
+            if set(input_components.values()).issubset(set(inputs.keys())):
+                # Otherwise, just make sure there is one input key for each expected input key
+                logger.debug("Component '%s' is ready to run: all expected inputs were received.", name)
+                return True
 
-        # Now that we know all the inputs we need to verify if there are skipped input components
-        if mandatory_inputs.issubset(set(inputs.keys())) and not optional_inputs:
-            # We received all the inputs we need and have no optional inputs
-            return "run"
-        elif mandatory_inputs.issubset(set(inputs.keys())) and skipped_optional_inputs == optional_inputs:
-            # We received all the inputs we need and all optional inputs are skipped
-            return "run"
-        elif (
-            mandatory_inputs.issubset(set(inputs.keys()))
-            and component_inputs == set(inputs.keys()) | mandatory_inputs | skipped_optional_inputs
-        ):
-            # We received all the inputs we need and some optionals, some other optionals instead are skipped
-            return "run"
-        elif mandatory_inputs.issubset(set(inputs.keys())) and skipped_optional_inputs.issubset(optional_inputs):
-            # We received all the inputs we need and some optional inputs have not been skipped
-            return "wait"
-        elif expected_inputs and set(expected_inputs.keys()).issubset(skipped_nodes):
-            # All mandatory inputs are skipped, skipping this too
-            return "skip"
+            return False
 
-        # Check if the expected inputs were all received
-        if self._check_received_vs_expected_inputs(name=name, inputs=inputs, expected_inputs=expected_inputs):
-            return "run"
-
-        # This node is missing some inputs. Did all the upstream nodes run?
-        # nodes_to_wait_for, _ = zip(*expected_inputs) if expected_inputs else ([], [])
-        nodes_to_wait_for = list(expected_inputs.keys())
-
-        # Some node upstream didn't run yet, so we should wait for them.
-        if not self._all_nodes_to_wait_for_run(nodes_to_wait_for=nodes_to_wait_for):
-            if not inputs_buffer:
-                # What if there are no components to wait for?
-                raise PipelineRuntimeError(
-                    f"'{name}' is stuck waiting for input, but there are no other components to run. "
-                    "This is likely a Canals bug. Open an issue at https://github.com/deepset-ai/canals."
+        def _should_wait():
+            if mandatory_input_sockets.issubset(set(inputs.keys())) and skipped_optional_input_sockets.issubset(
+                optional_input_sockets
+            ):
+                # We received all the inputs we need and some optional inputs have not been skipped
+                return True
+            if not all(
+                self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in input_components.keys()
+            ):
+                logger.debug(
+                    "Putting '%s' back in the queue, some inputs are missing (inputs to wait for: %s, inputs_received: %s)",
+                    name,
+                    [f"{node}.{socket}" for node, socket in input_components.items()],
+                    list(inputs.keys()),
                 )
+                return True
 
-            logger.debug(
-                "Putting '%s' back in the queue, some inputs are missing (inputs to wait for: %s, inputs_received: %s)",
-                name,
-                [f"{node}.{socket}" for node, socket in expected_inputs.items()],
-                list(inputs.keys()),
-            )
+            return False
+
+        def _should_skip():
+            if input_components and set(input_components.keys()).issubset(skipped_nodes):
+                # All mandatory inputs are skipped, skipping this too
+                return True
+            return False
+
+        if _should_run():
+            return "run"
+
+        if _should_wait():
             return "wait"
+
+        if _should_skip():
+            return "skip"
 
         logger.debug(
             "Skipping '%s', upstream component didn't produce output "
             "(upstream components: %s, expected inputs: %s, inputs received: %s)",
             name,
-            nodes_to_wait_for,
-            [f"{node}.{socket}" for node, socket in expected_inputs.items()],
+            list(input_components.keys()),
+            [f"{node}.{socket}" for node, socket in input_components.items()],
             list(inputs.keys()),
         )
         return "skip"
