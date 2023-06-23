@@ -4,7 +4,7 @@ from typing import Optional, Dict, Union, List, Any
 
 import requests
 
-from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError
+from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError, SageMakerConfigurationError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
@@ -230,7 +230,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 client = session.client("sagemaker")
             except BotoCoreError as e:
                 provided_aws_config = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
-                raise ValueError(
+                raise SageMakerConfigurationError(
                     f"Failed to initialize the session or client with provided AWS credentials {provided_aws_config}."
                     f"The root cause is: {e}"
                 )
@@ -238,7 +238,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             try:
                 client.describe_endpoint(EndpointName=model_name_or_path)
             except ClientError as e:
-                raise ValueError(
+                raise SageMakerConfigurationError(
                     f"Could not connect to {model_name_or_path} Sagemaker endpoint. "
                     f"Please make sure that the endpoint exists and is accessible."
                     f"The root cause is: {e}"

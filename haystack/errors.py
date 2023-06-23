@@ -212,6 +212,13 @@ class SageMakerInferenceError(NodeError):
         self.status_code = status_code
 
 
+class SageMakerConfigurationError(NodeError):
+    """Exception raised when SageMaker node is not configured correctly"""
+
+    def __init__(self, message: Optional[str] = None, send_message_in_event: bool = False):
+        super().__init__(message=message, send_message_in_event=send_message_in_event)
+
+
 class SageMakerModelNotReadyError(SageMakerInferenceError):
     """Exception for when a model is still under provisioning"""
 
