@@ -37,6 +37,24 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
     model_kwargs={"aws_profile_name": "my_aws_profile_name", "aws_region_name": "eu-central-1"})
     res = pn("what is the meaning of life?")
     print(res)
+    ```
+
+    **Example using AWS env variables**
+    ```python
+    # We can also configure Sagemaker via AWS environment variables without AWS profile name
+    from haystack.nodes import PromptNode
+    pn = PromptNode(model_name_or_path="hf-llm-falcon-7b-instruct-bf16-2023-06-22-16-22-19-811", max_length=256,
+                    model_kwargs={"aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+                                "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+                                "aws_session_token": os.getenv("AWS_SESSION_TOKEN"),
+                                "aws_region_name": "us-east-1"})
+
+    response = pn("Tell me more about Berlin, be elaborate")
+    print(response)
+    ```
+
+    Of course, in both examples your endpoints, region names and other settings will be different.
+    You can find it in the SageMaker AWS console.
     """
 
     def __init__(
