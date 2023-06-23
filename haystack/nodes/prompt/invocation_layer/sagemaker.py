@@ -139,7 +139,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         stream_handler = kwargs.get("stream_handler", self.stream_handler)
         streaming_requested = stream or stream_handler is not None
         if streaming_requested:
-            logger.warning("SageMaker does not support streaming responses.")
+            raise SageMakerConfigurationError("SageMaker model response streaming is not supported yet")
 
         stop_words = kwargs.pop("stop_words", None) or []
         kwargs_with_defaults = self.model_input_kwargs
