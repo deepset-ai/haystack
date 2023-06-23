@@ -41,8 +41,10 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
 
     **Example using AWS env variables**
     ```python
-    # We can also configure Sagemaker via AWS environment variables without AWS profile name
+    import os
     from haystack.nodes import PromptNode
+
+    # We can also configure Sagemaker via AWS environment variables without AWS profile name
     pn = PromptNode(model_name_or_path="hf-llm-falcon-7b-instruct-bf16-2023-06-22-16-22-19-811", max_length=256,
                     model_kwargs={"aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
                                 "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
