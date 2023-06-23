@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Dict, List, Optional, Union, Generator, Literal
 
 import time
@@ -24,7 +25,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
@@ -91,6 +92,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
                                 By default, no parameters are set.
         """
+        torch_import.check()
         if bm25_parameters is None:
             bm25_parameters = {}
         super().__init__()
@@ -959,7 +961,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scale_score: bool = True,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the query as defined by the BM25 algorithm.
         :param query: The query.
         :param top_k: How many documents to return per query.
@@ -995,13 +997,13 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
         textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type in ["text", "table"]]
-        top_docs = []
+        return_documents = []
         for i in top_docs_positions:
             doc = textual_docs_list[i]
             doc.score = docs_scores[i]
-            top_docs.append(doc)
-
-        return top_docs
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
+        return return_documents
 
     def query_batch(
         self,
@@ -1015,7 +1017,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scale_score: bool = True,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
         This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
         :param query: The query.

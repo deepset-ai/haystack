@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'.") as transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as transformers_import:
     import transformers
     from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, AutoFeatureExtractor, AutoTokenizer
 

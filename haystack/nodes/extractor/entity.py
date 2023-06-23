@@ -33,7 +33,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from torch.utils.data import Dataset, DataLoader
     from transformers import AutoTokenizer, AutoModelForTokenClassification

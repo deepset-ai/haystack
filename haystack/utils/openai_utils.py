@@ -18,13 +18,14 @@ from haystack.environment import (
 
 logger = logging.getLogger(__name__)
 
-
 machine = platform.machine().lower()
 system = platform.system()
 
 OPENAI_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 OPENAI_BACKOFF = int(os.environ.get(HAYSTACK_REMOTE_API_BACKOFF_SEC, 10))
 OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
+
+OPENAI_MODERATION_URL = "https://api.openai.com/v1/moderations"
 
 
 def load_openai_tokenizer(tokenizer_name: str):
@@ -44,7 +45,7 @@ def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> i
     :param messages: The messages to be tokenized.
     :param tokenizer: An OpenAI tokenizer.
     """
-    # adapted from https://platform.openai.com/docs/guides/chat/introduction
+    # adapted from https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     # should be kept up to date
     num_tokens = 0
     for message in messages:
@@ -53,7 +54,7 @@ def count_openai_tokens_messages(messages: List[Dict[str, str]], tokenizer) -> i
             num_tokens += len(tokenizer.encode(value))
             if key == "name":  # if there's a name, the role is omitted
                 num_tokens += -1  # role is always required and always 1 token
-    num_tokens += 2  # every reply is primed with <im_start>assistant
+    num_tokens += 3  # every reply is primed with <im_start>assistant<|message|>
     return num_tokens
 
 
@@ -64,6 +65,7 @@ def _openai_text_completion_tokenization_details(model_name: str):
     """
     tokenizer_name = "gpt2"
     max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    model_tokenizer = None
 
     if model_name == "gpt-35-turbo":
         # covering the lack of support in Tiktoken. https://github.com/openai/tiktoken/pull/72
@@ -83,6 +85,9 @@ def _openai_text_completion_tokenization_details(model_name: str):
         ##      https://platform.openai.com/docs/models/gpt-3
         if "text-davinci" in model_name:
             max_tokens_limit = 4097
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-3.5-turbo-16k"):
+            max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-3"):
             max_tokens_limit = 4096
@@ -145,6 +150,26 @@ def openai_request(
         return json_response
     else:
         return response
+
+
+def check_openai_policy_violation(input: Union[List[str], str], headers: Dict) -> bool:
+    """
+    Calls the moderation endpoint to check if the text(s) violate the policy.
+    See [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation) for more details.
+    Returns true if any of the input is flagged as any of ['sexual', 'hate', 'violence', 'self-harm', 'sexual/minors', 'hate/threatening', 'violence/graphic'].
+    """
+    response = openai_request(url=OPENAI_MODERATION_URL, headers=headers, payload={"input": input})
+    results = response["results"]
+    flagged = any(res["flagged"] for res in results)
+    if flagged:
+        for result in results:
+            if result["flagged"]:
+                logger.debug(
+                    "OpenAI Moderation API flagged the text '%s' as a potential policy violation of the following categories: %s",
+                    input,
+                    result["categories"],
+                )
+    return flagged
 
 
 def _check_openai_finish_reason(result: Dict, payload: Dict) -> None:
