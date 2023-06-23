@@ -1,4 +1,5 @@
 import os
+import unittest
 from unittest.mock import patch, MagicMock, Mock
 
 import pytest
@@ -140,7 +141,63 @@ def test_empty_model_name():
 
 
 @pytest.mark.unit
-def test_supports_for_valid_aws():
+def test_streaming_init_kwarg(mock_auto_tokenizer, mock_boto3_session, caplog):
+    """
+    Test stream parameter passed as init kwarg is correctly logged as not supported
+    """
+    layer = SageMakerInvocationLayer(model_name_or_path="irrelevant", stream=True)
+
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post") as mock_post:
+        layer.invoke(prompt="Tell me hello")
+
+    assert mock_post.called
+    assert "SageMaker does not support streaming responses." in caplog.text
+
+
+@pytest.mark.unit
+def test_streaming_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session, caplog):
+    """
+    Test stream parameter passed as invoke kwarg is correctly logged as not supported
+    """
+    layer = SageMakerInvocationLayer(model_name_or_path="irrelevant")
+
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post") as mock_post:
+        layer.invoke(prompt="Tell me hello", stream=True)
+
+    assert mock_post.called
+    assert "SageMaker does not support streaming responses." in caplog.text
+
+
+@pytest.mark.unit
+def test_streaming_handler_init_kwarg(mock_auto_tokenizer, mock_boto3_session, caplog):
+    """
+    Test stream_handler parameter passed as init kwarg is correctly logged as not supported
+    """
+    layer = SageMakerInvocationLayer(model_name_or_path="irrelevant", stream_handler=Mock())
+
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post") as mock_post:
+        layer.invoke(prompt="Tell me hello")
+
+    assert mock_post.called
+    assert "SageMaker does not support streaming responses." in caplog.text
+
+
+@pytest.mark.unit
+def test_streaming_handler_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session, caplog):
+    """
+    Test stream_handler parameter passed as invoke kwarg is correctly logged as not supported
+    """
+    layer = SageMakerInvocationLayer(model_name_or_path="irrelevant")
+
+    with unittest.mock.patch("haystack.nodes.prompt.invocation_layer.SageMakerInvocationLayer._post") as mock_post:
+        layer.invoke(prompt="Tell me hello", stream_handler=Mock())
+
+    assert mock_post.called
+    assert "SageMaker does not support streaming responses." in caplog.text
+
+
+@pytest.mark.unit
+def test_supports_for_valid_aws_configuration():
     """
     Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
     """
