@@ -11,7 +11,7 @@ from haystack.utils.import_utils import is_whisper_available
 from haystack.lazy_imports import LazyImport
 
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
 
 

@@ -1,36 +1,12 @@
-import sys
-from typing import List
 from unittest.mock import patch, create_autospec
 
 import pytest
 from haystack import Pipeline
 from haystack.schema import Document
-from haystack.nodes.answer_generator import Seq2SeqGenerator, OpenAIAnswerGenerator, RAGenerator
-from haystack.pipelines import GenerativeQAPipeline
+from haystack.nodes.answer_generator import OpenAIAnswerGenerator
 from haystack.nodes import PromptTemplate
 
 import logging
-from ..conftest import fail_at_version
-
-
-@pytest.mark.unit
-@fail_at_version(1, 18)
-def test_seq2seq_deprecation(mock_auto_tokenizer):
-    with pytest.warns(DeprecationWarning):
-        try:
-            Seq2SeqGenerator("non_existing_model/model")
-        except OSError:
-            pass
-
-
-@pytest.mark.unit
-@fail_at_version(1, 18)
-def test_rag_deprecation():
-    with pytest.warns(DeprecationWarning):
-        try:
-            RAGenerator("non_existing_model/model")
-        except OSError:
-            pass
 
 
 @pytest.mark.unit
@@ -51,109 +27,6 @@ def test_openai_answer_generator_custom_api_base(mock_request):
     assert generator.api_base == "https://fake_api_base.com"
     generator.predict(query="test query", documents=[Document(content="test document")])
     assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/completions"
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.integration
-@pytest.mark.generator
-def test_rag_token_generator(rag_generator, docs_with_true_emb):
-    query = "What is capital of the Germany?"
-    generated_docs = rag_generator.predict(query=query, documents=docs_with_true_emb, top_k=1)
-    answers = generated_docs["answers"]
-    assert len(answers) == 1
-    assert "berlin" in answers[0].answer
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_true_emb):
-    document_store.write_documents(docs_with_true_emb)
-    query = "What is capital of the Germany?"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
-    answers = output["answers"]
-    assert len(answers) == 2
-    assert "berlin" in answers[0].answer
-    for doc_idx, document in enumerate(output["documents"]):
-        assert document.id == answers[0].document_ids[doc_idx]
-        assert document.meta == answers[0].meta["doc_metas"][doc_idx]
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert", "dpr_lfqa"], indirect=True)
-@pytest.mark.parametrize("lfqa_generator", ["yjernite/bart_eli5", "vblagoje/bart_lfqa"], indirect=True)
-@pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true_emb):
-    # reuse existing DOCS but regenerate embeddings with retribert
-    docs: List[Document] = []
-    for d in docs_with_true_emb:
-        docs.append(Document(content=d.content))
-    document_store.write_documents(docs)
-    document_store.update_embeddings(retriever)
-    query = "Tell me about Berlin?"
-    pipeline = GenerativeQAPipeline(generator=lfqa_generator, retriever=retriever)
-    output = pipeline.run(query=query, params={"top_k": 1})
-    answers = output["answers"]
-    assert len(answers) == 1, answers
-    assert "Germany" in answers[0].answer, answers[0].answer
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_true_emb):
-    # reuse existing DOCS but regenerate embeddings with retribert
-    docs: List[Document] = []
-    for d in docs_with_true_emb:
-        docs.append(Document(content=d.content))
-    document_store.write_documents(docs)
-    document_store.update_embeddings(retriever)
-    seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random")
-    query = "Tell me about Berlin?"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
-
-    # raises exception as we don't have converter for "patrickvonplaten/t5-tiny-random" in Seq2SeqGenerator
-    with pytest.raises(Exception) as exception_info:
-        output = pipeline.run(query=query, params={"top_k": 1})
-    assert "doesn't have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value)
-
-
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_true_emb):
-    # reuse existing DOCS but regenerate embeddings with retribert
-    docs: List[Document] = []
-    for d in docs_with_true_emb:
-        docs.append(Document(content=d.content))
-    document_store.write_documents(docs)
-    document_store.update_embeddings(retriever)
-
-    class _InvalidConverter:
-        def __call__(self, some_invalid_para: str, another_invalid_param: str) -> None:
-            pass
-
-    seq2seq = Seq2SeqGenerator(
-        model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter()
-    )
-    query = "This query will fail due to InvalidConverter used"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
-
-    # raises exception as we are using invalid method signature in _InvalidConverter
-    with pytest.raises(Exception) as exception_info:
-        output = pipeline.run(query=query, params={"top_k": 1})
-    assert "does not have a valid __call__ method signature" in str(exception_info.value)
 
 
 @pytest.mark.integration

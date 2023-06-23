@@ -98,17 +98,36 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
         elif isinstance(prompt, list) and len(prompt) > 0 and isinstance(prompt[0], dict):
             messages = prompt
 
-        n_prompt_tokens = count_openai_tokens_messages(messages, self._tokenizer)
+        n_message_tokens = count_openai_tokens_messages(messages, self._tokenizer)
         n_answer_tokens = self.max_length
-        if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
+        if (n_message_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
-        # TODO: support truncation as in _ensure_token_limit methods for other invocation layers
-        raise ValueError(
-            f"The prompt or the messages are too long ({n_prompt_tokens} tokens). "
-            f"The length of the prompt or messages and the answer ({n_answer_tokens} tokens) should be within the max token limit ({self.max_tokens_limit} tokens). "
-            f"Reduce the length of the prompt or messages."
-        )
+        if isinstance(prompt, str):
+            tokenized_prompt = self._tokenizer.encode(prompt)
+            n_other_tokens = n_message_tokens - len(tokenized_prompt)
+            truncated_prompt_length = self.max_tokens_limit - n_answer_tokens - n_other_tokens
+
+            logger.warning(
+                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
+                "answer length (%s tokens) fit within the max token limit (%s tokens). "
+                "Reduce the length of the prompt to prevent it from being cut off.",
+                len(tokenized_prompt),
+                truncated_prompt_length,
+                n_answer_tokens,
+                self.max_tokens_limit,
+            )
+
+            truncated_prompt = self._tokenizer.decode(tokenized_prompt[:truncated_prompt_length])
+            return truncated_prompt
+        else:
+            # TODO: support truncation when there is a chat history
+            raise ValueError(
+                f"The prompt or the messages are too long ({n_message_tokens} tokens). "
+                f"The length of the prompt or messages and the answer ({n_answer_tokens} tokens) should be within the max "
+                f"token limit ({self.max_tokens_limit} tokens). "
+                f"Reduce the length of the prompt or messages."
+            )
 
     @property
     def url(self) -> str:
