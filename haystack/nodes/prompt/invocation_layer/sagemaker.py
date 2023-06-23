@@ -33,7 +33,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
     from haystack.nodes import PromptNode
 
     # Pass sagemaker endpoint name and authentication details
-    pn = PromptNode(model_name_or_path="falcon-40b-my-sagemaker-inference-endpoint, model_kwargs={"profile_name": "my_aws_profile_name", "region_name": "eu-central-1"})
+    pn = PromptNode(model_name_or_path="falcon-40b-my-sagemaker-inference-endpoint,
+    model_kwargs={"aws_profile_name": "my_aws_profile_name", "aws_region_name": "eu-central-1"})
     res = pn("what is the meaning of life?")
     print(res)
     """
@@ -45,8 +46,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
-        region_name: Optional[str] = None,
-        profile_name: Optional[str] = None,
+        aws_region_name: Optional[str] = None,
+        aws_profile_name: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -57,8 +58,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         :param aws_access_key_id: AWS access key ID.
         :param aws_secret_access_key: AWS secret access key.
         :param aws_session_token: AWS session token.
-        :param region_name: AWS region name.
-        :param profile_name: AWS profile name.
+        :param aws_region_name: AWS region name.
+        :param aws_profile_name: AWS profile name.
         """
         boto3_import.check()
         super().__init__(model_name_or_path)
@@ -67,8 +68,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
-                region_name=region_name,
-                profile_name=profile_name,
+                aws_region_name=aws_region_name,
+                aws_profile_name=aws_profile_name,
             )
             self.client = session.client("sagemaker-runtime")
         except Exception as e:
@@ -207,8 +208,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             "aws_access_key_id",
             "aws_secret_access_key",
             "aws_session_token",
-            "region_name",
-            "profile_name",
+            "aws_region_name",
+            "aws_profile_name",
         ]
         aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
         if aws_config_provided:
@@ -242,8 +243,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
-        region_name: Optional[str] = None,
-        profile_name: Optional[str] = None,
+        aws_region_name: Optional[str] = None,
+        aws_profile_name: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -252,8 +253,8 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         :param aws_access_key_id: AWS access key ID.
         :param aws_secret_access_key: AWS secret access key.
         :param aws_session_token: AWS session token.
-        :param region_name: AWS region name.
-        :param profile_name: AWS profile name.
+        :param aws_region_name: AWS region name.
+        :param aws_profile_name: AWS profile name.
         :raise NoCredentialsError: If the AWS credentials are not provided or invalid.
         :return: The created AWS Session.
         """
@@ -261,6 +262,6 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
             aws_session_token=aws_session_token,
-            region_name=region_name,
-            profile_name=profile_name,
+            region_name=aws_region_name,
+            profile_name=aws_profile_name,
         )

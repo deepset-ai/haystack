@@ -56,8 +56,8 @@ def test_default_constructor(mock_auto_tokenizer, mock_boto3_session):
         aws_access_key_id="some_fake_id",
         aws_secret_access_key="some_fake_key",
         aws_session_token="some_fake_token",
-        profile_name="some_fake_profile",
-        region_name="fake_region",
+        aws_profile_name="some_fake_profile",
+        aws_region_name="fake_region",
     )
 
     assert layer.max_length == 99
