@@ -11,29 +11,25 @@ def named_dataloader():
     return NamedDataLoader(None, 1, tensor_names=tensor_names)
 
 
-@pytest.mark.unit
-def test_compute_max_number_of_labels(named_dataloader):
-    batch = [
-        (
-            torch.tensor([[0, 0], [-1, -1], [-1, -1], [-1, -1]]),
-            torch.tensor([[0, 0], [-1, -1], [-1, -1]]),
-            torch.tensor([[0, 0], [-1, -1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]),
-        )
+@pytest.fixture
+def batch():
+    # batch containing tensors of different lengths
+    return [
+        (torch.tensor([1, 2, 3]), torch.tensor([[0, 0], [-1, -1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]])),
+        (torch.tensor([4, 5, 6]), torch.tensor([[0, 0], [-1, -1], [-1, -1]])),
+        (torch.tensor([7, 8, 9]), torch.tensor([[0, 0], [-1, -1]])),
     ]
-    tensor_names = ["labels"] * 3
 
+
+@pytest.mark.unit
+def test_compute_max_number_of_labels(named_dataloader, batch):
+    tensor_names = ["input_ids", "labels"]
     max_num_labels = named_dataloader._compute_max_number_of_labels(batch, tensor_names)
     assert max_num_labels == 6
 
 
 @pytest.mark.unit
-def test_collate_fn(named_dataloader):
-    # batch containing tensors of different lengths
-    batch = [
-        (torch.tensor([1, 2, 3]), torch.tensor([[0, 0], [-1, -1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]])),
-        (torch.tensor([4, 5, 6]), torch.tensor([[0, 0], [-1, -1], [-1, -1]])),
-        (torch.tensor([7, 8, 9]), torch.tensor([[0, 0], [-1, -1]])),
-    ]
+def test_collate_fn(named_dataloader, batch):
     collated_batch = named_dataloader.collate_fn(batch)
 
     expected_collated_batch = {
@@ -41,8 +37,8 @@ def test_collate_fn(named_dataloader):
         "labels": torch.tensor(
             [
                 [[0, 0], [-1, -1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
-                [[0, 0], [-1, -1], [-1, -1], [0, 0], [0, 0], [0, 0]],
-                [[0, 0], [-1, -1], [0, 0], [0, 0], [0, 0], [0, 0]],
+                [[0, 0], [-1, -1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
+                [[0, 0], [-1, -1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
             ]
         ),
     }

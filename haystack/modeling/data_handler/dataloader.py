@@ -54,16 +54,14 @@ class NamedDataLoader(DataLoader):
             ret = {name: [] for name in tensor_names}
             for example in batch:
                 for name, tensor in zip(_tensor_names, example):
-                    padded_tensor = tensor
-
                     # each example may have a different number of answers/labels,
                     # so we need to pad the corresponding tensors to the max number of labels
                     if name == "labels" and tensor.ndim > 0:
                         num_labels = tensor.size(0)
                         if num_labels < max_num_labels:
                             padding = (0, 0, 0, max_num_labels - num_labels)
-                            padded_tensor = F.pad(padded_tensor, padding)
-                    ret[name].append(padded_tensor)
+                            tensor = F.pad(tensor, padding, value=-1)
+                    ret[name].append(tensor)
 
             for key in ret:
                 ret[key] = torch.stack(ret[key])
