@@ -17,7 +17,7 @@ with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
     from botocore.exceptions import ClientError, BotoCoreError
 
 
-class SageMakerInvocationLayer(PromptModelInvocationLayer):
+class SageMakerHFTextGenerationInvocationLayer(PromptModelInvocationLayer):
     """
     SageMaker Invocation Layer
 
@@ -84,7 +84,7 @@ class SageMakerInvocationLayer(PromptModelInvocationLayer):
         boto3_import.check()
         super().__init__(model_name_or_path)
         try:
-            session = SageMakerInvocationLayer.create_session(
+            session = SageMakerHFTextGenerationInvocationLayer.create_session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
