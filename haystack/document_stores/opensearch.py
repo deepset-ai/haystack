@@ -157,7 +157,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                For more information on configuration of knn indices, see
                                [OpenSearch Documentation](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#method-definitions).
         :param ivf_train_size: Number of embeddings to use for training the IVF index. Training starts automatically
-                               once the number of indelasticsearchexed embeddings exceeds ivf_train_size. If `None`, the minimum
+                               once the number of indexed embeddings exceeds ivf_train_size. If `None`, the minimum
                                number of embeddings recommended for training by FAISS is used (depends on the desired
                                index type and knn parameters). If `0`, training doesn't happen automatically but needs
                                to be triggered manually via the `train_index` method.
