@@ -25,7 +25,7 @@ class SilenceableTqdm(tqdm.tqdm):
         """
         Reads the HAYSTACK_PROGRESS_BARS env var to check if the progress bars should be disabled.
         """
-        return os.getenv("HAYSTACK_PROGRESS_BARS", True) in ["0", "False", "FALSE", "false"]
+        return os.getenv("HAYSTACK_PROGRESS_BARS", "1") in ["0", "False", "FALSE", "false"]
 
 
 tqdm.std.tqdm = SilenceableTqdm
