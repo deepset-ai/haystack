@@ -15,7 +15,7 @@ import pandas as pd
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever.dense import DenseRetriever
 from haystack.utils.scipy_utils import expit

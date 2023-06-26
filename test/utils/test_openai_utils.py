@@ -16,8 +16,8 @@ from haystack.utils.openai_utils import (
 
 @pytest.mark.unit
 def test_openai_text_completion_tokenization_details_gpt_default():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="text-ada-001")
-    assert tokenizer_name == "r50k_base"
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="not-recognized-name")
+    assert tokenizer_name == "gpt2"
     assert max_tokens_limit == 2049
 
 

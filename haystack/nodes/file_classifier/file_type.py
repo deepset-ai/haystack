@@ -5,19 +5,13 @@ import logging
 from pathlib import Path
 
 from haystack.nodes.base import BaseComponent
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
 
-
-try:
+with LazyImport() as magic_import:
     import magic
-except ImportError as ie:
-    logger.debug(
-        "Failed to import 'magic' (from 'python-magic' and 'python-magic-bin' on Windows). "
-        "FileTypeClassifier will not perform mimetype detection on extensionless files. "
-        "Please make sure the necessary OS libraries are installed if you need this functionality."
-    )
 
 
 DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
@@ -62,9 +56,10 @@ class FileTypeClassifier(BaseComponent):
         :param file_path: the path to extract the extension from
         """
         try:
+            magic_import.check()
             extension = magic.from_file(str(file_path), mime=True)
             return mimetypes.guess_extension(extension) or ""
-        except NameError:
+        except (NameError, ImportError):
             logger.error(
                 "The type of '%s' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
                 "Please make sure the necessary OS libraries are installed if you need this functionality ('python-magic' or 'python-magic-bin' on Windows).",

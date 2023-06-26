@@ -1,5 +1,7 @@
-import pytest
+from datetime import datetime
 import logging
+
+import pytest
 
 import haystack
 from haystack import Pipeline, Document, Answer
@@ -189,6 +191,46 @@ def test_rename_yaml(tmp_path):
     result = pipeline.run(query="test query")
     assert result["invocation_context"]["query"] == "test query"
     assert result["invocation_context"]["questions"] == "test query"
+
+
+#
+# current_datetime
+#
+
+
+@pytest.mark.unit
+def test_current_datetime():
+    shaper = Shaper(func="current_datetime", inputs={}, outputs=["date_time"], params={"format": "%y-%m-%d"})
+    results, _ = shaper.run()
+    assert results["invocation_context"]["date_time"] == datetime.now().strftime("%y-%m-%d")
+
+
+@pytest.mark.unit
+def test_current_datetime_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: shaper
+              type: Shaper
+              params:
+                func: current_datetime
+                params:
+                  format: "%y-%m-%d"
+                outputs:
+                  - date_time
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run()
+    assert result["invocation_context"]["date_time"] == datetime.now().strftime("%y-%m-%d")
 
 
 #

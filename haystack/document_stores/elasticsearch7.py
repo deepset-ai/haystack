@@ -3,20 +3,17 @@ from typing import Dict, List, Optional, Type, Union
 
 import numpy as np
 
-try:
-    from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
-    from elasticsearch.helpers import bulk, scan
-    from elasticsearch.exceptions import RequestError
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "elasticsearch", ie)
-
 from haystack.errors import DocumentStoreError
 from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
-
+from haystack.lazy_imports import LazyImport
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
+
+with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
+    from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
+    from elasticsearch.helpers import bulk, scan
+    from elasticsearch.exceptions import RequestError
+
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +129,8 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                            memory issues, decrease the batch_size.
 
         """
+        es_import.check()
+
         # Base constructor might need the client to be ready, create it first
         client = self._init_elastic_client(
             host=host,
@@ -199,7 +198,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         verify_certs: bool,
         timeout: int,
         use_system_proxy: bool,
-    ) -> Elasticsearch:
+    ) -> "Elasticsearch":
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
