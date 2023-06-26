@@ -188,23 +188,34 @@ def test_streaming_handler_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session)
 @pytest.mark.unit
 def test_supports_for_valid_aws_configuration():
     """
-    Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
+    Test that the SageMakerHFTextGenerationInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
     """
-    with patch("boto3.Session") as mock_boto3_session:
-        mock_boto3_session.return_value.client.return_value.invoke_endpoint.return_value = True
+    mock_client = MagicMock()
+    mock_client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
+
+    mock_session = MagicMock()
+    mock_session.client.return_value = mock_client
+
+    # Patch the class method to return the mock session
+    with patch(
+        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        return_value=mock_session,
+    ):
         supported = SageMakerHFTextGenerationInvocationLayer.supports(
             model_name_or_path="some_sagemaker_deployed_model", aws_profile_name="some_real_profile"
         )
+    args, kwargs = mock_client.describe_endpoint.call_args
+    assert kwargs["EndpointName"] == "some_sagemaker_deployed_model"
+
+    args, kwargs = mock_session.client.call_args
+    assert args[0] == "sagemaker-runtime"
     assert supported
-    assert mock_boto3_session.called
-    _, called_kwargs = mock_boto3_session.call_args
-    assert called_kwargs["profile_name"] == "some_real_profile"
 
 
 @pytest.mark.unit
 def test_supports_not_on_invalid_aws_profile_name():
     """
-    Test that the SageMakerInvocationLayer raises SageMakerConfigurationError when the profile name is invalid
+    Test that the SageMakerHFTextGenerationInvocationLayer raises SageMakerConfigurationError when the profile name is invalid
     """
 
     with patch("boto3.Session") as mock_boto3_session:
@@ -223,7 +234,7 @@ def test_supports_not_on_invalid_aws_profile_name():
 @pytest.mark.integration
 def test_supports_triggered_for_valid_sagemaker_endpoint():
     """
-    Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
+    Test that the SageMakerHFTextGenerationInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
     """
     model_name_or_path = os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT")
     assert SageMakerHFTextGenerationInvocationLayer.supports(model_name_or_path=model_name_or_path)
@@ -235,7 +246,7 @@ def test_supports_triggered_for_valid_sagemaker_endpoint():
 @pytest.mark.integration
 def test_supports_not_triggered_for_invalid_iam_profile():
     """
-    Test that the SageMakerInvocationLayer identifies an invalid SageMaker Inference endpoint
+    Test that the SageMakerHFTextGenerationInvocationLayer identifies an invalid SageMaker Inference endpoint
     (in this case because of an invalid IAM AWS Profile via the supports() method)
     """
     assert not SageMakerHFTextGenerationInvocationLayer.supports(model_name_or_path="fake_endpoint")

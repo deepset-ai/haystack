@@ -188,17 +188,29 @@ def test_streaming_handler_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session)
 @pytest.mark.unit
 def test_supports_for_valid_aws_configuration():
     """
-    Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
+    Test that the SageMakerHFInferenceInvocationLayer identifies a valid SageMaker Inference endpoint
+    via the supports() method
     """
-    with patch("boto3.Session") as mock_boto3_session:
-        mock_boto3_session.return_value.client.return_value.invoke_endpoint.return_value = True
+    mock_client = MagicMock()
+    mock_client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
+
+    mock_session = MagicMock()
+    mock_session.client.return_value = mock_client
+
+    # Patch the class method to return the mock session
+    with patch(
+        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        return_value=mock_session,
+    ):
         supported = SageMakerHFInferenceInvocationLayer.supports(
             model_name_or_path="some_sagemaker_deployed_model", aws_profile_name="some_real_profile"
         )
+    args, kwargs = mock_client.describe_endpoint.call_args
+    assert kwargs["EndpointName"] == "some_sagemaker_deployed_model"
+
+    args, kwargs = mock_session.client.call_args
+    assert args[0] == "sagemaker-runtime"
     assert supported
-    assert mock_boto3_session.called
-    _, called_kwargs = mock_boto3_session.call_args
-    assert called_kwargs["profile_name"] == "some_real_profile"
 
 
 @pytest.mark.unit
