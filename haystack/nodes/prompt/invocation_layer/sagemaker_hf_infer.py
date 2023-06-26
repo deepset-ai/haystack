@@ -111,8 +111,6 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
                 f"Make sure the Endpoint exists and AWS environment is configured."
             ) from e
 
-        # for a list of supported parameters
-        # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
