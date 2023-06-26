@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 from tenacity import retry, wait_exponential, retry_if_not_result
 
 from haystack.schema import Document, FilterType
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever

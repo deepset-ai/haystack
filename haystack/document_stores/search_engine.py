@@ -15,7 +15,7 @@ from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, FilterType, Label
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
@@ -1034,7 +1034,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         body = []
         all_documents = []
-        for query, cur_filters in zip(queries, filters):
+        for query, cur_filters in tqdm(zip(queries, filters)):
             cur_query_body = self._construct_query_body(
                 query=query,
                 filters=cur_filters,
