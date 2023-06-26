@@ -12,7 +12,7 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from haystack.schema import Document, FilterType
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.lazy_imports import LazyImport

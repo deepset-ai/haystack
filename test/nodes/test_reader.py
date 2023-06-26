@@ -1,7 +1,7 @@
 import math
 import os
 from pathlib import Path
-from shutil import rmtree
+from unittest.mock import patch
 
 import pytest
 
@@ -496,3 +496,23 @@ def test_reader_long_document(reader):
     res = reader.predict(query="Where does Christelle live?", documents=docs)
     assert res["answers"][0].offsets_in_document[0].start >= 0
     assert res["answers"][0].offsets_in_document[0].end >= 0
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_farmreader_predict_preprocessor_batching(mocked_qa_inferencer, docs):
+    reader = FARMReader(model_name_or_path="mocked_model", preprocessing_batch_size=2)
+    reader.predict(query="sample query", documents=docs)
+
+    # We expect 3 calls to the QAInferencer (5 docs / 2 batch_size)
+    assert reader.inferencer.inference_from_objects.call_count == 3
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.reader.farm.QAInferencer")
+def test_farmreader_predict_batch_preprocessor_batching(mocked_qa_inferencer, docs):
+    reader = FARMReader(model_name_or_path="mocked_model", preprocessing_batch_size=2)
+    reader.predict_batch(queries=["sample query 1", "sample_query_2"], documents=docs)
+
+    # We expect 5 calls to the QAInferencer (2 queries * 5 docs / 2 batch_size)
+    assert reader.inferencer.inference_from_objects.call_count == 5
