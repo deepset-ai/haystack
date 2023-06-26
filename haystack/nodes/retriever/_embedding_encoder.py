@@ -9,7 +9,7 @@ from tenacity import retry, retry_if_exception_type, wait_exponential, stop_afte
 
 import numpy as np
 import requests
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.environment import (
     HAYSTACK_REMOTE_API_BACKOFF_SEC,

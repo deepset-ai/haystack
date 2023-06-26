@@ -9,7 +9,7 @@ import warnings
 from pathlib import Path
 from pickle import UnpicklingError
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from more_itertools import windowed
 
 from haystack.nodes.preprocessor.base import BasePreProcessor

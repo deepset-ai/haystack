@@ -24,7 +24,7 @@ import itertools
 import numpy as np
 
 from tokenizers.pre_tokenizers import WhitespaceSplit
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.lazy_imports import LazyImport

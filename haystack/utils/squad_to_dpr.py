@@ -64,7 +64,7 @@ from time import sleep
 from pathlib import Path
 from itertools import islice
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 try:
     from elasticsearch import Elasticsearch

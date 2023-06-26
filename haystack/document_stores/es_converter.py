@@ -1,6 +1,6 @@
 from typing import Dict, Optional, List, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 try:
     from elasticsearch.helpers import scan

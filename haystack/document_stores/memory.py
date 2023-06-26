@@ -8,7 +8,7 @@ from collections import defaultdict
 import re
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import rank_bm25
 import pandas as pd
 

@@ -2,7 +2,7 @@ import logging
 from typing import List, Union, Optional, Iterator
 import itertools
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Document

@@ -6,7 +6,7 @@ import uuid
 from typing import Any, Dict, Generator, List, Optional, Union
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 try:
     import weaviate

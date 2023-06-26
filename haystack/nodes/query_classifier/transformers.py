@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Any
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.lazy_imports import LazyImport
