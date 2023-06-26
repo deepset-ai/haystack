@@ -7,6 +7,7 @@ from typing import Optional, Dict, Union, List, Any
 from haystack.errors import SageMakerConfigurationError
 from haystack.lazy_imports import LazyImport
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,22 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
     Base class for SageMaker based invocation layers.
     """
 
+    def __init__(self, model_name_or_path: str, max_length: int = 100, **kwargs):
+        super().__init__(model_name_or_path, **kwargs)
+        self.max_length = max_length
+
+        # We pop the model_max_length as it is not sent to the model
+        # but used to truncate the prompt if needed
+        model_max_length = kwargs.get("model_max_length", 1024)
+
+        # Truncate prompt if prompt tokens > model_max_length-max_length
+        # (max_length is the length of the generated text)
+        # It is hard to determine which tokenizer to use for the SageMaker model
+        # so we use GPT2 tokenizer which will likely provide good token count approximation
+        self.prompt_handler = DefaultPromptHandler(
+            model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
+        )
+
     @classmethod
     @abstractmethod
     def get_test_payload(cls) -> Dict[str, Any]:
@@ -30,7 +47,10 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
 
     def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
         # the prompt for this model will be of the type str
-        resize_info = self.prompt_handler(prompt)  # type: ignore
+        if isinstance(prompt, List):
+            raise ValueError("SageMaker invocation layer doesn't support a dictionary as prompt, only a string.")
+
+        resize_info = self.prompt_handler(prompt)
         if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
             logger.warning(
                 "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "

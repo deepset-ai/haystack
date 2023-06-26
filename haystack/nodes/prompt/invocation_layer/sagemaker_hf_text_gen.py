@@ -5,7 +5,6 @@ from typing import Optional, Dict, List, Any
 import requests
 
 from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError, SageMakerConfigurationError
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
 from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseInvocationLayer
 
 logger = logging.getLogger(__name__)
@@ -87,7 +86,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         :param aws_region_name: AWS region name.
         :param aws_profile_name: AWS profile name.
         """
-        super().__init__(model_name_or_path)
+        super().__init__(model_name_or_path, max_length=max_length, **kwargs)
         try:
             session = SageMakerHFTextGenerationInvocationLayer.create_session(
                 aws_access_key_id=aws_access_key_id,
@@ -102,7 +101,6 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
                 f"Could not connect to SageMaker Inference Endpoint {model_name_or_path}."
                 f"Make sure the Endpoint exists and AWS environment is configured. {e}"
             )
-        self.max_length = max_length
 
         # for a list of supported parameters
         # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
@@ -131,18 +129,6 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         # Use stream and stream_handler for warning and future use
         self.stream_handler = kwargs.get("stream_handler", None)
         self.stream = kwargs.get("stream", False)
-
-        # We pop the model_max_length as it is not sent to the model
-        # but used to truncate the prompt if needed
-        model_max_length = kwargs.get("model_max_length", 1024)
-
-        # Truncate prompt if prompt tokens > model_max_length-max_length
-        # (max_length is the length of the generated text)
-        # It is hard to determine which tokenizer to use for the SageMaker model
-        # so we use GPT2 tokenizer which will likely provide good token count approximation
-        self.prompt_handler = DefaultPromptHandler(
-            model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
-        )
 
     def invoke(self, *args, **kwargs) -> List[str]:
         """
