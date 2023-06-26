@@ -359,3 +359,39 @@ def test_flan_ul2_multiple_response_parsing(mock_auto_tokenizer, mock_boto3_sess
 
     layer = SageMakerHFInferenceInvocationLayer(model_name_or_path="irrelevant")
     assert layer._extract_response(response) == ["Berlin", "Berlin 2"]
+
+
+@pytest.mark.unit
+def test_gpt_neo_response_parsing(mock_auto_tokenizer, mock_boto3_session):
+    # this is gpt neo json response
+    response = [[{"generated_text": "Berlin"}]]
+
+    layer = SageMakerHFInferenceInvocationLayer(model_name_or_path="irrelevant")
+    assert layer._extract_response(response) == ["Berlin"]
+
+
+@pytest.mark.unit
+def test_gpt_neo_multiple_response_parsing(mock_auto_tokenizer, mock_boto3_session):
+    # this is gpt neo json response
+    response = [[{"generated_text": "Berlin"}, {"generated_text": "Berlin 2"}]]
+
+    layer = SageMakerHFInferenceInvocationLayer(model_name_or_path="irrelevant")
+    assert layer._extract_response(response) == ["Berlin", "Berlin 2"]
+
+
+@pytest.mark.unit
+def test_bloomz_response_parsing(mock_auto_tokenizer, mock_boto3_session):
+    # this is bloomz json response
+    response = [[{"generated_text": "Berli"}]]
+
+    layer = SageMakerHFInferenceInvocationLayer(model_name_or_path="irrelevant")
+    assert layer._extract_response(response) == ["Berlin"]
+
+
+@pytest.mark.unit
+def test_bloomz_multiple_response_parsing(mock_auto_tokenizer, mock_boto3_session):
+    # this is bloomz json response
+    response = [[{"generated_text": "Berlin"}, {"generated_text": "Berlin 2"}]]
+
+    layer = SageMakerHFInferenceInvocationLayer(model_name_or_path="irrelevant")
+    assert layer._extract_response(response) == ["Berlin", "Berlin 2"]
