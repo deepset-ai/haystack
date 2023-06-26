@@ -11,18 +11,14 @@ from inspect import Signature, signature
 import numpy as np
 from tqdm.auto import tqdm
 
-try:
-    # These deps are optional, but get installed with the `faiss` extra
-    import faiss
-    from haystack.document_stores.sql import SQLDocumentStore  # type: ignore
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "faiss", ie)
-
 from haystack.schema import Document, FilterType
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.nodes.retriever import DenseRetriever
+from haystack.document_stores.sql import SQLDocumentStore
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[faiss]'") as faiss_import:
+    import faiss
 
 
 logger = logging.getLogger(__name__)
@@ -108,6 +104,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param ef_construction: Used only if `index_factory == "HNSW"`.
         :param validate_index_sync: Checks if the document count equals the embedding count at initialization time.
         """
+        faiss_import.check()
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
         if faiss_index_path is not None:

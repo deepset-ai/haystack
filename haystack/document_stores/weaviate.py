@@ -8,21 +8,18 @@ from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 from tqdm.auto import tqdm
 
-try:
-    import weaviate
-    from weaviate import AuthApiKey, AuthBearerToken, AuthClientCredentials, AuthClientPassword, client, gql
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "weaviate", ie)
-
+from haystack.schema import Document, FilterType, Label
 from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
-from haystack.schema import Document, FilterType, Label
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[weaviate]'") as weaviate_import:
+    import weaviate
+    from weaviate import AuthApiKey, AuthBearerToken, AuthClientCredentials, AuthClientPassword, client, gql
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
@@ -144,6 +141,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
                                    See also [Weaviate documentation](https://weaviate.io/developers/weaviate/current/configuration/replication.html).
         :param batch_size: The number of documents to index at once.
         """
+        weaviate_import.check()
         super().__init__()
 
         # Connect to Weaviate server using python binding
@@ -219,7 +217,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         return None
 
     @staticmethod
-    def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> weaviate.EmbeddedOptions:
+    def _get_embedded_options(embedded_options: Optional[Dict[str, Any]] = None) -> "weaviate.EmbeddedOptions":
         embedded_options = embedded_options or {}
         return weaviate.EmbeddedOptions(**embedded_options)
 
