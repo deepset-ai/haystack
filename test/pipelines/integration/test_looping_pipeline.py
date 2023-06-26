@@ -5,8 +5,6 @@ from typing import *
 from pathlib import Path
 from pprint import pprint
 
-import pytest
-
 from canals.pipeline import Pipeline
 from test.sample_components import Accumulate, AddFixedValue, Threshold, MergeLoop
 
@@ -15,7 +13,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
-@pytest.mark.skip("This is failing cause we removed variadics")
 def test_pipeline(tmp_path):
     accumulator = Accumulate()
     merge_loop = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])

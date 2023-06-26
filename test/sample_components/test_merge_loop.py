@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import builtins
-from typing import List, Union
+from typing import List, Union, Optional
 from dataclasses import make_dataclass, is_dataclass, asdict
 
 from canals.component import component
@@ -21,7 +21,9 @@ class MergeLoop:
         else:
             self.expected_type = expected_type
         self.init_parameters = {"expected_type": self.expected_type.__name__}
-        self._input = make_dataclass("Input", fields=[(f, self.expected_type, None) for f in inputs])
+        # mypy complains that we can't Optional is not a type, so we ignore the error
+        # cause we consider this to be correct
+        self._input = make_dataclass("Input", fields=[(f, Optional[self.expected_type]) for f in inputs])  # type: ignore
 
     @component.input  # type: ignore
     def input(self):
