@@ -27,6 +27,8 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
     - RedPajama
     - Open Llama
     - GPT-J-6B
+    - GPT NEO
+    - BloomZ
 
     For guidance on how to deploy such a model to SageMaker, refer to
     the [SageMaker JumpStart foundation models documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models-use.html)
