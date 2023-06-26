@@ -202,6 +202,7 @@ def component(class_):
     # Those are necessary to implement Components that can run with partial input, this gives us
     # the possibility to have cycles in Pipelines.
     class_.__canals_optional_inputs__ = property(_optional_inputs)
+    class_.__canals_mandatory_inputs__ = property(_mandatory_inputs)
 
     # Check that the run method respects all constraints
     _check_run_signature(class_)
@@ -299,3 +300,12 @@ def _optional_inputs(self) -> List[str]:
     This is meant to be set as a property in a Component.
     """
     return [f.name for f in fields(self.__canals_input__) if _is_optional(f)]
+
+
+# TODO: Remember to set the self type to Component when we create its Protocol
+def _mandatory_inputs(self) -> List[str]:
+    """
+    Return all field names of self that don't have an Optional type.
+    This is meant to be set as a property in a Component.
+    """
+    return [f.name for f in fields(self.__canals_input__) if not _is_optional(f)]
