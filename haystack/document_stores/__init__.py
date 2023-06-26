@@ -14,7 +14,7 @@ try:
         from elasticsearch import __version__ as ES_VERSION
 
         if ES_VERSION[0] == 7:
-            from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore
+            from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
         elif ES_VERSION[0] == 8:
             from haystack.document_stores.elasticsearch8 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
     elasticsearch_import.check()

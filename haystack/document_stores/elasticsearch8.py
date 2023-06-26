@@ -9,22 +9,19 @@ import numpy as np
 from pydantic import ValidationError
 from tqdm.auto import tqdm
 
-try:
-    from elasticsearch import Elasticsearch, RequestError
-    from elasticsearch.helpers import bulk, scan
-    from elastic_transport import BaseNode, RequestsHttpNode, Urllib3HttpNode
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "elasticsearch8", ie)
-
 from haystack.errors import DocumentStoreError, HaystackError
+from haystack.lazy_imports import LazyImport
 from haystack.schema import Document, FilterType, Label
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores import KeywordDocumentStore
 from haystack.nodes.retriever import DenseRetriever
 from haystack.utils.scipy_utils import expit
 from haystack.utils import get_batches_from_generator
+
+with LazyImport("Run 'pip install farm-haystack[elasticsearch8]'") as es_import:
+    from elasticsearch import Elasticsearch, RequestError
+    from elasticsearch.helpers import bulk, scan
+    from elastic_transport import BaseNode, RequestsHttpNode, Urllib3HttpNode
 
 
 logger = logging.getLogger(__name__)
@@ -145,6 +142,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                            memory issues, decrease the batch_size.
 
         """
+        es_import.check()
         super().__init__()
 
         self.client = self._init_elastic_client(
