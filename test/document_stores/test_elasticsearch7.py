@@ -365,7 +365,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
 
         def side_effect(name, *args):
             if name == "elasticsearch":
-                raise ModuleNotFoundError("No module named 'elasticsearch'")
+                raise ModuleNotFoundError("No module named 'elasticsearch'", name="elasticsearch")
             return original_import(name, *args)
 
         # Imports are cached in sys.modules. To test the import error, we need to remove the haystack from the cache
@@ -375,7 +375,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
                 del sys.modules[module]
             # mock the import statement to raise an error when trying to import elasticsearch
             with patch("builtins.__import__", side_effect=side_effect):
-                with pytest.raises(ImportError, match=r"Run 'pip install 'farm-haystack\[elasticsearch\]''"):
+                with pytest.raises(ImportError, match="Run 'pip install farm-haystack\[elasticsearch\]'"):
                     from haystack.document_stores import ElasticsearchDocumentStore
 
                     doc_store = ElasticsearchDocumentStore()

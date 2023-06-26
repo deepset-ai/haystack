@@ -13,9 +13,9 @@ try:
         # Use appropriate ElasticsearchDocumentStore depending on ES client version
         from elasticsearch import __version__ as ES_VERSION
 
-        if ES_VERSION[0] == "7":
+        if ES_VERSION[0] == 7:
             from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore
-        elif ES_VERSION[0] == "8":
+        elif ES_VERSION[0] == 8:
             from haystack.document_stores.elasticsearch8 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
     elasticsearch_import.check()
 except (ModuleNotFoundError, ImportError):
