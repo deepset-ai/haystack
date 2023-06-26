@@ -59,7 +59,7 @@ class FileTypeClassifier(BaseComponent):
             magic_import.check()
             extension = magic.from_file(str(file_path), mime=True)
             return mimetypes.guess_extension(extension) or ""
-        except NameError:
+        except (NameError, ImportError):
             logger.error(
                 "The type of '%s' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
                 "Please make sure the necessary OS libraries are installed if you need this functionality ('python-magic' or 'python-magic-bin' on Windows).",
