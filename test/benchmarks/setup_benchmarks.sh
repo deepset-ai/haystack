@@ -16,6 +16,6 @@ cd ../../
 pip install .
 pip install .[metrics,elasticsearch,weaviate,opensearch,benchmarks]
 cd test/benchmarks
-mkdir out
+mkdir +p out
 
 ./run.sh

@@ -1,3 +1,5 @@
+set +e
+
 for f in ./configs/**/*.yml; do 
     echo "kill docker containers"
     docker kill $(docker ps -q)
