@@ -69,7 +69,7 @@ def test_constructor_with_model_kwargs(mock_auto_tokenizer, mock_boto3_session):
     layer = SageMakerHFInferenceInvocationLayer(
         model_name_or_path="some_fake_model", **model_kwargs, **model_kwargs_rejected
     )
-    assert "temperature" in layer.model_input_kwargs
+    assert layer.model_input_kwargs["temperature"] == 0.7
     assert "do_sample" in layer.model_input_kwargs
     assert "fake_param" not in layer.model_input_kwargs
     assert "another_fake_param" not in layer.model_input_kwargs
