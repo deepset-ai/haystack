@@ -99,8 +99,8 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         except Exception as e:
             raise SageMakerInferenceError(
                 f"Could not connect to SageMaker Inference Endpoint {model_name_or_path}."
-                f"Make sure the Endpoint exists and AWS environment is configured. {e}"
-            )
+                f"Make sure the Endpoint exists and AWS environment is configured."
+            ) from e
 
         # for a list of supported parameters
         # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model

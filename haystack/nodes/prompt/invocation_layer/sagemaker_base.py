@@ -105,9 +105,8 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
         except BotoCoreError as e:
             provided_aws_config = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
             raise SageMakerConfigurationError(
-                f"Failed to initialize the session or client with provided AWS credentials {provided_aws_config}."
-                f"The root cause is: {e}"
-            )
+                f"Failed to initialize the session or client with provided AWS credentials {provided_aws_config}"
+            ) from e
         return session
 
     @classmethod
@@ -132,8 +131,7 @@ class SageMakerBaseInvocationLayer(PromptModelInvocationLayer, ABC):
             raise SageMakerConfigurationError(
                 f"Could not connect to {endpoint} Sagemaker endpoint. "
                 f"Please make sure that the endpoint exists and is accessible."
-                f"The root cause is: {e}"
-            )
+            ) from e
         finally:
             if client:
                 client.close()
