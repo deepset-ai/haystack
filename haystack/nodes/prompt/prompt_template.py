@@ -22,6 +22,7 @@ from haystack.nodes.prompt.shapers import (  # pylint: disable=unused-import
     BaseOutputParser,
     AnswerParser,
     to_strings,
+    current_datetime,
     join,  # used as shaping function
     format_document,
     format_answer,
@@ -37,7 +38,10 @@ from haystack.environment import (
 logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE_ALLOWED_FUNCTIONS = json.loads(
-    os.environ.get(HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS, '["join", "to_strings", "replace", "enumerate", "str"]')
+    os.environ.get(
+        HAYSTACK_PROMPT_TEMPLATE_ALLOWED_FUNCTIONS,
+        '["join", "to_strings", "replace", "enumerate", "str", "current_datetime"]',
+    )
 )
 PROMPT_TEMPLATE_SPECIAL_CHAR_ALIAS = {"new_line": "\n", "tab": "\t", "double_quote": '"', "carriage_return": "\r"}
 PROMPT_TEMPLATE_STRIPS = ["'", '"']
@@ -149,10 +153,28 @@ LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict] = {
         "Thought: Let's think step-by-step, I first need to {transcript}"
     },
     "conversational-agent": {
-        "prompt": "The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:"
+        "prompt": "In the following conversation, a human user interacts with an AI Agent. The human user poses questions, and the AI Agent goes through several steps to provide well-informed answers.\n"
+        "If the AI Agent knows the answer, the response begins with `Final Answer:` on a new line.\n"
+        "If the AI Agent is uncertain or concerned that the information may be outdated or inaccurate, it must use the available tools to find the most up-to-date information. The AI has access to these tools:\n"
+        "{tool_names_with_descriptions}\n"
+        "The following is the previous conversation between a human and an AI:\n"
+        "{history}\n"
+        "AI Agent responses must start with one of the following:\n"
+        "Thought: [AI Agent's reasoning process]\n"
+        "Tool: [{tool_names}] (on a new line) Tool Input: [input for the selected tool WITHOUT quotation marks and on a new line] (These must always be provided together and on separate lines.)\n"
+        "Final Answer: [final answer to the human user's question]\n"
+        "When selecting a tool, the AI Agent must provide both the `Tool:` and `Tool Input:` pair in the same response, but on separate lines. `Observation:` marks the beginning of a tool's result, and the AI Agent trusts these results.\n"
+        "The AI Agent should not ask the human user for additional information, clarification, or context.\n"
+        "If the AI Agent cannot find a specific answer after exhausting available tools and approaches, it answers with Final Answer: inconclusive\n"
+        "Question: {query}\n"
+        "Thought:\n"
+        "{transcript}\n"
     },
     "conversational-summary": {
         "prompt": "Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:"
+    },
+    "conversational-agent-without-tools": {
+        "prompt": "The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:"
     },
     # DO NOT ADD ANY NEW TEMPLATE IN HERE!
 }
@@ -271,7 +293,8 @@ class _FstringParamsTransformer(ast.NodeTransformer):
     def visit_FormattedValue(self, node: ast.FormattedValue) -> Optional[ast.AST]:
         """
         Replaces the f-string expression with a unique ID and stores the corresponding expression in a dictionary.
-        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings` to ensure that the documents get rendered correctly.
+        If the expression is the raw `documents` variable, it is encapsulated into a call to `documents_to_strings`
+        to ensure that the documents get rendered correctly.
         """
         super().generic_visit(node)
 

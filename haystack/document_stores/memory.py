@@ -25,7 +25,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
@@ -92,6 +92,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
                                 By default, no parameters are set.
         """
+        torch_import.check()
         if bm25_parameters is None:
             bm25_parameters = {}
         super().__init__()

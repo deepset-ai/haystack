@@ -11,7 +11,7 @@ from haystack.nodes.prompt.prompt_template import PromptTemplate
 from haystack.nodes.prompt.invocation_layer.handlers import TokenStreamingHandler
 from haystack.lazy_imports import LazyImport
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
     from transformers import TextIteratorStreamer
 

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 TableQuestionAnsweringPipeline = object
 TapasPreTrainedModel = object
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from transformers import (  # type: ignore
         TapasTokenizer,

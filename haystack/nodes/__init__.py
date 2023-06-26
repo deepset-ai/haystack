@@ -2,7 +2,7 @@ from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.base import BaseComponent
 
-from haystack.nodes.answer_generator import BaseGenerator, RAGenerator, Seq2SeqGenerator, OpenAIAnswerGenerator
+from haystack.nodes.answer_generator import BaseGenerator, OpenAIAnswerGenerator
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier
 from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
 from haystack.nodes.file_classifier import FileTypeClassifier
@@ -28,7 +28,7 @@ from haystack.nodes.prompt import PromptNode, PromptTemplate, PromptModel, BaseO
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
+from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker, CohereRanker
 from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
 from haystack.nodes.retriever import (
     BaseRetriever,
