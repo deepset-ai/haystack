@@ -10,3 +10,4 @@ from haystack.nodes.prompt.invocation_layer.anthropic_claude import AnthropicCla
 from haystack.nodes.prompt.invocation_layer.cohere import CohereInvocationLayer
 from haystack.nodes.prompt.invocation_layer.sagemaker_hf_infer import SageMakerHFInferenceInvocationLayer
 from haystack.nodes.prompt.invocation_layer.sagemaker_hf_text_gen import SageMakerHFTextGenerationInvocationLayer
+from haystack.nodes.prompt.invocation_layer.sagemaker_jumpstart_infer import SageMakerJumpStartAi21ContextualAnswersInferenceInvocationLayer
