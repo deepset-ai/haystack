@@ -200,11 +200,11 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         except requests.HTTPError as err:
             res = err.response
             if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err
             raise SageMakerInferenceError(
                 f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
                 status_code=res.status_code,
-            )
+            ) from err
 
     @classmethod
     def get_test_payload(cls) -> Dict[str, Any]:
