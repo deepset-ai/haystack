@@ -382,7 +382,7 @@ def test_gpt_neo_multiple_response_parsing(mock_auto_tokenizer, mock_boto3_sessi
 @pytest.mark.unit
 def test_bloomz_response_parsing(mock_auto_tokenizer, mock_boto3_session):
     # this is bloomz json response
-    response = [[{"generated_text": "Berli"}]]
+    response = [[{"generated_text": "Berlin"}]]
 
     layer = SageMakerHFInferenceInvocationLayer(model_name_or_path="irrelevant")
     assert layer._extract_response(response) == ["Berlin"]
