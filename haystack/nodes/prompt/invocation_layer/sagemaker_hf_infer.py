@@ -4,32 +4,41 @@ from typing import Optional, Dict, List, Any
 
 import requests
 
-from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError, SageMakerConfigurationError
+from haystack.errors import SageMakerInferenceError, SageMakerConfigurationError, SageMakerModelNotReadyError
 from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseInvocationLayer
 
 logger = logging.getLogger(__name__)
 
 
-class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
+class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
     """
-    SageMaker HuggingFace TextGeneration Invocation Layer
+    SageMaker HuggingFace Inference Invocation Layer
 
+    SageMakerHFInferenceInvocationLayer enables the use of Large Language Models (LLMs) hosted on a SageMaker Inference
+    Endpoint via PromptNode. It supports text-generation and text2text-generation models from HuggingFace, which are
+    running on the SageMaker Inference Endpoint.
 
-    SageMakerHFTextGenerationInvocationLayer enables the use of Large Language Models (LLMs) hosted on a SageMaker
-    Inference Endpoint via PromptNode. It supports text-generation from HuggingFace, which are running on the
-    SageMaker Inference Endpoint.
+    As of June 23, this layer has been confirmed to support the following SageMaker deployed models:
+    - MPT
+    - Dolly V2
+    - Flan-U2
+    - Flan-T5
+    - RedPajama
+    - Open Llama
+    - GPT-J-6B
+    - GPT NEO
+    - BloomZ
 
     For guidance on how to deploy such a model to SageMaker, refer to
     the [SageMaker JumpStart foundation models documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models-use.html)
     and follow the instructions provided there.
 
-    As of June 23, this layer has been confirmed to support the following SageMaker deployed models:
-    - Falcon models
-
     Technical Note:
+
     This layer is designed for models that anticipate an input format composed of the following keys/values:
-    {'inputs': 'prompt_text', 'parameters': params} where 'inputs' represents the prompt and 'parameters' the
-    parameters for the model.
+    {'text_inputs': 'prompt_text', **(params or {})}
+    The text_inputs key represents the prompt text, with all additional parameters for the model being added at
+    the same dictionary level as text_inputs.
 
 
     **Example**
@@ -38,7 +47,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
     from haystack.nodes import PromptNode
 
     # Pass sagemaker endpoint name and authentication details
-    pn = PromptNode(model_name_or_path="falcon-40b-my-sagemaker-inference-endpoint,
+    pn = PromptNode(model_name_or_path="jumpstart-dft-hf-textgeneration-dolly-v2-3b-bf16",
     model_kwargs={"aws_profile_name": "my_aws_profile_name", "aws_region_name": "eu-central-1"})
     res = pn("what is the meaning of life?")
     print(res)
@@ -50,7 +59,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
     from haystack.nodes import PromptNode
 
     # We can also configure Sagemaker via AWS environment variables without AWS profile name
-    pn = PromptNode(model_name_or_path="hf-llm-falcon-7b-instruct-bf16-2023-06-22-16-22-19-811", max_length=256,
+    pn = PromptNode(model_name_or_path="jumpstart-dft-hf-textgeneration-dolly-v2-3b-bf16", max_length=128,
                     model_kwargs={"aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
                                 "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
                                 "aws_session_token": os.getenv("AWS_SESSION_TOKEN"),
@@ -88,7 +97,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         """
         super().__init__(model_name_or_path, max_length=max_length, **kwargs)
         try:
-            session = SageMakerHFTextGenerationInvocationLayer.create_session(
+            session = SageMakerHFInferenceInvocationLayer.create_session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 aws_session_token=aws_session_token,
@@ -102,24 +111,21 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
                 f"Make sure the Endpoint exists and AWS environment is configured."
             ) from e
 
-        # for a list of supported parameters
-        # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
         self.model_input_kwargs = {
             key: kwargs[key]
             for key in [
-                "best_of",
-                "details",
-                "do_sample",
-                "max_new_tokens",
-                "repetition_penalty",
-                "return_full_text",
-                "seed",
+                "max_length",
+                "max_time",
+                "num_return_sequences",
+                "num_beams",
+                "no_repeat_ngram_size",
                 "temperature",
+                "early_stopping",
+                "do_sample",
                 "top_k",
                 "top_p",
-                "truncate",
-                "typical_p",
-                "watermark",
+                "seed",
+                "return_full_text",
             ]
             if key in kwargs
         }
@@ -133,11 +139,12 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
     def invoke(self, *args, **kwargs) -> List[str]:
         """
         Sends the prompt to the remote model and returns the generated response(s).
-        You can pass all parameters supported by the Huggingface Transformers `generate` method
-        here via **kwargs (e.g. "temperature", "stop" ...).
+        You can pass all parameters supported by the SageMaker model
+        here via **kwargs (e.g. "temperature", "do_sample" ...).
 
         :return: The generated responses from the model as a list of strings.
         """
+
         prompt = kwargs.get("prompt")
         if not prompt:
             raise ValueError(
@@ -151,28 +158,33 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         if streaming_requested:
             raise SageMakerConfigurationError("SageMaker model response streaming is not supported yet")
 
-        stop_words = kwargs.pop("stop_words", None) or []
+        stop_words = kwargs.pop("stop_words", None)  # doesn't tolerate empty list
         kwargs_with_defaults = self.model_input_kwargs
         kwargs_with_defaults.update(kwargs)
 
-        # For the list of supported parameters and the docs
-        # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
-        # these parameters were valid in June 23, make sure to check the docs for updates
+        # these parameters were valid in June 23, make sure to check the Sagemaker docs for updates
+        default_params = {
+            "max_length": self.max_length,
+            "max_time": None,
+            "num_return_sequences": None,
+            "num_beams": None,
+            "no_repeat_ngram_size": None,
+            "temperature": None,
+            "early_stopping": None,
+            "do_sample": None,
+            "top_k": None,
+            "top_p": None,
+            "seed": None,
+            "stopping_criteria": stop_words,
+            "return_full_text": None,  # not used by all models (e.g. MPT, Flan)
+        }
+
+        # put the param in the params if it's in kwargs and not None (e.g. it is actually defined)
+        # endpoint doesn't tolerate None values, send only the params that are defined
         params = {
-            "best_of": kwargs_with_defaults.get("best_of", None),
-            "details": kwargs_with_defaults.get("details", False),
-            "do_sample": kwargs_with_defaults.get("do_sample", False),
-            "max_new_tokens": kwargs_with_defaults.get("max_new_tokens", self.max_length),
-            "repetition_penalty": kwargs_with_defaults.get("repetition_penalty", None),
-            "return_full_text": kwargs_with_defaults.get("return_full_text", False),
-            "seed": kwargs_with_defaults.get("seed", None),
-            "stop": kwargs_with_defaults.get("stop", stop_words),
-            "temperature": kwargs_with_defaults.get("temperature", 1.0),
-            "top_k": kwargs_with_defaults.get("top_k", None),
-            "top_p": kwargs_with_defaults.get("top_p", None),
-            "truncate": kwargs_with_defaults.get("truncate", None),
-            "typical_p": kwargs_with_defaults.get("typical_p", None),
-            "watermark": kwargs_with_defaults.get("watermark", False),
+            param: kwargs_with_defaults.get(param, default)
+            for param, default in default_params.items()
+            if param in kwargs_with_defaults or default is not None
         }
         generated_texts = self._post(prompt=prompt, params=params)
         return generated_texts
@@ -186,7 +198,7 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
         """
 
         try:
-            body = {"inputs": prompt, "parameters": params}
+            body = {"text_inputs": prompt, **(params or {})}
             response = self.client.invoke_endpoint(
                 EndpointName=self.model_name_or_path,
                 Body=json.dumps(body),
@@ -195,28 +207,62 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
             )
             response_json = response.get("Body").read().decode("utf-8")
             output = json.loads(response_json)
-            generated_texts = [o["generated_text"] for o in output if "generated_text" in o]
-            return generated_texts
+            return self._extract_response(output)
         except requests.HTTPError as err:
             res = err.response
             if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
             raise SageMakerInferenceError(
                 f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
                 status_code=res.status_code,
-            ) from err
+            )
+
+    def _extract_response(self, json_response: Any) -> List[str]:
+        """
+        Extracts generated list of texts from the JSON response.
+        :param json_response: The JSON response to process.
+        :return: A list of generated texts.
+        """
+        generated_texts = []
+        for response in self._unwrap_response(json_response):
+            for key in ["generated_texts", "generated_text"]:
+                raw_response = response.get(key)
+                if raw_response:
+                    if isinstance(raw_response, list):
+                        generated_texts.extend(raw_response)
+                    else:
+                        generated_texts.append(raw_response)
+        return generated_texts
+
+    def _unwrap_response(self, response: Any):
+        """
+        Recursively unwrap the JSON response to get to the dictionary level where the generated text is.
+
+        If the response is a list, it recursively calls this method for each sublist.
+        If the response is a dict and contains either "generated_text" or "generated_texts" key,
+        it yields the dictionary.
+
+        :param response: The response to process.
+        :yield: dictionary containing either "generated_text" or "generated_texts" key with a
+        string or list of strings as value.
+        """
+        if isinstance(response, list):
+            for sublist in response:
+                yield from self._unwrap_response(sublist)
+        elif isinstance(response, dict):
+            if "generated_text" in response or "generated_texts" in response:
+                yield response
 
     @classmethod
-    def get_test_payload(cls) -> Dict[str, Any]:
+    def get_test_payload(cls) -> Dict[str, str]:
         """
         Returns a payload used for testing if the current endpoint supports the JSON payload format used by
         this class.
 
-        As of June 23, Sagemaker endpoints support the JSON payload format from the
-        https://github.com/huggingface/text-generation-inference project. At the time of writing this docstring,
-        only Falcon models were deployed using this format. See pyton client implementation from the
-        https://github.com/huggingface/text-generation-inference for more details.
+        As of June 23, Sagemaker endpoints support the format where the payload is a JSON object with:
+        "text_inputs" used as the key and the prompt as the value. All other parameters are passed as key/value
+        pairs on the same level. See _post method for more details.
 
         :return: A payload used for testing if the current endpoint is working.
         """
-        return {"inputs": "Hello world", "parameters": {}}
+        return {"text_inputs": "Hello world!"}
