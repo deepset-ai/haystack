@@ -213,7 +213,7 @@ def elasticsearch_index_to_document_store(
             logger.warning(
                 "AWS4Auth is not supported in Elasticsearch 8. Please use Elasticsearch 7 for AWS authentication."
             )
-        es_client = ElasticsearchDocumentStore._init_elastic_client(
+        es_client = ElasticsearchDocumentStore._init_elastic_client(  # pylint: disable=no-value-for-parameter
             host=host,
             port=port,
             username=username,
@@ -225,7 +225,7 @@ def elasticsearch_index_to_document_store(
             verify_certs=verify_certs,
             timeout=timeout,
             use_system_proxy=use_system_proxy,
-        )
+        )  # type: ignore
 
     # Get existing original ES IDs inside DocumentStore in order to not reindex the corresponding records
     existing_ids = [

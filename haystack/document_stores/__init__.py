@@ -1,3 +1,5 @@
+import typing
+
 from haystack.lazy_imports import LazyImport
 from haystack.document_stores.base import BaseDocumentStore, KeywordDocumentStore
 
@@ -16,7 +18,8 @@ try:
         if ES_VERSION[0] == 7:
             from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
         elif ES_VERSION[0] == 8:
-            from haystack.document_stores.elasticsearch8 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
+            if not typing.TYPE_CHECKING:
+                from haystack.document_stores.elasticsearch8 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
     elasticsearch_import.check()
 except (ModuleNotFoundError, ImportError):
     # Use Elasticsearch 7 as default
