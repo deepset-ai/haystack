@@ -1,3 +1,4 @@
+import inspect
 import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
@@ -95,6 +96,8 @@ class PromptModel(BaseComponent):
         # search all invocation layer classes candidates and find the first one that supports the model,
         # then create an instance of that invocation layer
         for invocation_layer in potential_invocation_layer:
+            if inspect.isabstract(invocation_layer):
+                continue
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
