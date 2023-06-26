@@ -528,13 +528,12 @@ def test_preprocessor_very_long_document(caplog):
     preproc = PreProcessor(
         clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars_check=10
     )
-    documents = [
-        Document(content=f"this is a test document with more than max_char characters: {'1'*i}") for i in range(9)
-    ]
+    documents = [Document(content=str(i) + (f"." * i)) for i in range(0, 30, 3)]
     results = preproc.process(documents)
-    assert results == documents
-    for i in range(5):
-        assert f"is 6{i} characters long after preprocessing, where the maximum length should be 10." in caplog.text
+    assert len(results) == 19
+    assert any(d.content.startswith(".") for d in results)
+    assert any(not d.content.startswith(".") for d in results)
+    assert f"characters long after preprocessing, where the maximum length should be 10." in caplog.text
 
 
 @pytest.mark.unit
