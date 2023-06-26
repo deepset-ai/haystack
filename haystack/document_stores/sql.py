@@ -1,4 +1,3 @@
-#  type: ignore
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -8,11 +7,10 @@ from uuid import uuid4
 
 import numpy as np
 
-from haystack.lazy_imports import LazyImport
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
-
+from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install farm-haystack[sql]'") as sqlalchemy_import:
     from sqlalchemy import (

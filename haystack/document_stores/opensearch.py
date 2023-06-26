@@ -6,22 +6,18 @@ import numpy as np
 from tqdm.auto import tqdm
 from tenacity import retry, wait_exponential, retry_if_not_result
 
-try:
-    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-    from opensearchpy.helpers import bulk, scan
-except (ImportError, ModuleNotFoundError) as e:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "opensearch", e)
-
-
 from haystack.schema import Document, FilterType
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
-
+from haystack.lazy_imports import LazyImport
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
+
+with LazyImport("Run 'pip install farm-haystack[opensearch]'") as os_import:
+    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
+    from opensearchpy.helpers import bulk, scan
+
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +165,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param batch_size: Number of Documents to index at once / Number of queries to execute at once. If you face
                            memory issues, decrease the batch_size.
         """
+        os_import.check()
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
         # now but send a warning to the user.
@@ -273,7 +270,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         verify_certs: bool,
         timeout: int,
         use_system_proxy: bool,
-    ) -> OpenSearch:
+    ) -> "OpenSearch":
         """
         Create an instance of the Opensearch client
         """

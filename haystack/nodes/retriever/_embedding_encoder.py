@@ -121,7 +121,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
         torch_and_transformers_import.check()
-
         self.embedding_model = SentenceTransformer(
             retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
         )

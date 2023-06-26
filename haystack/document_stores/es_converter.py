@@ -2,17 +2,14 @@ from typing import Dict, Optional, List, Union
 
 from tqdm.auto import tqdm
 
-try:
-    from elasticsearch.helpers import scan
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "elasticsearch", ie)
-
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
+    from elasticsearch.helpers import scan
 
 
 def open_search_index_to_document_store(
@@ -185,6 +182,8 @@ def elasticsearch_index_to_document_store(
     :param timeout: Number of seconds after which an Elasticsearch request times out.
     :param use_system_proxy: Whether to use system proxy.
     """
+    es_import.check()
+
     # This import cannot be at the beginning of the file, as this would result in a circular import
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 
