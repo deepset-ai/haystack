@@ -271,4 +271,14 @@ class SageMakerHFInferenceInvocationLayer(SageMakerBaseInvocationLayer):
 
     @classmethod
     def get_test_payload(cls) -> Dict[str, str]:
+        """
+        Returns a payload used for testing if the current endpoint supports the JSON payload format used by
+        this class.
+
+        As of June 23, Sagemaker endpoints support the format where the payload is a JSON object with:
+        "text_inputs" used as the key and the prompt as the value. All other parameters are passed as key/value
+        pairs on the same level. See _post method for more details.
+
+        :return: A payload used for testing if the current endpoint is working.
+        """
         return {"text_inputs": "Hello world!"}

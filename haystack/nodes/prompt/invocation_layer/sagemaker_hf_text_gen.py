@@ -222,4 +222,15 @@ class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
 
     @classmethod
     def get_test_payload(cls) -> Dict[str, Any]:
+        """
+        Returns a payload used for testing if the current endpoint supports the JSON payload format used by
+        this class.
+
+        As of June 23, Sagemaker endpoints support the JSON payload format from the
+        https://github.com/huggingface/text-generation-inference project. At the time of writing this docstring,
+        only Falcon models were deployed using this format. See pyton client implementation from the
+        https://github.com/huggingface/text-generation-inference for more details.
+
+        :return: A payload used for testing if the current endpoint is working.
+        """
         return {"inputs": "Hello world", "parameters": {}}
