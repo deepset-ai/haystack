@@ -15,7 +15,11 @@ from haystack.utils.scipy_utils import expit
 logger = logging.getLogger(__name__)
 DuplicatePolicy = Literal["skip", "overwrite", "fail"]
 
-# TODO: document
+# document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
+# True (default). Scaling uses the expit function (inverse of the logit function) after applying a SCALING_FACTOR. A
+# larger SCALING_FACTOR decreases scaled scores. For example, an input of 10 is scaled to 0.99 with SCALING_FACTOR=2
+# but to 0.78 with SCALING_FACTOR=8 (default). The default was chosen empirically. Increase the default if most
+# unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
 SCALING_FACTOR = 8
 
 
@@ -220,7 +224,6 @@ class MemoryDocumentStore:
         # get scores for the query against the corpus
         docs_scores = bm25_scorer.get_scores(tokenized_query)
         if scale_score:
-            # scaling probability from BM25
             docs_scores = [float(expit(np.asarray(score / SCALING_FACTOR))) for score in docs_scores]
         # get the last top_k indexes and reverse them
         top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
