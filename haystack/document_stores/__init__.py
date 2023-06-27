@@ -12,20 +12,18 @@ from haystack.document_stores.es_converter import open_search_index_to_document_
 
 try:
     # Use appropriate ElasticsearchDocumentStore depending on ES client version
-    with LazyImport() as elasticsearch_import:
-        from elasticsearch import __version__ as ES_VERSION
+    from elasticsearch import __version__ as ES_VERSION
 
-        if ES_VERSION[0] == 7:
-            from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
-        elif ES_VERSION[0] == 8:
-            if not typing.TYPE_CHECKING:
-                from haystack.document_stores.elasticsearch8 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
-        else:
-            # Use Elasticsearch 7 as default
-            from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore
-    elasticsearch_import.check()
+    if ES_VERSION[0] == 7:
+        from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
+    elif ES_VERSION[0] == 8:
+        if not typing.TYPE_CHECKING:
+            from haystack.document_stores.elasticsearch8 import ElasticsearchDocumentStore  # type: ignore  # pylint: disable=reimported,ungrouped-imports
+    else:
+        # Use Elasticsearch 7 as default
+        from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore
 except (ModuleNotFoundError, ImportError):
-    # No need to import anything if ES could not be imported
+    # Import ES 7 as default if ES is not installed to raise the error message that elasticsearch extra is needed
     from haystack.document_stores.elasticsearch7 import ElasticsearchDocumentStore
 
 from haystack.document_stores.opensearch import OpenSearchDocumentStore
