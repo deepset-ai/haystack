@@ -132,20 +132,14 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not self._index_exists(label_index) and (create_index or recreate_index):
             self._create_label_index(label_index)
 
-    def _split_document_list(
-        self, documents: Union[List[dict], List[Document]], number_of_lists: int
-    ) -> Generator[Union[List[dict], List[Document]], None, None]:
+    def _split_document_list(self, documents: List[dict], number_of_lists: int) -> Generator[List[dict], None, None]:
         chunk_size = max((len(documents) + 1) // number_of_lists, 1)
         for i in range(0, len(documents), chunk_size):
             yield documents[i : i + chunk_size]
 
     @abstractmethod
     def _do_bulk(
-        self,
-        actions: Union[List[Dict], List[Document]],
-        client: Union["OpenSearch", "Elasticsearch"],
-        refresh: str,
-        headers: Optional[Dict],
+        self, actions: List[Dict], client: Union["OpenSearch", "Elasticsearch"], refresh: str, headers: Optional[Dict]
     ):
         pass
 
@@ -195,7 +189,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def _bulk(
         self,
-        documents: Union[List[dict], List[Document]],
+        documents: List[dict],
         headers: Optional[Dict[str, str]] = None,
         refresh: str = "wait_for",
         _timeout: int = 1,

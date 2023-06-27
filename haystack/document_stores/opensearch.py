@@ -250,7 +250,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         self._RequestError = RequestError
 
     def _do_bulk(
-        self, actions: Union[List[Dict], List[Document]], client: "OpenSearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
+        self, actions: List[Dict], client: "OpenSearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
     ):
         """Override the base class method to use the Opensearch client"""
         return bulk(actions=actions, client=client, refresh=refresh, headers=headers)

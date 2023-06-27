@@ -289,10 +289,11 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
         return hosts
 
     def _do_bulk(
-        self, actions: Union[List[Dict], List[Document]], client: "Elasticsearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
+        self, actions: Union[List[Dict]], client: "Elasticsearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
     ):
         """Override the base class method to use the Elasticsearch client"""
-        client = client.options(headers=headers)
+        if headers is not None:
+            client = client.options(headers=headers)
         return bulk(actions=actions, client=client, refresh=refresh)
 
     def _do_scan(self, *args, **kwargs):

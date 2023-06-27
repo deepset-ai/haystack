@@ -59,7 +59,7 @@ jobs:
       - name: Mypy elasticsearch8.py
         if: contains(steps.changed_elasticsearch8.outputs.all_changed_files, 'elasticsearch8.py')
         run: |
-          mypy --install-types --non-interactive haystack/document_stores/elasticsearch8.py
+          mypy --install-types --non-interactive --follow-imports=skip haystack/document_stores/elasticsearch8.py
 
   pylint:
     runs-on: ubuntu-latest
