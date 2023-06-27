@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional, Union, Dict
 import itertools
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.nodes.base import Document
 from haystack.nodes.doc_language_classifier.base import BaseDocumentLanguageClassifier

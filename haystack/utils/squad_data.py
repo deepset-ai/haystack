@@ -4,7 +4,7 @@ import logging
 import json
 import random
 import pandas as pd
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.mmh3 import hash128
 from haystack.schema import Document, Label, Answer

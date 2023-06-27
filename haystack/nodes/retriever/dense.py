@@ -8,7 +8,7 @@ from copy import deepcopy
 from requests.exceptions import HTTPError
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 import pandas as pd
 from huggingface_hub import hf_hub_download

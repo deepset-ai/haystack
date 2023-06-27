@@ -11,7 +11,7 @@ from enum import Enum
 import pandas as pd
 import requests
 import yaml
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Answer, Document, EvaluationResult, FilterType, Label
 
