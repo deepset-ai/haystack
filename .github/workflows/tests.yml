@@ -131,7 +131,7 @@ jobs:
         run: pip install .[all,dev]
 
       - name: Run
-        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" --ignore=test/document_stores/test_elasticsearch8.py.py test/${{ matrix.topic }}
+        run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" --ignore=test/document_stores/test_elasticsearch8.py test/${{ matrix.topic }}
 
       - name: Run Elasticsearch 8 unit tests
         if: matrix.topic == 'document_stores'
