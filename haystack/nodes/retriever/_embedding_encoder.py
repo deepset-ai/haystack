@@ -9,7 +9,7 @@ from tenacity import retry, retry_if_exception_type, wait_exponential, stop_afte
 
 import numpy as np
 import requests
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.environment import (
     HAYSTACK_REMOTE_API_BACKOFF_SEC,
@@ -121,7 +121,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
         torch_and_transformers_import.check()
-
         self.embedding_model = SentenceTransformer(
             retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
         )

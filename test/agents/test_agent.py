@@ -18,7 +18,7 @@ from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, Bas
 
 
 @pytest.mark.unit
-def test_add_and_overwrite_tool():
+def test_add_and_overwrite_tool(caplog):
     # Add a Node as a Tool to an Agent
     agent = Agent(prompt_node=MockPromptNode())
     retriever = MockRetriever()
@@ -43,12 +43,16 @@ def test_add_and_overwrite_tool():
 
     # Add a Pipeline as a Tool to an Agent and overwrite the previously added Tool
     retriever_pipeline = DocumentSearchPipeline(MockRetriever())
-    agent.add_tool(
-        Tool(
-            name="Retriever",
-            pipeline_or_node=retriever_pipeline,
-            description="useful for when you need to retrieve documents from your index",
+    with caplog.at_level(logging.WARNING):
+        agent.add_tool(
+            Tool(
+                name="Retriever",
+                pipeline_or_node=retriever_pipeline,
+                description="useful for when you need to retrieve documents from your index",
+            )
         )
+    assert (
+        "The agent already has a tool named 'Retriever'. The new tool will overwrite the existing one." in caplog.text
     )
     assert len(agent.tm.tools) == 1
     assert agent.has_tool(tool_name="Retriever")

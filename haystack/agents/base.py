@@ -134,22 +134,6 @@ class ToolsManager:
         self.tool_pattern = tool_pattern
         self.callback_manager = Events(("on_tool_start", "on_tool_finish", "on_tool_error"))
 
-    def add_tool(self, tool: Tool):
-        """
-        Add a tool to the Agent. This also updates the PromptTemplate for the Agent's PromptNode with the tool name.
-
-        :param tool: The tool to add to the Agent. Any previously added tool with the same name will be overwritten.
-        Example:
-        `agent.add_tool(
-            Tool(
-                name="Calculator",
-                pipeline_or_node=calculator
-                description="Useful when you need to answer questions about math."
-            )
-        )
-        """
-        self.tools[tool.name] = tool
-
     @property
     def tools(self):
         return self._tools
@@ -330,7 +314,11 @@ class Agent:
             )
         )
         """
-        self.tm.add_tool(tool)
+        if tool.name in self.tm.tools:
+            logger.warning(
+                "The agent already has a tool named '%s'. The new tool will overwrite the existing one.", tool.name
+            )
+        self.tm.tools[tool.name] = tool
 
     def has_tool(self, tool_name: str) -> bool:
         """

@@ -68,7 +68,7 @@ dependencies = [
 
   # Web Retriever
   "boilerpy3",
-  
+
   # Multimodal Embedder haystack/nodes/retriever/multimodal/embedder.py
   "Pillow",
 
@@ -136,6 +136,9 @@ audio = [
 ]
 beir = [
   "beir; platform_system != 'Windows'",
+]
+aws = [
+  "boto3"
 ]
 crawler = [
   "selenium>=4.0.0,!=4.1.4",  # Avoid 4.1.4 due to https://github.com/SeleniumHQ/selenium/issues/10612
@@ -216,11 +219,11 @@ formatting = [
 ]
 
 all = [
-  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics]",
+  "farm-haystack[inference,docstores,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws]",
 ]
 all-gpu = [
   # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics]",
+  "farm-haystack[inference,docstores-gpu,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx-gpu,metrics,aws]",
 ]
 
 [project.scripts]
