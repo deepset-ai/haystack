@@ -19,7 +19,7 @@ class MemoryRetriever:
         :param query: The query string for the retriever.
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The maximum number of documents to return.
-        :param scale_score: Whether to scale the BM25 scores or not
+        :param scale_score: Whether to scale the BM25 scores or not.
         :param stores: A dictionary mapping document store names to instances.
         """
 

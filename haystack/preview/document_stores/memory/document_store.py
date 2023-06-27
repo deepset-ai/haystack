@@ -192,6 +192,9 @@ class MemoryDocumentStore:
             filters = {**filters, "content_type": ["text", "table"]}
         all_documents = self.filter_documents(filters=filters)
 
+        # FIXME: remove this guard after resolving https://github.com/deepset-ai/canals/issues/33
+        top_k = top_k if top_k is not None else 10
+
         # Lowercase all documents
         lower_case_documents = []
         for doc in all_documents:
