@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, List, Optional, Dict, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Answer, Document, MultiLabel

@@ -2,7 +2,7 @@ import logging
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.question_generator import QuestionGenerator

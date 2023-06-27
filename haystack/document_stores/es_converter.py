@@ -1,6 +1,6 @@
 from typing import Dict, Optional, List, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore

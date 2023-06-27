@@ -9,7 +9,7 @@ from copy import deepcopy
 from inspect import Signature, signature
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document, FilterType
 from haystack.utils.batching import get_batches_from_generator
