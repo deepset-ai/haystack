@@ -255,18 +255,14 @@ class _TapasEncoder:
             )
         self.max_seq_len = max_seq_len
         self.device = device
-        # This if clause is to make mypy happy - if all the dependencies are in place,
-        # this will be True, otherwise the torch_and_transformers_import.check() should
-        # prevent us being here in the first place.
-        if hasattr(TableQuestionAnsweringPipeline, "default_input_names"):
-            self.pipeline = _TableQuestionAnsweringPipeline(
-                task="table-question-answering",
-                model=self.model,
-                tokenizer=self.tokenizer,
-                framework="pt",
-                batch_size=1,  # batch_size of 1 only works currently b/c of issue with HuggingFace pipeline logic and the return type of TableQuestionAnsweringPipeline._forward
-                device=self.device,
-            )
+        self.pipeline = _TableQuestionAnsweringPipeline(  # type: ignore
+            task="table-question-answering",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            framework="pt",
+            batch_size=1,  # batch_size of 1 only works currently b/c of issue with HuggingFace pipeline logic and the return type of TableQuestionAnsweringPipeline._forward
+            device=self.device,
+        )
 
     def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
         table_documents = _check_documents(documents)
@@ -842,13 +838,6 @@ class RCIReader(BaseReader):
 
         return row_reps, column_reps
 
-    @staticmethod
-    def _calculate_answer_offsets_span(row_idx, column_index, table) -> Span:
-        _, n_columns = table.shape
-        answer_cell_offset = (row_idx * n_columns) + column_index
-
-        return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
-
     def predict_batch(
         self,
         queries: List[str],
@@ -889,21 +878,6 @@ def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]]) -> List
     answer_offsets = []
     for coord in answer_coordinates:
         answer_offsets.append(TableCell(row=coord[0], col=coord[1]))
-    return answer_offsets
-
-
-def _calculate_answer_offsets_span(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-    """
-    Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
-
-    :param answer_coordinates: List of answer coordinates.
-    :param table: Table containing the answers in answer coordinates.
-    """
-    answer_offsets = []
-    _, n_columns = table.shape
-    for coord in answer_coordinates:
-        answer_cell_offset = (coord[0] * n_columns) + coord[1]
-        answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
     return answer_offsets
 
 
