@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 import numpy
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
