@@ -5,7 +5,7 @@ import pytest
 from test.document_stores.test_elasticsearch import ElasticsearchDocumentStoreTestAbstract
 
 
-class TestElasticsearchDocumentStore8(ElasticsearchDocumentStoreTestAbstract):
+class TestElasticsearchDocumentStore(ElasticsearchDocumentStoreTestAbstract):
     """
     This class tests the elasticsearch8.ElasticsearchDocumentStore. It modifies those tests from
     ElasticsearchDocumentStoreTestAbstract that test calling the client in the style of Elasticsearch 7.
