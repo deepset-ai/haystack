@@ -2,6 +2,7 @@
 
 
 from copy import deepcopy
+import typing
 from typing import List, Optional, Union, Dict, Any, Generator
 from abc import abstractmethod
 import json
@@ -20,6 +21,10 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
 from haystack.utils.scipy_utils import expit
+
+if typing.TYPE_CHECKING:
+    from opensearchpy import OpenSearch
+    from elasticsearch import Elasticsearch
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +49,7 @@ def prepare_hosts(host, port):
 
 class SearchEngineDocumentStore(KeywordDocumentStore):
     """
-    Base class implementing the common logic for Elasticsearch and Opensearch
+    Base class implementing the common logic for Elasticsearch and Opensearch.
     """
 
     def __init__(
@@ -135,7 +140,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             yield documents[i : i + chunk_size]
 
     @abstractmethod
-    def _do_bulk(self, *args, **kwargs):
+    def _do_bulk(
+        self,
+        actions: Union[List[dict], List[Document]],
+        client: Union["OpenSearch", "Elasticsearch"],
+        refresh: str,
+        headers: Optional[Dict],
+    ):
         pass
 
     @abstractmethod
@@ -165,10 +176,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
         if logger.isEnabledFor(logging.DEBUG):
-            if self.client.indices.exists_alias(name=index_name):
+            if self._client_indices_exists_alias(index=index_name, headers=headers):
                 logger.debug("Index name %s is an alias.", index_name)
 
-        return self.client.indices.exists(index=index_name, headers=headers)
+        return self._client_indices_exists(index=index_name, headers=headers)
 
     @abstractmethod
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
@@ -207,7 +218,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         """
 
         try:
-            self._do_bulk(self.client, documents, refresh=self.refresh_type, headers=headers)
+            self._do_bulk(actions=documents, client=self.client, refresh=self.refresh_type, headers=headers)
         except Exception as e:
             if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
@@ -280,7 +291,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
             if not self.return_embedding and self.embedding_field:
                 query["_source"] = {"excludes": [self.embedding_field]}
-            result = self.client.search(index=index, **query, headers=headers)["hits"]["hits"]
+            result = self._client_search(index=index, body=query, headers=headers)["hits"]["hits"]
             documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
@@ -329,6 +340,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
+        index = index or self.index
+
         body: dict = {
             "size": 0,
             "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
@@ -343,7 +356,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
-        result = self.client.search(**body, index=index, headers=headers)
+        result = self._client_search(index=index, body=body, headers=headers)
 
         values = []
         current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
@@ -354,7 +367,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         # Only 10 results get returned at a time, so apply pagination
         while after_key:
             body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
-            result = self.client.search(**body, index=index, headers=headers)
+            result = self._client_search(index=index, body=body, headers=headers)
             current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
             after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
             for bucket in current_buckets:
@@ -524,7 +537,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not index:
             index = self.index
         body = {"doc": meta}
-        self.client.update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
+        self._client_update(index=index, doc_id=id, meta=body, headers=headers)
 
     def get_document_count(
         self,
@@ -545,7 +558,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        result = self.client.count(index=index, body=body, headers=headers)
+        result = self._client_count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -572,7 +585,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        result = self.client.count(index=index, body=body, headers=headers)
+        result = self._client_count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -736,7 +749,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             body["_source"] = {"excludes": excludes}
 
         result = self._do_scan(
-            self.client, query=body, index=index, size=batch_size, scroll=self.scroll, headers=headers
+            client=self.client, query=body, index=index, size=batch_size, scroll=self.scroll, headers=headers
         )
         yield from result
 
@@ -911,7 +924,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
+        result = self._client_search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
@@ -1057,7 +1070,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         return all_documents
 
     def _execute_msearch(self, index: str, body: List[Dict[str, Any]], scale_score: bool) -> List[List[Document]]:
-        responses = self.client.msearch(index=index, body=body)
+        responses = self._client_msearch(index=index, body=body)
         documents = []
         for response in responses["responses"]:
             result = response["hits"]["hits"]
@@ -1393,7 +1406,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         batch_size = batch_size or self.batch_size
 
         if self.refresh_type == "false":
-            self.client.indices.refresh(index=index, headers=headers)
+            self._client_indices_refresh(index=index, headers=headers)
 
         if not self.embedding_field:
             raise RuntimeError("Please specify the arg `embedding_field` when initializing the Document Store")
@@ -1561,10 +1574,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
-        self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
+        self._client_delete_by_query(index=index, body=query, headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            self.client.indices.refresh(index=index)
+            self._client_indices_refresh(index=index, headers=headers)
 
     def delete_labels(
         self,
@@ -1628,7 +1641,46 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             )
         self._delete_index(index)
 
-    def _delete_index(self, index: str):
+    def _delete_index(self, index: str, headers: Optional[Dict] = None):
         if self._index_exists(index):
-            self.client.indices.delete(index=index, ignore=[400, 404])
+            self._client_indices_delete(index=index, headers=headers)
             logger.info("Index '%s' deleted.", index)
+
+    def _client_indices_exists(self, index: str, headers: Optional[Dict]) -> bool:
+        return self.client.indices.exists(index=index, headers=headers)
+
+    def _client_indices_exists_alias(self, index: str, headers: Optional[Dict]) -> bool:
+        return self.client.indices.exists_alias(name=index, headers=headers)
+
+    def _client_count(self, index: str, body: Dict, headers: Optional[Dict]) -> Dict:
+        return self.client.count(index=index, body=body, headers=headers)
+
+    def _client_msearch(self, index: str, body: List[Dict]) -> Dict:
+        return self.client.msearch(index=index, body=body)
+
+    def _client_indices_refresh(self, index: str, headers: Optional[Dict]):
+        self.client.indices.refresh(index=index, headers=headers)
+
+    def _client_delete_by_query(self, index: str, body: Dict, headers: Optional[Dict]):
+        self.client.delete_by_query(index=index, body=body, headers=headers, ignore=[404])
+
+    def _client_indices_delete(self, index: str, headers: Optional[Dict]):
+        self.client.indices.delete(index=index, headers=headers, ignore=[400, 404])
+
+    def _client_indices_get(self, index: str, headers: Optional[Dict]) -> Dict:
+        return self.client.indices.get(index=index, headers=headers)
+
+    def _client_indices_put_mapping(self, index: str, mapping: Dict, headers: Optional[Dict]):
+        self.client.indices.put_mapping(index=index, body=mapping, headers=headers)
+
+    @abstractmethod
+    def _client_indices_create(self, index: str, mapping: Dict, headers: Optional[Dict]):
+        pass
+
+    @abstractmethod
+    def _client_search(self, index: str, body: Dict, headers: Optional[Dict]) -> Dict:
+        pass
+
+    @abstractmethod
+    def _client_update(self, index: str, doc_id: str, meta: Dict, headers: Optional[Dict]):
+        pass

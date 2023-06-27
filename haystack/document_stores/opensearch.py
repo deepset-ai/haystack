@@ -249,9 +249,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         # Let the base class catch the right error from the Opensearch client
         self._RequestError = RequestError
 
-    def _do_bulk(self, *args, **kwargs):
+    def _do_bulk(
+        self, actions: Union[List[dict], List[Document]], client: OpenSearch, refresh: str, headers: Optional[Dict]
+    ):
         """Override the base class method to use the Opensearch client"""
-        return bulk(*args, **kwargs)
+        return bulk(actions=actions, client=client, refresh=refresh, headers=headers)
 
     def _do_scan(self, *args, **kwargs):
         """Override the base class method to use the Opensearch client"""
@@ -504,7 +506,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         )
 
         logger.debug("Retriever query: %s", body)
-        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
+        result = self._client_search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
             self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
@@ -795,7 +797,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
+        result = self._client_search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
@@ -863,7 +865,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 )
 
         try:
-            self.client.indices.create(index=index_name, body=index_definition, headers=headers)
+            self._client_indices_create(index=index_name, mapping=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -918,20 +920,22 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 "Because none of these values was provided, the index won't be trained."
             )
 
-    def delete_index(self, index: str):
+    def delete_index(self, index: str, headers: Optional[Dict[str, str]] = None):
         """
         Delete an existing search index. The index together with all data will be removed.
         If the index is of type `"ivf"` or `"ivf_pq"`, this method also deletes the corresponding IVF and PQ model.
 
         :param index: The name of the index to delete.
+        :param headers: Custom HTTP headers to pass to the OpenSearch client (for example `{'Authorization': 'Basic YWRtaW46cm9vdA=='}`).
+                        For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         :return: None
         """
         # Check if index uses an IVF model and delete it
         if self._index_exists(index):
-            index_mapping = self.client.indices.get(index)[index]["mappings"]["properties"]
+            index_mapping = self._client_indices_get(index=index, headers=headers)[index]["mappings"]["properties"]
             if self.embedding_field in index_mapping and "model_id" in index_mapping[self.embedding_field]:
                 model_id = index_mapping[self.embedding_field]["model_id"]
-                self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{model_id}")
+                self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{model_id}", headers=headers)
 
         super().delete_index(index)
 
@@ -939,7 +943,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         Validates an existing document index. If there's no embedding field, we'll add it.
         """
-        indices = self.client.indices.get(index_name, headers=headers)
+        indices = self._client_indices_get(index=index_name, headers=headers)
 
         if not any(indices):
             # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
@@ -971,7 +975,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         mappings["properties"][search_field] = (
                             {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
                         )
-                        self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
+                        self._client_indices_put_mapping(index=index_id, mapping=mappings, headers=headers)
 
             # validate embedding field
             existing_embedding_field = mappings["properties"].get(self.embedding_field, None)
@@ -979,7 +983,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             if existing_embedding_field is None:
                 # create embedding field
                 mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping(index=index_name)
-                self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
+                self._client_indices_put_mapping(index=index_id, mapping=mappings, headers=headers)
             else:
                 # check type of existing embedding field
                 if existing_embedding_field["type"] != "knn_vector":
@@ -1266,7 +1270,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             }
         }
         try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+            self._client_indices_create(index=index_name, mapping=mapping, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -1333,7 +1337,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             index = self.index
 
         # Check if IVF index is already trained by checking if embedding mapping contains a model_id field
-        if "model_id" in self.client.indices.get(index)[index]["mappings"]["properties"][self.embedding_field]:
+        if (
+            "model_id"
+            in self._client_indices_get(index=index, headers=headers)[index]["mappings"]["properties"][
+                self.embedding_field
+            ]
+        ):
             logger.info("IVF index '%s' is already trained. Skipping training.", index)
         # IVF model is not trained yet -> train it and convert HNSW index to IVF index
         else:
@@ -1406,7 +1415,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 logger.info("Training of IVF index '%s' finished.", index)
 
             # Delete temporary training index
-            self.client.indices.delete(index=f".{index}_ivf_training", headers=headers)
+            self._client_indices_delete(index=f".{index}_ivf_training", headers=headers)
 
             # Clone original index to temporary one
             self.client.indices.add_block(index=index, block="read_only")
@@ -1414,7 +1423,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 index=index, target=f".{index}_temp", body={"settings": {"index": {"blocks": {"read_only": False}}}}
             )
             self.client.indices.put_settings(index=index, body={"index": {"blocks": {"read_only": False}}})
-            self.client.indices.delete(index=index)
+            self._client_indices_delete(index=index, headers=headers)
 
             # Reindex original index to newly created IVF index
             self._create_document_index(index_name=index, headers=headers)
@@ -1422,7 +1431,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 body={"source": {"index": f".{index}_temp"}, "dest": {"index": index}},
                 params={"request_timeout": 24 * 60 * 60},
             )
-            self.client.indices.delete(index=f".{index}_temp")
+            self._client_indices_delete(index=f".{index}_temp", headers=headers)
 
     def _recommended_ivf_train_size(self) -> int:
         """
@@ -1456,9 +1465,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
         return ef_search
 
-    def _delete_index(self, index: str):
+    def _delete_index(self, index: str, headers: Optional[Dict] = None):
         if self._index_exists(index):
-            self.client.indices.delete(index=index, ignore=[400, 404])
+            self._client_indices_delete(index=index, headers=headers)
             self._delete_ivf_model(index)
             logger.info("Index '%s' deleted.", index)
 
@@ -1484,7 +1493,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if knn_engine is None:
             knn_engine = self.knn_engine
 
-        mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
+        mapping = self._client_indices_get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
             raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
@@ -1494,7 +1503,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(
             space_type=space_type, knn_engine=knn_engine, index_type=index_type
         )
-        self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+        self._client_indices_put_mapping(index=self.index, mapping=mapping, headers=headers)
 
         document_count = self.get_document_count(headers=headers)
         result = self._get_all_documents_in_index(index=self.index, batch_size=batch_size, headers=headers)
@@ -1567,6 +1576,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
         """
+        index = index or self.index
         body: dict = {
             "size": 0,
             "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
@@ -1581,7 +1591,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
-        result = self.client.search(body=body, index=index, headers=headers)
+        result = self._client_search(body=body, index=index, headers=headers)
 
         values = []
         current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
@@ -1592,7 +1602,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         # Only 10 results get returned at a time, so apply pagination
         while after_key:
             body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
-            result = self.client.search(body=body, index=index, headers=headers)
+            result = self._client_search(body=body, index=index, headers=headers)
             current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
             after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
             for bucket in current_buckets:
@@ -1627,7 +1637,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
             if not self.return_embedding and self.embedding_field:
                 query["_source"] = {"excludes": [self.embedding_field]}
-            result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
+            result = self._client_search(index=index, body=query, headers=headers)["hits"]["hits"]
             documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
@@ -1637,7 +1647,15 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         Update the metadata dictionary of a document by specifying its ID string.
         """
-        if not index:
-            index = self.index
+        index = index or self.index
         body = {"doc": meta}
-        self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
+        self._client_update(index=index, doc_id=id, meta=body, headers=headers)
+
+    def _client_search(self, index: str, body: Dict, headers: Optional[Dict]) -> Dict:
+        return self.client.search(index=index, body=body, headers=headers)
+
+    def _client_update(self, index: str, doc_id: str, meta: Dict, headers: Optional[Dict]):
+        self.client.update(index=index, id=doc_id, body=meta, headers=headers, refresh=self.refresh_type)
+
+    def _client_indices_create(self, index: str, mapping: Dict, headers: Optional[Dict]):
+        self.client.indices.create(index=index, body=mapping, headers=headers)
