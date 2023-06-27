@@ -255,14 +255,18 @@ class _TapasEncoder:
             )
         self.max_seq_len = max_seq_len
         self.device = device
-        self.pipeline = _TableQuestionAnsweringPipeline(
-            task="table-question-answering",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            framework="pt",
-            batch_size=1,  # batch_size of 1 only works currently b/c of issue with HuggingFace pipeline logic and the return type of TableQuestionAnsweringPipeline._forward
-            device=self.device,
-        )
+        # This if clause is to make mypy happy - if all the dependencies are in place,
+        # this will be True, otherwise the torch_and_transformers_import.check() should
+        # prevent us being here in the first place.
+        if hasattr(TableQuestionAnsweringPipeline, "default_input_names"):
+            self.pipeline = _TableQuestionAnsweringPipeline(
+                task="table-question-answering",
+                model=self.model,
+                tokenizer=self.tokenizer,
+                framework="pt",
+                batch_size=1,  # batch_size of 1 only works currently b/c of issue with HuggingFace pipeline logic and the return type of TableQuestionAnsweringPipeline._forward
+                device=self.device,
+            )
 
     def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
         table_documents = _check_documents(documents)
