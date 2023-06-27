@@ -27,6 +27,14 @@ class SilenceableTqdm(tqdm.tqdm):
         """
         return os.getenv("HAYSTACK_PROGRESS_BARS", "1") in ["0", "False", "FALSE", "false"]
 
+    @property
+    def disable(self):
+        return self.no_progress_bars or self._disable
+
+    @disable.setter
+    def disable(self, value):
+        self._disable = value
+
 
 tqdm.std.tqdm = SilenceableTqdm
 tqdm.tqdm = SilenceableTqdm
