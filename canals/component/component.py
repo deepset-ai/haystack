@@ -15,7 +15,7 @@ from canals.component.input_output import Connection, _input, _output
 logger = logging.getLogger(__name__)
 
 
-def component(class_):
+class _Component:
     """
     Marks a class as a component. Any class decorated with `@component` can be used by a Pipeline.
 
@@ -183,44 +183,67 @@ def component(class_):
     Raises:
         ComponentError: if the class provided has no `run()` method or otherwise doesn't respect the component contract.
     """
-    logger.debug("Registering %s as a component", class_)
 
-    # '__canals_component__' is used to distinguish components from regular classes.
-    # Its value is set to the desired component name: normally it is the class name, but it can technically be customized.
-    class_.__canals_component__ = class_.__name__
+    def __init__(self):
+        self.registry = {}
 
-    # Find input and output properties
-    (input_, output) = _find_input_output(class_)
+    @property
+    def input(self):
+        """
+        TODO: Documentation
+        """
+        return _input
 
-    # Save the input and output properties so it's easier to find them when running the Component since we won't
-    # need to search the exact property name each time
-    class_.__canals_input__ = input_
-    class_.__canals_output__ = output
+    @property
+    def output(self):
+        """
+        TODO: Documentation
+        """
+        return _output
 
-    # Save optional inputs, optionals inputs are those fields for the __canals_input__ dataclass
-    # that have an Optional type.
-    # Those are necessary to implement Components that can run with partial input, this gives us
-    # the possibility to have cycles in Pipelines.
-    class_.__canals_optional_inputs__ = property(_optional_inputs)
-    class_.__canals_mandatory_inputs__ = property(_mandatory_inputs)
+    def _decorate(self, class_):
+        # '__canals_component__' is used to distinguish components from regular classes.
+        # Its value is set to the desired component name: normally it is the class name, but it can technically be customized.
+        class_.__canals_component__ = class_.__name__
 
-    # Check that the run method respects all constraints
-    _check_run_signature(class_)
+        # Find input and output properties
+        (input_, output) = _find_input_output(class_)
 
-    # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
-    # See `save_init_params()`.
-    class_.__init__ = save_init_params(class_.__init__)
+        # Save the input and output properties so it's easier to find them when running the Component since we won't
+        # need to search the exact property name each time
+        class_.__canals_input__ = input_
+        class_.__canals_output__ = output
 
-    # Makes sure the self.defaults dictionary is always present
-    class_.__init__ = init_defaults(class_.__init__)
+        # Save optional inputs, optionals inputs are those fields for the __canals_input__ dataclass
+        # that have an Optional type.
+        # Those are necessary to implement Components that can run with partial input, this gives us
+        # the possibility to have cycles in Pipelines.
+        class_.__canals_optional_inputs__ = property(_optional_inputs)
+        class_.__canals_mandatory_inputs__ = property(_mandatory_inputs)
 
-    return class_
+        # Check that the run method respects all constraints
+        _check_run_signature(class_)
+
+        # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
+        # See `save_init_params()`.
+        class_.__init__ = save_init_params(class_.__init__)
+
+        # Makes sure the self.defaults dictionary is always present
+        class_.__init__ = init_defaults(class_.__init__)
+
+        self.registry[class_.__name__] = class_
+        logger.debug("Registered Component %s", class_)
+
+        return class_
+
+    def __call__(self, class_=None):
+        if class_:
+            return self._decorate(class_)
+
+        return self._decorate
 
 
-# We do this to have some namespacing and also to make it clear that the methods decorated with
-# @component.input and @component.output must have their class decorated as @component.
-setattr(component, "input", _input)
-setattr(component, "output", _output)
+component = _Component()
 
 
 def _find_input_output(class_):
