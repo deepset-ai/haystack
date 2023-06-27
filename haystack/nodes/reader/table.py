@@ -417,7 +417,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):  # pylint
                     else:
                         answer_str = self._aggregate_answers(aggregator, cells)
                     current_score = answer_scores[index]
-                    answer_offsets = _calculate_answer_offsets_span(ans_coordinates_per_table, string_table)
+                    answer_offsets = _calculate_answer_offsets(ans_coordinates_per_table)
                     answer = Answer(
                         answer=answer_str,
                         type="extractive",
