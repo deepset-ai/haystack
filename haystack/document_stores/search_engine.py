@@ -142,7 +142,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     @abstractmethod
     def _do_bulk(
         self,
-        actions: Union[List[dict], List[Document]],
+        actions: Union[List[Dict], List[Document]],
         client: Union["OpenSearch", "Elasticsearch"],
         refresh: str,
         headers: Optional[Dict],

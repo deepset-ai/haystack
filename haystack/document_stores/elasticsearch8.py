@@ -289,7 +289,7 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
         return hosts
 
     def _do_bulk(
-        self, actions: Union[List[dict], List[Document]], client: Elasticsearch, refresh: str, headers: Optional[Dict]
+        self, actions: Union[List[Dict], List[Document]], client: "Elasticsearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
     ):
         """Override the base class method to use the Elasticsearch client"""
         client = client.options(headers=headers)

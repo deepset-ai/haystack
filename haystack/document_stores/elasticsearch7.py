@@ -173,7 +173,7 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
         self._RequestError = RequestError
 
     def _do_bulk(
-        self, actions: Union[List[dict], List[Document]], client: "Elasticsearch", refresh: str, headers: Optional[Dict]
+        self, actions: Union[List[Dict], List[Document]], client: "Elasticsearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
     ):
         """Override the base class method to use the Elasticsearch client"""
         return bulk(actions=actions, client=client, refresh=refresh, headers=headers)
