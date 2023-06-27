@@ -2,7 +2,7 @@ from typing import List, Optional, Union, Tuple, Iterator, Any
 import logging
 from pathlib import Path
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Document

@@ -11,7 +11,7 @@ import time
 from string import Template
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore

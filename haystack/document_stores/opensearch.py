@@ -3,7 +3,7 @@ from typing import List, Optional, Union, Dict, Any
 import logging
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from tenacity import retry, wait_exponential, retry_if_not_result
 
 from haystack.schema import Document, FilterType

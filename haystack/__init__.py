@@ -5,6 +5,8 @@ from importlib import metadata
 
 __version__: str = str(metadata.version("farm-haystack"))
 
+
+import haystack.silenceable_tqdm  # Needs to be imported first to wrap TQDM for all following modules
 from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationResult, TableCell
 from haystack.nodes.base import BaseComponent
 from haystack.pipelines.base import Pipeline
