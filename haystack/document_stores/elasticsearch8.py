@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, List, Optional, Type, Union
 
-from haystack import Document
 from haystack.document_stores.elasticsearch import BaseElasticsearchDocumentStore
 from haystack.lazy_imports import LazyImport
 
