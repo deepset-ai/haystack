@@ -8,14 +8,14 @@ from collections import defaultdict
 import re
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import rank_bm25
 import pandas as pd
 
 from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.utils.batching import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever.dense import DenseRetriever
 from haystack.utils.scipy_utils import expit
@@ -25,7 +25,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
@@ -92,6 +92,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                                 You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
                                 By default, no parameters are set.
         """
+        torch_import.check()
         if bm25_parameters is None:
             bm25_parameters = {}
         super().__init__()

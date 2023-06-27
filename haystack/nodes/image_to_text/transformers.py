@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 import logging
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.nodes.image_to_text.base import BaseImageToText
@@ -13,7 +13,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from transformers import pipeline
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports

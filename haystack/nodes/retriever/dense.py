@@ -8,7 +8,7 @@ from copy import deepcopy
 from requests.exceptions import HTTPError
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 import pandas as pd
 from huggingface_hub import hf_hub_download
@@ -26,7 +26,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from torch.nn import DataParallel
     from torch.utils.data.sampler import SequentialSampler

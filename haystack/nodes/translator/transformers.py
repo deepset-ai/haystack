@@ -2,7 +2,7 @@ import logging
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, Answer
@@ -13,7 +13,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports

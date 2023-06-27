@@ -10,7 +10,7 @@ from haystack.nodes.prompt.prompt_model import PromptModel
 from haystack.nodes.prompt.prompt_template import PromptTemplate
 from haystack.lazy_imports import LazyImport
 
-with LazyImport() as torch_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_import:
     import torch
 
 

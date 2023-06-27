@@ -6,7 +6,7 @@ from itertools import groupby
 from multiprocessing.pool import Pool
 from collections import namedtuple
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 logger = logging.getLogger(__file__)
 

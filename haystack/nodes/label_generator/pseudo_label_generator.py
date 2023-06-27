@@ -2,7 +2,7 @@ import logging
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.question_generator import QuestionGenerator
@@ -13,7 +13,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport() as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
     import torch
     from sentence_transformers import CrossEncoder
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
