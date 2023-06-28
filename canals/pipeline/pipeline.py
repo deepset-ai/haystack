@@ -349,6 +349,9 @@ class Pipeline:
                 # Everything in the inputs buffer is skipped, this either means we
                 # have a really nasty bug or that the Pipeline ran everything it could.
                 # Either way, bail!
+                logger.debug(
+                    "The input buffer is not empty, but all remaining components are skipped. The pipeline will stop here."
+                )
                 break
 
             component, inputs = inputs_buffer.popitem(last=False)  # FIFO
@@ -356,15 +359,12 @@ class Pipeline:
             # Make sure it didn't run too many times already
             self._check_max_loops(component)
 
-            # if debug:
-            #     draw(deepcopy(self.graph), engine="graphviz", path=f"debug/step_{current_step}.jpg", running=component, queued=inputs_buffer.keys())
-
             # **** IS IT MY TURN YET? ****
             # Check if the component should be run or not
-            state = self._calculate_component_state(name=component, inputs=inputs, inputs_buffer=inputs_buffer)
+            action = self._calculate_action(name=component, inputs=inputs, inputs_buffer=inputs_buffer)
 
             # This component is missing data: let's put it back in the queue and wait.
-            if state == "wait":
+            if action == "wait":
                 if not inputs_buffer:
                     # What if there are no components to wait for?
                     raise PipelineRuntimeError(
@@ -376,7 +376,7 @@ class Pipeline:
                 continue
 
             # This component did not receive the input it needs: it must be on a skipped branch. Let's not run it.
-            if state == "skip":
+            if action == "skip":
                 self.graph.nodes[component]["visits"] += 1
                 inputs_buffer = self._skip_downstream_nodes(component=component, inputs_buffer=inputs_buffer)
                 # Skipped nodes are put back into the queue
@@ -440,22 +440,22 @@ class Pipeline:
             )
 
     # This function is complex so it contains quite some logic, it needs tons of information
-    # regarding a component to understand its state so we have many local variables and to keep
-    # things simple we also have multiple returns.
+    # regarding a component to understand what action it should take so we have many local
+    # variables and to keep things simple we also have multiple returns.
     # In the end this amount of information makes it easier to understand the internal logic so
     # we chose to ignore these pylint warnings.
-    def _calculate_component_state(  # pylint: disable=too-many-locals, too-many-return-statements
+    def _calculate_action(  # pylint: disable=too-many-locals, too-many-return-statements
         self, name: str, inputs: Dict[str, Any], inputs_buffer: Dict[str, Any]
     ) -> Literal["run", "wait", "skip"]:
         """
-        Calculates the state of the component specified by `name`.
-        There are three possible states for a component:
+        Calculates the action to take for the component specified by `name`.
+        There are three possible actions:
             * run
             * wait
             * skip
 
-        Component will run if:
-            * It received all mandatory inputs and
+        Component will run if at least one of the following statements is true:
+            * It received all mandatory inputs
             * It received all mandatory inputs and it has no optional inputs
             * It received all mandatory inputs and all optional inputs are skipped
             * It received all mandatory inputs and some optional inputs and the rest are skipped
@@ -466,21 +466,20 @@ class Pipeline:
             * It received some of its inputs and the other are not skipped
             * It received all mandatory inputs and some optional inputs have not been skipped
 
-        Component will wait if:
+        Component will be skipped if:
             * All its mandatory inputs are skipped
             * Can't determine state
 
         For simplicity sake input components that create a cycle, or components that already ran
         and don't create a cycle are considered as skipped.
 
-        :param name: Name of the component
-        :type name: str
-        :param inputs: Values that the component will take as input
-        :type inputs: Dict[str, Any]
-        :param inputs_buffer: Other components' inputs
-        :type inputs_buffer: Dict[str, Any]
-        :return: State of the component specifing whether it should run, wait or skip
-        :rtype: Literal["run", "wait", "skip"]
+        Args:
+            name: Name of the component
+            inputs: Values that the component will take as input
+            inputs_buffer: Other components' inputs
+
+        Returns:
+            Action to take for component specifing whether it should run, wait or skip
         """
 
         # Upstream components/socket pairs the current component is connected to
@@ -567,10 +566,6 @@ class Pipeline:
 
         if any(self.graph.nodes[n]["visits"] == 0 for n in input_components.keys()):
             # Some upstream component that must send input to the current component has yet to run.
-            # This happens when:
-            #   * Component has default values
-            #   * Component has some mandatory inputs
-            #   * Component has optional inputs that are not skipped
             logger.debug(
                 "Component '%s' is waiting. Missing inputs: %s",
                 name,
@@ -633,7 +628,6 @@ class Pipeline:
             # ... if there's a path in the graph leading back from the current node to the
             # input node, # and only in case this node accepts multiple inputs.
             if networkx.has_path(self.graph, from_node, name)
-            # and data["to_socket"].name not in self.graph.nodes[name]["instance"].__canals_optional_inputs__
         ]
         return data_to_wait_for
 
