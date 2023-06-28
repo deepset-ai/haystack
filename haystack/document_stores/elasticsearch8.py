@@ -189,9 +189,7 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`.")
 
-        node_class: Type[BaseNode] = Urllib3HttpNode
-        if use_system_proxy:
-            node_class = RequestsHttpNode
+        node_class = RequestsHttpNode if use_system_proxy else Urllib3HttpNode
 
         if api_key_id and api_key:
             # api key authentication
@@ -291,13 +289,13 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
         self, actions: Union[List[Dict]], client: "Elasticsearch", refresh: str, headers: Optional[Dict]  # type: ignore[override]
     ):
         """Override the base class method to use the Elasticsearch client"""
-        if headers is not None:
+        if headers:
             client = client.options(headers=headers)
         return bulk(actions=actions, client=client, refresh=refresh)
 
     def _do_scan(self, *args, **kwargs):
         """Override the base class method to use the Elasticsearch client"""
-        if "client" in kwargs and "headers" in kwargs and kwargs["headers"] is not None:
+        if "client" in kwargs and "headers" in kwargs and kwargs["headers"]:
             kwargs["client"] = kwargs.get("client").options(headers=kwargs.get("headers"))
         return scan(*args, **kwargs)
 

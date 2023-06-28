@@ -200,11 +200,9 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
         hosts = prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
-            raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+            raise ValueError("You must provide either both `api_key_id` and `api_key` or neither.")
 
-        connection_class: Type[Connection] = Urllib3HttpConnection
-        if use_system_proxy:
-            connection_class = RequestsHttpConnection
+        connection_class = RequestsHttpConnection if use_system_proxy else Urllib3HttpConnection
 
         if api_key:
             # api key authentication
