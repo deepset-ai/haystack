@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../haystack/agents]
-    modules: ['base', 'conversational']
+    modules: ['base', 'conversational', 'memory/conversation_memory', 'memory/conversation_summary_memory']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
