@@ -4,7 +4,7 @@ import logging
 from abc import abstractmethod
 from pathlib import Path
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 

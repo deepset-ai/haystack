@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 import logging
 import itertools
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.nodes.document_classifier.base import BaseDocumentClassifier

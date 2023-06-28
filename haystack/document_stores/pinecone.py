@@ -8,7 +8,7 @@ from functools import reduce
 import operator
 
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document, FilterType, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore

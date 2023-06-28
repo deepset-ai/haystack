@@ -4,7 +4,7 @@ from typing import Union, Any, List, Optional, Iterator, Dict
 import pickle
 import urllib
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from sklearn.ensemble._gb_losses import BinomialDeviance
 from sklearn.ensemble._gb import GradientBoostingClassifier
 

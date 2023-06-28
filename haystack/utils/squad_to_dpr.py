@@ -64,7 +64,7 @@ from time import sleep
 from pathlib import Path
 from itertools import islice
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
