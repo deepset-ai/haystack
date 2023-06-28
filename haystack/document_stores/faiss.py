@@ -258,20 +258,20 @@ class FAISSDocumentStore(SQLDocumentStore):
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
         if len(document_objects) > 0:
+            vector_id = self.faiss_indexes[index].ntotal
             add_vectors = all(doc.embedding is not None for doc in document_objects)
 
-            if self.duplicate_documents == "overwrite" and add_vectors:
+            if vector_id > 0 and self.duplicate_documents == "overwrite" and add_vectors:
                 logger.warning(
-                    "You have to provide `duplicate_documents = 'overwrite'` arg and "
-                    "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
-                    "Please call `update_embeddings` method to repopulate `faiss_index`"
+                    "`FAISSDocumentStore` is adding new vectors to an existing `faiss_index`.\n"
+                    "Please call `update_embeddings` method to correctly repopulate `faiss_index`"
                 )
 
-            vector_id = self.faiss_indexes[index].ntotal
             with tqdm(
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
+                    batch_documents = document_objects[i : i + batch_size]
                     if add_vectors:
                         if not self.faiss_indexes[index].is_trained:
                             raise ValueError(
@@ -281,7 +281,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                 "".format(self.faiss_index_factory_str)
                             )
 
-                        embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
+                        embeddings = [doc.embedding for doc in batch_documents]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
                         if self.similarity == "cosine":
@@ -289,12 +289,27 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                         self.faiss_indexes[index].add(embeddings_to_index)
 
+                    # write_documents method (duplicate_documents="overwrite") should properly work in combination with
+                    # update_embeddings method (update_existing_embeddings=False).
+                    # If no new embeddings are provided, we save the existing FAISS vector ids
+                    elif self.duplicate_documents == "overwrite":
+                        existing_docs = self.get_documents_by_id(
+                            ids=[doc.id for doc in batch_documents], index=index, batch_size=batch_size
+                        )
+                        existing_docs_vector_ids = {
+                            doc.id: doc.meta["vector_id"]
+                            for doc in existing_docs
+                            if doc.meta and "vector_id" in doc.meta
+                        }
+
                     docs_to_write_in_sql = []
-                    for doc in document_objects[i : i + batch_size]:
+                    for doc in batch_documents:
                         meta = doc.meta
                         if add_vectors:
                             meta["vector_id"] = vector_id
                             vector_id += 1
+                        elif self.duplicate_documents == "overwrite" and doc.id in existing_docs_vector_ids:
+                            meta["vector_id"] = existing_docs_vector_ids[doc.id]
                         docs_to_write_in_sql.append(doc)
 
                     super(FAISSDocumentStore, self).write_documents(

@@ -205,6 +205,21 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         assert {int(doc.meta["vector_id"]) for doc in docs_from_index_b} == {0, 1, 2, 3}
 
     @pytest.mark.integration
+    def test_dont_update_existing_embeddings(self, ds, docs):
+        retriever = MockDenseRetriever(document_store=ds)
+        first_doc_id = docs[0].id
+
+        for i in range(1, 4):
+            ds.write_documents(docs[:i])
+            ds.update_embeddings(retriever=retriever, update_existing_embeddings=False)
+            if i == 1:
+                first_doc_vector_id = ds.get_document_by_id(id=first_doc_id).meta["vector_id"]
+
+            assert ds.get_document_count() == i
+            assert ds.get_embedding_count() == i
+            assert ds.get_document_by_id(id=first_doc_id).meta["vector_id"] == first_doc_vector_id
+
+    @pytest.mark.integration
     def test_passing_index_from_outside(self, documents_with_embeddings, tmp_path):
         d = 768
         nlist = 2
