@@ -1366,6 +1366,9 @@ class Pipeline:
             event_name="Evaluation",
             event_properties={"pipeline.classname": self.__class__.__name__, "pipeline.config_hash": self.config_hash},
         )
+        if add_isolated_node_eval:
+            params = {} if params is None else params.copy()
+            params["add_isolated_node_eval"] = True
 
         predictions_batches = self.run_batch(
             queries=[label.query for label in labels], labels=labels, documents=documents, params=params, debug=True
@@ -1373,11 +1376,9 @@ class Pipeline:
 
         eval_result = self._generate_eval_result_from_batch_preds(
             predictions_batches=predictions_batches,
-            params=params,
             sas_model_name_or_path=sas_model_name_or_path,
             sas_batch_size=sas_batch_size,
             sas_use_gpu=sas_use_gpu,
-            add_isolated_node_eval=add_isolated_node_eval,
             custom_document_id_field=custom_document_id_field,
             context_matching_min_length=context_matching_min_length,
             context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
@@ -1390,11 +1391,9 @@ class Pipeline:
     def _generate_eval_result_from_batch_preds(
         self,
         predictions_batches: Dict,
-        params: Optional[dict] = None,
         sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
-        add_isolated_node_eval: bool = False,
         custom_document_id_field: Optional[str] = None,
         context_matching_min_length: int = 100,
         context_matching_boost_split_overlaps: bool = True,
@@ -1402,9 +1401,6 @@ class Pipeline:
         use_auth_token: Optional[Union[str, bool]] = None,
     ) -> EvaluationResult:
         eval_result = EvaluationResult()
-        if add_isolated_node_eval:
-            params = {} if params is None else params.copy()
-            params["add_isolated_node_eval"] = True
 
         for node_name in predictions_batches["_debug"].keys():
             node_output = predictions_batches["_debug"][node_name]["output"]
