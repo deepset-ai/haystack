@@ -348,6 +348,6 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
     @pytest.mark.unit
     def test_write_documents_req_for_each_batch(self, mocked_document_store, documents):
         mocked_document_store.batch_size = 2
-        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+        with patch("haystack.document_stores.elasticsearch.es7.bulk") as mocked_bulk:
             mocked_document_store.write_documents(documents)
             assert mocked_bulk.call_count == 5
