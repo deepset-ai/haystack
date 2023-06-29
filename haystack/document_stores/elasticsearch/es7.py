@@ -14,7 +14,7 @@ from .base import _ElasticsearchDocumentStore
 logger = logging.getLogger(__name__)
 
 
-class Elasticsearch7DocumentStore(_ElasticsearchDocumentStore):
+class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
