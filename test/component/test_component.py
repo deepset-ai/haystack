@@ -1,5 +1,3 @@
-from typing import List
-
 import pytest
 
 from canals.component import component, ComponentError
@@ -27,6 +25,7 @@ def test_correct_declaration():
 
     # Verifies also instantiation works with no issues
     assert MockComponent()
+    assert component.registry["MockComponent"] == MockComponent
 
 
 def test_input_required():
