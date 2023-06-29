@@ -1,5 +1,5 @@
 import os
-from haystack.nodes import PromptNode, LinkContentRetriever, PreProcessor, PromptTemplate
+from haystack.nodes import PromptNode, LinkContentRetriever, PromptTemplate
 from haystack import Pipeline
 
 openai_key = os.environ.get("OPENAI_API_KEY")
