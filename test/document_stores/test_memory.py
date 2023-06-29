@@ -36,26 +36,6 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         result = ds.get_all_documents(filters={"year": {"$ne": "2020"}})
         assert len(result) == 3
 
-    @pytest.mark.skip
-    @pytest.mark.integration
-    def test_nin_filters(self, ds, documents):
-        pass
-
-    @pytest.mark.skip
-    @pytest.mark.integration
-    def test_comparison_filters(self, ds, documents):
-        pass
-
-    @pytest.mark.skip
-    @pytest.mark.integration
-    def test_nested_condition_filters(self, ds, documents):
-        pass
-
-    @pytest.mark.skip
-    @pytest.mark.integration
-    def test_nested_condition_not_filters(self, ds, documents):
-        pass
-
     @pytest.mark.integration
     def test_get_documents_by_id(self, ds, documents):
         """

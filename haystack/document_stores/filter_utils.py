@@ -482,8 +482,15 @@ class InOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
-        return fields[self.field_name] in self.comparison_value  # type: ignore
-        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
+
+        if not isinstance(self.comparison_value, list):
+            raise FilterError("'$in' operation requires comparison value to be a list.")
+
+        # If the document field is a list, check if any of its values are in the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field in self.comparison_value for field in fields[self.field_name])
+
+        return fields[self.field_name] in self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, List]]:
         if not isinstance(self.comparison_value, list):
@@ -563,9 +570,16 @@ class NinOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
-            return False
-        return fields[self.field_name] not in self.comparison_value  # type: ignore
-        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
+            return True
+
+        if not isinstance(self.comparison_value, list):
+            raise FilterError("'$nin' operation requires comparison value to be a list.")
+
+        # If the document field is a list, check if any of its values are in the comparison value
+        if isinstance(fields[self.field_name], list):
+            return not any(field in self.comparison_value for field in fields[self.field_name])
+
+        return fields[self.field_name] not in self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, List]]]]:
         if not isinstance(self.comparison_value, list):
@@ -611,6 +625,11 @@ class GtOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are greater than the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field > self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] > self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -650,6 +669,11 @@ class GteOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are greater than or equal to the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field >= self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] >= self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -689,6 +713,11 @@ class LtOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are less than the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field < self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] < self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
@@ -728,6 +757,11 @@ class LteOperation(ComparisonOperation):
     def evaluate(self, fields) -> bool:
         if self.field_name not in fields:
             return False
+
+        # If the document field is a list, check if any of its values are less than or equal to the comparison value
+        if isinstance(fields[self.field_name], list):
+            return any(field <= self.comparison_value for field in fields[self.field_name])
+
         return fields[self.field_name] <= self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
