@@ -141,10 +141,12 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
                            memory issues, decrease the batch_size.
 
         """
+        # Ensure all the required inputs were successful
         es_import.check()
-
-        # Base constructor might need the client to be ready, create it first
-        client = self._init_elastic_client(
+        # Let the base class trap the right exception from the specific client
+        self._RequestError = RequestError
+        # Initiate the Elasticsearch client for version 8.x
+        client = ElasticsearchDocumentStore._init_elastic_client(
             host=host,
             port=port,
             username=username,
@@ -183,9 +185,6 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             batch_size=batch_size,
         )
 
-        # Let the base class trap the right exception from the elasticpy client
-        self._RequestError = RequestError
-
     def _do_bulk(self, *args, **kwargs):
         """Override the base class method to use the Elasticsearch client"""
         return bulk(*args, **kwargs)
@@ -194,9 +193,8 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         """Override the base class method to use the Elasticsearch client"""
         return scan(*args, **kwargs)
 
-    @classmethod
+    @staticmethod
     def _init_elastic_client(
-        cls,
         host: Union[str, List[str]],
         port: Union[int, List[int]],
         username: str,
