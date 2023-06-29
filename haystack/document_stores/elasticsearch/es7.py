@@ -143,7 +143,7 @@ class Elasticsearch7DocumentStore(_ElasticsearchDocumentStore):
             use_system_proxy=use_system_proxy,
         )
 
-        super(_ElasticsearchDocumentStore, self).__init__(
+        super().__init__(
             client=client,
             index=index,
             label_index=label_index,
