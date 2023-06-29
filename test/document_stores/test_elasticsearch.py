@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
 
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore, VERSION
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes import PreProcessor
@@ -294,6 +294,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         # Check if number of transferred_documents is equal to number of unique words.
         assert len(transferred_documents) == len(set(" ".join(original_content).split()))
 
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
     def test__init_elastic_client_aws4auth_and_username_raises_warning(
         self, caplog, mocked_elastic_search_init, mocked_elastic_search_ping
@@ -329,6 +330,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             )
         assert len(caplog.records) == 0
 
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
     def test_get_document_by_id_return_embedding_false(self, mocked_document_store):
         mocked_document_store.return_embedding = False
@@ -337,6 +339,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["_source"] == {"excludes": ["embedding"]}
 
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
     def test_get_document_by_id_excluded_meta_data_has_no_influence(self, mocked_document_store):
         mocked_document_store.excluded_meta_data = ["foo"]
