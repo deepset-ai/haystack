@@ -373,7 +373,7 @@ class Pipeline:
                 continue
 
             if action == "remove":
-                # This component has no reason of being in the run queue, it's best if we remove it
+                # This component has no reason of being in the run queue and we need to remove it. For example, this can happen to components that are connected to skipped branches of the pipeline. 
                 continue
 
             # **** RUN THE NODE ****
@@ -556,7 +556,7 @@ class Pipeline:
         if mandatory_input_sockets == received_input_sockets and skipped_optional_input_sockets.issubset(
             optional_input_sockets
         ):
-            # We received all of the inputs we need and some optional inputs have not been skipped
+            # We received all of the inputs we need, but some optional inputs have not been run or skipped yet
             logger.debug(
                 "Component '%s' is waiting. All mandatory inputs received, some optional are not skipped: %s",
                 name,
