@@ -62,9 +62,9 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
-    reader_no_url = LinkContentRetriever(pre_processor=pre_processor_mock)
+    retriever_no_url = LinkContentRetriever(pre_processor=pre_processor_mock)
     with pytest.raises(requests.exceptions.InvalidURL, match="Invalid or missing URL"):
-        reader_no_url(url="")
+        retriever_no_url(url="")
 
 
 @pytest.mark.unit
@@ -170,7 +170,7 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
 
 @pytest.mark.unit
 def test_is_valid_url():
-    reader = LinkContentRetriever()
+    retriever = LinkContentRetriever()
 
     valid_urls = [
         "http://www.google.com",
@@ -190,12 +190,12 @@ def test_is_valid_url():
     ]
 
     for url in valid_urls:
-        assert reader._is_valid_url(url), f"Expected {url} to be valid"
+        assert retriever._is_valid_url(url), f"Expected {url} to be valid"
 
 
 @pytest.mark.unit
 def test_is_invalid_url():
-    reader = LinkContentRetriever()
+    retriever = LinkContentRetriever()
 
     invalid_urls = [
         "http://",
@@ -213,21 +213,65 @@ def test_is_invalid_url():
         "example.com",
         "http:///example.com",
         "https:///example.com",
+        "",
+        None,
     ]
 
     for url in invalid_urls:
-        assert not reader._is_valid_url(url), f"Expected {url} to be invalid"
+        assert not retriever._is_valid_url(url), f"Expected {url} to be invalid"
 
 
 @pytest.mark.integration
 def test_call_with_valid_url_on_live_web():
     """
-    Test that LinkContentReader can fetch content from a valid URL
+    Test that LinkContentRetriever can fetch content from a valid URL
     """
 
-    reader = LinkContentRetriever()
-    docs = reader(url="https://docs.haystack.deepset.ai/", timeout=2)
+    retriever = LinkContentRetriever()
+    docs = retriever(url="https://docs.haystack.deepset.ai/", timeout=2)
 
     assert len(docs) >= 1
     assert isinstance(docs[0], Document)
     assert "Haystack" in docs[0].content
+
+
+@pytest.mark.integration
+def test_retrieve_with_valid_url_on_live_web():
+    """
+    Test that LinkContentRetriever can fetch content from a valid URL using the retrieve method
+    """
+
+    retriever = LinkContentRetriever()
+    docs = retriever.retrieve(query="https://docs.haystack.deepset.ai/")
+
+    assert len(docs) >= 1
+    assert isinstance(docs[0], Document)
+    assert "Haystack" in docs[0].content
+
+
+@pytest.mark.integration
+def test_retrieve_with_invalid_url():
+    """
+    Test that LinkContentRetriever raises ValueError when trying to fetch content from an invalid URL
+    """
+
+    retriever = LinkContentRetriever()
+    with pytest.raises(ValueError):
+        retriever.retrieve(query="")
+
+
+@pytest.mark.integration
+def test_retrieve_batch():
+    """
+    Test that LinkContentRetriever can fetch content from a valid URL using the retrieve_batch method
+    """
+
+    retriever = LinkContentRetriever()
+    docs = retriever.retrieve_batch(queries=["https://docs.haystack.deepset.ai/", "https://deepset.ai/"])
+    assert docs
+    # no processor is applied, so each query should return a list of documents with one entry
+    assert len(docs) == 2 and len(docs[0]) == 1 and len(docs[1]) == 1
+
+    # each query should return a list of documents
+    assert isinstance(docs[0], list) and isinstance(docs[0][0], Document)
+    assert isinstance(docs[1], list) and isinstance(docs[1][0], Document)

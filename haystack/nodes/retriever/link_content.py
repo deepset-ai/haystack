@@ -180,13 +180,10 @@ class LinkContentRetriever(BaseRetriever):
         :param url: The URL to check.
         :return: True if the URL is valid, False otherwise.
         """
-        try:
-            result = urlparse(url)
-            # schema is http or https and netloc is not empty
-            return all([result.scheme in ["http", "https"], result.netloc])
-        except ValueError:
-            logger.debug("Provided URL is invalid: %s", url)
-            return False
+
+        result = urlparse(url)
+        # schema is http or https and netloc is not empty
+        return all([result.scheme in ["http", "https"], result.netloc])
 
     def _request_headers(self):
         """
