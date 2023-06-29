@@ -345,15 +345,6 @@ class Pipeline:
                 self._record_pipeline_step(step, inputs_buffer, pipeline_output)
             logger.debug("> Queue at step %s: %s", step, {k: list(v.keys()) for k, v in inputs_buffer.items()})
 
-            if len(inputs_buffer) > 0 and not [i for i in inputs_buffer.values() if i]:
-                # Everything in the inputs buffer is skipped, this either means we
-                # have a really nasty bug or that the Pipeline ran everything it could.
-                # Either way, bail!
-                logger.debug(
-                    "The input buffer is not empty, but all remaining components are skipped. The pipeline will stop here."
-                )
-                break
-
             component, inputs = inputs_buffer.popitem(last=False)  # FIFO
 
             # Make sure it didn't run too many times already
@@ -378,9 +369,11 @@ class Pipeline:
             # This component did not receive the input it needs: it must be on a skipped branch. Let's not run it.
             if action == "skip":
                 self.graph.nodes[component]["visits"] += 1
-                inputs_buffer = self._skip_downstream_nodes(component=component, inputs_buffer=inputs_buffer)
-                # Skipped nodes are put back into the queue
-                inputs_buffer[component] = {}
+                inputs_buffer = self._skip_downstream_unvisited_nodes(component=component, inputs_buffer=inputs_buffer)
+                continue
+
+            if action == "remove":
+                # This component has no reason of being in the run queue, it's best if we remove it
                 continue
 
             # **** RUN THE NODE ****
@@ -446,13 +439,16 @@ class Pipeline:
     # we chose to ignore these pylint warnings.
     def _calculate_action(  # pylint: disable=too-many-locals, too-many-return-statements
         self, name: str, inputs: Dict[str, Any], inputs_buffer: Dict[str, Any]
-    ) -> Literal["run", "wait", "skip"]:
+    ) -> Literal["run", "wait", "skip", "remove"]:
         """
         Calculates the action to take for the component specified by `name`.
-        There are three possible actions:
+        There are four possible actions:
             * run
             * wait
             * skip
+            * remove
+
+        The below conditions are evaluated in this order.
 
         Component will run if at least one of the following statements is true:
             * It received all mandatory inputs
@@ -467,8 +463,12 @@ class Pipeline:
             * It received all mandatory inputs and some optional inputs have not been skipped
 
         Component will be skipped if:
-            * All its mandatory inputs are skipped
-            * Can't determine state
+            * It never ran nor waited
+
+        Component will be removed if:
+            * It ran or waited at least once but can't do it again
+
+        If none of the above condition is met a PipelineRuntimeError is raised.
 
         For simplicity sake input components that create a cycle, or components that already ran
         and don't create a cycle are considered as skipped.
@@ -479,7 +479,10 @@ class Pipeline:
             inputs_buffer: Other components' inputs
 
         Returns:
-            Action to take for component specifing whether it should run, wait or skip
+            Action to take for component specifing whether it should run, wait, skip or be removed
+
+        Raises:
+            PipelineRuntimeError: If action to take can't be determined
         """
 
         # Upstream components/socket pairs the current component is connected to
@@ -576,24 +579,32 @@ class Pipeline:
         ###############
         # SKIP CHECKS #
         ###############
-        if input_components and set(input_components.keys()).issubset(skipped_components):
-            # All mandatory inputs are skipped, skipping this too
-            logger.debug("Component '%s' is skipped. All upstream components are skipped.", name)
+        if self.graph.nodes[name]["visits"] == 0:
+            # It's the first time visiting this component, if it can't run nor wait
+            # it's fine skipping it at this point.
+            logger.debug("Component '%s' is skipped. It can't run nor wait.", name)
             return "skip"
 
-        logger.debug(
-            "Component '%s' is skipped. Can't determine whether it should run or wait. "
-            "Mandatory input sockets: %s, optional input sockets: %s, received input: %s, "
-            "input components: %s, skipped components: %s, skipped optional inputs: %s.",
-            name,
-            mandatory_input_sockets,
-            optional_input_sockets,
-            list(inputs.keys()),
-            list(input_components.keys()),
-            skipped_components,
-            skipped_optional_input_sockets,
+        #################
+        # REMOVE CHECKS #
+        #################
+        if self.graph.nodes[name]["visits"] > 0:
+            # This component has already been visited at least once. If it can't run nor wait
+            # there is no reason to skip it again. So we it must be removed.
+            logger.debug("Component '%s' is removed. It can't run, wait or skip.", name)
+            return "remove"
+
+        # Can't determine action to take
+        raise PipelineRuntimeError(
+            f"Can't determine Component '{name}' action. "
+            f"Mandatory input sockets: {mandatory_input_sockets}, "
+            f"optional input sockets: {optional_input_sockets}, "
+            f"received input: {list(inputs.keys())}, "
+            f"input components: {list(input_components.keys())}, "
+            f"skipped components: {skipped_components}, "
+            f"skipped optional inputs: {skipped_optional_input_sockets}."
+            f"This is likely a Canals bug. Please open an issue at https://github.com/deepset-ai/canals.",
         )
-        return "skip"
 
     def _check_received_vs_expected_inputs(
         self, name: str, inputs: Dict[str, Any], expected_inputs: Dict[str, str]
@@ -639,14 +650,17 @@ class Pipeline:
         """
         return all(self.graph.nodes[node_to_wait_for]["visits"] > 0 for node_to_wait_for in nodes_to_wait_for)
 
-    def _skip_downstream_nodes(self, component: str, inputs_buffer: OrderedDict) -> OrderedDict:
+    def _skip_downstream_unvisited_nodes(self, component: str, inputs_buffer: OrderedDict) -> OrderedDict:
         """
         When a component is skipped, put all downstream nodes in the inputs buffer too: the might be skipped too,
         unless they are merge nodes. They will be evaluated later by the pipeline execution loop.
         """
         downstream_nodes = [e[1] for e in self.graph.out_edges(component)]
         for downstream_node in downstream_nodes:
-            if not downstream_node in inputs_buffer:
+            if downstream_node in inputs_buffer:
+                continue
+            if self.graph.nodes[downstream_node]["visits"] == 0:
+                # Skip downstream nodes only if they never been visited
                 inputs_buffer[downstream_node] = {}
         return inputs_buffer
 

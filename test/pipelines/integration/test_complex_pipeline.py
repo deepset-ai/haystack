@@ -27,7 +27,7 @@ def test_complex_pipeline(tmp_path):
     loop_merger = MergeLoop(expected_type=int, inputs=["in_1", "in_2"])
     summer = Sum(inputs=["in_1", "in_2", "in_3"])
 
-    pipeline = Pipeline(max_loops_allowed=13)
+    pipeline = Pipeline(max_loops_allowed=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", accumulate)
     pipeline.add_component("add_two", AddFixedValue(add=2))
