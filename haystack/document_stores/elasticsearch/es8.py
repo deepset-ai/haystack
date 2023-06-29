@@ -2,7 +2,6 @@ import logging
 from typing import List, Optional, Union
 
 from haystack.lazy_imports import LazyImport
-from haystack.document_stores.search_engine import prepare_hosts
 
 with LazyImport("Run 'pip install farm-haystack[elasticsearch8]'") as es_import:
     from elasticsearch import Elasticsearch, RequestError
@@ -12,6 +11,23 @@ with LazyImport("Run 'pip install farm-haystack[elasticsearch8]'") as es_import:
 from .base import _ElasticsearchDocumentStore
 
 logger = logging.getLogger(__name__)
+
+
+def _prepare_hosts(host: Union[str, List[str]], port: Union[int, List[int]], scheme: str):
+    """
+    Create a list of host(s), port(s) and scheme to allow direct client connections to multiple nodes,
+    in the format expected by the client.
+    """
+    if isinstance(host, list):
+        if isinstance(port, list):
+            if not len(port) == len(host):
+                raise ValueError("Length of list `host` must match length of list `port`")
+            hosts = [{"host": h, "port": p, "scheme": scheme} for h, p in zip(host, port)]
+        else:
+            hosts = [{"host": h, "port": port, "scheme": scheme} for h in host]
+    else:
+        hosts = [{"host": host, "port": port, "scheme": scheme}]
+    return hosts
 
 
 class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
@@ -135,7 +151,6 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
             password=password,
             api_key=api_key,
             api_key_id=api_key_id,
-            aws4auth=aws4auth,
             scheme=scheme,
             ca_certs=ca_certs,
             verify_certs=verify_certs,
@@ -193,8 +208,12 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
         verify_certs: bool,
         timeout: int,
         use_system_proxy: bool,
+        aws4auth: Optional[str] = "",
     ) -> Elasticsearch:
-        hosts = prepare_hosts(host, port, scheme)
+        hosts = _prepare_hosts(host, port, scheme)
+
+        if aws4auth:
+            logger.warning("AWS authentication is not supported in Elasticsearch version 8 and later!")
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`.")
