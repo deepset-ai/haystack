@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore, Elasticsearch
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.elasticsearch.es7 import Elasticsearch
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes import PreProcessor

@@ -1,1 +1,1 @@
-from .es7 import ElasticsearchDocumentStore, Elasticsearch
+from .es7 import ElasticsearchDocumentStore
