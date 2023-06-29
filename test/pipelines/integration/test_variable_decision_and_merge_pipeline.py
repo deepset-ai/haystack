@@ -5,26 +5,12 @@ import logging
 from pathlib import Path
 from pprint import pprint
 
-import pytest
-
 from canals.pipeline import Pipeline
 from test.sample_components import AddFixedValue, Remainder, Double, Sum
 
 logging.basicConfig(level=logging.DEBUG)
 
 
-# This pipeline is a problem now.
-# Components with variadics had a peculiarity, they always run even if they
-# didn't receive all their inputs.
-# This pipeline used to run, but now it doesn't as "sum" doesn't
-# receive all its inputs.
-# This happens because "parity" only returns
-# ouput on remainder_is_0, while remainder_is_1 is None.
-# This causes only "add_ten" to receive input, while "double" and "add_four"
-# never do and are skipped.
-# Since those components are never run "sum" doesn't receive all its inputs
-# and in the end is skipped.
-@pytest.mark.skip(reason="Since we removed variadics this pipeline doesn't return any output")
 def test_pipeline(tmp_path):
     add_one = AddFixedValue()
     summer = Sum(inputs=["in_1", "in_2", "in_3", "in_4"])

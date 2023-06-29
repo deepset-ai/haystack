@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from typing import Optional
 from dataclasses import make_dataclass, asdict, is_dataclass
 
 from canals.testing import BaseTestComponent
@@ -14,7 +15,9 @@ class Sum:
     """
 
     def __init__(self, inputs=["value_1"]) -> None:
-        self._input = make_dataclass("Input", fields=[(f, int) for f in inputs])
+        # mypy complains that we can't Optional is not a type, so we ignore the error
+        # cause we consider this to be correct
+        self._input = make_dataclass("Input", fields=[(f, Optional[int]) for f in inputs])  # type: ignore
 
     @component.input  # type: ignore
     def input(self):
@@ -30,7 +33,7 @@ class Sum:
     def run(self, data):
         values = []
         if is_dataclass(data):
-            values = asdict(data).values()
+            values = [n for n in asdict(data).values() if n]
         return self.output(total=sum(values))
 
 
