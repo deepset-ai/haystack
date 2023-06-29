@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Any
 
 import logging
 import itertools
@@ -33,7 +33,7 @@ def find_unambiguous_connection(
     possible_connections = [
         (out_sock, in_sock)
         for out_sock, in_sock in itertools.product(from_sockets, to_sockets)
-        if not in_sock.sender and out_sock.type == in_sock.type
+        if not in_sock.sender and (Any in in_sock.types or out_sock.types == in_sock.types)
     ]
 
     # No connections seem to be possible
@@ -72,10 +72,12 @@ def _connections_status(from_node: str, to_node: str, from_sockets: List[OutputS
     """
     Lists the status of the sockets, for error messages.
     """
-    from_sockets_list = "\n".join([f" - {socket.name} ({socket.type.__name__})" for socket in from_sockets])
+    from_sockets_list = "\n".join(
+        [f" - {socket.name} ({[t.__name__ for t in socket.types]})" for socket in from_sockets]
+    )
     to_sockets_list = "\n".join(
         [
-            f" - {socket.name} ({socket.type.__name__}, {'sent by '+socket.sender if socket.sender else 'available'})"
+            f" - {socket.name} ({[t.__name__ for t in socket.types]}, {'sent by '+socket.sender if socket.sender else 'available'})"
             for socket in to_sockets
         ]
     )

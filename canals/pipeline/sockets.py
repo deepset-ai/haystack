@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Union, Optional, Dict, get_args
+from typing import Union, Optional, Dict, Set, get_origin, get_args
 
 import logging
 from dataclasses import dataclass, fields
@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OutputSocket:
     name: str
-    type: type
+    types: Set[type]
 
 
 @dataclass
 class InputSocket:
     name: str
-    type: type
+    types: Set[type]
     sender: Optional[str] = None
 
 
@@ -30,17 +30,12 @@ def find_input_sockets(component) -> Dict[str, InputSocket]:
 
     input_sockets = {}
     for field in fields(component.__canals_input__):
-        type_ = field.type
-        #   Note: we're forced to use type() == type() due to an explicit limitation of the typing library,
-        #   that disables `issubclass` on typing classes.
-        if hasattr(type_, "__origin__") and type_.__origin__ == Union:
-            if len(get_args(type_)) == 2 and type(None) in get_args(type_):
-                # we support optional types, but unwrap them
-                type_ = get_args(field.type)[0]
-            else:
-                raise ValueError("Components do not support Union types for connections yet.")
+        if get_origin(field.type) is Union:
+            types = {t for t in get_args(field.type) if t is not type(None)}
+        else:
+            types = {field.type}
 
-        input_sockets[field.name] = InputSocket(name=field.name, type=type_)
+        input_sockets[field.name] = InputSocket(name=field.name, types=types)
 
     return input_sockets
 
@@ -51,16 +46,11 @@ def find_output_sockets(component) -> Dict[str, OutputSocket]:
     """
     output_sockets = {}
     for field in fields(component.__canals_output__):
-        type_ = field.type
-        #   Note: we're forced to use type() == type() due to an explicit limitation of the typing library,
-        #   that disables `issubclass` on typing classes.
-        if hasattr(type_, "__origin__") and type_.__origin__ == Union:
-            if len(get_args(type_)) == 2 and type(None) in get_args(type_):
-                # we support optional types, but unwrap them
-                type_ = get_args(field.type)[0]
-            else:
-                raise ValueError("Components do not support Union types for connections yet.")
+        if get_origin(field.type) is Union:
+            types = {t for t in get_args(field.type) if t is not type(None)}
+        else:
+            types = {field.type}
 
-        output_sockets[field.name] = OutputSocket(name=field.name, type=type_)
+        output_sockets[field.name] = OutputSocket(name=field.name, types=types)
 
     return output_sockets

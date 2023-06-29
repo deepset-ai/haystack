@@ -1,7 +1,4 @@
-import typing
 from typing import List, Optional, Union, Set, Sequence, Iterable, Dict, Mapping, Tuple
-
-from dataclasses import dataclass
 
 import pytest
 
@@ -34,7 +31,7 @@ def test_find_output_sockets_one_regular_builtin_type_output():
 
     comp = MockComponent()
     sockets = find_output_sockets(comp)
-    expected = {"output_value": OutputSocket(name="output_value", type=int)}
+    expected = {"output_value": OutputSocket(name="output_value", types={int})}
     assert sockets == expected
 
 
@@ -63,9 +60,9 @@ def test_find_output_sockets_many_regular_builtin_type_outputs():
     comp = MockComponent()
     sockets = find_output_sockets(comp)
     expected = {
-        "int_value": OutputSocket(name="int_value", type=int),
-        "str_value": OutputSocket(name="str_value", type=str),
-        "bool_value": OutputSocket(name="bool_value", type=bool),
+        "int_value": OutputSocket(name="int_value", types={int}),
+        "str_value": OutputSocket(name="str_value", types={str}),
+        "bool_value": OutputSocket(name="bool_value", types={bool}),
     }
     assert sockets == expected
 
@@ -95,7 +92,7 @@ def test_find_output_sockets_one_regular_object_type_output():
 
     comp = MockComponent()
     sockets = find_output_sockets(comp)
-    expected = {"output_value": OutputSocket(name="output_value", type=MyObject)}
+    expected = {"output_value": OutputSocket(name="output_value", types={MyObject})}
     assert sockets == expected
 
 
@@ -120,8 +117,9 @@ def test_find_output_sockets_one_union_type_output():
             return self.output(output_value=1)
 
     comp = MockComponent()
-    with pytest.raises(ValueError, match="Components do not support Union types for connections"):
-        find_output_sockets(comp)
+    sockets = find_output_sockets(comp)
+    expected = {"output_value": OutputSocket(name="output_value", types={str, int})}
+    assert sockets == expected
 
 
 def test_find_output_sockets_one_optional_builtin_type_output():
@@ -146,7 +144,7 @@ def test_find_output_sockets_one_optional_builtin_type_output():
 
     comp = MockComponent()
     sockets = find_output_sockets(comp)
-    expected = {"output_value": OutputSocket(name="output_value", type=int)}
+    expected = {"output_value": OutputSocket(name="output_value", types={int})}
     assert sockets == expected
 
 
@@ -175,7 +173,7 @@ def test_find_output_sockets_one_optional_object_type_output():
 
     comp = MockComponent()
     sockets = find_output_sockets(comp)
-    expected = {"output_value": OutputSocket(name="output_value", type=MyObject)}
+    expected = {"output_value": OutputSocket(name="output_value", types={MyObject})}
     assert sockets == expected
 
 
@@ -205,10 +203,10 @@ def test_find_output_sockets_sequences_of_builtin_type_output():
     comp = MockComponent()
     sockets = find_output_sockets(comp)
     expected = {
-        "list_value": OutputSocket(name="list_value", type=typing.List[int]),
-        "set_value": OutputSocket(name="set_value", type=typing.Set[int]),
-        "sequence_value": OutputSocket(name="sequence_value", type=typing.Sequence[int]),
-        "iterable_value": OutputSocket(name="iterable_value", type=typing.Iterable[int]),
+        "list_value": OutputSocket(name="list_value", types={List[int]}),
+        "set_value": OutputSocket(name="set_value", types={Set[int]}),
+        "sequence_value": OutputSocket(name="sequence_value", types={Sequence[int]}),
+        "iterable_value": OutputSocket(name="iterable_value", types={Iterable[int]}),
     }
     assert sockets == expected
 
@@ -242,10 +240,10 @@ def test_find_output_sockets_sequences_of_object_type_output():
     comp = MockComponent()
     sockets = find_output_sockets(comp)
     expected = {
-        "list_value": OutputSocket(name="list_value", type=typing.List[MyObject]),
-        "set_value": OutputSocket(name="set_value", type=typing.Set[MyObject]),
-        "sequence_value": OutputSocket(name="sequence_value", type=typing.Sequence[MyObject]),
-        "iterable_value": OutputSocket(name="iterable_value", type=typing.Iterable[MyObject]),
+        "list_value": OutputSocket(name="list_value", types={List[MyObject]}),
+        "set_value": OutputSocket(name="set_value", types={Set[MyObject]}),
+        "sequence_value": OutputSocket(name="sequence_value", types={Sequence[MyObject]}),
+        "iterable_value": OutputSocket(name="iterable_value", types={Iterable[MyObject]}),
     }
     assert sockets == expected
 
@@ -274,8 +272,8 @@ def test_find_output_sockets_mappings_of_builtin_type_output():
     comp = MockComponent()
     sockets = find_output_sockets(comp)
     expected = {
-        "dict_value": OutputSocket(name="dict_value", type=typing.Dict[str, int]),
-        "mapping_value": OutputSocket(name="mapping_value", type=typing.Mapping[str, int]),
+        "dict_value": OutputSocket(name="dict_value", types={Dict[str, int]}),
+        "mapping_value": OutputSocket(name="mapping_value", types={Mapping[str, int]}),
     }
     assert sockets == expected
 
@@ -307,8 +305,8 @@ def test_find_output_sockets_mappings_of_object_type_output():
     comp = MockComponent()
     sockets = find_output_sockets(comp)
     expected = {
-        "dict_value": OutputSocket(name="dict_value", type=typing.Dict[str, MyObject]),
-        "mapping_value": OutputSocket(name="mapping_value", type=typing.Mapping[str, MyObject]),
+        "dict_value": OutputSocket(name="dict_value", types={Dict[str, MyObject]}),
+        "mapping_value": OutputSocket(name="mapping_value", types={Mapping[str, MyObject]}),
     }
     assert sockets == expected
 
@@ -339,6 +337,6 @@ def test_find_output_sockets_tuple_type_output():
     comp = MockComponent()
     sockets = find_output_sockets(comp)
     expected = {
-        "tuple_value": OutputSocket(name="tuple_value", type=typing.Tuple[str, MyObject]),
+        "tuple_value": OutputSocket(name="tuple_value", types={Tuple[str, MyObject]}),
     }
     assert sockets == expected
