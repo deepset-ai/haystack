@@ -232,7 +232,12 @@ class _Component:
         class_.__init__ = init_defaults(class_.__init__)
 
         if class_.__name__ in self.registry:
-            logger.error("Component %s is already registered")
+            logger.error(
+                "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
+                class_.__name__,
+                self.registry[class_.__name__],
+                class_,
+            )
 
         self.registry[class_.__name__] = class_
         logger.debug("Registered Component %s", class_)
