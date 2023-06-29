@@ -1,11 +1,6 @@
 import logging
-from typing import Dict, List, Optional, Type, Union
+from typing import List, Optional, Type, Union
 
-import numpy as np
-
-from haystack.errors import DocumentStoreError
-from haystack.schema import Document, FilterType
-from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.lazy_imports import LazyImport
 from haystack.document_stores.search_engine import prepare_hosts
 
