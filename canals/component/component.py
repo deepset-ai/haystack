@@ -231,6 +231,9 @@ class _Component:
         # Makes sure the self.defaults dictionary is always present
         class_.__init__ = init_defaults(class_.__init__)
 
+        if class_.__name__ in self.registry:
+            logger.error("Component %s is already registered")
+
         self.registry[class_.__name__] = class_
         logger.debug("Registered Component %s", class_)
 
