@@ -7,7 +7,7 @@ from haystack.errors import DocumentStoreError
 from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.lazy_imports import LazyImport
-from .search_engine import SearchEngineDocumentStore, prepare_hosts
+from haystack.document_stores.search_engine import SearchEngineDocumentStore, prepare_hosts
 
 with LazyImport("Run 'pip install farm-haystack[elasticsearch]'") as es_import:
     from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
