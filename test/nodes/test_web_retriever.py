@@ -8,6 +8,7 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes import WebRetriever, PromptNode
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.web import SearchResult
+from test.nodes.conftest import example_serperdev_response
 
 
 @pytest.fixture
@@ -69,6 +70,7 @@ def test_init_custom_parameters():
 
 @pytest.mark.unit
 def test_retrieve_from_web_all_params(mock_web_search):
+    # tests that we get top_k results even if PreProcessor is provided
     top_k = 7
     wr = WebRetriever(api_key="fake_key")
 
@@ -79,22 +81,25 @@ def test_retrieve_from_web_all_params(mock_web_search):
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
     # If top_k was provided and positive, we expect no more than that many documents in the result.
-    assert len(result) <= top_k
+    assert len(result) == top_k
 
 
 @pytest.mark.unit
 def test_retrieve_from_web_no_preprocessor(mock_web_search):
+    # tests that we get top_k results when no PreProcessor is provided
     top_k = 7
     wr = WebRetriever(api_key="fake_key")
     result = wr._retrieve_from_web("query", None, top_k)
 
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
-    assert len(result) <= top_k
+    assert len(result) == top_k
 
 
 @pytest.mark.unit
 def test_retrieve_from_web_no_top_k(mock_web_search):
+    # tests that when top_k is None, we get all results
+    # even if PreProcessor is provided
     wr = WebRetriever(api_key="fake_key")
     preprocessor = PreProcessor()
 
@@ -102,17 +107,29 @@ def test_retrieve_from_web_no_top_k(mock_web_search):
 
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
-    assert len(result) >= 1
+    assert len(result) == len(example_serperdev_response["organic"])
 
 
 @pytest.mark.unit
 def test_retrieve_from_web_no_preprocessor_no_top_k(mock_web_search):
+    # tests that when no PreProcessor and top_k is None, we get all results
     wr = WebRetriever(api_key="fake_key")
     result = wr._retrieve_from_web("query", None, None)
 
     assert isinstance(result, list)
     assert all(isinstance(doc, Document) for doc in result)
-    assert len(result) >= 1
+    assert len(result) == len(example_serperdev_response["organic"])
+
+
+@pytest.mark.unit
+def test_retrieve_from_web_invalid_query(mock_web_search):
+    # however, if query is None or empty, we expect an error
+    wr = WebRetriever(api_key="fake_key")
+    with pytest.raises(ValueError, match="WebSearch run requires"):
+        wr._retrieve_from_web("", None, None)
+
+    with pytest.raises(ValueError, match="WebSearch run requires"):
+        wr._retrieve_from_web(None, None, None)
 
 
 @pytest.mark.unit
