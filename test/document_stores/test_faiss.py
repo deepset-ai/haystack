@@ -217,6 +217,12 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
             assert ds.get_embedding_count() == i
             assert ds.get_document_by_id(id=first_doc_id).meta["vector_id"] == "0"
 
+            # Check if the embeddings of the first document remain unchanged after multiple updates
+            if i == 1:
+                first_doc_embedding = ds.get_document_by_id(id=first_doc_id).embedding
+            else:
+                assert np.array_equal(ds.get_document_by_id(id=first_doc_id).embedding, first_doc_embedding)
+
     @pytest.mark.integration
     def test_passing_index_from_outside(self, documents_with_embeddings, tmp_path):
         d = 768

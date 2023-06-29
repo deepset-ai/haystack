@@ -278,10 +278,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                 if add_vectors:
                     if not self.faiss_indexes[index].is_trained:
                         raise ValueError(
-                            "FAISS index of type {} must be trained before adding vectors. Call `train_index()` "
+                            f"FAISS index of type {self.faiss_index_factory_str} must be trained before adding vectors. Call `train_index()` "
                             "method before adding the vectors. For details, refer to the documentation: "
                             "[FAISSDocumentStore API](https://docs.haystack.deepset.ai/reference/document-store-api#faissdocumentstoretrain_index)."
-                            "".format(self.faiss_index_factory_str)
                         )
 
                     embeddings = [doc.embedding for doc in batch_documents]
@@ -296,9 +295,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 # update_embeddings method (update_existing_embeddings=False).
                 # If no new embeddings are provided, we save the existing FAISS vector ids
                 elif self.duplicate_documents == "overwrite":
-                    existing_docs = self.get_documents_by_id(
-                        ids=[doc.id for doc in batch_documents], index=index, batch_size=batch_size
-                    )
+                    existing_docs = self.get_documents_by_id(ids=[doc.id for doc in batch_documents], index=index)
                     existing_docs_vector_ids = {
                         doc.id: doc.meta["vector_id"] for doc in existing_docs if doc.meta and "vector_id" in doc.meta
                     }
