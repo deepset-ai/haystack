@@ -373,7 +373,7 @@ class Pipeline:
                 continue
 
             if action == "remove":
-                # This component has no reason of being in the run queue and we need to remove it. For example, this can happen to components that are connected to skipped branches of the pipeline. 
+                # This component has no reason of being in the run queue and we need to remove it. For example, this can happen to components that are connected to skipped branches of the pipeline.
                 continue
 
             # **** RUN THE NODE ****
