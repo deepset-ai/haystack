@@ -355,3 +355,20 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         with patch(f"{ElasticsearchDocumentStore.__module__}.bulk") as mocked_bulk:
             mocked_document_store.write_documents(documents)
             assert mocked_bulk.call_count == 5
+
+    # The following tests are overridden only to be able to skip them depending on ES version
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.unit
+    def test_get_all_documents_return_embedding_true(self, mocked_document_store):
+        super().test_get_all_documents_return_embedding_true(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.unit
+    def test_get_all_documents_return_embedding_false(self, mocked_document_store):
+        super().test_get_all_documents_return_embedding_false(mocked_document_store)
+
+    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
+    @pytest.mark.unit
+    def test_get_all_documents_excluded_meta_data_has_no_influence(self, mocked_document_store):
+        super().test_get_all_documents_excluded_meta_data_has_no_influence(mocked_document_store)

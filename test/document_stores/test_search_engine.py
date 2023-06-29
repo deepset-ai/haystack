@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 from haystack.document_stores.search_engine import SearchEngineDocumentStore
-from haystack.document_stores.elasticsearch import VERSION
 
 
 @pytest.mark.unit
@@ -93,7 +92,6 @@ class SearchEngineDocumentStoreTestAbstract:
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["_source"] == {"excludes": ["foo", "embedding"]}
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
     def test_get_all_documents_return_embedding_true(self, mocked_document_store):
         mocked_document_store.return_embedding = False
@@ -103,7 +101,6 @@ class SearchEngineDocumentStoreTestAbstract:
         _, kwargs = mocked_document_store.client.search.call_args
         assert "_source" not in kwargs
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
     def test_get_all_documents_return_embedding_false(self, mocked_document_store):
         mocked_document_store.return_embedding = True
@@ -116,7 +113,6 @@ class SearchEngineDocumentStoreTestAbstract:
         body = kwargs.get("body", kwargs)
         assert body["_source"] == {"excludes": ["embedding"]}
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 8 is not supported")
     @pytest.mark.unit
     def test_get_all_documents_excluded_meta_data_has_no_influence(self, mocked_document_store):
         mocked_document_store.excluded_meta_data = ["foo"]
