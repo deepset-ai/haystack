@@ -524,33 +524,30 @@ class Pipeline:
         ##############
         # RUN CHECKS #
         ##############
-        if mandatory_input_sockets.issubset(received_input_sockets):
-            # We received all mandatory inputs
-            if not optional_input_sockets:
-                # We have no optional inputs
-                logger.debug("Component '%s' is ready to run. All mandatory inputs received.", name)
-                return "run"
-            if skipped_optional_input_sockets == optional_input_sockets:
-                # All optional inputs are skipped
-                logger.debug(
-                    "Component '%s' is ready to run. All mandatory inputs received, all optional inputs are skipped.",
-                    name,
-                )
-                return "run"
-            if input_sockets == received_input_sockets | mandatory_input_sockets | skipped_optional_input_sockets:
-                # We received part of the optional inputs, the rest are skipped
-                logger.debug(
-                    "Component '%s' is ready to run. All mandatory inputs received, skipped some optional inputs: %s",
-                    name,
-                    skipped_optional_input_sockets,
-                )
-                return "run"
+        if (
+            mandatory_input_sockets.issubset(received_input_sockets)
+            and input_sockets == received_input_sockets | mandatory_input_sockets | skipped_optional_input_sockets
+        ):
+            # We received all mandatory inputs and:
+            #   * There are no optional inputs or
+            #   * All optional inputs are skipped or
+            #   * We received part of the optional inputs, the rest are skipped
+            if logger.level == logging.DEBUG:
+                if not optional_input_sockets:
+                    logger.debug("Component '%s' is ready to run. All mandatory inputs received.", name)
+                else:
+                    logger.debug(
+                        "Component '%s' is ready to run. All mandatory inputs received, skipped optional inputs: %s",
+                        name,
+                        skipped_optional_input_sockets,
+                    )
+            return "run"
 
         if set(input_components.values()).issubset(received_input_sockets):
             # We have data from each connected input component.
-            # We reach this when the current component is the first of the pipeline or when
-            # it has defaults and all its input components have run.
-            logger.debug("Component '%s' is ready to run: all expected inputs were received.", name)
+            # We reach this when the current component is the first of the pipeline or
+            # when it has defaults and all its input components have run.
+            logger.debug("Component '%s' is ready to run. All expected inputs were received.", name)
             return "run"
 
         ###############
