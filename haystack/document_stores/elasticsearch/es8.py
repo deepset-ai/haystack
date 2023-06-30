@@ -188,7 +188,6 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
 
     def _do_bulk(self, *args, **kwargs):
         """Override the base class method to use the Elasticsearch client"""
-        headers = kwargs.pop("headers", {})
         return bulk(*args, **kwargs)
 
     def _do_scan(self, *args, **kwargs):
