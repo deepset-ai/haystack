@@ -4,6 +4,7 @@
 import logging
 
 import networkx
+from networkx.drawing.nx_agraph import to_agraph as nx_to_agraph
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ def to_agraph(graph: networkx.MultiDiGraph):
     Renders a pipeline graph using PyGraphViz. You need to install it and all its system dependencies for it to work.
     """
     try:
-        from networkx.drawing.nx_agraph import to_agraph as nx_to_agraph
+        import pygraphviz  # pylint: disable=unused-import,import-outside-toplevel
     except (ModuleNotFoundError, ImportError) as exc:
         raise ImportError(
             "Can't use 'pygraphviz' to draw this pipeline: pygraphviz could not be imported. "
