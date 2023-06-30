@@ -123,16 +123,10 @@ jobs:
           sudo apt install graphviz libgraphviz-dev
           pip install .[mermaid,graphviz,dev]
 
-
-      - name: Test pygraphviz install (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: python -c "import pygraphviz"
-
-
       - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install graphviz
+          brew install graphviz@2.49.0
           pip install .[mermaid,graphviz,dev]
 
       - name: Install Canals (Windows)
@@ -147,7 +141,7 @@ jobs:
           pip install .[mermaid,dev]
 
       - name: Run
-        run: pytest --cov-report xml:coverage.xml --cov="canals" test/  #hatch run cov
+        run: pytest --cov-report xml:coverage.xml --cov="canals" test/
 
       - name: Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.version == 3.11
