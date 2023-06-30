@@ -126,8 +126,8 @@ jobs:
       - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew search graphviz
-          brew install graphviz@2.49.0
+          # brew only offers graphviz 8, which seems to be incompatible with pygraphviz :(
+          # brew install graphviz@2.49.0
           pip install .[mermaid,graphviz,dev]
 
       - name: Install Canals (Windows)
