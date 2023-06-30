@@ -147,7 +147,7 @@ jobs:
           pip install .[mermaid,dev]
 
       - name: Run
-        run: hatch run cov
+        run: pytest --cov-report xml:coverage.xml --cov="canals" test/  #hatch run cov
 
       - name: Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.version == 3.11
