@@ -108,13 +108,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             )
 
         self._init_indices(
-            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
+            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index, headers={}
         )
 
-    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
+    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool, headers) -> None:
         if recreate_index:
-            self._index_delete(index)
-            self._index_delete(label_index)
+            self._index_delete(index, headers)
+            self._index_delete(label_index, headers)
 
         if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
