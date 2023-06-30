@@ -260,11 +260,12 @@ class _Component:
         # Check that the run method respects all constraints
         _check_run_signature(class_)
 
+        # Makes sure the self.defaults and self.init_parameters dictionaries are always present
+        class_.init_parameters = {}
+        class_.defaults = {}
+
         # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
         class_.__init__ = _save_init_params(class_.__init__)
-
-        # Makes sure the self.defaults dictionary is always present
-        class_.defaults = {}
 
         if class_.__name__ in self.registry:
             logger.error(
@@ -386,9 +387,6 @@ def _save_init_params(init_func):
         init_func(self, *args, **kwargs)
 
         # Collect and store all the init parameters, preserving whatever the components might have already added there
-        init_parameters = {**kwargs}
-        if hasattr(self, "init_parameters"):
-            init_parameters = {**init_parameters, **self.init_parameters}
-        self.init_parameters = init_parameters
+        self.init_parameters = {**kwargs, **self.init_parameters}
 
     return wrapper
