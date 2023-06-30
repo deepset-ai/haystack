@@ -123,6 +123,12 @@ jobs:
           sudo apt install graphviz libgraphviz-dev
           pip install .[mermaid,graphviz,dev]
 
+
+      - name: Test pygraphviz install (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: python -c "import pygraphviz"
+
+
       - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
