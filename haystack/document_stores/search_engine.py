@@ -113,8 +113,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:
-            self._delete_index(index)
-            self._delete_index(label_index)
+            self._index_delete(index)
+            self._index_delete(label_index)
 
         if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
@@ -162,13 +162,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     @abstractmethod
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         pass
-
-    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
-        if logger.isEnabledFor(logging.DEBUG):
-            if self.client.indices.exists_alias(name=index_name):
-                logger.debug("Index name %s is an alias.", index_name)
-
-        return self.client.indices.exists(index=index_name, headers=headers)
 
     @abstractmethod
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
@@ -280,7 +273,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
             if not self.return_embedding and self.embedding_field:
                 query["_source"] = {"excludes": [self.embedding_field]}
-            result = self.client.search(index=index, **query, headers=headers)["hits"]["hits"]
+            result = self._search(index=index, **query, headers=headers)["hits"]["hits"]
             documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
@@ -343,7 +336,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
-        result = self.client.search(**body, index=index, headers=headers)
+        result = self._search(**body, index=index, headers=headers)
 
         values = []
         current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
@@ -354,7 +347,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         # Only 10 results get returned at a time, so apply pagination
         while after_key:
             body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
-            result = self.client.search(**body, index=index, headers=headers)
+            result = self._search(**body, index=index, headers=headers)
             current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
             after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
             for bucket in current_buckets:
@@ -524,7 +517,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not index:
             index = self.index
         body = {"doc": meta}
-        self.client.update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
+        self._update(index=index, id=id, **body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(
         self,
@@ -545,7 +538,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        result = self.client.count(index=index, body=body, headers=headers)
+        result = self._count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -572,7 +565,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        result = self.client.count(index=index, body=body, headers=headers)
+        result = self._count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -911,7 +904,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
+        result = self._search(index=index, **body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
@@ -1392,7 +1385,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         batch_size = batch_size or self.batch_size
 
         if self.refresh_type == "false":
-            self.client.indices.refresh(index=index, headers=headers)
+            self._index_refresh(index, headers)
 
         if not self.embedding_field:
             raise RuntimeError("Please specify the arg `embedding_field` when initializing the Document Store")
@@ -1560,10 +1553,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
-        self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
+        self._delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            self.client.indices.refresh(index=index)
+            self._index_refresh(index, headers)
 
     def delete_labels(
         self,
@@ -1625,9 +1618,32 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 index,
                 self.__class__.__name__,
             )
-        self._delete_index(index)
+        self._index_delete(index)
 
-    def _delete_index(self, index: str):
+    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        if logger.isEnabledFor(logging.DEBUG):
+            if self.client.indices.exists_alias(name=index_name):
+                logger.debug("Index name %s is an alias.", index_name)
+
+        return self.client.indices.exists(index=index_name, headers=headers)
+
+    def _index_delete(self, index):
         if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info("Index '%s' deleted.", index)
+
+    def _index_refresh(self, index, headers):
+        if self._index_exists(index):
+            self.client.indices.refresh(index=index, headers=headers)
+
+    def _search(self, *args, **kwargs):
+        return self.client.search(*args, **kwargs)
+
+    def _update(self, *args, **kwargs):
+        return self.client.update(*args, **kwargs)
+
+    def _count(self, *args, **kwargs):
+        return self.client.count(*args, **kwargs)
+
+    def _delete_by_query(self, *args, **kwargs):
+        return self.client.delete_by_query(*args, **kwargs)
