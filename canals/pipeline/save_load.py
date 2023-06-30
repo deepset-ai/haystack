@@ -142,7 +142,7 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
                 if class_name not in component.registry:
                     raise PipelineUnmarshalError(
                         f"Failed loading Pipeline '{pipeline_name}'. Can't find Component class '{class_name}'. "
-                        "Please import that Component before loading."
+                        "Make sure you imported this class before loading the pipelines."
                     )
                 component_class = component.registry[class_name]
                 component_instance = component_class(**component_schema.get("init_parameters", {}))
