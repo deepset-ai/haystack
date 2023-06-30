@@ -1553,7 +1553,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
-        self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
+        self._delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             self._index_refresh(index, headers)
