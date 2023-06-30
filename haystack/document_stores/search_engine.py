@@ -1618,7 +1618,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 index,
                 self.__class__.__name__,
             )
-        self._index_delete(index, {})
+        self._index_delete(index)
 
     def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
         if logger.isEnabledFor(logging.DEBUG):
