@@ -108,13 +108,13 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             )
 
         self._init_indices(
-            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index, headers={}
+            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
         )
 
-    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool, headers) -> None:
+    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:
-            self._index_delete(index, headers)
-            self._index_delete(label_index, headers)
+            self._index_delete(index)
+            self._index_delete(label_index)
 
         if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
@@ -1627,7 +1627,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         return self.client.indices.exists(index=index_name, headers=headers)
 
-    def _index_delete(self, index, headers):
+    def _index_delete(self, index):
         if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info("Index '%s' deleted.", index)
