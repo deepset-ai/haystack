@@ -43,6 +43,8 @@ dev = [
   "pylint==2.15.10",
   "black[jupyter]==22.6.0",
   "pytest",
+  "pytest-cov",
+  "requests",
   "coverage",
 ]
 docs = [
