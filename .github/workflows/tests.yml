@@ -126,6 +126,7 @@ jobs:
       - name: Install Canals (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
+          brew versions graphviz
           brew install graphviz@2.49.0
           pip install .[mermaid,graphviz,dev]
 
