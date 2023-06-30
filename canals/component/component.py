@@ -4,11 +4,10 @@
 import logging
 import inspect
 from typing import Protocol, Union, List, Any, get_origin, get_args
-
 from dataclasses import fields, Field
+from functools import wraps
 
 from canals.errors import ComponentError
-from canals.component.decorators import save_init_params, init_defaults
 from canals.component.input_output import Connection, _input, _output
 
 
@@ -261,12 +260,12 @@ class _Component:
         # Check that the run method respects all constraints
         _check_run_signature(class_)
 
-        # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
-        # See `save_init_params()`.
-        class_.__init__ = save_init_params(class_.__init__)
+        # Makes sure the self.defaults and self.init_parameters dictionaries are always present
+        class_.init_parameters = {}
+        class_.defaults = {}
 
-        # Makes sure the self.defaults dictionary is always present
-        class_.__init__ = init_defaults(class_.__init__)
+        # Automatically registers all the init parameters in an instance attribute called `init_parameters`.
+        class_.__init__ = _save_init_params(class_.__init__)
 
         if class_.__name__ in self.registry:
             logger.error(
@@ -375,3 +374,19 @@ def _mandatory_inputs(self) -> List[str]:
     This is meant to be set as a property in a Component.
     """
     return [f.name for f in fields(self.__canals_input__) if not _is_optional(f)]
+
+
+def _save_init_params(init_func):
+    """
+    Decorator that saves the init parameters of a component in `self.init_parameters`
+    """
+
+    @wraps(init_func)
+    def wrapper(self, *args, **kwargs):
+        # Call the actual __init__ function with the arguments
+        init_func(self, *args, **kwargs)
+
+        # Collect and store all the init parameters, preserving whatever the components might have already added there
+        self.init_parameters = {**kwargs, **self.init_parameters}
+
+    return wrapper

@@ -1,6 +1,7 @@
 import pytest
 
-from canals.component import component, ComponentError
+from canals.component import component
+from canals.errors import ComponentError
 
 
 def test_correct_declaration():
