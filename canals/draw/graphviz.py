@@ -16,7 +16,7 @@ def to_agraph(graph: networkx.MultiDiGraph):
     Renders a pipeline graph using PyGraphViz. You need to install it and all its system dependencies for it to work.
     """
     try:
-        import pygraphviz  # pylint: disable=unused-import,import-outside-toplevel
+        # import pygraphviz  # pylint: disable=unused-import,import-outside-toplevel
         from networkx.drawing.nx_agraph import (  # pylint: disable=unused-import,import-outside-toplevel
             to_agraph as nx_to_agraph,
         )
