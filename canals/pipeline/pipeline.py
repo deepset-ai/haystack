@@ -14,6 +14,7 @@ from dataclasses import fields
 
 import networkx
 
+from canals.component import Component
 from canals.errors import PipelineConnectError, PipelineMaxLoops, PipelineRuntimeError, PipelineValidationError
 from canals.draw import draw, convert_for_debug, RenderingEngines
 from canals.pipeline.sockets import InputSocket, OutputSocket, find_input_sockets, find_output_sockets
@@ -87,7 +88,7 @@ class Pipeline:
         nodes.sort()
         return nodes
 
-    def add_component(self, name: str, instance: Any) -> None:
+    def add_component(self, name: str, instance: Component) -> None:
         """
         Create a component for the given component. Components are not connected to anything by default:
         use `Pipeline.connect()` to connect components together.
@@ -226,7 +227,7 @@ class Pipeline:
         # Stores the name of the node that will send its output to this socket
         to_socket.sender = from_node
 
-    def get_component(self, name: str) -> object:
+    def get_component(self, name: str) -> Component:
         """
         Returns an instance of a component.
 

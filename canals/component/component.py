@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import inspect
-from typing import Union, List, get_origin, get_args
+from typing import Protocol, Union, List, Any, get_origin, get_args
 
 from dataclasses import fields, Field
 
@@ -13,6 +13,43 @@ from canals.component.input_output import Connection, _input, _output
 
 
 logger = logging.getLogger(__name__)
+
+
+# We ignore too-few-public-methods Pylint error as this is only meant to be
+# the definition of the Component interface.
+# A concrete Component will have more than method in any case.
+class Component(Protocol):  # pylint: disable=too-few-public-methods
+    """
+    Abstract interface of a Component.
+    This is only used by type checking tools.
+
+    If you want to create a new Component use the @component decorator.
+    """
+
+    def run(self, data: Any) -> Any:
+        """
+        Takes the Component input and returns its output.
+        Input and output dataclasses types must be defined in separate methods
+        decorated with @component.input and @component.output respectively.
+
+        We use Any both as data and return types since dataclasses don't have a specific type.
+        """
+
+    @property
+    def __canals_input__(self) -> type:
+        pass
+
+    @property
+    def __canals_output__(self) -> type:
+        pass
+
+    @property
+    def __canals_optional_inputs__(self) -> List[str]:
+        pass
+
+    @property
+    def __canals_mandatory_inputs__(self) -> List[str]:
+        pass
 
 
 class _Component:
@@ -324,7 +361,6 @@ def _is_optional(field: Field) -> bool:
     return get_origin(field.type) is Union and type(None) in get_args(field.type)
 
 
-# TODO: Remember to set the self type to Component when we create its Protocol
 def _optional_inputs(self) -> List[str]:
     """
     Return all field names of self that have an Optional type.
@@ -333,7 +369,6 @@ def _optional_inputs(self) -> List[str]:
     return [f.name for f in fields(self.__canals_input__) if _is_optional(f)]
 
 
-# TODO: Remember to set the self type to Component when we create its Protocol
 def _mandatory_inputs(self) -> List[str]:
     """
     Return all field names of self that don't have an Optional type.
