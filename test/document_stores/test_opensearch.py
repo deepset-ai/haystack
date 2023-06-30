@@ -518,7 +518,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.client.indices.exists_alias.return_value = True
 
         with caplog.at_level(logging.DEBUG, logger="haystack.document_stores.search_engine"):
-            mocked_document_store._init_indices(self.index_name, "labels", False, False)
+            mocked_document_store._init_indices(self.index_name, "labels", False, False, {})
 
         assert f"Index name {self.index_name} is an alias." in caplog.text
 
@@ -759,7 +759,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         self, mocked_document_store, create_index, recreate_index
     ):
         mocked_document_store._validate_and_adjust_document_index = MagicMock()
-        mocked_document_store._init_indices(self.index_name, "label_index", create_index, recreate_index)
+        mocked_document_store._init_indices(self.index_name, "label_index", create_index, recreate_index, {})
 
         mocked_document_store._validate_and_adjust_document_index.assert_called_once()
 
@@ -775,27 +775,33 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store._validate_and_adjust_document_index = MagicMock()
 
         with caplog.at_level(logging.WARNING):
-            mocked_document_store._init_indices(self.index_name, "label_index", create_index, recreate_index)
+            mocked_document_store._init_indices(self.index_name, "label_index", create_index, recreate_index, {})
             assert "Skipping index validation" in caplog.text
             mocked_document_store._validate_and_adjust_document_index.assert_not_called()
 
     @pytest.mark.unit
     def test__init_indices_creates_index_if_not_exists(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
-        mocked_document_store._init_indices(self.index_name, "label_index", create_index=True, recreate_index=False)
+        mocked_document_store._init_indices(
+            self.index_name, "label_index", create_index=True, recreate_index=False, headers={}
+        )
 
         mocked_document_store.client.indices.create.assert_called()
 
     @pytest.mark.unit
     def test__init_indices_does_not_create_index_if_exists(self, mocked_document_store):
-        mocked_document_store._init_indices(self.index_name, "label_index", create_index=True, recreate_index=False)
+        mocked_document_store._init_indices(
+            self.index_name, "label_index", create_index=True, recreate_index=False, headers={}
+        )
 
         mocked_document_store.client.indices.create.assert_not_called()
 
     @pytest.mark.unit
     def test__init_indices_does_not_create_index_if_not_create_index(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
-        mocked_document_store._init_indices(self.index_name, "label_index", create_index=False, recreate_index=False)
+        mocked_document_store._init_indices(
+            self.index_name, "label_index", create_index=False, recreate_index=False, headers={}
+        )
 
         mocked_document_store.client.indices.create.assert_not_called()
 
@@ -805,7 +811,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         # + one check for both if ivf model exists
         # create_index asks two times: one for doc index, one for label index
         mocked_document_store.client.indices.exists.side_effect = [True, False, True, False, False, False]
-        mocked_document_store._init_indices(self.index_name, "label_index", create_index=True, recreate_index=True)
+        mocked_document_store._init_indices(
+            self.index_name, "label_index", create_index=True, recreate_index=True, headers={}
+        )
 
         mocked_document_store.client.indices.delete.assert_called()
         mocked_document_store.client.indices.create.assert_called()
@@ -1147,7 +1155,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     def test__create_label_index_already_exists(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = True
 
-        mocked_document_store._init_indices("doc_index", "label_index", True, False)
+        mocked_document_store._init_indices("doc_index", "label_index", True, False, {})
         mocked_document_store.client.indices.create.assert_not_called()
 
     @pytest.mark.unit
