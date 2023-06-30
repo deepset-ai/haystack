@@ -70,7 +70,6 @@ def test_marshal():
                 ],
             },
         },
-        "dependencies": ["test", "canals"],
     }
 
 

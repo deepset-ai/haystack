@@ -25,5 +25,9 @@ class PipelineMaxLoops(PipelineError):
     pass
 
 
+class PipelineUnmarshalError(PipelineError):
+    pass
+
+
 class ComponentError(Exception):
     pass

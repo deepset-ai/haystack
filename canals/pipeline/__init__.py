@@ -12,5 +12,4 @@ from canals.pipeline.save_load import (
     load_pipelines,
     marshal_pipelines,
     unmarshal_pipelines,
-    _find_decorated_classes,
 )

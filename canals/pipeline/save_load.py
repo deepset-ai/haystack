@@ -5,14 +5,13 @@
 # pylint: disable=protected-access
 
 from typing import Dict, List, Any, Tuple
-
-import sys
 import json
 import logging
 from pathlib import Path
-from inspect import getmembers, isclass, getmodule, ismodule
 
+from canals.component import component
 from canals.pipeline.pipeline import Pipeline
+from canals.errors import PipelineUnmarshalError
 
 
 logger = logging.getLogger(__name__)
@@ -105,8 +104,6 @@ def marshal_pipelines(pipelines: Dict[str, Pipeline]) -> Dict[str, Any]:
         pipeline_repr["connections"] = list(pipeline.graph.edges)
         schema["pipelines"][pipeline_name] = pipeline_repr
 
-    # Collect the dependencies
-    schema["dependencies"] = _discover_dependencies(components=[component[2] for component in components])
     return schema
 
 
@@ -121,17 +118,9 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
     Returns:
         The pipelines as a dictionary of `{"pipeline-name": <pipeline object>}`.
 
-    Raises ValueError: if any dependency is missing (see the `dependencies` field of the schema).
+    Raises PipelineUnmarshalError: if any Component class has not been imported before loading.
 
     """
-    for dep in schema["dependencies"]:
-        if not dep in sys.modules:
-            raise ValueError(
-                f"You're loading a pipeline that depends on '{dep}', which is not in sys.modules. "
-                "You need to import it before loading the pipelines."
-            )
-
-    classes = _find_decorated_classes(modules_to_search=schema["dependencies"])
     pipelines = {}
     component_instances: Dict[str, object] = {}
     for pipeline_name, pipeline_schema in schema["pipelines"].items():
@@ -149,7 +138,13 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
                     instance=component_instances[component_schema["refer_to"]],
                 )
             else:
-                component_class = classes[component_schema["type"]]
+                class_name = component_schema["type"]
+                if class_name not in component.registry:
+                    raise PipelineUnmarshalError(
+                        f"Failed loading Pipeline '{pipeline_name}'. Can't find Component class '{class_name}'. "
+                        "Make sure you imported this class before loading the pipelines."
+                    )
+                component_class = component.registry[class_name]
                 component_instance = component_class(**component_schema.get("init_parameters", {}))
                 component_instances[f"{pipeline_name}.{component_name}"] = component_instance
                 pipe.add_component(
@@ -159,56 +154,10 @@ def unmarshal_pipelines(schema: Dict[str, Any]) -> Dict[str, Pipeline]:  # pylin
 
         for connect_from, connect_to, sockets in pipeline_schema["connections"]:
             output_socket, input_socket = sockets.split("/", maxsplit=1)
-            connect_from += "." + output_socket
-            connect_to += "." + input_socket
+            connect_from = f"{connect_from}.{output_socket}"
+            connect_to = f"{connect_to}.{input_socket}"
             pipe.connect(connect_from=connect_from, connect_to=connect_to)
 
         pipelines[pipeline_name] = pipe
 
     return pipelines
-
-
-def _discover_dependencies(components: List[object]) -> List[str]:
-    """
-    Given a list of components, it returns a list of all the modules that one needs to import to
-    make this pipeline work.
-    """
-    module_names = [getmodule(component) for component in components]
-    if any(not module_name for module_name in module_names):
-        logger.error(
-            "Can't identify the import module of some of your components. Your Pipelines might be unable to load back."
-        )
-    return list({module.__name__.split(".")[0] for module in module_names if module is not None}) + ["canals"]
-
-
-def _find_decorated_classes(modules_to_search: List[str], decorator: str = "__canals_component__") -> Dict[str, Any]:
-    """
-    Finds all classes decorated with `@components` in all the modules listed in `modules_to_search`.
-    Returns a dictionary with the component class name and the component classes.
-
-    Note: can be used for other decorators as well by setting the `decorator` parameter.
-    """
-    component_classes: Dict[str, Any] = {}
-
-    # Collect all modules
-    for module in modules_to_search:
-        if not module in sys.modules:
-            raise ValueError(f"{module} is not imported.")
-
-        for name, _ in getmembers(sys.modules.get(module, None), ismodule):
-            if f"{module}.{name}" in sys.modules:
-                modules_to_search.append(f"{module}.{name}")
-
-        logger.debug("Searching under %s...", module)
-
-        for _, entity in getmembers(sys.modules[module], isclass):
-            if hasattr(entity, decorator):
-                # It's a decorated class
-                if getattr(entity, decorator) in component_classes:
-                    logger.debug("'%s.%s' was imported more than once", module, getattr(entity, decorator))
-                    continue
-
-                component_classes[getattr(entity, decorator)] = entity
-                logger.debug(" * Found class: %s", entity)
-
-    return component_classes
