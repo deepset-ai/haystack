@@ -50,9 +50,9 @@ def test_find_unambiguous_connection_no_connection_possible():
 
     expected_message = """Cannot connect 'comp1' with 'comp2': no matching connections available.
 'comp1':
- - output_value \(int\)
+ - output_value \(\['int'\]\)
 'comp2':
- - input_value \(str, available\)"""
+ - input_value \(\['str'\], available\)"""
 
     with pytest.raises(PipelineConnectError, match=expected_message):
         find_unambiguous_connection(
@@ -158,11 +158,11 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
 
     expected_message = """Cannot connect 'comp1' with 'comp2': more than one connection is possible between these components. Please specify the connection name, like: pipeline.connect\('comp1.value', 'comp2.value1'\).
 'comp1':
- - value \(str\)
+ - value \(\['str'\]\)
 'comp2':
- - value1 \(str, available\)
- - value2 \(str, available\)
- - value3 \(str, available\)"""
+ - value1 \(\['str'\], available\)
+ - value2 \(\['str'\], available\)
+ - value3 \(\['str'\], available\)"""
     with pytest.raises(PipelineConnectError, match=expected_message):
         find_unambiguous_connection(
             from_node="comp1",

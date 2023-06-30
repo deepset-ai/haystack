@@ -201,14 +201,13 @@ class Pipeline:
         """
         Directly connect socket to socket.
         """
-        # Check that the types match. We need type equality: subclass relationships are not accepted, just like
-        # Optionals, Unions, and similar "aggregate" types. See https://github.com/python/typing/issues/570
-        if to_socket.type is not Any and not from_socket.type == to_socket.type:
+        # Verify that receiving socket can accept the output types it will receive
+        if Any not in to_socket.types and not from_socket.types & to_socket.types:
             raise PipelineConnectError(
                 f"Cannot connect '{from_node}.{from_socket.name}' with '{to_node}.{to_socket.name}': "
                 f"their declared input and output types do not match.\n"
-                f" - {from_node}.{from_socket.name}: {from_socket.type.__name__}\n"
-                f" - {to_node}.{to_socket.name}: {to_socket.type.__name__}\n"
+                f" - {from_node}.{from_socket.name}: {[t.__name__ for t in from_socket.types]}\n"
+                f" - {to_node}.{to_socket.name}: {[t.__name__ for t in to_socket.types]}\n"
             )
 
         # Make sure the receiving socket isn't already connected - sending sockets can be connected as many times as needed,
