@@ -47,7 +47,7 @@ classifiers = [
 ]
 dependencies = [
   "requests",
-  "pydantic",
+  "pydantic<2",
   "transformers==4.30.1",
   "pandas",
   "rank_bm25",
