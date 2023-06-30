@@ -56,13 +56,14 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         ElasticsearchDocumentStore equipped with a mocked client
         """
 
-        class DSMock(ElasticsearchDocumentStore):
-            # We mock a subclass to avoid messing up the actual class object
-            pass
+        with patch(f"{ElasticsearchDocumentStore.__module__}.ElasticsearchDocumentStore._init_elastic_client"):
 
-        DSMock._init_elastic_client = MagicMock()
-        DSMock.client = MagicMock()
-        return DSMock()
+            class DSMock(ElasticsearchDocumentStore):
+                # We mock a subclass to avoid messing up the actual class object
+                pass
+
+            DSMock.client = MagicMock()
+            yield DSMock()
 
     @pytest.mark.integration
     def test___init__(self):
