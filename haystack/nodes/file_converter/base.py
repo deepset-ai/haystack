@@ -13,7 +13,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 
-with LazyImport("Run 'pip install farm-haystack[preprocessing]'") as langdetect_import:
+with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install langdetect'") as langdetect_import:
     import langdetect
 
 
