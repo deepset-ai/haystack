@@ -12,7 +12,9 @@ from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseI
 logger = logging.getLogger(__name__)
 
 
-class SageMakerJumpStartAi21ContextualAnswersInferenceInvocationLayer(SageMakerBaseInvocationLayer, TaskSpecificContextualAnswers ):
+class SageMakerJumpStartAi21ContextualAnswersInferenceInvocationLayer(
+    SageMakerBaseInvocationLayer, TaskSpecificContextualAnswers
+):
     """
     SageMaker HuggingFace Inference Invocation Layer
 
@@ -116,11 +118,7 @@ class SageMakerJumpStartAi21ContextualAnswersInferenceInvocationLayer(SageMakerB
 
         # for a list of supported parameters
         # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
-        self.model_input_kwargs = {
-            key: kwargs[key]
-            for key in self.params
-            if key in kwargs
-        }
+        self.model_input_kwargs = {key: kwargs[key] for key in self.params if key in kwargs}
 
         # As of June 23, SageMaker does not support streaming responses.
         # However, even though it's not provided, users may attempt to use streaming responses.
@@ -242,7 +240,7 @@ class SageMakerJumpStartAi21ContextualAnswersInferenceInvocationLayer(SageMakerB
             for sublist in response:
                 yield from self._unwrap_response(sublist)
         elif isinstance(response, dict):
-            #if "generated_text" in response or "generated_texts" in response:
+            # if "generated_text" in response or "generated_texts" in response:
             yield response
 
     @classmethod
