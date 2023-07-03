@@ -2111,7 +2111,7 @@ def test_load_legacy_evaluation_result(tmp_path):
 
 
 @pytest.mark.unit
-def test_load_evaluation_result_w_none_values(tmp_path):
+def test_load_evaluation_result(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
         columns = [
