@@ -64,8 +64,7 @@ def get_openapi_specs() -> dict:
     """
     Used to autogenerate OpenAPI specs file to use in the documentation.
 
-    Returns `servers` to specify base URL for OpenAPI Playground
-    (see https://swagger.io/docs/specification/api-host-and-base-path/)
+    Returns `servers` to specify base URL for OpenAPI Playground (see https://swagger.io/docs/specification/api-host-and-base-path/)
 
     See `.github/utils/generate_openapi_specs.py`
     """
