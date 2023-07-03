@@ -106,7 +106,7 @@ def get_filename_extension_from_url(url: str) -> Tuple[str, str]:
     root, extension = splitext(parsed.path)
     archive_extension = extension[1:]
     file_name = unquote(basename(root[1:]))
-    return (file_name, archive_extension)
+    return file_name, archive_extension
 
 
 def fetch_archive_from_http(
