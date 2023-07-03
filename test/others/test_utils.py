@@ -168,6 +168,7 @@ def test_convert_files_to_docs(samples_path):
     assert documents and len(documents) > 0
 
 
+@pytest.mark.unit
 def test_get_filename_extension_from_url_without_params_zip():
     url = "http://www.mysite.com/resources/myfile.zip"
     file_name, extension = get_filename_extension_from_url(url)
@@ -175,6 +176,7 @@ def test_get_filename_extension_from_url_without_params_zip():
     assert file_name == "myfile"
 
 
+@pytest.mark.unit
 def test_get_filename_extension_from_url_with_params_zip():
     url = "https:/<S3_BUCKET_NAME>.s3.<REGION>.amazonaws.com/filename.zip?response-content-disposition=inline&X-Amz-Security-Token=<TOKEN>&X-Amz-Algorithm=<X-AMZ-ALGORITHM>&X-Amz-Date=<X-AMZ-DATE>&X-Amz-SignedHeaders=host&X-Amz-Expires=<X-AMZ-EXPIRES>&X-Amz-Credential=<CREDENTIAL>&X-Amz-Signature=<SIGNATURE>"
     file_name, extension = get_filename_extension_from_url(url)
@@ -182,6 +184,7 @@ def test_get_filename_extension_from_url_with_params_zip():
     assert file_name == "filename"
 
 
+@pytest.mark.unit
 def test_get_filename_extension_from_url_with_params_xz():
     url = "https:/<S3_BUCKET_NAME>.s3.<REGION>.amazonaws.com/filename.tar.xz?response-content-disposition=inline&X-Amz-Security-Token=<TOKEN>&X-Amz-Algorithm=<X-AMZ-ALGORITHM>&X-Amz-Date=<X-AMZ-DATE>&X-Amz-SignedHeaders=host&X-Amz-Expires=<X-AMZ-EXPIRES>&X-Amz-Credential=<CREDENTIAL>&X-Amz-Signature=<SIGNATURE>"
     file_name, extension = get_filename_extension_from_url(url)
