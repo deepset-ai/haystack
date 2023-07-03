@@ -493,7 +493,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         assert doc_store_with_docs.get_document_count() == initial_document_count + 1
 
         # but we expect initial_document_count documents without embeddings to be unchanged
-        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == 9
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
 
     @pytest.mark.integration
     def test_get_document_count_after_write_doc_without_embedding(self, doc_store_with_docs: PineconeDocumentStore):
