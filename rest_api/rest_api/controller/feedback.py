@@ -113,7 +113,7 @@ def export_feedback(
 
         offset_start_in_document = 0
         if label.answer and label.answer.offsets_in_document:
-            offset_start_in_document = label.answer.offsets_in_document[0].col
+            offset_start_in_document = label.answer.offsets_in_document[0].row
 
         if full_document_context:
             context = label.document.content
