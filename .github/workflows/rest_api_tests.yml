@@ -2,6 +2,7 @@
 name: REST API Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
