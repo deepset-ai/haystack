@@ -5,9 +5,10 @@ import logging
 from itertools import groupby
 from multiprocessing.pool import Pool
 from collections import namedtuple
-from haystack.lazy_imports import LazyImport
 
 from tqdm import tqdm
+
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__file__)
 
