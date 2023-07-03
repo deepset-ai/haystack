@@ -100,7 +100,7 @@ def get_filename_extension_from_url(url: str) -> Tuple[str, str]:
     Extracts the filename and file extension from an url.
 
     :param url: http address
-    :return: Tupel (filename, file extension) of the file at the url.
+    :return: Tuple (filename, file extension) of the file at the url.
     """
     parsed = urlparse(url)
     root, extension = splitext(parsed.path)
