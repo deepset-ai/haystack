@@ -126,7 +126,7 @@ def fetch_archive_from_http(
 
         parsed = urlparse(url)
         root, extension = splitext(parsed.path)
-        archive_extension = extension[1:]        
+        archive_extension = extension[1:]
         request_data = requests.get(url, proxies=proxies, timeout=timeout)
 
         if archive_extension == "zip":
