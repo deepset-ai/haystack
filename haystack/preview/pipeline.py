@@ -2,14 +2,12 @@ from typing import List, Dict, Any, Optional, Callable
 
 from pathlib import Path
 
-from canals.component import ComponentInput, ComponentOutput
 from canals.pipeline import (
     Pipeline as CanalsPipeline,
     PipelineError,
     load_pipelines as load_canals_pipelines,
     save_pipelines as save_canals_pipelines,
 )
-from canals.pipeline.sockets import find_input_sockets
 
 from haystack.preview.document_stores.protocols import Store
 
@@ -57,29 +55,39 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def run(self, data: Dict[str, ComponentInput], debug: bool = False) -> Dict[str, ComponentOutput]:
+    def add_component(self, name: str, instance: Any, stores: Optional[List[Store]] = None) -> None:
         """
-        Wrapper on top of Canals Pipeline.run(). Adds the `stores` parameter to all nodes.
+        Make this component available to the pipeline. Components are not connected to anything by default:
+        use `Pipeline.connect()` to connect components together.
 
-        :params data: the inputs to give to the input components of the Pipeline.
-        :params parameters: a dictionary with all the parameters of all the components, namespaced by component.
-        :params debug: whether to collect and return debug information.
-        :returns A dictionary with the outputs of the output components of the Pipeline.
+        Component names must be unique, but component instances can be reused if needed.
+
+        If `stores` has a value, the pipeline will also connect this component to the requested document store(s).
+        Note that only components that respect the StoreMixin or StoresMixin protocols can be connected to stores.
+
+        :param name: the name of the component.
+        :param instance: the component instance.
+        :param stores: the stores this component needs access to, if any.
+        :raises ValueError: if a component with the same name already exists
+        :raises PipelineValidationError: if the given instance is not a component
         """
-        # Get all nodes in this pipelines instance
-        for node_name in self.graph.nodes:
-            # Get node inputs
-            node = self.graph.nodes[node_name]["instance"]
-            input_params = find_input_sockets(node)
+        super().add_component(name, instance)
 
-            # If the node needs a store, adds the list of stores to its default inputs
-            if "stores" in input_params:
-                if not hasattr(node, "defaults"):
-                    setattr(node, "defaults", {})
-                node.defaults["stores"] = self.stores
+        stores = stores or []
+        for store in stores:
+            if store not in self.stores:
+                raise NoSuchStoreError(
+                    f"Store named '{store}' not found. "
+                    f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
+                )
 
-        # Run the pipeline
-        return super().run(data=data, debug=debug)
+        if hasattr(instance, "stores"):
+            instance.stores = {store: self.stores[store] for store in stores}
+
+        elif hasattr(instance, "store"):
+            if len(stores) != 1:
+                raise ValueError(f"Component '{name}' needs exactly one store.")
+            instance.store = self.stores[stores[0]]
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
