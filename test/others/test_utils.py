@@ -1,6 +1,5 @@
 import importlib
 import logging
-from random import random
 from typing import List
 from unittest import mock
 
@@ -15,6 +14,7 @@ import _pytest
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils import print_answers
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
+from haystack.utils.import_utils import get_filename_extension_from_url
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
@@ -166,6 +166,20 @@ def test_convert_files_to_docs(samples_path):
         dir_path=(samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
     )
     assert documents and len(documents) > 0
+
+
+def test_get_filename_extension_from_url_zip():
+    url = "https:/<S3_BUCKET_NAME>.s3.<REGION>.amazonaws.com/filename.zip?response-content-disposition=inline&X-Amz-Security-Token=<TOKEN>&X-Amz-Algorithm=<X-AMZ-ALGORITHM>&X-Amz-Date=<X-AMZ-DATE>&X-Amz-SignedHeaders=host&X-Amz-Expires=<X-AMZ-EXPIRES>&X-Amz-Credential=<CREDENTIAL>&X-Amz-Signature=<SIGNATURE>"
+    file_name, extension = get_filename_extension_from_url(url)
+    assert extension == "zip"
+    assert file_name == "filename"
+
+
+def test_get_filename_extension_from_url_xz():
+    url = "https:/<S3_BUCKET_NAME>.s3.<REGION>.amazonaws.com/filename.tar.xz?response-content-disposition=inline&X-Amz-Security-Token=<TOKEN>&X-Amz-Algorithm=<X-AMZ-ALGORITHM>&X-Amz-Date=<X-AMZ-DATE>&X-Amz-SignedHeaders=host&X-Amz-Expires=<X-AMZ-EXPIRES>&X-Amz-Credential=<CREDENTIAL>&X-Amz-Signature=<SIGNATURE>"
+    file_name, extension = get_filename_extension_from_url(url)
+    assert extension == "xz"
+    assert file_name == "filename.tar"
 
 
 @pytest.mark.tika
