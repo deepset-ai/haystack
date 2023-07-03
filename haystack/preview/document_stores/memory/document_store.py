@@ -8,12 +8,12 @@ import rank_bm25
 from tqdm.auto import tqdm
 
 from haystack.preview.dataclasses import Document
+from haystack.preview.document_stores.protocols import Store, DuplicatePolicy
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 from haystack.utils.scipy_utils import expit
 
 logger = logging.getLogger(__name__)
-DuplicatePolicy = Literal["skip", "overwrite", "fail"]
 
 # document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
 # True (default). Scaling uses the expit function (inverse of the logit function) after applying a SCALING_FACTOR. A
@@ -23,7 +23,7 @@ DuplicatePolicy = Literal["skip", "overwrite", "fail"]
 SCALING_FACTOR = 8
 
 
-class MemoryDocumentStore:
+class MemoryDocumentStore(Store):
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
