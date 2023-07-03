@@ -7,7 +7,6 @@ import pandas as pd
 from copy import deepcopy
 
 import responses
-from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.answer_generator.openai import OpenAIAnswerGenerator
 from haystack.nodes.preprocessor import PreProcessor
@@ -61,7 +60,8 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Summarizer"]["ndcg"] == 1.0
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
 def test_add_eval_data(document_store, batch_size, samples_path):
     # add eval data (SQUAD format)
@@ -200,7 +200,8 @@ def test_eval_pipeline(document_store, reader, retriever, samples_path):
     assert metrics_sas_cross_encoder["Reader"]["sas"] == pytest.approx(0.71063, 1e-4)
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_eval_data_split_word(document_store, samples_path):
     # splitting by word
     preprocessor = PreProcessor(
@@ -225,7 +226,8 @@ def test_eval_data_split_word(document_store, samples_path):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_eval_data_split_passage(document_store, samples_path):
     # splitting by passage
     preprocessor = PreProcessor(
@@ -1024,6 +1026,7 @@ def test_reader_eval_in_pipeline(reader):
     assert metrics["Reader"]["f1"] == 1.0
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_document_scope(retriever_with_docs):
@@ -1089,6 +1092,7 @@ def test_extractive_qa_eval_document_scope(retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 1.0
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_document_search_eval_document_scope(retriever_with_docs):
@@ -1154,6 +1158,7 @@ def test_document_search_eval_document_scope(retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_document_search_id_only_eval_document_scope(retriever_with_docs):
@@ -1219,6 +1224,7 @@ def test_document_search_id_only_eval_document_scope(retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_file_search_eval_document_scope(retriever_with_docs):
@@ -1285,6 +1291,7 @@ def test_file_search_eval_document_scope(retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.6934, 0.0001)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize(
@@ -1700,6 +1707,7 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
     pipeline.print_eval_report(eval_result)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_document_search_calculate_metrics(retriever_with_docs):
@@ -1730,6 +1738,7 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_document_search_isolated(retriever_with_docs):
@@ -2069,6 +2078,7 @@ def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
     )
 
 
+@pytest.mark.unit
 def test_load_legacy_evaluation_result(tmp_path):
     legacy_csv = Path(tmp_path) / "legacy.csv"
     with open(legacy_csv, "w") as legacy_csv:
@@ -2100,6 +2110,7 @@ def test_load_legacy_evaluation_result(tmp_path):
     assert "content" not in eval_result["legacy"]
 
 
+@pytest.mark.unit
 def test_load_evaluation_result_w_none_values(tmp_path):
     eval_result_csv = Path(tmp_path) / "Reader.csv"
     with open(eval_result_csv, "w") as eval_result_csv:
