@@ -4,7 +4,7 @@ import json
 import logging
 
 from fastapi import FastAPI, APIRouter
-from haystack.schema import Label
+from haystack.schema import Label, Span
 from haystack.document_stores import BaseDocumentStore
 from rest_api.schema import FilterRequest, CreateLabelSerialized
 from rest_api.utils import get_app, get_pipelines
@@ -113,7 +113,10 @@ def export_feedback(
 
         offset_start_in_document = 0
         if label.answer and label.answer.offsets_in_document:
-            offset_start_in_document = label.answer.offsets_in_document[0].start
+            if isinstance(label.answer.offsets_in_document[0], Span):
+                offset_start_in_document = label.answer.offsets_in_document[0].start
+            else:
+                offset_start_in_document = label.answer.offsets_in_document[0].row
 
         if full_document_context:
             context = label.document.content
