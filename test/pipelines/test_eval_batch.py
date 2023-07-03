@@ -267,6 +267,7 @@ def test_reader_eval_in_pipeline(reader):
     assert metrics["Reader"]["f1"] == 1.0
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_document_scope(retriever_with_docs):
@@ -723,6 +724,7 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
     pipeline.print_eval_report(eval_result)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_document_search_calculate_metrics(retriever_with_docs):
@@ -753,6 +755,7 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_faq_calculate_metrics(retriever_with_docs):
