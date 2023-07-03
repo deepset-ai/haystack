@@ -27,7 +27,6 @@ class MemoryRetriever:
         filters: Dict[str, Any]
         top_k: int
         scale_score: bool
-        stores: Dict[str, Any]
 
     @dataclass
     class Output(ComponentOutput):
@@ -39,27 +38,44 @@ class MemoryRetriever:
 
         documents: List[Document]
 
-    def __init__(
-        self,
-        document_store_name: str,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 10,
-        scale_score: bool = True,
-    ):
+    def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """
         Create a MemoryRetriever component.
 
-        :param document_store_name: The name of the MemoryDocumentStore to retrieve documents from.
         :param filters: A dictionary with filters to narrow down the search space (default is None).
         :param top_k: The maximum number of documents to retrieve (default is 10).
         :param scale_score: Whether to scale the BM25 score or not (default is True).
 
         :raises ValueError: If the specified top_k is not > 0.
         """
-        self.document_store_name = document_store_name
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
+
+    @property
+    def store(self) -> MemoryDocumentStore:
+        """
+        This property allows Pipelines to connect the component with the stores it requires.
+
+        Stores have to be instances of MemoryDocumentStore, or the assignment will fail.
+        """
+        return getattr(self, "_store", None)
+
+    @store.setter
+    def store(self, store: MemoryDocumentStore):
+        """
+        This property allows Pipelines to connect the component with the stores it requires.
+
+        Stores have to be instances of MemoryDocumentStore, or the assignment will fail.
+
+        :param store: the MemoryDocumentStore instance to retrieve from.
+        :raises ValueError if the store is not an instance of MemoryDocumentStore.
+        """
+        if not store:
+            raise ValueError("Can't set the value of the store to None.")
+        if not isinstance(store, MemoryDocumentStore):
+            raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
+        self._store = store
 
     def run(self, data: Input) -> Output:
         """
@@ -70,15 +86,7 @@ class MemoryRetriever:
 
         :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
         """
-        if self.document_store_name not in data.stores:
-            raise ValueError(
-                f"MemoryRetriever's document store '{self.document_store_name}' not found "
-                f"in input stores {list(data.stores.keys())}"
-            )
-        document_store = data.stores[self.document_store_name]
-        if not isinstance(document_store, MemoryDocumentStore):
-            raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
-        docs = document_store.bm25_retrieval(
+        docs = self.store.bm25_retrieval(
             query=data.query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
         )
         return MemoryRetriever.Output(documents=docs)
