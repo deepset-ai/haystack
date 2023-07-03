@@ -19,6 +19,7 @@ jobs:
       matrix:
         target:
           - "cpu"
+          - "cpu-remote-inference"
           - "gpu"
 
     steps:
