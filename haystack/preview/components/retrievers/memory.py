@@ -53,7 +53,7 @@ class MemoryRetriever:
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
 
     @property
-    def store(self) -> MemoryDocumentStore:
+    def store(self) -> Optional[MemoryDocumentStore]:
         """
         This property allows Pipelines to connect the component with the stores it requires.
 
@@ -77,6 +77,15 @@ class MemoryRetriever:
             raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
         self._store = store
 
+    def warmup(self):
+        """
+        Double-checks that a store is set before running this component in a pipeline.
+        """
+        if not self.store:
+            raise ValueError(
+                "MemoryRetriever needs a store to run: " "use the 'store' parameter of 'add_component' to connect them."
+            )
+
     def run(self, data: Input) -> Output:
         """
         Run the MemoryRetriever on the given input data.
@@ -86,6 +95,8 @@ class MemoryRetriever:
 
         :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
         """
+        if not self.store:
+            raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
         docs = self.store.bm25_retrieval(
             query=data.query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
         )

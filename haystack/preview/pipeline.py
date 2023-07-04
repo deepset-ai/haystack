@@ -55,7 +55,7 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def add_component(self, name: str, instance: Any, stores: Optional[List[Store]] = None) -> None:
+    def add_component(self, name: str, instance: Any, stores: Optional[List[str]] = None) -> None:
         """
         Make this component available to the pipeline. Components are not connected to anything by default:
         use `Pipeline.connect()` to connect components together.

@@ -1,4 +1,4 @@
-from typing import Protocol, Dict
+from typing import Protocol, Dict, Optional
 
 from haystack.preview.document_stores.protocols import Store
 
@@ -11,7 +11,7 @@ class StoreMixin(Protocol):
     _store: Store
 
     @property
-    def store(self) -> Store:
+    def store(self) -> Optional[Store]:
         return getattr(self, "_store", None)
 
     @store.setter
@@ -29,7 +29,7 @@ class MultiStoreMixin(Protocol):
     _stores: Dict[str, Store]
 
     @property
-    def stores(self) -> Dict[str, Store]:
+    def stores(self) -> Optional[Dict[str, Store]]:
         return getattr(self, "_stores", None)
 
     @stores.setter
