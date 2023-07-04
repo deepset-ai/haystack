@@ -200,7 +200,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :param prompt: Prompt text to be sent to the generative model.
         """
         n_prompt_tokens = len(self._tokenizer.encode(cast(str, prompt)))
-        n_answer_tokens = self.max_length or 16
+        n_answer_tokens = self.max_length or (self.model_max_length - (n_prompt_tokens + 1))
         if (n_prompt_tokens + n_answer_tokens) <= self.max_tokens_limit:
             return prompt
 
