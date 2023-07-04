@@ -17,10 +17,11 @@ class BasePreProcessor(BaseComponent):
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
         remove_substrings: Optional[List[str]] = None,
-        split_by: Literal["word", "sentence", "passage", None] = "word",
+        split_by: Literal["token", "word", "sentence", "passage", None] = "word",
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = True,
+        tokenizer_name: Optional[Literal["tiktoken"]] = "tiktoken",
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -44,10 +45,11 @@ class BasePreProcessor(BaseComponent):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: Literal["word", "sentence", "passage", None],
+        split_by: Literal["token", "word", "sentence", "passage", None],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
+        tokenizer_name: Literal["tiktoken"] = None,
     ) -> List[Document]:
         raise NotImplementedError
 
@@ -57,10 +59,11 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
-        split_by: Literal["word", "sentence", "passage", None] = None,
+        split_by: Literal["token", "word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        tokenizer_name: Optional[Literal["tiktoken"]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
         processed_documents = self.process(
@@ -83,10 +86,11 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
-        split_by: Literal["word", "sentence", "passage", None] = None,
+        split_by: Literal["token", "word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        tokenizer_name: Optional[Literal["tiktoken"]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
         return self.run(
