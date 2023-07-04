@@ -47,6 +47,7 @@ def noop():
     return True
 
 
+@pytest.mark.unit
 def test_deprecation_previous_major_and_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.1"):
@@ -61,6 +62,7 @@ def test_deprecation_previous_major_and_minor():
             fail_at_version(1, 1)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_previous_major_same_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.2"):
@@ -75,6 +77,7 @@ def test_deprecation_previous_major_same_minor():
             fail_at_version(1, 2)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_previous_major_later_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v1.3"):
@@ -89,6 +92,7 @@ def test_deprecation_previous_major_later_minor():
             fail_at_version(1, 3)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_same_major_previous_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.1"):
@@ -103,6 +107,7 @@ def test_deprecation_same_major_previous_minor():
             fail_at_version(2, 1)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_same_major_same_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         with pytest.warns(match="This feature is marked for removal in v2.2"):
@@ -117,6 +122,7 @@ def test_deprecation_same_major_same_minor():
             fail_at_version(2, 2)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_same_major_later_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(2, 3)(noop)()
@@ -128,6 +134,7 @@ def test_deprecation_same_major_later_minor():
         assert fail_at_version(2, 3)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_later_major_previous_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 1)(noop)()
@@ -139,6 +146,7 @@ def test_deprecation_later_major_previous_minor():
         assert fail_at_version(3, 1)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_later_major_same_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 2)(noop)()
@@ -150,6 +158,7 @@ def test_deprecation_later_major_same_minor():
         assert fail_at_version(3, 2)(noop)()
 
 
+@pytest.mark.unit
 def test_deprecation_later_major_later_minor():
     with mock.patch.object(conftest, "haystack_version", "2.2.2-rc0"):
         assert fail_at_version(3, 3)(noop)()
@@ -161,6 +170,7 @@ def test_deprecation_later_major_later_minor():
         assert fail_at_version(3, 3)(noop)()
 
 
+# Takes awhile to run
 def test_convert_files_to_docs(samples_path):
     documents = convert_files_to_docs(
         dir_path=(samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
@@ -198,6 +208,7 @@ def test_tika_convert_files_to_docs(samples_path):
     assert documents and len(documents) > 0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_parts_of_whole_document():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -209,6 +220,7 @@ def test_calculate_context_similarity_on_parts_of_whole_document():
         assert score == 100.0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_parts_of_whole_document_different_case():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -220,6 +232,7 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_case(
         assert score == 100.0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_parts_of_whole_document_different_whitesapce():
     whole_document = TEST_CONTEXT
     words = whole_document.split()
@@ -231,6 +244,7 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_white
         assert score == 100.0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_min_length():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -241,6 +255,7 @@ def test_calculate_context_similarity_min_length():
         assert score == 0.0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_partially_overlapping_contexts():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -254,6 +269,7 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts():
         assert score >= 65.0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_non_matching_contexts():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -274,6 +290,7 @@ def test_calculate_context_similarity_on_non_matching_contexts():
     assert accuracy > 0.99
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -285,6 +302,7 @@ def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():
         assert score >= 85.0
 
 
+@pytest.mark.unit
 def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noise():
     whole_document = TEST_CONTEXT
     min_length = 100
@@ -1447,6 +1465,7 @@ class TestAggregateLabels:
             ),
         ]
 
+    @pytest.mark.unit
     def test_label_aggregation(self, standard_labels: List[Label]):
         multi_labels = aggregate_labels(standard_labels)
         assert len(multi_labels) == 1
@@ -1455,6 +1474,7 @@ class TestAggregateLabels:
         assert len(multi_labels[0].document_ids) == 4
         assert multi_labels[0].no_answer is False
 
+    @pytest.mark.unit
     def test_label_aggregation_drop_negatives(self, standard_labels: List[Label]):
         multi_labels = aggregate_labels(standard_labels, drop_negative_labels=True)
         assert len(multi_labels) == 1
@@ -1464,6 +1484,7 @@ class TestAggregateLabels:
         assert len(multi_labels[0].document_ids) == 3
         assert multi_labels[0].no_answer is False
 
+    @pytest.mark.unit
     def test_label_aggregation_drop_no_answers(self, standard_labels: List[Label]):
         multi_labels = aggregate_labels(standard_labels, drop_no_answers=True)
         assert len(multi_labels) == 1
@@ -1472,6 +1493,7 @@ class TestAggregateLabels:
         assert len(multi_labels[0].document_ids) == 4
         assert multi_labels[0].no_answer is False
 
+    @pytest.mark.unit
     def test_label_aggregation_drop_negatives_and_no_answers(self, standard_labels: List[Label]):
         multi_labels = aggregate_labels(standard_labels, drop_negative_labels=True, drop_no_answers=True)
         assert len(multi_labels) == 1
@@ -1480,6 +1502,7 @@ class TestAggregateLabels:
         assert len(multi_labels[0].document_ids) == 3
         assert multi_labels[0].no_answer is False
 
+    @pytest.mark.unit
     def test_label_aggregation_closed_domain(self, standard_labels: List[Label]):
         multi_labels = aggregate_labels(standard_labels, add_closed_domain_filter=True)
         assert len(multi_labels) == 3
@@ -1492,6 +1515,7 @@ class TestAggregateLabels:
         for ml in multi_labels:
             assert "_id" in ml.filters
 
+    @pytest.mark.unit
     def test_label_aggregation_closed_domain_drop_negatives(self, standard_labels: List[Label]):
         multi_labels = aggregate_labels(standard_labels, add_closed_domain_filter=True, drop_negative_labels=True)
         assert len(multi_labels) == 3
@@ -1504,6 +1528,7 @@ class TestAggregateLabels:
         for ml in multi_labels:
             assert "_id" in ml.filters
 
+    @pytest.mark.unit
     def test_aggregate_labels_filter_aggregations_with_no_sequence_values(self, filter_meta_labels: List[Label]):
         multi_labels = aggregate_labels(filter_meta_labels)
         assert len(multi_labels) == 3
@@ -1515,6 +1540,7 @@ class TestAggregateLabels:
                 assert "from_filter" in l.filters
                 assert multi_label.filters == l.filters
 
+    @pytest.mark.unit
     def test_aggregate_labels_filter_aggregations_with_string_values(self, filter_meta_labels: List[Label]):
         for label in filter_meta_labels:
             label.filters["from_filter"] = str(label.filters["from_filter"])
@@ -1529,6 +1555,7 @@ class TestAggregateLabels:
                 assert "from_filter" in l.filters
                 assert multi_label.filters == l.filters
 
+    @pytest.mark.unit
     def test_aggregate_labels_filter_aggregations_with_list_values(self, filter_meta_labels: List[Label]):
         for label in filter_meta_labels:
             label.filters["from_filter"] = [label.filters["from_filter"], "some_other_value"]
@@ -1543,6 +1570,7 @@ class TestAggregateLabels:
                 assert "from_filter" in l.filters
                 assert multi_label.filters == l.filters
 
+    @pytest.mark.unit
     def test_aggregate_labels_filter_aggregations_with_no_sequence_values_closed_domain(
         self, filter_meta_labels: List[Label]
     ):
@@ -1557,6 +1585,7 @@ class TestAggregateLabels:
                 assert "_id" in l.filters
                 assert multi_label.filters == l.filters
 
+    @pytest.mark.unit
     def test_aggregate_labels_meta_aggregations(self, filter_meta_labels: List[Label]):
         multi_labels = aggregate_labels(filter_meta_labels, add_meta_filters="from_meta")
         assert len(multi_labels) == 4
@@ -1568,6 +1597,7 @@ class TestAggregateLabels:
                 assert l.filters["from_meta"] == l.meta["from_meta"]
                 assert multi_label.filters == l.filters
 
+    @pytest.mark.unit
     def test_aggregate_labels_meta_aggregations_closed_domain(self, filter_meta_labels: List[Label]):
         multi_labels = aggregate_labels(filter_meta_labels, add_closed_domain_filter=True, add_meta_filters="from_meta")
         assert len(multi_labels) == 4
@@ -1581,6 +1611,7 @@ class TestAggregateLabels:
                 assert multi_label.filters == l.filters
 
 
+@pytest.mark.unit
 def test_print_answers_run():
     with mock.patch("pprint.PrettyPrinter.pprint") as pprint:
         query_string = "Who is the father of Arya Stark?"
@@ -1601,6 +1632,7 @@ def test_print_answers_run():
         pprint.assert_any_call(expected_pprint_answers)
 
 
+@pytest.mark.unit
 def test_print_answers_run_batch():
     with mock.patch("pprint.PrettyPrinter.pprint") as pprint:
         queries = ["Who is the father of Arya Stark?", "Who is the sister of Arya Stark?"]
