@@ -1,7 +1,8 @@
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 
 from haystack.lazy_imports import LazyImport
+from haystack import Document
 
 with LazyImport("Run 'pip install farm-haystack[elasticsearch8]'") as es_import:
     from elasticsearch import Elasticsearch, RequestError
@@ -294,3 +295,63 @@ class ElasticsearchDocumentStore(_ElasticsearchDocumentStore):
                 f"correct credentials if you are using a secured Elasticsearch instance."
             )
         return client
+
+    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        if logger.isEnabledFor(logging.DEBUG):
+            if self.client.options(headers=headers).indices.exists_alias(name=index_name):
+                logger.debug("Index name %s is an alias.", index_name)
+
+        return self.client.options(headers=headers).indices.exists(index=index_name)
+
+    def _index_delete(self, index):
+        if self._index_exists(index):
+            self.client.options(ignore_status=[400, 404]).indices.delete(index=index)
+            logger.info("Index '%s' deleted.", index)
+
+    def _index_refresh(self, index, headers):
+        if self._index_exists(index):
+            self.client.options(headers=headers).indices.refresh(index=index)
+
+    def _index_create(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        return self.client.options(headers=headers).indices.create(*args, **kwargs)
+
+    def _index_get(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        return self.client.options(headers=headers).indices.get(*args, **kwargs)
+
+    def _index_put_mapping(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        body = kwargs.pop("body", {})
+        return self.client.options(headers=headers).indices.put_mapping(*args, **kwargs, **body)
+
+    def _search(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        return self.client.options(headers=headers).search(*args, **kwargs)
+
+    def _update(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        return self.client.options(headers=headers).update(*args, **kwargs)
+
+    def _count(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        body = kwargs.pop("body", {})
+        return self.client.options(headers=headers).count(*args, **kwargs, **body)
+
+    def _delete_by_query(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
+        ignore_status = kwargs.pop("ignore", [])
+        body = kwargs.pop("body", {})
+        return self.client.options(headers=headers, ignore_status=ignore_status).delete_by_query(
+            *args, **kwargs, **body
+        )
+
+    def _execute_msearch(self, index: str, body: List[Dict[str, Any]], scale_score: bool) -> List[List[Document]]:
+        responses = self.client.msearch(index=index, body=body)
+        documents = []
+        for response in responses["responses"]:
+            result = response["hits"]["hits"]
+            cur_documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
+            documents.append(cur_documents)
+
+        return documents
