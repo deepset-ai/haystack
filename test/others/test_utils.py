@@ -5,15 +5,11 @@ from unittest import mock
 
 import numpy as np
 import pytest
-import pandas as pd
-import responses
-from responses import matchers
 
 import _pytest
 
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils import print_answers
-from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.import_utils import get_filename_extension_from_url
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
@@ -21,9 +17,12 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from .. import conftest
-from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, deepset_cloud_fixture, fail_at_version
+from ..conftest import fail_at_version
 
-TEST_CONTEXT = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
+
+@pytest.fixture
+def sample_context():
+    return """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen.
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte,
 moderne Bildungssysteme etablierte und die Industrialisierung vorantrieb.\n
 Beim Begriff der Aufklärung geht es auch um die Prozesse zwischen diesen frühneuzeitlichen Eckpunkten.
@@ -34,7 +33,9 @@ die zunächst selten einen bürgerlichen Hintergrund aufwiesen, sondern weitaus 
 Wissenschaftler, Journalisten, Autoren, sogar Regenten, die Traditionen der Kritik unterzogen, indem sie sich auf die Vernunftperspektive beriefen."""
 
 
-TEST_CONTEXT_2 = """Beer is one of the oldest[1][2][3] and most widely consumed[4] alcoholic drinks in the world, and the third most popular drink overall after water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]
+@pytest.fixture
+def sample_context_2():
+    return """Beer is one of the oldest[1][2][3] and most widely consumed[4] alcoholic drinks in the world, and the third most popular drink overall after water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]
 Some of humanity's earliest known writings refer to the production and distribution of beer: the Code of Hammurabi included laws regulating beer and beer parlours,[8] and "The Hymn to Ninkasi", a prayer to the Mesopotamian goddess of beer, served as both a prayer and as a method of remembering the recipe for beer in a culture with few literate people.[9][10]
 Beer is distributed in bottles and cans and is also commonly available on draught, particularly in pubs and bars. The brewing industry is a global business, consisting of several dominant multinational companies and many thousands of smaller producers ranging from brewpubs to regional breweries. The strength of modern beer is usually around 4% to 6% alcohol by volume (ABV), although it may vary between 0.5% and 20%, with some breweries creating examples of 40% ABV and above.[11]
 Beer forms part of the culture of many nations and is associated with social traditions such as beer festivals, as well as a rich pub culture involving activities like pub crawling, pub quizzes and pub games.
@@ -209,8 +210,8 @@ def test_tika_convert_files_to_docs(samples_path):
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_parts_of_whole_document():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_parts_of_whole_document(sample_context):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
@@ -221,8 +222,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document():
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_parts_of_whole_document_different_case():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_parts_of_whole_document_different_case(sample_context):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
@@ -233,8 +234,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_case(
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_parts_of_whole_document_different_whitesapce():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_parts_of_whole_document_different_whitesapce(sample_context):
+    whole_document = sample_context
     words = whole_document.split()
     min_length = 100
     context_word_size = 20
@@ -245,8 +246,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_white
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_min_length():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_min_length(sample_context):
+    whole_document = sample_context
     min_length = 100
     context_size = min_length - 1
     for i in range(len(whole_document) - context_size):
@@ -256,8 +257,8 @@ def test_calculate_context_similarity_min_length():
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_partially_overlapping_contexts():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_partially_overlapping_contexts(sample_context):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
@@ -270,8 +271,8 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts():
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_non_matching_contexts():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_non_matching_contexts(sample_context):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
@@ -291,8 +292,8 @@ def test_calculate_context_similarity_on_non_matching_contexts():
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_parts_of_whole_document_with_noise(sample_context):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
@@ -303,8 +304,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():
 
 
 @pytest.mark.unit
-def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noise():
-    whole_document = TEST_CONTEXT
+def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noise(sample_context):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
@@ -319,14 +320,14 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
     assert accuracy > 0.99
 
 
-def test_match_context_multi_process():
-    whole_document = TEST_CONTEXT[:300]
+def test_match_context_multi_process(sample_context, sample_context_2):
+    whole_document = sample_context[:300]
     min_length = 100
     margin = 5
     context_size = min_length + margin
     for i in range(len(whole_document) - context_size):
         partial_context = whole_document[i : i + context_size]
-        candidates = ((str(i), TEST_CONTEXT if i == 0 else TEST_CONTEXT_2) for i in range(1000))
+        candidates = ((str(i), sample_context if i == 0 else sample_context_2) for i in range(1000))
         results = match_context(partial_context, candidates, min_length=min_length, num_processes=2)
         assert len(results) == 1
         id, score = results[0]
@@ -334,14 +335,14 @@ def test_match_context_multi_process():
         assert score == 100.0
 
 
-def test_match_context_single_process():
-    whole_document = TEST_CONTEXT
+def test_match_context_single_process(sample_context, sample_context_2):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
     for i in range(len(whole_document) - context_size):
         partial_context = whole_document[i : i + context_size]
-        candidates = ((str(i), TEST_CONTEXT if i == 0 else TEST_CONTEXT_2) for i in range(10))
+        candidates = ((str(i), sample_context if i == 0 else sample_context_2) for i in range(10))
         results = match_context(partial_context, candidates, min_length=min_length, num_processes=1)
         assert len(results) == 1
         id, score = results[0]
@@ -349,12 +350,12 @@ def test_match_context_single_process():
         assert score == 100.0
 
 
-def test_match_contexts_multi_process():
-    whole_document = TEST_CONTEXT
+def test_match_contexts_multi_process(sample_context, sample_context_2):
+    whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    candidates = ((str(i), TEST_CONTEXT if i == 0 else TEST_CONTEXT_2) for i in range(10))
+    candidates = ((str(i), sample_context if i == 0 else sample_context_2) for i in range(10))
     partial_contexts = [whole_document[i : i + context_size] for i in range(len(whole_document) - context_size)]
     result_list = match_contexts(partial_contexts, candidates, min_length=min_length, num_processes=2)
     assert len(result_list) == len(partial_contexts)
