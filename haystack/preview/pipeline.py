@@ -62,7 +62,7 @@ class Pipeline(CanalsPipeline):
         :params data: the inputs to give to the input components of the Pipeline.
         :params parameters: a dictionary with all the parameters of all the components, namespaced by component.
         :params debug: whether to collect and return debug information.
-        :returns A dictionary with the outputs of the output components of the Pipeline.
+        :returns: A dictionary with the outputs of the output components of the Pipeline.
         """
         # Get all nodes in this pipelines instance
         for node_name in self.graph.nodes:
