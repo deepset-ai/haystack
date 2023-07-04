@@ -532,15 +532,14 @@ class Pipeline:
             #   * There are no optional inputs or
             #   * All optional inputs are skipped or
             #   * We received part of the optional inputs, the rest are skipped
-            if logger.level == logging.DEBUG:
-                if not optional_input_sockets:
-                    logger.debug("Component '%s' is ready to run. All mandatory inputs received.", name)
-                else:
-                    logger.debug(
-                        "Component '%s' is ready to run. All mandatory inputs received, skipped optional inputs: %s",
-                        name,
-                        skipped_optional_input_sockets,
-                    )
+            if not optional_input_sockets:
+                logger.debug("Component '%s' is ready to run. All mandatory inputs received.", name)
+            else:
+                logger.debug(
+                    "Component '%s' is ready to run. All mandatory inputs received, skipped optional inputs: %s",
+                    name,
+                    skipped_optional_input_sockets,
+                )
             return "run"
 
         if set(input_components.values()).issubset(received_input_sockets):
