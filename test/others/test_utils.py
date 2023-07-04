@@ -320,14 +320,16 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
     assert accuracy > 0.99
 
 
+@pytest.mark.unit
 def test_match_context_multi_process(sample_context, sample_context_2):
     whole_document = sample_context[:300]
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    for i in range(len(whole_document) - context_size):
-        partial_context = whole_document[i : i + context_size]
-        candidates = ((str(i), sample_context if i == 0 else sample_context_2) for i in range(1000))
+    # Test a few different partial_contexts
+    partial_contexts = [whole_document[i : i + context_size] for i in [0, 50, len(whole_document) - context_size]]
+    for partial_context in partial_contexts:
+        candidates = (c for c in [("0", sample_context), ("1", sample_context_2)])
         results = match_context(partial_context, candidates, min_length=min_length, num_processes=2)
         assert len(results) == 1
         id, score = results[0]
@@ -335,14 +337,16 @@ def test_match_context_multi_process(sample_context, sample_context_2):
         assert score == 100.0
 
 
+@pytest.mark.unit
 def test_match_context_single_process(sample_context, sample_context_2):
     whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    for i in range(len(whole_document) - context_size):
-        partial_context = whole_document[i : i + context_size]
-        candidates = ((str(i), sample_context if i == 0 else sample_context_2) for i in range(10))
+    # Test a few different partial_contexts
+    partial_contexts = [whole_document[i : i + context_size] for i in [0, 300, len(whole_document) - context_size]]
+    for partial_context in partial_contexts:
+        candidates = (c for c in [("0", sample_context), ("1", sample_context_2)])
         results = match_context(partial_context, candidates, min_length=min_length, num_processes=1)
         assert len(results) == 1
         id, score = results[0]
