@@ -116,7 +116,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         )
 
         try:
-            result = self.client.search(index=index, **body, headers=headers)["hits"]["hits"]
+            result = self._search(index=index, **body, headers=headers)["hits"]["hits"]
             if len(result) == 0:
                 count_documents = self.get_document_count(index=index, headers=headers)
                 if count_documents == 0:
@@ -197,7 +197,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                 }
 
         try:
-            self.client.indices.create(index=index_name, **mapping, headers=headers)
+            self._index_create(index=index_name, **mapping, headers=headers)
         except self._RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -226,7 +226,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
             }
         }
         try:
-            self.client.indices.create(index=index_name, **mapping, headers=headers)
+            self._index_create(index=index_name, **mapping, headers=headers)
         except self._RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -239,7 +239,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
         """
         Validates an existing document index. If there's no embedding field, we'll add it.
         """
-        indices = self.client.indices.get(index=index_name, headers=headers)
+        indices = self._index_get(index=index_name, headers=headers)
 
         if not any(indices):
             logger.warning(
@@ -267,7 +267,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         mapping["properties"][search_field] = (
                             {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
                         )
-                        self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+                        self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
             if self.embedding_field:
                 if (
@@ -280,7 +280,7 @@ class _ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         f"of type '{mapping['properties'][self.embedding_field]['type']}'."
                     )
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+                self._index_put_mapping(index=index_id, body=mapping, headers=headers)
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
