@@ -187,7 +187,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
-        top_k = kwargs.pop("top_k", None)
+        top_k = kwargs.get("top_k", None)
         # either stream is True (will use default handler) or stream_handler is provided for custom handler
         stream = kwargs.get("stream", self.stream)
         stream_handler = kwargs.get("stream_handler", self.stream_handler)
@@ -212,6 +212,13 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     "do_sample",
                     "num_return_sequences",
                     "max_length",
+                    "temperature",
+                    "eos_token_id",
+                    "pad_token_id",
+                    "stopping_criteria",
+                    "use_cache",
+                    "top_p",
+                    "top_k"
                 ]
                 if key in kwargs
             }
