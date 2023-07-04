@@ -218,7 +218,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     "stopping_criteria",
                     "use_cache",
                     "top_p",
-                    "top_k"
+                    "top_k",
                 ]
                 if key in kwargs
             }
