@@ -13,7 +13,8 @@ from canals.draw import draw, convert
 from test.sample_components import Double
 
 
-@pytest.mark.skipif(sys.platform.startswith("win"), reason="pygraphviz is not really available in Windows")
+@pytest.mark.skipif(sys.platform.lower().startswith("darwin"), reason="the available graphviz version is too recent")
+@pytest.mark.skipif(sys.platform.lower().startswith("win"), reason="pygraphviz is not really available in Windows")
 def test_draw_pygraphviz(tmp_path, test_files):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
