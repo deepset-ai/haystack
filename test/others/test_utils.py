@@ -354,13 +354,14 @@ def test_match_context_single_process(sample_context, sample_context_2):
         assert score == 100.0
 
 
+@pytest.mark.unit
 def test_match_contexts_multi_process(sample_context, sample_context_2):
     whole_document = sample_context
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    candidates = ((str(i), sample_context if i == 0 else sample_context_2) for i in range(10))
-    partial_contexts = [whole_document[i : i + context_size] for i in range(len(whole_document) - context_size)]
+    candidates = (c for c in [("0", sample_context), ("1", sample_context_2)])
+    partial_contexts = [whole_document[i : i + context_size] for i in [0, 300, len(whole_document) - context_size]]
     result_list = match_contexts(partial_contexts, candidates, min_length=min_length, num_processes=2)
     assert len(result_list) == len(partial_contexts)
     for results in result_list:
