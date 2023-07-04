@@ -81,9 +81,11 @@ class Pipeline(CanalsPipeline):
                     f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
                 )
 
+        # This component implements the MultiStoreComponent protocol
         if hasattr(instance, "stores"):
             instance.stores = {store: self.stores[store] for store in stores}
 
+        # This component implements the StoreComponent protocol
         elif hasattr(instance, "store"):
             if len(stores) != 1:
                 raise ValueError(f"Component '{name}' needs exactly one store.")
