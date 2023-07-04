@@ -1,6 +1,5 @@
 import inspect
 import logging
-import re
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
 
 from haystack.nodes.base import BaseComponent
