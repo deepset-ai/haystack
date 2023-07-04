@@ -7,7 +7,7 @@ from pydoc_markdown.contrib.loaders.python import PythonLoader
 
 
 class CustomPythonLoader(PythonLoader):
-    def load(self) -> t.List[docspec.ApiObject]:
+    def load(self) -> t.Iterable[docspec.Module]:
         """
         Load the modules, but include inherited methods in the classes.
         """
@@ -49,6 +49,8 @@ class CustomPythonLoader(PythonLoader):
         """
         Include all methods inherited from base classes to the class.
         """
+        if cls.bases is None:
+            return
         for base in cls.bases:
             if base in classes:
                 base_cls = classes[base]
