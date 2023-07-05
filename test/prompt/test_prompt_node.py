@@ -203,7 +203,7 @@ def test_invalid_template_params(mock_model, mock_prompthub):
         node.prompt("question-answering-per-document", some_crazy_key="Berlin is the capital of Germany.")
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_azure_vs_open_ai_invocation_layer_selection():
     """
     Tests that the correct invocation layer is selected based on the model name and additional parameters.
@@ -222,10 +222,14 @@ def test_azure_vs_open_ai_invocation_layer_selection():
     assert isinstance(node.prompt_model.model_invocation_layer, AzureOpenAIInvocationLayer)
 
     node = PromptNode("gpt-4", api_key="some_key")
-    assert isinstance(node.prompt_model.model_invocation_layer, ChatGPTInvocationLayer)
+    assert isinstance(node.prompt_model.model_invocation_layer, ChatGPTInvocationLayer) and not isinstance(
+        node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
+    )
 
     node = PromptNode("text-davinci-003", api_key="some_key")
-    assert isinstance(node.prompt_model.model_invocation_layer, OpenAIInvocationLayer)
+    assert isinstance(node.prompt_model.model_invocation_layer, OpenAIInvocationLayer) and not isinstance(
+        node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
+    )
 
 
 @pytest.mark.skip
