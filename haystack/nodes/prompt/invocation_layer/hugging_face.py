@@ -232,12 +232,18 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
-            if top_k:
-                model_input_kwargs["num_return_sequences"] = top_k
-                if "num_beams" not in model_input_kwargs or model_input_kwargs["num_beams"] < top_k:
-                    if "num_beams" in model_input_kwargs:
-                        logger.warning("num_beams should not be less than top_k, hence setting it to %s", top_k)
-                    model_input_kwargs["num_beams"] = top_k
+
+            if "num_beams" in model_input_kwargs:
+                num_beams = model_input_kwargs["num_beams"]
+                if (
+                    "num_return_sequences" in model_input_kwargs
+                    and model_input_kwargs["num_return_sequences"] > num_beams
+                ):
+                    logger.warning(
+                        "num_return_sequences should not be larger than num_beams, hence setting it to %s", num_beams
+                    )
+                    model_input_kwargs["num_return_sequences"] = num_beams
+
             # max_new_tokens is used for text-generation and max_length for text2text-generation
             if is_text_generation:
                 model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
