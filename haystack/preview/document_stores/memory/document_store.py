@@ -8,7 +8,7 @@ import rank_bm25
 from tqdm.auto import tqdm
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.protocols import Store, DuplicatePolicy
+from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 from haystack.utils.scipy_utils import expit
