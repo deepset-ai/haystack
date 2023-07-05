@@ -175,9 +175,28 @@ def test_deprecation_later_major_later_minor():
         assert fail_at_version(3, 3)(noop)()
 
 
-def test_convert_files_to_docs(samples_path):
+@pytest.mark.unit
+def test_convert_txt_files_to_docs(samples_path):
+    pdf_samples_path = samples_path / "docs"
     documents = convert_files_to_docs(
-        dir_path=(samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
+        dir_path=(pdf_samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
+    )
+    assert documents and len(documents) > 0
+
+
+@pytest.mark.unit
+def test_convert_docx_files_to_docs(samples_path):
+    pdf_samples_path = samples_path / "docx"
+    documents = convert_files_to_docs(
+        dir_path=(pdf_samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
+    )
+    assert documents and len(documents) > 0
+
+
+def test_convert_pdf_files_to_docs(samples_path):
+    pdf_samples_path = samples_path / "pdf"
+    documents = convert_files_to_docs(
+        dir_path=(pdf_samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
     )
     assert documents and len(documents) > 0
 
