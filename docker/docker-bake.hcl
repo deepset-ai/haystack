@@ -51,17 +51,12 @@ target "base-cpu" {
 }
 
 target "base-cpu-remote-inference" {
-  dockerfile = "Dockerfile.base"
+  inherits = ["base-cpu"]
   tags = ["${IMAGE_NAME}:base-cpu-remote-inference-${IMAGE_TAG_SUFFIX}"]
   args = {
-    base_image = "python:3.10-slim"
-    build_image = "python:3.10-slim"
-    haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[preprocessing]"
   }
-  platforms = ["linux/amd64", "linux/arm64"]
 }
-
 
 target "base-gpu" {
   dockerfile = "Dockerfile.base"
