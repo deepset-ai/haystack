@@ -93,8 +93,11 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
-        :param tokenizer: Specifies the tokenizer to use if split_by="token".
-                                Supported options are "tiktoken" (for OpenAI's GPT-3.5 and GPT-4) and any HuggingFace tokenizer object.
+        :param tokenizer: Specifies the tokenizer to use if split_by="token". Supported options are "tiktoken"
+                            (for OpenAI's GPT-3.5 and GPT-4) and any HuggingFace tokenizer (e.g. 'bert-base-uncased').
+                            HuggingFace tokenizers can also be passed directly as an PreTrainedTokenizerBase object.
+                            Note that lossy tokenizers might change the content of the split documents
+                            (e.g. remove capitalization, special characters, whitespaces, etc.).
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
             Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
@@ -864,6 +867,22 @@ class PreProcessor(BasePreProcessor):
             enc = tiktoken.get_encoding("cl100k_base")
             integer_tokens = enc.encode(text, allowed_special="all", disallowed_special=())
             elements = [enc.decode_single_token_bytes(token).decode() for token in integer_tokens]
+        elif isinstance(tokenizer, str):
+            try:
+                from transformers import AutoTokenizer
+            except ImportError:
+                raise ImportError(
+                    "HuggingFace transformers is needed in order to split documents using HuggingFace tokenizers. "
+                    "Please install it with `pip install transformers`."
+                )
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+            except Exception:
+                raise ValueError(
+                    f"Could not load tokenizer '{tokenizer}' from HuggingFace model hub. "
+                    f"Please make sure that the tokenizer is correct and exists."
+                )
+            elements = tokenizer.tokenize(text)
         elif isinstance(tokenizer, PreTrainedTokenizerBase):
             elements = tokenizer.tokenize(text)
         else:

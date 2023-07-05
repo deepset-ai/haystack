@@ -187,20 +187,28 @@ def test_preprocess_tiktoken_token_split():
         "This is a document with a long sentence (longer than my split length), it has seventeen words.",
     ]
     docs = [Document(content=content) for content in raw_docs]
+    split_length = 10
     token_split_docs_not_respecting_sentences = PreProcessor(
-        split_by="token", split_length=10, split_respect_sentence_boundary=False, split_overlap=0, tokenizer="tiktoken"
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=False,
+        split_overlap=0,
+        tokenizer="tiktoken",
     ).process(docs)
     assert len(token_split_docs_not_respecting_sentences) == 5
-    # check that none of the documents are longer than 10 tiktoken tokens
+    # check that none of the documents are longer than split_length tiktoken tokens
     enc = tiktoken.get_encoding("cl100k_base")
     split_documents_encoded = [
         enc.encode(d.content, allowed_special="all", disallowed_special=())
         for d in token_split_docs_not_respecting_sentences
     ]
-    assert all([len(d) <= 10 for d in split_documents_encoded])
-
+    assert all([len(d) <= split_length for d in split_documents_encoded])
     token_split_docs_respecting_sentences = PreProcessor(
-        split_by="token", split_length=10, split_respect_sentence_boundary=True, split_overlap=0, tokenizer="tiktoken"
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=True,
+        split_overlap=0,
+        tokenizer="tiktoken",
     ).process(docs)
     assert len(token_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
 
@@ -212,18 +220,36 @@ def test_preprocess_huggingface_token_split():
         "This is a document with a long sentence (longer than my split length), it has seventeen words.",
     ]
     docs = [Document(content=content) for content in raw_docs]
+    split_length = 10
     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
     token_split_docs_not_respecting_sentences = PreProcessor(
-        split_by="token", split_length=10, split_respect_sentence_boundary=False, split_overlap=0, tokenizer=tokenizer
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=False,
+        split_overlap=0,
+        tokenizer=tokenizer,
     ).process(docs)
     assert len(token_split_docs_not_respecting_sentences) == 5
-    # check that none of the documents are longer than 10 tokenizer tokens
+    # check that none of the documents are longer than split_length tokenizer tokens
     split_documents_tokenized = [tokenizer.tokenize(d.content) for d in token_split_docs_not_respecting_sentences]
-    assert all([len(d) <= 10 for d in split_documents_tokenized])
+    assert all([len(d) <= split_length for d in split_documents_tokenized])
     token_split_docs_respecting_sentences = PreProcessor(
-        split_by="token", split_length=10, split_respect_sentence_boundary=True, split_overlap=0, tokenizer=tokenizer
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=True,
+        split_overlap=0,
+        tokenizer=tokenizer,
     ).process(docs)
     assert len(token_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
+    # check auto instantiation of the tokenizer (passing only the HF model name)
+    token_split_docs_not_respecting_sentences_instantiate_by_name = PreProcessor(
+        split_by="token",
+        split_length=split_length,
+        split_respect_sentence_boundary=False,
+        split_overlap=0,
+        tokenizer="bert-base-uncased",
+    ).process(docs)
+    assert token_split_docs_not_respecting_sentences == token_split_docs_not_respecting_sentences_instantiate_by_name
 
 
 @pytest.mark.unit
