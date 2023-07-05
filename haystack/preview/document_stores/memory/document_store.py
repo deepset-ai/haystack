@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 SCALING_FACTOR = 8
 
 
-class MemoryDocumentStore(Store):
+class MemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
@@ -126,7 +126,7 @@ class MemoryDocumentStore(Store):
             return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
         return list(self.storage.values())
 
-    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:
+    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
         Writes (or overwrites) documents into the store.
 
@@ -147,10 +147,10 @@ class MemoryDocumentStore(Store):
             raise ValueError("Please provide a list of Documents.")
 
         for document in documents:
-            if document.id in self.storage.keys():
-                if duplicates == "fail":
+            if duplicates != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
+                if duplicates == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
-                if duplicates == "skip":
+                if duplicates == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
             self.storage[document.id] = document
 

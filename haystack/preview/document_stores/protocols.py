@@ -1,12 +1,18 @@
 from typing import Protocol, Optional, Dict, Any, List, Literal
 
 import logging
+from enum import Enum
 
 from haystack.preview.dataclasses import Document
 
 
 logger = logging.getLogger(__name__)
-DuplicatePolicy = Literal["skip", "overwrite", "fail"]
+
+
+class DuplicatePolicy(Enum):
+    SKIP = "skip"
+    OVERWRITE = "overwrite"
+    FAIL = "fail"
 
 
 class Store(Protocol):
@@ -91,7 +97,7 @@ class Store(Protocol):
         :return: a list of Documents that match the given filters.
         """
 
-    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:
+    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
         Writes (or overwrites) documents into the store.
 
