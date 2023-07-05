@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores import Store, StoreError
+from haystack.preview.document_stores import Store, StoreError, DuplicatePolicy
 from haystack.preview.document_stores import MissingDocumentError, DuplicateDocumentError
 
 
@@ -679,14 +679,14 @@ class DocumentStoreBaseTests:
         doc = Document(content="test doc")
         docstore.write_documents([doc])
         with pytest.raises(DuplicateDocumentError, match=f"ID '{doc.id}' already exists."):
-            docstore.write_documents(documents=[doc])
+            docstore.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
         assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
 
     @pytest.mark.unit
     def test_write_duplicate_skip(self, docstore: Store):
         doc = Document(content="test doc")
         docstore.write_documents([doc])
-        docstore.write_documents(documents=[doc], duplicates="skip")
+        docstore.write_documents(documents=[doc], policy=DuplicatePolicy.SKIP)
         assert docstore.filter_documents(filters={"id": doc.id}) == [doc]
 
     @pytest.mark.unit
@@ -697,7 +697,7 @@ class DocumentStoreBaseTests:
 
         docstore.write_documents([doc2])
         docstore.filter_documents(filters={"id": doc1.id}) == [doc2]
-        docstore.write_documents(documents=[doc1], duplicates="overwrite")
+        docstore.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE)
         assert docstore.filter_documents(filters={"id": doc1.id}) == [doc1]
 
     @pytest.mark.unit

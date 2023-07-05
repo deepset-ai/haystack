@@ -108,12 +108,12 @@ class Store(Protocol):
         Writes (or overwrites) documents into the store.
 
         :param documents: a list of documents.
-        :param duplicates: documents with the same ID count as duplicates. When duplicates are met,
+        :param policy: documents with the same ID count as duplicates. When duplicates are met,
             the store can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
-        :raises DuplicateError: Exception trigger on duplicate document if `duplicates="fail"`
+        :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
         :return: None
         """
 
