@@ -147,10 +147,10 @@ class MemoryDocumentStore:
             raise ValueError("Please provide a list of Documents.")
 
         for document in documents:
-            if duplicates != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
-                if duplicates == DuplicatePolicy.FAIL:
+            if policy != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
+                if policy == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
-                if duplicates == DuplicatePolicy.SKIP:
+                if policy == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
             self.storage[document.id] = document
 
