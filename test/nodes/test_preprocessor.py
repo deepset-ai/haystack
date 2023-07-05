@@ -5,8 +5,10 @@ from unittest.mock import Mock
 
 import nltk.data
 import pytest
+import tiktoken
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.tmpdir import TempPathFactory
+from transformers import AutoTokenizer
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
@@ -185,19 +187,11 @@ def test_preprocess_tiktoken_token_split():
         "This is a document with a long sentence (longer than my split length), it has seventeen words.",
     ]
     docs = [Document(content=content) for content in raw_docs]
-    assert len(docs) == 2
-
     token_split_docs_not_respecting_sentences = PreProcessor(
-        split_by="token",
-        split_length=10,
-        split_respect_sentence_boundary=False,
-        split_overlap=0,
-        tokenizer_name="tiktoken",
+        split_by="token", split_length=10, split_respect_sentence_boundary=False, split_overlap=0, tokenizer="tiktoken"
     ).process(docs)
     assert len(token_split_docs_not_respecting_sentences) == 5
     # check that none of the documents are longer than 10 tiktoken tokens
-    import tiktoken
-
     enc = tiktoken.get_encoding("cl100k_base")
     split_documents_encoded = [
         enc.encode(d.content, allowed_special="all", disallowed_special=())
@@ -205,14 +199,31 @@ def test_preprocess_tiktoken_token_split():
     ]
     assert all([len(d) <= 10 for d in split_documents_encoded])
 
-    word_split_docs_respecting_sentences = PreProcessor(
-        split_by="token",
-        split_length=10,
-        split_respect_sentence_boundary=True,
-        split_overlap=0,
-        tokenizer_name="tiktoken",
+    token_split_docs_respecting_sentences = PreProcessor(
+        split_by="token", split_length=10, split_respect_sentence_boundary=True, split_overlap=0, tokenizer="tiktoken"
     ).process(docs)
-    assert len(word_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
+    assert len(token_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
+
+
+@pytest.mark.unit
+def test_preprocess_huggingface_token_split():
+    raw_docs = [
+        "This is a document. It has two sentences and eleven words.",
+        "This is a document with a long sentence (longer than my split length), it has seventeen words.",
+    ]
+    docs = [Document(content=content) for content in raw_docs]
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    token_split_docs_not_respecting_sentences = PreProcessor(
+        split_by="token", split_length=10, split_respect_sentence_boundary=False, split_overlap=0, tokenizer=tokenizer
+    ).process(docs)
+    assert len(token_split_docs_not_respecting_sentences) == 5
+    # check that none of the documents are longer than 10 tokenizer tokens
+    split_documents_tokenized = [tokenizer.tokenize(d.content) for d in token_split_docs_not_respecting_sentences]
+    assert all([len(d) <= 10 for d in split_documents_tokenized])
+    token_split_docs_respecting_sentences = PreProcessor(
+        split_by="token", split_length=10, split_respect_sentence_boundary=True, split_overlap=0, tokenizer=tokenizer
+    ).process(docs)
+    assert len(token_split_docs_respecting_sentences) == 3  # should not be more than there are sentences
 
 
 @pytest.mark.unit

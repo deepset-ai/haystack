@@ -1,4 +1,4 @@
-from typing import List, Optional, Generator, Set, Union, Tuple, Dict, Literal, Callable
+from typing import List, Optional, Generator, Set, Union, Tuple, Dict, Literal, Callable, Any
 
 import logging
 import re
@@ -11,6 +11,7 @@ from pickle import UnpicklingError
 
 from tqdm import tqdm
 from more_itertools import windowed
+from transformers import PreTrainedTokenizerBase
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
@@ -65,7 +66,7 @@ class PreProcessor(BasePreProcessor):
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
         tokenizer_model_folder: Optional[Union[str, Path]] = None,
-        tokenizer_name: Optional[Literal["tiktoken"]] = "tiktoken",
+        tokenizer: Optional[Union[str, PreTrainedTokenizerBase]] = "tiktoken",
         language: str = "en",
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
@@ -92,7 +93,8 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
-        :param tokenizer_name: The name of the tokenizer to use if split_by="token". Currently, only "tiktoken" is supported.
+        :param tokenizer: Specifies the tokenizer to use if split_by="token".
+                                Supported options are "tiktoken" (for OpenAI's GPT-3.5 and GPT-4) and any HuggingFace tokenizer object.
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
             Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
@@ -132,7 +134,7 @@ class PreProcessor(BasePreProcessor):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
-        self.tokenizer_name = tokenizer_name
+        self.tokenizer = tokenizer
         self.language = language
         self.tokenizer_model_folder = tokenizer_model_folder
         self.print_log: Set[str] = set()
@@ -152,7 +154,7 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
-        tokenizer_name: Optional[Literal["tiktoken"]] = None,
+        tokenizer: Optional[Union[str, PreTrainedTokenizerBase]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -177,7 +179,7 @@ class PreProcessor(BasePreProcessor):
             "split_length": split_length,
             "split_overlap": split_overlap,
             "split_respect_sentence_boundary": split_respect_sentence_boundary,
-            "tokenizer_name": tokenizer_name,
+            "tokenizer": tokenizer,
         }
 
         if id_hash_keys is None:
@@ -234,7 +236,7 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
-        tokenizer_name: Optional[Literal["tiktoken"]] = None,
+        tokenizer: Optional[Union[str, PreTrainedTokenizerBase]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         if remove_substrings is None:
@@ -255,8 +257,8 @@ class PreProcessor(BasePreProcessor):
             split_overlap = self.split_overlap
         if split_respect_sentence_boundary is None:
             split_respect_sentence_boundary = self.split_respect_sentence_boundary
-        if tokenizer_name is None:
-            tokenizer_name = self.tokenizer_name
+        if tokenizer is None:
+            tokenizer = self.tokenizer
 
         cleaned_document = self.clean(
             document=document,
@@ -272,7 +274,7 @@ class PreProcessor(BasePreProcessor):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
-            tokenizer_name=tokenizer_name,
+            tokenizer=tokenizer,
             id_hash_keys=id_hash_keys,
         )
 
@@ -351,7 +353,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
-        tokenizer_name: Optional[Literal["tiktoken"]] = None,
+        tokenizer: Optional[Union[str, PreTrainedTokenizerBase]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
@@ -389,7 +391,7 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by in ["word", "token"]:
             if split_by == "token":
-                split_function = lambda t: self._split_tokens(text=t, tokenizer_name=tokenizer_name)
+                split_function = lambda t: self._split_tokens(text=t, tokenizer=tokenizer)
             else:
                 split_function = lambda t: t.split()
             text_splits, splits_pages, splits_start_idxs = self._split_into_units_respecting_sent_boundary(
@@ -397,7 +399,7 @@ class PreProcessor(BasePreProcessor):
             )
         else:
             # create individual "elements" of passage, sentence, or word
-            elements, split_at = self._split_into_units(text=text, split_by=split_by, tokenizer_name=tokenizer_name)
+            elements, split_at = self._split_into_units(text=text, split_by=split_by, tokenizer=tokenizer)
 
             # concatenate individual elements based on split_length & split_stride
             text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
@@ -588,7 +590,7 @@ class PreProcessor(BasePreProcessor):
 
         return processed_sents, next_slice, word_count_slice
 
-    def _split_into_units(self, text: str, split_by: str, tokenizer_name: str) -> Tuple[List[str], str]:
+    def _split_into_units(self, text: str, split_by: str, tokenizer: Any) -> Tuple[List[str], str]:
         if split_by == "passage":
             elements = text.split("\n\n")
             split_at = "\n\n"
@@ -599,8 +601,8 @@ class PreProcessor(BasePreProcessor):
             elements = text.split(" ")
             split_at = " "
         elif split_by == "token":
-            elements = self._split_tokens(text, tokenizer_name)
-            split_at = ""
+            elements = self._split_tokens(text, tokenizer)
+            split_at = "" if any(" " in e for e in elements) else " "
         else:
             raise NotImplementedError(
                 "PreProcessor only supports 'passage', 'sentence', 'word' or 'token' split_by options."
@@ -850,21 +852,25 @@ class PreProcessor(BasePreProcessor):
         sentences = sentence_tokenizer.tokenize(text)
         return sentences
 
-    def _split_tokens(self, text: str, tokenizer_name: str) -> List[str]:
-        if tokenizer_name is "tiktoken":
+    def _split_tokens(self, text: str, tokenizer: Any) -> List[str]:
+        if tokenizer == "tiktoken":
             try:
                 import tiktoken
             except ImportError:
                 raise ImportError(
-                    "Could not import tiktoken python package. "
-                    "This is needed in order to split documents by tokens. "
+                    "Tiktoken is needed in order to split documents by tokens. "
                     "Please install it with `pip install tiktoken`."
                 )
             enc = tiktoken.get_encoding("cl100k_base")
             integer_tokens = enc.encode(text, allowed_special="all", disallowed_special=())
             elements = [enc.decode_single_token_bytes(token).decode() for token in integer_tokens]
+        elif isinstance(tokenizer, PreTrainedTokenizerBase):
+            elements = tokenizer.tokenize(text)
         else:
-            raise NotImplementedError(f"Unsupported tokenizer {tokenizer_name}. ")
+            raise ValueError(
+                f"Unsupported tokenizer specification {tokenizer}. "
+                f"Please provide either the string 'tiktoken' or a HuggingFace tokenizer (PreTrainedTokenizerBase)."
+            )
         return elements
 
     def _load_sentence_tokenizer(self, language_name: Optional[str]) -> "nltk.tokenize.punkt.PunktSentenceTokenizer":
