@@ -23,19 +23,19 @@ variable "HAYSTACK_EXTRAS" {
 }
 
 group "base" {
-  targets = ["base-cpu", "base-gpu"]
+  targets = ["base-cpu", "base-gpu", "base-cpu-remote-inference"]
 }
 
 group "api" {
-  targets = ["cpu", "gpu"]
+  targets = ["cpu", "gpu", "cpu-remote-inference"]
 }
 
 group "api-latest" {
-  targets = ["cpu-latest", "gpu-latest"]
+  targets = ["cpu-latest", "gpu-latest", "cpu-remote-inference-latest"]
 }
 
 group "all" {
-  targets = ["base", "base-gpu", "cpu", "gpu"]
+  targets = ["base", "base-gpu", "cpu", "gpu", "cpu-remote-inference"]
 }
 
 target "base-cpu" {
