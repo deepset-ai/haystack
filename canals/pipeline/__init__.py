@@ -6,6 +6,8 @@ from canals.errors import (
     PipelineError,
     PipelineRuntimeError,
     PipelineValidationError,
+    PipelineConnectError,
+    PipelineMaxLoops,
 )
 from canals.pipeline.save_load import (
     save_pipelines,
