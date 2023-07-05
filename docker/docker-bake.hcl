@@ -95,7 +95,6 @@ target "cpu-remote-inference" {
 target "cpu-remote-inference-latest" {
   inherits = ["cpu-remote-inference"]
   tags = ["${IMAGE_NAME}:cpu-remote-inference"]
-  platforms = ["linux/amd64", "linux/arm64"]
 }
 
 target "cpu-latest" {
