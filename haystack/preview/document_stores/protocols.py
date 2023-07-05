@@ -17,7 +17,13 @@ class DuplicatePolicy(Enum):
 
 class Store(Protocol):
     """
-    Stores data, like Documents, to be used by the components of a Pipeline.
+    Stores Documents to be used by the components of a Pipeline.
+
+    Classes implementing this protocol often store the documents permanently and allow specialized components to
+    perform retrieval on them, either by embedding, by keyword, hybrid, and so on, depending on the backend used.
+
+    In order to retrieve documents, consider using a Retriever that supports the document store implementation that
+    you're using.
     """
 
     def count_documents(self) -> int:
@@ -97,7 +103,7 @@ class Store(Protocol):
         :return: a list of Documents that match the given filters.
         """
 
-    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
         Writes (or overwrites) documents into the store.
 
