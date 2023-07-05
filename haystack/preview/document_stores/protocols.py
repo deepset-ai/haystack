@@ -22,7 +22,7 @@ class Store(Protocol):
 
     def count_documents(self) -> int:
         """
-        Returns the number of how many documents are present in the document store.
+        Returns the number of documents stored.
         """
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
