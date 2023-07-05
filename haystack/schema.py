@@ -633,7 +633,7 @@ def is_positive_label(label):
 
 
 class MultiLabel:
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
+    def __init__(self, labels: List[Label], drop_negative_labels: bool = False, drop_no_answers: bool = False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
@@ -753,12 +753,17 @@ class MultiLabel:
 
     def to_dict(self):
         # convert internal attribute names to property names
-        return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
+        result = {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
+        # convert Label object to dict
+        result["labels"] = [label.to_dict() for label in result["labels"]]
+        return result
 
     @classmethod
     def from_dict(cls, dict: Dict):
         # exclude extra arguments
-        return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
+        inputs = {k: v for k, v in dict.items() if k in inspect.signature(cls).parameters}
+        inputs["labels"] = [Label.from_dict(label) for label in inputs["labels"]]
+        return cls(**inputs)
 
     def to_json(self):
         return json.dumps(self.to_dict(), default=pydantic_encoder)
@@ -769,7 +774,6 @@ class MultiLabel:
             dict_data = json.loads(data)
         else:
             dict_data = data
-        dict_data["labels"] = [Label.from_dict(l) for l in dict_data["labels"]]
         return cls.from_dict(dict_data)
 
     def __eq__(self, other):

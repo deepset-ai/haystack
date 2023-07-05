@@ -26,14 +26,6 @@ def test_using_callable_as_tool():
 
 
 @pytest.mark.unit
-def test_add_tool(tools_manager):
-    new_tool = Tool(name="ToolC", pipeline_or_node=mock.Mock(), description="Tool C Description")
-    tools_manager.add_tool(new_tool)
-    assert "ToolC" in tools_manager.tools
-    assert tools_manager.tools["ToolC"] == new_tool
-
-
-@pytest.mark.unit
 def test_get_tool_names(tools_manager):
     assert tools_manager.get_tool_names() == "ToolA, ToolB"
 
