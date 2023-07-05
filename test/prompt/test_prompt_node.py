@@ -204,6 +204,7 @@ def test_invalid_template_params(mock_model, mock_prompthub):
 
 
 @pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
 def test_azure_vs_open_ai_invocation_layer_selection():
     """
     Tests that the correct invocation layer is selected based on the model name and additional parameters.
