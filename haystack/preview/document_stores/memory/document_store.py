@@ -8,7 +8,7 @@ import rank_bm25
 from tqdm.auto import tqdm
 
 from haystack.preview.dataclasses import Document
-from haystack.preview.document_stores.protocols import Store, DuplicatePolicy
+from haystack.preview.document_stores.protocols import DuplicatePolicy
 from haystack.preview.document_stores.memory._filters import match
 from haystack.preview.document_stores.errors import DuplicateDocumentError, MissingDocumentError
 from haystack.utils.scipy_utils import expit
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 SCALING_FACTOR = 8
 
 
-class MemoryDocumentStore(Store):
+class MemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
@@ -126,17 +126,17 @@ class MemoryDocumentStore(Store):
             return [doc for doc in self.storage.values() if match(conditions=filters, document=doc)]
         return list(self.storage.values())
 
-    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
         Writes (or overwrites) documents into the store.
 
         :param documents: a list of documents.
-        :param duplicates: documents with the same ID count as duplicates. When duplicates are met,
+        :param policy: documents with the same ID count as duplicates. When duplicates are met,
             the store can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
-        :raises DuplicateError: Exception trigger on duplicate document if `duplicates="fail"`
+        :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
         :return: None
         """
         if (
@@ -147,10 +147,10 @@ class MemoryDocumentStore(Store):
             raise ValueError("Please provide a list of Documents.")
 
         for document in documents:
-            if document.id in self.storage.keys():
-                if duplicates == "fail":
+            if policy != DuplicatePolicy.OVERWRITE and document.id in self.storage.keys():
+                if policy == DuplicatePolicy.FAIL:
                     raise DuplicateDocumentError(f"ID '{document.id}' already exists.")
-                if duplicates == "skip":
+                if policy == DuplicatePolicy.SKIP:
                     logger.warning("ID '%s' already exists", document.id)
             self.storage[document.id] = document
 

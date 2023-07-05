@@ -1,22 +1,34 @@
-from typing import Protocol, Optional, Dict, Any, List, Literal
+from typing import Protocol, Optional, Dict, Any, List
 
 import logging
+from enum import Enum
 
 from haystack.preview.dataclasses import Document
 
 
 logger = logging.getLogger(__name__)
-DuplicatePolicy = Literal["skip", "overwrite", "fail"]
+
+
+class DuplicatePolicy(Enum):
+    SKIP = "skip"
+    OVERWRITE = "overwrite"
+    FAIL = "fail"
 
 
 class Store(Protocol):
     """
-    Stores data, like Documents, to be used by the components of a Pipeline.
+    Stores Documents to be used by the components of a Pipeline.
+
+    Classes implementing this protocol often store the documents permanently and allow specialized components to
+    perform retrieval on them, either by embedding, by keyword, hybrid, and so on, depending on the backend used.
+
+    In order to retrieve documents, consider using a Retriever that supports the document store implementation that
+    you're using.
     """
 
     def count_documents(self) -> int:
         """
-        Returns the number of how many documents are present in the document store.
+        Returns the number of documents stored.
         """
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
@@ -91,17 +103,17 @@ class Store(Protocol):
         :return: a list of Documents that match the given filters.
         """
 
-    def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
         """
         Writes (or overwrites) documents into the store.
 
         :param documents: a list of documents.
-        :param duplicates: documents with the same ID count as duplicates. When duplicates are met,
+        :param policy: documents with the same ID count as duplicates. When duplicates are met,
             the store can:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
-        :raises DuplicateError: Exception trigger on duplicate document if `duplicates="fail"`
+        :raises DuplicateError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
         :return: None
         """
 
