@@ -5,11 +5,15 @@ from unittest import mock
 
 import numpy as np
 import pytest
+import pandas as pd
+import responses
+from responses import matchers
 
 import _pytest
 
 from haystack.schema import Answer, Document, Span, Label
 from haystack.utils import print_answers
+from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.import_utils import get_filename_extension_from_url
 from haystack.utils.labels import aggregate_labels
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
@@ -17,7 +21,7 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from .. import conftest
-from ..conftest import fail_at_version
+from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, deepset_cloud_fixture, fail_at_version
 
 
 @pytest.fixture
