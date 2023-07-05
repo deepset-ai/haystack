@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def test_connect():
-    add_1 = AddFixedValue(add=200)
+    add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
     pipe = Pipeline()
@@ -25,7 +25,7 @@ def test_connect():
 
 
 def test_connect_nonexisting_from_component():
-    add_1 = AddFixedValue(add=200)
+    add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
     pipe = Pipeline()
@@ -36,7 +36,7 @@ def test_connect_nonexisting_from_component():
 
 
 def test_connect_nonexisting_to_component():
-    add_1 = AddFixedValue(add=200)
+    add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
     pipe = Pipeline()
@@ -47,7 +47,7 @@ def test_connect_nonexisting_to_component():
 
 
 def test_connect_nonexisting_from_socket():
-    add_1 = AddFixedValue(add=200)
+    add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
     pipe = Pipeline()
@@ -58,7 +58,7 @@ def test_connect_nonexisting_from_socket():
 
 
 def test_connect_nonexisting_to_socket():
-    add_1 = AddFixedValue(add=200)
+    add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
     pipe = Pipeline()
@@ -69,7 +69,7 @@ def test_connect_nonexisting_to_socket():
 
 
 def test_connect_mismatched_components():
-    add = AddFixedValue(add=200)
+    add = AddFixedValue()
     greet = Greet()
 
     pipe = Pipeline()
@@ -82,7 +82,7 @@ def test_connect_mismatched_components():
 
 
 def test_connect_many_outputs_to_the_same_input():
-    add_1 = AddFixedValue(add=200)
+    add_1 = AddFixedValue()
     add_2 = AddFixedValue()
 
     pipe = Pipeline()
