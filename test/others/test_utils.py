@@ -175,7 +175,6 @@ def test_deprecation_later_major_later_minor():
         assert fail_at_version(3, 3)(noop)()
 
 
-# Takes awhile to run
 def test_convert_files_to_docs(samples_path):
     documents = convert_files_to_docs(
         dir_path=(samples_path).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
