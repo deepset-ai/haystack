@@ -76,9 +76,9 @@ class Test_MemoryRetriever(BaseTestComponent):
             def delete_documents(self, document_ids: List[str]) -> None:
                 return
 
-        mr = MemoryRetriever()
+        retriever = MemoryRetriever()
         with pytest.raises(ValueError, match="MemoryRetriever can only be used with a MemoryDocumentStore instance"):
-            mr.store = MockStore()
+            retriever.store = MockStore()
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
