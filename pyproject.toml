@@ -84,7 +84,7 @@ dependencies = [
   # Agent events
   "events",
 
-  "requests-cache<1.0.0",
+  "requests-cache",
 ]
 
 [project.optional-dependencies]
