@@ -17,9 +17,7 @@ from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
 from haystack.schema import Document
 
-
 logger = logging.getLogger(__name__)
-
 
 try:
     import nltk
@@ -29,7 +27,6 @@ except ImportError as exc:
         "Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk' to fix this issue."
     )
     nltk = None
-
 
 iso639_to_nltk = {
     "ru": "russian",
@@ -393,10 +390,13 @@ class PreProcessor(BasePreProcessor):
         headlines = document.meta["headlines"] if "headlines" in document.meta else []
 
         if split_respect_sentence_boundary and split_by in ["word", "token"]:
-            if split_by == "token":
-                split_function = lambda t: self._split_tokens(text=t, tokenizer=tokenizer)
-            else:
-                split_function = lambda t: t.split()
+
+            def split_function(text):
+                if split_by == "token":
+                    return self._split_tokens(text, tokenizer=tokenizer)
+                else:
+                    return text.split()
+
             text_splits, splits_pages, splits_start_idxs = self._split_into_units_respecting_sent_boundary(
                 text=text, split_length=split_length, split_overlap=split_overlap, split_function=split_function
             )
