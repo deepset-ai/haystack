@@ -61,12 +61,31 @@ class BaseGenerator(BaseComponent):
         queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
+        labels: Optional[List[MultiLabel]] = None,
         batch_size: Optional[int] = None,
+        add_isolated_node_eval: bool = False,
         max_tokens: Optional[int] = None,
     ):
         results = self.predict_batch(
             queries=queries, documents=documents, top_k=top_k, batch_size=batch_size, max_tokens=max_tokens
         )
+
+        # run evaluation with "perfect" labels as node inputs to calculate "upper bound" metrics for just this node
+        if add_isolated_node_eval and labels is not None:
+            relevant_documents = []
+            for labelx in labels:
+                # Deduplicate same Documents in a MultiLabel based on their Document ID and filter out empty Documents
+                relevant_docs_labels = list(
+                    {
+                        label.document.id: label.document
+                        for label in labelx.labels
+                        if not isinstance(label.document.content, str) or label.document.content.strip() != ""
+                    }.values()
+                )
+                relevant_documents.append(relevant_docs_labels)
+            results_label_input = self.predict_batch(queries=queries, documents=relevant_documents, top_k=top_k)
+
+            results["answers_isolated"] = results_label_input["answers"]
         return results, "output_1"
 
     def _flatten_docs(self, documents: List[Document]):
