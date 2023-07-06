@@ -356,6 +356,10 @@ def test_streaming_stream_handler_param_in_constructor(mock_pipeline, mock_get_t
     assert hf_streamer.token_handler == dtsh
 
 
+def raise_runtime_error(*args, **kwargs):
+    raise RuntimeError()
+
+
 @pytest.mark.unit
 def test_supports(tmp_path):
     """
@@ -368,7 +372,9 @@ def test_supports(tmp_path):
         assert HFLocalInvocationLayer.supports("google/flan-t5-base")
         assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
         assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
-        assert mock_get_task.call_count == 3
+        mock_get_task.side_effect = raise_runtime_error
+        assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
+        assert mock_get_task.call_count == 4
 
     # some HF local model directory, let's use the one from test/prompt/invocation_layer
     assert HFLocalInvocationLayer.supports(str(tmp_path))
