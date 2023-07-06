@@ -12,7 +12,7 @@ class MockStore:
 
 
 @pytest.mark.unit
-def test_pipeline_store_api():
+def test_pipeline_store_add_list_get():
     store_1 = MockStore()
     store_2 = MockStore()
     pipe = Pipeline()
@@ -29,7 +29,7 @@ def test_pipeline_store_api():
 
 
 @pytest.mark.unit
-def test_pipeline_storemixin_one_existing_docstore():
+def test_pipeline_component_expects_one_docstore_receives_one_docstore():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -55,7 +55,7 @@ def test_pipeline_storemixin_one_existing_docstore():
 
 
 @pytest.mark.unit
-def test_pipeline_storemixin_no_docstore():
+def test_pipeline_component_expects_one_docstore_receives_no_docstore():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -82,7 +82,7 @@ def test_pipeline_storemixin_no_docstore():
 
 
 @pytest.mark.unit
-def test_pipeline_storemixin_many_existing_docstores():
+def test_pipeline_component_expects_one_docstore_receives_many_docstores():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -109,7 +109,7 @@ def test_pipeline_storemixin_many_existing_docstores():
 
 
 @pytest.mark.unit
-def test_pipeline_storemixin_one_non_existing_docstore():
+def test_pipeline_component_expects_one_docstore_receives_wrong_docstore():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -136,7 +136,7 @@ def test_pipeline_storemixin_one_non_existing_docstore():
 
 
 @pytest.mark.unit
-def test_pipeline_storesmixin_one_existing_docstore():
+def test_pipeline_component_expects_many_docstores_receives_one_docstore():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -162,7 +162,7 @@ def test_pipeline_storesmixin_one_existing_docstore():
 
 
 @pytest.mark.unit
-def test_pipeline_storesmixin_no_docstore():
+def test_pipeline_component_expects_many_docstores_receives_no_docstore():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -188,7 +188,7 @@ def test_pipeline_storesmixin_no_docstore():
 
 
 @pytest.mark.unit
-def test_pipeline_storesmixin_many_existing_docstores():
+def test_pipeline_component_expects_many_docstores_receives_many_docstores():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -213,7 +213,7 @@ def test_pipeline_storesmixin_many_existing_docstores():
 
 
 @pytest.mark.unit
-def test_pipeline_storemixin_one_non_existing_docstore_alone():
+def test_pipeline_component_expects_many_docstores_receives_one_wrong_docstore():
     store_1 = MockStore()
     store_2 = MockStore()
 
@@ -239,7 +239,7 @@ def test_pipeline_storemixin_one_non_existing_docstore_alone():
 
 
 @pytest.mark.unit
-def test_pipeline_storemixin_one_non_existing_docstore_among_existing_ones():
+def test_pipeline_component_expects_many_docstores_receives_non_existing_docstore_among_existing_ones():
     store_1 = MockStore()
     store_2 = MockStore()
 
