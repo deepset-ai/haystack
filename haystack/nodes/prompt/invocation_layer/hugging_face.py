@@ -50,7 +50,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         try:
             return model_info(model, token=use_auth_token, timeout=timeout).pipeline_tag
         except Exception as e:
-            raise RuntimeError(f"The task of {model} could not be checked because of the following error: {e}")
+            raise RuntimeError(f"The task of {model} could not be checked because of the following error: {e}") from e
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
