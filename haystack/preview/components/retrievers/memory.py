@@ -85,7 +85,7 @@ class MemoryRetriever:
         """
         if not self.store:
             raise ValueError(
-                "MemoryRetriever needs a store to run: " "use the 'store' parameter of 'add_component' to connect them."
+                "MemoryRetriever needs a store to run: use the 'store' parameter of 'add_component' to connect them."
             )
 
     def run(self, data: Input) -> Output:
