@@ -1,25 +1,9 @@
-from typing import Protocol, Dict, Optional
+from typing import Dict, Optional
 
 from haystack.preview.document_stores.protocols import Store
 
 
-class StoreComponent(Protocol):
-    """
-    Represents a component that needs a single store to run.
-    """
-
-    _store: Store
-
-    @property
-    def store(self) -> Optional[Store]:
-        ...
-
-    @store.setter
-    def store(self, store: Store):
-        ...
-
-
-class StoreMixin(StoreComponent):
+class StoreMixin:
     """
     Adds the capability of a component to use a single document store from the `self.store` property.
     """
@@ -35,21 +19,7 @@ class StoreMixin(StoreComponent):
         self._store = store
 
 
-class MultiStoreComponent:
-    """
-    Represents a component that needs more than a single store to run.
-    """
-
-    @property
-    def stores(self) -> Optional[Dict[str, Store]]:
-        ...
-
-    @stores.setter
-    def stores(self, stores: Dict[str, Store]):
-        ...
-
-
-class MultiStoreMixin(MultiStoreComponent):
+class MultiStoreMixin:
     """
     Adds the capability of a component to use several document stores from the `self.stores` property.
     """
