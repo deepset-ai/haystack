@@ -120,7 +120,7 @@ class Test_MemoryRetriever(BaseTestComponent):
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
-        pipeline.add_component("retriever", mr, stores=["memory"])
+        pipeline.add_component("retriever", retriever, stores=["memory"])
         result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query, top_k=top_k)})
 
         assert result
