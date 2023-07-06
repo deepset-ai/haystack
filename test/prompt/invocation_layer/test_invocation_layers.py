@@ -6,6 +6,8 @@ from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, HFInf
 
 @pytest.mark.unit
 def test_invocation_layer_order():
-    print(PromptModelInvocationLayer.invocation_layer_providers)
+    """
+    Checks that the huggingface invocation layer is checked late because it can timeout/be slow to respond.
+    """
     assert PromptModelInvocationLayer.invocation_layer_providers[-5] == HFLocalInvocationLayer
     assert PromptModelInvocationLayer.invocation_layer_providers[-4] == HFInferenceEndpointInvocationLayer
