@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document, ComponentInput, ComponentOutput
-from haystack.preview.document_stores import MemoryDocumentStore, StoreComponent
+from haystack.preview.document_stores import MemoryDocumentStore
 
 
 @component
-class MemoryRetriever(StoreComponent):
+class MemoryRetriever:
     """
     A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
 
