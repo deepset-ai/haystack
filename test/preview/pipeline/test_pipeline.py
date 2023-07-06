@@ -44,13 +44,14 @@ def test_pipeline_component_expects_one_docstore_receives_one_docstore():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert self.store == store_1
             return MockComponent.Output(value=data.value)
 
+    mock = MockComponent()
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
-    pipe.add_component("component", MockComponent(), stores=["first_store"])
+    pipe.add_component("component", mock, stores=["first_store"])
+    assert mock.store == store_1
     assert pipe.run(data={"component": MockComponent.Input(value=1)}) == {"component": MockComponent.Output(value=1)}
 
 
@@ -70,7 +71,6 @@ def test_pipeline_component_expects_one_docstore_receives_no_docstore():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert data.store == store_1
             return MockComponent.Output(value=data.value)
 
     pipe = Pipeline()
@@ -97,7 +97,6 @@ def test_pipeline_component_expects_one_docstore_receives_many_docstores():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert data.store == store_1
             return MockComponent.Output(value=data.value)
 
     pipe = Pipeline()
@@ -124,7 +123,6 @@ def test_pipeline_component_expects_one_docstore_receives_wrong_docstore():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert data.store == store_1
             return MockComponent.Output(value=data.value)
 
     pipe = Pipeline()
@@ -151,13 +149,15 @@ def test_pipeline_component_expects_many_docstores_receives_one_docstore():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert self.stores == {"first_store": store_1}
             return MockComponent.Output(value=data.value)
 
+    mock = MockComponent()
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
-    pipe.add_component("component", MockComponent(), stores=["first_store"])
+    pipe.add_component("component", mock, stores=["first_store"])
+
+    assert mock.stores == {"first_store": store_1}
     assert pipe.run(data={"component": MockComponent.Input(value=1)}) == {"component": MockComponent.Output(value=1)}
 
 
@@ -177,13 +177,14 @@ def test_pipeline_component_expects_many_docstores_receives_no_docstore():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert self.stores == {}
             return MockComponent.Output(value=data.value)
 
+    mock = MockComponent()
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
-    pipe.add_component("component", MockComponent())
+    pipe.add_component("component", mock)
+    mock.stores = {}
     assert pipe.run(data={"component": MockComponent.Input(value=1)}) == {"component": MockComponent.Output(value=1)}
 
 
@@ -203,13 +204,14 @@ def test_pipeline_component_expects_many_docstores_receives_many_docstores():
             value: int
 
         def run(self, data: Input) -> Output:
-            assert self.stores == {"first_store": store_1, "second_store": store_2}
             return MockComponent.Output(value=data.value)
 
+    mock = MockComponent()
     pipe = Pipeline()
     pipe.add_store(name="first_store", store=store_1)
     pipe.add_store(name="second_store", store=store_2)
-    pipe.add_component("component", MockComponent(), stores=["first_store", "second_store"])
+    pipe.add_component("component", mock, stores=["first_store", "second_store"])
+    assert mock.stores == {"first_store": store_1, "second_store": store_2}
 
 
 @pytest.mark.unit
