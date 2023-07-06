@@ -23,11 +23,10 @@ class StoreMixin(StoreComponent):
     """
     Adds the capability of a component to use a single document store from the `self.store` property.
     """
-    self._store: Store = None
 
     @property
     def store(self) -> Optional[Store]:
-        return self._store
+        return getattr(self, "_store", None)
 
     @store.setter
     def store(self, store: Store):
