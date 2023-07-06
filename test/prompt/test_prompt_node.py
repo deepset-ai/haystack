@@ -10,7 +10,14 @@ from transformers import GenerationConfig, TextStreamer
 from haystack import Document, Pipeline, BaseComponent, MultiLabel
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 from haystack.nodes.prompt.prompt_template import LEGACY_DEFAULT_TEMPLATES
-from haystack.nodes.prompt.invocation_layer import HFLocalInvocationLayer, DefaultTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer import (
+    HFLocalInvocationLayer,
+    DefaultTokenStreamingHandler,
+    AzureChatGPTInvocationLayer,
+    AzureOpenAIInvocationLayer,
+    OpenAIInvocationLayer,
+    ChatGPTInvocationLayer,
+)
 
 
 @pytest.fixture
@@ -194,6 +201,36 @@ def test_invalid_template_params(mock_model, mock_prompthub):
     node = PromptNode()
     with pytest.raises(ValueError, match="Expected prompt parameters"):
         node.prompt("question-answering-per-document", some_crazy_key="Berlin is the capital of Germany.")
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer", lambda tokenizer_name: None)
+def test_azure_vs_open_ai_invocation_layer_selection():
+    """
+    Tests that the correct invocation layer is selected based on the model name and additional parameters.
+    As we support both OpenAI and Azure models, we need to make sure that the correct invocation layer is selected
+    based on the model name and additional parameters.
+    """
+    azure_model_kwargs = {
+        "azure_base_url": "https://some_unimportant_url",
+        "azure_deployment_name": "https://some_unimportant_url.azurewebsites.net/api/prompt",
+    }
+
+    node = PromptNode("gpt-4", api_key="some_key", model_kwargs=azure_model_kwargs)
+    assert isinstance(node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer)
+
+    node = PromptNode("text-davinci-003", api_key="some_key", model_kwargs=azure_model_kwargs)
+    assert isinstance(node.prompt_model.model_invocation_layer, AzureOpenAIInvocationLayer)
+
+    node = PromptNode("gpt-4", api_key="some_key")
+    assert isinstance(node.prompt_model.model_invocation_layer, ChatGPTInvocationLayer) and not isinstance(
+        node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
+    )
+
+    node = PromptNode("text-davinci-003", api_key="some_key")
+    assert isinstance(node.prompt_model.model_invocation_layer, OpenAIInvocationLayer) and not isinstance(
+        node.prompt_model.model_invocation_layer, AzureChatGPTInvocationLayer
+    )
 
 
 @pytest.mark.skip
