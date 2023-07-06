@@ -175,7 +175,9 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{from_node}.{from_socket_name} does not exist. "
                     f"Output connections of {from_node} are: "
-                    + ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in from_sockets.items()])
+                    + ", ".join(
+                        [f"{name} (type {[t.__name__ for t in socket.types]})" for name, socket in from_sockets.items()]
+                    )
                 )
         if to_socket_name:
             to_socket = to_sockets.get(to_socket_name, None)
@@ -183,7 +185,9 @@ class Pipeline:
                 raise PipelineConnectError(
                     f"'{to_node}.{to_socket_name} does not exist. "
                     f"Input connections of {to_node} are: "
-                    + ", ".join([f"{name} (type {socket.type.__name__})" for name, socket in to_sockets.items()])
+                    + ", ".join(
+                        [f"{name} (type {[t.__name__ for t in socket.types]})" for name, socket in to_sockets.items()]
+                    )
                 )
 
         # If either one of the two sockets is not specified, look for an unambiguous connection
