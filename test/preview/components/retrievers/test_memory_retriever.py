@@ -53,9 +53,9 @@ class Test_MemoryRetriever(BaseTestComponent):
         ds = MemoryDocumentStore()
         ds.write_documents(mock_docs)
 
-        mr = MemoryRetriever(top_k=top_k)
-        mr.store = ds
-        result = mr.run(data=MemoryRetriever.Input(query="PHP"))
+        retriever = MemoryRetriever(top_k=top_k)
+        retriever.store = ds
+        result = retriever.run(data=MemoryRetriever.Input(query="PHP"))
 
         assert getattr(result, "documents")
         assert len(result.documents) == top_k
