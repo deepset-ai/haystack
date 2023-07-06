@@ -39,14 +39,14 @@ class LinkContentRetriever(BaseRetriever):
     """
     LinkContentRetriever fetches content from a URL and converts it into a list of Document objects.
 
-    LinkContentRetriever supports content types:
+    LinkContentRetriever supports the following content types:
     - HTML
 
     """
 
     def __init__(self, pre_processor: Optional[PreProcessor] = None):
         """
-        Creates a LinkContentRetriever instance
+        Creates a LinkContentRetriever instance.
         :param pre_processor: PreProcessor to apply to the extracted text
         """
         super().__init__()
@@ -56,10 +56,10 @@ class LinkContentRetriever(BaseRetriever):
     def __call__(self, url: str, timeout: int = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
         Fetches content from a URL and converts it into a list of Document objects.
-        :param url: URL to fetch content from
-        :param timeout: Timeout in seconds for the request
-        :param doc_kwargs: Optional kwargs to pass to the Document constructor
-        :return: List of Document objects
+        :param url: URL to fetch content from.
+        :param timeout: Timeout in seconds for the request.
+        :param doc_kwargs: Optional kwargs to pass to the Document constructor.
+        :return: List of Document objects.
         """
         if not url or not self._is_valid_url(url):
             raise InvalidURL("Invalid or missing URL: {}".format(url))
@@ -105,7 +105,7 @@ class LinkContentRetriever(BaseRetriever):
 
         param query: The query - a URL to fetch content from.
         param filters: Not used.
-        param top_k: return only the top_k results. If None, the top_k value passed to the constructor is used.
+        param top_k: Return only the top_k results. If None, the top_k value passed to the constructor is used.
         param index: Not used.
         param headers: Not used.
         param scale_score: Not used.
@@ -136,7 +136,7 @@ class LinkContentRetriever(BaseRetriever):
 
         param queries: List of queries - URLs to fetch content from.
         param filters: Not used.
-        param top_k: return only the top_k results. If None, the top_k value passed to the constructor is used.
+        param top_k: Return only the top_k results. If None, the top_k value passed to the constructor is used.
         param index: Not used.
         param headers: Not used.
         param batch_size: Not used.
