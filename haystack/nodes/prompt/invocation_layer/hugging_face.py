@@ -43,7 +43,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
 
-    def get_task(model: str, use_auth_token: Optional[str] = None, timeout: float = 1.0) -> Optional[str]:
+    def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 1.0) -> Optional[str]:
         """
         Simplified version of transformers.pipelines.get_task with support for timeouts
         """
