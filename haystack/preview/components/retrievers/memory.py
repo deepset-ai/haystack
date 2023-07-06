@@ -37,7 +37,7 @@ class MemoryRetriever:
         :param documents: The retrieved documents.
         """
 
-        documents: List[Document]
+        documents: List[List[Document]]
 
     def __init__(
         self,
