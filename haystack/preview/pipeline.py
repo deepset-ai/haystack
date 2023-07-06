@@ -23,7 +23,7 @@ class Pipeline(CanalsPipeline):
 
     def __init__(self):
         super().__init__()
-        self.stores: Dict[str, Store] = {}
+        self._stores: Dict[str, Store] = {}
 
     def add_store(self, name: str, store: Store) -> None:
         """
@@ -33,7 +33,7 @@ class Pipeline(CanalsPipeline):
         :param store: the store object.
         :returns: None
         """
-        self.stores[name] = store
+        self._stores[name] = store
 
     def list_stores(self) -> List[str]:
         """
@@ -41,7 +41,7 @@ class Pipeline(CanalsPipeline):
 
         :returns: a dictionary with all the stores attached to this Pipeline.
         """
-        return list(self.stores.keys())
+        return list(self._stores.keys())
 
     def get_store(self, name: str) -> Store:
         """
@@ -51,7 +51,7 @@ class Pipeline(CanalsPipeline):
         :returns: the store
         """
         try:
-            return self.stores[name]
+            return self._stores[name]
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
@@ -75,7 +75,7 @@ class Pipeline(CanalsPipeline):
 
         stores = stores or []
         for store in stores:
-            if store not in self.stores:
+            if store not in self._stores:
                 raise NoSuchStoreError(
                     f"Store named '{store}' not found. "
                     f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
@@ -83,13 +83,13 @@ class Pipeline(CanalsPipeline):
 
         # This component implements the MultiStoreComponent protocol
         if hasattr(instance, "stores"):
-            instance.stores = {store: self.stores[store] for store in stores}
+            instance.stores = {store: self._stores[store] for store in stores}
 
         # This component implements the StoreComponent protocol
         elif hasattr(instance, "store"):
             if len(stores) != 1:
                 raise ValueError(f"Component '{name}' needs exactly one store.")
-            instance.store = self.stores[stores[0]]
+            instance.store = self._stores[stores[0]]
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
