@@ -1636,6 +1636,15 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if self._index_exists(index):
             self.client.indices.refresh(index=index, headers=headers)
 
+    def _index_create(self, *args, **kwargs):
+        return self.client.indices.create(*args, **kwargs)
+
+    def _index_get(self, *args, **kwargs):
+        return self.client.indices.get(*args, **kwargs)
+
+    def _index_put_mapping(self, *args, **kwargs):
+        return self.client.indices.put_mapping(*args, **kwargs)
+
     def _search(self, *args, **kwargs):
         return self.client.search(*args, **kwargs)
 
