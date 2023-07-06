@@ -116,7 +116,7 @@ class Test_MemoryRetriever(BaseTestComponent):
     def test_run_with_pipeline_and_top_k(self, mock_docs, query: str, query_result: str, top_k: int):
         ds = MemoryDocumentStore()
         ds.write_documents(mock_docs)
-        mr = MemoryRetriever()
+        retriever = MemoryRetriever()
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
