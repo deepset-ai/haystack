@@ -83,7 +83,7 @@ os.environ["PROMPTHUB_CACHE_ENABLED"] = "false"
 
 # Cache requests (e.g. huggingface model) to circumvent load protection
 # See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
-requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
+# requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
 def fail_at_version(target_major, target_minor):
