@@ -4,7 +4,7 @@ components:
   - name: DocumentStore
     type: OpenSearchDocumentStore
     params:
-      batch_size: 5000
+      batch_size: 1000
       similarity: dot_product
       embedding_dim: 768
   - name: TextConverter
