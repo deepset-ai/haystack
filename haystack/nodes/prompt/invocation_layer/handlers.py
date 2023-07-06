@@ -40,6 +40,7 @@ class DefaultTokenStreamingHandler(TokenStreamingHandler):
         return token_received
 
 
+
 class AnthropicTokenStreamingHandler(TokenStreamingHandler):
     """
     Anthropic has an unusual way of handling streaming responses
