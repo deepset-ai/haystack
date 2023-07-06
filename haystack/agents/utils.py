@@ -37,7 +37,7 @@ def agent_without_tools_parameter_resolver(query: str, agent: "Agent", **kwargs)
     """
     A parameter resolver for simple chat agents without tools that returns the query and the history.
     """
-    return {"query": query, "history": agent.memory.load()}
+    return {"query": query, "memory": agent.memory.load()}
 
 
 def conversational_agent_parameter_resolver(
@@ -52,5 +52,5 @@ def conversational_agent_parameter_resolver(
         "tool_names": agent.tm.get_tool_names(),
         "tool_names_with_descriptions": agent.tm.get_tool_names_with_descriptions(),
         "transcript": agent_step.transcript,
-        "history": agent.memory.load(),
+        "memory": agent.memory.load(),
     }

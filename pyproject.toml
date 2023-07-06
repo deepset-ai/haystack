@@ -47,7 +47,7 @@ classifiers = [
 ]
 dependencies = [
   "requests",
-  "pydantic",
+  "pydantic<2",
   "transformers==4.30.1",
   "pandas",
   "rank_bm25",
@@ -95,6 +95,7 @@ inference = [
 ]
 elasticsearch = [
   "elasticsearch>=7.17,<8",
+  "elastic_transport<8"
 ]
 sql = [
   "sqlalchemy>=1.4.2,<2",

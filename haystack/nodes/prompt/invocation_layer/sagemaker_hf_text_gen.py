@@ -1,31 +1,36 @@
 import json
 import logging
-from typing import Optional, Dict, Union, List, Any
+from typing import Optional, Dict, List, Any
 
 import requests
 
 from haystack.errors import SageMakerModelNotReadyError, SageMakerInferenceError, SageMakerConfigurationError
-from haystack.lazy_imports import LazyImport
-from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultPromptHandler
+from haystack.nodes.prompt.invocation_layer.sagemaker_base import SageMakerBaseInvocationLayer
 
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install farm-haystack[aws]'") as boto3_import:
-    import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
-
-
-class SageMakerHFTextGenerationInvocationLayer(PromptModelInvocationLayer):
+class SageMakerHFTextGenerationInvocationLayer(SageMakerBaseInvocationLayer):
     """
-    SageMaker Invocation Layer
+    SageMaker HuggingFace TextGeneration Invocation Layer
 
-    Lets you use an LLM hosted via a SageMaker Inference Endpoint PromptNode.
-    It's expecting a Huggingface Model running at the SageMaker Inference Endpoint (e.g. Falcon, Flan-T5).
-    See https://www.philschmid.de/sagemaker-falcon-llm for instructions on how to deploy such a model to SageMaker
-    and https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models-use.html for an even simpler
-    workflow via SageMaker JumpStart.
+
+    SageMakerHFTextGenerationInvocationLayer enables the use of Large Language Models (LLMs) hosted on a SageMaker
+    Inference Endpoint via PromptNode. It supports text-generation from HuggingFace, which are running on the
+    SageMaker Inference Endpoint.
+
+    For guidance on how to deploy such a model to SageMaker, refer to
+    the [SageMaker JumpStart foundation models documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models-use.html)
+    and follow the instructions provided there.
+
+    As of June 23, this layer has been confirmed to support the following SageMaker deployed models:
+    - Falcon models
+
+    Technical Note:
+    This layer is designed for models that anticipate an input format composed of the following keys/values:
+    {'inputs': 'prompt_text', 'parameters': params} where 'inputs' represents the prompt and 'parameters' the
+    parameters for the model.
+
 
     **Example**
 
@@ -81,8 +86,7 @@ class SageMakerHFTextGenerationInvocationLayer(PromptModelInvocationLayer):
         :param aws_region_name: AWS region name.
         :param aws_profile_name: AWS profile name.
         """
-        boto3_import.check()
-        super().__init__(model_name_or_path)
+        super().__init__(model_name_or_path, max_length=max_length, **kwargs)
         try:
             session = SageMakerHFTextGenerationInvocationLayer.create_session(
                 aws_access_key_id=aws_access_key_id,
@@ -95,9 +99,8 @@ class SageMakerHFTextGenerationInvocationLayer(PromptModelInvocationLayer):
         except Exception as e:
             raise SageMakerInferenceError(
                 f"Could not connect to SageMaker Inference Endpoint {model_name_or_path}."
-                f"Make sure the Endpoint exists and AWS environment is configured. {e}"
-            )
-        self.max_length = max_length
+                f"Make sure the Endpoint exists and AWS environment is configured."
+            ) from e
 
         # for a list of supported parameters
         # see https://huggingface.co/blog/sagemaker-huggingface-llm#4-run-inference-and-chat-with-our-model
@@ -127,24 +130,11 @@ class SageMakerHFTextGenerationInvocationLayer(PromptModelInvocationLayer):
         self.stream_handler = kwargs.get("stream_handler", None)
         self.stream = kwargs.get("stream", False)
 
-        # We pop the model_max_length as it is not sent to the model
-        # but used to truncate the prompt if needed
-        model_max_length = kwargs.get("model_max_length", 1024)
-
-        # Truncate prompt if prompt tokens > model_max_length-max_length
-        # (max_length is the length of the generated text)
-        # It is hard to determine which tokenizer to use for the SageMaker model
-        # so we use GPT2 tokenizer which will likely provide good token count approximation
-        self.prompt_handler = DefaultPromptHandler(
-            model_name_or_path="gpt2", model_max_length=model_max_length, max_length=self.max_length or 100
-        )
-
     def invoke(self, *args, **kwargs) -> List[str]:
         """
         Sends the prompt to the remote model and returns the generated response(s).
         You can pass all parameters supported by the Huggingface Transformers `generate` method
         here via **kwargs (e.g. "temperature", "stop" ...).
-        For a full list see: https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task
 
         :return: The generated responses from the model as a list of strings.
         """
@@ -210,94 +200,23 @@ class SageMakerHFTextGenerationInvocationLayer(PromptModelInvocationLayer):
         except requests.HTTPError as err:
             res = err.response
             if res.status_code == 429:
-                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}")
+                raise SageMakerModelNotReadyError(f"Model not ready: {res.text}") from err
             raise SageMakerInferenceError(
                 f"SageMaker Inference returned an error.\nStatus code: {res.status_code}\nResponse body: {res.text}",
                 status_code=res.status_code,
-            )
-
-    def _ensure_token_limit(self, prompt: Union[str, List[Dict[str, str]]]) -> Union[str, List[Dict[str, str]]]:
-        # the prompt for this model will be of the type str
-        resize_info = self.prompt_handler(prompt)  # type: ignore
-        if resize_info["prompt_length"] != resize_info["new_prompt_length"]:
-            logger.warning(
-                "The prompt has been truncated from %s tokens to %s tokens so that the prompt length and "
-                "answer length (%s tokens) fit within the max token limit (%s tokens). "
-                "Shorten the prompt to prevent it from being cut off.",
-                resize_info["prompt_length"],
-                max(0, resize_info["model_max_length"] - resize_info["max_length"]),  # type: ignore
-                resize_info["max_length"],
-                resize_info["model_max_length"],
-            )
-        return str(resize_info["resized_prompt"])
+            ) from err
 
     @classmethod
-    def supports(cls, model_name_or_path: str, **kwargs) -> bool:
+    def get_test_payload(cls) -> Dict[str, Any]:
         """
-        Checks whether a model_name_or_path passed down (e.g. via PromptNode) is supported by this class.
+        Returns a payload used for testing if the current endpoint supports the JSON payload format used by
+        this class.
 
-        :param model_name_or_path: The model_name_or_path to check.
+        As of June 23, Sagemaker endpoints support the JSON payload format from the
+        https://github.com/huggingface/text-generation-inference project. At the time of writing this docstring,
+        only Falcon models were deployed using this format. See pyton client implementation from the
+        https://github.com/huggingface/text-generation-inference for more details.
+
+        :return: A payload used for testing if the current endpoint is working.
         """
-        aws_configuration_keys = [
-            "aws_access_key_id",
-            "aws_secret_access_key",
-            "aws_session_token",
-            "aws_region_name",
-            "aws_profile_name",
-        ]
-        aws_config_provided = any(key in kwargs for key in aws_configuration_keys)
-        if aws_config_provided:
-            boto3_import.check()
-            try:
-                session = cls.create_session(**kwargs)
-                client = session.client("sagemaker")
-            except BotoCoreError as e:
-                provided_aws_config = {k: v for k, v in kwargs.items() if k in aws_configuration_keys}
-                raise SageMakerConfigurationError(
-                    f"Failed to initialize the session or client with provided AWS credentials {provided_aws_config}."
-                    f"The root cause is: {e}"
-                )
-
-            try:
-                client.describe_endpoint(EndpointName=model_name_or_path)
-            except ClientError as e:
-                raise SageMakerConfigurationError(
-                    f"Could not connect to {model_name_or_path} Sagemaker endpoint. "
-                    f"Please make sure that the endpoint exists and is accessible."
-                    f"The root cause is: {e}"
-                )
-            finally:
-                if client:
-                    client.close()
-            return True
-        return False
-
-    @classmethod
-    def create_session(
-        cls,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
-        aws_region_name: Optional[str] = None,
-        aws_profile_name: Optional[str] = None,
-        **kwargs,
-    ):
-        """
-        Creates an AWS Session with the given parameters.
-
-        :param aws_access_key_id: AWS access key ID.
-        :param aws_secret_access_key: AWS secret access key.
-        :param aws_session_token: AWS session token.
-        :param aws_region_name: AWS region name.
-        :param aws_profile_name: AWS profile name.
-        :raise NoCredentialsError: If the AWS credentials are not provided or invalid.
-        :return: The created AWS Session.
-        """
-        boto3_import.check()
-        return boto3.Session(
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            aws_session_token=aws_session_token,
-            region_name=aws_region_name,
-            profile_name=aws_profile_name,
-        )
+        return {"inputs": "Hello world", "parameters": {}}

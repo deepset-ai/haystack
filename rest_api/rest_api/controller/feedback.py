@@ -115,6 +115,8 @@ def export_feedback(
         if label.answer and label.answer.offsets_in_document:
             if isinstance(label.answer.offsets_in_document[0], Span):
                 offset_start_in_document = label.answer.offsets_in_document[0].start
+            else:
+                offset_start_in_document = label.answer.offsets_in_document[0].row
 
         if full_document_context:
             context = label.document.content
