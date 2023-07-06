@@ -10,7 +10,9 @@ ARG haystack_extras
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    git
+    git \
+    libxml2-dev \
+    libxslt1-dev
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
