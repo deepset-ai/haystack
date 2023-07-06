@@ -91,7 +91,7 @@ class Test_MemoryRetriever(BaseTestComponent):
     def test_run_with_pipeline(self, mock_docs, query: str, query_result: str):
         ds = MemoryDocumentStore()
         ds.write_documents(mock_docs)
-        mr = MemoryRetriever()
+        retriever = MemoryRetriever()
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
