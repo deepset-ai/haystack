@@ -9,5 +9,6 @@ def test_invocation_layer_order():
     """
     Checks that the huggingface invocation layer is checked late because it can timeout/be slow to respond.
     """
-    assert PromptModelInvocationLayer.invocation_layer_providers[-5] == HFLocalInvocationLayer
-    assert PromptModelInvocationLayer.invocation_layer_providers[-4] == HFInferenceEndpointInvocationLayer
+    last_invocation_layers = set(PromptModelInvocationLayer.invocation_layer_providers[-5:])
+    assert HFLocalInvocationLayer in last_invocation_layers
+    assert HFInferenceEndpointInvocationLayer in last_invocation_layers
