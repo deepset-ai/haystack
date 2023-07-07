@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Union, Any
 
 from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, TokenStreamingHandler
 from haystack.nodes.prompt.invocation_layer.open_ai import OpenAIInvocationLayer
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 from haystack.utils.openai_utils import openai_request, _check_openai_finish_reason, count_openai_tokens_messages
 
 logger = logging.getLogger(__name__)
@@ -135,4 +136,5 @@ class ChatGPTInvocationLayer(OpenAIInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        return any(m for m in ["gpt-3.5-turbo", "gpt-4"] if m in model_name_or_path)
+        valid_model = any(m for m in ["gpt-3.5-turbo", "gpt-4"] if m in model_name_or_path)
+        return valid_model and not has_azure_parameters(**kwargs)

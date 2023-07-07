@@ -39,3 +39,29 @@ def test_openai_token_limit_warning(mock_openai_tokenizer, caplog):
         _ = invocation_layer._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
         assert "The prompt has been truncated from" in caplog.text
         assert "and answer length (2045 tokens) fit within the max token limit (2049 tokens)." in caplog.text
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.openai_request")
+def test_no_openai_organization(mock_request):
+    with patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer"):
+        invocation_layer = OpenAIInvocationLayer(api_key="fake_api_key")
+
+    assert invocation_layer.openai_organization is None
+    assert "OpenAI-Organization" not in invocation_layer.headers
+
+    invocation_layer.invoke(prompt="dummy_prompt")
+    assert "OpenAI-Organization" not in mock_request.call_args.kwargs["headers"]
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.invocation_layer.open_ai.openai_request")
+def test_openai_organization(mock_request):
+    with patch("haystack.nodes.prompt.invocation_layer.open_ai.load_openai_tokenizer"):
+        invocation_layer = OpenAIInvocationLayer(api_key="fake_api_key", openai_organization="fake_organization")
+
+    assert invocation_layer.openai_organization == "fake_organization"
+    assert invocation_layer.headers["OpenAI-Organization"] == "fake_organization"
+
+    invocation_layer.invoke(prompt="dummy_prompt")
+    assert mock_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"

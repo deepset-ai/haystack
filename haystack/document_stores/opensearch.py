@@ -1456,7 +1456,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
         return ef_search
 
-    def _delete_index(self, index: str):
+    def _index_delete(self, index: str):
         if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             self._delete_ivf_model(index)
