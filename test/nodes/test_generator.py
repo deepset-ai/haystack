@@ -2,7 +2,7 @@ from unittest.mock import patch, create_autospec
 
 import pytest
 from haystack import Pipeline
-from haystack.schema import Document
+from haystack.schema import Document, Answer
 from haystack.nodes.answer_generator import OpenAIAnswerGenerator
 from haystack.nodes import PromptTemplate
 
@@ -135,3 +135,42 @@ def test_openai_answer_generator_pipeline_max_tokens():
         result = pipeline.run(query=question, documents=nyc_docs, params={"generator": {"max_tokens": 3}})
         assert result["answers"] == mocked_response
         openai_generator.run.assert_called_with(query=question, documents=nyc_docs, max_tokens=3)
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.OpenAIAnswerGenerator.predict")
+def test_openai_answer_generator_run_with_labels_and_isolated_node_eval(patched_predict, eval_labels):
+    label = eval_labels[0]
+    query = label.query
+    document = label.labels[0].document
+
+    patched_predict.return_value = {
+        "answers": [Answer(answer=label.labels[0].answer.answer, document_ids=[document.id])]
+    }
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+        result, _ = openai_generator.run(query=query, documents=[document], labels=label, add_isolated_node_eval=True)
+
+    assert "answers_isolated" in result
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.base.BaseGenerator.predict_batch")
+def test_openai_answer_generator_run_batch_with_labels_and_isolated_node_eval(patched_predict_batch, eval_labels):
+    queries = [label.query for label in eval_labels]
+    documents = [[label.labels[0].document] for label in eval_labels]
+
+    patched_predict_batch.return_value = {
+        "queries": queries,
+        "answers": [
+            [Answer(answer=label.labels[0].answer.answer, document_ids=[label.labels[0].document.id])]
+            for label in eval_labels
+        ],
+    }
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        openai_generator = OpenAIAnswerGenerator(api_key="fake_api_key", model="text-babbage-001", top_k=1)
+        result, _ = openai_generator.run_batch(
+            queries=queries, documents=documents, labels=eval_labels, add_isolated_node_eval=True
+        )
+
+    assert "answers_isolated" in result
