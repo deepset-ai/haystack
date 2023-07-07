@@ -419,31 +419,9 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 "_op_type": "index" if duplicate_documents == "overwrite" else "create",
                 "_index": index,
                 "_id": str(doc.id),
+                # use _source explicitly to avoid conflicts with automatic field detection by ES/OS clients (e.g. "version")
+                "_source": self._get_source(doc, field_map),
             }
-
-            _source: Dict[str, Any] = doc.to_dict(field_map=self._create_document_field_map())
-
-            # cast embedding type as ES cannot deal with np.array
-            if _source[self.embedding_field] is not None:
-                if type(_source[self.embedding_field]) == np.ndarray:
-                    _source[self.embedding_field] = _source[self.embedding_field].tolist()
-
-            # we already have the id in the index message
-            _source.pop("id")
-
-            # don't index query score and empty fields
-            _source.pop("score", None)
-            _source = {k: v for k, v in _source.items() if v is not None}
-
-            # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
-            # we "unnest" all value within "meta"
-            if "meta" in _source.keys():
-                for k, v in _source["meta"].items():
-                    _source[k] = v
-                _source.pop("meta")
-
-            # use _source explicitly to avoid conflicts with automatic field detection by ES/OS clients (e.g. "version")
-            index_message["_source"] = _source
             documents_to_index.append(index_message)
 
             # Pass batch_size number of documents to bulk
@@ -453,6 +431,27 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         if documents_to_index:
             self._bulk(documents_to_index, refresh=self.refresh_type, headers=headers)
+
+    def _get_source(self, doc: Document, field_map: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert a Document object to a dictionary that can be used as the "_source" field in an ES/OS index message."""
+
+        _source: Dict[str, Any] = doc.to_dict(field_map=field_map)
+
+        # cast embedding type as ES/OS cannot deal with np.array
+        if isinstance(_source.get(self.embedding_field), np.ndarray):
+            _source[self.embedding_field] = _source[self.embedding_field].tolist()
+
+        # we already have the id in the index message
+        _source.pop("id", None)
+
+        # don't index query score and empty fields
+        _source.pop("score", None)
+        _source = {k: v for k, v in _source.items() if v is not None}
+
+        # In order to have a flat structure in ES/OS + similar behavior to the other DocumentStores,
+        # we "unnest" all value within "meta"
+        _source.update(_source.pop("meta", None) or {})
+        return _source
 
     def write_labels(
         self,
