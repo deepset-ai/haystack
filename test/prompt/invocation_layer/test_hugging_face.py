@@ -205,6 +205,37 @@ def test_ensure_token_limit_negative(caplog):
 
 
 @pytest.mark.unit
+def test_num_return_sequences_no_larger_than_num_beams(mock_pipeline, caplog):
+    """
+    Test HFLocalInvocationLayer init with various kwargs, make sure all of them are passed to the pipeline
+    except for the invalid ones
+    """
+
+    layer = HFLocalInvocationLayer(
+        "google/flan-t5-base",
+        task_name="text2text-generation",
+        tokenizer=Mock(),
+        config=Mock(),
+        revision="1.1",
+        device="cpu",
+        device_map="auto",
+        first_invalid_kwarg="invalid",
+        second_invalid_kwarg="invalid",
+    )
+
+    mock_pipeline.assert_called_once()
+
+    with patch.object(layer.pipe, "run_single", MagicMock()) as mock_call:
+        layer.invoke(prompt="What does 42 mean?", generation_kwargs={"num_beams": 5, "num_return_sequences": 8})
+
+    expected_message = (
+        "num_return_sequences 8 should not be larger than num_beams 5, hence setting it equal to num_beams"
+    )
+
+    assert caplog.records[0].message == expected_message
+
+
+@pytest.mark.unit
 def test_constructor_with_custom_pretrained_model(mock_pipeline, mock_get_task):
     """
     Test that the constructor sets the pipeline with the pretrained model (if provided)
