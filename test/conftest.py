@@ -1,5 +1,4 @@
 import warnings
-from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
 import gc
@@ -10,7 +9,6 @@ import re
 from functools import wraps
 from unittest.mock import patch
 
-import requests_cache
 import responses
 import posthog
 
@@ -49,7 +47,7 @@ from haystack.nodes import (
     PromptTemplate,
 )
 from haystack.nodes.prompt import PromptNode
-from haystack.schema import Document, FilterType
+from haystack.schema import Document, FilterType, MultiLabel, Label, Span
 
 from .mocks import pinecone as pinecone_mock
 
@@ -80,10 +78,6 @@ posthog.disabled = True
 
 # Disable caching from prompthub to avoid polluting the local environment.
 os.environ["PROMPTHUB_CACHE_ENABLED"] = "false"
-
-# Cache requests (e.g. huggingface model) to circumvent load protection
-# See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
-requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
 def fail_at_version(target_major, target_minor):
@@ -480,6 +474,43 @@ def gc_cleanup(request):
     """
     yield
     gc.collect()
+
+
+@pytest.fixture
+def eval_labels() -> List[MultiLabel]:
+    EVAL_LABELS = [
+        MultiLabel(
+            labels=[
+                Label(
+                    query="Who lives in Berlin?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="a0747b83aea0b60c4b114b15476dd32d",
+                        content_type="text",
+                        content="My name is Carla and I live in Berlin",
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                )
+            ]
+        ),
+        MultiLabel(
+            labels=[
+                Label(
+                    query="Who lives in Munich?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="something_else", content_type="text", content="My name is Carla and I live in Munich"
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                )
+            ]
+        ),
+    ]
+    return EVAL_LABELS
 
 
 @pytest.fixture

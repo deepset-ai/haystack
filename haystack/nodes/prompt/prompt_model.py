@@ -1,6 +1,5 @@
 import inspect
 import logging
-import re
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, overload
 
 from haystack.nodes.base import BaseComponent
@@ -87,15 +86,7 @@ class PromptModel(BaseComponent):
                 model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
             )
 
-        potential_invocation_layer = PromptModelInvocationLayer.invocation_layer_providers
-        # if azure_base_url exist as an argument, invocation layer classes are filtered to only keep the ones relatives to azure
-        if "azure_base_url" in self.model_kwargs:
-            potential_invocation_layer = [
-                layer for layer in potential_invocation_layer if re.search(r"azure", layer.__name__, re.IGNORECASE)
-            ]
-        # search all invocation layer classes candidates and find the first one that supports the model,
-        # then create an instance of that invocation layer
-        for invocation_layer in potential_invocation_layer:
+        for invocation_layer in PromptModelInvocationLayer.invocation_layer_providers:
             if inspect.isabstract(invocation_layer):
                 continue
             if invocation_layer.supports(self.model_name_or_path, **all_kwargs):

@@ -81,6 +81,7 @@ class WebRetriever(BaseRetriever):
         )
         self.mode = mode
         self.cache_document_store = cache_document_store
+        self.document_store = cache_document_store
         self.cache_index = cache_index
         self.cache_headers = cache_headers
         self.cache_time = cache_time

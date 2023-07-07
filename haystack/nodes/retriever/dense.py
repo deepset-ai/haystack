@@ -1462,6 +1462,7 @@ class EmbeddingRetriever(DenseRetriever):
         azure_base_url: Optional[str] = None,
         azure_deployment_name: Optional[str] = None,
         api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1521,7 +1522,9 @@ class EmbeddingRetriever(DenseRetriever):
                                This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
-        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`
+        :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
         torch_and_transformers_import.check()
 
@@ -1551,6 +1554,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.api_version = azure_api_version
         self.azure_base_url = azure_base_url
         self.azure_deployment_name = azure_deployment_name
+        self.openai_organization = openai_organization
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None
