@@ -34,6 +34,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         model_name_or_path: str = "text-davinci-003",
         max_length: Optional[int] = 100,
         api_base: str = "https://api.openai.com/v1",
+        openai_organization: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -43,6 +44,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         :param max_length: The maximum number of tokens the output text can have.
         :param api_key: The OpenAI API key.
         :param api_base: The OpenAI API Base url, defaults to `https://api.openai.com/v1`.
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         :param kwargs: Additional keyword arguments passed to the underlying model. Due to reflective construction of
         all PromptModelInvocationLayer instances, this instance of OpenAIInvocationLayer might receive some unrelated
         kwargs. Only the kwargs relevant to OpenAIInvocationLayer are considered. The list of OpenAI-relevant
@@ -60,6 +63,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             )
         self.api_key = api_key
         self.api_base = api_base
+        self.openai_organization = openai_organization
 
         # 16 is the default length for answers from OpenAI shown in the docs
         # here, https://platform.openai.com/docs/api-reference/completions/create.
@@ -103,7 +107,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
     @property
     def headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        if self.openai_organization:
+            headers["OpenAI-Organization"] = self.openai_organization
+        return headers
 
     def invoke(self, *args, **kwargs):
         """
