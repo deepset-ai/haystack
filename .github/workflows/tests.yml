@@ -275,7 +275,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch8.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
       - name: Calculate alert data
         id: calculator
