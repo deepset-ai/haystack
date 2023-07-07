@@ -23,19 +23,19 @@ variable "HAYSTACK_EXTRAS" {
 }
 
 group "base" {
-  targets = ["base-cpu", "base-gpu"]
+  targets = ["base-cpu", "base-gpu", "base-cpu-remote-inference"]
 }
 
 group "api" {
-  targets = ["cpu", "gpu"]
+  targets = ["cpu", "gpu", "cpu-remote-inference"]
 }
 
 group "api-latest" {
-  targets = ["cpu-latest", "gpu-latest"]
+  targets = ["cpu-latest", "gpu-latest", "cpu-remote-inference-latest"]
 }
 
 group "all" {
-  targets = ["base", "base-gpu", "cpu", "gpu"]
+  targets = ["base", "base-gpu", "cpu", "gpu", "cpu-remote-inference"]
 }
 
 target "base-cpu" {
@@ -48,6 +48,14 @@ target "base-cpu" {
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores,inference,crawler,preprocessing,file-conversion,ocr,onnx,metrics,beir]"
   }
   platforms = ["linux/amd64", "linux/arm64"]
+}
+
+target "base-cpu-remote-inference" {
+  inherits = ["base-cpu"]
+  tags = ["${IMAGE_NAME}:base-cpu-remote-inference-${IMAGE_TAG_SUFFIX}"]
+  args = {
+    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[preprocessing]"
+  }
 }
 
 target "base-gpu" {
@@ -72,6 +80,21 @@ target "cpu" {
     base_image_tag = "base-cpu-${BASE_IMAGE_TAG_SUFFIX}"
   }
   platforms = ["linux/amd64", "linux/arm64"]
+}
+
+target "cpu-remote-inference" {
+  dockerfile = "Dockerfile.api"
+  tags = ["${IMAGE_NAME}:cpu-remote-inference-${IMAGE_TAG_SUFFIX}"]
+  args = {
+    base_image = "${IMAGE_NAME}"
+    base_image_tag = "base-cpu-remote-inference-${BASE_IMAGE_TAG_SUFFIX}"
+  }
+  platforms = ["linux/amd64", "linux/arm64"]
+}
+
+target "cpu-remote-inference-latest" {
+  inherits = ["cpu-remote-inference"]
+  tags = ["${IMAGE_NAME}:cpu-remote-inference"]
 }
 
 target "cpu-latest" {

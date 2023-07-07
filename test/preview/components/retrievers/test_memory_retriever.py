@@ -55,26 +55,19 @@ class Test_MemoryRetriever(BaseTestComponent):
 
         retriever = MemoryRetriever(top_k=top_k)
         retriever.store = ds
-        result = retriever.run(data=MemoryRetriever.Input(query="PHP"))
+        result = retriever.run(data=MemoryRetriever.Input(queries=["PHP", "Java"]))
 
         assert getattr(result, "documents")
-        assert len(result.documents) == top_k
-        assert result.documents[0].content == "PHP is a popular programming language"
+        assert len(result.documents) == 2
+        assert len(result.documents[0]) == top_k
+        assert len(result.documents[1]) == top_k
+        assert result.documents[0][0].content == "PHP is a popular programming language"
+        assert result.documents[1][0].content == "Java is a popular programming language"
 
     @pytest.mark.unit
     def test_invalid_run_wrong_store_type(self):
-        class MockStore(Store):
-            def count_documents(self) -> int:
-                return 0
-
-            def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
-                return []
-
-            def write_documents(self, documents: List[Document], duplicates: DuplicatePolicy = "fail") -> None:
-                return
-
-            def delete_documents(self, document_ids: List[str]) -> None:
-                return
+        class MockStore:
+            ...
 
         retriever = MemoryRetriever()
         with pytest.raises(ValueError, match="is not compatible with this component"):
@@ -96,13 +89,13 @@ class Test_MemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
         pipeline.add_component("retriever", retriever, store="memory")
-        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query)})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(queries=[query])})
 
         assert result
         assert "retriever" in result
         results_docs = result["retriever"].documents
         assert results_docs
-        assert results_docs[0].content == query_result
+        assert results_docs[0][0].content == query_result
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -121,11 +114,11 @@ class Test_MemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
         pipeline.add_component("retriever", retriever, store="memory")
-        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query, top_k=top_k)})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(queries=[query], top_k=top_k)})
 
         assert result
         assert "retriever" in result
         results_docs = result["retriever"].documents
         assert results_docs
-        assert len(results_docs) == top_k
-        assert results_docs[0].content == query_result
+        assert len(results_docs[0]) == top_k
+        assert results_docs[0][0].content == query_result

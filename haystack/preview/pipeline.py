@@ -12,6 +12,8 @@ from canals.pipeline import (
 from haystack.preview.document_stores.protocols import Store
 from haystack.preview.document_stores.mixins import StoreAwareMixin
 
+from haystack.preview.document_stores.protocols import Store
+
 
 class NoSuchStoreError(PipelineError):
     pass

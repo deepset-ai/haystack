@@ -25,7 +25,7 @@ class MemoryRetriever(StoreAwareMixin):
         :param stores: A dictionary mapping document store names to instances.
         """
 
-        query: str
+        queries: List[str]
         filters: Dict[str, Any]
         top_k: int
         scale_score: bool
@@ -38,7 +38,7 @@ class MemoryRetriever(StoreAwareMixin):
         :param documents: The retrieved documents.
         """
 
-        documents: List[Document]
+        documents: List[List[Document]]
 
     def __init__(self, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = True):
         """
@@ -77,7 +77,11 @@ class MemoryRetriever(StoreAwareMixin):
 
         if not self.store:
             raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
-        docs = self.store.bm25_retrieval(
-            query=data.query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
-        )
+        docs = []
+        for query in data.queries:
+            docs.append(
+                self.store.bm25_retrieval(
+                    query=query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
+                )
+            )
         return MemoryRetriever.Output(documents=docs)
