@@ -79,19 +79,21 @@ jobs:
         run: |
           TAG="base-${{ matrix.target }}-${{ steps.meta.outputs.version }}"
 
+          # docker commands below always output a non-empty string, otherwise the step will exit abnormally
           PLATFORM="linux/amd64"
-          TORCH_INSTALLED=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" pip list | grep torch)
-          [[ "$TORCH_INSTALLED" != "" ]] || echo "::error::Pytorch is not installed in deepset/haystack:$TAG image for $PLATFORM"
+          TORCH_INSTALLED=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" pip list | grep torch || echo 'not found')
+          [[ "$TORCH_INSTALLED" != "not found" ]] || echo "::error::Pytorch is not installed in deepset/haystack:$TAG image for $PLATFORM"
 
           PLATFORM="linux/arm64"
-          TORCH_INSTALLED=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" pip list | grep torch)
-          [[ "$TORCH_INSTALLED" != "" ]] || echo "::error::Pytorch is not installed in deepset/haystack:$TAG image for $PLATFORM"
+          TORCH_INSTALLED=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" pip list | grep torch || echo 'not found')
+          [[ "$TORCH_INSTALLED" != "not found" ]] || echo "::error::Pytorch is not installed in deepset/haystack:$TAG image for $PLATFORM"
 
       - name: Test inference image
         if: contains(matrix.target, 'inference')
         run: |
           TAG="base-${{ matrix.target }}-${{ steps.meta.outputs.version }}"
 
+          # docker commands below always output a non-empty string, otherwise the step will exit abnormally
           PLATFORM="linux/amd64"
           TORCH_INSTALLED=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" sh -c "pip list | grep torch || echo 'not found'")
           [[ "$TORCH_INSTALLED" == "not found" ]] || echo "::error::Pytorch is installed in deepset/haystack:$TAG image for $PLATFORM"
