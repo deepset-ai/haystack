@@ -11,6 +11,28 @@ import logging
 
 @pytest.mark.unit
 @patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_no_openai_organization(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key")
+    assert generator.openai_organization is None
+
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert "OpenAI-Organization" not in mock_request.call_args.kwargs["headers"]
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.openai_request")
+def test_openai_organization(mock_request):
+    with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
+        generator = OpenAIAnswerGenerator(api_key="fake_api_key", openai_organization="fake_organization")
+    assert generator.openai_organization == "fake_organization"
+
+    generator.predict(query="test query", documents=[Document(content="test document")])
+    assert mock_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.answer_generator.openai.openai_request")
 def test_openai_answer_generator_default_api_base(mock_request):
     with patch("haystack.nodes.answer_generator.openai.load_openai_tokenizer"):
         generator = OpenAIAnswerGenerator(api_key="fake_api_key")
