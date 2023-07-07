@@ -2,17 +2,21 @@ import logging
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-import torch
-from sentence_transformers import CrossEncoder
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
-from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.schema import Document
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from sentence_transformers import CrossEncoder
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class PseudoLabelGenerator(BaseComponent):
@@ -68,7 +72,7 @@ class PseudoLabelGenerator(BaseComponent):
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Loads the cross-encoder model and prepares PseudoLabelGenerator.
@@ -100,7 +104,7 @@ class PseudoLabelGenerator(BaseComponent):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
-
+        torch_and_transformers_import.check()
         super().__init__()
         self.question_document_pairs = None
         self.question_generator = None  # type: ignore

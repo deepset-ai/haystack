@@ -2,24 +2,55 @@ from typing import Optional, Union, List, Dict, Any
 import logging
 import os
 
-import torch
-
-from transformers import (
-    pipeline,
-    StoppingCriteriaList,
-    StoppingCriteria,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-    GenerationConfig,
-    Pipeline,
-)
-from transformers.pipelines import get_task
-
-from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.prompt.invocation_layer import PromptModelInvocationLayer, TokenStreamingHandler
-from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler, HFTokenStreamingHandler
+from haystack.nodes.prompt.invocation_layer.handlers import DefaultTokenStreamingHandler
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import (
+        pipeline,
+        StoppingCriteriaList,
+        StoppingCriteria,
+        PreTrainedTokenizer,
+        PreTrainedTokenizerFast,
+        GenerationConfig,
+        Pipeline,
+    )
+    from huggingface_hub import model_info
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+    from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
+
+    class StopWordsCriteria(StoppingCriteria):
+        """
+        Stops text generation if any one of the stop words is generated.
+        """
+
+        def __init__(
+            self,
+            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            stop_words: List[str],
+            device: Union[str, torch.device] = "cpu",
+        ):
+            super().__init__()
+            self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
+
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+            stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
+            return any(all(stop_word) for stop_word in stop_result)
+
+    def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 3.0) -> Optional[str]:
+        """
+        Simplified version of transformers.pipelines.get_task with support for timeouts
+        """
+        try:
+            return model_info(model, token=use_auth_token, timeout=timeout).pipeline_tag
+        except Exception as e:
+            raise RuntimeError(f"The task of {model} could not be checked because of the following error: {e}") from e
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -37,7 +68,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         max_length: int = 100,
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         **kwargs,
     ):
         """
@@ -64,6 +95,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
         The model_max_length is used to specify the custom sequence length for the underlying pipeline.
         """
+        torch_and_transformers_import.check()
+
         super().__init__(model_name_or_path)
         self.use_auth_token = use_auth_token
 
@@ -263,7 +296,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         )
         return decoded_string
 
-    def _extract_torch_dtype(self, **kwargs) -> Optional[torch.dtype]:
+    def _extract_torch_dtype(self, **kwargs) -> Optional["torch.dtype"]:
         torch_dtype_resolved = None
         torch_dtype = kwargs.get("torch_dtype", None)
         if torch_dtype is not None:
@@ -296,22 +329,3 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         # if we are using an api_key it could be HF inference point
         using_api_key = kwargs.get("api_key", None) is not None
         return not using_api_key and task_name in ["text2text-generation", "text-generation"]
-
-
-class StopWordsCriteria(StoppingCriteria):
-    """
-    Stops text generation if any one of the stop words is generated.
-    """
-
-    def __init__(
-        self,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-        stop_words: List[str],
-        device: Union[str, torch.device] = "cpu",
-    ):
-        super().__init__()
-        self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
-        return any(all(stop_word) for stop_word in stop_result)

@@ -2,15 +2,20 @@ import logging
 from typing import List, Optional, Union, Dict
 import itertools
 
-import torch
-from tqdm.auto import tqdm
-from transformers import pipeline
+from tqdm import tqdm
 
 from haystack.nodes.base import Document
 from haystack.nodes.doc_language_classifier.base import BaseDocumentLanguageClassifier
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
@@ -61,7 +66,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Load a language detection model from Transformers.
@@ -89,6 +94,7 @@ class TransformersDocumentLanguageClassifier(BaseDocumentLanguageClassifier):
                         parameter is not used and a single cpu device is used for inference.
 
         """
+        torch_and_transformers_import.check()
         super().__init__(route_by_language=route_by_language, languages_to_route=languages_to_route)
 
         resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)

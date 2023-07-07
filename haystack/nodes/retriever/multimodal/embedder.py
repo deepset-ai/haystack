@@ -3,19 +3,23 @@ from typing import Union, Optional, Dict, List, Any
 import logging
 from pathlib import Path
 
-import torch
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import numpy as np
 from PIL import Image
 
-from haystack.modeling.model.multimodal import get_model
 from haystack.errors import NodeError, ModelingError
-from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.schema import Document
-from haystack.utils.torch_utils import get_devices
+from haystack.lazy_imports import LazyImport
 
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from haystack.utils.torch_utils import get_devices  # pylint: disable=ungrouped-imports
+    from haystack.modeling.model.multimodal import get_model  # pylint: disable=ungrouped-imports
+    from haystack.modeling.model.multimodal.base import HaystackModel  # pylint: disable=ungrouped-imports
 
 
 class MultiModalRetrieverError(NodeError):
@@ -46,7 +50,7 @@ class MultiModalEmbedder:
         batch_size: int = 16,
         embed_meta_fields: Optional[List[str]] = None,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
@@ -79,6 +83,8 @@ class MultiModalEmbedder:
                                 the local token is used, which must be previously created using `transformer-cli login`.
                                 For more information, see [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained)
         """
+        torch_and_transformers_import.check()
+
         if embed_meta_fields is None:
             embed_meta_fields = ["name"]
         super().__init__()

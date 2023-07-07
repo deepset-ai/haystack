@@ -3,28 +3,35 @@ from typing import List, Optional, Tuple, Dict, Union, Literal
 import logging
 import itertools
 from statistics import mean
-import torch
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
-from transformers import (
-    TapasTokenizer,
-    TapasForQuestionAnswering,
-    AutoTokenizer,
-    AutoModelForSequenceClassification,
-    BatchEncoding,
-    TapasModel,
-    TapasConfig,
-    TableQuestionAnsweringPipeline,
-)
-from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, TableCell, Span
 from haystack.nodes.reader.base import BaseReader
-from haystack.modeling.utils import initialize_device_settings
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+TableQuestionAnsweringPipeline = object
+TapasPreTrainedModel = object
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import (  # type: ignore
+        TapasTokenizer,
+        TapasForQuestionAnswering,
+        AutoTokenizer,
+        AutoModelForSequenceClassification,
+        BatchEncoding,
+        TapasModel,
+        TapasConfig,
+        TableQuestionAnsweringPipeline,
+    )
+    from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel  # type: ignore
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
 
 
 class TableReader(BaseReader):
@@ -65,8 +72,7 @@ class TableReader(BaseReader):
         return_no_answer: bool = False,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
-        return_table_cell: bool = False,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Load a TableQA model from Transformers.
@@ -108,22 +114,9 @@ class TableReader(BaseReader):
                         A list containing torch device objects and/or strings is supported (For example
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
-        :param return_table_cell: Whether to return the offsets (`offsets_in_document` and `offsets_in_context`) that indicate
-                                  the table cells that answer the question using the TableCell schema. The TableCell schema returns the row
-                                  and column indices of the table cells selected in the Answer. Otherwise, the offsets
-                                  are returned as Span objects which are start and end indices when counting through the
-                                  table in a linear fashion, which means the first cell is top left and the last cell is bottom right.
         """
+        torch_and_transformers_import.check()
         super().__init__()
-
-        if not return_table_cell:
-            logger.warning(
-                "The support for returning offsets in answer predictions in a linear fashion is being deprecated."
-                " Set return_table_cell=True to use the new offsets format which returns the row and column indices"
-                " of the table cells selected in the answer."
-                " In the future, return_table_cell=True will become default and return_table_cell=False will no "
-                " longer be supported."
-            )
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -143,7 +136,6 @@ class TableReader(BaseReader):
                 tokenizer=tokenizer,
                 max_seq_len=max_seq_len,
                 use_auth_token=use_auth_token,
-                return_table_cell=return_table_cell,
             )
         elif config.architectures[0] == "TapasForScoredQA":
             self.table_encoder = _TapasScoredEncoder(
@@ -155,7 +147,6 @@ class TableReader(BaseReader):
                 return_no_answer=return_no_answer,
                 max_seq_len=max_seq_len,
                 use_auth_token=use_auth_token,
-                return_table_cell=return_table_cell,
             )
         else:
             logger.error(
@@ -244,13 +235,12 @@ class TableReader(BaseReader):
 class _TapasEncoder:
     def __init__(
         self,
-        device: torch.device,
+        device: "torch.device",
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
-        return_table_cell: bool = False,
     ):
         self.model = TapasForQuestionAnswering.from_pretrained(
             model_name_or_path, revision=model_version, use_auth_token=use_auth_token
@@ -265,14 +255,13 @@ class _TapasEncoder:
             )
         self.max_seq_len = max_seq_len
         self.device = device
-        self.pipeline = _TableQuestionAnsweringPipeline(
+        self.pipeline = _TableQuestionAnsweringPipeline(  # type: ignore
             task="table-question-answering",
             model=self.model,
             tokenizer=self.tokenizer,
             framework="pt",
             batch_size=1,  # batch_size of 1 only works currently b/c of issue with HuggingFace pipeline logic and the return type of TableQuestionAnsweringPipeline._forward
             device=self.device,
-            return_table_cell=return_table_cell,
         )
 
     def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
@@ -287,7 +276,7 @@ class _TapasEncoder:
             pipeline_inputs.append({"query": query, "table": table.astype(str)})
 
         # Run the pipeline
-        answers = self.pipeline(pipeline_inputs, sequential=False, padding=True, truncation=True)
+        answers = self.pipeline(pipeline_inputs, sequential=False, padding=True, truncation=True)  # type: ignore
 
         # Unpack batched answers
         if isinstance(answers[0], list):
@@ -311,15 +300,11 @@ class _TapasEncoder:
         return results
 
 
-class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
+class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):  # pylint: disable=useless-object-inheritance
     """Modified from transformers TableQuestionAnsweringPipeline.postprocess to return Haystack Answer objects."""
 
-    def __init__(self, *args, return_table_cell: bool = False, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.return_table_cell = return_table_cell
-
     def _calculate_answer_score(
-        self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
+        self, logits: "torch.Tensor", inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
     ) -> List[Optional[np.ndarray]]:
         """Calculate the answer scores given the `logits`, `input`, and `answer_coordinates`."""
         token_probabilities = torch.sigmoid(logits) * inputs["attention_mask"]
@@ -345,7 +330,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
             if len(answer_coordinates[i]) == 0:
                 answer_scores.append(None)
             else:
-                cell_coords_to_prob = self.tokenizer._get_mean_cell_probs(
+                cell_coords_to_prob = self.tokenizer._get_mean_cell_probs(  # type: ignore
                     token_probabilities[i].tolist(),
                     segment_ids[i].tolist(),
                     row_ids[i].tolist(),
@@ -432,10 +417,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
                     else:
                         answer_str = self._aggregate_answers(aggregator, cells)
                     current_score = answer_scores[index]
-                    if self.return_table_cell:
-                        answer_offsets = _calculate_answer_offsets(ans_coordinates_per_table)
-                    else:
-                        answer_offsets = _calculate_answer_offsets_span(ans_coordinates_per_table, string_table)
+                    answer_offsets = _calculate_answer_offsets(ans_coordinates_per_table)
                     answer = Answer(
                         answer=answer_str,
                         type="extractive",
@@ -458,7 +440,7 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
 class _TapasScoredEncoder:
     def __init__(
         self,
-        device: torch.device,
+        device: "torch.device",
         model_name_or_path: str = "deepset/tapas-large-nq-hn-reader",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
@@ -466,9 +448,8 @@ class _TapasScoredEncoder:
         return_no_answer: bool = False,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
-        return_table_cell: bool = False,
     ):
-        self.model = self._TapasForScoredQA.from_pretrained(
+        self.model = self._TapasForScoredQA.from_pretrained(  # type: ignore
             model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         if tokenizer is None:
@@ -479,9 +460,8 @@ class _TapasScoredEncoder:
         self.device = device
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answer = return_no_answer
-        self.return_table_cell = return_table_cell
 
-    def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
+    def _predict_tapas_scored(self, inputs: "BatchEncoding", document: Document) -> Tuple[List[Answer], float]:
         orig_table: pd.DataFrame = document.content
         string_table = orig_table.astype(str)
 
@@ -561,10 +541,7 @@ class _TapasScoredEncoder:
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = string_table.iat[current_answer_span[:2]]
             answer_offsets: Union[List[Span], List[TableCell]]
-            if self.return_table_cell:
-                answer_offsets = _calculate_answer_offsets([current_answer_span[:2]])
-            else:
-                answer_offsets = _calculate_answer_offsets_span([current_answer_span[:2]], string_table)
+            answer_offsets = _calculate_answer_offsets([current_answer_span[:2]])
             # As the general table score is more important for the final score, it is double weighted.
             current_score = ((2 * table_relevancy_prob) + span_logits_softmax[0, answer_span_idx].item()) / 3
 
@@ -601,12 +578,8 @@ class _TapasScoredEncoder:
                 no_answer_score = current_no_answer_score
 
         if self.return_no_answer:
-            if self.return_table_cell:
-                offsets_in_context = None
-                offsets_in_document = None
-            else:
-                offsets_in_context = [Span(start=0, end=0)]
-                offsets_in_document = [Span(start=0, end=0)]
+            offsets_in_context = None
+            offsets_in_document = None
             answers.append(
                 Answer(
                     answer="",
@@ -631,7 +604,7 @@ class _TapasScoredEncoder:
             results["answers"].append(preds["answers"])
         return results
 
-    class _TapasForScoredQA(TapasPreTrainedModel):
+    class _TapasForScoredQA(TapasPreTrainedModel):  # pylint: disable=useless-object-inheritance
         def __init__(self, config):
             super().__init__(config)
 
@@ -682,7 +655,6 @@ class RCIReader(BaseReader):
         top_k: int = 10,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
-        return_table_cell: bool = False,
     ):
         """
         Load an RCI model from Transformers.
@@ -711,22 +683,9 @@ class RCIReader(BaseReader):
                                 `transformers-cli login` (stored in ~/.huggingface) will be used.
                                 Additional information can be found here
                                 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param return_table_cell: Whether to return the offsets (`offsets_in_document` and `offsets_in_context`) that indicate
-                                  the cells that answer the question using the TableCell schema. The TableCell schema returns the row
-                                  and column indices of the table cells selected in the Answer. Otherwise, the offsets
-                                  are returned as Span objects which are start and end indices when counting through the
-                                  table in a linear fashion, which means the first cell is top left and the last cell is bottom right.
         """
+        torch_and_transformers_import.check()
         super().__init__()
-
-        if not return_table_cell:
-            logger.warning(
-                "The support for returning offsets in answer predictions in a linear fashion is being deprecated."
-                " Set return_table_cell=True to use the new offsets format which returns the row and column indices"
-                " of the table cells selected in the answer."
-                " In the future, return_table_cell=True will become default and return_table_cell=False will no "
-                " longer be supported."
-            )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -770,7 +729,6 @@ class RCIReader(BaseReader):
         self.top_k = top_k
         self.max_seq_len = max_seq_len
         self.return_no_answers = False
-        self.return_table_cell = return_table_cell
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
@@ -837,10 +795,7 @@ class RCIReader(BaseReader):
 
                     answer_str = string_table.iloc[row_idx, col_idx]
                     answer_offsets: Union[List[Span], List[TableCell]]
-                    if self.return_table_cell:
-                        answer_offsets = [TableCell(row=row_idx, col=col_idx)]
-                    else:
-                        answer_offsets = [self._calculate_answer_offsets_span(row_idx, col_idx, string_table)]
+                    answer_offsets = [TableCell(row=row_idx, col=col_idx)]
                     current_answers.append(
                         Answer(
                             answer=answer_str,
@@ -883,13 +838,6 @@ class RCIReader(BaseReader):
 
         return row_reps, column_reps
 
-    @staticmethod
-    def _calculate_answer_offsets_span(row_idx, column_index, table) -> Span:
-        _, n_columns = table.shape
-        answer_cell_offset = (row_idx * n_columns) + column_index
-
-        return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
-
     def predict_batch(
         self,
         queries: List[str],
@@ -930,21 +878,6 @@ def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]]) -> List
     answer_offsets = []
     for coord in answer_coordinates:
         answer_offsets.append(TableCell(row=coord[0], col=coord[1]))
-    return answer_offsets
-
-
-def _calculate_answer_offsets_span(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-    """
-    Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
-
-    :param answer_coordinates: List of answer coordinates.
-    :param table: Table containing the answers in answer coordinates.
-    """
-    answer_offsets = []
-    _, n_columns = table.shape
-    for coord in answer_coordinates:
-        answer_cell_offset = (coord[0] * n_columns) + coord[1]
-        answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
     return answer_offsets
 
 

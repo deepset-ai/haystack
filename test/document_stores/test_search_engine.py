@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from haystack.document_stores.search_engine import SearchEngineDocumentStore, prepare_hosts
+from haystack.document_stores.search_engine import SearchEngineDocumentStore
 
 
 @pytest.mark.unit

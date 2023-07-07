@@ -3,16 +3,21 @@ from typing import List, Optional, Set, Union
 
 import logging
 
-import torch
-from tqdm.auto import tqdm
-from transformers import pipeline
+from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.nodes.summarizer.base import BaseSummarizer
-from haystack.modeling.utils import initialize_device_settings
-from haystack.utils.torch_utils import ListDataset
+from haystack.lazy_imports import LazyImport
+
 
 logger = logging.getLogger(__name__)
+
+
+with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_and_transformers_import:
+    import torch
+    from transformers import pipeline
+    from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
+    from haystack.utils.torch_utils import ListDataset
 
 
 class TransformersSummarizer(BaseSummarizer):
@@ -62,7 +67,7 @@ class TransformersSummarizer(BaseSummarizer):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
-        devices: Optional[List[Union[str, torch.device]]] = None,
+        devices: Optional[List[Union[str, "torch.device"]]] = None,
     ):
         """
         Load a summarization model from transformers.
@@ -88,6 +93,7 @@ class TransformersSummarizer(BaseSummarizer):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). If you specify `use_gpu=False`, the devices
                         parameter is not used and a single CPU device is used for inference.
         """
+        torch_and_transformers_import.check()
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)

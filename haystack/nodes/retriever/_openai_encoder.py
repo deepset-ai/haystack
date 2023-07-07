@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
 from tiktoken.model import MODEL_TO_ENCODING
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.environment import HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.nodes.retriever._base_embedding_encoder import _BaseEmbeddingEncoder

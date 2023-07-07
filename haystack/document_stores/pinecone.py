@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import Set, Union, List, Optional, Dict, Generator, Any
 
@@ -6,9 +7,8 @@ from itertools import islice
 from functools import reduce
 import operator
 
-import pinecone
 import numpy as np
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from haystack.schema import Document, FilterType, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
@@ -16,6 +16,10 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
 from haystack.nodes.retriever import DenseRetriever
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install farm-haystack[pinecone]'") as pinecone_import:
+    import pinecone
 
 
 logger = logging.getLogger(__name__)
@@ -107,6 +111,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
             no fields are indexed.
         """
+        pinecone_import.check()
         if metadata_config is None:
             metadata_config = {"indexed": []}
         # Connect to Pinecone server using python client binding
@@ -292,12 +297,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
         stats = self.pinecone_indexes[index].describe_index_stats(filter=pinecone_syntax_filter)
-        # Document count is total number of vectors across all namespaces (no-vectors + vectors)
-        count = 0
-        for namespace in stats["namespaces"].keys():
-            if not (only_documents_without_embedding and "no-vectors" not in namespace):
-                count += stats["namespaces"][namespace]["vector_count"]
-        return count
+        if only_documents_without_embedding:
+            return sum(value["vector_count"] for key, value in stats["namespaces"].items() if "no-vectors" in key)
+        return sum(value["vector_count"] for value in stats["namespaces"].values())
 
     def _validate_index_sync(self, index: Optional[str] = None):
         """
@@ -492,7 +494,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
                 f"PineconeDocumentStore() again ..."
             )
-        document_count = self.get_document_count(index=index, filters=filters)
+        document_count = self.get_document_count(
+            index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
+        )
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
@@ -1181,13 +1185,16 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
+        return_documents = []
         for doc in documents:
             score = scores_for_vector_ids[doc.id]
             if scale_score:
                 score = self.scale_to_unit_interval(score, self.similarity)
             doc.score = score
+            return_document = copy.copy(doc)
+            return_documents.append(return_document)
 
-        return documents
+        return return_documents
 
     def _get_documents_by_meta(
         self,
