@@ -3,6 +3,7 @@ from typing import List, Optional, Type, Union
 
 from haystack.lazy_imports import LazyImport
 from haystack.document_stores.search_engine import prepare_hosts
+from .base import _ElasticsearchDocumentStore
 
 
 failed_import_message = (
@@ -17,8 +18,6 @@ with LazyImport(failed_import_message) as es_import:
     from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
-
-from .base import _ElasticsearchDocumentStore
 
 logger = logging.getLogger(__name__)
 
