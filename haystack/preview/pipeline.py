@@ -10,6 +10,7 @@ from canals.pipeline import (
 )
 
 from haystack.preview.document_stores.protocols import Store
+from haystack.preview.document_stores.mixins import StoreAwareMixin
 
 
 class NoSuchStoreError(PipelineError):
@@ -55,41 +56,32 @@ class Pipeline(CanalsPipeline):
         except KeyError as e:
             raise NoSuchStoreError(f"No store named '{name}' is connected to this pipeline.") from e
 
-    def add_component(self, name: str, instance: Any, stores: Optional[List[str]] = None) -> None:
+    def add_component(self, name: str, instance: Any, store: Optional[str] = None) -> None:
         """
         Make this component available to the pipeline. Components are not connected to anything by default:
         use `Pipeline.connect()` to connect components together.
 
         Component names must be unique, but component instances can be reused if needed.
 
-        If `stores` has a value, the pipeline will also connect this component to the requested document store(s).
-        Note that only components that respect the StoreMixin or StoresMixin protocols can be connected to stores.
+        If `store` has a value, the pipeline will also connect this component to the requested document store.
+        Note that only components that inherit from StoreAwareMixin can be connected to stores.
 
         :param name: the name of the component.
         :param instance: the component instance.
-        :param stores: the stores this component needs access to, if any.
+        :param store: the store this component needs access to, if any.
         :raises ValueError: if a component with the same name already exists
         :raises PipelineValidationError: if the given instance is not a component
         """
         super().add_component(name, instance)
 
-        stores = stores or []
-        for store in stores:
-            if store not in self._stores:
-                raise NoSuchStoreError(
-                    f"Store named '{store}' not found. "
-                    f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
-                )
+        if store not in self._stores:
+            raise NoSuchStoreError(
+                f"Store named '{store}' not found. "
+                f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
+            )
 
-        # This component implements the MultiStoreComponent protocol
-        if hasattr(instance, "stores"):
-            instance.stores = {store: self._stores[store] for store in stores}
-
-        # This component implements the StoreComponent protocol
-        elif hasattr(instance, "store"):
-            if len(stores) != 1:
-                raise ValueError(f"Component '{name}' needs exactly one store.")
-            instance.store = self._stores[stores[0]]
+        if isinstance(instance, StoreAwareMixin):
+            instance.store = self._stores[store]
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):

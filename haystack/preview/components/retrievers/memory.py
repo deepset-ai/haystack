@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
 from haystack.preview import component, Document, ComponentInput, ComponentOutput
-from haystack.preview.document_stores import MemoryDocumentStore
+from haystack.preview.document_stores import MemoryDocumentStore, StoreAwareMixin
 
 
 @component
-class MemoryRetriever:
+class MemoryRetriever(StoreAwareMixin):
     """
     A component for retrieving documents from a MemoryDocumentStore using the BM25 algorithm.
 
@@ -53,35 +53,11 @@ class MemoryRetriever:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
-
-    @property
-    def store(self) -> Optional[MemoryDocumentStore]:
-        """
-        This property allows Pipelines to connect the component with the stores it requires.
-
-        Stores have to be instances of MemoryDocumentStore, or the assignment will fail.
-        """
-        return getattr(self, "_store", None)
-
-    @store.setter
-    def store(self, store: MemoryDocumentStore):
-        """
-        This property allows Pipelines to connect the component with the stores it requires.
-
-        Stores have to be instances of MemoryDocumentStore, or the assignment will fail.
-
-        :param store: the MemoryDocumentStore instance to retrieve from.
-        :raises ValueError if the store is not an instance of MemoryDocumentStore.
-        """
-        if not store:
-            raise ValueError("Can't set the value of the store to None.")
-        if not isinstance(store, MemoryDocumentStore):
-            raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
-        self._store = store
+        self._supported_stores = [MemoryDocumentStore]
 
     def warmup(self):
         """
-        Double-checks that a store is set before running this component in a pipeline.
+        Double-checks that a store is present before running this component in a pipeline.
         """
         if not self.store:
             raise ValueError(
@@ -97,6 +73,8 @@ class MemoryRetriever:
 
         :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
         """
+        self.store: MemoryDocumentStore
+
         if not self.store:
             raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
         docs = self.store.bm25_retrieval(
