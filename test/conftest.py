@@ -1,5 +1,4 @@
 import warnings
-from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
 
 import gc
@@ -10,7 +9,6 @@ import re
 from functools import wraps
 from unittest.mock import patch
 
-import requests_cache
 import responses
 import posthog
 
@@ -80,10 +78,6 @@ posthog.disabled = True
 
 # Disable caching from prompthub to avoid polluting the local environment.
 os.environ["PROMPTHUB_CACHE_ENABLED"] = "false"
-
-# Cache requests (e.g. huggingface model) to circumvent load protection
-# See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
-requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
 def fail_at_version(target_major, target_minor):
@@ -537,17 +531,16 @@ def reader(request):
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader", return_table_cell=True), request.param
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
     elif request.param == "rci":
         return (
             RCIReader(
                 row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
                 column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
-                return_table_cell=True,
             ),
             request.param,
         )

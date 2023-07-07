@@ -5,6 +5,7 @@ import logging
 import sseclient
 
 from haystack.errors import OpenAIError
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 from haystack.utils.openai_utils import (
     openai_request,
     _openai_text_completion_tokenization_details,
@@ -224,4 +225,4 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
         valid_model = any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
-        return valid_model and kwargs.get("azure_base_url") is None
+        return valid_model and not has_azure_parameters(**kwargs)
