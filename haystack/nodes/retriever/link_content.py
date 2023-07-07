@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Optional, Dict, List, Union, Callable
+from typing import Optional, Dict, List, Union, Callable, Any, Tuple
 from urllib.parse import urlparse
 
 import requests
@@ -9,11 +9,9 @@ from boilerpy3 import extractors
 from requests import Response
 from requests.exceptions import InvalidURL
 
-from haystack import Document, __version__
-from haystack.document_stores import BaseDocumentStore
-from haystack.nodes import PreProcessor
-from haystack.nodes.retriever.base import BaseRetriever
-from haystack.schema import FilterType
+from haystack.nodes import PreProcessor, BaseComponent
+from haystack.schema import Document, MultiLabel
+from haystack import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +33,7 @@ def pdf_content_handler(response: Response) -> Optional[str]:
     return None
 
 
-class LinkContentRetriever(BaseRetriever):
+class LinkContentRetriever(BaseComponent):
     """
     LinkContentRetriever fetches content from a URL and converts it into a list of Document objects.
 
@@ -43,6 +41,8 @@ class LinkContentRetriever(BaseRetriever):
     - HTML
 
     """
+
+    outgoing_edges = 1
 
     def __init__(self, pre_processor: Optional[PreProcessor] = None):
         """
@@ -53,7 +53,7 @@ class LinkContentRetriever(BaseRetriever):
         self.pre_processor = pre_processor
         self.content_handlers: Dict[str, Callable] = {"html": html_content_handler, "pdf": pdf_content_handler}
 
-    def __call__(self, url: str, timeout: int = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
+    def fetch(self, url: str, timeout: int = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
         Fetches content from a URL and converts it into a list of Document objects.
         :param url: URL to fetch content from.
@@ -90,16 +90,14 @@ class LinkContentRetriever(BaseRetriever):
 
         return [document]
 
-    def retrieve(
+    def run(
         self,
-        query: str,
-        filters: Optional[FilterType] = None,
-        top_k: Optional[int] = None,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-        scale_score: Optional[bool] = None,
-        document_store: Optional[BaseDocumentStore] = None,
-    ) -> List[Document]:
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+    ) -> Tuple[Dict, str]:
         """
         Fetches content from a URL specified by query parameter and converts it into a list of Document objects.
 
@@ -115,19 +113,19 @@ class LinkContentRetriever(BaseRetriever):
         """
         if not query:
             raise ValueError("LinkContentRetriever run requires the `query` parameter")
-        return self(url=query)
+        documents = self.fetch(url=query)
+        return {"documents": documents}, "output_1"
 
-    def retrieve_batch(
+    def run_batch(
         self,
-        queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
-        top_k: Optional[int] = None,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-        batch_size: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        document_store: Optional[BaseDocumentStore] = None,
-    ) -> List[List[Document]]:
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
         """
         Takes a list of queries, where each query is expected to be a URL. For each query, the method
         fetches content from the specified URL and transforms it into a list of Document objects. The output is a list
@@ -153,8 +151,9 @@ class LinkContentRetriever(BaseRetriever):
                 "LinkContentRetriever run_batch requires the `queries` parameter to be Union[str, List[str]]"
             )
         for query in queries:
-            results.append(self(url=query))
-        return results
+            results.append(self.fetch(url=query))
+
+        return {"documents": results}, "output_1"
 
     def _get_response(self, url: str, timeout: int) -> Optional[requests.Response]:
         """

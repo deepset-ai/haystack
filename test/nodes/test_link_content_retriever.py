@@ -50,7 +50,7 @@ def test_call(mocked_requests, mocked_article_extractor):
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
     r = LinkContentRetriever(pre_processor_mock)
-    result = r(url=url, doc_kwargs={"text": "Sample content from webpage"})
+    result = r.fetch(url=url, doc_kwargs={"text": "Sample content from webpage"})
 
     assert len(result) == 1
     assert isinstance(result[0], Document)
@@ -64,7 +64,7 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
 
     retriever_no_url = LinkContentRetriever(pre_processor=pre_processor_mock)
     with pytest.raises(requests.exceptions.InvalidURL, match="Invalid or missing URL"):
-        retriever_no_url(url="")
+        retriever_no_url.fetch(url="")
 
 
 @pytest.mark.unit
@@ -73,7 +73,7 @@ def test_call_invalid_url(caplog, mocked_requests, mocked_article_extractor):
 
     r = LinkContentRetriever()
     with pytest.raises(requests.exceptions.InvalidURL):
-        r(url=url)
+        r.fetch(url=url)
 
 
 @pytest.mark.unit
@@ -81,7 +81,7 @@ def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
     url = "https://www.example.com"
     r = LinkContentRetriever()
 
-    result_no_preprocessor = r(url=url)
+    result_no_preprocessor = r.fetch(url=url)
 
     assert len(result_no_preprocessor) == 1
     assert isinstance(result_no_preprocessor[0], Document)
@@ -93,7 +93,7 @@ def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
     url = "https://www.example.com"
 
     r = LinkContentRetriever()
-    r(url=url)
+    r.fetch(url=url)
 
     # Check the arguments that requests.get was called with
     args, kwargs = mocked_requests.get.call_args
@@ -103,7 +103,7 @@ def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
 
     # another variant
     url = "https://deepset.ai"
-    r(url=url, timeout=10)
+    r.fetch(url=url, timeout=10)
     # Check the arguments that requests.get was called with
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
@@ -119,7 +119,7 @@ def test_fetch_default_empty_content(mocked_requests):
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", return_value=content_text):
         r = LinkContentRetriever()
-        result = r(url=url, timeout=timeout)
+        result = r.fetch(url=url, timeout=timeout)
 
     assert "text" not in result
     assert isinstance(result, list) and len(result) == 0
@@ -132,7 +132,7 @@ def test_fetch_exception_during_content_extraction(caplog, mocked_requests):
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
         r = LinkContentRetriever()
-        result = r(url=url)
+        result = r.fetch(url=url)
 
     assert "text" not in result
     assert "Couldn't extract content from URL" in caplog.text
@@ -145,7 +145,7 @@ def test_fetch_exception_during_request_get(caplog):
 
     with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
         r = LinkContentRetriever()
-        r(url=url)
+        r.fetch(url=url)
     assert "Error retrieving URL" in caplog.text
 
 
@@ -163,7 +163,7 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     mocked_requests.get.return_value = mock_response
 
     r = LinkContentRetriever()
-    r(url=url)
+    r.fetch(url=url)
 
     assert f"Error retrieving URL {url}: Status Code - {error_code}" in caplog.text
 
@@ -228,7 +228,7 @@ def test_call_with_valid_url_on_live_web():
     """
 
     retriever = LinkContentRetriever()
-    docs = retriever(url="https://docs.haystack.deepset.ai/", timeout=2)
+    docs = retriever.fetch(url="https://docs.haystack.deepset.ai/", timeout=2)
 
     assert len(docs) >= 1
     assert isinstance(docs[0], Document)
@@ -242,7 +242,8 @@ def test_retrieve_with_valid_url_on_live_web():
     """
 
     retriever = LinkContentRetriever()
-    docs = retriever.retrieve(query="https://docs.haystack.deepset.ai/")
+    docs, _ = retriever.run(query="https://docs.haystack.deepset.ai/")
+    docs = docs["documents"]
 
     assert len(docs) >= 1
     assert isinstance(docs[0], Document)
@@ -257,7 +258,7 @@ def test_retrieve_with_invalid_url():
 
     retriever = LinkContentRetriever()
     with pytest.raises(ValueError):
-        retriever.retrieve(query="")
+        retriever.run(query="")
 
 
 @pytest.mark.integration
@@ -267,8 +268,10 @@ def test_retrieve_batch():
     """
 
     retriever = LinkContentRetriever()
-    docs = retriever.retrieve_batch(queries=["https://docs.haystack.deepset.ai/", "https://deepset.ai/"])
+    docs, _ = retriever.run_batch(queries=["https://docs.haystack.deepset.ai/", "https://deepset.ai/"])
     assert docs
+
+    docs = docs["documents"]
     # no processor is applied, so each query should return a list of documents with one entry
     assert len(docs) == 2 and len(docs[0]) == 1 and len(docs[1]) == 1
 
