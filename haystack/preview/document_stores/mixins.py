@@ -8,9 +8,11 @@ class StoreMixin:
     Adds the capability of a component to use a single document store from the `self.store` property.
     """
 
+    _store: Store
+
     @property
     def store(self) -> Optional[Store]:
-        return getattr(self, "_store", None)
+        return self._store
 
     @store.setter
     def store(self, store: Store):
@@ -28,7 +30,7 @@ class MultiStoreMixin:
 
     @property
     def stores(self) -> Optional[Dict[str, Store]]:
-        return getattr(self, "_stores", None)
+        return self._stores
 
     @stores.setter
     def stores(self, stores: Dict[str, Store]):
