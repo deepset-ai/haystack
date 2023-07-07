@@ -1,4 +1,4 @@
-from typing import List, Type, Optional, Any
+from typing import List, Optional, Type
 
 from haystack.preview.document_stores.protocols import Store
 
@@ -9,7 +9,7 @@ class StoreAwareMixin:
     """
 
     _store: Store
-    _supported_stores: List[Store]
+    _supported_stores: List[Type[Store]]
 
     @property
     def store(self) -> Optional[Store]:
