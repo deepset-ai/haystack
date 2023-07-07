@@ -28,18 +28,18 @@ def mocked_article_extractor():
 def test_init():
     r = LinkContentRetriever()
 
-    assert r.pre_processor is None
-    assert isinstance(r.content_handlers, dict)
-    assert "html" in r.content_handlers
+    assert r.processor is None
+    assert isinstance(r.handlers, dict)
+    assert "html" in r.handlers
 
 
 @pytest.mark.unit
 def test_init_with_preprocessor():
     pre_processor_mock = Mock()
-    r = LinkContentRetriever(pre_processor=pre_processor_mock)
-    assert r.pre_processor == pre_processor_mock
-    assert isinstance(r.content_handlers, dict)
-    assert "html" in r.content_handlers
+    r = LinkContentRetriever(processor=pre_processor_mock)
+    assert r.processor == pre_processor_mock
+    assert isinstance(r.handlers, dict)
+    assert "html" in r.handlers
 
 
 @pytest.mark.unit
@@ -62,7 +62,7 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
-    retriever_no_url = LinkContentRetriever(pre_processor=pre_processor_mock)
+    retriever_no_url = LinkContentRetriever(processor=pre_processor_mock)
     with pytest.raises(requests.exceptions.InvalidURL, match="Invalid or missing URL"):
         retriever_no_url.fetch(url="")
 
@@ -99,7 +99,7 @@ def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 3
-    assert kwargs["headers"] == r._request_headers()
+    assert kwargs["headers"] == r.REQUEST_HEADERS
 
     # another variant
     url = "https://deepset.ai"
@@ -108,7 +108,7 @@ def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
     args, kwargs = mocked_requests.get.call_args
     assert args[0] == url
     assert kwargs["timeout"] == 10
-    assert kwargs["headers"] == r._request_headers()
+    assert kwargs["headers"] == r.REQUEST_HEADERS
 
 
 @pytest.mark.unit

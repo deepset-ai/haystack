@@ -44,14 +44,22 @@ class LinkContentRetriever(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self, pre_processor: Optional[PreProcessor] = None):
+    REQUEST_HEADERS = {
+        "accept": "*/*",
+        "User-Agent": f"haystack/LinkContentRetriever/{__version__}",
+        "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
+        "referer": "https://www.google.com/",
+    }
+
+    def __init__(self, processor: Optional[PreProcessor] = None):
         """
+
         Creates a LinkContentRetriever instance.
         :param pre_processor: PreProcessor to apply to the extracted text
         """
         super().__init__()
-        self.pre_processor = pre_processor
-        self.content_handlers: Dict[str, Callable] = {"html": html_content_handler, "pdf": pdf_content_handler}
+        self.processor = processor
+        self.handlers: Dict[str, Callable] = {"html": html_content_handler, "pdf": pdf_content_handler}
 
     def fetch(self, url: str, timeout: int = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
@@ -65,7 +73,7 @@ class LinkContentRetriever(BaseComponent):
             raise InvalidURL("Invalid or missing URL: {}".format(url))
 
         doc_kwargs = doc_kwargs or {}
-        extracted_doc = {"url": url}
+        extracted_doc = {"url": url, "meta": {"timestamp": int(datetime.utcnow().timestamp())}}
 
         response = self._get_response(url, timeout)
         if not response:
@@ -73,20 +81,19 @@ class LinkContentRetriever(BaseComponent):
 
         # will handle non-HTML content types soon, add content type resolution here
         handler = "html"
-        if handler in self.content_handlers:
-            extracted_content = self.content_handlers[handler](response)
+        if handler in self.handlers:
+            extracted_content = self.handlers[handler](response)
             if extracted_content:
-                extracted_doc.update({"text": extracted_content})
+                extracted_doc.update({"content": extracted_content})
             else:
                 logger.debug("Couldn't extract content from URL %s, using content handler %s.", url, handler)
                 return []
 
         extracted_doc.update(doc_kwargs)
-        document = Document.from_dict(extracted_doc, field_map={"text": "content"})
-        document.meta["timestamp"] = int(datetime.utcnow().timestamp())
+        document = Document.from_dict(extracted_doc)
 
-        if self.pre_processor:
-            return self.pre_processor.process(documents=[document])
+        if self.processor:
+            return self.processor.process(documents=[document])
 
         return [document]
 
@@ -163,7 +170,7 @@ class LinkContentRetriever(BaseComponent):
         :return: A response object.
         """
         try:
-            response = requests.get(url, headers=self._request_headers(), timeout=timeout)
+            response = requests.get(url, headers=LinkContentRetriever.REQUEST_HEADERS, timeout=timeout)
             if response.status_code != HTTPStatus.OK or len(response.text) == 0:
                 logger.debug("Error retrieving URL %s: Status Code - %s", url, response.status_code)
                 return None
@@ -183,14 +190,3 @@ class LinkContentRetriever(BaseComponent):
         result = urlparse(url)
         # schema is http or https and netloc is not empty
         return all([result.scheme in ["http", "https"], result.netloc])
-
-    def _request_headers(self):
-        """
-        Returns the headers to be used for the HTTP request.
-        """
-        return {
-            "accept": "*/*",
-            "User-Agent": f"haystack/LinkContentRetriever/{__version__}",
-            "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
-            "referer": "https://www.google.com/",
-        }
