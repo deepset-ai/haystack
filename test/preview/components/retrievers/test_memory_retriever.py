@@ -77,7 +77,7 @@ class Test_MemoryRetriever(BaseTestComponent):
                 return
 
         retriever = MemoryRetriever()
-        with pytest.raises(ValueError, match="MemoryRetriever can only be used with a MemoryDocumentStore instance"):
+        with pytest.raises(ValueError, match="is not compatible with this component"):
             retriever.store = MockStore()
 
     @pytest.mark.integration
@@ -95,7 +95,7 @@ class Test_MemoryRetriever(BaseTestComponent):
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
-        pipeline.add_component("retriever", mr, stores=["memory"])
+        pipeline.add_component("retriever", retriever, store="memory")
         result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query)})
 
         assert result
@@ -120,7 +120,7 @@ class Test_MemoryRetriever(BaseTestComponent):
 
         pipeline = Pipeline()
         pipeline.add_store("memory", ds)
-        pipeline.add_component("retriever", retriever, stores=["memory"])
+        pipeline.add_component("retriever", retriever, store="memory")
         result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query, top_k=top_k)})
 
         assert result

@@ -1,4 +1,4 @@
-from typing import List, Type, Optional
+from typing import List, Type, Optional, Any
 
 from haystack.preview.document_stores.protocols import Store
 
@@ -9,7 +9,7 @@ class StoreAwareMixin:
     """
 
     _store: Store
-    _supported_stores: List[Type[Store]]
+    _supported_stores: List[Store]
 
     @property
     def store(self) -> Optional[Store]:
@@ -19,9 +19,9 @@ class StoreAwareMixin:
     def store(self, store: Store):
         if not store:
             raise ValueError("Can't set the value of the store to None.")
-        if self._supported_stores and any(not isinstance(storetype, store) for storetype in self._supported_stores):
+        if hasattr(self, "_supported_stores") and any(not isinstance(store, type_) for type_ in self._supported_stores):
             raise ValueError(
-                f"Store type {type(store)} is not compatible with this component. "
-                f"Compatible store types: {self._supported_stores}"
+                f"Store type '{type(store).__name__}' is not compatible with this component. "
+                f"Compatible store types: {[type_.__name__ for type_ in self._supported_stores]}"
             )
         self._store = store

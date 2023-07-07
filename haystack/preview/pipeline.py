@@ -69,19 +69,28 @@ class Pipeline(CanalsPipeline):
         :param name: the name of the component.
         :param instance: the component instance.
         :param store: the store this component needs access to, if any.
-        :raises ValueError: if a component with the same name already exists
+        :raises ValueError: if:
+            - a component with the same name already exists
+            - a component requiring a store didn't receive it
+            - a component that didn't expect a store received it
         :raises PipelineValidationError: if the given instance is not a component
+        :raises NoSuchStoreError: if the given store name is not known to the pipeline
         """
-        super().add_component(name, instance)
-
-        if store not in self._stores:
-            raise NoSuchStoreError(
-                f"Store named '{store}' not found. "
-                f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
-            )
-
         if isinstance(instance, StoreAwareMixin):
+            if not store:
+                raise ValueError(f"Component '{name}' needs a store.")
+
+            if store not in self._stores:
+                raise NoSuchStoreError(
+                    f"Store named '{store}' not found. "
+                    f"Add it with 'pipeline.add_store('{store}', <the docstore instance>)'."
+                )
             instance.store = self._stores[store]
+
+        elif store:
+            raise ValueError(f"Component '{name}' doesn't support stores.")
+
+        super().add_component(name, instance)
 
 
 def load_pipelines(path: Path, _reader: Optional[Callable[..., Any]] = None):
