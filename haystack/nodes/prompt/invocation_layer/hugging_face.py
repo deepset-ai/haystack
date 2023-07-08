@@ -249,7 +249,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 ):
                     num_return_sequences = model_input_kwargs["num_return_sequences"]
                     logger.warning(
-                        "num_return_sequences {} should not be larger than num_beams {}, hence setting it equal to num_beams",
+                        "num_return_sequences %s should not be larger than num_beams %s, hence setting it equal to num_beams",
                         num_return_sequences,
                         num_beams,
                     )
