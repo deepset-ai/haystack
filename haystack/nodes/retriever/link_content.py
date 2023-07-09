@@ -9,26 +9,29 @@ from boilerpy3 import extractors
 from requests import Response
 from requests.exceptions import InvalidURL
 
+from haystack import __version__
 from haystack.nodes import PreProcessor, BaseComponent
 from haystack.schema import Document, MultiLabel
-from haystack import __version__
 
 logger = logging.getLogger(__name__)
 
 
-def html_content_handler(response: Response) -> Optional[str]:
+def html_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
     """
     Extracts content from the response text using the boilerpy3 extractor.
     """
-    extractor = extractors.ArticleExtractor(raise_on_failure=False)
+    extractor = extractors.ArticleExtractor(raise_on_failure=raise_on_failure)
+    content = ""
     try:
-        extracted_content = extractor.get_content(response.text)
-        return extracted_content
-    except Exception:
-        return None
+        content = extractor.get_content(response.text)
+    except Exception as e:
+        if raise_on_failure:
+            raise e
+        logger.debug("Couldn't extract content from %s", response.url)
+    return content
 
 
-def pdf_content_handler(response: Response) -> Optional[str]:
+def pdf_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
     # TODO: implement this
     return None
 
@@ -51,17 +54,21 @@ class LinkContentRetriever(BaseComponent):
         "referer": "https://www.google.com/",
     }
 
-    def __init__(self, processor: Optional[PreProcessor] = None):
+    def __init__(self, processor: Optional[PreProcessor] = None, raise_on_failure: Optional[bool] = False):
         """
 
         Creates a LinkContentRetriever instance.
-        :param pre_processor: PreProcessor to apply to the extracted text
+        :param processor: PreProcessor to apply to the extracted text
+        :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
+                         during content extraction. If False, the error is simply logged and the program continues.
+                         Defaults to False.
         """
         super().__init__()
         self.processor = processor
+        self.raise_on_failure = raise_on_failure
         self.handlers: Dict[str, Callable] = {"html": html_content_handler, "pdf": pdf_content_handler}
 
-    def fetch(self, url: str, timeout: int = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
+    def fetch(self, url: str, timeout: Optional[int] = 3, doc_kwargs: Optional[dict] = None) -> List[Document]:
         """
         Fetches content from a URL and converts it into a list of Document objects.
         :param url: URL to fetch content from.
@@ -74,28 +81,29 @@ class LinkContentRetriever(BaseComponent):
 
         doc_kwargs = doc_kwargs or {}
         extracted_doc = {"url": url, "meta": {"timestamp": int(datetime.utcnow().timestamp())}}
-
-        response = self._get_response(url, timeout)
-        if not response:
-            return []
-
-        # will handle non-HTML content types soon, add content type resolution here
-        handler = "html"
-        if handler in self.handlers:
-            extracted_content = self.handlers[handler](response)
-            if extracted_content:
-                extracted_doc.update({"content": extracted_content})
-            else:
-                logger.debug("Couldn't extract content from URL %s, using content handler %s.", url, handler)
-                return []
-
         extracted_doc.update(doc_kwargs)
-        document = Document.from_dict(extracted_doc)
 
-        if self.processor:
-            return self.processor.process(documents=[document])
+        response = self._get_response(url, timeout=timeout)
+        has_content = response.status_code == HTTPStatus.OK and response.text
+        fetched_documents = []
+        if has_content:
+            handler = "html"  # will handle non-HTML content types soon, add content type resolution here
+            if handler in self.handlers:
+                extracted_content = self.handlers[handler](response, self.raise_on_failure)
+                if extracted_content:
+                    extracted_doc["content"] = extracted_content
+                    logger.debug("%s handler extracted content from %s", handler, url)
+                else:
+                    text = extracted_doc.get("text", "")  # we might have snippet under text, use it as fallback
+                    logger.debug("%s handler failed to extract content from %s", handler, url)
+                    extracted_doc["content"] = text
+                document = Document.from_dict(extracted_doc)
 
-        return [document]
+                if self.processor:
+                    fetched_documents = self.processor.process(documents=[document])
+                else:
+                    fetched_documents = [document]
+        return fetched_documents
 
     def run(
         self,
@@ -162,7 +170,7 @@ class LinkContentRetriever(BaseComponent):
 
         return {"documents": results}, "output_1"
 
-    def _get_response(self, url: str, timeout: int) -> Optional[requests.Response]:
+    def _get_response(self, url: str, timeout: Optional[int]) -> requests.Response:
         """
         Fetches content from a URL. Returns a response object.
         :param url: The URL to fetch content from.
@@ -171,13 +179,15 @@ class LinkContentRetriever(BaseComponent):
         """
         try:
             response = requests.get(url, headers=LinkContentRetriever.REQUEST_HEADERS, timeout=timeout)
-            if response.status_code != HTTPStatus.OK or len(response.text) == 0:
-                logger.debug("Error retrieving URL %s: Status Code - %s", url, response.status_code)
-                return None
-            return response
+            if response.status_code != HTTPStatus.OK:
+                logger.debug("Couldn't retrieve content from %s, status code: %s", url, response.status_code)
         except requests.RequestException as e:
-            logger.debug("Error retrieving URL %s: %s", url, e)
-            return None
+            if self.raise_on_failure:
+                raise e
+
+            logger.debug("Couldn't retrieve content from %s", url)
+            return requests.Response()
+        return response
 
     def _is_valid_url(self, url: str) -> bool:
         """

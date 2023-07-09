@@ -116,37 +116,39 @@ def test_fetch_default_empty_content(mocked_requests):
     url = "https://www.example.com"
     timeout = 10
     content_text = ""
+    r = LinkContentRetriever()
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", return_value=content_text):
-        r = LinkContentRetriever()
         result = r.fetch(url=url, timeout=timeout)
 
     assert "text" not in result
-    assert isinstance(result, list) and len(result) == 0
+    assert isinstance(result, list) and len(result) == 1
+    assert isinstance(result[0], Document)
+    assert result[0].content == content_text
 
 
 @pytest.mark.unit
 def test_fetch_exception_during_content_extraction(caplog, mocked_requests):
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
+    r = LinkContentRetriever()
 
     with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
-        r = LinkContentRetriever()
         result = r.fetch(url=url)
 
     assert "text" not in result
-    assert "Couldn't extract content from URL" in caplog.text
+    assert "Couldn't extract content from" in caplog.text
 
 
 @pytest.mark.unit
 def test_fetch_exception_during_request_get(caplog):
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
+    r = LinkContentRetriever()
 
     with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
-        r = LinkContentRetriever()
         r.fetch(url=url)
-    assert "Error retrieving URL" in caplog.text
+    assert f"Couldn't retrieve content from {url}" in caplog.text
 
 
 @pytest.mark.unit
@@ -165,7 +167,7 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     r = LinkContentRetriever()
     r.fetch(url=url)
 
-    assert f"Error retrieving URL {url}: Status Code - {error_code}" in caplog.text
+    assert f"Couldn't retrieve content from {url}" in caplog.text
 
 
 @pytest.mark.unit
