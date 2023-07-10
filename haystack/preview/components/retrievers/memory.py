@@ -74,6 +74,8 @@ class MemoryRetriever(StoreAwareMixin):
 
         :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
         """
+        self.store: MemoryDocumentStore
+
         if not self.store:
             raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
         docs = []
