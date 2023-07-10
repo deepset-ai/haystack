@@ -53,7 +53,7 @@ class MemoryRetriever(StoreAwareMixin):
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
-        self._supported_stores = [MemoryDocumentStore]
+        self.supported_stores = [MemoryDocumentStore]
 
     def warmup(self):
         """

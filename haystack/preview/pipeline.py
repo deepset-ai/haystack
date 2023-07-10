@@ -34,6 +34,11 @@ class Pipeline(CanalsPipeline):
         :param store: the store object.
         :returns: None
         """
+        if not isinstance(store, Store):
+            raise ValueError(
+                f"This object ({store}) does not respect the Store Protocol, "
+                "so it can't be added to the pipeline with Pipeline.add_store()."
+            )
         self._stores[name] = store
 
     def list_stores(self) -> List[str]:
