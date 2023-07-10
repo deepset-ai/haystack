@@ -26,6 +26,9 @@ def mocked_article_extractor():
 
 @pytest.mark.unit
 def test_init():
+    """
+    Checks the initialization of the LinkContentRetriever without a preprocessor.
+    """
     r = LinkContentRetriever()
 
     assert r.processor is None
@@ -35,6 +38,9 @@ def test_init():
 
 @pytest.mark.unit
 def test_init_with_preprocessor():
+    """
+    Checks the initialization of the LinkContentRetriever with a preprocessor.
+    """
     pre_processor_mock = Mock()
     r = LinkContentRetriever(processor=pre_processor_mock)
     assert r.processor == pre_processor_mock
@@ -44,6 +50,9 @@ def test_init_with_preprocessor():
 
 @pytest.mark.unit
 def test_call(mocked_requests, mocked_article_extractor):
+    """
+    Checks if the LinkContentRetriever is able to fetch content.
+    """
     url = "https://haystack.deepset.ai/"
 
     pre_processor_mock = Mock()
@@ -59,6 +68,9 @@ def test_call(mocked_requests, mocked_article_extractor):
 
 @pytest.mark.unit
 def test_call_no_url(mocked_requests, mocked_article_extractor):
+    """
+    Ensures an InvalidURL exception is raised when URL is missing.
+    """
     pre_processor_mock = Mock()
     pre_processor_mock.process.return_value = [Document("Sample content from webpage")]
 
@@ -69,7 +81,10 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
 
 @pytest.mark.unit
 def test_call_invalid_url(caplog, mocked_requests, mocked_article_extractor):
-    url = "invalid-url"
+    """
+    Ensures an InvalidURL exception is raised when the URL is invalid.
+    """
+    url = "this-is-invalid-url"
 
     r = LinkContentRetriever()
     with pytest.raises(requests.exceptions.InvalidURL):
@@ -78,6 +93,9 @@ def test_call_invalid_url(caplog, mocked_requests, mocked_article_extractor):
 
 @pytest.mark.unit
 def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
+    """
+    Checks if the LinkContentRetriever can fetch content without a preprocessor.
+    """
     url = "https://www.example.com"
     r = LinkContentRetriever()
 
@@ -90,6 +108,9 @@ def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
 
 @pytest.mark.unit
 def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
+    """
+    Ensures that requests.get is called with correct arguments.
+    """
     url = "https://www.example.com"
 
     r = LinkContentRetriever()
@@ -113,6 +134,9 @@ def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
 
 @pytest.mark.unit
 def test_fetch_default_empty_content(mocked_requests):
+    """
+    Checks handling of content extraction returning empty content.
+    """
     url = "https://www.example.com"
     timeout = 10
     content_text = ""
@@ -128,7 +152,10 @@ def test_fetch_default_empty_content(mocked_requests):
 
 
 @pytest.mark.unit
-def test_fetch_exception_during_content_extraction(caplog, mocked_requests):
+def test_fetch_exception_during_content_extraction_no_raise_on_failure(caplog, mocked_requests):
+    """
+    Checks the behavior when there's an exception during content extraction, and raise_on_failure is set to False.
+    """
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
     r = LinkContentRetriever()
@@ -141,7 +168,24 @@ def test_fetch_exception_during_content_extraction(caplog, mocked_requests):
 
 
 @pytest.mark.unit
-def test_fetch_exception_during_request_get(caplog):
+def test_fetch_exception_during_content_extraction_raise_on_failure(caplog, mocked_requests):
+    """
+    Checks the behavior when there's an exception during content extraction, and raise_on_failure is set to True.
+    """
+    caplog.set_level(logging.DEBUG)
+    url = "https://www.example.com"
+    r = LinkContentRetriever(raise_on_failure=True)
+
+    with patch("boilerpy3.extractors.ArticleExtractor.get_content", side_effect=Exception("Could not extract content")):
+        with pytest.raises(Exception, match="Could not extract content"):
+            r.fetch(url=url)
+
+
+@pytest.mark.unit
+def test_fetch_exception_during_request_get_no_raise_on_failure(caplog):
+    """
+    Checks the behavior when there's an exception during request.get, and raise_on_failure is set to False.
+    """
     caplog.set_level(logging.DEBUG)
     url = "https://www.example.com"
     r = LinkContentRetriever()
@@ -152,8 +196,25 @@ def test_fetch_exception_during_request_get(caplog):
 
 
 @pytest.mark.unit
+def test_fetch_exception_during_request_get_raise_on_failure(caplog):
+    """
+    Checks the behavior when there's an exception during request.get, and raise_on_failure is set to True.
+    """
+    caplog.set_level(logging.DEBUG)
+    url = "https://www.example.com"
+    r = LinkContentRetriever(raise_on_failure=True)
+
+    with patch("haystack.nodes.retriever.link_content.requests.get", side_effect=requests.RequestException()):
+        with pytest.raises(requests.RequestException):
+            r.fetch(url=url)
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("error_code", [403, 404, 500])
 def test_handle_various_response_errors(caplog, mocked_requests, error_code: int):
+    """
+    Tests the handling of various HTTP error responses.
+    """
     caplog.set_level(logging.DEBUG)
 
     url = "https://some-problematic-url.com"
@@ -165,13 +226,17 @@ def test_handle_various_response_errors(caplog, mocked_requests, error_code: int
     mocked_requests.get.return_value = mock_response
 
     r = LinkContentRetriever()
-    r.fetch(url=url)
+    docs = r.fetch(url=url)
 
     assert f"Couldn't retrieve content from {url}" in caplog.text
+    assert docs == []
 
 
 @pytest.mark.unit
 def test_is_valid_url():
+    """
+    Checks the _is_valid_url function with a set of valid URLs.
+    """
     retriever = LinkContentRetriever()
 
     valid_urls = [
@@ -197,6 +262,9 @@ def test_is_valid_url():
 
 @pytest.mark.unit
 def test_is_invalid_url():
+    """
+    Checks the _is_valid_url function with a set of invalid URLs.
+    """
     retriever = LinkContentRetriever()
 
     invalid_urls = [
