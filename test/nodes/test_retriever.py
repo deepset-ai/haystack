@@ -120,21 +120,24 @@ def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_sto
     assert len(result) == 0
 
 
-def test_tfidf_retriever_multiple_indexes():
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_tfidf_retriever_multiple_indexes(document_store: BaseDocumentStore):
     docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
     docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
-    ds = InMemoryDocumentStore(index="index_0")
-    tfidf_retriever = TfidfRetriever(document_store=ds)
+    tfidf_retriever = TfidfRetriever(document_store=document_store)
 
-    ds.write_documents(docs_index_0)
-    tfidf_retriever.fit(ds, index="index_0")
-    ds.write_documents(docs_index_1, index="index_1")
-    tfidf_retriever.fit(ds, index="index_1")
+    document_store.write_documents(docs_index_0, index="index_0")
+    tfidf_retriever.fit(document_store, index="index_0")
+    document_store.write_documents(docs_index_1, index="index_1")
+    tfidf_retriever.fit(document_store, index="index_1")
 
-    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
-    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
+    assert tfidf_retriever.document_counts["index_0"] == document_store.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == document_store.get_document_count(index="index_1")
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
     mock_document = Document(id="0", content="test")
