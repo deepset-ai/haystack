@@ -1,8 +1,8 @@
 - Title: Addition of a 'RecencyReranker' node
 - Decision driver: @elundaeva
 - Start Date: 2023-07-05
-- Proposal PR: (fill in after opening the PR)
-- Github Issue or Discussion: (if available, link the issue containing the original request for this change)
+- Proposal PR: https://github.com/deepset-ai/haystack/pull/5289
+- Github Issue or Discussion: some links available in the "Detailed design" section below
 
 # Summary
 
