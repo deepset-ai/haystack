@@ -120,11 +120,10 @@ jobs:
           - utils
           - others
           - modeling
+        dependencies:
+          - all,dev
+        # Add a special set of dependencies for the document_stores topic to test ES8
         include:
-          - dependencies: all,dev
-          # We define two separate sets of dependencies for document_stores to test both ES7 and ES8
-          - topic: document_stores
-            dependencies: all,dev
           - topic: document_stores
             dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
     runs-on: ${{ matrix.os }}
