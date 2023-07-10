@@ -251,7 +251,7 @@ class DensePassageRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -357,7 +357,7 @@ class DensePassageRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -978,7 +978,7 @@ class TableTextRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -1596,7 +1596,7 @@ class EmbeddingRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -1702,7 +1702,7 @@ class EmbeddingRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -2066,7 +2066,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -2165,7 +2165,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number of documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
