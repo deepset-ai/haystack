@@ -101,7 +101,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   unit-tests:
-    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
+    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }} / ${{ matrix.dependencies }}
     needs: black
     strategy:
       fail-fast: false
