@@ -45,9 +45,7 @@ class RecentnessRanker(BaseRanker):
         self.method = method
 
     # pylint: disable=arguments-differ
-    def run(
-        self, query: str, documents: List[Document], top_k: Optional[int] = None
-    ) -> Tuple[Dict, str]:  # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         # sort documents based on age, newest comes first
         try:
             sorted_by_date = sorted(documents, reverse=True, key=lambda x: parse(x.meta[self.date_identifier]))
@@ -116,13 +114,7 @@ class RecentnessRanker(BaseRanker):
         return output, "output_1"
 
     # pylint: disable=arguments-differ
-    def run_batch(
-        self,
-        queries: List[str],
-        documents: Union[List[Document], List[List[Document]]],
-        top_k: Optional[int] = None,
-        batch_size: Optional[int] = None,
-    ) -> Tuple[Dict, str]:
+    def run_batch(self, queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         if isinstance(documents[0], Document):
             return self.run("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
