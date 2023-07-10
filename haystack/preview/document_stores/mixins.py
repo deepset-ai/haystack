@@ -9,7 +9,7 @@ class StoreAwareMixin:
     Adds the capability of a component to use a single document store from the `self.store` property.
     """
 
-    _store: Store
+    _store: Optional[Store] = None
     supported_stores: List[Type[Store]] = [Store]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
 
     @property

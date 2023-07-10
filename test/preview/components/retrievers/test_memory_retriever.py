@@ -65,9 +65,38 @@ class Test_MemoryRetriever(BaseTestComponent):
         assert result.documents[1][0].content == "Java is a popular programming language"
 
     @pytest.mark.unit
-    def test_invalid_run_wrong_store_type(self):
+    def test_invalid_run_no_store(self):
+        retriever = MemoryRetriever()
+        with pytest.raises(
+            ValueError, match="MemoryRetriever needs a store to run: set the store instance to the self.store attribute"
+        ):
+            retriever.run(retriever.Input(queries=["test"]))
+
+    @pytest.mark.unit
+    def test_invalid_run_not_a_store(self):
         class MockStore:
             ...
+
+        retriever = MemoryRetriever()
+        with pytest.raises(ValueError, match="does not respect the Store Protocol"):
+            retriever.store = MockStore()
+
+    @pytest.mark.unit
+    def test_invalid_run_wrong_store_type(self):
+        class MockStore:
+            def count_documents(self) -> int:
+                return 0
+
+            def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
+                return []
+
+            def write_documents(
+                self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
+            ) -> None:
+                return None
+
+            def delete_documents(self, document_ids: List[str]) -> None:
+                return None
 
         retriever = MemoryRetriever()
         with pytest.raises(ValueError, match="is not compatible with this component"):

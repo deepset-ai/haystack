@@ -13,6 +13,8 @@ class MemoryRetriever(StoreAwareMixin):
     Needs to be connected to a MemoryDocumentStore to run.
     """
 
+    supported_stores = [MemoryDocumentStore]
+
     @dataclass
     class Input(ComponentInput):
         """
@@ -53,7 +55,6 @@ class MemoryRetriever(StoreAwareMixin):
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
         self.defaults = {"top_k": top_k, "scale_score": scale_score, "filters": filters or {}}
-        self.supported_stores = [MemoryDocumentStore]
 
     def warmup(self):
         """
@@ -73,8 +74,6 @@ class MemoryRetriever(StoreAwareMixin):
 
         :raises ValueError: If the specified document store is not found or is not a MemoryDocumentStore instance.
         """
-        self.store: MemoryDocumentStore
-
         if not self.store:
             raise ValueError("MemoryRetriever needs a store to run: set the store instance to the self.store attribute")
         docs = []
