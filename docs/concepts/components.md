@@ -8,96 +8,48 @@ In order to be recognized as components and work in a Pipeline, Components must 
 
 All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
 
-### `Input`
+### `@component.input`
+
+All components must decorate one single method with the `@component.input` decorator. This method must return a dataclass, which will be used as structure of the input of the component.
+
+For example, if the node is expecting a list of Documents, the fields of the returned dataclass should be `documents: List[Document]`. Note that you don't need to decorate the dataclass youself: `@component.input` will add the decorator for you.
+
+Here is an example of such method:
 
 ```python
-@dataclass
-class Input(ComponentInput / VariadicComponentInput):
-    <expected input fields, typed, with no defaults>
+@component.input
+def input(self):
+    class Input:
+        value: int
+        add: int
+
+    return Input
 ```
-Semi-mandatory method (either this or `self.input_type(self)`).
 
-This inner class defines how the input of this component looks like. For example, if the node is expecting
-a list of Documents, the fields of the class should be `documents: List[Document]`
-
-Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-proper validation of the connections, which rely on the type of these fields.
-
-If your node expects variadic input, use `VariadicComponentInput`. In all other scenarios, use `ComponentInput`
-as your base class.
-
-Some components may need more dynamic input. For these scenarios, refer to `self.input_type()`.
-
-Every component should define **either** `Input` or `self.input_type()`.
+Defaults are allowed, as much as default factories and other dataclass properties.
 
 
-### `input_type()`
+### `@component.output`
+
+All components must decorate one single method with the `@component.output` decorator. This method must return a dataclass, which will be used as structure of the output of the component.
+
+For example, if the node is producing a list of Documents, the fields of the returned dataclass should be `documents: List[Document]`. Note that you don't need to decorate the dataclass youself: `@component.output` will add the decorator for you.
+
+Here is an example of such method:
 
 ```python
-@property
-def input_type(self) -> ComponentInput / VariadicComponentInput:
+@component.output
+def output(self):
+    class Output:
+        value: int
+
+    return Output
 ```
-Semi-mandatory method (either this or `class Input`).
 
-This method defines how the input of this component looks like. For example, if the node is expecting
-a list of Documents, this method should return a dataclass, subclass of either `ComponentInput` or
-`VariadicComponentInput`, with such fields. For example, it could build the dataclass as
-`make_dataclass("Input", fields=[(f"documents", List[Document], None)], bases=(ComponentInput, ))` and return it.
+Defaults are allowed, as much as default factories and other dataclass properties.
 
-Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-proper validation of the connections, which rely on the type of these fields.
+### `__init__(self, **kwargs)`
 
-Normally the `Input` dataclass is preferred, as it provides autocompletion for the users and is much easier to use.
-
-Every component should define **either** `Input` or `self.input_type()`.
-
-
-### `Output`
-
-```python
-@dataclass
-class Output(ComponentOutput):
-    <expected output fields, typed>
-```
-Semi-mandatory method (either this or `self.output_type()`).
-
-This inner class defines how the output of this component looks like. For example, if the node is producing
-a list of Documents, the fields of the class should be `documents: List[Document]`
-
-Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-proper validation of the connections, which rely on the type of these fields.
-
-Some components may need more dynamic output: for example, your component accepts a list of file extensions at
-init time and wants to have one output field for each of those. For these scenarios, refer to `self.output_type()`.
-
-Every component should define **either** `Output` or `self.output_type()`.
-
-
-### `output_type()`
-
-```python
-@property
-def output_type(self) -> ComponentOutput:
-```
-Semi-mandatory method (either this or `class Output`).
-
-This method defines how the output of this component looks like. For example, if the node is producing
-a list of Documents, this method should return a dataclass with such fields, for example:
-`return make_dataclass("Output", fields=[(f"documents", List[Document], None)], bases=(ComponentOutput, ))`
-
-Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-proper validation of the connections, which rely on the type of these fields.
-
-If the output is static, normally the `Output` dataclass is preferred, as it provides autocompletion for the users.
-
-Every component should define **either** `Output` or `self.output_type`.
-
-
-### `__init__()`
-
-```python
-def __init__(self, [... components init parameters ...]):
-```
 Optional method.
 
 Components may have an `__init__` method where they define:
@@ -127,43 +79,36 @@ validation of the pipeline. If a component has some heavy state to initialize (m
 the `warm_up()` method.
 
 
-### `warm_up()`
+### `warm_up(self)`
 
-```python
-def warm_up(self):
-```
 Optional method.
 
 This method is called by Pipeline before the graph execution. Make sure to avoid double-initializations,
 because Pipeline will not keep track of which components it called `warm_up()` on.
 
 
-### `run()`
+### `run(self, data)`
 
-```python
-def run(self, data: <Input if defined, otherwise untyped>) -> <Output if defined, otherwise untyped>:
-```
 Mandatory method.
 
 This is the method where the main functionality of the component should be carried out. It's called by
 `Pipeline.run()`.
 
-When the component should run, Pipeline will call this method with:
+When the component should run, Pipeline will call this method with an instance of the dataclass returned by the method decorated with `@component.input`. This dataclass contains:
 
 - all the input values coming from other components connected to it,
 - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
 
-`run()` must return a single instance of the dataclass declared through either `Output` or `self.output_type()`.
+`run()` must return a single instance of the dataclass declared through the method decorated with `@component.output`.
 
 
 ## Example components
 
-### Basic
-Here is an example of a simple component that adds two values together and returns their sum.
+Here is an example of a simple component that adds a fixed value to its input and returns their sum.
 
 ```python
-from dataclasses import dataclass
-from canals.component import component, ComponentInput, ComponentOutput
+from typing import Optional
+from canals.component import component
 
 @component
 class AddFixedValue:
@@ -171,95 +116,27 @@ class AddFixedValue:
     Adds the value of `add` to `value`. If not given, `add` defaults to 1.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
-        add: int
+    @component.input  # type: ignore
+    def input(self):
+        class Input:
+            value: int
+            add: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        value: int
+        return Input
+
+    @component.output  # type: ignore
+    def output(self):
+        class Output:
+            value: int
+
+        return Output
 
     def __init__(self, add: Optional[int] = 1):
         if add:
             self.defaults = {"add": add}
 
-    def run(self, data: Input) -> Output:
-        return AddFixedValue.Output(value=data.value + data.add)
-
+    def run(self, data):
+        return self.output(value=data.value + data.add)
 ```
 
-### Variadic
-
-Here is an example of a variadic component that adds all the incoming values together and returns their sum.
-
-```python
-from dataclasses import dataclass
-from canals.component import component, VariadicComponentInput, ComponentOutput
-
-@component
-class Sum:
-    """
-    Sums the values of all the input connections together.
-    """
-
-    @dataclass
-    class Input(VariadicComponentInput):
-        values: List[int]
-
-    @dataclass
-    class Output(ComponentOutput):
-        total: int
-
-    def run(self, data: Input) -> Output:
-        return Sum.Output(total=sum(data.values))
-
-```
-
-### Dynamic output
-
-Here is an example of a component that returns the incoming value on a different edge depending on its remainder.
-
-This is an example of how to use `self.output_type()` in practice.
-
-```python
-from dataclasses import make_dataclass
-from canals.component import component, ComponentInput, ComponentOutput
-
-
-@component
-class Remainder:
-    """
-    Redirects the value, unchanged, along the connection corresponding to the remainder
-    of a division. For example, if `divisor=3`, the value `5` would be sent along
-    the second output connection.
-    """
-
-    @dataclass
-    class Input(ComponentInput):
-        value: int
-        add: int = 1
-
-    def __init__(self, divisor: int = 2):
-        if divisor == 0:
-            raise ValueError("Can't divide by zero")
-        self.divisor = divisor
-
-        self._output_type = make_dataclass(
-            "Output", fields=[(f"remainder_is_{val}", int, None) for val in range(divisor)], bases=(ComponentOutput,)
-        )
-
-    @property
-    def output_type(self):
-        return self._output_type
-
-    def run(self, data: Input):
-        """
-        :param value: the value to check the remainder of.
-        """
-        remainder = data.value % self.divisor
-        output = self.output_type()
-        setattr(output, f"remainder_is_{remainder}", data.value)
-        return output
-
-```
+See `tests/sample_components` for examples of more complex components with variable inputs and output, and so on.

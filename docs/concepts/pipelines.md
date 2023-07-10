@@ -13,11 +13,9 @@ Check the pipeline's test suite for some examples.
 
 ## Validation
 
-Pipeline performs validation on the connection type level: when calling `Pipeline.connect()`, it uses the values of the
-components' `run()` method signature and the `Output` dataclass (or equivalent dataclass returned by
-`self.output_type()`) to make sure that the connection is possible.
+Pipeline performs validation on the connection type level: when calling `Pipeline.connect()`, it uses the `@component.input` and `@component.output` dataclass fields to make sure that the connection is possible.
 
-On top of this, specific connections can be specified with the syntax `component_name.input_or_output_name`.
+On top of this, specific connections can be specified with the syntax `component_name.input_or_output_field`.
 
 For example, let's imagine we have two components with the following I/O declared:
 
@@ -25,26 +23,42 @@ For example, let's imagine we have two components with the following I/O declare
 @component
 class ComponentA:
 
-    @dataclass
-    class Input(ComponentInput):
-        input_value: int
+    @component.input
+    def input(self):
+        class Input:
+            input_value: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        intermediate_value: str
+        return Input
 
-    def run(self, data: Input) -> Output:
-        return ComponentA.Output(intermediate_value="hello")
+    @component.output
+    def output(self):
+        class Output:
+            output_value: str
+
+        return Output
+
+    def run(self, data):
+        return self.output(intermediate_value="hello")
 
 @component
 class ComponentB:
 
-    @dataclass
-    class Output:
-        output_value: List[int]
+    @component.input
+    def input(self):
+        class Input:
+            input_value: str
 
-    def run(self, data: Input) -> Output:
-        return ComponentB.Output(output_value=[1, 2, 3])
+        return Input
+
+    @component.output
+    def output(self):
+        class Output:
+            output_value: List[str]
+
+        return Output
+
+    def run(self, data):
+        return self.output(output_value=["h", "e", "l", "l", "o"])
 ```
 
 This is the behavior of `Pipeline.connect()`:
