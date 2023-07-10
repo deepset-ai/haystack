@@ -120,8 +120,7 @@ jobs:
           - utils
           - others
           - modeling
-        dependencies:
-          - all,dev
+        # We define two separate sets of dependencies for document_stores to test both ES7 and ES8
         include:
           - topic: document_stores
             dependencies: elasticsearch,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
@@ -136,6 +135,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
+        # Install default dependencies
+        if: ${{ matrix.dependencies }} == null
+        run: pip install .[all,dev]
+
+      - name: Install Haystack
+        # Install dependencies for specific topic
+        if: ${{ matrix.dependencies }}
         run: pip install .[${{ matrix.dependencies }}]
 
       - name: Run
