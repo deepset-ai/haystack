@@ -284,7 +284,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
 
     @classmethod
     def supports(cls, model_name_or_path: str, **kwargs) -> bool:
-        if not torch_and_transformers_import.is_successful():
+        if not transformers_import.is_successful():
             return False
         if cls.is_inference_endpoint(model_name_or_path):
             return True
