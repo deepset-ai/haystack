@@ -94,8 +94,15 @@ inference = [
   "huggingface-hub>=0.5.0",
 ]
 elasticsearch = [
+  "farm-haystack[elasticsearch7]",
+]
+elasticsearch7 = [
   "elasticsearch>=7.17,<8",
   "elastic_transport<8"
+]
+elasticsearch8 = [
+  "elasticsearch>=8,<9",
+  "elastic_transport>=8,<9"
 ]
 sql = [
   "sqlalchemy>=1.4.2,<2",
