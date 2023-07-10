@@ -410,6 +410,9 @@ def test_supports(tmp_path):
         assert HFLocalInvocationLayer.supports("google/flan-t5-base")
         assert HFLocalInvocationLayer.supports("mosaicml/mpt-7b")
         assert HFLocalInvocationLayer.supports("CarperAI/stable-vicuna-13b-delta")
+        with patch("haystack.nodes.prompt.invocation_layer.hugging_face.torch_and_transformers_import") as mock_import:
+            mock_import.is_successful.return_value = False
+            assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
         mock_get_task.side_effect = RuntimeError
         assert not HFLocalInvocationLayer.supports("google/flan-t5-base")
         assert mock_get_task.call_count == 4

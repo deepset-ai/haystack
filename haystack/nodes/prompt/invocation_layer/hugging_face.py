@@ -328,7 +328,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         task_name: Optional[str] = kwargs.get("task_name", None)
         if os.path.exists(model_name_or_path):
             return True
-
+        if not torch_and_transformers_import.is_successful():
+            return False
         try:
             task_name = task_name or get_task(model_name_or_path, use_auth_token=kwargs.get("use_auth_token", None))
         except RuntimeError:
