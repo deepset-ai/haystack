@@ -218,7 +218,10 @@ def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, docu
 
 @pytest.mark.unit
 def test_embed_meta_fields(docs_with_ids):
-    with patch("haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder"):
+    with patch(
+        "haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder.__init__"
+    ) as mock_init:
+        mock_init.return_value = None
         retriever = EmbeddingRetriever(
             embedding_model="sentence-transformers/all-mpnet-base-v2",
             model_format="sentence_transformers",
