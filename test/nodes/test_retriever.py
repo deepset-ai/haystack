@@ -33,6 +33,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
+from haystack.nodes.retriever._openai_encoder import _OpenAIEmbeddingEncoder
 
 from ..conftest import MockBaseRetriever, fail_at_version
 
@@ -321,34 +322,49 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
-def test_openai_embedding_retriever_selection():
-    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
-    # make sure that we can use it with the retriever selection
-    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
-    assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
-    assert er.api_base == "https://api.openai.com/v1"
+@pytest.mark.unit
+def test_openai_embedding_retriever_model_format():
+    # support text-embedding-ada-002
+    assert "openai" == EmbeddingRetriever._infer_model_format(
+        model_name_or_path="text-embedding-ada-002", use_auth_token=None
+    )
 
-    # but also support old ada and other text-search-<modelname>-*-001 models
-    er = EmbeddingRetriever(embedding_model="ada", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
-    assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
-    assert er.api_base == "https://api.openai.com/v1"
+    # support old ada and other text-search-<modelname>-*-001 models
+    assert "openai" == EmbeddingRetriever._infer_model_format(model_name_or_path="ada", use_auth_token=None)
 
-    # but also support old babbage and other text-search-<modelname>-*-001 models
-    er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-search-babbage-query-001"
-    assert er.embedding_encoder.doc_encoder_model == "text-search-babbage-doc-001"
+    # support old babbage and other text-search-<modelname>-*-001 models
+    assert "openai" == EmbeddingRetriever._infer_model_format(model_name_or_path="babbage", use_auth_token=None)
 
     # make sure that we can handle potential unreleased models
-    er = EmbeddingRetriever(embedding_model="text-embedding-babbage-002", document_store=None)
-    assert er.model_format == "openai"
-    assert er.embedding_encoder.query_encoder_model == "text-embedding-babbage-002"
-    assert er.embedding_encoder.doc_encoder_model == "text-embedding-babbage-002"
-    # etc etc.
+    assert "openai" == EmbeddingRetriever._infer_model_format(
+        model_name_or_path="text-embedding-babbage-002", use_auth_token=None
+    )
+
+
+@pytest.mark.unit
+def test_openai_encoder_setup_encoding_models():
+    with patch("haystack.nodes.retriever._openai_encoder._OpenAIEmbeddingEncoder.__init__") as mock_ranker_init:
+        mock_ranker_init.return_value = None
+        encoder = _OpenAIEmbeddingEncoder(retriever=None)  # type: ignore
+
+    encoder._setup_encoding_models(model_class="ada", model_name="text-embedding-ada-002", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-embedding-ada-002"
+    assert encoder.doc_encoder_model == "text-embedding-ada-002"
+
+    # support old ada and other text-search-<modelname>-*-001 models
+    encoder._setup_encoding_models(model_class="ada", model_name="ada", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-search-ada-query-001"
+    assert encoder.doc_encoder_model == "text-search-ada-doc-001"
+
+    # support old babbage and other text-search-<modelname>-*-001 models
+    encoder._setup_encoding_models(model_class="babbage", model_name="babbage", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-search-babbage-query-001"
+    assert encoder.doc_encoder_model == "text-search-babbage-doc-001"
+
+    # make sure that we can handle potential unreleased models
+    encoder._setup_encoding_models(model_class="babbage", model_name="text-embedding-babbage-002", max_seq_len=512)
+    assert encoder.query_encoder_model == "text-embedding-babbage-002"
+    assert encoder.doc_encoder_model == "text-embedding-babbage-002"
 
 
 @pytest.mark.integration
