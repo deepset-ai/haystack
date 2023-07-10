@@ -216,6 +216,19 @@ def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, docu
     assert res[1][0].meta["name"] == "filename2"
 
 
+@pytest.mark.unit
+def test_embed_meta_fields(docs_with_ids):
+    with patch("haystack.nodes.retriever._embedding_encoder._SentenceTransformersEmbeddingEncoder"):
+        retriever = EmbeddingRetriever(
+            embedding_model="sentence-transformers/all-mpnet-base-v2",
+            model_format="sentence_transformers",
+            embed_meta_fields=["date_field", "numeric_field", "list_field"],
+        )
+    docs_with_embedded_meta = retriever._preprocess_documents(docs=docs_with_ids[:2])
+    assert docs_with_embedded_meta[0].content.startswith("2019-10-01\n5.0\nitem0.1\nitem0.2")
+    assert docs_with_embedded_meta[1].content.startswith("2020-03-01\n5.5\nitem1.1\nitem1.2")
+
+
 @pytest.mark.elasticsearch
 def test_elasticsearch_custom_query():
     client = Elasticsearch()
