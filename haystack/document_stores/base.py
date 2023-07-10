@@ -5,7 +5,6 @@ from typing import Generator, Optional, Dict, List, Set, Union, Any
 import logging
 import collections
 from pathlib import Path
-from itertools import islice
 from abc import abstractmethod
 
 import numpy as np
@@ -897,14 +896,3 @@ class KeywordDocumentStore(BaseDocumentStore):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         pass
-
-
-def get_batches_from_generator(iterable, n):
-    """
-    Batch elements of an iterable into fixed-length chunks or blocks.
-    """
-    it = iter(iterable)
-    x = tuple(islice(it, n))
-    while x:
-        yield x
-        x = tuple(islice(it, n))

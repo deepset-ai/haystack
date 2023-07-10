@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Union, Set, Any
 
 import os
 import logging
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset

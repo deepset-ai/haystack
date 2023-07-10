@@ -100,39 +100,64 @@ def test_invoke_with_stop_words(mock_auto_tokenizer, mock_boto3_session):
         layer.invoke(prompt="Tell me hello", stop_words=stop_words)
 
     assert mock_post.called
+    _, call_kwargs = mock_post.call_args
+    assert call_kwargs["params"]["stop"] == stop_words
 
 
 @pytest.mark.unit
 def test_short_prompt_is_not_truncated(mock_boto3_session):
-    # prompt of length 5 + max_length of 3 = 8, which is less than model_max_length of 10, so no resize
-    mock_tokens = ["I", "am", "a", "tokenized", "prompt"]
-    mock_prompt = "I am a tokenized prompt"
+    # Define a short mock prompt and its tokenized version
+    mock_prompt_text = "I am a tokenized prompt"
+    mock_prompt_tokens = mock_prompt_text.split()
 
-    mock_tokenizer = Mock()
-    mock_tokenizer.tokenize.return_value = mock_tokens
+    # Mock the tokenizer so it returns our predefined tokens
+    mock_tokenizer = MagicMock()
+    mock_tokenizer.tokenize.return_value = mock_prompt_tokens
+
+    # We set a small max_length for generated text (3 tokens) and a total model_max_length of 10 tokens
+    # Since our mock prompt is 5 tokens long, it doesn't exceed the
+    # total limit (5 prompt tokens + 3 generated tokens < 10 tokens)
+    max_length_generated_text = 3
+    total_model_max_length = 10
 
     with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
-        layer = SageMakerHFTextGenerationInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
-        result = layer._ensure_token_limit(mock_prompt)
+        layer = SageMakerHFTextGenerationInvocationLayer(
+            "some_fake_endpoint", max_length=max_length_generated_text, model_max_length=total_model_max_length
+        )
+        prompt_after_resize = layer._ensure_token_limit(mock_prompt_text)
 
-    assert result == mock_prompt
+    # The prompt doesn't exceed the limit, _ensure_token_limit doesn't truncate it
+    assert prompt_after_resize == mock_prompt_text
 
 
 @pytest.mark.unit
 def test_long_prompt_is_truncated(mock_boto3_session):
-    # prompt of length 8 + max_length of 3 = 11, which is more than model_max_length of 10, so we resize to 7
-    mock_tokens = ["I", "am", "a", "tokenized", "prompt", "of", "length", "eight"]
-    correct_result = "I am a tokenized prompt of length"
+    # Define a long mock prompt and its tokenized version
+    long_prompt_text = "I am a tokenized prompt of length eight"
+    long_prompt_tokens = long_prompt_text.split()
 
-    mock_tokenizer = Mock()
-    mock_tokenizer.tokenize.return_value = mock_tokens
-    mock_tokenizer.convert_tokens_to_string.return_value = correct_result
+    # _ensure_token_limit will truncate the prompt to make it fit into the model's max token limit
+    truncated_prompt_text = "I am a tokenized prompt of length"
+
+    # Mock the tokenizer to return our predefined tokens
+    # convert tokens to our predefined truncated text
+    mock_tokenizer = MagicMock()
+    mock_tokenizer.tokenize.return_value = long_prompt_tokens
+    mock_tokenizer.convert_tokens_to_string.return_value = truncated_prompt_text
+
+    # We set a small max_length for generated text (3 tokens) and a total model_max_length of 10 tokens
+    # Our mock prompt is 8 tokens long, so it exceeds the total limit (8 prompt tokens + 3 generated tokens > 10 tokens)
+    max_length_generated_text = 3
+    total_model_max_length = 10
 
     with patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
-        layer = SageMakerHFTextGenerationInvocationLayer("some_fake_endpoint", max_length=3, model_max_length=10)
-        result = layer._ensure_token_limit("I am a tokenized prompt of length eight")
+        layer = SageMakerHFTextGenerationInvocationLayer(
+            "some_fake_endpoint", max_length=max_length_generated_text, model_max_length=total_model_max_length
+        )
+        prompt_after_resize = layer._ensure_token_limit(long_prompt_text)
 
-    assert result == correct_result
+    # The prompt exceeds the limit, _ensure_token_limit truncates it
+    assert prompt_after_resize == truncated_prompt_text
 
 
 @pytest.mark.unit
@@ -188,23 +213,34 @@ def test_streaming_handler_invoke_kwarg(mock_auto_tokenizer, mock_boto3_session)
 @pytest.mark.unit
 def test_supports_for_valid_aws_configuration():
     """
-    Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
+    Test that the SageMakerHFTextGenerationInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
     """
-    with patch("boto3.Session") as mock_boto3_session:
-        mock_boto3_session.return_value.client.return_value.invoke_endpoint.return_value = True
+    mock_client = MagicMock()
+    mock_client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
+
+    mock_session = MagicMock()
+    mock_session.client.return_value = mock_client
+
+    # Patch the class method to return the mock session
+    with patch(
+        "haystack.nodes.prompt.invocation_layer.sagemaker_base.SageMakerBaseInvocationLayer.create_session",
+        return_value=mock_session,
+    ):
         supported = SageMakerHFTextGenerationInvocationLayer.supports(
             model_name_or_path="some_sagemaker_deployed_model", aws_profile_name="some_real_profile"
         )
+    args, kwargs = mock_client.describe_endpoint.call_args
+    assert kwargs["EndpointName"] == "some_sagemaker_deployed_model"
+
+    args, kwargs = mock_session.client.call_args
+    assert args[0] == "sagemaker-runtime"
     assert supported
-    assert mock_boto3_session.called
-    _, called_kwargs = mock_boto3_session.call_args
-    assert called_kwargs["profile_name"] == "some_real_profile"
 
 
 @pytest.mark.unit
 def test_supports_not_on_invalid_aws_profile_name():
     """
-    Test that the SageMakerInvocationLayer raises SageMakerConfigurationError when the profile name is invalid
+    Test that the SageMakerHFTextGenerationInvocationLayer raises SageMakerConfigurationError when the profile name is invalid
     """
 
     with patch("boto3.Session") as mock_boto3_session:
@@ -223,7 +259,7 @@ def test_supports_not_on_invalid_aws_profile_name():
 @pytest.mark.integration
 def test_supports_triggered_for_valid_sagemaker_endpoint():
     """
-    Test that the SageMakerInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
+    Test that the SageMakerHFTextGenerationInvocationLayer identifies a valid SageMaker Inference endpoint via the supports() method
     """
     model_name_or_path = os.environ.get("TEST_SAGEMAKER_MODEL_ENDPOINT")
     assert SageMakerHFTextGenerationInvocationLayer.supports(model_name_or_path=model_name_or_path)
@@ -235,7 +271,7 @@ def test_supports_triggered_for_valid_sagemaker_endpoint():
 @pytest.mark.integration
 def test_supports_not_triggered_for_invalid_iam_profile():
     """
-    Test that the SageMakerInvocationLayer identifies an invalid SageMaker Inference endpoint
+    Test that the SageMakerHFTextGenerationInvocationLayer identifies an invalid SageMaker Inference endpoint
     (in this case because of an invalid IAM AWS Profile via the supports() method)
     """
     assert not SageMakerHFTextGenerationInvocationLayer.supports(model_name_or_path="fake_endpoint")

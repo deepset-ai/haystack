@@ -11,6 +11,8 @@ from canals.pipeline import (
 )
 from canals.pipeline.sockets import find_input_sockets
 
+from haystack.preview.document_stores.protocols import Store
+
 
 class NoSuchStoreError(PipelineError):
     pass
@@ -23,9 +25,9 @@ class Pipeline(CanalsPipeline):
 
     def __init__(self):
         super().__init__()
-        self.stores = {}
+        self.stores: Dict[str, Store] = {}
 
-    def add_store(self, name: str, store: object) -> None:
+    def add_store(self, name: str, store: Store) -> None:
         """
         Make a store available to all nodes of this pipeline.
 
@@ -43,7 +45,7 @@ class Pipeline(CanalsPipeline):
         """
         return list(self.stores.keys())
 
-    def get_store(self, name: str) -> object:
+    def get_store(self, name: str) -> Store:
         """
         Returns the store associated with the given name.
 

@@ -9,7 +9,7 @@ import logging
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
-from haystack.utils import args_to_kwargs
+from haystack.utils.reflection import args_to_kwargs
 
 
 logger = logging.getLogger(__name__)

@@ -158,7 +158,7 @@ LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict] = {
         "If the AI Agent is uncertain or concerned that the information may be outdated or inaccurate, it must use the available tools to find the most up-to-date information. The AI has access to these tools:\n"
         "{tool_names_with_descriptions}\n"
         "The following is the previous conversation between a human and an AI:\n"
-        "{history}\n"
+        "{memory}\n"
         "AI Agent responses must start with one of the following:\n"
         "Thought: [AI Agent's reasoning process]\n"
         "Tool: [{tool_names}] (on a new line) Tool Input: [input for the selected tool WITHOUT quotation marks and on a new line] (These must always be provided together and on separate lines.)\n"
@@ -174,7 +174,7 @@ LEGACY_DEFAULT_TEMPLATES: Dict[str, Dict] = {
         "prompt": "Condense the following chat transcript by shortening and summarizing the content without losing important information:\n{chat_transcript}\nCondensed Transcript:"
     },
     "conversational-agent-without-tools": {
-        "prompt": "The following is a conversation between a human and an AI.\n{history}\nHuman: {query}\nAI:"
+        "prompt": "The following is a conversation between a human and an AI.\n{memory}\nHuman: {query}\nAI:"
     },
     # DO NOT ADD ANY NEW TEMPLATE IN HERE!
 }

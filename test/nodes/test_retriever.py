@@ -1154,3 +1154,27 @@ def test_openai_custom_api_base(mock_request):
 
     retriever.embed_documents(documents=[Document(content="test document")])
     assert mock_request.call_args.kwargs["url"] == "https://fake_api_base.com/embeddings"
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_no_openai_organization(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(embedding_model="text-embedding-ada-002", api_key="fake_api_key")
+    assert retriever.openai_organization is None
+
+    retriever.embed_queries(queries=["test query"])
+    assert "OpenAI-Organization" not in mock_request.call_args.kwargs["headers"]
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.retriever._openai_encoder.openai_request")
+def test_openai_openai_organization(mock_request):
+    with patch("haystack.nodes.retriever._openai_encoder.load_openai_tokenizer"):
+        retriever = EmbeddingRetriever(
+            embedding_model="text-embedding-ada-002", api_key="fake_api_key", openai_organization="fake_organization"
+        )
+    assert retriever.openai_organization == "fake_organization"
+
+    retriever.embed_queries(queries=["test query"])
+    assert mock_request.call_args.kwargs["headers"]["OpenAI-Organization"] == "fake_organization"
