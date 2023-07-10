@@ -28,7 +28,9 @@ Initially this reranker was implemented by Timo for a customer case where the da
 
 # Detailed design
 
-The reranker has already been implemented by Timo here: https://github.com/deepset-ai/deepset-cloud-custom-nodes/blob/main/deepset_cloud_custom_nodes/rankers/recentness_reranker.py & PR was reviewed at the time by Seb and Florian: https://github.com/deepset-ai/deepset-cloud-custom-nodes/pull/54. Additionally, you can see the code in the same PR as this proposal. It is the same code as above, just with small naming changes (e.g. "rff" method got changed to "reciprocal_rank_fusion" to match the existing naming used Haystack's JoinDocuments node)
+The reranker has already been implemented by Timo here: https://github.com/deepset-ai/deepset-cloud-custom-nodes/blob/main/deepset_cloud_custom_nodes/rankers/recentness_reranker.py & PR was reviewed at the time by Seb and Florian: https://github.com/deepset-ai/deepset-cloud-custom-nodes/pull/54. 
+
+Additionally, you can see the code for this proposal here: https://github.com/deepset-ai/haystack/pull/5301/files. It is the same code as above, just with small naming changes (e.g. "rff" method got changed to "reciprocal_rank_fusion" to match the existing naming used Haystack's JoinDocuments node)
 
 As a general description, the reranker works by sorting the documents based on date and modifying the relevance score calculation slightly to include recency-based weight.
 
