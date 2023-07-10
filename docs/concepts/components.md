@@ -28,6 +28,16 @@ def input(self):
 
 Defaults are allowed, as much as default factories and other dataclass properties.
 
+By default all fields, regardless of their definition, are marked as Optional with default None: however, if you don't
+explicitly define them as Optionals, Pipeline will make sure to collect all the values of this dataclass before
+calling the `run()` method, making them in practice non-optional.
+
+If you instead define a specific field as Optional in the dataclass, then Pipeline will **not** wait for them, and will
+run the component as soon as all the non-optional fields have received a value or, if all fields are optional, if at
+least one of them received it.
+
+This behavior allows Canals to define loops by not waiting on both incoming inputs of the entry component of the loop,
+and instead running as soon as at least one of them receives a value.
 
 ### `@component.output`
 
