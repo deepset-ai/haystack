@@ -61,96 +61,73 @@ class _Component:
 
     All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
 
-    ### `Input`
+    ### `@component.input`
+
+    All components must decorate one single method with the `@component.input` decorator. This method must return a
+    dataclass, which will be used as structure of the input of the component.
+
+    For example, if the node is expecting a list of Documents, the fields of the returned dataclass should be
+    `documents: List[Document]`. Note that you don't need to decorate the dataclass youself: `@component.input` will
+    add the decorator for you.
+
+    Here is an example of such method:
 
     ```python
-    @dataclass
-    class Input(ComponentInput / VariadicComponentInput):
-        <expected input fields, typed, with no defaults>
+    @component.input
+    def input(self):
+        class Input:
+            value: int
+            add: int
+
+        return Input
     ```
-    Semi-mandatory method (either this or `self.input_type(self)`).
 
-    This inner class defines how the input of this component looks like. For example, if the node is expecting
-    a list of Documents, the fields of the class should be `documents: List[Document]`
+    Defaults are allowed, as much as default factories and other dataclass properties.
 
-    Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-    proper validation of the connections, which rely on the type of these fields.
-
-    If your node expects variadic input, use `VariadicComponentInput`. In all other scenarios, use `ComponentInput`
-    as your base class.
-
-    Some components may need more dynamic input. For these scenarios, refer to `self.input_type()`.
-
-    Every component should define **either** `Input` or `self.input_type()`.
-
-
-    ### `input_type()`
+    By default `@component.input` sets `None` as default for all fields, regardless of their definition: this gives you
+    the possibility of passing a part of the input to the pipeline without defining every field of the component.
+    For example, using the above definition, you can create an Input dataclass as:
 
     ```python
-    @property
-    def input_type(self) -> ComponentInput / VariadicComponentInput:
+    self.input(add=3)
     ```
-    Semi-mandatory method (either this or `class Input`).
 
-    This method defines how the input of this component looks like. For example, if the node is expecting
-    a list of Documents, this method should return a dataclass, subclass of either `ComponentInput` or
-    `VariadicComponentInput`, with such fields. For example, it could build the dataclass as
-    `make_dataclass("Input", fields=[(f"documents", List[Document], None)], bases=(ComponentInput, ))` and return it.
+    and the resulting dataclass will look like `Input(value=None, add=3)`.
 
-    Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-    proper validation of the connections, which rely on the type of these fields.
+    However, if you don't explicitly define them as Optionals, Pipeline will make sure to collect all the values of
+    this dataclass before calling the `run()` method, making them in practice non-optional.
 
-    Normally the `Input` dataclass is preferred, as it provides autocompletion for the users and is much easier to use.
+    If you instead define a specific field as Optional in the dataclass, then Pipeline will **not** wait for them, and
+    will run the component as soon as all the non-optional fields have received a value or, if all fields are optional,
+    if at least one of them received it.
 
-    Every component should define **either** `Input` or `self.input_type()`.
+    This behavior allows Canals to define loops by not waiting on both incoming inputs of the entry component of the
+    loop, and instead running as soon as at least one of them receives a value.
 
+    ### `@component.output`
 
-    ### `Output`
+    All components must decorate one single method with the `@component.output` decorator. This method must return a
+    dataclass, which will be used as structure of the output of the component.
+
+    For example, if the node is producing a list of Documents, the fields of the returned dataclass should be
+    `documents: List[Document]`. Note that you don't need to decorate the dataclass youself: `@component.output` will
+    add the decorator for you.
+
+    Here is an example of such method:
 
     ```python
-    @dataclass
-    class Output(ComponentOutput):
-        <expected output fields, typed>
+    @component.output
+    def output(self):
+        class Output:
+            value: int
+
+        return Output
     ```
-    Semi-mandatory method (either this or `self.output_type()`).
 
-    This inner class defines how the output of this component looks like. For example, if the node is producing
-    a list of Documents, the fields of the class should be `documents: List[Document]`
+    Defaults are allowed, as much as default factories and other dataclass properties.
 
-    Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-    proper validation of the connections, which rely on the type of these fields.
+    ### `__init__(self, **kwargs)`
 
-    Some components may need more dynamic output: for example, your component accepts a list of file extensions at
-    init time and wants to have one output field for each of those. For these scenarios, refer to `self.output_type()`.
-
-    Every component should define **either** `Output` or `self.output_type()`.
-
-
-    ### `output_type()`
-
-    ```python
-    @property
-    def output_type(self) -> ComponentOutput:
-    ```
-    Semi-mandatory method (either this or `class Output`).
-
-    This method defines how the output of this component looks like. For example, if the node is producing
-    a list of Documents, this method should return a dataclass with such fields, for example:
-    `return make_dataclass("Output", fields=[(f"documents", List[Document], None)], bases=(ComponentOutput, ))`
-
-    Defaults are allowed, however `Optional`, `Union` and similar "generic" types are not. This is necessary to allow
-    proper validation of the connections, which rely on the type of these fields.
-
-    If the output is static, normally the `Output` dataclass is preferred, as it provides autocompletion for the users.
-
-    Every component should define **either** `Output` or `self.output_type`.
-
-
-    ### `__init__()`
-
-    ```python
-    def __init__(self, [... components init parameters ...]):
-    ```
     Optional method.
 
     Components may have an `__init__` method where they define:
@@ -180,33 +157,29 @@ class _Component:
     the `warm_up()` method.
 
 
-    ### `warm_up()`
+    ### `warm_up(self)`
 
-    ```python
-    def warm_up(self):
-    ```
     Optional method.
 
     This method is called by Pipeline before the graph execution. Make sure to avoid double-initializations,
     because Pipeline will not keep track of which components it called `warm_up()` on.
 
 
-    ### `run()`
+    ### `run(self, data)`
 
-    ```python
-    def run(self, data: <Input if defined, otherwise untyped>) -> <Output if defined, otherwise untyped>:
-    ```
     Mandatory method.
 
     This is the method where the main functionality of the component should be carried out. It's called by
     `Pipeline.run()`.
 
-    When the component should run, Pipeline will call this method with:
+    When the component should run, Pipeline will call this method with an instance of the dataclass returned by the
+    method decorated with `@component.input`. This dataclass contains:
 
     - all the input values coming from other components connected to it,
     - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
 
-    `run()` must return a single instance of the dataclass declared through either `Output` or `self.output_type()`.
+    `run()` must return a single instance of the dataclass declared through the method decorated with
+    `@component.output`.
 
     Args:
         class_: the class that Canals should use as a component.

@@ -5,7 +5,7 @@ that perform well-defined tasks into a network, called Pipeline, to achieve a la
 
 Components are Python objects that can execute a task, like reading a file, performing calculations, or making API
 calls. Canals connects these objects together: it builds a graph of components and takes care of managing their
-execution order, making sure that each object receives the input it expects from the other components of the pipeline.
+execution order, making sure that each object receives the input it expects from the other components of the pipeline at the right time.
 
 Canals relies on two main concepts: Components and Pipelines.
 
@@ -17,8 +17,7 @@ a data trasformation, writing something to a file or a database, and so on.
 To be recognized as a Component by Canals, a Python class needs to respect these rules:
 
 1. Must be decorated with the `@component` decorator.
-3. Have a `run()` method with all the inputs and outputs typed.
-4. Must return a pre-defined dataclass called `Output`.
+3. Have a `run()` method that accepts a `data` parameter of type `ComponentInput` return a single object of type `ComponentOutput`.
 
 For example, the following is a Component that sums up two numbers:
 
@@ -32,20 +31,27 @@ class AddFixedValue:
     Adds the value of `add` to `value`. If not given, `add` defaults to 1.
     """
 
-    @dataclass
-    class Input(ComponentInput):
-        value: int
+    @component.input
+    def input(self):
+        class Input:
+            value: int
+            add: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        value: int
+        return Input
+
+    @component.output
+    def output(self):
+        class Output:
+            value: int
+
+        return Output
 
     def __init__(self, add: Optional[int] = 1):
         if add:
             self.defaults = {"add": add}
 
-    def run(self, data: Input) -> Output:
-        return AddFixedValue.Output(value=data.value + data.add)
+    def run(self, data):
+        return self.output(value=data.value + data.add)
 ```
 
 We will see the details of all of these requirements below.
@@ -93,7 +99,7 @@ pipeline.connect(connect_from="add_one_again", connect_to="add_two")
 pipeline.draw("pipeline.jpg")
 
 # Pipelines are run by giving them the data that the input nodes expect.
-results = pipeline.run(data={"double": MultiplyBy.Input(value=1)})
+results = pipeline.run(data={"double": multiplication.input(value=1)})
 
 print(results)
 

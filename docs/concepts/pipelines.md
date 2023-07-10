@@ -13,11 +13,9 @@ Check the pipeline's test suite for some examples.
 
 ## Validation
 
-Pipeline performs validation on the connection type level: when calling `Pipeline.connect()`, it uses the values of the
-components' `run()` method signature and the `Output` dataclass (or equivalent dataclass returned by
-`self.output_type()`) to make sure that the connection is possible.
+Pipeline performs validation on the connection type level: when calling `Pipeline.connect()`, it uses the `@component.input` and `@component.output` dataclass fields to make sure that the connection is possible.
 
-On top of this, specific connections can be specified with the syntax `component_name.input_or_output_name`.
+On top of this, specific connections can be specified with the syntax `component_name.input_or_output_field`.
 
 For example, let's imagine we have two components with the following I/O declared:
 
@@ -25,26 +23,42 @@ For example, let's imagine we have two components with the following I/O declare
 @component
 class ComponentA:
 
-    @dataclass
-    class Input(ComponentInput):
-        input_value: int
+    @component.input
+    def input(self):
+        class Input:
+            input_value: int
 
-    @dataclass
-    class Output(ComponentOutput):
-        intermediate_value: str
+        return Input
 
-    def run(self, data: Input) -> Output:
-        return ComponentA.Output(intermediate_value="hello")
+    @component.output
+    def output(self):
+        class Output:
+            output_value: str
+
+        return Output
+
+    def run(self, data):
+        return self.output(intermediate_value="hello")
 
 @component
 class ComponentB:
 
-    @dataclass
-    class Output:
-        output_value: List[int]
+    @component.input
+    def input(self):
+        class Input:
+            input_value: str
 
-    def run(self, data: Input) -> Output:
-        return ComponentB.Output(output_value=[1, 2, 3])
+        return Input
+
+    @component.output
+    def output(self):
+        class Output:
+            output_value: List[str]
+
+        return Output
+
+    def run(self, data):
+        return self.output(output_value=["h", "e", "l", "l", "o"])
 ```
 
 This is the behavior of `Pipeline.connect()`:
@@ -55,9 +69,9 @@ pipeline.add_component('component_b', ComponentB())
 
 # All of these succeeds
 pipeline.connect('component_a', 'component_b')
-pipeline.connect('component_a.intermediate_value', 'component_b')
-pipeline.connect('component_a', 'component_b.intermediate_value')
-pipeline.connect('component_a.intermediate_value', 'component_b.intermediate_value')
+pipeline.connect('component_a.output_value', 'component_b')
+pipeline.connect('component_a', 'component_b.input_value')
+pipeline.connect('component_a.output_value', 'component_b.input_value')
 ```
 
 These, instead, fail:
@@ -66,14 +80,14 @@ These, instead, fail:
 pipeline.connect('component_a', 'component_a')
 # canals.errors.PipelineConnectError: Cannot connect 'component_a' with 'component_a': no matching connections available.
 # 'component_a':
-#  - intermediate_value (str)
+#  - output_value (str)
 # 'component_a':
 #  - input_value (int, available)
 
 pipeline.connect('component_b', 'component_a')
 # canals.errors.PipelineConnectError: Cannot connect 'component_b' with 'component_a': no matching connections available.
 # 'component_b':
-#  - output_value (List)
+#  - output_value (List[str])
 # 'component_a':
 #  - input_value (int, available)
 ```
@@ -88,17 +102,11 @@ pipeline.connect('component_a', 'component_c')
 Just like input and output names, when stated:
 
 ```python
-pipeline.connect('component_a.input', 'component_b')
-# canals.errors.PipelineConnectError: 'component_a.input does not exist. Output connections of component_a are: intermediate_value (type str)
+pipeline.connect('component_a.input_value', 'component_b')
+# canals.errors.PipelineConnectError: 'component_a.typo does not exist. Output connections of component_a are: output_value (type str)
 
-pipeline.connect('component_a.output', 'component_b')
-# canals.errors.PipelineConnectError: 'component_a.output does not exist. Output connections of component_a are: intermediate_value (type str)
-
-pipeline.connect('component_a', 'component_b.input')
-# canals.errors.PipelineConnectError: 'component_b.input does not exist. Input connections of component_b are: intermediate_value (type str)
-
-pipeline.connect('component_a', 'component_b.output')
-# canals.errors.PipelineConnectError: 'component_b.output does not exist. Input connections of component_b are: intermediate_value (type str)
+pipeline.connect('component_a', 'component_b.output_value')
+# canals.errors.PipelineConnectError: 'component_b.output_value does not exist. Input connections of component_b are: input_value (type str)
 ```
 
 ## Save and Load
