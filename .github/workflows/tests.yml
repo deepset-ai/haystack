@@ -119,6 +119,13 @@ jobs:
           - utils
           - others
           - modeling
+        dependencies:
+          - all,dev
+        include:
+          - topic: document_stores
+            dependencies: elasticsearch,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
+          - topic: document_stores
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -128,7 +135,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,dev]
+        run: pip install .[${{ matrix.dependencies }}]
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
