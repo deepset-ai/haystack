@@ -100,7 +100,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   unit-tests:
-    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
+    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }} / ${{ matrix.dependencies }}
     needs: black
     strategy:
       fail-fast: false
@@ -119,6 +119,15 @@ jobs:
           - utils
           - others
           - modeling
+        dependencies:
+          - all,dev
+        include:
+          - topic: document_stores
+            os: ubuntu-latest
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
+          - topic: document_stores
+            os: windows-latest
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -128,7 +137,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        run: pip install .[all,dev]
+        run: pip install .[${{ matrix.dependencies }}]
 
       - name: Run
         run: pytest --cov-report xml:coverage.xml --cov="haystack" -m "unit" test/${{ matrix.topic }}
