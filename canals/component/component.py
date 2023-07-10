@@ -84,9 +84,18 @@ class _Component:
 
     Defaults are allowed, as much as default factories and other dataclass properties.
 
-    By default all fields, regardless of their definition, are marked as Optional with default None: however, if you
-    don't explicitly define them as Optionals, Pipeline will make sure to collect all the values of this dataclass
-    before calling the `run()` method, making them in practice non-optional.
+    By default `@component.input` sets `None` as default for all fields, regardless of their definition: this gives you
+    the possibility of passing a part of the input to the pipeline without defining every field of the component.
+    For example, using the above definition, you can create an Input dataclass as:
+
+    ```python
+    self.input(add=3)
+    ```
+
+    and the resulting dataclass will look like `Input(value=None, add=3)`.
+
+    However, if you don't explicitly define them as Optionals, Pipeline will make sure to collect all the values of
+    this dataclass before calling the `run()` method, making them in practice non-optional.
 
     If you instead define a specific field as Optional in the dataclass, then Pipeline will **not** wait for them, and
     will run the component as soon as all the non-optional fields have received a value or, if all fields are optional,

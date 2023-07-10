@@ -28,8 +28,8 @@ def input(self):
 
 Defaults are allowed, as much as default factories and other dataclass properties.
 
-By default all fields, regardless of their definition, are marked as Optional with default None: however, if you don't
-explicitly define them as Optionals, Pipeline will make sure to collect all the values of this dataclass before
+By default `@component.input` sets `None` as default for all fields, regardless of their definition: however, if you
+don't explicitly define them as Optionals, Pipeline will make sure to collect all the values of this dataclass before
 calling the `run()` method, making them in practice non-optional.
 
 If you instead define a specific field as Optional in the dataclass, then Pipeline will **not** wait for them, and will
