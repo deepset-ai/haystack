@@ -12,23 +12,25 @@ import time
 import json
 import ast
 from dataclasses import asdict
+from dataclasses import dataclass as dataclass
 
 import numpy as np
 from numpy import ndarray
 import pandas as pd
 from pandas import DataFrame
 
-from pydantic import Field, ConfigDict, model_validator
+from pydantic import Field, ConfigDict
 from pydantic.json import pydantic_encoder
 
 # We are using Pydantic dataclasses instead of vanilla Python's
 # See #1598 for the reasons behind this choice & performance considerations
-from pydantic.dataclasses import dataclass
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 from haystack.mmh3 import hash128
 
 
 logger = logging.getLogger(__name__)
+
 
 base_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -38,9 +40,9 @@ ContentTypes = Literal["text", "table", "image", "audio"]
 FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 
 
-@dataclass(config=base_config)
+@dataclass
 class Document:
-    id: Optional[str] = None
+    id: str
     content: Union[str, DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
@@ -52,7 +54,16 @@ class Document:
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
     # They also help in annotating which object attributes will always be present (e.g. "id") even though they
     # don't need to passed by the user in init and are rather initialized automatically in the init
-    def __post_init__(self):
+    def __init__(
+        self,
+        content: Union[str, DataFrame],
+        content_type: ContentTypes = "text",
+        id: Optional[str] = None,
+        score: Optional[float] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        embedding: Optional[ndarray] = None,
+        id_hash_keys: Optional[List[str]] = None,
+    ):
         """
         One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
         Documents are stored in DocumentStores, are returned by Retrievers, are the input for Readers and are used in
@@ -85,33 +96,38 @@ class Document:
 
 
         """
-        if self.content is None:
+
+        if content is None:
             raise ValueError("Can't create 'Document': Mandatory 'content' field is None")
 
-        self.meta = self.meta or {}
+        self.content = content
+        self.content_type = content_type
+        self.score = score
+        self.meta = meta or {}
 
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
-        if self.id_hash_keys is not None:
-            if not all(key in allowed_hash_key_attributes or key.startswith("meta.") for key in self.id_hash_keys):
+        if id_hash_keys is not None:
+            if not all(key in allowed_hash_key_attributes or key.startswith("meta.") for key in id_hash_keys):
                 raise ValueError(
-                    f"You passed custom strings {self.id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
                     f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}) or "
                     f"a key of meta with a maximum depth of 1 (like meta.url). "
                     "See [Custom id hashing on documentstore level](https://github.com/deepset-ai/haystack/pull/1910) and "
                     "[Allow more flexible Document id hashing](https://github.com/deepset-ai/haystack/issues/4317) for details"
                 )
         # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
-        self.id_hash_keys = self.id_hash_keys or ["content"]
+        self.id_hash_keys = id_hash_keys or ["content"]
 
-        if self.embedding is not None:
-            self.embedding = np.asarray(self.embedding)
+        if embedding is not None:
+            embedding = np.asarray(embedding)
+        self.embedding = embedding
 
         # Create a unique ID (either new one, or one from user input)
-        if self.id is not None:
-            self.id: str = str(self.id)
+        if id is not None:
+            self.id: str = str(id)
         else:
-            self.id: str = self._get_id(id_hash_keys=self.id_hash_keys)
+            self.id: str = self._get_id(id_hash_keys=id_hash_keys)
 
     def _get_id(self, id_hash_keys: Optional[List[str]] = None):
         """
@@ -271,11 +287,7 @@ class Document:
         return self.score < other.score
 
 
-# Document.validate = Document.__post_init__
-# Document.__post_init__ = lambda _: None
-
-
-@dataclass(config=base_config)
+@pydantic_dataclass(config=base_config)
 class Span:
     start: int
     end: int
@@ -329,7 +341,7 @@ class Span:
             ) from e
 
 
-@dataclass(config=base_config)
+@pydantic_dataclass(config=base_config)
 class TableCell:
     row: int
     col: int
@@ -341,7 +353,7 @@ class TableCell:
     """
 
 
-@dataclass(config=base_config)
+@dataclass
 class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
@@ -464,9 +476,9 @@ class Answer:
         )
 
 
-@dataclass(config=base_config)
+@dataclass
 class Label:
-    id: Optional[str] = None
+    id: str
     query: str
     document: Document
     is_correct_answer: bool
@@ -483,7 +495,21 @@ class Label:
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
-    def __post_init__(self):
+    def __init__(
+        self,
+        query: str,
+        document: Document,
+        is_correct_answer: bool,
+        is_correct_document: bool,
+        origin: Literal["user-feedback", "gold-label"],
+        answer: Optional[Answer],
+        id: Optional[str] = None,
+        pipeline_id: Optional[str] = None,
+        created_at: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        meta: Optional[dict] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
@@ -509,17 +535,33 @@ class Label:
         """
 
         # Create a unique ID (either new one, or one from user input)
-        if self.id:
-            self.id = str(self.id)
+        if id:
+            self.id = str(id)
         else:
             self.id = str(uuid4())
 
-        if self.created_at is None:
-            self.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+        if created_at is None:
+            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.created_at = created_at
+
+        self.updated_at = updated_at
+        self.query = query
+
+        self.answer = answer
+        self.document = document
+
+        self.is_correct_answer = is_correct_answer
+        self.is_correct_document = is_correct_document
+        self.origin = origin
 
         # TODO autofill answer.document_id if Document is provided
 
-        self.meta = self.meta or {}
+        self.pipeline_id = pipeline_id
+        if not meta:
+            self.meta = {}
+        else:
+            self.meta = meta
+        self.filters = filters
 
     @property
     def no_answer(self) -> Optional[bool]:
@@ -539,6 +581,7 @@ class Label:
         doc = dict.get("document")
         if isinstance(doc, Dict):
             dict["document"] = Document.from_dict(dict["document"])
+        dict.pop("no_answer", None)
         return cls(**dict)
 
     def to_json(self):
