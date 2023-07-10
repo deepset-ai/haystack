@@ -1,4 +1,5 @@
-from typing import List, Optional, Type, Union, Any
+from typing import List, Optional, Type
+
 
 from haystack.preview.document_stores.protocols import Store
 

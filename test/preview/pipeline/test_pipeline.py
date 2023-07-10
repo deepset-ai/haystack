@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from haystack.preview import Pipeline, component, NoSuchStoreError, Document, ComponentInput, ComponentOutput
+from haystack.preview.pipeline import NotAStoreError
 from haystack.preview.document_stores import StoreAwareMixin, DuplicatePolicy
 
 
@@ -39,7 +40,7 @@ def test_add_store():
 def test_add_store_wrong_object():
     pipe = Pipeline()
 
-    with pytest.raises(ValueError, match="does not respect the Store Protocol"):
+    with pytest.raises(NotAStoreError, match="does not respect the Store Protocol"):
         pipe.add_store(name="store", store="I'm surely not a Store object!")
 
 

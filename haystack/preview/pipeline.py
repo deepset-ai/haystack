@@ -13,6 +13,10 @@ from haystack.preview.document_stores.protocols import Store
 from haystack.preview.document_stores.mixins import StoreAwareMixin
 
 
+class NotAStoreError(PipelineError):
+    pass
+
+
 class NoSuchStoreError(PipelineError):
     pass
 
@@ -35,7 +39,7 @@ class Pipeline(CanalsPipeline):
         :returns: None
         """
         if not isinstance(store, Store):
-            raise ValueError(
+            raise NotAStoreError(
                 f"This object ({store}) does not respect the Store Protocol, "
                 "so it can't be added to the pipeline with Pipeline.add_store()."
             )
