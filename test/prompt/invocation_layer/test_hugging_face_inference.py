@@ -361,9 +361,14 @@ def test_supports(mock_get_task):
         "https://<your-unique-deployment-id>.us-east-1.aws.endpoints.huggingface.cloud", api_key="fake_key"
     )
 
+    # doesn't support model if library not installed
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face_inference.transformers_import") as mock_import:
         mock_import.is_successful.return_value = False
         assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")
+
+    # doesn't support model if hf server timeout
+    mock_get_task.side_effect = RuntimeError
+    assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")
 
 
 @pytest.mark.unit
