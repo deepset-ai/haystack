@@ -359,7 +359,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["_source"] == {"excludes": ["embedding"]}
 
-    @pytest.mark.skipif(VERSION[0] == 8, reason="Elasticsearch 7 uses a different client call")
+    @pytest.mark.skipif(VERSION[0] == 7, reason="Elasticsearch 7 uses a different client call")
     @pytest.mark.unit
     def test_get_document_by_id_excluded_meta_data_has_no_influence_es8(self, mocked_document_store):
         mocked_document_store.excluded_meta_data = ["foo"]
