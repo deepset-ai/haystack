@@ -122,11 +122,12 @@ jobs:
           - modeling
         include:
           - dependencies: all,dev
-          # Add a special set of dependencies for the document_stores topic to test ES8
           - topic: document_stores
+            os: ubuntu-latest
             dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
           - topic: document_stores
-            dependencies: all,dev
+            os: windows-latest
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
