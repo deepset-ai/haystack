@@ -7,18 +7,7 @@ import inspect
 import logging
 from pathlib import Path
 
-# import pydantic.schema
 from pydantic import BaseConfig, SecretStr, create_model
-
-# from pydantic.typing import is_callable_type
-# from pydantic.fields import ModelField
-# from pydantic.schema import (
-#     SkipField,
-#     TypeModelOrEnum,
-#     TypeModelSet,
-#     encode_default,
-#     field_singleton_schema as _field_singleton_schema,
-# )
 
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
@@ -44,48 +33,6 @@ class Settings(BaseSettings):
     github_repository: str
 
 
-# Monkey patch Pydantic's field_singleton_schema to convert classes and functions to
-# strings in JSON Schema
-# def field_singleton_schema(
-#     field: ModelField,
-#     *,
-#     by_alias: bool,
-#     model_name_map: Dict[TypeModelOrEnum, str],
-#     ref_template: str,
-#     schema_overrides: bool = False,
-#     ref_prefix: Optional[str] = None,
-#     known_models: TypeModelSet,
-# ) -> Tuple[Dict[str, Any], Dict[str, Any], Set[str]]:
-#     try:
-#         # Typing with optional dependencies is really tricky. Let's just use Any for now. To be fixed.
-#         if isinstance(field.type_, ForwardRef):
-#             logger.debug(field.type_)
-#             field.type_ = Any
-#         return _field_singleton_schema(
-#             field,
-#             by_alias=by_alias,
-#             model_name_map=model_name_map,
-#             ref_template=ref_template,
-#             schema_overrides=schema_overrides,
-#             ref_prefix=ref_prefix,
-#             known_models=known_models,
-#         )
-#     except (ValueError, SkipField):
-#         schema: Dict[str, Any] = {"type": "string"}
-
-#         if isinstance(field.default, type) or is_callable_type(field.default):
-#             default = field.default.__name__
-#         else:
-#             default = field.default
-#         if not field.required:
-#             schema["default"] = encode_default(default)
-#         return schema, {}, set()
-
-
-# Monkeypatch Pydantic's field_singleton_schema
-# pydantic.schema.field_singleton_schema = field_singleton_schema
-
-
 # From FastAPI's internals
 def get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
     signature = inspect.signature(call)
@@ -100,13 +47,13 @@ def get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
     return typed_signature
 
 
-# # From FastAPI's internals
-# def get_typed_annotation(param: inspect.Parameter, globalns: Dict[str, Any]) -> Any:
-#     annotation = param.annotation
-#     if isinstance(annotation, str):
-#         annotation = ForwardRef(annotation)
-#         # annotation = evaluate_forwardref(annotation, globalns, globalns)
-#     return annotation
+# From FastAPI's internals
+def get_typed_annotation(param: inspect.Parameter, globalns: Dict[str, Any]) -> Any:
+    annotation = param.annotation
+    if isinstance(annotation, str):
+        annotation = ForwardRef(annotation)
+        # annotation = evaluate_forwardref(annotation, globalns, globalns)
+    return annotation
 
 
 class Config(BaseConfig):
@@ -212,13 +159,13 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
         annotation = Any
         if param.annotation != param.empty:
             annotation = param.annotation
-        default = Required
+        # default = Required
         if param.default != param.empty:
             default = param.default
         param_fields_kwargs[param.name] = (annotation, default)
 
     # Create the model with Pydantic and extract the schema
-    model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)
+    model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)  # type: ignore
     try:
         model.update_forward_refs(**model.__dict__)
     except NameError as exc:
