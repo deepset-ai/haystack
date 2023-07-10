@@ -147,7 +147,7 @@ Since this is a relatively small change without any effect on existing nodes, I 
 
 # Alternatives
 
-Without adding this feature it will not be possible to handle customer cases where recency of documents matters for the response, see examples in the Motivation section.
+Without adding this feature it will not be possible to handle customer and community cases where recency of documents matters for the response, see examples in the Motivation section.
 
 # Adoption strategy
 
