@@ -10,7 +10,7 @@ class StoreAwareMixin:
     """
 
     _store: Store
-    supported_stores: List[Type[Store]] = [Store]
+    supported_stores: List[Type[Store]] = [Store]  # type: ignore # (see https://github.com/python/mypy/issues/4717)
 
     @property
     def store(self) -> Optional[Store]:
