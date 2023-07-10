@@ -69,9 +69,9 @@ pipeline.add_component('component_b', ComponentB())
 
 # All of these succeeds
 pipeline.connect('component_a', 'component_b')
-pipeline.connect('component_a.intermediate_value', 'component_b')
-pipeline.connect('component_a', 'component_b.intermediate_value')
-pipeline.connect('component_a.intermediate_value', 'component_b.intermediate_value')
+pipeline.connect('component_a.output_value', 'component_b')
+pipeline.connect('component_a', 'component_b.input_value')
+pipeline.connect('component_a.output_value', 'component_b.input_value')
 ```
 
 These, instead, fail:
@@ -80,14 +80,14 @@ These, instead, fail:
 pipeline.connect('component_a', 'component_a')
 # canals.errors.PipelineConnectError: Cannot connect 'component_a' with 'component_a': no matching connections available.
 # 'component_a':
-#  - intermediate_value (str)
+#  - output_value (str)
 # 'component_a':
 #  - input_value (int, available)
 
 pipeline.connect('component_b', 'component_a')
 # canals.errors.PipelineConnectError: Cannot connect 'component_b' with 'component_a': no matching connections available.
 # 'component_b':
-#  - output_value (List)
+#  - output_value (List[str])
 # 'component_a':
 #  - input_value (int, available)
 ```
@@ -102,17 +102,11 @@ pipeline.connect('component_a', 'component_c')
 Just like input and output names, when stated:
 
 ```python
-pipeline.connect('component_a.input', 'component_b')
-# canals.errors.PipelineConnectError: 'component_a.input does not exist. Output connections of component_a are: intermediate_value (type str)
+pipeline.connect('component_a.input_value', 'component_b')
+# canals.errors.PipelineConnectError: 'component_a.typo does not exist. Output connections of component_a are: output_value (type str)
 
-pipeline.connect('component_a.output', 'component_b')
-# canals.errors.PipelineConnectError: 'component_a.output does not exist. Output connections of component_a are: intermediate_value (type str)
-
-pipeline.connect('component_a', 'component_b.input')
-# canals.errors.PipelineConnectError: 'component_b.input does not exist. Input connections of component_b are: intermediate_value (type str)
-
-pipeline.connect('component_a', 'component_b.output')
-# canals.errors.PipelineConnectError: 'component_b.output does not exist. Input connections of component_b are: intermediate_value (type str)
+pipeline.connect('component_a', 'component_b.output_value')
+# canals.errors.PipelineConnectError: 'component_b.output_value does not exist. Input connections of component_b are: input_value (type str)
 ```
 
 ## Save and Load
