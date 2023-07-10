@@ -45,7 +45,7 @@ class RecentnessRanker(BaseRanker):
 
     # pylint: disable=arguments-differ
     def run(
-        self, documents: List[Document], top_k: Optional[int] = None, weight: Optional[float] = None
+        self, query: str, documents: List[Document], top_k: Optional[int] = None
     ) -> Tuple[Dict, str]:  # type: ignore
         # sort documents based on age, newest comes first
         try:
@@ -78,8 +78,7 @@ class RecentnessRanker(BaseRanker):
         # We use reciprocal rank fusion (RRF) to have the same range of scores for both lists.
         scores_map: Dict = defaultdict(int)
         document_map = {doc.id: doc for doc in documents}
-        if not weight:
-            weight = self.weight
+        weight = self.weight
         for i, doc in enumerate(documents):
             if self.method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
@@ -115,15 +114,16 @@ class RecentnessRanker(BaseRanker):
     # pylint: disable=arguments-differ
     def run_batch(
         self,
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
-        weight: Optional[float] = None,
+        batch_size: Optional[int] = None,
     ) -> Tuple[Dict, str]:
         if isinstance(documents[0], Document):
-            return self.run(documents=documents, top_k=top_k, weight=weight)  # type: ignore
+            return self.run("", documents=documents, top_k=top_k)  # type: ignore
         nested_docs = []
         for docs in documents:
-            temp = self.run(documents=docs, top_k=top_k, weight=weight)  # type: ignore
+            temp = self.run("", documents=docs, top_k=top_k)  # type: ignore
             nested_docs.append(temp[0]["documents"])
         output = {"documents": nested_docs}
         return output, "output_1"
