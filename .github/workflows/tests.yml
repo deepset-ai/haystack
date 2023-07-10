@@ -19,7 +19,6 @@ on:
       - "pyproject.toml"
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
-      - ".github/workflows/tests.yml"
 
 env:
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -125,7 +124,7 @@ jobs:
         include:
           - topic: document_stores
             os: ubuntu-latest
-            dependencies: elasticsearch,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
+            dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
           - topic: document_stores
             os: windows-latest
             dependencies: elasticsearch8,faiss,weaviate,pinecone,opensearch,inference,audio,crawler,preprocessing,file-conversion,pdf,ocr,ray,onnx,beir,metrics,aws,dev
@@ -138,7 +137,6 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Haystack
-        if: ${{ matrix.dependencies }}
         run: pip install .[${{ matrix.dependencies }}]
 
       - name: Run
