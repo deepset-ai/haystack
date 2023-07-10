@@ -251,7 +251,7 @@ class DensePassageRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -322,6 +322,7 @@ class DensePassageRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -356,7 +357,7 @@ class DensePassageRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -431,6 +432,7 @@ class DensePassageRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -619,7 +621,7 @@ class DensePassageRetriever(DenseRetriever):
         :param multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
                                          If your system has low limits for the number of open file descriptors, and you can’t raise them,
                                          you should use the file_system strategy.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if dev_filename is set to None
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
         :param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
@@ -815,7 +817,7 @@ class TableTextRetriever(DenseRetriever):
                                       one used by hugging-face transformers' modelhub models.
         :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
                                         one used by hugging-face transformers' modelhub models.
-        :param table_embedding_model: Local path or remote name of table encoder checkpoint. The format equala the
+        :param table_embedding_model: Local path or remote name of table encoder checkpoint. The format equals the
                                       one used by hugging-face transformers' modelhub models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
@@ -976,7 +978,7 @@ class TableTextRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -1051,6 +1053,7 @@ class TableTextRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -1267,7 +1270,7 @@ class TableTextRetriever(DenseRetriever):
         :param max_samples: Maximum number of input samples to convert. Can be used for debugging a smaller dataset.
         :param max_processes: The maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
+        :param dev_split: The proportion of the train set that will be sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
         :param embed_meta_fields: Concatenate meta fields with each passage and table.
                                   If no value is provided, a default will be created. That default embeds page title,
@@ -1517,13 +1520,13 @@ class EmbeddingRetriever(DenseRetriever):
                                   If no value is provided, a default empty list will be created.
         :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
                         For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
-        :param api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
+        :param azure_api_version: The version of the Azure OpenAI API to use. The default is `2022-12-01` version.
         :param azure_base_url: The base URL for the Azure OpenAI API. If not supplied, Azure OpenAI API will not be used.
                                This parameter is an OpenAI Azure endpoint, usually in the form `https://<your-endpoint>.openai.azure.com'
         :param azure_deployment_name: The name of the Azure OpenAI API deployment. If not supplied, Azure OpenAI API
                                      will not be used.
         :param api_base: The OpenAI API base URL, defaults to `"https://api.openai.com/v1"`.
-        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see see OpenAI
+        :param openai_organization: The OpenAI-Organization ID, defaults to `None`. For more details, see OpenAI
         [documentation](https://platform.openai.com/docs/api-reference/requesting-organization).
         """
         torch_and_transformers_import.check()
@@ -1593,7 +1596,7 @@ class EmbeddingRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -1664,6 +1667,7 @@ class EmbeddingRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1698,7 +1702,7 @@ class EmbeddingRetriever(DenseRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         Returns a list of lists of Documents (one per query).
@@ -1773,6 +1777,7 @@ class EmbeddingRetriever(DenseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
@@ -2061,7 +2066,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the query.
 
         :param query: The query
@@ -2132,6 +2137,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -2159,7 +2165,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through the documents in a DocumentStore and return a small number of documents
         that are most relevant to the supplied queries.
 
         If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
@@ -2235,6 +2241,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic API_KEY'} for basic authentication)
         :param batch_size: Number of queries to embed at a time.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
