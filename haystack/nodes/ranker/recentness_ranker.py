@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class RecentnessRanker(BaseRanker):
     outgoing_edges = 1
 
+    # weight=0.5
     def __init__(
         self,
         date_identifier: str,
@@ -83,7 +84,10 @@ class RecentnessRanker(BaseRanker):
             if self.method == "reciprocal_rank_fusion":
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
             elif self.method == "score":
-                scores_map[doc.id] += doc.score * (1 - weight)
+                score = float(0)
+                if doc.score is not None:
+                    score = doc.score
+                scores_map[doc.id] += score * (1 - weight)
             else:
                 logger.error(
                     """
