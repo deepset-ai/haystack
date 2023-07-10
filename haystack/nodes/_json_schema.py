@@ -1,19 +1,39 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, ForwardRef
-
+import inspect
+import json
+import logging
 import os
 import sys
-import json
-import inspect
-import logging
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import Any, Callable, Dict, ForwardRef, List, Optional, Set, Tuple, Type, Union
 
-from pydantic import BaseConfig, SecretStr, create_model
+import pydantic
+from pydantic import BaseModel, ConfigDict
+from pydantic import PydanticSchemaGenerationError as PydanticSchemaGenerationError
+from pydantic import SecretStr
+from pydantic import ValidationError as ValidationError
+from pydantic import create_model, schema
+from pydantic._internal._schema_generation_shared import (
+    GetJsonSchemaHandler as GetJsonSchemaHandler,
+)  # type: ignore[attr-defined]
+from pydantic._internal._typing_extra import eval_type_lenient
+from pydantic._internal._utils import lenient_issubclass as lenient_issubclass
+from pydantic.fields import FieldInfo
+from pydantic.json_schema import GenerateJsonSchema as GenerateJsonSchema
+from pydantic.json_schema import JsonSchemaValue as JsonSchemaValue
+from pydantic_core import CoreSchema as CoreSchema
+from pydantic_core import MultiHostUrl as MultiHostUrl
+from pydantic_core import PydanticUndefined, PydanticUndefinedType
+from pydantic_core import Url as Url
+from pydantic_core.core_schema import general_plain_validator_function as general_plain_validator_function
+from pydantic_settings import BaseSettings
+from typing_extensions import Literal
+
 
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
-from pydantic_settings import BaseSettings
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +53,78 @@ class Settings(BaseSettings):
     github_repository: str
 
 
+Required = PydanticUndefined
+Undefined = PydanticUndefined
+UndefinedType = PydanticUndefinedType
+evaluate_forwardref = eval_type_lenient
+Validator = Any
+
+
+@dataclass
+class ModelField:
+    field_info: FieldInfo
+    name: str
+    mode: Literal["validation", "serialization"] = "validation"
+
+
+TypeModelOrEnum = Union[Type["BaseModel"], Type[Enum]]
+TypeModelSet = Set[TypeModelOrEnum]
+
+
+# Monkey patch Pydantic's field_singleton_schema to convert classes and functions to
+# strings in JSON Schema
+# ! THIS METHOD IS NOT PRESENT IN PYDANTIC V2
+def field_singleton_schema(
+    field: ModelField,
+    *,
+    by_alias: bool,
+    model_name_map: Dict[TypeModelOrEnum, str],
+    ref_template: str,
+    schema_overrides: bool = False,
+    ref_prefix: Optional[str] = None,
+    known_models: TypeModelSet,
+) -> Tuple[Dict[str, Any], Dict[str, Any], Set[str]]:
+    try:
+        # Typing with optional dependencies is really tricky. Let's just use Any for now. To be fixed.
+        if isinstance(field.type_, ForwardRef):
+            logger.debug(field.type_)
+            field.type_ = Any
+        return _field_singleton_schema(
+            field,
+            by_alias=by_alias,
+            model_name_map=model_name_map,
+            ref_template=ref_template,
+            schema_overrides=schema_overrides,
+            ref_prefix=ref_prefix,
+            known_models=known_models,
+        )
+    except (ValueError, SkipField):
+        schema: Dict[str, Any] = {"type": "string"}
+
+        if isinstance(field.default, type) or is_callable_type(field.default):
+            default = field.default.__name__
+        else:
+            default = field.default
+        if not field.required:
+            schema["default"] = encode_default(default)
+        return schema, {}, set()
+
+
+# Monkeypatch Pydantic's field_singleton_schema
+# ! THIS METHOD IS NOT PRESENT IN PYDANTIC V2
+pydantic.schema.field_singleton_schema = field_singleton_schema
+
+
 # From FastAPI's internals
 def get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
     signature = inspect.signature(call)
     globalns = getattr(call, "__globals__", {})
     typed_params = [
         inspect.Parameter(
-            name=param.name, kind=param.kind, default=param.default, annotation=get_typed_annotation(param, globalns)
+            name=param.name,
+            kind=param.kind,
+            default=param.default,
+            annotation=get_typed_annotation(param.annotation, globalns),
         )
         for param in signature.parameters.values()
     ]
@@ -48,16 +133,16 @@ def get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
 
 
 # From FastAPI's internals
-def get_typed_annotation(param: inspect.Parameter, globalns: Dict[str, Any]) -> Any:
-    annotation = param.annotation
+def get_typed_annotation(annotation: Any, globalns: Dict[str, Any]) -> Any:
     if isinstance(annotation, str):
         annotation = ForwardRef(annotation)
-        # annotation = evaluate_forwardref(annotation, globalns, globalns)
+        annotation = evaluate_forwardref(annotation, globalns, globalns)
     return annotation
 
 
-class Config(BaseConfig):
-    extra = "forbid"  # type: ignore
+config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+# config = ConfigDict(arbitrary_types_allowed=True, extra='forbid')
 
 
 def is_valid_component_class(class_):
@@ -159,18 +244,18 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
         annotation = Any
         if param.annotation != param.empty:
             annotation = param.annotation
-        # default = Required
+        default = param.empty
         if param.default != param.empty:
             default = param.default
         param_fields_kwargs[param.name] = (annotation, default)
 
     # Create the model with Pydantic and extract the schema
-    model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)  # type: ignore
+    model = create_model(f"{node_name}ComponentParams", __config__=config, **param_fields_kwargs)
     try:
-        model.update_forward_refs(**model.__dict__)
+        model.model_rebuild()
     except NameError as exc:
         logger.debug("%s", str(exc))
-    params_schema = model.schema()
+    params_schema = model.model_json_schema()
 
     # Pydantic v1 patch to generate JSON schemas including Optional fields
     # to be removed when Pydantic v2 is released and adopted
