@@ -119,6 +119,13 @@ class DuplicateDocumentError(DocumentStoreError, ValueError):
         super().__init__(message=message)
 
 
+class TairDocumentStoreError(DocumentStoreError):
+    """Exception for issues that occur in a tair document store"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
+
+
 class NodeError(HaystackError):
     """Exception for issues that occur in a node"""
 

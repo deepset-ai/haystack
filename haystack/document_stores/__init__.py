@@ -18,4 +18,5 @@ OpenSearchDocumentStore = safe_import("haystack.document_stores.opensearch", "Op
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")
 PineconeDocumentStore = safe_import("haystack.document_stores.pinecone", "PineconeDocumentStore", "pinecone")
+# TairDocumentStore = safe_import("haystack.document_stores.tair", "TairDocumentStore", "tair")
 WeaviateDocumentStore = safe_import("haystack.document_stores.weaviate", "WeaviateDocumentStore", "weaviate")
