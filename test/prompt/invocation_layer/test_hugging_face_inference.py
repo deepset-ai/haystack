@@ -362,7 +362,7 @@ def test_supports(mock_get_task):
     )
 
     with patch("haystack.nodes.prompt.invocation_layer.hugging_face_inference.transformers_import") as mock_import:
-        mock_import.is_successful.return_value = True
+        mock_import.is_successful.return_value = False
         assert not HFInferenceEndpointInvocationLayer.supports("google/flan-t5-xxl", api_key="fake_key")
 
 
