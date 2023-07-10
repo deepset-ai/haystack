@@ -19,6 +19,7 @@ on:
       - "pyproject.toml"
       - "!.github/**/*.py"
       - "!rest_api/**/*.py"
+      - ".github/workflows/tests.yml"
 
 env:
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
