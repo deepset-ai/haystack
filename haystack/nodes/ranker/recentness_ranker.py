@@ -1,4 +1,4 @@
-import logging
+import logging, warnings
 from collections import defaultdict
 from typing import List, Union, Optional, Tuple, Dict
 
@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 class RecentnessRanker(BaseRanker):
     outgoing_edges = 1
 
-    # weight=0.5
     def __init__(
         self,
         date_identifier: str,
@@ -83,8 +82,13 @@ class RecentnessRanker(BaseRanker):
                 scores_map[doc.id] += self._calculate_rrf(rank=i) * (1 - weight)
             elif self.method == "score":
                 score = float(0)
-                if doc.score is not None:
+                if score is None:
+                    warnings.warn("The score was not provided; defaulting to 0")
+                elif score < 0 or score > 1:
+                    warnings.warn("The score is outside the [0,1] range; defaulting to 0")
+                else:
                     score = doc.score
+
                 scores_map[doc.id] += score * (1 - weight)
             else:
                 logger.error(
