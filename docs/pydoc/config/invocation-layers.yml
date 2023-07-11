@@ -31,6 +31,7 @@ renderer:
   title: Invocation Layers API
   slug: invocation-layers-api
   order: 117
+  parent_doc_slug: prompt-node-api
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
