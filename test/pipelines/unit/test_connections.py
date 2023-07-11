@@ -12,7 +12,7 @@ from canals.errors import PipelineConnectError
 from canals.pipeline import Pipeline, PipelineConnectError
 from canals.component import component
 from canals.pipeline.sockets import find_input_sockets, find_output_sockets
-from canals.pipeline.connections import find_unambiguous_connection
+from canals.pipeline.connections import find_unambiguous_connection, _get_socket_type_desc
 
 from test.sample_components import AddFixedValue, Greet
 from test._helpers.component_factory import make_component
@@ -540,3 +540,72 @@ def test_find_unambiguous_connection_many_connections_possible_no_name_matches()
             from_sockets=find_output_sockets(Component1()).values(),
             to_sockets=find_input_sockets(Component2()).values(),
         )
+
+
+@pytest.mark.parametrize(
+    "type_,repr",
+    [
+        pytest.param(str, "str", id="primitive-types"),
+        pytest.param(Any, "typing.Any", id="any"),
+        pytest.param(TestClass1, "TestClass1", id="class"),
+        pytest.param(Optional[int], "Optional[int]", id="shallow-optional-with-primitive"),
+        pytest.param(Optional[Any], "Optional[typing.Any]", id="shallow-optional-with-any"),
+        pytest.param(Optional[TestClass1], "Optional[TestClass1]", id="shallow-optional-with-class"),
+        pytest.param(Union[bool, TestClass1], "Union[bool, TestClass1]", id="shallow-union"),
+        pytest.param(List[str], "List[str]", id="shallow-sequence-of-primitives"),
+        pytest.param(List[Set[Sequence[str]]], "List[Set[Sequence[str]]]", id="nested-sequence-of-primitives"),
+        pytest.param(
+            Optional[List[Set[Sequence[str]]]],
+            "Optional[List[Set[Sequence[str]]]]",
+            id="optional-nested-sequence-of-primitives",
+        ),
+        pytest.param(
+            List[Set[Sequence[Optional[str]]]],
+            "List[Set[Sequence[Optional[str]]]]",
+            id="nested-optional-sequence-of-primitives",
+        ),
+        pytest.param(List[TestClass1], "List[TestClass1]", id="shallow-sequence-of-classes"),
+        pytest.param(
+            List[Set[Sequence[TestClass1]]], "List[Set[Sequence[TestClass1]]]", id="nested-sequence-of-classes"
+        ),
+        pytest.param(Dict[str, int], "Dict[str, int]", id="shallow-mapping-of-primitives"),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, int]]],
+            "Dict[str, Mapping[str, Dict[str, int]]]",
+            id="nested-mapping-of-primitives",
+        ),
+        pytest.param(
+            Dict[str, Mapping[Any, Dict[str, int]]],
+            "Dict[str, Mapping[typing.Any, Dict[str, int]]]",
+            id="nested-mapping-of-primitives-with-any",
+        ),
+        pytest.param(Dict[str, TestClass1], "Dict[str, TestClass1]", id="shallow-mapping-of-classes"),
+        pytest.param(
+            Dict[str, Mapping[str, Dict[str, TestClass1]]],
+            "Dict[str, Mapping[str, Dict[str, TestClass1]]]",
+            id="nested-mapping-of-classes",
+        ),
+        pytest.param(
+            Literal["a", "b", "c"],
+            "Literal['a', 'b', 'c']",
+            id="string-literal",
+        ),
+        pytest.param(
+            Literal[1, 2, 3],
+            "Literal[1, 2, 3]",
+            id="primitive-literal",
+        ),
+        pytest.param(
+            Literal[TestEnum.TEST1],
+            "Literal[TestEnum.TEST1]",
+            id="enum-literal",
+        ),
+        pytest.param(
+            Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, TestClass1]]],
+            "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, TestClass1]]]",
+            id="deeply-nested-complex-type",
+        ),
+    ],
+)
+def test_get_socket_type_desc(type_, repr):
+    assert _get_socket_type_desc(type_) == repr

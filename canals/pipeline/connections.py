@@ -104,8 +104,20 @@ def _get_socket_type_desc(type_):
         return str(type_) if not isinstance(type_, str) else f"'{type_}'"  # Quote strings
 
     # Python < 3.10 support
-    if not hasattr(type_, "__name__"):
-        return str(type_)
+    if hasattr(type_, "_name"):
+        type_name = type_._name  # pylint: disable=protected-access)
+        # Support for Optionals and Unions in Python < 3.10
+        if not type_name:
+            if type(None) in args:
+                type_name = "Optional"
+                args = [a for a in args if a is not type(None)]
+            else:
+                if not any(isinstance(a, type) for a in args):
+                    type_name = "Literal"
+                else:
+                    type_name = "Union"
+    else:
+        type_name = type_.__name__
 
     subtypes = ", ".join([_get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
-    return f"{type_.__name__}[{subtypes}]"
+    return f"{type_name}[{subtypes}]"
