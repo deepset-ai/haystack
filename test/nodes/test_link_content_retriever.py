@@ -49,7 +49,7 @@ def test_init_with_preprocessor():
 
 
 @pytest.mark.unit
-def test_call(mocked_requests, mocked_article_extractor):
+def test_fetch(mocked_requests, mocked_article_extractor):
     """
     Checks if the LinkContentRetriever is able to fetch content.
     """
@@ -67,7 +67,7 @@ def test_call(mocked_requests, mocked_article_extractor):
 
 
 @pytest.mark.unit
-def test_call_no_url(mocked_requests, mocked_article_extractor):
+def test_fetch_no_url(mocked_requests, mocked_article_extractor):
     """
     Ensures an InvalidURL exception is raised when URL is missing.
     """
@@ -80,7 +80,7 @@ def test_call_no_url(mocked_requests, mocked_article_extractor):
 
 
 @pytest.mark.unit
-def test_call_invalid_url(caplog, mocked_requests, mocked_article_extractor):
+def test_fetch_invalid_url(caplog, mocked_requests, mocked_article_extractor):
     """
     Ensures an InvalidURL exception is raised when the URL is invalid.
     """
@@ -92,7 +92,7 @@ def test_call_invalid_url(caplog, mocked_requests, mocked_article_extractor):
 
 
 @pytest.mark.unit
-def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
+def test_fetch_no_preprocessor(mocked_requests, mocked_article_extractor):
     """
     Checks if the LinkContentRetriever can fetch content without a preprocessor.
     """
@@ -107,7 +107,7 @@ def test_call_no_preprocessor(mocked_requests, mocked_article_extractor):
 
 
 @pytest.mark.unit
-def test_call_correct_arguments(mocked_requests, mocked_article_extractor):
+def test_fetch_correct_arguments(mocked_requests, mocked_article_extractor):
     """
     Ensures that requests.get is called with correct arguments.
     """
@@ -308,7 +308,7 @@ def test_call_with_valid_url_on_live_web():
 @pytest.mark.integration
 def test_retrieve_with_valid_url_on_live_web():
     """
-    Test that LinkContentRetriever can fetch content from a valid URL using the retrieve method
+    Test that LinkContentRetriever can fetch content from a valid URL using the run method
     """
 
     retriever = LinkContentRetriever()

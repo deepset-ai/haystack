@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 def html_content_handler(response: Response, raise_on_failure: bool = False) -> Optional[str]:
     """
     Extracts content from the response text using the boilerpy3 extractor.
+    :param response: Response object from the request.
+    :param raise_on_failure: A boolean indicating whether to raise an exception when a failure occurs
     """
     extractor = extractors.ArticleExtractor(raise_on_failure=raise_on_failure)
     content = ""
@@ -80,7 +82,7 @@ class LinkContentRetriever(BaseComponent):
             raise InvalidURL("Invalid or missing URL: {}".format(url))
 
         doc_kwargs = doc_kwargs or {}
-        extracted_doc = {"url": url, "meta": {"timestamp": int(datetime.utcnow().timestamp())}}
+        extracted_doc = {"meta": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}}
         extracted_doc.update(doc_kwargs)
 
         response = self._get_response(url, timeout=timeout)
@@ -94,8 +96,8 @@ class LinkContentRetriever(BaseComponent):
                     extracted_doc["content"] = extracted_content
                     logger.debug("%s handler extracted content from %s", handler, url)
                 else:
-                    text = extracted_doc.get("text", "")  # we might have snippet under text, use it as fallback
                     logger.debug("%s handler failed to extract content from %s", handler, url)
+                    text = extracted_doc.get("text", "")
                     extracted_doc["content"] = text
                 document = Document.from_dict(extracted_doc)
 
@@ -118,11 +120,10 @@ class LinkContentRetriever(BaseComponent):
 
         param query: The query - a URL to fetch content from.
         param filters: Not used.
-        param top_k: Return only the top_k results. If None, the top_k value passed to the constructor is used.
-        param index: Not used.
-        param headers: Not used.
-        param scale_score: Not used.
-        param document_store: Not used.
+        param top_k: Not used.
+        param labels: Not used.
+        param documents: Not used.
+        param meta: Not used.
 
         return: List of Document objects.
         """
