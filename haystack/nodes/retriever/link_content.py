@@ -151,13 +151,12 @@ class LinkContentRetriever(BaseComponent):
         from a specific query URL.
 
         param queries: List of queries - URLs to fetch content from.
-        param filters: Not used.
-        param top_k: Return only the top_k results. If None, the top_k value passed to the constructor is used.
-        param index: Not used.
-        param headers: Not used.
-        param batch_size: Not used.
-        param scale_score: Not used.
-        param document_store: Not used.
+        param file_paths: Not used.
+        param labels: Not used.
+        param documents: Not used.
+        param meta: Not used.
+        param params: Not used.
+        param debug: Not used.
 
         return: List of lists of Document objects.
         """
@@ -189,7 +188,7 @@ class LinkContentRetriever(BaseComponent):
                 raise e
 
             logger.debug("Couldn't retrieve content from %s", url)
-            return requests.Response()
+            response = requests.Response()
         return response
 
     def _is_valid_url(self, url: str) -> bool:
