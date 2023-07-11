@@ -7,6 +7,8 @@ import importlib
 import importlib.util
 from pathlib import Path
 from typing import Optional, Dict, Union, Tuple, List
+from urllib.parse import urlparse, unquote
+from os.path import splitext, basename
 
 import requests
 
@@ -46,6 +48,20 @@ def load_documents_from_hf_datasets(dataset_name: str, split: Optional[str] = "t
     return documents
 
 
+def get_filename_extension_from_url(url: str) -> Tuple[str, str]:
+    """
+    Extracts the filename and file extension from an url.
+
+    :param url: http address
+    :return: Tuple (filename, file extension) of the file at the url.
+    """
+    parsed = urlparse(url)
+    root, extension = splitext(parsed.path)
+    archive_extension = extension[1:]
+    file_name = unquote(basename(root[1:]))
+    return file_name, archive_extension
+
+
 def fetch_archive_from_http(
     url: str,
     output_dir: str,
@@ -75,7 +91,7 @@ def fetch_archive_from_http(
     else:
         logger.info("Fetching from %s to '%s'", url, output_dir)
 
-        _, _, archive_extension = url.rpartition(".")
+        file_name, archive_extension = get_filename_extension_from_url(url)
         request_data = requests.get(url, proxies=proxies, timeout=timeout)
 
         if archive_extension == "zip":
@@ -84,7 +100,6 @@ def fetch_archive_from_http(
         elif archive_extension == "gz" and not "tar.gz" in url:
             gzip_archive = gzip.GzipFile(fileobj=io.BytesIO(request_data.content))
             file_content = gzip_archive.read()
-            file_name = url.split("/")[-1][: -(len(archive_extension) + 1)]
             with open(f"{output_dir}/{file_name}", "wb") as file:
                 file.write(file_content)
         elif archive_extension in ["gz", "bz2", "xz"]:

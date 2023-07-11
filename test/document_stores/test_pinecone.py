@@ -3,7 +3,7 @@ from typing import List, Union, Dict, Any
 import os
 import numpy as np
 from inspect import getmembers, isclass, isfunction
-from unittest.mock import MagicMock, ANY
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -470,6 +470,123 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
         doc_store_with_docs.write_documents([doc])
         assert doc_store_with_docs.get_embedding_count() == 1
+
+    @pytest.mark.integration
+    def test_get_document_count_after_write_doc_with_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        with an embedding is written to the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and also initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # document with embedding is written to doc_store_with_docs
+        doc = Document(content=f"Doc with embedding", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc])
+
+        # so we expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # but we expect initial_document_count documents without embeddings to be unchanged
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+
+    @pytest.mark.integration
+    def test_get_document_count_after_write_doc_without_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        without an embedding is written to the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and we also expect initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # document without embedding is written to doc_store_with_docs
+        doc = Document(content=f"Doc without embedding")
+        doc_store_with_docs.write_documents([doc])
+
+        # we now expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # And we also expect initial_document_count + 1 documents without embeddings, because the document we just
+        # wrote has no embeddings
+        assert (
+            doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count + 1
+        )
+
+    @pytest.mark.integration
+    def test_get_document_count_after_delete_doc_with_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        with an embedding is deleted from the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and also initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # two documents with embedding are written to doc_store_with_docs
+        doc_1 = Document(content=f"Doc with embedding 1", embedding=np.random.rand(768).astype(np.float32))
+        doc_2 = Document(content=f"Doc with embedding 2", embedding=np.random.rand(768).astype(np.float32))
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+
+        # total number is initial_document_count + 2
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 2
+
+        # remove one of the documents with embedding
+        all_embedding_docs = doc_store_with_docs.get_all_documents(namespace="vectors")
+        doc_store_with_docs.delete_documents(ids=[all_embedding_docs[0].id])
+
+        # since we deleted one doc, we expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # and we expect initial_document_count documents without embeddings
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+
+    @pytest.mark.integration
+    def test_get_document_count_after_delete_doc_without_embedding(self, doc_store_with_docs: PineconeDocumentStore):
+        """
+        Tests that get_document_count() returns the correct number of documents in the document store after a document
+        without embedding is deleted from the document store.
+        """
+        # there are 9 docs in doc_store_with_docs (all without embeddings)
+        initial_document_count = 9
+
+        # therefore we expect initial_document_count documents without embeddings in doc_store_with_docs
+        assert doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count
+        # and also initial_document_count documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count
+
+        # two documents without embedding are written to doc_store_with_docs
+        doc_1 = Document(content=f"Doc with embedding 1", embedding=None)
+        doc_2 = Document(content=f"Doc with embedding 2", embedding=None)
+        doc_store_with_docs.write_documents([doc_1, doc_2])
+
+        # total number is initial_document_count + 2
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 2
+
+        # remove one of the documents without embedding
+        all_non_embedding_docs = doc_store_with_docs.get_all_documents(namespace="no-vectors")
+        doc_store_with_docs.delete_documents(ids=[all_non_embedding_docs[0].id])
+
+        # since we deleted one doc, we expect initial_document_count + 1 documents in total
+        assert doc_store_with_docs.get_document_count() == initial_document_count + 1
+
+        # and we expect initial_document_count +1 documents without embeddings as well
+        assert (
+            doc_store_with_docs.get_document_count(only_documents_without_embedding=True) == initial_document_count + 1
+        )
 
     @pytest.mark.unit
     def test_get_all_labels_legacy_document_id(self, ds, monkeypatch):

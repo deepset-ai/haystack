@@ -55,11 +55,16 @@ class Test_MemoryRetriever(BaseTestComponent):
         ds = MemoryDocumentStore()
         ds.write_documents(mock_docs)
         mr = MemoryRetriever(document_store_name="memory", top_k=top_k)
-        result: MemoryRetriever.Output = mr.run(data=MemoryRetriever.Input(query="PHP", stores={"memory": ds}))
+        result: MemoryRetriever.Output = mr.run(
+            data=MemoryRetriever.Input(queries=["PHP", "Java"], stores={"memory": ds})
+        )
 
         assert getattr(result, "documents")
-        assert len(result.documents) == top_k
-        assert result.documents[0].content == "PHP is a popular programming language"
+        assert len(result.documents) == 2
+        assert len(result.documents[0]) == top_k
+        assert len(result.documents[1]) == top_k
+        assert result.documents[0][0].content == "PHP is a popular programming language"
+        assert result.documents[1][0].content == "Java is a popular programming language"
 
     @pytest.mark.unit
     def test_invalid_run_wrong_store_name(self):
@@ -68,7 +73,7 @@ class Test_MemoryRetriever(BaseTestComponent):
         mr = MemoryRetriever(document_store_name="memory")
         with pytest.raises(ValueError, match=r"MemoryRetriever's document store 'memory' not found"):
             invalid_input_data = MemoryRetriever.Input(
-                query="test", top_k=10, scale_score=True, stores={"invalid_store": ds}
+                queries=["test"], top_k=10, scale_score=True, stores={"invalid_store": ds}
             )
             mr.run(invalid_input_data)
 
@@ -79,7 +84,7 @@ class Test_MemoryRetriever(BaseTestComponent):
         mr = MemoryRetriever(document_store_name="memory")
         with pytest.raises(ValueError, match=r"MemoryRetriever can only be used with a MemoryDocumentStore instance."):
             invalid_input_data = MemoryRetriever.Input(
-                query="test", top_k=10, scale_score=True, stores={"memory": "not a MemoryDocumentStore"}
+                queries=["test"], top_k=10, scale_score=True, stores={"memory": "not a MemoryDocumentStore"}
             )
             mr.run(invalid_input_data)
 
@@ -99,13 +104,13 @@ class Test_MemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_component("retriever", mr)
         pipeline.add_store("memory", ds)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query)})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(queries=[query])})
 
         assert result
         assert "retriever" in result
         results_docs = result["retriever"].documents
         assert results_docs
-        assert results_docs[0].content == query_result
+        assert results_docs[0][0].content == query_result
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -124,11 +129,11 @@ class Test_MemoryRetriever(BaseTestComponent):
         pipeline = Pipeline()
         pipeline.add_component("retriever", mr)
         pipeline.add_store("memory", ds)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(query=query, top_k=top_k)})
+        result: Dict[str, Any] = pipeline.run(data={"retriever": MemoryRetriever.Input(queries=[query], top_k=top_k)})
 
         assert result
         assert "retriever" in result
         results_docs = result["retriever"].documents
         assert results_docs
-        assert len(results_docs) == top_k
-        assert results_docs[0].content == query_result
+        assert len(results_docs[0]) == top_k
+        assert results_docs[0][0].content == query_result

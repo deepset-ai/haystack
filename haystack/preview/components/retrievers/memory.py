@@ -23,7 +23,7 @@ class MemoryRetriever:
         :param stores: A dictionary mapping document store names to instances.
         """
 
-        query: str
+        queries: List[str]
         filters: Dict[str, Any]
         top_k: int
         scale_score: bool
@@ -37,7 +37,7 @@ class MemoryRetriever:
         :param documents: The retrieved documents.
         """
 
-        documents: List[Document]
+        documents: List[List[Document]]
 
     def __init__(
         self,
@@ -78,7 +78,12 @@ class MemoryRetriever:
         document_store = data.stores[self.document_store_name]
         if not isinstance(document_store, MemoryDocumentStore):
             raise ValueError("MemoryRetriever can only be used with a MemoryDocumentStore instance.")
-        docs = document_store.bm25_retrieval(
-            query=data.query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
-        )
+
+        docs = []
+        for query in data.queries:
+            docs.append(
+                document_store.bm25_retrieval(
+                    query=query, filters=data.filters, top_k=data.top_k, scale_score=data.scale_score
+                )
+            )
         return MemoryRetriever.Output(documents=docs)

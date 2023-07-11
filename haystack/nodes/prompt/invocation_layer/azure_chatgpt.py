@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 from haystack.nodes.prompt.invocation_layer.chatgpt import ChatGPTInvocationLayer
+from haystack.nodes.prompt.invocation_layer.utils import has_azure_parameters
 
 
 class AzureChatGPTInvocationLayer(ChatGPTInvocationLayer):
@@ -41,7 +42,6 @@ class AzureChatGPTInvocationLayer(ChatGPTInvocationLayer):
         Ensures Azure ChatGPT Invocation Layer is selected when `azure_base_url` and `azure_deployment_name` are provided in
         addition to a list of supported models.
         """
+
         valid_model = any(m for m in ["gpt-35-turbo", "gpt-4", "gpt-4-32k"] if m in model_name_or_path)
-        return (
-            valid_model and kwargs.get("azure_base_url") is not None and kwargs.get("azure_deployment_name") is not None
-        )
+        return valid_model and has_azure_parameters(**kwargs)

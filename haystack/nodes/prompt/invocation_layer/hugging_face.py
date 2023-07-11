@@ -21,7 +21,7 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         GenerationConfig,
         Pipeline,
     )
-    from transformers.pipelines import get_task
+    from huggingface_hub import model_info
     from haystack.modeling.utils import initialize_device_settings  # pylint: disable=ungrouped-imports
     from haystack.nodes.prompt.invocation_layer.handlers import HFTokenStreamingHandler
 
@@ -42,6 +42,15 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
             stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
             return any(all(stop_word) for stop_word in stop_result)
+
+    def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 3.0) -> Optional[str]:
+        """
+        Simplified version of transformers.pipelines.get_task with support for timeouts
+        """
+        try:
+            return model_info(model, token=use_auth_token, timeout=timeout).pipeline_tag
+        except Exception as e:
+            raise RuntimeError(f"The task of {model} could not be checked because of the following error: {e}") from e
 
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
@@ -187,7 +196,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
-        top_k = kwargs.pop("top_k", None)
         # either stream is True (will use default handler) or stream_handler is provided for custom handler
         stream = kwargs.get("stream", self.stream)
         stream_handler = kwargs.get("stream_handler", self.stream_handler)
@@ -232,12 +240,21 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             if stop_words:
                 sw = StopWordsCriteria(tokenizer=self.pipe.tokenizer, stop_words=stop_words, device=self.pipe.device)
                 model_input_kwargs["stopping_criteria"] = StoppingCriteriaList([sw])
-            if top_k:
-                model_input_kwargs["num_return_sequences"] = top_k
-                if "num_beams" not in model_input_kwargs or model_input_kwargs["num_beams"] < top_k:
-                    if "num_beams" in model_input_kwargs:
-                        logger.warning("num_beams should not be less than top_k, hence setting it to %s", top_k)
-                    model_input_kwargs["num_beams"] = top_k
+
+            if "num_beams" in model_input_kwargs:
+                num_beams = model_input_kwargs["num_beams"]
+                if (
+                    "num_return_sequences" in model_input_kwargs
+                    and model_input_kwargs["num_return_sequences"] > num_beams
+                ):
+                    num_return_sequences = model_input_kwargs["num_return_sequences"]
+                    logger.warning(
+                        "num_return_sequences %s should not be larger than num_beams %s, hence setting it equal to num_beams",
+                        num_return_sequences,
+                        num_beams,
+                    )
+                    model_input_kwargs["num_return_sequences"] = num_beams
+
             # max_new_tokens is used for text-generation and max_length for text2text-generation
             if is_text_generation:
                 model_input_kwargs["max_new_tokens"] = model_input_kwargs.pop("max_length", self.max_length)
