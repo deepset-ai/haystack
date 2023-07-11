@@ -325,19 +325,21 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
 @pytest.mark.unit
 def test_openai_embedding_retriever_model_format():
     # support text-embedding-ada-002
-    assert "openai" == EmbeddingRetriever._infer_model_format(
-        model_name_or_path="text-embedding-ada-002", use_auth_token=None
+    assert (
+        EmbeddingRetriever._infer_model_format(model_name_or_path="text-embedding-ada-002", use_auth_token=None)
+        == "openai"
     )
 
     # support old ada and other text-search-<modelname>-*-001 models
-    assert "openai" == EmbeddingRetriever._infer_model_format(model_name_or_path="ada", use_auth_token=None)
+    assert EmbeddingRetriever._infer_model_format(model_name_or_path="ada", use_auth_token=None) == "openai"
 
     # support old babbage and other text-search-<modelname>-*-001 models
-    assert "openai" == EmbeddingRetriever._infer_model_format(model_name_or_path="babbage", use_auth_token=None)
+    assert EmbeddingRetriever._infer_model_format(model_name_or_path="babbage", use_auth_token=None) == "openai"
 
     # make sure that we can handle potential unreleased models
-    assert "openai" == EmbeddingRetriever._infer_model_format(
-        model_name_or_path="text-embedding-babbage-002", use_auth_token=None
+    assert (
+        EmbeddingRetriever._infer_model_format(model_name_or_path="text-embedding-babbage-002", use_auth_token=None)
+        == "openai"
     )
 
 
