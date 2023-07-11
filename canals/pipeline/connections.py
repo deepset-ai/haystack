@@ -103,5 +103,9 @@ def _get_socket_type_desc(type_):
         # Literals only accept instances, not classes, so we need to account for those.
         return str(type_) if not isinstance(type_, str) else f"'{type_}'"  # Quote strings
 
+    # Python < 3.10 support
+    if not hasattr(type_, "__name__"):
+        return str(type_)
+
     subtypes = ", ".join([_get_socket_type_desc(subtype) for subtype in args if subtype is not type(None)])
     return f"{type_.__name__}[{subtypes}]"
