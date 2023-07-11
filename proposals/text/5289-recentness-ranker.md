@@ -148,7 +148,7 @@ As a general description, the ranker has the following parameters (date_identifi
 - top_k (number of documents to return, works the same way as top-k in other rankers as well as retrievers)
 - method (the options are:
           - "reciprocal_rank_fusion" which does not require any relevance score from the previous node;
-          - "score" requires the RecentnessRanker to be used only with nodes that output a 0-1 relevance score.
+          - "score" requires a 0-1 relevance score provided from the previous node in the pipeline.
           More information on method compatibility with different retrievers is in the Drawbacks section below)
 
 The RecentnessRanker works by:
