@@ -40,8 +40,8 @@ with LazyImport(message="Run 'pip install farm-haystack[inference]'") as torch_a
             self.stop_words = tokenizer(stop_words, add_special_tokens=False, return_tensors="pt").to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-            stop_result = torch.isin(self.stop_words["input_ids"], input_ids[-1])
-            return any(all(stop_word) for stop_word in stop_result)
+            stop_result = torch.isin(self.stop_words["input_ids"], input_ids[0][-1])
+            return any(stop_word for stop_word in stop_result)
 
     def get_task(model: str, use_auth_token: Optional[Union[str, bool]] = None, timeout: float = 3.0) -> Optional[str]:
         """
