@@ -82,7 +82,9 @@ class LinkContentRetriever(BaseComponent):
             raise InvalidURL("Invalid or missing URL: {}".format(url))
 
         doc_kwargs = doc_kwargs or {}
-        extracted_doc = {"meta": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}}
+        extracted_doc: Dict[str, Union[str, dict]] = {
+            "meta": {"url": url, "timestamp": int(datetime.utcnow().timestamp())}
+        }
         extracted_doc.update(doc_kwargs)
 
         response = self._get_response(url, timeout=timeout)
