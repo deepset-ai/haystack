@@ -26,7 +26,7 @@ HF_TIMEOUT = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
 HF_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 with LazyImport() as transformers_import:
-    from haystack.nodes.prompt.invocation_layer.hugging_face import get_task
+    from haystack.nodes.prompt.invocation_layer.utils import get_task
 
 
 class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
