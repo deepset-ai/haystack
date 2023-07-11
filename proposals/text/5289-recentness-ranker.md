@@ -1,4 +1,4 @@
-- Title: Addition of a 'RecencyReranker' node
+- Title: Addition of a RecentnessRanker node
 - Decision driver: @elundaeva
 - Start Date: 2023-07-05
 - Proposal PR: https://github.com/deepset-ai/haystack/pull/5289
@@ -6,15 +6,15 @@
 
 # Summary
 
-This reranker allows to have retrieved documents sorted not only by relevance (default) but also with recency factored in.
+This ranker allows to have retrieved documents sorted not only by relevance (default) but also with recency factored in.
 
 # Basic example
 
-The RecentnessReranker would be instantiated as follows:
+The RecentnessRanker would be instantiated as follows:
 
   ``` python
 
-	  reranker = RecentnessReranker(
+	  ranker = RecentnessRanker(
 	      date_identifier="date",
 	      weight="0.5",
           top_k=3,
@@ -101,7 +101,7 @@ pipelines:
     - name: Ranker
       inputs: [JoinDocuments]
     - name: RecentnessRanker
-      inputs: [Reranker]
+      inputs: [Ranker]
     - name: PromptNode
       inputs: [RecentnessRanker]
 
@@ -131,19 +131,19 @@ pipelines:
 
 # Motivation
 
-Initially this reranker was implemented by Timo for a customer case where the date of the document mattered for retrieval. The reason we would like to add it to Haystack is because we see wider use for this node in future customer and community cases. One example where document recency matters is in a QA solution based on technical documentation with release notes of a software product - the older release notes should naturally have less priority in the responses than the most recent ones. And another example is news content - news articles retrieval can definitely benefit from recency being factored into the relevance calculation.
+Initially this ranker was implemented by Timo for a customer case where the date of the document mattered for retrieval. The reason we would like to add it to Haystack is because we see wider use for this node in future customer and community cases. One example where document recency matters is in a QA solution based on technical documentation with release notes of a software product - the older release notes should naturally have less priority in the responses than the most recent ones. And another example is news content - news articles retrieval can definitely benefit from recency being factored into the relevance calculation.
 
 # Detailed design
 
-The reranker has already been implemented by Timo here: https://github.com/deepset-ai/deepset-cloud-custom-nodes/blob/main/deepset_cloud_custom_nodes/rankers/recentness_reranker.py & PR was reviewed at the time by Seb and Florian: https://github.com/deepset-ai/deepset-cloud-custom-nodes/pull/54.
+The ranker has already been implemented by Timo here: https://github.com/deepset-ai/deepset-cloud-custom-nodes/blob/main/deepset_cloud_custom_nodes/rankers/recentness_reranker.py & PR was reviewed at the time by Seb and Florian: https://github.com/deepset-ai/deepset-cloud-custom-nodes/pull/54.
 
 Additionally, you can see the code for this proposal here: https://github.com/deepset-ai/haystack/pull/5301/files. It is the same code as above, just with small naming changes (e.g. "rff" method got changed to "reciprocal_rank_fusion" to match the existing naming used Haystack's JoinDocuments node)
 
-As a general description, the reranker works by sorting the documents based on date and modifying the relevance score calculation slightly to include recency-based weight.
+As a general description, the ranker works by sorting the documents based on date and modifying the relevance score calculation slightly to include recency-based weight.
 
 # Drawbacks
 
-Since this is a relatively small change without any effect on existing nodes, I do not see major reasons not to add this reranker. The only important limitation to using this node is the need to have a metadata field with document date already present and for the "score" method the need to double-check that the previous node (e.g. CohereRanker, SentenceTransformersRanker, EmbeddingRetriever) outputs a score within [0,1] range.
+Since this is a relatively small change without any effect on existing nodes, I do not see major reasons not to add this ranker. The only important limitation to using this node is the need to have a metadata field with document date already present and for the "score" method the need to double-check that the previous node (e.g. CohereRanker, SentenceTransformersRanker, EmbeddingRetriever) outputs a score within [0,1] range.
 
 # Alternatives
 
@@ -155,9 +155,9 @@ This is not a breaking change and there does not seem to be any need for a migra
 
 # How we teach this
 
-A small change like this might not require creating a whole new tutorial (although it is of course up to you), although it can be interesting to discuss this reranker with example usage in blog post format like we have for metadata filtering (https://www.deepset.ai/blog/metadata-filtering-in-haystack).
+A small change like this might not require creating a whole new tutorial (although it is of course up to you), although it can be interesting to discuss this ranker with example usage in blog post format like we have for metadata filtering (https://www.deepset.ai/blog/metadata-filtering-in-haystack).
 
-As for documentation needs, it would be good to add some info on how to use this recency reranker - it can be added to the same page where the other existing rerankers are explained. If you need help writing the documentation and/or the blog post/tutorial, please do not hesitate to reach out to me.
+As for documentation needs, it would be good to add some info on how to use this recentness ranker - it can be added to the same page where the other existing rerankers are explained. If you need help writing the documentation and/or the blog post/tutorial, please do not hesitate to reach out to me.
 
 # Unresolved questions
 
